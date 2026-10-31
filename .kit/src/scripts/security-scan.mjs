@@ -118,31 +118,49 @@ check("lockfile と package.json が一致している", () => {
 	return [];
 });
 
+/** ビルド成果物をコミットしているプラグイン。outdirEnv はビルド先を一時フォルダに変える環境変数 */
+const plugins = [
+	{ id: "vault-git", outdirEnv: "VAULT_GIT_OUTDIR", files: ["main.js", "manifest.json"], allowedRequires: ["obsidian"] },
+	{
+		id: "vault-task",
+		outdirEnv: "VAULT_TASK_OUTDIR",
+		files: ["main.js", "manifest.json", "styles.css"],
+		// CodeMirror は Obsidian 本体が提供するもの（同梱しない）
+		allowedRequires: ["obsidian", "@codemirror/state", "@codemirror/view"],
+	},
+];
+
 check("コミット済みの main.js がソースから再現できる", () => {
 	const problems = [];
-	const out = mkdtempSync(join(tmpdir(), "vault-git-build-"));
-	try {
-		execFileSync("pnpm", ["--filter", "vault-git", "build"], {
-			cwd: pluginSrc,
-			stdio: "pipe",
-			env: { ...process.env, VAULT_GIT_OUTDIR: `${out}/` },
-		});
-		for (const name of ["main.js", "manifest.json"]) {
-			const committed = readFileSync(join(repo, ".obsidian/plugins/vault-git", name), "utf8");
-			if (readFileSync(join(out, name), "utf8") !== committed) {
-				problems.push(`${name} がソースからのビルド結果と一致しない（ビルド忘れ、または改ざん）`);
+	for (const plugin of plugins) {
+		const out = mkdtempSync(join(tmpdir(), `${plugin.id}-build-`));
+		try {
+			execFileSync("pnpm", ["--filter", plugin.id, "build"], {
+				cwd: pluginSrc,
+				stdio: "pipe",
+				env: { ...process.env, [plugin.outdirEnv]: `${out}/` },
+			});
+			for (const name of plugin.files) {
+				const committed = readFileSync(join(repo, ".obsidian/plugins", plugin.id, name), "utf8");
+				if (readFileSync(join(out, name), "utf8") !== committed) {
+					problems.push(`${plugin.id}/${name} がソースからのビルド結果と一致しない（ビルド忘れ、または改ざん）`);
+				}
 			}
+		} finally {
+			rmSync(out, { recursive: true, force: true });
 		}
-	} finally {
-		rmSync(out, { recursive: true, force: true });
 	}
 	return problems;
 });
 
-check("バンドルが obsidian 以外を require しない", () => {
-	const bundle = readFileSync(join(repo, ".obsidian/plugins/vault-git/main.js"), "utf8");
-	const requires = [...bundle.matchAll(/require\(["']([^"']+)["']\)/g)].map((m) => m[1]);
-	return [...new Set(requires)].filter((r) => r !== "obsidian").map((r) => `require("${r}")`);
+check("バンドルが Obsidian の提供するもの以外を require しない", () => {
+	const problems = [];
+	for (const plugin of plugins) {
+		const bundle = readFileSync(join(repo, ".obsidian/plugins", plugin.id, "main.js"), "utf8");
+		const requires = new Set([...bundle.matchAll(/require\(["']([^"']+)["']\)/g)].map((m) => m[1]));
+		for (const r of requires) if (!plugin.allowedRequires.includes(r)) problems.push(`${plugin.id}: require("${r}")`);
+	}
+	return problems;
 });
 
 if (!offline) {

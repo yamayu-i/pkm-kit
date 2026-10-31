@@ -69,6 +69,7 @@ export class TaskIndex {
 	readonly issues = new Map<string, Issue>();
 	readonly routines = new Map<string, Routine>();
 	readonly members = new Map<string, Member>();
+	readonly issuesByPath = new Map<string, Issue>();
 	private readonly childrenOf = new Map<string, Issue[]>();
 
 	constructor(readonly data: VaultData) {
@@ -76,6 +77,7 @@ export class TaskIndex {
 		for (const i of data.issues) if (!this.issues.has(i.id)) this.issues.set(i.id, i);
 		for (const r of data.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
 		for (const m of data.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
+		for (const i of data.issues) this.issuesByPath.set(i.path, i);
 		for (const issue of this.issues.values()) {
 			if (issue.parent === null) continue;
 			const list = this.childrenOf.get(issue.parent) ?? [];

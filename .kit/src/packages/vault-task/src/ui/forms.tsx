@@ -1,0 +1,140 @@
+import { useEffect, useRef, useState } from "preact/hooks";
+import { addDays, localToday, type LocalDate, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
+
+/** 1 行のテキストを入力して保存する */
+export function TextForm(props: { initial: string; maxLength?: number; placeholder?: string; onSubmit: (value: string) => void }) {
+	const [value, setValue] = useState(props.initial);
+	const ref = useRef<HTMLInputElement>(null);
+	useEffect(() => ref.current?.focus(), []);
+	return (
+		<form
+			class="vt-form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				props.onSubmit(value.trim());
+			}}
+		>
+			<input
+				ref={ref}
+				type="text"
+				value={value}
+				maxLength={props.maxLength}
+				placeholder={props.placeholder}
+				onInput={(e) => setValue(e.currentTarget.value)}
+			/>
+			{props.maxLength !== undefined && (
+				<span class="vt-muted">
+					{value.length} / {props.maxLength}
+				</span>
+			)}
+			<button type="submit" class="mod-cta">
+				保存
+			</button>
+		</form>
+	);
+}
+
+/** 日付を 1 つ選ぶ。クリアもできる */
+export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: LocalDate | null) => void }) {
+	const [value, setValue] = useState(props.initial ?? "");
+	return (
+		<form
+			class="vt-form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				props.onSubmit(value || null);
+			}}
+		>
+			<input type="date" value={value} onInput={(e) => setValue(e.currentTarget.value)} />
+			<button type="button" onClick={() => props.onSubmit(null)}>
+				クリア
+			</button>
+			<button type="submit" class="mod-cta">
+				保存
+			</button>
+		</form>
+	);
+}
+
+/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」） */
+export function CalendarForm(props: {
+	initial: LocalDate[];
+	midDue: LocalDate | null;
+	deadline: LocalDate | null;
+	onSubmit: (dates: LocalDate[]) => void;
+}) {
+	const today = localToday();
+	const [selected, setSelected] = useState(new Set(props.initial));
+	const [month, setMonth] = useState(today.slice(0, 7));
+	const first = `${month}-01`;
+	const start = addDays(first, -((weekdayOf(first) + 6) % 7));
+	const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
+	const shift = (n: number) => {
+		const [y, m] = month.split("-").map(Number) as [number, number];
+		const d = new Date(Date.UTC(y, m - 1 + n, 1));
+		setMonth(d.toISOString().slice(0, 7));
+	};
+	const toggle = (d: LocalDate) => {
+		const next = new Set(selected);
+		if (next.has(d)) next.delete(d);
+		else next.add(d);
+		setSelected(next);
+	};
+	return (
+		<div class="vt-calendar">
+			<div class="vt-calendar-nav">
+				<button onClick={() => shift(-1)}>‹</button>
+				<span>{month.replace("-", " / ")}</span>
+				<button onClick={() => shift(1)}>›</button>
+			</div>
+			<div class="vt-calendar-grid">
+				{[1, 2, 3, 4, 5, 6, 0].map((w) => (
+					<span class="vt-weekday">{WEEKDAY_NAMES[w]}</span>
+				))}
+				{days.map((d) => (
+					<DayCell
+						date={d}
+						dimmed={!d.startsWith(month)}
+						scheduled={selected.has(d)}
+						midDue={props.midDue}
+						deadline={props.deadline}
+						today={today}
+						onClick={() => toggle(d)}
+					/>
+				))}
+			</div>
+			<div class="vt-form">
+				<span class="vt-muted">{selected.size} 日</span>
+				<button class="mod-cta" onClick={() => props.onSubmit([...selected].sort())}>
+					保存
+				</button>
+			</div>
+		</div>
+	);
+}
+
+/** 実行日の 1 日分の枠。7 日ストリップとカレンダーで共通 */
+export function DayCell(props: {
+	date: LocalDate;
+	scheduled: boolean;
+	midDue: LocalDate | null;
+	deadline: LocalDate | null;
+	today: LocalDate;
+	dimmed?: boolean;
+	onClick: () => void;
+}) {
+	const w = weekdayOf(props.date);
+	const cls = ["vt-day"];
+	if (w === 0 || w === 6) cls.push("is-weekend");
+	if (props.date === props.midDue) cls.push("is-mid-due");
+	if (props.date === props.deadline) cls.push("is-deadline");
+	if (props.deadline !== null && props.date > props.deadline) cls.push("is-after-deadline");
+	if (props.scheduled) cls.push("is-scheduled");
+	if (props.date === props.today) cls.push("is-today");
+	if (props.dimmed) cls.push("is-dimmed");
+	return (
+		<button class={cls.join(" ")} onClick={props.onClick} aria-pressed={props.scheduled} title={props.date}>
+			{Number(props.date.slice(8, 10))}
+		</button>
+	);
+}

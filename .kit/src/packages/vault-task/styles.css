@@ -1,0 +1,406 @@
+/* vault-task（ADR-0006, 0012） */
+
+.vt-header {
+	--vt-green: #2da44e;
+	--vt-blue: #0969da;
+	--vt-purple: #8250df;
+	--vt-gray: #8c959f;
+	--vt-sky: #9cd3f5;
+	--vt-pink: #e85aad;
+	--vt-yellow: #e3b341;
+	--vt-red: #e5534b;
+	padding: 4px 0 8px;
+	font-size: var(--font-ui-medium);
+	/* ペインの幅で縦並びに切り替える（画面幅ではなく） */
+	container-type: inline-size;
+	user-select: text;
+}
+
+/* issue を開いているときは Properties 欄を隠す（ヘッダーが代わりに表示する） */
+.markdown-source-view:has(.vt-header) .metadata-container {
+	display: none;
+}
+
+.vt-issue {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.vt-header-missing {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.vt-meta {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.vt-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-summary {
+	font-size: 1.5em;
+	font-weight: var(--font-semibold);
+	cursor: text;
+	flex: 1;
+}
+
+.vt-summary-input {
+	font-size: 1.5em;
+	flex: 1;
+}
+
+.vt-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.vt-halves > * {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.vt-thirds > * {
+	flex: 1 1 0;
+}
+
+@container (max-width: 480px) {
+	.vt-row:not(.vt-small) {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.vt-row > .vt-badge:not(.is-wide) {
+		align-self: flex-start;
+	}
+}
+
+.vt-small {
+	font-size: var(--font-ui-small);
+}
+
+.vt-muted {
+	color: var(--text-faint);
+}
+
+.vt-field-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.vt-link {
+	cursor: pointer;
+}
+
+.vt-link:hover {
+	text-decoration: underline;
+}
+
+.vt-sep {
+	margin: 4px 0;
+}
+
+/* バッジ */
+
+.vt-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1px 8px;
+	border-radius: 999px;
+	border: none;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	white-space: nowrap;
+	height: auto;
+	box-shadow: none;
+}
+
+button.vt-badge {
+	cursor: pointer;
+}
+
+button.vt-badge:disabled {
+	cursor: default;
+	opacity: 1;
+}
+
+.vt-badge.is-wide {
+	width: 100%;
+	padding: 4px 8px;
+	font-size: var(--font-ui-small);
+}
+
+.vt-status {
+	color: #fff;
+}
+
+.vt-status-open { background: var(--vt-green); color: #fff; }
+.vt-status-in-progress { background: var(--vt-blue); color: #fff; }
+.vt-status-closed { background: var(--vt-purple); color: #fff; }
+.vt-status-canceled { background: var(--vt-gray); color: #fff; }
+.vt-status-someday { background: var(--vt-sky); color: #0b3a5a; }
+.vt-status-waiting,
+.vt-status-delegated { background: var(--vt-pink); color: #fff; }
+
+.vt-priority { background: var(--background-modifier-border); color: var(--text-normal); }
+.vt-priority-high { background: var(--vt-red); color: #fff; }
+.vt-priority-mid { background: var(--vt-yellow); color: #3a2a00; }
+.vt-priority-low { background: var(--vt-sky); color: #0b3a5a; }
+.vt-priority-chore { background: var(--vt-gray); color: #fff; }
+.vt-priority-none { color: var(--text-faint); }
+
+.vt-labels {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	cursor: pointer;
+}
+
+.vt-label {
+	color: #222;
+}
+
+.vt-label.is-empty {
+	background: transparent;
+	border: 1px dashed var(--background-modifier-border);
+	color: var(--text-faint);
+}
+
+.vt-status-detail {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* 7 日ストリップとカレンダー */
+
+.vt-strip {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.vt-strip-days {
+	display: flex;
+	gap: 4px;
+}
+
+.vt-strip-col {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+
+.vt-weekday {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-align: center;
+}
+
+.vt-day {
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border-radius: 6px;
+	border: 1px solid var(--vt-gray);
+	background: transparent;
+	color: var(--text-muted);
+	box-shadow: none;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.vt-day.is-weekend { border-width: 2px; }
+.vt-day.is-today { font-weight: var(--font-bold); }
+.vt-day.is-after-deadline { background: var(--background-modifier-hover); color: var(--text-faint); }
+.vt-day.is-mid-due { border-color: var(--vt-yellow); border-width: 2px; }
+.vt-day.is-deadline { border-color: var(--vt-red); border-width: 2px; }
+.vt-day.is-scheduled { background: var(--vt-green); color: #fff; }
+.vt-day.is-dimmed { opacity: 0.4; }
+
+.vt-text-button {
+	align-self: flex-start;
+	padding: 0 2px;
+	background: transparent;
+	box-shadow: none;
+	border: none;
+	color: var(--text-accent);
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
+}
+
+.vt-calendar {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-calendar-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.vt-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 36px);
+	gap: 4px;
+	justify-content: center;
+}
+
+/* 期限（ADR-0006: 3 日前から 薄い黄色 → 黄色 → オレンジ → 赤、過ぎたら赤い枠） */
+
+.vt-dues {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 170px;
+}
+
+.vt-due {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 2px 8px;
+	border-radius: 6px;
+	border: 1px solid transparent;
+	background: var(--background-secondary);
+	box-shadow: none;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	height: auto;
+}
+
+.vt-due-label {
+	color: var(--text-muted);
+}
+
+.vt-due-3 { background: #fff6cc; color: #3a2a00; }
+.vt-due-2 { background: #ffe066; color: #3a2a00; }
+.vt-due-1 { background: #ffa94d; color: #3a1a00; }
+.vt-due-0 { background: var(--vt-red); color: #fff; }
+.vt-due-0 .vt-due-label { color: #fff; }
+.vt-due-overdue { border-color: var(--vt-red); border-width: 2px; }
+
+/* 親子 */
+
+.vt-wrap {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+}
+
+.vt-relation {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+
+.vt-icon-button {
+	padding: 0 4px;
+	height: auto;
+	background: transparent;
+	box-shadow: none;
+	border: none;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+
+.vt-icon-button:hover {
+	color: var(--text-normal);
+}
+
+/* 工数 */
+
+.vt-effort-cell {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0;
+	padding: 4px 8px;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	box-shadow: none;
+	height: auto;
+	font-size: var(--font-ui-medium);
+}
+
+button.vt-effort-cell {
+	cursor: pointer;
+}
+
+/* worklog */
+
+.vt-worklog {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.vt-worklog-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.vt-pager {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* モーダル */
+
+.vt-form {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.vt-form input[type="text"] {
+	flex: 1;
+}
+
+.vt-capture textarea {
+	width: 100%;
+	font-family: var(--font-text);
+}
+
+.vt-label-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+
+.vt-check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-notice-button {
+	margin-top: 6px;
+}
