@@ -7,8 +7,10 @@
 
 - ノート: リポジトリ直下の通常のフォルダ（素の Markdown。デイリーノートは `daily/`、添付は `asset/`）
 - `.obsidian/plugins/vault-git/` : 自作 git 同期プラグインの**ビルド成果物**（`main.js` / `manifest.json`）。モバイルではビルドできないのでコミットする
+- `.obsidian/plugins/vault-task/` : 自作タスク管理プラグインのビルド成果物（`main.js` / `manifest.json` / `styles.css`）。同じくコミットする
 - `.plugin-src/` : プラグインのソース（pnpm workspace）。Obsidian に索引されないよう隠しフォルダに置いている
 - `.plugin-src/docs/adr/` : 設計判断の記録（ADR）。設計を変えるときはここに追記する
+- `.plugin-src/docs/design.md` : UI のデザインルール（Material 3 寄り）。UI を作る・変えるときは従う
 - `.claude/` : Claude Code 用（このファイル、スキル、フック、セキュリティチェックの記録）
 - `mise.toml` : Node と pnpm のバージョン
 
@@ -20,11 +22,12 @@ cd .plugin-src
 pnpm install --frozen-lockfile
 pnpm check                   # 型チェック → ビルド → テスト
 pnpm security:scan           # セキュリティチェックの機械的な部分
+pnpm task:lint               # タスク管理データ（issue/ routine/ member/ worklog/）の整合性検査
 ```
 
 ## ルール
 
-- ソース（`.plugin-src/**/src`）を変えたら必ず `pnpm build` して、`.obsidian/plugins/vault-git/main.js` も一緒にコミットする
+- ソース（`.plugin-src/**/src`）を変えたら必ず `pnpm build` して、`.obsidian/plugins/<id>/` のビルド成果物も一緒にコミットする
 - `node_modules` やビルド設定などの開発用ファイルを、Vault の見えるフォルダ（隠しフォルダ以外）に置かない
 - 依存はバージョン固定（`^` / `~` を使わない）。追加する前に必要性をユーザーに説明する
 - 秘密情報（トークンなど）はコード・設定ファイル・コミットに入れない。プラグインでは Obsidian の SecretStorage を使う

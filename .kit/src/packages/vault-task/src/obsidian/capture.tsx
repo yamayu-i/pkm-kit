@@ -1,0 +1,83 @@
+import { Notice, Platform, type TFile } from "obsidian";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { parseCaptureText } from "../core/capture";
+import type { TaskContext } from "./context";
+import { PreactModal } from "./modals";
+
+const NOTICE_MS = 5000;
+
+function CaptureForm(props: { onSubmit: (summaries: string[]) => void }) {
+	const [text, setText] = useState("");
+	const ref = useRef<HTMLTextAreaElement>(null);
+	useEffect(() => ref.current?.focus(), []);
+	const summaries = parseCaptureText(text);
+	const submit = () => summaries.length > 0 && props.onSubmit(summaries);
+	return (
+		<div class="vt-capture">
+			<textarea
+				ref={ref}
+				rows={6}
+				placeholder={"1 行に 1 件、summary を書く\n- 箇条書きを貼り付けてもよい"}
+				value={text}
+				onInput={(e) => setText(e.currentTarget.value)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.isComposing) {
+						e.preventDefault();
+						submit();
+					}
+				}}
+			/>
+			<div class="vt-form">
+				<span class="vt-muted">
+					{summaries.length} 件作成します{Platform.isMobile ? "" : "（Mod+Enter）"}
+				</span>
+				<button class="mod-cta" disabled={summaries.length === 0} onClick={submit}>
+					作成
+				</button>
+			</div>
+		</div>
+	);
+}
+
+async function openAll(ctx: TaskContext, files: TFile[]): Promise<void> {
+	let first = null;
+	for (const file of files) {
+		const leaf = ctx.app.workspace.getLeaf("tab");
+		await leaf.openFile(file, { active: false });
+		first ??= leaf;
+	}
+	if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
+}
+
+function showCreatedNotice(ctx: TaskContext, created: TFile[], failed: string[]): void {
+	const fragment = document.createDocumentFragment();
+	const ids = created.map((f) => f.basename);
+	const range = ids.length <= 1 ? ids.join("") : `${ids[0]}〜${ids[ids.length - 1]}`;
+	const message = created.length > 0 ? `${created.length} 件の issue を作成しました（${range}）` : "issue を作成できませんでした";
+	fragment.createEl("div", { text: failed.length > 0 ? `${message}。${failed.length} 件は失敗` : message });
+	let notice: Notice | null = null;
+	if (created.length > 0) {
+		const button = fragment.createEl("button", { text: "すべてタブで開く", cls: "vt-notice-button" });
+		button.addEventListener("click", (e) => {
+			e.stopPropagation();
+			notice?.hide();
+			void openAll(ctx, created).catch((err) => ctx.report("タブで開けませんでした", err));
+		});
+	}
+	notice = new Notice(fragment, NOTICE_MS);
+}
+
+/** issue の一括登録（ADR-0011） */
+export function openCaptureModal(ctx: TaskContext): void {
+	new PreactModal(ctx.app, "issue をまとめて作成", (close) => (
+		<CaptureForm
+			onSubmit={(summaries) => {
+				close();
+				void ctx.writer
+					.createIssues(summaries)
+					.then(({ created, failed }) => showCreatedNotice(ctx, created, failed))
+					.catch((e) => ctx.report("issue を作成できませんでした", e));
+			}}
+		/>
+	)).open();
+}

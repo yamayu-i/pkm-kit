@@ -11,6 +11,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "check": "pnpm typecheck && pnpm build && pnpm test",
-    "security:scan": "node scripts/security-scan.mjs"
+    "security:scan": "node scripts/security-scan.mjs",
+    "task:lint": "pnpm --filter vault-task lint:vault"
   }
 }
