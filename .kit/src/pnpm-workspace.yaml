@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+
+# サプライチェーン対策: 公開から 1 日（分単位）経っていないバージョンは入れない
+minimumReleaseAge: 1440
+
+# install スクリプトの実行を許可するパッケージ（ここにないものは実行しない）
+allowBuilds:
+  esbuild: true
