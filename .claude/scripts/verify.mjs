@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+/**
+ * ハーネスと Vault の検査をまとめて実行する。CI（.github/workflows/vault.yml）も同じものを呼ぶ。
+ * 途中で失敗しても最後まで実行し、結果をまとめて出す。
+ *
+ * 使い方: node .claude/scripts/verify.mjs [--plugin]
+ *   --plugin  .plugin-src の pnpm check も実行する（プラグインを変えたとき）
+ */
+import { spawnSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("../..", import.meta.url));
+const scripts = join(root, ".claude/scripts");
+const node = process.execPath;
+
+const hasOriginMain = spawnSync("git", ["rev-parse", "--verify", "--quiet", "origin/main"], { cwd: root }).status === 0;
+const tests = readdirSync(join(scripts, "test"))
+	.filter((f) => f.endsWith(".test.mjs"))
+	.map((f) => join(scripts, "test", f));
+
+const steps = [
+	["スクリプトのテスト", node, ["--test", ...tests]],
+	["文書の構造", node, [join(scripts, "check-docs.mjs")]],
+	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
+	hasOriginMain
+		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), "origin/main..HEAD"]]
+		: ["wiki の操作が追記だけか（origin/main がないので省略）", null, []],
+];
+if (process.argv.includes("--plugin")) steps.push(["プラグイン（pnpm check）", "pnpm", ["check"], join(root, ".plugin-src")]);
+
+const results = [];
+for (const [name, cmd, args, cwd] of steps) {
+	if (!cmd) {
+		results.push([name, "省略"]);
+		continue;
+	}
+	console.log(`\n=== ${name}`);
+	const r = spawnSync(cmd, args, { cwd: cwd ?? root, stdio: "inherit" });
+	results.push([name, r.status === 0 ? "成功" : "失敗"]);
+}
+
+console.log("\n=== 結果");
+for (const [name, status] of results) console.log(`${status === "成功" ? "✓" : status === "省略" ? "-" : "✗"} ${name}: ${status}`);
+if (results.some(([, s]) => s === "失敗")) process.exit(1);
