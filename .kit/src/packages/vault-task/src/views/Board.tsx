@@ -25,6 +25,7 @@ import { PriorityBadge, StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow } from "../ui/hooks";
+import { linkProps } from "../ui/a11y";
 
 type Item = { kind: "issue"; issue: Issue } | { kind: "routine"; routine: Routine };
 
@@ -86,7 +87,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			onDragStart={(e) => e.dataTransfer?.setData("text/plain", id)}
 		>
 			<div class="vt-task-top">
-				<span class="vt-task-summary" title={`${id} ${summary}`} onClick={(e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false)}>
+				<span class="vt-task-summary" title={`${id} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 					{summary}
 				</span>
 				<button

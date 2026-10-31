@@ -10,6 +10,7 @@ import type { TaskContext } from "../obsidian/context";
 import { PreactModal } from "../obsidian/modals";
 import { Icon } from "../ui/Icon";
 import { useStoreVersion } from "../ui/hooks";
+import { linkProps } from "../ui/a11y";
 
 type Every = "day" | "week" | "month";
 
@@ -139,7 +140,7 @@ export function RoutineListView(props: { ctx: TaskContext }) {
 				{routines.map((r) => (
 					<div class={`vt-routine-item${r.active ? "" : " is-paused"}`} key={r.id}>
 						<span class="vt-badge vt-id vt-routine-id">{r.id}</span>
-						<div class="vt-routine-main" onClick={(e) => void ctx.openPath(r.path, Keymap.isModEvent(e) !== false)}>
+						<div class="vt-routine-main" {...linkProps((e) => void ctx.openPath(r.path, Keymap.isModEvent(e) !== false))}>
 							<span class="vt-routine-summary">{r.summary || "（summary なし）"}</span>
 							<span class="vt-muted">
 								{r.repeat ? describeRepeat(r.repeat) : "repeat が読めません"}

@@ -1,0 +1,26 @@
+/* 生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す） */
+/* Obsidian 本体の色をデザイントークンと同じ値に固定する（.plugin-src/docs/design.md「Obsidian 側の固定」） */
+
+body.theme-light {
+	--background-primary: #ffffff;
+	--text-normal: #222222;
+	--text-muted: #5c5c5c;
+	--interactive-accent: #6750a4;
+	--text-accent: #6750a4;
+	--color-accent: #6750a4;
+	--text-on-accent: #ffffff;
+	--text-error: #b3261e;
+	--text-faint: #707070;
+}
+
+body.theme-dark {
+	--background-primary: #1e1e1e;
+	--text-normal: #dadada;
+	--text-muted: #b3b3b3;
+	--interactive-accent: #d0bcff;
+	--text-accent: #d0bcff;
+	--color-accent: #d0bcff;
+	--text-on-accent: #381e72;
+	--text-error: #f2b8b5;
+	--text-faint: #8c8c8c;
+}

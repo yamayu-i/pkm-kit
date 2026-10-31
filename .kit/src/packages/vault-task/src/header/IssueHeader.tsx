@@ -15,6 +15,7 @@ import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
 import { Pager } from "../ui/Pager";
 import { LabelForm } from "../ui/LabelForm";
+import { linkProps } from "../ui/a11y";
 
 const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 const WORKLOG_PAGE = 5;
@@ -299,7 +300,7 @@ function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => voi
 	return (
 		<span class="vt-relation">
 			<IdBadge issue={props.issue} />
-			<span class="vt-link" onClick={(e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false)}>
+			<span class="vt-link" {...linkProps((e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false))}>
 				{props.issue.summary}
 			</span>
 			{props.onRemove && (

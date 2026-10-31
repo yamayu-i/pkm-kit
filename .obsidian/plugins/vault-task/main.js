@@ -1069,7 +1069,7 @@ function IdBadge(props) {
 var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
 function PriorityBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
     props.priority ?? "priority",
     props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
   ] });
@@ -1317,6 +1317,21 @@ function LabelForm(props) {
   ] });
 }
 
+// src/ui/a11y.ts
+function linkProps(open) {
+  return {
+    role: "link",
+    tabIndex: 0,
+    onClick: (e3) => open(e3),
+    onKeyDown: (e3) => {
+      if (e3.key === "Enter") {
+        e3.preventDefault();
+        open(e3);
+      }
+    }
+  };
+}
+
 // src/header/IssueHeader.tsx
 var ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 var WORKLOG_PAGE = 5;
@@ -1557,7 +1572,7 @@ function DueFields(props) {
 function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", onClick: (e3) => void props.ctx.openPath(props.issue.path, import_obsidian3.Keymap.isModEvent(e3) !== false), children: props.issue.summary }),
+    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian3.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
     props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", title: "\u5916\u3059", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }
@@ -2770,7 +2785,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", onClick: (e3) => void ctx.openPath(issue.path, import_obsidian10.Keymap.isModEvent(e3) !== false), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian10.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -2840,7 +2855,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, onClick: (e3) => void ctx.openPath(path, import_obsidian11.Keymap.isModEvent(e3) !== false), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian11.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -3999,7 +4014,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", onClick: (e3) => void ctx.openPath(r3.path, import_obsidian14.Keymap.isModEvent(e3) !== false), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
@@ -4040,7 +4055,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", onClick: (e3) => void ctx.openPath(i3.path, import_obsidian15.Keymap.isModEvent(e3) !== false), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),

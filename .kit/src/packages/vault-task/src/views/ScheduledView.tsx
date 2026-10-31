@@ -5,6 +5,7 @@ import type { TaskContext } from "../obsidian/context";
 import { IdBadge } from "../ui/badges";
 import { DayCell } from "../ui/forms";
 import { useNow, useStoreVersion } from "../ui/hooks";
+import { linkProps } from "../ui/a11y";
 
 const DAYS = 14;
 
@@ -47,7 +48,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 							{issues.map((i) => (
 								<tr key={i.id}>
 									<th class="vt-sched-sticky">
-										<span class="vt-sched-issue" onClick={(e) => void ctx.openPath(i.path, Keymap.isModEvent(e) !== false)}>
+										<span class="vt-sched-issue" {...linkProps((e) => void ctx.openPath(i.path, Keymap.isModEvent(e) !== false))}>
 											<IdBadge issue={i} />
 											<span class="vt-cell-summary" title={i.summary}>
 												{i.summary}

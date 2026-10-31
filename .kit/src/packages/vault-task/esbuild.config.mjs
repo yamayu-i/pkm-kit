@@ -1,4 +1,4 @@
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import esbuild from "esbuild";
 
@@ -41,7 +41,8 @@ const cli = {
 
 await mkdir(outdir, { recursive: true });
 await copyFile("manifest.json", `${outdir}manifest.json`);
-await copyFile("styles.css", `${outdir}styles.css`);
+// トークン（packages/design の生成物）の後ろにプラグインの CSS を続ける（docs/design.md）
+await writeFile(`${outdir}styles.css`, `${await readFile("tokens.css", "utf8")}\n${await readFile("styles.css", "utf8")}`);
 if (watch) {
 	await (await esbuild.context(plugin)).watch();
 } else {

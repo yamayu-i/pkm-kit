@@ -5,6 +5,7 @@ import { dueLevel } from "../core/due";
 import type { Issue } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
+import { linkProps } from "./a11y";
 
 export type Column = "status-detail" | "mid_due" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created";
 
@@ -71,7 +72,7 @@ export function IssueTable(props: {
 			{issues.map((issue) => (
 				<div class={`vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`} role="row" key={issue.id}>
 					{onSelect && <input type="checkbox" checked={selected?.has(issue.id) ?? false} onChange={() => toggle(issue.id)} aria-label={`${issue.id} を選択`} />}
-					<span class="vt-col-main" onClick={(e) => void ctx.openPath(issue.path, Keymap.isModEvent(e) !== false)}>
+					<span class="vt-col-main" {...linkProps((e) => void ctx.openPath(issue.path, Keymap.isModEvent(e) !== false))}>
 						{props.lead?.(issue)}
 						<IdBadge issue={issue} />
 						<span class="vt-cell-summary" title={issue.summary}>

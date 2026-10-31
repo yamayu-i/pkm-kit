@@ -21,7 +21,7 @@ const PRIORITY_ICONS: Record<Priority | "none", string> = { high: "â–²", mid: "â
 export function PriorityBadge(props: { priority: Priority | null; onClick?: (e: MouseEvent) => void }) {
 	return (
 		<button class={`vt-badge vt-priority vt-priority-${props.priority ?? "none"}`} onClick={props.onClick} disabled={!props.onClick}>
-			<span class="vt-priority-icon">{PRIORITY_ICONS[props.priority ?? "none"]}</span>
+			<span class="vt-priority-icon" aria-hidden="true">{PRIORITY_ICONS[props.priority ?? "none"]}</span>
 			{props.priority ?? "priority"}
 			{props.onClick && <Icon name="chevron-down" class="vt-trailing" />}
 		</button>

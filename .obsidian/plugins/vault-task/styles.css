@@ -1,102 +1,195 @@
-/*
- * vault-task（ADR-0006, 0012）
- * 見た目は Material 3 を参考にする: トーナルな面の色、角丸のカード、チップ、ホバー時の state layer、文字の階層
- */
+/* 生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す） */
 
-/* ---------- トークン（モーダルでも使うので body に置く） ---------- */
-
+/* モーダルでも使うので body に置く */
 body {
-	--vt-radius-s: 8px;
-	--vt-radius-m: 12px;
-	--vt-radius-l: 16px;
-	--vt-radius-full: 999px;
-
-	--vt-surface: color-mix(in srgb, var(--text-normal) 3%, var(--background-primary));
-	--vt-surface-high: color-mix(in srgb, var(--text-normal) 7%, var(--background-primary));
-	--vt-outline: color-mix(in srgb, var(--text-normal) 14%, transparent);
-	--vt-outline-strong: color-mix(in srgb, var(--text-normal) 32%, transparent);
-	--vt-state-hover: color-mix(in srgb, var(--text-normal) 8%, transparent);
-	--vt-state-press: color-mix(in srgb, var(--text-normal) 12%, transparent);
-	--vt-primary: var(--interactive-accent);
-	--vt-on-primary: var(--text-on-accent);
-
-	/* status（container / on-container / 印の色） */
-	--vt-green-c: #c4eed0;
-	--vt-green-on: #072711;
+	--vt-surface: #ffffff;
+	--vt-surface-container: #f8f8f8;
+	--vt-surface-container-high: #f0f0f0;
+	--vt-on-surface: #222222;
+	--vt-on-surface-variant: #5c5c5c;
+	--vt-outline: #858585;
+	--vt-outline-variant: #22222224;
+	--vt-state-hover: #22222214;
+	--vt-state-press: #2222221f;
+	--vt-primary: #6750a4;
+	--vt-on-primary: #ffffff;
+	--vt-primary-state-hover: #6750a414;
+	--vt-on-primary-state-hover: #ffffff14;
+	--vt-secondary-container: #e8def8;
+	--vt-on-secondary-container: #1d192b;
+	--vt-error: #b3261e;
+	--vt-focus-ring: var(--vt-primary);
+	--vt-green-container: #c4eed0;
+	--vt-on-green-container: #072711;
 	--vt-green: #1e8e3e;
-	--vt-blue-c: #d3e3fd;
-	--vt-blue-on: #041e49;
+	--vt-blue-container: #d3e3fd;
+	--vt-on-blue-container: #041e49;
 	--vt-blue: #0b57d0;
-	--vt-purple-c: #eaddff;
-	--vt-purple-on: #21005d;
+	--vt-purple-container: #eaddff;
+	--vt-on-purple-container: #21005d;
 	--vt-purple: #6750a4;
-	--vt-gray-c: #e3e3e3;
-	--vt-gray-on: #1f1f1f;
+	--vt-gray-container: #e3e3e3;
+	--vt-on-gray-container: #1f1f1f;
 	--vt-gray: #747775;
-	--vt-sky-c: #c2e7ff;
-	--vt-sky-on: #001d35;
+	--vt-sky-container: #c2e7ff;
+	--vt-on-sky-container: #001d35;
 	--vt-sky: #00639b;
-	--vt-pink-c: #ffd8e4;
-	--vt-pink-on: #3e001d;
+	--vt-pink-container: #ffd8e4;
+	--vt-on-pink-container: #3e001d;
 	--vt-pink: #c2185b;
-	--vt-red-c: #f9dedc;
-	--vt-red-on: #410e0b;
+	--vt-red-container: #f9dedc;
+	--vt-on-red-container: #410e0b;
 	--vt-red: #d93025;
-	--vt-amber-c: #ffecb3;
-	--vt-amber-on: #3a2a00;
-	--vt-amber: #e3a008;
-
-	/* 実行日（緑の背景に白い文字） */
-	--vt-scheduled: #1e8e3e;
+	--vt-amber-container: #ffecb3;
+	--vt-on-amber-container: #3a2a00;
+	--vt-amber: #b06d00;
+	--vt-scheduled: #188038;
+	--vt-scheduled-hover: #137333;
 	--vt-on-scheduled: #ffffff;
-
-	/* 期限: 薄い黄色 → 黄色 → オレンジ → 赤 */
 	--vt-due-3: #fff8e1;
 	--vt-due-2: #ffe082;
 	--vt-due-1: #ffb74d;
-	--vt-due-0: #d93025;
 	--vt-on-due: #3a2a00;
+	--vt-due-0: #d93025;
+	--vt-on-due-0: #ffffff;
+	--vt-on-label: #1f1f1f;
+	--vt-radius-xs: 4px;
+	--vt-radius-s: 8px;
+	--vt-radius-m: 12px;
+	--vt-radius-l: 16px;
+	--vt-radius-xl: 28px;
+	--vt-radius-full: 9999px;
+	--vt-space-2: 2px;
+	--vt-space-4: 4px;
+	--vt-space-8: 8px;
+	--vt-space-12: 12px;
+	--vt-space-16: 16px;
+	--vt-space-20: 20px;
+	--vt-space-24: 24px;
+	--vt-space-32: 32px;
+	--vt-space-40: 40px;
+	--vt-space-48: 48px;
+	--vt-space-64: 64px;
+	--vt-space-96: 96px;
+	--vt-size-grid: 4px;
+	--vt-size-target-min: 24px;
+	--vt-border-width-thin: 1px;
+	--vt-border-width-thick: 2px;
+	--vt-breakpoint-pane-narrow: 480px;
+	--vt-breakpoint-pane-compact: 300px;
+	--vt-breakpoint-pane-medium: 720px;
+	--vt-weight-regular: 400;
+	--vt-weight-medium: 500;
+	--vt-weight-semibold: 600;
+	--vt-weight-bold: 700;
+	--vt-type-headline-small-size: 24px;
+	--vt-type-headline-small-line-height: 1.3333;
+	--vt-type-headline-small-weight: var(--vt-weight-semibold);
+	--vt-type-headline-small-tracking: -0.24px;
+	--vt-type-title-large-size: 20px;
+	--vt-type-title-large-line-height: 1.4;
+	--vt-type-title-large-weight: var(--vt-weight-semibold);
+	--vt-type-title-large-tracking: 0;
+	--vt-type-title-medium-size: 16px;
+	--vt-type-title-medium-line-height: 1.5;
+	--vt-type-title-medium-weight: var(--vt-weight-semibold);
+	--vt-type-title-medium-tracking: 0.15px;
+	--vt-type-body-medium-size: 15px;
+	--vt-type-body-medium-line-height: 1.5;
+	--vt-type-body-medium-weight: var(--vt-weight-regular);
+	--vt-type-body-medium-tracking: 0;
+	--vt-type-body-small-size: 13px;
+	--vt-type-body-small-line-height: 1.5;
+	--vt-type-body-small-weight: var(--vt-weight-regular);
+	--vt-type-body-small-tracking: 0;
+	--vt-type-label-medium-size: 12px;
+	--vt-type-label-medium-line-height: 1.3333;
+	--vt-type-label-medium-weight: var(--vt-weight-medium);
+	--vt-type-label-medium-tracking: 0.5px;
+	--vt-type-label-small-size: 11px;
+	--vt-type-label-small-line-height: 1.4545;
+	--vt-type-label-small-weight: var(--vt-weight-medium);
+	--vt-type-label-small-tracking: 0.5px;
+	--vt-duration-short2: 100ms;
+	--vt-duration-short3: 150ms;
+	--vt-duration-short4: 200ms;
+	--vt-duration-pulse: 1400ms;
+	--vt-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+	--vt-elevation-1: 0 1px 2px 0 #0000000f;
+	--vt-elevation-2: 0 1px 3px 0 #0000001f;
+	--vt-elevation-3: 0 2px 8px 0 #0000001f;
+	--vt-elevation-4: 0 4px 16px 0 #00000029;
+	--vt-elevation-5: 0 6px 24px 0 #00000024;
+	--vt-opacity-disabled: 0.38;
+	--vt-opacity-state-hover: 0.08;
+	--vt-opacity-state-press: 0.12;
+	--vt-scale-press-small: 0.92;
+	--vt-scale-press-medium: 0.97;
+	--vt-scale-press-large: 0.99;
 }
 
 body.theme-dark {
-	--vt-green-c: #0f5223;
-	--vt-green-on: #c4eed0;
+	--vt-surface: #1e1e1e;
+	--vt-surface-container: #242424;
+	--vt-surface-container-high: #2b2b2b;
+	--vt-on-surface: #dadada;
+	--vt-on-surface-variant: #b3b3b3;
+	--vt-outline: #7a7a7a;
+	--vt-outline-variant: #dadada24;
+	--vt-state-hover: #dadada14;
+	--vt-state-press: #dadada1f;
+	--vt-primary: #d0bcff;
+	--vt-on-primary: #381e72;
+	--vt-primary-state-hover: #d0bcff14;
+	--vt-on-primary-state-hover: #381e7214;
+	--vt-secondary-container: #3d3749;
+	--vt-on-secondary-container: #e8def8;
+	--vt-error: #f2b8b5;
+	--vt-green-container: #0f5223;
+	--vt-on-green-container: #c4eed0;
 	--vt-green: #6dd58c;
-	--vt-blue-c: #0842a0;
-	--vt-blue-on: #d3e3fd;
+	--vt-blue-container: #0842a0;
+	--vt-on-blue-container: #d3e3fd;
 	--vt-blue: #a8c7fa;
-	--vt-purple-c: #4f378b;
-	--vt-purple-on: #eaddff;
+	--vt-purple-container: #4f378b;
+	--vt-on-purple-container: #eaddff;
 	--vt-purple: #d0bcff;
-	--vt-gray-c: #444746;
-	--vt-gray-on: #e3e3e3;
+	--vt-gray-container: #444746;
+	--vt-on-gray-container: #e3e3e3;
 	--vt-gray: #c4c7c5;
-	--vt-sky-c: #004a77;
-	--vt-sky-on: #c2e7ff;
+	--vt-sky-container: #004a77;
+	--vt-on-sky-container: #c2e7ff;
 	--vt-sky: #7fcfff;
-	--vt-pink-c: #8c1d4f;
-	--vt-pink-on: #ffd8e4;
+	--vt-pink-container: #8c1d4f;
+	--vt-on-pink-container: #ffd8e4;
 	--vt-pink: #ffb0c8;
-	--vt-red-c: #8c1d18;
-	--vt-red-on: #f9dedc;
+	--vt-red-container: #8c1d18;
+	--vt-on-red-container: #f9dedc;
 	--vt-red: #f2b8b5;
-	--vt-amber-c: #5c4300;
-	--vt-amber-on: #ffecb3;
+	--vt-amber-container: #5c4300;
+	--vt-on-amber-container: #ffecb3;
 	--vt-amber: #ffd54f;
-
 	--vt-scheduled: #2e7d32;
+	--vt-scheduled-hover: #296e2c;
 	--vt-due-3: #4a3f14;
 	--vt-due-2: #6b5300;
 	--vt-due-1: #8a4b00;
-	--vt-due-0: #b3261e;
 	--vt-on-due: #fff3d6;
+	--vt-due-0: #b3261e;
 }
+
+/*
+ * vault-task（ADR-0006, 0012, 0013, 0016）
+ * ルールは .plugin-src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/vault-task/styles.css にする。
+ * 検査: pnpm check（packages/design の test）
+ */
 
 /* ---------- 全体 ---------- */
 
 .vt-header {
 	padding: 8px 12px 4px;
-	font-size: var(--font-ui-medium);
+	font-size: var(--vt-type-body-medium-size);
 	user-select: text;
 	/* ペインの幅で縦並びに切り替える（画面幅ではなく） */
 	container-type: inline-size;
@@ -113,6 +206,21 @@ body.theme-dark {
 	font-family: inherit;
 }
 
+/* キーボードで選んだときの枠（WCAG 2.4.7） */
+:is([class*="vt-"], [class*="vt-"] *):focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+/* 動きを減らす設定では、色の切り替え・縮み・点滅を止める（WCAG 2.3.3） */
+@media (prefers-reduced-motion: reduce) {
+	[class*="vt-"],
+	[class*="vt-"]::after {
+		transition: none;
+		animation: none;
+	}
+}
+
 .vt-issue {
 	display: flex;
 	flex-direction: column;
@@ -122,19 +230,19 @@ body.theme-dark {
 .vt-header-missing {
 	padding: 12px 16px;
 	border-radius: var(--vt-radius-m);
-	background: var(--vt-red-c);
-	color: var(--vt-red-on);
-	font-size: var(--font-ui-small);
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-card {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	padding: 14px 16px;
+	padding: 16px;
 	border-radius: var(--vt-radius-l);
-	background: var(--vt-surface);
-	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface-container);
+	border: 1px solid var(--vt-outline-variant);
 }
 
 .vt-row {
@@ -171,51 +279,52 @@ body.theme-dark {
 	}
 
 	.vt-effort-cell {
-		padding: 10px 12px;
+		padding: 12px;
 	}
 
 	.vt-effort-value {
-		font-size: 1.1em;
+		font-size: var(--vt-type-title-medium-size);
+		line-height: var(--vt-type-title-medium-line-height);
 	}
 }
 
 .vt-small {
-	font-size: var(--font-ui-small);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-muted {
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-num {
 	font-variant-numeric: tabular-nums;
 }
 
-/* M3 の label-small 相当 */
+/* M3 の label-small（大文字にするのはこのリポジトリの決まり。design.md「M3 との違い」） */
 .vt-field-label {
 	display: flex;
 	align-items: center;
 	gap: 2px;
-	color: var(--text-muted);
-	font-size: 11px;
-	font-weight: 500;
-	letter-spacing: 0.06em;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
 	text-transform: uppercase;
 }
 
 .vt-link {
 	cursor: pointer;
-	border-radius: 4px;
+	border-radius: var(--vt-radius-xs);
 }
 
 .vt-link:hover {
-	color: var(--text-accent);
+	color: var(--vt-primary);
 }
 
 .vt-sep {
 	margin: 4px 0;
 	border: none;
-	border-top: 1px solid var(--vt-outline);
+	border-top: 1px solid var(--vt-outline-variant);
 }
 
 /* ---------- 見出し ---------- */
@@ -224,41 +333,41 @@ body.theme-dark {
 	display: flex;
 	justify-content: flex-end;
 	gap: 12px;
-	color: var(--text-faint);
-	font-size: 11px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
 	font-variant-numeric: tabular-nums;
 }
 
 .vt-title {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 }
 
-/* M3 の headline-small 相当 */
+/* M3 の headline-small */
 .vt-summary {
 	flex: 1;
 	min-width: 0;
-	padding: 2px 6px;
-	margin-left: -6px;
+	padding: 2px 8px;
+	margin-left: -8px;
 	border-radius: var(--vt-radius-s);
-	font-size: 1.6em;
-	line-height: 1.3;
-	font-weight: 600;
-	letter-spacing: -0.01em;
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	font-weight: var(--vt-type-headline-small-weight);
+	letter-spacing: var(--vt-type-headline-small-tracking);
 	cursor: text;
 }
 
 .vt-summary:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-summary-input.vt-summary-input {
 	flex: 1;
 	height: auto;
-	padding: 2px 6px;
-	font-size: 1.6em;
-	font-weight: 600;
+	padding: 2px 8px;
+	font-size: var(--vt-type-headline-small-size);
+	font-weight: var(--vt-type-headline-small-weight);
 	border-radius: var(--vt-radius-s);
 }
 
@@ -276,22 +385,12 @@ body.theme-dark {
 	stroke-width: 2;
 }
 
-.vt-badge .vt-icon svg,
-.vt-field-label .vt-icon svg {
-	width: 14px;
-	height: 14px;
-}
-
-.vt-trailing {
-	opacity: 0.7;
-}
-
 .vt-hover-icon {
 	margin-left: 8px;
 	vertical-align: middle;
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 	opacity: 0;
-	transition: opacity 120ms ease;
+	transition: opacity var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-summary:hover .vt-hover-icon {
@@ -302,30 +401,29 @@ body.theme-dark {
 .vt-field-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	height: 32px;
-	padding: 0 12px 0 10px;
-	border: 1px solid var(--vt-outline-strong);
+	padding: 0 12px 0 8px;
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-s);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 	box-shadow: none;
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
 	cursor: pointer;
-	transition: background-color 120ms ease;
 }
 
 .vt-field-chip .vt-icon {
-	color: var(--text-muted);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-field-chip:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-field-chip.is-placeholder {
 	border-style: dashed;
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 }
 
 /* ---------- バッジ・チップ ---------- */
@@ -335,25 +433,24 @@ body.theme-dark {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	height: 26px;
-	padding: 0 10px;
+	gap: 4px;
+	height: 28px;
+	padding: 0 8px;
 	border: none;
 	border-radius: var(--vt-radius-s);
 	box-shadow: none;
-	font-size: 12px;
-	font-weight: 500;
-	letter-spacing: 0.02em;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
 	line-height: 1;
 	white-space: nowrap;
-	transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 button.vt-badge {
 	cursor: pointer;
 }
 
-/* state layer */
+/* state layer（面の色を変えずに、文字色を重ねる） */
 button.vt-badge::after {
 	content: "";
 	position: absolute;
@@ -361,16 +458,16 @@ button.vt-badge::after {
 	border-radius: inherit;
 	background: currentColor;
 	opacity: 0;
-	transition: opacity 120ms ease;
+	transition: opacity var(--vt-duration-short3) var(--vt-easing-standard);
 	pointer-events: none;
 }
 
 button.vt-badge:hover::after {
-	opacity: 0.08;
+	opacity: var(--vt-opacity-state-hover);
 }
 
 button.vt-badge:active::after {
-	opacity: 0.12;
+	opacity: var(--vt-opacity-state-press);
 }
 
 button.vt-badge:disabled {
@@ -387,8 +484,8 @@ button.vt-badge:disabled::after {
 	padding: 0 8px;
 	border-radius: var(--vt-radius-full);
 	font-family: var(--font-monospace);
-	font-size: 12px;
-	font-weight: 600;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
 }
 
 /* status は M3 の filled tonal button 風 */
@@ -397,14 +494,14 @@ button.vt-badge:disabled::after {
 	height: 44px;
 	padding: 0 40px;
 	border-radius: var(--vt-radius-full);
-	font-size: 16px;
-	font-weight: 600;
-	letter-spacing: 0.02em;
+	font-size: var(--vt-type-title-medium-size);
+	font-weight: var(--vt-type-title-medium-weight);
+	letter-spacing: var(--vt-type-title-medium-tracking);
 }
 
 .vt-badge.is-wide .vt-dot {
-	width: 10px;
-	height: 10px;
+	width: 12px;
+	height: 12px;
 }
 
 .vt-badge.is-wide .vt-trailing {
@@ -415,48 +512,48 @@ button.vt-badge:disabled::after {
 .vt-dot {
 	width: 8px;
 	height: 8px;
-	border-radius: 50%;
+	border-radius: var(--vt-radius-full);
 	background: var(--vt-dot);
 	flex: none;
 }
 
-.vt-status-open { --vt-dot: var(--vt-green); background: var(--vt-green-c); color: var(--vt-green-on); }
-.vt-status-in-progress { --vt-dot: var(--vt-blue); background: var(--vt-blue-c); color: var(--vt-blue-on); }
-.vt-status-closed { --vt-dot: var(--vt-purple); background: var(--vt-purple-c); color: var(--vt-purple-on); }
-.vt-status-canceled { --vt-dot: var(--vt-gray); background: var(--vt-gray-c); color: var(--vt-gray-on); }
-.vt-status-someday { --vt-dot: var(--vt-sky); background: var(--vt-sky-c); color: var(--vt-sky-on); }
+.vt-status-open { --vt-dot: var(--vt-green); background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-status-in-progress { --vt-dot: var(--vt-blue); background: var(--vt-blue-container); color: var(--vt-on-blue-container); }
+.vt-status-closed { --vt-dot: var(--vt-purple); background: var(--vt-purple-container); color: var(--vt-on-purple-container); }
+.vt-status-canceled { --vt-dot: var(--vt-gray); background: var(--vt-gray-container); color: var(--vt-on-gray-container); }
+.vt-status-someday { --vt-dot: var(--vt-sky); background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
 .vt-status-waiting,
-.vt-status-delegated { --vt-dot: var(--vt-pink); background: var(--vt-pink-c); color: var(--vt-pink-on); }
+.vt-status-delegated { --vt-dot: var(--vt-pink); background: var(--vt-pink-container); color: var(--vt-on-pink-container); }
 
 /* priority は M3 の assist chip 風（枠線） */
 .vt-priority {
 	background: transparent;
-	color: var(--text-normal);
-	box-shadow: inset 0 0 0 1px var(--vt-outline-strong);
+	color: var(--vt-on-surface);
+	box-shadow: inset 0 0 0 1px var(--vt-outline);
 }
 
 .vt-priority-icon {
-	font-size: 10px;
+	font-size: var(--vt-type-label-small-size);
 }
 
-.vt-priority-high { background: var(--vt-red-c); color: var(--vt-red-on); box-shadow: none; }
+.vt-priority-high { background: var(--vt-red-container); color: var(--vt-on-red-container); box-shadow: none; }
 .vt-priority-high .vt-priority-icon { color: var(--vt-red); }
-.vt-priority-mid { background: var(--vt-amber-c); color: var(--vt-amber-on); box-shadow: none; }
+.vt-priority-mid { background: var(--vt-amber-container); color: var(--vt-on-amber-container); box-shadow: none; }
 .vt-priority-mid .vt-priority-icon { color: var(--vt-amber); }
-.vt-priority-low { background: var(--vt-sky-c); color: var(--vt-sky-on); box-shadow: none; }
+.vt-priority-low { background: var(--vt-sky-container); color: var(--vt-on-sky-container); box-shadow: none; }
 .vt-priority-low .vt-priority-icon { color: var(--vt-sky); }
-.vt-priority-chore { background: var(--vt-gray-c); color: var(--vt-gray-on); box-shadow: none; }
-.vt-priority-none { color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--vt-outline); }
+.vt-priority-chore { background: var(--vt-gray-container); color: var(--vt-on-gray-container); box-shadow: none; }
+.vt-priority-none { color: var(--vt-on-surface-variant); }
 
 .vt-chips {
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-labels {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	height: auto;
 	padding: 2px;
 	margin: -2px;
@@ -468,25 +565,26 @@ button.vt-badge:disabled::after {
 }
 
 .vt-labels:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
+/* label の面はユーザーが labels.json に書いた色（文字との比は task:lint で調べる） */
 .vt-label {
-	color: #1f1f1f;
+	color: var(--vt-on-label);
 }
 
 .vt-label.is-empty {
 	gap: 4px;
 	padding: 0 8px;
 	background: transparent;
-	box-shadow: inset 0 0 0 1px var(--vt-outline-strong);
+	box-shadow: inset 0 0 0 1px var(--vt-outline);
 	border: none;
-	color: var(--text-muted);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-labels:hover .vt-label.is-empty {
-	color: var(--text-normal);
-	box-shadow: inset 0 0 0 1px var(--text-muted);
+	color: var(--vt-on-surface);
+	box-shadow: inset 0 0 0 1px var(--vt-on-surface-variant);
 }
 
 .vt-status-detail {
@@ -494,8 +592,8 @@ button.vt-badge:disabled::after {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 4px 12px;
-	font-size: var(--font-ui-small);
-	color: var(--text-muted);
+	font-size: var(--vt-type-body-small-size);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-status-detail .vt-link {
@@ -503,8 +601,8 @@ button.vt-badge:disabled::after {
 }
 
 .vt-status-detail .vt-link:hover {
-	background: var(--vt-state-hover);
-	color: var(--text-normal);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+	color: var(--vt-on-surface);
 }
 
 /* ---------- 7 日ストリップとカレンダー ---------- */
@@ -512,12 +610,12 @@ button.vt-badge:disabled::after {
 .vt-strip {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-strip-days {
 	display: flex;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-strip-col {
@@ -528,11 +626,11 @@ button.vt-badge:disabled::after {
 }
 
 .vt-weekday {
-	font-size: 10px;
-	font-weight: 500;
-	letter-spacing: 0.06em;
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
 	text-transform: uppercase;
-	color: var(--text-muted);
+	color: var(--vt-on-surface-variant);
 	text-align: center;
 }
 
@@ -542,26 +640,29 @@ button.vt-badge:disabled::after {
 	height: 36px;
 	padding: 0;
 	border-radius: var(--vt-radius-m);
-	border: 1px solid var(--vt-outline-strong);
+	border: 1px solid var(--vt-outline);
 	background: transparent;
-	color: var(--text-muted);
+	color: var(--vt-on-surface);
 	box-shadow: none;
-	font-size: var(--font-ui-small);
+	font-size: var(--vt-type-body-small-size);
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
-	transition: background-color 120ms ease, color 120ms ease, transform 80ms ease;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard),
+		transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-day:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-day:active {
-	transform: scale(0.94);
+	transform: scale(var(--vt-scale-press-small));
 }
 
 .vt-day.is-weekend { border-width: 2px; }
-.vt-day.is-today { color: var(--text-normal); font-weight: 700; }
+.vt-day.is-today { font-weight: var(--vt-weight-bold); }
 .vt-day.is-today::after {
 	content: "";
 	position: absolute;
@@ -570,33 +671,34 @@ button.vt-badge:disabled::after {
 	width: 4px;
 	height: 4px;
 	margin-left: -2px;
-	border-radius: 50%;
+	border-radius: var(--vt-radius-full);
 	background: currentColor;
 }
-.vt-day.is-after-deadline { background: var(--vt-surface-high); color: var(--text-faint); border-color: transparent; }
+/* 別の月の日（押せるので薄くはしない。文字と枠を一段弱くする） */
+.vt-day.is-dimmed { color: var(--vt-on-surface-variant); border-color: var(--vt-outline-variant); }
+.vt-day.is-after-deadline { background: var(--vt-surface-container-high); color: var(--vt-on-surface-variant); border-color: transparent; }
 .vt-day.is-mid-due { border: 2px solid var(--vt-amber); }
 .vt-day.is-deadline { border: 2px solid var(--vt-red); }
 .vt-day.is-scheduled { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
-.vt-day.is-scheduled:hover { background: color-mix(in srgb, var(--vt-scheduled) 88%, #000); }
-.vt-day.is-dimmed { opacity: 0.38; }
+.vt-day.is-scheduled:hover { background: var(--vt-scheduled-hover); }
 
 .vt-text-button {
 	align-self: flex-start;
 	height: 28px;
-	padding: 0 10px;
+	padding: 0 12px;
 	border: none;
 	border-radius: var(--vt-radius-full);
 	background: transparent;
 	box-shadow: none;
 	color: var(--vt-primary);
-	font-size: 12px;
-	font-weight: 500;
-	letter-spacing: 0.02em;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
 	cursor: pointer;
 }
 
 .vt-text-button:hover {
-	background: color-mix(in srgb, var(--vt-primary) 10%, transparent);
+	background: var(--vt-primary-state-hover);
 }
 
 .vt-calendar {
@@ -609,7 +711,7 @@ button.vt-badge:disabled::after {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	font-weight: 600;
+	font-weight: var(--vt-weight-semibold);
 }
 
 .vt-calendar-nav button {
@@ -622,13 +724,13 @@ button.vt-badge:disabled::after {
 }
 
 .vt-calendar-nav button:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-calendar-grid {
 	display: grid;
 	grid-template-columns: repeat(7, 40px);
-	gap: 6px;
+	gap: 4px;
 	justify-content: center;
 }
 
@@ -642,7 +744,7 @@ button.vt-badge:disabled::after {
 .vt-dues {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 	width: 220px;
 }
 
@@ -651,21 +753,20 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	height: 38px;
-	padding: 0 10px 0 12px;
-	border: 1px solid var(--vt-outline-strong);
+	height: 40px;
+	padding: 0 8px 0 12px;
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 	box-shadow: none;
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
-	transition: filter 120ms ease;
 }
 
 .vt-due:hover {
-	filter: brightness(0.96);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-due-value {
@@ -674,10 +775,10 @@ button.vt-badge:disabled::after {
 }
 
 .vt-due-label {
-	color: var(--text-muted);
-	font-size: 11px;
-	font-weight: 500;
-	letter-spacing: 0.06em;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
 	text-transform: uppercase;
 }
 
@@ -688,11 +789,11 @@ button.vt-badge:disabled::after {
 .vt-due-3 { background: var(--vt-due-3); color: var(--vt-on-due); }
 .vt-due-2 { background: var(--vt-due-2); color: var(--vt-on-due); }
 .vt-due-1 { background: var(--vt-due-1); color: var(--vt-on-due); }
-.vt-due-0 { background: var(--vt-due-0); color: #fff; }
+.vt-due-0 { background: var(--vt-due-0); color: var(--vt-on-due-0); }
 .vt-due-3 .vt-due-label,
 .vt-due-2 .vt-due-label,
-.vt-due-1 .vt-due-label { color: inherit; opacity: 0.72; }
-.vt-due-0 .vt-due-label { color: #fff; opacity: 0.85; }
+.vt-due-1 .vt-due-label,
+.vt-due-0 .vt-due-label { color: inherit; }
 .vt-due-overdue { box-shadow: inset 0 0 0 2px var(--vt-red); }
 
 /* ---------- 親子 ---------- */
@@ -705,7 +806,7 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
-	gap: 6px;
+	gap: 8px;
 	min-width: 0;
 }
 
@@ -716,18 +817,18 @@ button.vt-badge:disabled::after {
 .vt-wrap {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-relation {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 4px;
 	min-width: 0;
 	max-width: 100%;
-	padding: 3px 4px 3px 3px;
+	padding: 4px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-high);
+	background: var(--vt-surface-container-high);
 }
 
 .vt-relation .vt-link {
@@ -747,19 +848,13 @@ button.vt-badge:disabled::after {
 	border-radius: var(--vt-radius-full);
 	background: transparent;
 	box-shadow: none;
-	color: var(--text-faint);
-	font-size: 13px;
+	color: var(--vt-on-surface-variant);
 	cursor: pointer;
 }
 
-.vt-icon-button .vt-icon svg {
-	width: 14px;
-	height: 14px;
-}
-
 .vt-icon-button:hover {
-	background: var(--vt-state-hover);
-	color: var(--text-normal);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+	color: var(--vt-on-surface);
 }
 
 /* ---------- 工数 ---------- */
@@ -785,19 +880,19 @@ button.vt-badge:disabled::after {
 	gap: 4px;
 	height: auto;
 	padding: 12px 16px;
-	border: 1px solid var(--vt-outline);
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-l);
-	background: var(--vt-surface);
+	background: var(--vt-surface-container);
 	box-shadow: none;
 	text-align: left;
 }
 
 /* 編集できるもの: 枠線 + 面の色 + ▾。読み取り専用: 枠なしで沈ませる */
 .vt-effort-cell.is-editable {
-	border: 1px solid var(--vt-outline-strong);
-	background: var(--background-primary);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
 	cursor: pointer;
-	transition: background-color 120ms ease, box-shadow 120ms ease;
+	transition: box-shadow var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-effort-cell.is-editable .vt-field-label {
@@ -809,25 +904,26 @@ button.vt-badge:disabled::after {
 }
 
 .vt-effort-cell.is-editable:hover {
-	background: var(--vt-state-hover);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+	box-shadow: var(--vt-elevation-2);
 }
 
 .vt-effort-cell.is-readonly {
 	border-color: transparent;
-	background: var(--vt-surface);
+	background: var(--vt-surface-container);
 }
 
 .vt-effort-cell.is-readonly .vt-effort-value {
-	color: var(--text-muted);
+	color: var(--vt-on-surface-variant);
 }
 
-/* M3 の title-large 相当 */
+/* M3 の title-large */
 .vt-effort-value {
-	font-size: 1.35em;
-	font-weight: 600;
+	font-size: var(--vt-type-title-large-size);
+	line-height: var(--vt-type-title-large-line-height);
+	font-weight: var(--vt-type-title-large-weight);
 	font-variant-numeric: tabular-nums;
-	color: var(--text-normal);
+	color: var(--vt-on-surface);
 }
 
 /* ---------- worklog（1 件ずつ押せるカード） ---------- */
@@ -845,27 +941,27 @@ button.vt-badge:disabled::after {
 }
 
 .vt-count {
-	padding: 1px 8px;
+	padding: 2px 8px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-high);
-	color: var(--text-muted);
-	font-size: 11px;
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
 	font-variant-numeric: tabular-nums;
 }
 
 .vt-empty {
 	padding: 16px;
-	border: 1px dashed var(--vt-outline-strong);
+	border: 1px dashed var(--vt-outline);
 	border-radius: var(--vt-radius-m);
-	color: var(--text-faint);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
 	text-align: center;
 }
 
 .vt-log-list {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-log {
@@ -876,24 +972,27 @@ button.vt-badge:disabled::after {
 	width: 100%;
 	height: auto;
 	padding: 8px 12px 8px 8px;
-	border: 1px solid var(--vt-outline);
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-1);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
 	text-align: left;
 	cursor: pointer;
-	transition: box-shadow 150ms ease, border-color 150ms ease, transform 80ms ease;
+	transition:
+		box-shadow var(--vt-duration-short3) var(--vt-easing-standard),
+		border-color var(--vt-duration-short3) var(--vt-easing-standard),
+		transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-log:hover {
-	border-color: var(--vt-outline-strong);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+	border-color: var(--vt-outline);
+	box-shadow: var(--vt-elevation-3);
 }
 
 .vt-log:active {
-	transform: scale(0.99);
+	transform: scale(var(--vt-scale-press-large));
 }
 
 .vt-log-date {
@@ -901,21 +1000,22 @@ button.vt-badge:disabled::after {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
+	gap: 2px;
 	height: 44px;
 	border-radius: var(--vt-radius-s);
-	background: var(--vt-surface-high);
-	line-height: 1.15;
+	background: var(--vt-surface-container-high);
+	line-height: 1;
 }
 
 .vt-log-day {
-	font-weight: 600;
+	font-weight: var(--vt-weight-semibold);
 	font-variant-numeric: tabular-nums;
 }
 
 .vt-log-weekday {
-	color: var(--text-muted);
-	font-size: 10px;
-	letter-spacing: 0.06em;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	letter-spacing: var(--vt-type-label-small-tracking);
 	text-transform: uppercase;
 }
 
@@ -927,43 +1027,41 @@ button.vt-badge:disabled::after {
 }
 
 .vt-log-time {
-	color: var(--text-muted);
-	font-size: 12px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
 }
 
 .vt-log-desc {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: var(--font-ui-medium);
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-log-desc.is-placeholder {
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-log-duration {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	height: 26px;
-	padding: 0 10px;
+	gap: 4px;
+	height: 28px;
+	padding: 0 12px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-blue-c);
-	color: var(--vt-blue-on);
-	font-size: 12px;
-	font-weight: 600;
+	background: var(--vt-blue-container);
+	color: var(--vt-on-blue-container);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
 }
 
 .vt-log-edit {
-	color: var(--text-faint);
-	opacity: 0.5;
-	transition: opacity 120ms ease;
+	color: var(--vt-on-surface-variant);
+	transition: color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-log:hover .vt-log-edit {
-	opacity: 1;
-	color: var(--text-normal);
+	color: var(--vt-on-surface);
 }
 
 .vt-log.is-running {
@@ -971,16 +1069,16 @@ button.vt-badge:disabled::after {
 }
 
 .vt-log.is-running .vt-log-duration {
-	background: var(--vt-green-c);
-	color: var(--vt-green-on);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
 }
 
 .vt-live-dot {
 	width: 8px;
 	height: 8px;
-	border-radius: 50%;
+	border-radius: var(--vt-radius-full);
 	background: var(--vt-green);
-	animation: vt-pulse 1.4s ease-in-out infinite;
+	animation: vt-pulse var(--vt-duration-pulse) var(--vt-easing-standard) infinite;
 }
 
 @keyframes vt-pulse {
@@ -995,7 +1093,7 @@ button.vt-badge:disabled::after {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
+	gap: 8px;
 	padding-top: 4px;
 }
 
@@ -1009,15 +1107,18 @@ button.vt-badge:disabled::after {
 	box-shadow: none;
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
-	transition: background-color 120ms ease, color 120ms ease, transform 80ms ease;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard),
+		transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-pager-step {
 	width: 40px;
 	height: 40px;
-	border: 1px solid var(--vt-outline-strong);
-	background: var(--background-primary);
-	color: var(--text-normal);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
 }
 
 .vt-pager-step .vt-icon svg {
@@ -1031,36 +1132,36 @@ button.vt-badge:disabled::after {
 	padding: 0 8px;
 	border: none;
 	background: transparent;
-	color: var(--text-muted);
-	font-weight: 500;
+	color: var(--vt-on-surface-variant);
+	font-weight: var(--vt-weight-medium);
 }
 
 .vt-pager-step:hover:not(:disabled),
 .vt-pager-page:hover:not(.is-current) {
-	background: var(--vt-state-hover);
-	color: var(--text-normal);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+	color: var(--vt-on-surface);
 }
 
 .vt-pager-step:active:not(:disabled),
 .vt-pager-page:active {
-	transform: scale(0.92);
+	transform: scale(var(--vt-scale-press-small));
 }
 
 .vt-pager-step:disabled {
-	opacity: 0.38;
+	opacity: var(--vt-opacity-disabled);
 	cursor: default;
 }
 
 .vt-pager-page.is-current {
 	background: var(--vt-primary);
 	color: var(--vt-on-primary);
-	font-weight: 700;
+	font-weight: var(--vt-weight-bold);
 	cursor: default;
 }
 
 .vt-pager-gap {
 	min-width: 20px;
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 	text-align: center;
 }
 
@@ -1084,9 +1185,9 @@ button.vt-badge:disabled::after {
 .vt-form button,
 .vt-label-form button {
 	height: 36px;
-	padding: 0 18px;
+	padding: 0 16px;
 	border-radius: var(--vt-radius-full);
-	font-weight: 500;
+	font-weight: var(--vt-weight-medium);
 }
 
 .vt-capture textarea {
@@ -1095,7 +1196,7 @@ button.vt-badge:disabled::after {
 	padding: 12px;
 	border-radius: var(--vt-radius-m);
 	font-family: var(--font-text);
-	line-height: 1.6;
+	line-height: var(--vt-type-body-medium-line-height);
 	resize: vertical;
 }
 
@@ -1117,7 +1218,7 @@ button.vt-badge:disabled::after {
 }
 
 .vt-check:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-worklog-form {
@@ -1130,20 +1231,20 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	color: var(--text-muted);
-	font-size: 12px;
-	font-weight: 500;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-type-label-medium-weight);
 }
 
 .vt-text-field input {
 	height: 40px;
 	border-radius: var(--vt-radius-s);
-	font-size: var(--font-ui-medium);
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-error {
-	color: var(--text-error);
-	font-size: var(--font-ui-small);
+	color: var(--vt-error);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-spacer {
@@ -1153,7 +1254,7 @@ button.vt-badge:disabled::after {
 .vt-danger-text.vt-danger-text {
 	background: transparent;
 	box-shadow: none;
-	color: var(--text-error);
+	color: var(--vt-error);
 }
 
 .vt-notice-button {
@@ -1165,39 +1266,44 @@ button.vt-badge:disabled::after {
  * View（ADR-0009）。docs/design.md のトークンと部品を使う
  * ===================================================================== */
 
-.vt-view {
+/* Obsidian の .view-content の余白を外す（!important を使わず、詳細度で上書きする） */
+.workspace-leaf-content .view-content.vt-view {
 	container-type: inline-size;
-	padding: 0 !important;
+	padding: 0;
 }
 
 .vt-page {
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 16px;
 	max-width: 1200px;
 	margin: 0 auto;
 	padding: 16px 16px 32px;
-	font-size: var(--font-ui-medium);
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-page-head {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 8px 10px;
+	gap: 8px 12px;
 }
 
+/* M3 の headline-small */
 .vt-page-title {
 	margin: 0;
-	font-size: 1.5em;
-	font-weight: 600;
-	letter-spacing: -0.01em;
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	font-weight: var(--vt-type-headline-small-weight);
+	letter-spacing: var(--vt-type-headline-small-tracking);
 }
 
+/* M3 の title-medium */
 .vt-h {
 	margin: 0;
-	font-size: 1.15em;
-	font-weight: 600;
+	font-size: var(--vt-type-title-medium-size);
+	line-height: var(--vt-type-title-medium-line-height);
+	font-weight: var(--vt-type-title-medium-weight);
 }
 
 .vt-page-foot {
@@ -1207,51 +1313,55 @@ button.vt-badge:disabled::after {
 }
 
 .vt-banner {
-	padding: 10px 14px;
+	padding: 12px 16px;
 	border-radius: var(--vt-radius-m);
-	background: var(--vt-blue-c);
-	color: var(--vt-blue-on);
-	font-size: var(--font-ui-small);
+	background: var(--vt-blue-container);
+	color: var(--vt-on-blue-container);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-done-label {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	color: var(--vt-green);
-	font-weight: 600;
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
+	font-size: var(--vt-type-body-small-size);
 }
 
-/* ---------- ボタン（M3 の filled / tonal / text） ---------- */
+.vt-done-label .vt-icon {
+	color: var(--vt-green);
+}
+
+/* ---------- ボタン（M3 の filled / outlined / text） ---------- */
 
 .vt-button {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	height: 36px;
 	padding: 0 16px;
-	border: 1px solid var(--vt-outline-strong);
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-full);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 	box-shadow: none;
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
-	font-weight: 500;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+	font-weight: var(--vt-weight-medium);
 	cursor: pointer;
-	transition: background-color 120ms ease, transform 80ms ease;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-button:hover:not(:disabled) {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-button:active:not(:disabled) {
-	transform: scale(0.97);
+	transform: scale(var(--vt-scale-press-medium));
 }
 
 .vt-button:disabled {
-	opacity: 0.38;
+	opacity: var(--vt-opacity-disabled);
 	cursor: default;
 }
 
@@ -1262,7 +1372,7 @@ button.vt-badge:disabled::after {
 }
 
 .vt-button.is-primary:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--vt-primary) 88%, #000);
+	background-image: linear-gradient(var(--vt-on-primary-state-hover), var(--vt-on-primary-state-hover));
 }
 
 .vt-button.is-text {
@@ -1273,18 +1383,18 @@ button.vt-badge:disabled::after {
 }
 
 .vt-button.is-text:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--vt-primary) 10%, transparent);
+	background: var(--vt-primary-state-hover);
 }
 
 .vt-button.is-danger {
-	color: var(--text-error);
+	color: var(--vt-error);
 }
 
 /* ---------- 段階表示（DailyTaskView） ---------- */
 
 .vt-stepper {
 	display: flex;
-	gap: 6px;
+	gap: 8px;
 	overflow-x: auto;
 	padding-bottom: 2px;
 }
@@ -1294,20 +1404,19 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	gap: 8px;
 	height: 40px;
-	padding: 0 14px 0 6px;
+	padding: 0 16px 0 8px;
 	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-full);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 	box-shadow: none;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
 	white-space: nowrap;
 	cursor: pointer;
-	transition: background-color 120ms ease;
 }
 
 .vt-step:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-step-icon {
@@ -1316,22 +1425,23 @@ button.vt-badge:disabled::after {
 	justify-content: center;
 	width: 28px;
 	height: 28px;
-	border-radius: 50%;
-	background: var(--vt-surface-high);
-	font-weight: 600;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
 	font-variant-numeric: tabular-nums;
 }
 
 .vt-step.is-done .vt-step-icon {
-	background: var(--vt-green-c);
-	color: var(--vt-green-on);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
 }
 
 .vt-step.is-current {
 	border-color: transparent;
-	background: color-mix(in srgb, var(--vt-primary) 14%, var(--background-primary));
-	color: var(--text-normal);
-	font-weight: 600;
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	font-weight: var(--vt-weight-semibold);
 }
 
 .vt-step.is-current .vt-step-icon {
@@ -1340,21 +1450,25 @@ button.vt-badge:disabled::after {
 }
 
 .vt-step-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	min-width: 20px;
 	height: 20px;
-	padding: 0 6px;
+	padding: 0 4px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-red-c);
-	color: var(--vt-red-on);
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 20px;
-	text-align: center;
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1;
 }
 
 /* ---------- 一覧（行表示） ---------- */
 
 .vt-table {
+	/* 補助の列の数（IssueTable.tsx が style で上書きする） */
+	--vt-cols: 3;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
@@ -1362,26 +1476,28 @@ button.vt-badge:disabled::after {
 
 .vt-tr {
 	display: grid;
-	grid-template-columns: 20px minmax(0, 1fr) 80px 120px repeat(var(--vt-cols, 3), 110px);
+	grid-template-columns: 20px minmax(0, 1fr) 80px 120px repeat(var(--vt-cols), 112px);
 	align-items: center;
-	gap: 10px;
+	gap: 12px;
 	min-height: 48px;
-	padding: 6px 12px;
-	border: 1px solid var(--vt-outline);
+	padding: 4px 12px;
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
-	font-size: var(--font-ui-small);
-	transition: background-color 120ms ease, border-color 120ms ease;
+	background: var(--vt-surface);
+	font-size: var(--vt-type-body-small-size);
+	transition:
+		border-color var(--vt-duration-short3) var(--vt-easing-standard),
+		box-shadow var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-tr:not(.vt-thead):hover {
-	border-color: var(--vt-outline-strong);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+	border-color: var(--vt-outline);
+	box-shadow: var(--vt-elevation-2);
 }
 
 .vt-tr.is-selected {
 	border-color: var(--vt-primary);
-	background: color-mix(in srgb, var(--vt-primary) 6%, var(--background-primary));
+	background: var(--vt-secondary-container);
 }
 
 .vt-thead {
@@ -1390,11 +1506,16 @@ button.vt-badge:disabled::after {
 	background: transparent;
 }
 
+/* 見出しの列は押せない（.vt-col-main の cursor を戻す） */
+.vt-thead .vt-col-main {
+	cursor: default;
+}
+
 .vt-th {
-	color: var(--text-muted);
-	font-size: 11px;
-	font-weight: 500;
-	letter-spacing: 0.06em;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
 	text-transform: uppercase;
 }
 
@@ -1407,14 +1528,14 @@ button.vt-badge:disabled::after {
 }
 
 .vt-tr:not(.vt-thead) .vt-col-main:hover .vt-cell-summary {
-	color: var(--text-accent);
+	color: var(--vt-primary);
 }
 
 .vt-cell-summary {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: var(--font-ui-medium);
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-cell-detail {
@@ -1422,7 +1543,7 @@ button.vt-badge:disabled::after {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	color: var(--text-muted);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-col-status .vt-badge {
@@ -1435,7 +1556,7 @@ button.vt-badge:disabled::after {
 	height: 24px;
 	padding: 0 8px;
 	border-radius: var(--vt-radius-s);
-	background: var(--vt-surface-high);
+	background: var(--vt-surface-container-high);
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
@@ -1443,8 +1564,8 @@ button.vt-badge:disabled::after {
 .vt-due-chip.vt-due-3 { background: var(--vt-due-3); color: var(--vt-on-due); }
 .vt-due-chip.vt-due-2 { background: var(--vt-due-2); color: var(--vt-on-due); }
 .vt-due-chip.vt-due-1 { background: var(--vt-due-1); color: var(--vt-on-due); }
-.vt-due-chip.vt-due-0 { background: var(--vt-due-0); color: #fff; }
-.vt-due-chip.vt-due-overdue { background: var(--vt-red-c); color: var(--vt-red-on); box-shadow: inset 0 0 0 1.5px var(--vt-red); }
+.vt-due-chip.vt-due-0 { background: var(--vt-due-0); color: var(--vt-on-due-0); }
+.vt-due-chip.vt-due-overdue { background: var(--vt-red-container); color: var(--vt-on-red-container); box-shadow: inset 0 0 0 2px var(--vt-red); }
 
 .vt-tr input[type="checkbox"] {
 	margin: 0;
@@ -1484,25 +1605,26 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	gap: 8px;
 	padding: 8px 8px 8px 16px;
+	border: 1px solid transparent;
 	border-radius: var(--vt-radius-l);
-	background: var(--vt-surface-high);
-	transition: box-shadow 150ms ease, background-color 150ms ease;
+	background: var(--vt-surface-container-high);
+	transition: box-shadow var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-actionbar.is-active {
-	background: var(--background-primary);
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
-	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-4);
+	border-color: var(--vt-outline-variant);
 }
 
 .vt-actionbar-count {
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-actionbar.is-active .vt-actionbar-count {
-	color: var(--text-normal);
-	font-weight: 600;
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
 }
 
 /* ---------- task board ---------- */
@@ -1510,7 +1632,7 @@ button.vt-badge:disabled::after {
 .vt-board {
 	display: flex;
 	flex-direction: column;
-	gap: 14px;
+	gap: 16px;
 }
 
 .vt-board-head {
@@ -1551,16 +1673,17 @@ button.vt-badge:disabled::after {
 	flex-direction: column;
 	gap: 8px;
 	min-width: 0;
-	padding: 10px;
+	padding: 12px;
 	border-radius: var(--vt-radius-l);
-	background: var(--vt-surface);
-	border: 1px solid var(--vt-outline);
-	transition: border-color 120ms ease, background-color 120ms ease;
+	background: var(--vt-surface-container);
+	border: 1px solid var(--vt-outline-variant);
+	transition: border-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 /* 未分類: ボードの上に横長に置き、カードを横に並べる */
 .vt-group.is-ungrouped {
 	border-style: dashed;
+	border-color: var(--vt-outline);
 }
 
 .vt-group.is-ungrouped > .vt-group-cards {
@@ -1569,12 +1692,13 @@ button.vt-badge:disabled::after {
 }
 
 .vt-group.is-sub {
-	background: var(--background-primary);
+	background: var(--vt-surface);
 }
 
+/* カードを落とせるとき */
 .vt-group.is-over {
 	border-color: var(--vt-primary);
-	background: color-mix(in srgb, var(--vt-primary) 8%, var(--vt-surface));
+	background: var(--vt-secondary-container);
 }
 
 .vt-group-head {
@@ -1585,7 +1709,7 @@ button.vt-badge:disabled::after {
 }
 
 .vt-group-name {
-	font-weight: 600;
+	font-weight: var(--vt-weight-semibold);
 }
 
 .vt-group-cards {
@@ -1603,10 +1727,10 @@ button.vt-badge:disabled::after {
 
 .vt-drop-hint {
 	padding: 12px;
-	border: 1px dashed var(--vt-outline-strong);
+	border: 1px dashed var(--vt-outline);
 	border-radius: var(--vt-radius-m);
-	color: var(--text-faint);
-	font-size: var(--font-ui-smaller);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
 	text-align: center;
 }
 
@@ -1614,18 +1738,20 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding: 10px 10px 8px 12px;
-	border: 1px solid var(--vt-outline);
+	padding: 12px 12px 8px;
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-1);
 	cursor: grab;
-	transition: box-shadow 150ms ease, border-color 150ms ease;
+	transition:
+		box-shadow var(--vt-duration-short3) var(--vt-easing-standard),
+		border-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-task:hover {
-	border-color: var(--vt-outline-strong);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+	border-color: var(--vt-outline);
+	box-shadow: var(--vt-elevation-3);
 }
 
 .vt-task.is-running {
@@ -1633,8 +1759,9 @@ button.vt-badge:disabled::after {
 	box-shadow: 0 0 0 1px var(--vt-green);
 }
 
+/* 済み: 打ち消し線（色は 4.5:1 を保つ） */
 .vt-task.is-done .vt-task-summary {
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 	text-decoration: line-through;
 }
 
@@ -1642,7 +1769,7 @@ button.vt-badge:disabled::after {
 .vt-task-bottom {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	min-width: 0;
 }
 
@@ -1664,17 +1791,17 @@ button.vt-badge:disabled::after {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-weight: 500;
+	font-weight: var(--vt-weight-medium);
 	cursor: pointer;
 }
 
 .vt-task-summary:hover {
-	color: var(--text-accent);
+	color: var(--vt-primary);
 }
 
 .vt-routine-id {
-	background: var(--vt-surface-high);
-	color: var(--text-muted);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
 }
 
 /* 再生 / 停止（M3 の FAB 風の小さい丸） */
@@ -1685,34 +1812,34 @@ button.vt-badge:disabled::after {
 	gap: 4px;
 	min-width: 36px;
 	height: 36px;
-	padding: 0 10px;
+	padding: 0 8px;
 	border: none;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-green-c);
-	color: var(--vt-green-on);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
 	box-shadow: none;
-	font-size: 12px;
-	font-weight: 600;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
 	cursor: pointer;
-	transition: transform 80ms ease, filter 120ms ease;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-play:hover:not(:disabled) {
-	filter: brightness(0.95);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-play:active:not(:disabled) {
-	transform: scale(0.92);
+	transform: scale(var(--vt-scale-press-small));
 }
 
 .vt-play:disabled {
-	opacity: 0.38;
+	opacity: var(--vt-opacity-disabled);
 	cursor: default;
 }
 
 .vt-play.is-running {
-	background: var(--vt-red-c);
-	color: var(--vt-red-on);
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
 }
 
 .vt-play .vt-icon svg {
@@ -1722,7 +1849,7 @@ button.vt-badge:disabled::after {
 }
 
 .vt-unfinished {
-	gap: 10px;
+	gap: 12px;
 }
 
 .vt-routine-rows {
@@ -1736,35 +1863,35 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	gap: 8px;
 	min-height: 48px;
-	padding: 6px 8px 6px 12px;
-	border: 1px solid var(--vt-outline);
+	padding: 4px 8px 4px 12px;
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 }
 
 .vt-date-chip,
 .vt-chip-mini {
 	display: inline-flex;
 	align-items: center;
-	height: 22px;
+	height: 24px;
 	padding: 0 8px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-high);
-	color: var(--text-muted);
-	font-size: 11px;
-	font-weight: 500;
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
 	white-space: nowrap;
 }
 
 .vt-chip-mini.is-today {
-	background: var(--vt-green-c);
-	color: var(--vt-green-on);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
 }
 
 /* ---------- Issue List の絞り込み ---------- */
 
 .vt-filters {
-	gap: 10px;
+	gap: 12px;
 }
 
 .vt-search {
@@ -1772,20 +1899,26 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	gap: 8px;
 	height: 44px;
-	padding: 0 14px;
+	padding: 0 16px;
 	border-radius: var(--vt-radius-full);
-	background: var(--background-primary);
-	border: 1px solid var(--vt-outline-strong);
-	color: var(--text-muted);
+	background: var(--vt-surface);
+	border: 1px solid var(--vt-outline);
+	color: var(--vt-on-surface-variant);
 }
 
-.vt-search input {
+/* 中の入力欄は枠と面を持たない（Obsidian の input の見た目を、同じ詳細度で後から上書きする） */
+.vt-search input,
+.vt-search input:hover,
+.vt-search input:focus,
+.vt-quick-add input,
+.vt-quick-add input:hover,
+.vt-quick-add input:focus {
 	flex: 1;
 	height: 100%;
-	border: none !important;
-	background: transparent !important;
-	box-shadow: none !important;
-	font-size: var(--font-ui-medium);
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-filter-row,
@@ -1793,7 +1926,7 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-filter-row > .vt-field-label {
@@ -1807,30 +1940,29 @@ button.vt-badge:disabled::after {
 	gap: 4px;
 	height: 32px;
 	padding: 0 12px;
-	border: 1px solid var(--vt-outline-strong);
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-s);
 	background: transparent;
 	box-shadow: none;
-	color: var(--text-normal);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
 	cursor: pointer;
-	transition: background-color 120ms ease;
 }
 
 .vt-filter-chip:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-filter-chip.is-on {
 	border-color: transparent;
-	background: color-mix(in srgb, var(--vt-primary) 18%, var(--background-primary));
-	color: var(--text-normal);
-	font-weight: 500;
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	font-weight: var(--vt-weight-medium);
 }
 
 .vt-filter-chip .vt-icon svg {
-	width: 14px;
-	height: 14px;
+	width: 16px;
+	height: 16px;
 }
 
 .vt-quick-add {
@@ -1838,20 +1970,11 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	gap: 8px;
 	height: 48px;
-	padding: 0 6px 0 16px;
-	border: 1px solid var(--vt-outline-strong);
+	padding: 0 4px 0 16px;
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-l);
-	background: var(--background-primary);
-	color: var(--text-muted);
-}
-
-.vt-quick-add input {
-	flex: 1;
-	height: 100%;
-	border: none !important;
-	background: transparent !important;
-	box-shadow: none !important;
-	font-size: var(--font-ui-medium);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-small-input {
@@ -1861,16 +1984,16 @@ button.vt-badge:disabled::after {
 
 .vt-date-presets {
 	display: flex;
-	gap: 6px;
+	gap: 8px;
 }
 
 /* ---------- Scheduled ---------- */
 
 .vt-sched-scroll {
 	overflow-x: auto;
-	border: 1px solid var(--vt-outline);
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-l);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 }
 
 .vt-sched {
@@ -1881,17 +2004,17 @@ button.vt-badge:disabled::after {
 
 .vt-sched th,
 .vt-sched td {
-	padding: 6px 4px;
-	border-bottom: 1px solid var(--vt-outline);
+	padding: 8px 4px;
+	border-bottom: 1px solid var(--vt-outline-variant);
 	text-align: center;
-	font-weight: normal;
+	font-weight: var(--vt-weight-regular);
 }
 
 .vt-sched thead th {
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	background: var(--vt-surface);
+	background: var(--vt-surface-container);
 }
 
 .vt-sched thead th > span {
@@ -1899,30 +2022,31 @@ button.vt-badge:disabled::after {
 }
 
 .vt-sched-date {
-	font-size: var(--font-ui-smaller);
+	font-size: var(--vt-type-label-medium-size);
 	font-variant-numeric: tabular-nums;
 }
 
 .vt-sched th.is-weekend .vt-weekday {
-	color: var(--text-normal);
-	font-weight: 700;
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-bold);
 }
 
-.vt-sched-sticky {
+/* 左の列を固定する（.vt-sched th / td より強い詳細度にする） */
+.vt-sched .vt-sched-sticky {
 	position: sticky;
 	left: 0;
 	z-index: 2;
 	width: 260px;
 	max-width: 260px;
-	padding-left: 12px !important;
-	background: var(--background-primary);
-	text-align: left !important;
-	box-shadow: 1px 0 0 var(--vt-outline);
+	padding-left: 12px;
+	border-right: 1px solid var(--vt-outline-variant);
+	background: var(--vt-surface);
+	text-align: left;
 }
 
-thead .vt-sched-sticky {
+.vt-sched thead .vt-sched-sticky {
 	z-index: 3;
-	background: var(--vt-surface);
+	background: var(--vt-surface-container);
 }
 
 .vt-sched-issue {
@@ -1934,11 +2058,11 @@ thead .vt-sched-sticky {
 }
 
 .vt-sched-issue:hover .vt-cell-summary {
-	color: var(--text-accent);
+	color: var(--vt-primary);
 }
 
-@container (max-width: 520px) {
-	.vt-sched-sticky {
+@container (max-width: 480px) {
+	.vt-sched .vt-sched-sticky {
 		width: 140px;
 		max-width: 140px;
 	}
@@ -1956,10 +2080,10 @@ thead .vt-sched-sticky {
 }
 
 .vt-chunk-dot {
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	background: var(--vt-surface-high);
+	width: 8px;
+	height: 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
 	box-shadow: inset 0 0 0 1px var(--vt-outline);
 }
 
@@ -1976,7 +2100,7 @@ thead .vt-sched-sticky {
 	touch-action: none;
 }
 
-@container (max-width: 560px) {
+@container (max-width: 720px) {
 	.vt-swipe-area {
 		padding: 40px 0;
 	}
@@ -1997,23 +2121,26 @@ thead .vt-sched-sticky {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	padding: 4px 10px;
+	padding: 4px 12px;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-high);
-	color: var(--text-faint);
-	font-size: 12px;
-	font-weight: 600;
-	transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard),
+		opacity var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-swipe-hint.is-left { left: 0; top: 50%; transform: translateY(-50%); }
 .vt-swipe-hint.is-right { right: 0; top: 50%; transform: translateY(-50%); }
 .vt-swipe-hint.is-up { top: 0; left: 50%; transform: translateX(-50%); }
 .vt-swipe-hint.is-down { bottom: 0; left: 50%; transform: translateX(-50%); }
-.vt-swipe-hint.is-left.is-active { background: var(--vt-sky-c); color: var(--vt-sky-on); }
-.vt-swipe-hint.is-right.is-active { background: var(--vt-green-c); color: var(--vt-green-on); }
-.vt-swipe-hint.is-up.is-active { background: var(--vt-amber-c); color: var(--vt-amber-on); }
-.vt-swipe-hint.is-down.is-active { background: var(--vt-red-c); color: var(--vt-red-on); }
+.vt-swipe-hint.is-left.is-active { background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
+.vt-swipe-hint.is-right.is-active { background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-swipe-hint.is-up.is-active { background: var(--vt-amber-container); color: var(--vt-on-amber-container); }
+.vt-swipe-hint.is-down.is-active { background: var(--vt-red-container); color: var(--vt-on-red-container); }
 
 .vt-organize-card {
 	position: relative;
@@ -2024,14 +2151,14 @@ thead .vt-sched-sticky {
 	width: min(100%, 460px);
 	min-height: 260px;
 	padding: 20px;
-	border: 1px solid var(--vt-outline);
-	border-radius: 24px;
-	background: var(--background-primary);
-	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-xl);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-5);
 	cursor: grab;
 	user-select: none;
 	touch-action: none;
-	transition: transform 200ms ease;
+	transition: transform var(--vt-duration-short4) var(--vt-easing-standard);
 }
 
 .vt-organize-card.is-dragging {
@@ -2042,22 +2169,23 @@ thead .vt-sched-sticky {
 .vt-organize-meta {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	font-size: 12px;
+	gap: 8px;
+	font-size: var(--vt-type-label-medium-size);
 }
 
+/* M3 の title-large */
 .vt-organize-summary {
 	margin: 0;
-	font-size: 1.4em;
-	font-weight: 600;
-	line-height: 1.35;
+	font-size: var(--vt-type-title-large-size);
+	font-weight: var(--vt-type-title-large-weight);
+	line-height: var(--vt-type-title-large-line-height);
 }
 
 .vt-organize-excerpt {
 	flex: 1;
 	margin: 0;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
 	white-space: pre-line;
 	overflow: hidden;
 	display: -webkit-box;
@@ -2069,7 +2197,7 @@ thead .vt-sched-sticky {
 	display: flex;
 	justify-content: center;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: 12px;
 }
 
 .vt-round {
@@ -2081,37 +2209,37 @@ thead .vt-sched-sticky {
 	width: 64px;
 	height: 64px;
 	padding: 0;
-	border: 1px solid var(--vt-outline-strong);
-	border-radius: 20px;
-	background: var(--background-primary);
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface);
 	box-shadow: none;
-	color: var(--text-normal);
-	font-size: 11px;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-label-small-size);
 	cursor: pointer;
-	transition: transform 80ms ease, background-color 120ms ease;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
 .vt-round .vt-icon svg {
-	width: 22px;
-	height: 22px;
+	width: 24px;
+	height: 24px;
 }
 
 .vt-round:hover:not(:disabled) {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-round:active:not(:disabled) {
-	transform: scale(0.92);
+	transform: scale(var(--vt-scale-press-small));
 }
 
 .vt-round:disabled {
-	opacity: 0.38;
+	opacity: var(--vt-opacity-disabled);
 	cursor: default;
 }
 
-.vt-round.is-schedule { border-color: transparent; background: var(--vt-green-c); color: var(--vt-green-on); }
-.vt-round.is-someday { border-color: transparent; background: var(--vt-sky-c); color: var(--vt-sky-on); }
-.vt-round.is-cancel { border-color: transparent; background: var(--vt-red-c); color: var(--vt-red-on); }
+.vt-round.is-schedule { border-color: transparent; background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-round.is-someday { border-color: transparent; background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
+.vt-round.is-cancel { border-color: transparent; background: var(--vt-red-container); color: var(--vt-on-red-container); }
 
 .vt-organize-foot {
 	display: flex;
@@ -2119,7 +2247,7 @@ thead .vt-sched-sticky {
 	justify-content: space-between;
 	align-items: center;
 	gap: 8px;
-	font-size: var(--font-ui-smaller);
+	font-size: var(--vt-type-label-medium-size);
 }
 
 .vt-organize-done {
@@ -2138,7 +2266,7 @@ thead .vt-sched-sticky {
 .vt-sheet {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 12px;
 }
 
 /* ---------- Routine List ---------- */
@@ -2146,7 +2274,7 @@ thead .vt-sched-sticky {
 .vt-routine-list {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 }
 
 .vt-routine-item {
@@ -2155,13 +2283,20 @@ thead .vt-sched-sticky {
 	gap: 12px;
 	min-height: 56px;
 	padding: 8px 12px;
-	border: 1px solid var(--vt-outline);
+	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
-	background: var(--background-primary);
+	background: var(--vt-surface);
 }
 
+/* 一時停止中: 薄くせず（4.5:1 を保つ）、沈んだ面と弱い文字にする */
 .vt-routine-item.is-paused {
-	opacity: 0.6;
+	border-style: dashed;
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-routine-item.is-paused .vt-routine-summary {
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-routine-main {
@@ -2171,43 +2306,49 @@ thead .vt-sched-sticky {
 	gap: 2px;
 	min-width: 0;
 	cursor: pointer;
-	font-size: var(--font-ui-small);
+	font-size: var(--vt-type-body-small-size);
 }
 
 .vt-routine-summary {
-	font-size: var(--font-ui-medium);
-	font-weight: 500;
+	font-size: var(--vt-type-body-medium-size);
+	font-weight: var(--vt-weight-medium);
 }
 
 .vt-routine-main:hover .vt-routine-summary {
-	color: var(--text-accent);
+	color: var(--vt-primary);
 }
 
-/* M3 の switch */
+/* M3 の switch（52×32、つまみは 16px → 24px） */
 .vt-switch {
 	position: relative;
 	flex: none;
 	width: 52px;
 	height: 32px;
 	padding: 0;
-	border: 2px solid var(--vt-outline-strong);
+	border: 2px solid var(--vt-outline);
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-high);
+	background: var(--vt-surface-container-high);
 	box-shadow: none;
 	cursor: pointer;
-	transition: background-color 150ms ease, border-color 150ms ease;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		border-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-switch-thumb {
 	position: absolute;
 	top: 50%;
-	left: 6px;
+	left: 8px;
 	width: 16px;
 	height: 16px;
-	border-radius: 50%;
-	background: var(--text-muted);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-on-surface-variant);
 	transform: translateY(-50%);
-	transition: left 150ms ease, width 150ms ease, height 150ms ease, background-color 150ms ease;
+	transition:
+		left var(--vt-duration-short3) var(--vt-easing-standard),
+		width var(--vt-duration-short3) var(--vt-easing-standard),
+		height var(--vt-duration-short3) var(--vt-easing-standard),
+		background-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
 .vt-switch.is-on {
@@ -2216,9 +2357,9 @@ thead .vt-sched-sticky {
 }
 
 .vt-switch.is-on .vt-switch-thumb {
-	left: 24px;
-	width: 22px;
-	height: 22px;
+	left: 20px;
+	width: 24px;
+	height: 24px;
 	background: var(--vt-on-primary);
 }
 
@@ -2234,7 +2375,7 @@ thead .vt-sched-sticky {
 
 .vt-preview-columns {
 	display: flex;
-	gap: 6px;
+	gap: 8px;
 	overflow-x: auto;
 }
 
@@ -2244,25 +2385,26 @@ thead .vt-sched-sticky {
 	flex-direction: column;
 	gap: 4px;
 	min-width: 72px;
-	padding: 6px;
+	padding: 8px;
 	border-radius: var(--vt-radius-s);
-	background: var(--background-primary);
-	border: 1px solid var(--vt-outline);
-	font-size: 11px;
-	font-weight: 600;
+	background: var(--vt-surface);
+	border: 1px solid var(--vt-outline-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
 }
 
 .vt-preview-col.is-ungrouped {
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 	border-style: dashed;
+	border-color: var(--vt-outline);
 }
 
 .vt-preview-sub {
-	padding: 3px 6px;
-	border-radius: 6px;
-	background: var(--vt-surface-high);
-	color: var(--text-muted);
-	font-weight: 500;
+	padding: 4px 8px;
+	border-radius: var(--vt-radius-xs);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-weight: var(--vt-weight-medium);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -2275,7 +2417,7 @@ thead .vt-sched-sticky {
 }
 
 .vt-group-edit {
-	gap: 10px;
+	gap: 12px;
 }
 
 .vt-group-edit-head,
@@ -2289,7 +2431,7 @@ thead .vt-sched-sticky {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
-	padding-top: 10px;
+	padding-top: 8px;
 }
 
 .vt-sub-list {
@@ -2298,12 +2440,12 @@ thead .vt-sched-sticky {
 	gap: 8px;
 	margin-left: 12px;
 	padding-left: 12px;
-	border-left: 2px solid var(--vt-outline);
+	border-left: 2px solid var(--vt-outline-variant);
 }
 
 .vt-sub-mark {
 	padding-top: 12px;
-	color: var(--text-faint);
+	color: var(--vt-on-surface-variant);
 }
 
 .vt-add-sub {
@@ -2321,23 +2463,23 @@ thead .vt-sched-sticky {
 
 .vt-name-label {
 	position: absolute;
-	top: -7px;
-	left: 10px;
+	top: -8px;
+	left: 12px;
 	padding: 0 4px;
-	background: var(--vt-surface);
-	color: var(--text-muted);
-	font-size: 11px;
-	font-weight: 500;
-	line-height: 14px;
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	line-height: 1;
 }
 
 .vt-name-field input {
 	height: 44px;
-	padding: 0 14px;
-	border: 1px solid var(--vt-outline-strong);
+	padding: 0 16px;
+	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-s);
-	background: var(--background-primary);
-	font-size: var(--font-ui-medium);
+	background: var(--vt-surface);
+	font-size: var(--vt-type-body-medium-size);
 }
 
 .vt-name-field input:focus {
@@ -2346,48 +2488,45 @@ thead .vt-sched-sticky {
 }
 
 .vt-name-field.is-error input {
-	border-color: var(--text-error);
+	border-color: var(--vt-error);
 }
 
 .vt-name-field.is-error .vt-name-label,
 .vt-name-error {
-	color: var(--text-error);
+	color: var(--vt-error);
 }
 
 .vt-name-error {
-	padding: 4px 14px 0;
-	font-size: 11px;
+	padding: 4px 16px 0;
+	font-size: var(--vt-type-label-small-size);
 }
 
 .vt-add-group {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
+	gap: 8px;
 	height: 56px;
-	border: 2px dashed var(--vt-outline-strong);
+	border: 2px dashed var(--vt-outline);
 	border-radius: var(--vt-radius-l);
 	background: transparent;
 	box-shadow: none;
 	color: var(--vt-primary);
-	font-weight: 600;
+	font-weight: var(--vt-weight-semibold);
 	cursor: pointer;
-	transition: background-color 120ms ease;
 }
 
 .vt-add-group:hover {
-	background: color-mix(in srgb, var(--vt-primary) 8%, transparent);
+	background: var(--vt-primary-state-hover);
 }
 
-@container (max-width: 420px) {
+@container (max-width: 480px) {
 	.vt-organize-actions {
-		gap: 6px;
+		gap: 8px;
 	}
 
 	.vt-round {
-		width: 58px;
-		height: 58px;
-		border-radius: 18px;
-		font-size: 10px;
+		width: 56px;
+		height: 56px;
 	}
 }

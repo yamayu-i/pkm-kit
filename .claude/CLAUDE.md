@@ -15,7 +15,8 @@
 
 - ノート: リポジトリ直下の見えるフォルダ（素の Markdown）。デイリーノートは `daily/`、添付は `asset/`、LLM wiki は `sources/`（元資料）と `wiki/`
 - `.obsidian/plugins/<id>/` : 自作プラグイン（vault-git、vault-task）の**ビルド成果物**（`main.js` / `manifest.json` / `styles.css`）。モバイルではビルドできないのでコミットする
-- `.plugin-src/` : プラグインのソース（pnpm workspace）と ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）
+- `.plugin-src/` : プラグインのソース（pnpm workspace）と ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）。デザインの値の正本は `packages/design/tokens.json`（CSS に直接書かない）
+- `.obsidian/appearance.json` と `.obsidian/snippets/vault-theme.css` : Obsidian の外観の固定（後者は生成物）。変えるとデザインの検査が落ちる
 - `.claude/` : ハーネス（このファイル、文書、スキル、検査スクリプト、フック、記録）
 - `.github/workflows/` : CI
 - `mise.toml` : Node と pnpm のバージョン
@@ -78,6 +79,7 @@ pnpm check                            # 型チェック → ビルド → テス
 pnpm security:scan                    # セキュリティチェックの機械的な部分
 pnpm task:lint                        # タスク管理データ（issue/ routine/ member/ worklog/）の整合性検査
 pnpm task:worklog-review              # 間違っていそうな worklog の候補（worklog-review スキルから使う）
+pnpm --filter vault-task preview:ui   # UI のスクリーンショットと、描画した画面の検査
 ```
 
 ## このファイルを変えるとき
