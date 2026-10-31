@@ -21501,6 +21501,8 @@ var VaultGit = class {
   }
   async clone(url, branch2) {
     await isomorphic_git_default.clone({ ...this.ctx, ...this.net, url, ref: branch2, singleBranch: true, noCheckout: true });
+    const tree = await readTreeMap(this.ctx, await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 }));
+    for (const path of tree.keys()) assertSafeWorktreePath(path);
     await isomorphic_git_default.checkout({ ...this.ctx, ref: branch2, force: true });
   }
   async currentBranch() {

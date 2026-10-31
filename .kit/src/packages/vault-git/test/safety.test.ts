@@ -16,7 +16,8 @@ describe("isSafeWorktreePath", () => {
 
 describe("redactSecrets", () => {
 	it("URL の認証情報とトークンを伏せる", () => {
-		expect(redactSecrets("GET https://user:ghp_abc@github.com/x failed ghp_abc", ["ghp_abc"])).toBe(
+		const message = "GET https://user:ghp_abc@github.com/x failed ghp_abc"; // security-scan: allow
+		expect(redactSecrets(message, ["ghp_abc"])).toBe(
 			"GET https://***@github.com/x failed ***",
 		);
 	});

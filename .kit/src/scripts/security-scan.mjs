@@ -59,7 +59,11 @@ check("秘密情報がリポジトリに含まれていない", () => {
 		} catch {
 			continue;
 		}
-		for (const [re, label] of patterns) if (re.test(text)) problems.push(`${file}: ${label}らしき文字列`);
+		text.split("\n").forEach((line, i) => {
+			// テスト用のダミー値など、意図的なものは行末コメントで明示して除外する
+			if (line.includes("security-scan: allow")) return;
+			for (const [re, label] of patterns) if (re.test(line)) problems.push(`${file}:${i + 1}: ${label}らしき文字列`);
+		});
 	}
 	return problems;
 });

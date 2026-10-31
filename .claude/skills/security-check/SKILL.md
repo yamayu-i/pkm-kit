@@ -39,6 +39,8 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 - [ ] すべてのエラー表示とログが `redactSecrets` を通っている
 - [ ] clone URL に認証情報を埋め込めないようになっている
 
+- [ ] `security-scan: allow` が付いた行（スキャンの除外）が、本当にダミー値だけか
+
 ### 通信
 - [ ] 通信は `requestUrl` → `createHttpClient` の経路だけ。`corsProxy` など第三者のサーバーを経由していない
 - [ ] 接続先はユーザーが設定した remote だけ（ハードコードされた外部 URL がない）
