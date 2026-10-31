@@ -1373,13 +1373,20 @@ function parseDaysInput(input) {
 
 // src/ui/badges.tsx
 function StatusBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: props.status });
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-dot" }),
+    props.status
+  ] });
 }
 function IdBadge(props) {
   return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
 }
+var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
 function PriorityBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: props.priority ?? "priority" });
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    props.priority ?? "priority"
+  ] });
 }
 function LabelBadge(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
@@ -1576,16 +1583,18 @@ function IssueHeader(props) {
       ] })
     ] }),
     /* @__PURE__ */ u3(Title, { issue, save }),
-    /* @__PURE__ */ u3("div", { class: "vt-row vt-halves", children: /* @__PURE__ */ u3(StatusField, { ctx, issue, index, save }) }),
-    /* @__PURE__ */ u3("div", { class: "vt-row", children: [
-      /* @__PURE__ */ u3(PriorityField, { issue, save }),
-      /* @__PURE__ */ u3(LabelsField, { ctx, issue, index, save })
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-row vt-halves", children: /* @__PURE__ */ u3(StatusField, { ctx, issue, index, save }) }),
+      /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
+        /* @__PURE__ */ u3(PriorityField, { issue, save }),
+        /* @__PURE__ */ u3(LabelsField, { ctx, issue, index, save })
+      ] })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-row", children: [
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3("div", { class: "vt-row vt-schedule", children: [
       /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save }),
       /* @__PURE__ */ u3(DueFields, { ctx, issue, save })
-    ] }),
-    /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }),
+    ] }) }),
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }) }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
     /* @__PURE__ */ u3(Worklog, { issue, index }),
@@ -1806,8 +1815,8 @@ function Relations(props) {
     );
     m3.showAtMouseEvent(e3);
   };
-  return /* @__PURE__ */ u3("div", { class: "vt-row vt-halves vt-small", children: [
-    /* @__PURE__ */ u3("div", { children: [
+  return /* @__PURE__ */ u3("div", { class: "vt-row vt-halves vt-small vt-relations", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Parent",
         /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u89AA\u3092\u9078\u3076", onClick: pickParent, children: "\u270E" })
@@ -1817,7 +1826,7 @@ function Relations(props) {
         "\uFF08\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF09"
       ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" })
     ] }),
-    /* @__PURE__ */ u3("div", { children: [
+    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Children",
         /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5B50\u3092\u8FFD\u52A0", onClick: addChild, children: "\uFF0B" })
@@ -1855,18 +1864,18 @@ function Effort(props) {
     m3.addItem((item) => item.setTitle("\u30AF\u30EA\u30A2").onClick(() => save({ estimated: null })));
     m3.showAtMouseEvent(e3);
   };
-  return /* @__PURE__ */ u3("div", { class: "vt-row vt-thirds vt-effort", children: [
+  return /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
     /* @__PURE__ */ u3("button", { class: "vt-effort-cell", onClick: menu, children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "estimated" }),
-      /* @__PURE__ */ u3("span", { children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated) })
+      /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-effort-cell", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
-      /* @__PURE__ */ u3("span", { children: formatMinutes(actual) })
+      /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-effort-cell", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "remained" }),
-      /* @__PURE__ */ u3("span", { children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated - actual) })
+      /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated - actual) })
     ] })
   ] });
 }
@@ -1880,13 +1889,13 @@ function Worklog(props) {
     /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "worklog" }),
     logs.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u307E\u3060\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093" }),
     shown.map((l3) => /* @__PURE__ */ u3("div", { class: "vt-worklog-row", children: [
-      /* @__PURE__ */ u3("span", { children: formatDateTime(l3.fromMs) }),
-      /* @__PURE__ */ u3("span", { children: [
+      /* @__PURE__ */ u3("span", { class: "vt-num", children: formatDateTime(l3.fromMs) }),
+      /* @__PURE__ */ u3("span", { class: "vt-num", children: [
         "\u2013 ",
         l3.toMs === null ? "\u8A18\u9332\u4E2D" : formatDateTime(l3.toMs).slice(11)
       ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: l3.toMs === null ? "" : formatMinutes((l3.toMs - l3.fromMs) / 6e4) }),
-      /* @__PURE__ */ u3("span", { children: l3.description })
+      /* @__PURE__ */ u3("span", { class: "vt-muted vt-num", children: l3.toMs === null ? "" : formatMinutes((l3.toMs - l3.fromMs) / 6e4) }),
+      /* @__PURE__ */ u3("span", { class: "vt-worklog-desc", children: l3.description })
     ] })),
     pages > 1 && /* @__PURE__ */ u3("div", { class: "vt-pager", children: [
       /* @__PURE__ */ u3("button", { disabled: current === 0, onClick: () => setPage(current - 1), children: "\u2039" }),

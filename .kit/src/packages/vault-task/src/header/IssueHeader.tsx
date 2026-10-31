@@ -47,18 +47,24 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 				<span>updated {formatDateTime(ctx.store.mtime(path))}</span>
 			</div>
 			<Title issue={issue} save={save} />
-			<div class="vt-row vt-halves">
-				<StatusField ctx={ctx} issue={issue} index={index} save={save} />
-			</div>
-			<div class="vt-row">
-				<PriorityField issue={issue} save={save} />
-				<LabelsField ctx={ctx} issue={issue} index={index} save={save} />
-			</div>
-			<div class="vt-row">
-				<ScheduleStrip ctx={ctx} issue={issue} save={save} />
-				<DueFields ctx={ctx} issue={issue} save={save} />
-			</div>
-			<Relations ctx={ctx} issue={issue} index={index} save={save} />
+			<section class="vt-card">
+				<div class="vt-row vt-halves">
+					<StatusField ctx={ctx} issue={issue} index={index} save={save} />
+				</div>
+				<div class="vt-row vt-chips">
+					<PriorityField issue={issue} save={save} />
+					<LabelsField ctx={ctx} issue={issue} index={index} save={save} />
+				</div>
+			</section>
+			<section class="vt-card">
+				<div class="vt-row vt-schedule">
+					<ScheduleStrip ctx={ctx} issue={issue} save={save} />
+					<DueFields ctx={ctx} issue={issue} save={save} />
+				</div>
+			</section>
+			<section class="vt-card">
+				<Relations ctx={ctx} issue={issue} index={index} save={save} />
+			</section>
 			<Effort ctx={ctx} issue={issue} index={index} save={save} />
 			<hr class="vt-sep" />
 			<Worklog issue={issue} index={index} />
@@ -330,8 +336,8 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 		m.showAtMouseEvent(e);
 	};
 	return (
-		<div class="vt-row vt-halves vt-small">
-			<div>
+		<div class="vt-row vt-halves vt-small vt-relations">
+			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Parent
 					<button class="vt-icon-button" aria-label="親を選ぶ" onClick={pickParent}>
@@ -346,7 +352,7 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 					<span class="vt-muted">—</span>
 				)}
 			</div>
-			<div>
+			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Children
 					<button class="vt-icon-button" aria-label="子を追加" onClick={addChild}>
@@ -390,18 +396,18 @@ function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save:
 		m.showAtMouseEvent(e);
 	};
 	return (
-		<div class="vt-row vt-thirds vt-effort">
+		<div class="vt-effort">
 			<button class="vt-effort-cell" onClick={menu}>
 				<span class="vt-field-label">estimated</span>
-				<span>{issue.estimated === null ? "—" : formatMinutes(issue.estimated)}</span>
+				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated)}</span>
 			</button>
 			<div class="vt-effort-cell">
 				<span class="vt-field-label">actual</span>
-				<span>{formatMinutes(actual)}</span>
+				<span class="vt-effort-value">{formatMinutes(actual)}</span>
 			</div>
 			<div class="vt-effort-cell">
 				<span class="vt-field-label">remained</span>
-				<span>{issue.estimated === null ? "—" : formatMinutes(issue.estimated - actual)}</span>
+				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated - actual)}</span>
 			</div>
 		</div>
 	);
@@ -419,10 +425,10 @@ function Worklog(props: { issue: Issue; index: TaskIndex }) {
 			{logs.length === 0 && <span class="vt-muted">まだ記録がありません</span>}
 			{shown.map((l) => (
 				<div class="vt-worklog-row">
-					<span>{formatDateTime(l.fromMs)}</span>
-					<span>– {l.toMs === null ? "記録中" : formatDateTime(l.toMs).slice(11)}</span>
-					<span class="vt-muted">{l.toMs === null ? "" : formatMinutes((l.toMs - l.fromMs) / 60_000)}</span>
-					<span>{l.description}</span>
+					<span class="vt-num">{formatDateTime(l.fromMs)}</span>
+					<span class="vt-num">– {l.toMs === null ? "記録中" : formatDateTime(l.toMs).slice(11)}</span>
+					<span class="vt-muted vt-num">{l.toMs === null ? "" : formatMinutes((l.toMs - l.fromMs) / 60_000)}</span>
+					<span class="vt-worklog-desc">{l.description}</span>
 				</div>
 			))}
 			{pages > 1 && (
