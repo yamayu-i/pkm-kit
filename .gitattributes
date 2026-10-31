@@ -1,0 +1,3 @@
+# 改行コードを変換しない。git CLI（Windows の autocrlf など）と、変換をしない
+# isomorphic-git（自作プラグイン）で中身がずれ、全ファイルが変更扱いになるのを防ぐ
+* -text
