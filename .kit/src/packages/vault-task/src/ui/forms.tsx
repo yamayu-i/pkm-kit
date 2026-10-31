@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { parseDateInput, parseTimeInput } from "../core/date-input";
-import { addDays, formatShortDate, localToday, type LocalDate, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
+import { addDays, formatShortDate, localToday, monthGridDays, type LocalDate, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
 import { Icon } from "./Icon";
 
 /** 1 行のテキストを入力して保存する */
@@ -47,9 +47,7 @@ function MonthCalendar(props: {
 }) {
 	const today = localToday();
 	const { month } = props;
-	const first = `${month}-01`;
-	const start = addDays(first, -((weekdayOf(first) + 6) % 7));
-	const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
+	const days = monthGridDays(month);
 	const shift = (n: number) => {
 		const [y, m] = month.split("-").map(Number) as [number, number];
 		props.onMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
@@ -66,7 +64,7 @@ function MonthCalendar(props: {
 				</button>
 			</div>
 			<div class="vt-calendar-grid">
-				{[1, 2, 3, 4, 5, 6, 0].map((w) => (
+				{[0, 1, 2, 3, 4, 5, 6].map((w) => (
 					<span class="vt-weekday">{WEEKDAY_NAMES[w]}</span>
 				))}
 				{days.map((d) => (
@@ -199,8 +197,11 @@ export function DayCell(props: {
 	if (props.scheduled) cls.push("is-scheduled");
 	if (props.date === props.today) cls.push("is-today");
 	if (props.dimmed) cls.push("is-dimmed");
+	// 色だけに頼らないよう、期限は読み上げと title でも伝える
+	const dues = [props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("・");
+	const label = dues ? `${props.date}（${dues}）` : props.date;
 	return (
-		<button type="button" class={cls.join(" ")} onClick={props.onClick} aria-pressed={props.scheduled} title={props.date}>
+		<button type="button" class={cls.join(" ")} onClick={props.onClick} aria-pressed={props.scheduled} aria-label={label} title={label}>
 			{Number(props.date.slice(8, 10))}
 		</button>
 	);

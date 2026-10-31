@@ -10,7 +10,8 @@ import { reviewWorklogs } from "../src/core/review";
 import { parseIssue, parseRoutine, type Issue } from "../src/core/schema";
 import { boardSummary, upsertSummary } from "../src/core/summary";
 import { appendWorklogLine, newWorklogId, parseWorklog, sanitizeDeviceName, stopWorklogLines, worklogPath, type WorklogEntry } from "../src/core/worklog";
-import { frontmatterRange } from "../src/core/issue-file";
+import { frontmatterRange, newIssueContent } from "../src/core/issue-file";
+import { monthGridDays } from "../src/core/dates";
 
 function issue(id: string, fm: Record<string, unknown> = {}): Issue {
 	return parseIssue(`issue/${id}.md`, { type: "issue", id, summary: `s${id}`, status: "open", ...fm }).value!;
@@ -323,5 +324,28 @@ describe("frontmatterRange", () => {
 		expect(frontmatterRange("---\nid: i-1\n")).toBeNull();
 		expect(frontmatterRange("---\nid: i-1\n----\n")).toBeNull();
 		expect(frontmatterRange("")).toBeNull();
+	});
+});
+
+describe("monthGridDays", () => {
+	it("日曜から始まる 42 日を返す", () => {
+		const days = monthGridDays("2026-11");
+		expect(days).toHaveLength(42);
+		expect(days[0]).toBe("2026-11-01");
+		expect(days[41]).toBe("2026-12-12");
+		expect(monthGridDays("2026-12")[0]).toBe("2026-11-29");
+	});
+});
+
+describe("newIssueContent", () => {
+	it("scheduled を渡すと実行日の入った issue になり、Inbox に入らない", () => {
+		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", null, ["2026-11-01"]))![1]!;
+		const line = yaml.split("\n").find((l) => l.startsWith("scheduled:"));
+		expect(line).toBe('scheduled: ["2026-11-01"]');
+		expect(issue("i-1", { scheduled: ["2026-11-01"] }).scheduled).toEqual(["2026-11-01"]);
+	});
+
+	it("scheduled がなければ欄を書かない", () => {
+		expect(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00")).not.toContain("scheduled");
 	});
 });

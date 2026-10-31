@@ -342,6 +342,11 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
   const sign = offset >= 0 ? "+" : "-";
   return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
 }
+function monthGridDays(month) {
+  const first = `${month}-01`;
+  const start = addDays(first, -weekdayOf(first));
+  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
+}
 function formatShortDate(date) {
   return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
 }
@@ -669,9 +674,10 @@ var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
 function yamlString(s3) {
   return JSON.stringify(s3);
 }
-function newIssueContent(id, summary, created, parent = null) {
+function newIssueContent(id, summary, created, parent = null, scheduled = []) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
   if (parent !== null) lines.push(`parent: ${parent}`);
+  if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
   lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
 }
@@ -1039,6 +1045,30 @@ var IssueSuggestModal = class extends import_obsidian.FuzzySuggestModal {
     this.onChoose(issue);
   }
 };
+var BoardIssueModal = class extends import_obsidian.SuggestModal {
+  constructor(app, items, onChoose) {
+    super(app);
+    this.items = items;
+    this.onChoose = onChoose;
+    this.setPlaceholder("issue \u3092\u691C\u7D22\u3002\u306A\u3051\u308C\u3070 summary \u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+  }
+  items;
+  onChoose;
+  getSuggestions(query) {
+    const summary = query.trim();
+    if (!summary) return this.items.map((issue) => ({ kind: "issue", issue }));
+    const match = (0, import_obsidian.prepareFuzzySearch)(summary);
+    const hits = this.items.map((issue) => ({ issue, result: match(`${issue.id} ${issue.summary}`) })).filter((h3) => h3.result !== null).sort((a3, b2) => b2.result.score - a3.result.score).map(({ issue }) => ({ kind: "issue", issue }));
+    return [...hits, { kind: "create", summary }];
+  }
+  renderSuggestion(choice, el) {
+    if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
+    else el.createEl("div", { text: `\uFF0B\u300C${choice.summary}\u300D\u3092\u4F5C\u6210\u3057\u3066\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B` });
+  }
+  onChooseSuggestion(choice) {
+    this.onChoose(choice);
+  }
+};
 var MemberSuggestModal = class extends import_obsidian.SuggestModal {
   constructor(app, members, onChoose) {
     super(app);
@@ -1201,9 +1231,7 @@ function TextForm(props) {
 function MonthCalendar(props) {
   const today = localToday();
   const { month } = props;
-  const first = `${month}-01`;
-  const start = addDays(first, -((weekdayOf(first) + 6) % 7));
-  const days = Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
+  const days = monthGridDays(month);
   const shift = (n2) => {
     const [y3, m3] = month.split("-").map(Number);
     props.onMonth(new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7));
@@ -1215,7 +1243,7 @@ function MonthCalendar(props) {
       /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u6B21\u306E\u6708", onClick: () => shift(1), children: "\u203A" })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-calendar-grid", children: [
-      [1, 2, 3, 4, 5, 6, 0].map((w3) => /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[w3] })),
+      [0, 1, 2, 3, 4, 5, 6].map((w3) => /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[w3] })),
       days.map((d3) => /* @__PURE__ */ u3(
         DayCell,
         {
@@ -1315,7 +1343,9 @@ function DayCell(props) {
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, title: props.date, children: Number(props.date.slice(8, 10)) });
+  const dues = [props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
+  const label = dues ? `${props.date}\uFF08${dues}\uFF09` : props.date;
+  return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
 var pad2 = (n2) => String(n2).padStart(2, "0");
 function dateOfMs(ms) {
@@ -2604,8 +2634,8 @@ var TaskWriter = class {
     for (const f4 of this.app.vault.getMarkdownFiles()) ids.push(f4.basename);
     return ids;
   }
-  /** Inbox に issue を作る（ADR-0011）。作れなかった summary は failed に入る */
-  async createIssues(summaries, parent = null) {
+  /** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
+  async createIssues(summaries, parent = null, scheduled = []) {
     const ids = nextIds("i", this.takenIds(), summaries.length);
     const created = [];
     const failed = [];
@@ -2614,7 +2644,7 @@ var TaskWriter = class {
       const path = (0, import_obsidian9.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
-        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent)));
+        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
       } catch (e3) {
         console.error("vault-task: issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", path, e3);
         failed.push(summary);
@@ -2844,6 +2874,16 @@ var addToBoard = (ctx, date, ids) => guard(
     b2.closed = false;
   })
 );
+async function createOnBoard(ctx, date, summary) {
+  try {
+    const { created } = await ctx.writer.createIssues([summary], null, [date]);
+    const file = created[0];
+    if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
+    await addToBoard(ctx, date, [file.basename]);
+  } catch (e3) {
+    ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
 var removeFromBoard = (ctx, date, id) => guard(
   ctx,
   "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
@@ -3111,7 +3151,7 @@ function Board(props) {
   const sel = leftIssues.filter((i3) => selected.has(i3.id));
   const addIssue = () => {
     const candidates = [...index.issues.values()].filter((i3) => isActive(i3) && !board.issues.includes(i3.id));
-    new IssueSuggestModal(ctx.app, candidates, (i3) => void addToBoard(ctx, date, [i3.id]), "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B issue \u3092\u691C\u7D22").open();
+    new BoardIssueModal(ctx.app, candidates, (choice) => void (choice.kind === "issue" ? addToBoard(ctx, date, [choice.issue.id]) : createOnBoard(ctx, date, choice.summary))).open();
   };
   const ungrouped = items.filter((it) => placement(it) === UNGROUPED);
   return /* @__PURE__ */ u3("div", { class: "vt-board", children: [

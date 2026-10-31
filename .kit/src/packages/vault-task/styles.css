@@ -498,10 +498,13 @@ button.vt-badge:disabled::after {
 /* 別の月の日（押せるので薄くはしない。文字と枠を一段弱くする） */
 .vt-day.is-dimmed { color: var(--vt-on-surface-variant); border-color: var(--vt-outline-variant); }
 .vt-day.is-after-deadline { background: var(--vt-surface-container-high); color: var(--vt-on-surface-variant); border-color: transparent; }
-.vt-day.is-mid-due { border: 2px solid var(--vt-amber); }
-.vt-day.is-deadline { border: 2px solid var(--vt-red); }
 .vt-day.is-scheduled { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
 .vt-day.is-scheduled:hover { background: var(--vt-scheduled-hover); }
+/* 期限は面の外側に隙間を空けた枠で示す（実行日の面の色と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
+.vt-day.is-mid-due:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-amber); outline-offset: 2px; }
+.vt-day.is-deadline:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-red); outline-offset: 2px; }
+/* mid_due と deadline が同じ日は、内側の輪を amber にして両方を示す */
+.vt-day.is-mid-due.is-deadline { box-shadow: 0 0 0 2px var(--vt-amber); }
 
 .vt-text-button {
 	align-self: flex-start;
@@ -551,7 +554,7 @@ button.vt-badge:disabled::after {
 .vt-calendar-grid {
 	display: grid;
 	grid-template-columns: repeat(7, 40px);
-	gap: 4px;
+	gap: 8px;
 	justify-content: center;
 }
 
