@@ -2015,6 +2015,10 @@ function pendingBoards(index, boards, today) {
     return u4.issues.length > 0 || u4.routines.length > 0;
   }).sort((a3, b2) => a3.date.localeCompare(b2.date));
 }
+function placementOf(board, id, fallback, keys) {
+  const key = board.groups[id] ?? fallback ?? "";
+  return key !== "" && keys.includes(key) ? key : "";
+}
 
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
@@ -2871,7 +2875,7 @@ function GroupBox(props) {
   return /* @__PURE__ */ u3(
     "section",
     {
-      class: `vt-group${props.sub ? " is-sub" : ""}${over ? " is-over" : ""}`,
+      class: `vt-group${props.sub ? " is-sub" : ""}${props.ungrouped ? " is-ungrouped" : ""}${over ? " is-over" : ""}`,
       onDragOver: (e3) => {
         e3.preventDefault();
         e3.stopPropagation();
@@ -2909,11 +2913,7 @@ function Board(props) {
   const keys = groupKeys(groups);
   const { issues, routines } = boardItems(index, date, board);
   const items = [...issues.map((issue) => ({ kind: "issue", issue })), ...routines.map((routine) => ({ kind: "routine", routine }))];
-  const placement = (it) => {
-    const id = itemId(it);
-    const key = board.groups[id] ?? (it.kind === "routine" ? it.routine.group ?? UNGROUPED : UNGROUPED);
-    return key === UNGROUPED || keys.includes(key) ? key : UNGROUPED;
-  };
+  const placement = (it) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
   const left = unfinished(index, date, board);
   const leftIssues = left.issues;
   const sel = leftIssues.filter((i3) => selected.has(i3.id));
@@ -2939,24 +2939,22 @@ function Board(props) {
       ] })
     ] }),
     items.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u300C\u4ECA\u65E5\u306E\u4E88\u5B9A\u300D\u304B\u3089\u8F09\u305B\u308B\u304B\u3001\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u8FFD\u52A0\u3057\u307E\u3059" }),
-    /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: [
-      (ungrouped.length > 0 || groups.length === 0) && items.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now }),
-      groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
-        GroupBox,
-        {
-          ctx,
-          date,
-          board,
-          name: c3.name,
-          groupKey: `${g2.name}/${c3.name}`,
-          items,
-          placement,
-          keys,
-          now,
-          sub: true
-        }
-      )) }))
-    ] }),
+    ungrouped.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now, ungrouped: true }),
+    /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
+      GroupBox,
+      {
+        ctx,
+        date,
+        board,
+        name: c3.name,
+        groupKey: `${g2.name}/${c3.name}`,
+        items,
+        placement,
+        keys,
+        now,
+        sub: true
+      }
+    )) })) }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-unfinished", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u672A\u5B8C\u4E86" }),

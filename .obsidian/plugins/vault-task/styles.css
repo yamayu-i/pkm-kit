@@ -1558,6 +1558,16 @@ button.vt-badge:disabled::after {
 	transition: border-color 120ms ease, background-color 120ms ease;
 }
 
+/* 未分類: ボードの上に横長に置き、カードを横に並べる */
+.vt-group.is-ungrouped {
+	border-style: dashed;
+}
+
+.vt-group.is-ungrouped > .vt-group-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
 .vt-group.is-sub {
 	background: var(--background-primary);
 }

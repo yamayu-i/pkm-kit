@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cancelPatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
-import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, serializeBoard, unfinished, type DailyBoard } from "../src/core/board";
+import { boardItems, dailyNotePath, placementOf, emptyBoard, parseBoard, pendingBoards, serializeBoard, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
 import { groupKeys, groupNameError, inGroup, parseGroups, serializeGroups } from "../src/core/groups";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
@@ -98,6 +98,23 @@ describe("board", () => {
 			{ date: "2026-10-31", path: "d", board },
 		];
 		expect(pendingBoards(index, boards, "2026-10-31").map((b) => b.date)).toEqual(["2026-10-29"]);
+	});
+});
+
+describe("placementOf", () => {
+	const keys = ["午前", "午前/集中", "午後"];
+	const board = { ...emptyBoard(), groups: { "i-1": "午前/集中", "i-2": "消えたグループ", "r-1": "午後" } };
+
+	it("ボードの置き場所、なければ既定（routine の group）、どちらもなければ未分類", () => {
+		expect(placementOf(board, "i-1", null, keys)).toBe("午前/集中");
+		expect(placementOf(board, "r-1", "午前", keys)).toBe("午後");
+		expect(placementOf(board, "r-2", "午前", keys)).toBe("午前");
+		expect(placementOf(board, "i-3", null, keys)).toBe("");
+	});
+
+	it("今はないグループを指していたら未分類", () => {
+		expect(placementOf(board, "i-2", null, keys)).toBe("");
+		expect(placementOf(board, "r-3", "消えたグループ", keys)).toBe("");
 	});
 });
 

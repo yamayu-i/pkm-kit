@@ -97,3 +97,12 @@ export function pendingBoards(index: TaskIndex, boards: DailyBoard[], today: Loc
 		})
 		.sort((a, b) => a.date.localeCompare(b.date));
 }
+
+/**
+ * カードの置き場所（グループの鍵）。ボードで移したもの → 既定（routine の group）→ 未分類（""）の順。
+ * 今はないグループを指していたら未分類
+ */
+export function placementOf(board: BoardState, id: string, fallback: string | null, keys: readonly string[]): string {
+	const key = board.groups[id] ?? fallback ?? "";
+	return key !== "" && keys.includes(key) ? key : "";
+}

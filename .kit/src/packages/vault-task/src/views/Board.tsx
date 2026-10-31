@@ -1,7 +1,7 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { closePatch, cancelPatch } from "../core/actions";
-import { boardItems, unfinished, type BoardState } from "../core/board";
+import { boardItems, placementOf, unfinished, type BoardState } from "../core/board";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
@@ -123,6 +123,8 @@ function GroupBox(props: {
 	keys: string[];
 	now: number;
 	sub?: boolean;
+	/** 未分類（ボードの上に横長に置く） */
+	ungrouped?: boolean;
 	children?: preact.ComponentChildren;
 }) {
 	const { ctx, date, groupKey } = props;
@@ -133,7 +135,7 @@ function GroupBox(props: {
 	const runningIds = ctx.store.index.running().map((l) => l.taskId).filter((id) => all.some((it) => itemId(it) === id));
 	return (
 		<section
-			class={`vt-group${props.sub ? " is-sub" : ""}${over ? " is-over" : ""}`}
+			class={`vt-group${props.sub ? " is-sub" : ""}${props.ungrouped ? " is-ungrouped" : ""}${over ? " is-over" : ""}`}
 			onDragOver={(e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -182,11 +184,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	const keys = groupKeys(groups);
 	const { issues, routines } = boardItems(index, date, board);
 	const items: Item[] = [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...routines.map((routine) => ({ kind: "routine" as const, routine }))];
-	const placement = (it: Item) => {
-		const id = itemId(it);
-		const key = board.groups[id] ?? (it.kind === "routine" ? (it.routine.group ?? UNGROUPED) : UNGROUPED);
-		return key === UNGROUPED || keys.includes(key) ? key : UNGROUPED;
-	};
+	const placement = (it: Item) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
 	const left = unfinished(index, date, board);
 	const leftIssues = left.issues;
 	const sel = leftIssues.filter((i) => selected.has(i.id));
@@ -208,11 +206,12 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				</button>
 			</div>
 			{items.length === 0 && <div class="vt-empty">ボードは空です。「今日の予定」から載せるか、上のボタンで追加します</div>}
+			{/* 未分類はグループと並べず上に置く。すべてグループに入ったら出さない */}
+			{ungrouped.length > 0 && (
+				<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} ungrouped />
+			)}
 			{/* 1 階層目は横に並べ、2 階層目はグループの中に縦に並べる（ADR-0015） */}
 			<div class="vt-board-columns">
-				{(ungrouped.length > 0 || groups.length === 0) && items.length > 0 && (
-					<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} />
-				)}
 				{groups.map((g) => (
 					<GroupBox ctx={ctx} date={date} board={board} name={g.name} groupKey={g.name} items={items} placement={placement} keys={keys} now={now}>
 						{g.children.length > 0 &&
