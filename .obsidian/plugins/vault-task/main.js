@@ -2271,31 +2271,27 @@ var TaskStore = class {
 
 // src/obsidian/view.ts
 var import_obsidian8 = require("obsidian");
-var PreactView = class extends import_obsidian8.ItemView {
-  constructor(leaf, spec, ctx) {
-    super(leaf);
-    this.spec = spec;
-    this.ctx = ctx;
+function preactViewCreator(spec, ctx) {
+  class PreactView extends import_obsidian8.ItemView {
+    getViewType() {
+      return spec.type;
+    }
+    getDisplayText() {
+      return spec.title;
+    }
+    getIcon() {
+      return spec.icon;
+    }
+    async onOpen() {
+      this.contentEl.addClass("vt-view");
+      R(k(spec.component, { ctx }), this.contentEl);
+    }
+    async onClose() {
+      R(null, this.contentEl);
+    }
   }
-  spec;
-  ctx;
-  getViewType() {
-    return this.spec.type;
-  }
-  getDisplayText() {
-    return this.spec.title;
-  }
-  getIcon() {
-    return this.spec.icon;
-  }
-  async onOpen() {
-    this.contentEl.addClass("vt-view");
-    R(k(this.spec.component, { ctx: this.ctx }), this.contentEl);
-  }
-  async onClose() {
-    R(null, this.contentEl);
-  }
-};
+  return (leaf) => new PreactView(leaf);
+}
 
 // src/obsidian/writer.ts
 var import_obsidian9 = require("obsidian");
@@ -4170,7 +4166,7 @@ var VaultTaskPlugin = class extends import_obsidian16.Plugin {
       }
     };
     for (const spec of VIEWS) {
-      this.registerView(spec.type, (leaf) => new PreactView(leaf, spec, ctx));
+      this.registerView(spec.type, preactViewCreator(spec, ctx));
       this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void ctx.openView(spec.type) });
     }
     this.registerEditorExtension(issueHeaderExtension(ctx));

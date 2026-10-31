@@ -4,7 +4,7 @@ import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
 import { TaskStore } from "./obsidian/store";
-import { PreactView, type ViewSpec } from "./obsidian/view";
+import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { TaskWriter } from "./obsidian/writer";
 import { DailyView } from "./views/DailyView";
 import { GroupManagerView } from "./views/GroupManagerView";
@@ -60,7 +60,7 @@ export default class VaultTaskPlugin extends Plugin {
 		};
 
 		for (const spec of VIEWS) {
-			this.registerView(spec.type, (leaf) => new PreactView(leaf, spec, ctx));
+			this.registerView(spec.type, preactViewCreator(spec, ctx));
 			this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} を開く`, callback: () => void ctx.openView(spec.type) });
 		}
 		this.registerEditorExtension(issueHeaderExtension(ctx));
