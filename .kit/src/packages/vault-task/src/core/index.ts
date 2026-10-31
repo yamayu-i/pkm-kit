@@ -1,0 +1,121 @@
+import { diffDays, type LocalDate } from "./dates";
+import { prorateEffort } from "./effort";
+import type { LabelDef } from "./labels";
+import { occursOn } from "./repeat";
+import type { Issue, Member, Routine, Status } from "./schema";
+import type { WorklogEntry } from "./worklog";
+
+export interface VaultData {
+	issues: Issue[];
+	routines: Routine[];
+	members: Member[];
+	labels: LabelDef[];
+	worklogs: WorklogEntry[];
+}
+
+/** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
+export const INACTIVE_STATUSES: readonly Status[] = ["closed", "canceled", "someday"];
+
+export function isActive(issue: Issue): boolean {
+	return !INACTIVE_STATUSES.includes(issue.status);
+}
+
+/** open で、scheduled・mid_due・deadline がどれもない（ADR-0006） */
+export function isInbox(issue: Issue): boolean {
+	return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
+}
+
+/** routine の interval を数える起点: start、なければ created の日付 */
+export function routineAnchor(routine: Routine): LocalDate | null {
+	return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
+}
+
+/** その日のボードに載る routine か（ADR-0010） */
+export function routineOccursOn(routine: Routine, date: LocalDate): boolean {
+	if (!routine.active || routine.repeat === null) return false;
+	const anchor = routineAnchor(routine);
+	if (anchor === null) return false;
+	if (routine.end !== null && diffDays(date, routine.end) > 0) return false;
+	return occursOn(routine.repeat, anchor, date);
+}
+
+function compareNullableAsc(a: string | null, b: string | null): number {
+	if (a === b) return 0;
+	if (a === null) return -1;
+	if (b === null) return 1;
+	return a < b ? -1 : 1;
+}
+
+/** Organize に出す順（ADR-0009）: Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday */
+export function organizeQueue(issues: Iterable<Issue>, today: LocalDate): Issue[] {
+	const inbox: Issue[] = [];
+	const revisitDue: Issue[] = [];
+	const someday: Issue[] = [];
+	for (const issue of issues) {
+		if (isInbox(issue)) inbox.push(issue);
+		else if (issue.status === "someday") {
+			if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
+			else someday.push(issue);
+		}
+	}
+	inbox.sort((a, b) => compareNullableAsc(a.created, b.created));
+	revisitDue.sort((a, b) => compareNullableAsc(a.revisit, b.revisit));
+	someday.sort((a, b) => compareNullableAsc(a.reviewed, b.reviewed));
+	return [...inbox, ...revisitDue, ...someday];
+}
+
+/** メモリ上の索引（ADR-0002）。children など保存しない値はここで作る */
+export class TaskIndex {
+	readonly issues = new Map<string, Issue>();
+	readonly routines = new Map<string, Routine>();
+	readonly members = new Map<string, Member>();
+	private readonly childrenOf = new Map<string, Issue[]>();
+
+	constructor(readonly data: VaultData) {
+		// ID が重複していたら最初のものを使う（重複は lint で報告する）
+		for (const i of data.issues) if (!this.issues.has(i.id)) this.issues.set(i.id, i);
+		for (const r of data.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
+		for (const m of data.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
+		for (const issue of this.issues.values()) {
+			if (issue.parent === null) continue;
+			const list = this.childrenOf.get(issue.parent) ?? [];
+			list.push(issue);
+			this.childrenOf.set(issue.parent, list);
+		}
+	}
+
+	children(id: string): Issue[] {
+		return this.childrenOf.get(id) ?? [];
+	}
+
+	/** 親をたどった一覧（近い順）。循環していたら、そこで止める */
+	ancestors(id: string): Issue[] {
+		const out: Issue[] = [];
+		const seen = new Set([id]);
+		let parent = this.issues.get(id)?.parent ?? null;
+		while (parent !== null && !seen.has(parent)) {
+			seen.add(parent);
+			const issue = this.issues.get(parent);
+			if (!issue) break;
+			out.push(issue);
+			parent = issue.parent;
+		}
+		return out;
+	}
+
+	/** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
+	canSetParent(childId: string, parentId: string): boolean {
+		if (childId === parentId || !this.issues.has(parentId)) return false;
+		return !this.ancestors(parentId).some((a) => a.id === childId);
+	}
+
+	/** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+	effortMinutes(now: number): Map<string, number> {
+		const ms = prorateEffort(this.data.worklogs, now);
+		return new Map([...ms].map(([id, v]) => [id, v / 60_000]));
+	}
+
+	routinesOn(date: LocalDate): Routine[] {
+		return [...this.routines.values()].filter((r) => routineOccursOn(r, date));
+	}
+}

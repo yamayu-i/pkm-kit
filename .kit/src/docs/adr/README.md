@@ -20,5 +20,6 @@
 | [0007](0007-labels-and-members.md) | 承認 | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認 | UI は Preact。issue 画面は CodeMirror の widget |
 | [0009](0009-views.md) | 承認 | View の一覧と各 View の振る舞い |
-| [0010](0010-routine.md) | 提案 | 繰り返しタスク（routine, `r-N`） |
-| [0011](0011-quick-capture.md) | 提案 | ショートカットでの issue 一括登録 |
+| [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
+| [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
+| [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
