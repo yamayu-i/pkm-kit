@@ -1,4 +1,5 @@
 import { Platform, PluginSettingTab, SecretComponent, Setting, type App } from "obsidian";
+import { normalizeAuthHost } from "../git/auth-target";
 import type VaultGitPlugin from "../main";
 
 /**
@@ -12,6 +13,8 @@ export interface VaultGitSettings {
 	/** HTTPS 認証のユーザー名。GitHub の PAT なら何でもよい */
 	username: string;
 	tokenSecretId: string;
+	/** トークンを送ってよいホスト名。これ以外と https 以外には送らない */
+	authHost: string;
 	/** モバイルでの初回 clone にだけ使う */
 	cloneUrl: string;
 	cloneBranch: string;
@@ -31,6 +34,7 @@ export const DEFAULT_SETTINGS: VaultGitSettings = {
 	authorEmail: "",
 	username: "x-access-token",
 	tokenSecretId: "",
+	authHost: "github.com",
 	cloneUrl: "",
 	cloneBranch: "main",
 };
@@ -78,6 +82,15 @@ export class VaultGitSettingTab extends PluginSettingTab {
 			.addComponent((el) =>
 				new SecretComponent(this.app, el).setValue(s.tokenSecretId).onChange(async (v) => {
 					s.tokenSecretId = v ?? "";
+					await save();
+				}),
+			);
+		new Setting(containerEl)
+			.setName("トークンを送るホスト")
+			.setDesc("このホストの https:// にだけトークンを送ります（例: github.com）")
+			.addText((t) =>
+				t.setValue(s.authHost).onChange(async (v) => {
+					s.authHost = normalizeAuthHost(v);
 					await save();
 				}),
 			);

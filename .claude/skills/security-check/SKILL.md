@@ -44,6 +44,7 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 ### 通信
 - [ ] 通信は `requestUrl` → `createHttpClient` の経路だけ。`corsProxy` など第三者のサーバーを経由していない
 - [ ] 接続先はユーザーが設定した remote だけ（ハードコードされた外部 URL がない）
+- [ ] 認証情報は `checkAuthTarget`（https かつ「トークンを送るホスト」と一致）を通った接続先にしか送られない。onAuth と HTTP 送信直前の両方で検査している
 
 ### ファイル書き込み
 - [ ] 作業ツリーへの書き込み・削除は `assertSafeWorktreePath` を通ったパスだけ（`..`、絶対パス、`.git` を拒否）

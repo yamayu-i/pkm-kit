@@ -26,12 +26,17 @@ export interface Device {
 	cleanup(): void;
 }
 
-export function createDevice(name: string, token: string | null = TEST_TOKEN): Device {
+export function createDevice(
+	name: string,
+	token: string | null = TEST_TOKEN,
+	authHost = "127.0.0.1",
+): Device {
 	const root = mkdtempSync(join(tmpdir(), `vault-git-${name}-`));
 	const store = new NodeFileStore(root);
 	const git = new VaultGit({
 		store,
-		http: createHttpClient(fetchRequest),
+		http: createHttpClient(fetchRequest, authHost),
+		authHost,
 		deviceName: name,
 		author: { name, email: `${name}@example.com` },
 		getAuth: () => (token ? { username: "x-access-token", password: token } : null),

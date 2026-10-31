@@ -1,5 +1,6 @@
 import { Errors } from "isomorphic-git";
 import { MarkdownView, Notice, Plugin, requestUrl } from "obsidian";
+import { AuthTargetError } from "./git/auth-target";
 import { VaultGit, WorktreeChangedError, type PullResult } from "./git/engine";
 import { createHttpClient, redactSecrets } from "./git/http";
 import type { MergeConflict } from "./merge/tree-merge";
@@ -70,12 +71,13 @@ export default class VaultGitPlugin extends Plugin {
 					throw: false,
 				});
 				return { status: res.status, headers: res.headers, arrayBuffer: res.arrayBuffer };
-			}),
+			}, s.authHost),
 			deviceName: s.deviceName,
 			author: {
 				name: s.authorName || s.deviceName,
 				email: s.authorEmail || "vault-git@localhost",
 			},
+			authHost: s.authHost,
 			getAuth: () => {
 				const token = this.token();
 				return token ? { username: s.username || "x-access-token", password: token } : null;
@@ -102,6 +104,8 @@ export default class VaultGitPlugin extends Plugin {
 		} catch (e) {
 			if (e instanceof WorktreeChangedError) {
 				new Notice("Git: 処理中にファイルが編集されたので中断しました。もう一度実行してください");
+			} else if (e instanceof AuthTargetError) {
+				new Notice(`Git: ${e.message}\n接続先（.git/config の origin）か、設定の「トークンを送るホスト」を確認してください`, 10_000);
 			} else if (e instanceof Errors.UserCanceledError) {
 				new Notice("Git: 認証に失敗しました。設定のアクセストークンを確認してください", 10_000);
 			} else {

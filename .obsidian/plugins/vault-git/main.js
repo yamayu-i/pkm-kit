@@ -20916,6 +20916,51 @@ var isomorphic_git_default = index;
 // src/main.ts
 var import_obsidian3 = require("obsidian");
 
+// src/git/auth-target.ts
+init_buffer();
+var AuthTargetError = class extends Error {
+  constructor(url, reason) {
+    super(
+      reason === "insecure-protocol" ? `https \u4EE5\u5916\u306E\u63A5\u7D9A\u5148\u306B\u306F\u8A8D\u8A3C\u60C5\u5831\u3092\u9001\u308A\u307E\u305B\u3093: ${safeOrigin(url)}` : reason === "host-mismatch" ? `\u8A2D\u5B9A\u306B\u306A\u3044\u30DB\u30B9\u30C8\u306B\u306F\u8A8D\u8A3C\u60C5\u5831\u3092\u9001\u308A\u307E\u305B\u3093: ${safeOrigin(url)}` : "\u63A5\u7D9A\u5148\u306E URL \u304C\u4E0D\u6B63\u3067\u3059"
+    );
+    this.url = url;
+    this.reason = reason;
+    this.name = "AuthTargetError";
+  }
+  url;
+  reason;
+};
+var LOOPBACK = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+function safeOrigin(url) {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return "(\u4E0D\u6B63\u306A URL)";
+  }
+}
+function normalizeAuthHost(host) {
+  return host.trim().toLowerCase();
+}
+function checkAuthTarget(url, authHost) {
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return new AuthTargetError(url, "invalid-url");
+  }
+  const hostname = u.hostname.toLowerCase();
+  if (u.protocol !== "https:" && !(u.protocol === "http:" && LOOPBACK.has(hostname))) {
+    return new AuthTargetError(url, "insecure-protocol");
+  }
+  if (hostname !== normalizeAuthHost(authHost)) return new AuthTargetError(url, "host-mismatch");
+  return null;
+}
+function assertAuthTarget(url, authHost) {
+  const err = checkAuthTarget(url, authHost);
+  if (err) throw err;
+}
+
 // src/git/engine.ts
 init_buffer();
 
@@ -21477,7 +21522,10 @@ var VaultGit = class {
     return { fs: this.fs, dir: this.dir, cache: this.cache };
   }
   get net() {
-    const onAuth = () => this.opts.getAuth() ?? void 0;
+    const onAuth = (url) => {
+      assertAuthTarget(url, this.opts.authHost);
+      return this.opts.getAuth() ?? void 0;
+    };
     return {
       http: this.opts.http,
       onAuth,
@@ -21719,11 +21767,14 @@ async function collect2(body) {
 async function* once(data) {
   yield data;
 }
-function createHttpClient(request) {
+function createHttpClient(request, authHost) {
   return {
     async request(req) {
       const method = req.method ?? "GET";
       const headers = { ...req.headers };
+      if (Object.keys(headers).some((k) => k.toLowerCase() === "authorization")) {
+        assertAuthTarget(req.url, authHost);
+      }
       const body = req.body ? await collect2(req.body) : void 0;
       const res = await request({ url: req.url, method, headers, body });
       const resHeaders = {};
@@ -21844,6 +21895,7 @@ var DEFAULT_SETTINGS = {
   authorEmail: "",
   username: "x-access-token",
   tokenSecretId: "",
+  authHost: "github.com",
   cloneUrl: "",
   cloneBranch: "main"
 };
@@ -21880,6 +21932,12 @@ var VaultGitSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3").setDesc("GitHub \u306E fine-grained PAT\uFF08\u5BFE\u8C61\u30EA\u30DD\u30B8\u30C8\u30EA\u306E Contents: Read and write \u306E\u307F\uFF09\u3092\u63A8\u5968").addComponent(
       (el) => new import_obsidian2.SecretComponent(this.app, el).setValue(s.tokenSecretId).onChange(async (v) => {
         s.tokenSecretId = v ?? "";
+        await save();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u30C8\u30FC\u30AF\u30F3\u3092\u9001\u308B\u30DB\u30B9\u30C8").setDesc("\u3053\u306E\u30DB\u30B9\u30C8\u306E https:// \u306B\u3060\u3051\u30C8\u30FC\u30AF\u30F3\u3092\u9001\u308A\u307E\u3059\uFF08\u4F8B: github.com\uFF09").addText(
+      (t) => t.setValue(s.authHost).onChange(async (v) => {
+        s.authHost = normalizeAuthHost(v);
         await save();
       })
     );
@@ -22014,12 +22072,13 @@ var VaultGitPlugin = class extends import_obsidian3.Plugin {
           throw: false
         });
         return { status: res.status, headers: res.headers, arrayBuffer: res.arrayBuffer };
-      }),
+      }, s.authHost),
       deviceName: s.deviceName,
       author: {
         name: s.authorName || s.deviceName,
         email: s.authorEmail || "vault-git@localhost"
       },
+      authHost: s.authHost,
       getAuth: () => {
         const token = this.token();
         return token ? { username: s.username || "x-access-token", password: token } : null;
@@ -22045,6 +22104,9 @@ var VaultGitPlugin = class extends import_obsidian3.Plugin {
     } catch (e) {
       if (e instanceof WorktreeChangedError) {
         new import_obsidian3.Notice("Git: \u51E6\u7406\u4E2D\u306B\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u3055\u308C\u305F\u306E\u3067\u4E2D\u65AD\u3057\u307E\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044");
+      } else if (e instanceof AuthTargetError) {
+        new import_obsidian3.Notice(`Git: ${e.message}
+\u63A5\u7D9A\u5148\uFF08.git/config \u306E origin\uFF09\u304B\u3001\u8A2D\u5B9A\u306E\u300C\u30C8\u30FC\u30AF\u30F3\u3092\u9001\u308B\u30DB\u30B9\u30C8\u300D\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044`, 1e4);
       } else if (e instanceof Errors.UserCanceledError) {
         new import_obsidian3.Notice("Git: \u8A8D\u8A3C\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u8A2D\u5B9A\u306E\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044", 1e4);
       } else {

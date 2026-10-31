@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDevice, type Device } from "./helpers/device";
-import { GitServer } from "./helpers/git-server";
+import { GitServer, TEST_TOKEN } from "./helpers/git-server";
 
 describe("VaultGit (本物の git smart HTTP サーバーで検証)", () => {
 	let server: GitServer;
@@ -135,6 +135,23 @@ describe("VaultGit (本物の git smart HTTP サーバーで検証)", () => {
 		expect((await pc.git.push()).kind).toBe("pushed");
 		expect(server.remoteFile("a.md")).toBe("a\n");
 		expect(server.remoteFile("b.md")).toBe("b\n");
+	});
+
+	it("設定にないホストにはトークンを送らない", async () => {
+		const before = server.authorizedRequests;
+		const other = createDevice("other", undefined, "github.com");
+		await expect(other.git.clone(server.url, "main")).rejects.toThrow("設定にないホストには認証情報を送りません");
+		expect(server.authorizedRequests).toBe(before);
+		other.cleanup();
+	});
+
+	it(".git/config の URL に埋め込まれた認証情報も、設定にないホストには送らない", async () => {
+		const before = server.authorizedRequests;
+		const other = createDevice("other", null, "github.com");
+		const url = server.url.replace("http://", `http://x:${TEST_TOKEN}@`); // security-scan: allow（テスト用のダミートークン）
+		await expect(other.git.clone(url, "main")).rejects.toThrow("設定にないホストには認証情報を送りません");
+		expect(server.authorizedRequests).toBe(before);
+		other.cleanup();
 	});
 
 	it("認証情報がなければ失敗する", async () => {

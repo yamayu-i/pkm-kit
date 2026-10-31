@@ -1,5 +1,6 @@
 import git, { Errors, type AuthCallback, type HttpClient, type PromiseFsClient } from "isomorphic-git";
 import { dirname, type FileStore } from "../fs/file-store";
+import { assertAuthTarget } from "./auth-target";
 import { createGitFs, GIT_DIR_ROOT } from "../fs/git-fs";
 import { assertSafeWorktreePath } from "../merge/path-safety";
 import { mergeTrees, type MergeConflict, type TreeEntry } from "../merge/tree-merge";
@@ -18,6 +19,8 @@ export interface EngineOptions {
 	author: Author;
 	/** 認証情報。トークンは呼ばれるたびに取り出し、エンジン内に保持しない */
 	getAuth(): { username: string; password: string } | null;
+	/** 認証情報を送ってよいホスト名。http クライアントにも同じ値を渡すこと */
+	authHost: string;
 	remote?: string;
 	now?: () => Date;
 }
@@ -77,7 +80,11 @@ export class VaultGit {
 	}
 
 	private get net() {
-		const onAuth: AuthCallback = () => this.opts.getAuth() ?? undefined;
+		const onAuth: AuthCallback = (url) => {
+			// トークンを取り出す前に接続先を検査する
+			assertAuthTarget(url, this.opts.authHost);
+			return this.opts.getAuth() ?? undefined;
+		};
 		return {
 			http: this.opts.http,
 			onAuth,

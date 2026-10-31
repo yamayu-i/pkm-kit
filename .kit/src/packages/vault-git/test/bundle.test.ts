@@ -59,7 +59,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
 		const Plugin = loadBundle(mock.obsidian);
 		const plugin = new Plugin();
-		plugin.data = { tokenSecretId: "gh", deviceName: "iphone" };
+		plugin.data = { tokenSecretId: "gh", deviceName: "iphone", authHost: "127.0.0.1" };
 
 		await plugin.onload();
 
@@ -92,6 +92,17 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		expect(mock.modals.at(-1)).toBe("リモートに新しい変更があります");
 	});
 
+	it("設定にないホストにはトークンを送らない（既定は github.com）", async () => {
+		const before = server.authorizedRequests;
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))();
+		plugin.data = { tokenSecretId: "gh" };
+		await plugin.onload();
+		await plugin.pull();
+		expect(mock.notices.at(-1)).toContain("設定にないホストには認証情報を送りません");
+		expect(server.authorizedRequests).toBe(before);
+	});
+
 	it("グローバルの Buffer を参照していない", () => {
 		expect(readFileSync(bundlePath, "utf8")).not.toMatch(/(globalThis|global|window|self)\.Buffer\b/);
 	});
@@ -99,7 +110,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 	it("トークンがエラーメッセージに出ない", async () => {
 		const mock = createObsidianMock(phoneRoot, { gh: "wrong-token-secret" });
 		const plugin = new (loadBundle(mock.obsidian))();
-		plugin.data = { tokenSecretId: "gh" };
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1" };
 		await plugin.onload();
 		await plugin.pull();
 		const last = mock.notices.at(-1) ?? "";

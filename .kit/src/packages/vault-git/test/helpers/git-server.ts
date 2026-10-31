@@ -16,6 +16,8 @@ export class GitServer {
 	readonly root = mkdtempSync(join(tmpdir(), "vault-git-server-"));
 	private server?: Server;
 	url = "";
+	/** Authorization ヘッダー付きで届いたリクエストの数 */
+	authorizedRequests = 0;
 
 	git(...args: string[]): string {
 		return execFileSync("git", args, { cwd: this.root, encoding: "utf8" });
@@ -49,6 +51,7 @@ export class GitServer {
 	async start(): Promise<void> {
 		this.server = createServer((req, res) => {
 			const auth = req.headers.authorization ?? "";
+			if (auth) this.authorizedRequests++;
 			const password = Buffer.from(auth.replace(/^Basic /, ""), "base64").toString().split(":")[1];
 			if (password !== TEST_TOKEN) {
 				res.writeHead(401, { "WWW-Authenticate": 'Basic realm="test"' });

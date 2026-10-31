@@ -21,7 +21,7 @@ Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/p
 1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
 2. 「Vault Git」を有効にする
 3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
-4. アクセストークンを登録する（GitHub の fine-grained PAT。このリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない
+4. アクセストークンを登録する（GitHub の fine-grained PAT。このリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
 
 PC: このリポジトリを `git clone` して Vault として開く。
 

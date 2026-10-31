@@ -1,4 +1,5 @@
 import type { GitHttpRequest, GitHttpResponse, HttpClient } from "isomorphic-git";
+import { assertAuthTarget } from "./auth-target";
 
 /** Obsidian の requestUrl と同じ形（テストでは fetch で代用する） */
 export type RequestFn = (req: {
@@ -31,12 +32,18 @@ async function* once(data: Uint8Array): AsyncIterableIterator<Uint8Array> {
 /**
  * requestUrl を isomorphic-git の HttpClient にする。
  * モバイルでも CORS の制限を受けないのは requestUrl を経由するため。
+ *
+ * Authorization ヘッダー付きのリクエストは、送信直前に接続先を検査する。
+ * onAuth を通らない経路（.git/config の URL に埋め込まれた認証情報など）もここで止める。
  */
-export function createHttpClient(request: RequestFn): HttpClient {
+export function createHttpClient(request: RequestFn, authHost: string): HttpClient {
 	return {
 		async request(req: GitHttpRequest): Promise<GitHttpResponse> {
 			const method = req.method ?? "GET";
 			const headers = { ...(req.headers as Record<string, string> | undefined) };
+			if (Object.keys(headers).some((k) => k.toLowerCase() === "authorization")) {
+				assertAuthTarget(req.url, authHost);
+			}
 			const body = req.body ? await collect(req.body) : undefined;
 			const res = await request({ url: req.url, method, headers, body });
 			const resHeaders: Record<string, string> = {};
