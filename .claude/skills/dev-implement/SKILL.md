@@ -30,7 +30,7 @@ node .claude/scripts/verify.mjs            # ハーネスと Vault の検査
 node .claude/scripts/verify.mjs --plugin   # プラグインを変えたとき（pnpm check も実行する）
 ```
 
-- プラグインのソースを変えたら `pnpm build` し、`.obsidian/plugins/<id>/main.js` も一緒にコミットする
+- プラグインのソースを変えたら `pnpm build` し、`.obsidian/plugins/<id>/` のビルド成果物（`main.js` など）も一緒にコミットする
 - 失敗したら原因を直し、すべてをもう一度実行する
 - [セキュリティチェックが要る変更](../../docs/security-check-schedule.md)（依存、`src/git/`・`src/fs/`・`src/obsidian/`、ビルド設定、CI）なら、コミットの前に `security-check` スキルを実行する
 

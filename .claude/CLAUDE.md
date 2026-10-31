@@ -14,8 +14,8 @@
 ## 構成
 
 - ノート: リポジトリ直下の見えるフォルダ（素の Markdown）。デイリーノートは `daily/`、添付は `asset/`、LLM wiki は `sources/`（元資料）と `wiki/`
-- `.obsidian/plugins/<id>/` : 自作プラグインの**ビルド成果物**（`main.js` / `manifest.json`）。モバイルではビルドできないのでコミットする
-- `.plugin-src/` : プラグインのソース（pnpm workspace）と ADR（`docs/adr/`）
+- `.obsidian/plugins/<id>/` : 自作プラグイン（vault-git、vault-task）の**ビルド成果物**（`main.js` / `manifest.json` / `styles.css`）。モバイルではビルドできないのでコミットする
+- `.plugin-src/` : プラグインのソース（pnpm workspace）と ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）
 - `.claude/` : ハーネス（このファイル、文書、スキル、検査スクリプト、フック、記録）
 - `.github/workflows/` : CI
 - `mise.toml` : Node と pnpm のバージョン
@@ -28,7 +28,7 @@
 4. 設計判断を含む変更は、実装の前に ADR を書いて合意する
 5. 秘密情報（トークンなど）はコード・設定ファイル・コミットに入れない。プラグインでは Obsidian の SecretStorage を使う
 6. 依存はバージョン固定（`^` / `~` を使わない）。追加する前に必要性をユーザーに説明する
-7. ソース（`.plugin-src/**/src`）を変えたら必ず `pnpm build` して、`main.js` も一緒にコミットする
+7. ソース（`.plugin-src/**/src`）を変えたら必ず `pnpm build` して、`.obsidian/plugins/<id>/` のビルド成果物も一緒にコミットする
 8. `node_modules` やビルド設定などの開発用ファイルを、Vault の見えるフォルダに置かない
 9. 訂正された、文書にないことを質問した、文書と実際が違った、などが起きたら、その場で記録する（`harness-note`）
 10. 学んだことを Claude Code のメモリだけに保存しない。リポジトリに書く
@@ -76,6 +76,7 @@ cd .plugin-src
 pnpm install --frozen-lockfile
 pnpm check                            # 型チェック → ビルド → テスト
 pnpm security:scan                    # セキュリティチェックの機械的な部分
+pnpm task:lint                        # タスク管理データ（issue/ routine/ member/ worklog/）の整合性検査
 ```
 
 ## このファイルを変えるとき

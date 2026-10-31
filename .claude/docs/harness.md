@@ -24,7 +24,7 @@
 |---|---|
 | ハーネスの初期構成 | 導入済み（2026-10-31） |
 | vault-git | 実装済み |
-| vault-task | 設計中（`.plugin-src/docs/adr/`） |
+| vault-task | 段階 2（issue 画面のヘッダー・一括登録）まで実装済み（`.plugin-src/docs/adr/`） |
 | LLM wiki | 構成と手順を用意した。ページはまだない |
 
 ## ディレクトリ
