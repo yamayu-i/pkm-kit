@@ -39,6 +39,12 @@ export function newRoutineContent(
 	return lines.join("\n");
 }
 
+/** frontmatter の範囲（始まりから、閉じる `---` の行の終わりまで）。なければ null */
+export function frontmatterRange(text: string): { from: number; to: number } | null {
+	const m = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
+	return m ? { from: 0, to: m[0].length } : null;
+}
+
 /** board だけを持つデイリーノート（まだないとき） */
 export function newDailyContent(): string {
 	return "---\nboard: {}\n---\n";
