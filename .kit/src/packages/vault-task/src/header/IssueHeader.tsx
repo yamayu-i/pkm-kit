@@ -298,7 +298,15 @@ function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => voi
 	return (
 		<span class="vt-relation">
 			<IdBadge issue={props.issue} />
-			<span class="vt-link" onClick={(e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false)}>
+			<span
+				class="vt-link"
+				role="link"
+				tabIndex={0}
+				onClick={(e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false);
+				}}
+			>
 				{props.issue.summary}
 			</span>
 			{props.onRemove && (

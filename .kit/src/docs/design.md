@@ -1,42 +1,100 @@
-# 自作プラグインのデザインルール
+# デザインルール
 
-vault-task の UI（issue 画面、モーダル、今後の View）はこのルールに従う。決めた経緯は [ADR-0013](adr/0013-design-system.md)。
-実装は `packages/vault-task/styles.css`。新しい部品を作るときは、まずここにある部品とトークンで組めないかを考える。
+自作プラグインの UI（vault-task の issue 画面・モーダル・今後の View）と、Vault の Obsidian の外観についてのルール。
+決めた経緯は [ADR-0013](adr/0013-design-system.md)（Material 3 を参考にする）と [ADR-0014](adr/0014-design-under-control.md)（デザインを管理下に置く）。
 
-## 方針
+- **必須**: 守らなければならない。ほとんどは検査で機械的に確かめている（下の「検査の一覧」）
+- **推奨**: 理由があれば外してよい。外すときはこのファイルか ADR に理由を書く
 
-- **Material 3 を参考にする**: トーナルな面の色、角丸、チップ、ホバー時の state layer、文字の階層
-- **Obsidian に溶け込ませる**: 文字・背景・アクセントは Obsidian の CSS 変数から作る。テーマ（ライト / ダーク、アクセントカラー）が変わっても破綻しない
-- **編集できるかどうかが、見ただけで分かる**（下の「編集できるものの目印」）
-- **狭いペインとモバイルでも使える**: 画面幅ではなくペインの幅で切り替える
+## 1. 根拠の優先順位
 
-## トークン
+ルールがぶつかったときは上が勝つ。
 
-`styles.css` の先頭で `body` に定義している（モーダルでも使うため）。色を直接書かず、トークンを使う。
-
-### 面と線
-
-| トークン | 用途 |
-|---|---|
-| `--vt-surface` | カードの面（文字色 3% を背景に混ぜる） |
-| `--vt-surface-high` | 一段強い面（日付ブロック、関係のチップ、件数） |
-| `--vt-outline` | カードやリストの枠線 |
-| `--vt-outline-strong` | 編集できるものの枠線 |
-| `--vt-state-hover` / `--vt-state-press` | ホバー / 押したときに重ねる色（文字色 8% / 12%） |
-| `--vt-primary` / `--vt-on-primary` | Obsidian のアクセントカラー（今のページ、カレンダーのリンク） |
-
-### 角丸
-
-| トークン | 値 | 用途 |
+| 順位 | 根拠 | 使い方 |
 |---|---|---|
-| `--vt-radius-s` | 8px | チップ、入力欄、小さいボタン |
-| `--vt-radius-m` | 12px | 日付の枠、期限、worklog のカード |
-| `--vt-radius-l` | 16px | セクションのカード、工数のタイル |
-| `--vt-radius-full` | 999px | status、ID、丸いボタン |
+| 1 | [WCAG 2.2](https://www.w3.org/TR/WCAG22/) の AA | 守る。コントラスト（1.4.3 / 1.4.11）、押せる大きさ（2.5.8）、フォーカス（2.4.7）、キーボード（2.1.1） |
+| 2 | このファイルとトークン（`tokens.json`） | このリポジトリで決めたこと。値は M3 を元にし、違うところは「M3 との違い」に書く |
+| 3 | [Material 3](https://m3.material.io/) | 値の出どころ。[material-web の tokens v0_192](https://github.com/material-components/material-web/tree/main/tokens/versions/v0_192)（角丸・state layer・文字・動き）と [material-color-utilities](https://github.com/material-foundation/material-color-utilities) の `color_spec_2021.ts`（色の役割ごとのコントラスト） |
+| 4 | [Obsidian の CSS 変数](https://docs.obsidian.md/Reference/CSS+variables/CSS+variables) | 文字の大きさ（13px / 15px）と面の色の出発点。ただし値はトークンで決め、Obsidian 側をそれに合わせて固定する |
 
-### 色
+トークンの書式は [Design Tokens Format Module 2025.10](https://www.designtokens.org/tr/2025.10/format/) に従う。
 
-色は「container（面）/ on（文字）/ 印（点・アイコン・枠）」の 3 つ組で持ち、`body.theme-dark` でダーク用に置き換える。
+## 2. 管理の仕組み
+
+デザインの値は 1 か所（正本）に置き、ほかはすべてそこから生成するか、検査で照合する。
+
+```
+packages/design/tokens.json（正本）
+  ├─ pnpm --filter design build（pnpm build に含まれる）
+  │    ├─ packages/vault-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
+  │    ├─ .obsidian/snippets/vault-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
+  │    ├─ docs/design-tokens.md                 … 値とコントラスト比の一覧
+  │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）
+  └─ 検査
+       ├─ pnpm check（packages/design の test）  … トークン・生成物・CSS・Obsidian の設定・このファイル
+       ├─ pnpm task:lint                          … labels.json の色
+       └─ pnpm preview:ui                         … 描画した画面
+```
+
+- **必須**: 値（色・大きさ・余白・角丸・文字・影・動き）は `tokens.json` にだけ書く。CSS に直接書かない
+- **必須**: 生成物は手で編集しない。`tokens.json` を変えたら `pnpm build` して、生成物も一緒にコミットする
+- **必須**: 値の一覧は [design-tokens.md](design-tokens.md)（生成物）を見る。このファイルには値を書かない（検査で照合できないため）
+
+### トークンの書き方
+
+- 色は `{ colorSpace: "srgb", components, alpha?, hex }`。components と hex が食い違うと読み込みで失敗する
+- ダークテーマの値、役割、コントラストの条件などは `$extensions["com.yamayu-pkm"]` に書く
+
+| 拡張 | 意味 |
+|---|---|
+| `dark` | ダークテーマの値。ないときはライトと同じ |
+| `role` | 色の役割: `surface`（面）/ `text`（文字）/ `graphic`（印・枠・アイコン）/ `state`（重ねる色）/ `decorative`（飾り） |
+| `contrast` | `{ min, on }`。on はその色を置く面。半透明の面は `["{color.surface}", "{color.state-hover}"]` のように下から並べる |
+| `obsidian` | Obsidian 側で同じ値に固定する CSS 変数 |
+| `plugin` | `false` ならプラグインの CSS には出さない |
+| `source` | 値の根拠 |
+
+- **必須**: `text` の色は `contrast.min` を 4.5 以上（WCAG 1.4.3）、`graphic` の色は 3 以上（WCAG 1.4.11）にする。書かないと読み込みで失敗する
+- **必須**: 色を置く面が増えたら `contrast.on` に足す。ホバーで面が変わるなら、重ねた面も足す
+- CSS 変数名はパスを `-` でつないだもの（`type.label-small.size` → `--vt-type-label-small-size`）。`color` グループだけは頭を省く（`color.on-surface` → `--vt-on-surface`）
+
+## 3. Obsidian 側の固定
+
+プラグインの色は Obsidian の背景の上に載るので、背景が分からないとコントラストを保証できない。そこで Vault の設定（`.obsidian/` もコミットしている）で外観を固定する。
+
+- **必須**: `.obsidian/appearance.json` は次のとおり（`obsidian/*` の検査）
+  - `cssTheme` は空（コミュニティテーマを使わない）
+  - `enabledCssSnippets` は `["vault-theme"]` だけ
+  - `accentColor` はトークンの primary（ライト）と同じ
+  - `translucency` は `false`
+  - `theme` は自由（ライト / ダークの両方を定義しているので `system` にしている）
+- **必須**: Obsidian 本体の色の変数（`--background-primary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
+- Obsidian の標準の `--text-faint` は 4.5:1 に届かないので、スニペットで上げている
+- フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
+
+## 4. 色
+
+- **必須**: プラグインの CSS で色を使うときは、トークン（`--vt-*`）を使う。Obsidian の色の変数は使わない
+- **必須**: 色は「面（container）/ その上の文字（on）/ 印（点・アイコン・枠）」の 3 つ組で持ち、ライトとダークの両方を定義する
+- **必須**: 文字を薄くするのに `opacity` を使わない。弱い文字は `--vt-on-surface-variant` にする（opacity だと下の面によって比が変わり、保証できない）
+
+### 役割
+
+| トークン | 役割 | 用途 |
+|---|---|---|
+| `--vt-surface` | 面 | 基本の面（Obsidian のエディタの背景）。編集できるものの面 |
+| `--vt-surface-container` | 面 | カードの面 |
+| `--vt-surface-container-high` | 面 | 一段強い面（日付ブロック、関係のチップ、件数） |
+| `--vt-on-surface` | 文字（7:1） | 本文 |
+| `--vt-on-surface-variant` | 文字（4.5:1） | 補助の文字、ラベル、アイコン、未入力の表示 |
+| `--vt-outline` | 印（3:1） | 編集できるものの枠線 |
+| `--vt-outline-variant` | 飾り | カード・リスト・区切り線の枠 |
+| `--vt-state-hover` / `--vt-state-press` | 状態 | ホバー / 押したときに重ねる色 |
+| `--vt-primary` / `--vt-on-primary` | 文字 | アクセント（今のページ、テキストボタン、リンク） |
+| `--vt-error` | 文字 | エラー、削除 |
+| `--vt-focus-ring` | 印（3:1） | キーボードで選んだときの枠 |
+
+### 色相
 
 | 色 | 使う場所 |
 |---|---|
@@ -49,43 +107,80 @@ vault-task の UI（issue 画面、モーダル、今後の View）はこのル�
 | red | priority の high、deadline の枠、期限切れ |
 | amber | priority の mid、mid_due の枠 |
 
+- それぞれ `--vt-<色>-container`（面）/ `--vt-on-<色>-container`（文字）/ `--vt-<色>`（印）がある
 - status の色は ADR-0006 の割り当てに従う。ID のバッジも status と同じ色にする
 - 期限は `--vt-due-3` → `--vt-due-0`（薄い黄色 → 黄色 → オレンジ → 赤）。期限を過ぎたら赤い枠（ADR-0006）
-- label の色はユーザーが `issue/labels.json` に書いた色をそのまま使う（文字は濃いグレー固定）
+- 実行日は `--vt-scheduled`（面）と `--vt-on-scheduled`（文字）
+- **必須**: 色だけで意味を伝えない（WCAG 1.4.1）。status・priority は文字でも書く。期限は日付と「MID_DUE / DEADLINE」の文字を出す
 
-### 文字
+### label の色
 
-| 役割 | 指定 | 例 |
+- label の面はユーザーが `issue/labels.json` に書いた色をそのまま使い、文字は `--vt-on-label` に固定する
+- **必須**: label の色は `--vt-on-label` との比が 4.5:1 以上（ライト / ダークの両方。半透明の色はカードの面に重ねて測る）。`pnpm task:lint` が `low-contrast-label` で知らせる
+
+## 5. 文字
+
+大きさは px で決める（Obsidian の UI の文字も px。ユーザーが変えられるのは本文の文字だけ）。
+
+| 役割 | トークン | 用途 |
 |---|---|---|
-| 見出し（headline） | 1.6em / 600 | summary |
-| 数値（title） | 1.35em / 600、`tabular-nums` | 工数 |
-| 本文 | Obsidian の `--font-ui-medium` / `--font-ui-small` | |
-| ラベル（label-small） | 11px / 500、大文字、字間 0.06em、`--text-muted` | ESTIMATED、MID_DUE、WORKLOG |
-| 補足 | 11〜12px、`--text-faint` | created / updated |
+| headline-small | `--vt-type-headline-small-*` | summary |
+| title-large | `--vt-type-title-large-*` | 工数の数値 |
+| title-medium | `--vt-type-title-medium-*` | status、狭いペインの工数 |
+| body-medium | `--vt-type-body-medium-*` | 本文（Obsidian の `--font-ui-medium` と同じ大きさ） |
+| body-small | `--vt-type-body-small-*` | 補助の本文（Obsidian の `--font-ui-small` と同じ大きさ） |
+| label-medium | `--vt-type-label-medium-*` | バッジ、テキストボタン、時間 |
+| label-small | `--vt-type-label-small-*` | 欄の名前（大文字）、曜日、件数、created / updated |
 
-- 時刻・日付・時間の数字には `tabular-nums` を付けて桁をそろえる
+- 各役割に `-size` / `-line-height` / `-weight` / `-tracking` がある。太さだけを変えるときは `--vt-weight-*`
+- **必須**: font-size・font-weight・letter-spacing・line-height はトークンを使う（line-height は 1 / normal も可）
+- **必須**: 文字の最小は label-small（11px）
+- 時刻・日付・時間の数字には `font-variant-numeric: tabular-nums` を付けて桁をそろえる（推奨）
 
-## 部品
+## 6. 形・余白・大きさ
+
+- **必須**: 角丸は `--vt-radius-xs` / `--vt-radius-s` / `--vt-radius-m` / `--vt-radius-l` / `--vt-radius-full`（M3 の corner-extra-small〜full）。丸は `--vt-radius-full`
+- **必須**: 余白と位置（padding・margin・gap・inset・outline-offset）は space の値（2 / 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48px）。2px は細かい位置合わせだけに使う
+- **必須**: 大きさ（width・height・flex-basis・grid の列）の px は 4 の倍数（M3 の 4dp グリッド）
+- **必須**: 枠線の太さは 1px（`--vt-border-width-thin`）か 2px（`--vt-border-width-thick`）
+- **必須**: 影は `--vt-elevation-1`（押せるカード）/ `--vt-elevation-2`（編集できるタイルのホバー）/ `--vt-elevation-3`（押せるカードのホバー）。枠線の代わりの `inset 0 0 0 1px var(--vt-*)` は可
+- **必須**: 押せるものは 24×24px 以上（WCAG 2.5.8。`--vt-size-target-min`）。小さいときは、中心から 24px 四方に他の押せるものを置かない
+- 指で押す画面（モバイル）では 40px 以上を目安にする（推奨。M3 は 48dp）
+
+## 7. 状態と動き
+
+- **必須**: 押せるものには必ずホバーを付ける。面がある要素は `background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover))` で面の色を変えずに重ねる。色付きのバッジは `::after` に currentColor を置き、`--vt-opacity-state-hover` / `--vt-opacity-state-press` で重ねる（state layer）
+- **必須**: キーボードで選んだものには `:focus-visible` で 2px の `--vt-focus-ring` の枠を出す（WCAG 2.4.7）。`outline: none` で消さない
+- **必須**: マウスで押せるものは Tab でも選べるようにする（button を使う。使えないときは `tabindex="0"` と Enter の処理）（WCAG 2.1.1）
+- **必須**: 無効なものは `--vt-opacity-disabled`（0.38）
+- 押したときは少し縮める。小さい丸いボタン・日付は `--vt-scale-press-small`、カードは `--vt-scale-press-large`
+- **必須**: transition / animation の時間は `--vt-duration-*`、緩急は `--vt-easing-standard`（M3 の値）
+- **必須**: `@media (prefers-reduced-motion: reduce)` では transition と animation を止める
+- **必須**: filter・backdrop-filter・mix-blend-mode を使わない（できる色が決まらず、コントラストを保証できない）
+
+## 8. 部品
+
+新しい部品を作るときは、まずここにある部品とトークンで組めないかを考える。
 
 | 部品 | クラス | 見た目 |
 |---|---|---|
-| カード | `.vt-card` | `--vt-surface` の面 + `--vt-outline` の枠、角丸 l、余白 14px 16px。関係するものをまとめる入れ物で、カード自体は押せない |
-| status | `.vt-badge.vt-status.is-wide` | 丸い tonal ボタン。高さ 44px、16px 太字、先頭に色の点、末尾に ▾ |
-| バッジ | `.vt-badge` | 高さ 26px、角丸 s、12px |
+| カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
+| status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に色の点、末尾に ▾ |
+| バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
 | ID | `.vt-id` | 丸いバッジ、等幅フォント、status の色 |
-| priority | `.vt-priority` | アイコン（▲ ■ ▼ ·）付きのチップ + ▾ |
+| priority | `.vt-priority` | 記号（▲ ■ ▼ ·）付きのチップ + ▾。記号は飾りなので `aria-hidden` |
 | 入力チップ | `.vt-field-chip` | 枠線 + 先頭のアイコン。未入力は点線で「〜を追加」 |
 | 期限 | `.vt-due` | ラベル・値・カレンダーアイコンの横並び。近づくと色が付く |
-| 日付の枠 | `.vt-day` | 36px の角丸の四角。土日は枠が太い。今日は下に点 |
+| 日付の枠 | `.vt-day` | 36px の角丸の四角。土日は枠が太い。今日は下に点。別の月は文字と枠を一段弱く（薄くはしない） |
 | タイル | `.vt-effort-cell` | ラベル + 大きい数字。編集できるものは `.is-editable`、計算値は `.is-readonly` |
 | リストの項目 | `.vt-log` | 押せるカード。左に日付ブロック、右に時間のチップと鉛筆 |
-| ページング | `.vt-pager` | 丸い前後ボタン（40px、枠線）+ ページ番号（今のページはアクセントカラーで塗る）。多いときは `…` で省略 |
+| ページング | `.vt-pager` | 丸い前後ボタン（40px、枠線）+ ページ番号（今のページは primary で塗る）。多いときは `…` で省略 |
 | アイコンボタン | `.vt-icon-button` | 24px の丸、ホバーで面が付く |
-| 空の状態 | `.vt-empty` | 点線の枠 + 薄い文字 |
+| 空の状態 | `.vt-empty` | 点線の枠 + 弱い文字 |
 
-アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない。
+アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。
 
-## 編集できるものの目印
+## 9. 編集できるものの目印
 
 | 種類 | 目印 |
 |---|---|
@@ -96,39 +191,107 @@ vault-task の UI（issue 画面、モーダル、今後の View）はこのル�
 | 外す | `x` |
 | 押すと開く・編集する項目（worklog） | 影の付いたカード + 鉛筆。ホバーで影が強くなる |
 
-- **編集できるもの**: `--vt-outline-strong` の枠 + `--background-primary` の面（カードの面より一段明るい）+ 上のアイコン
-- **読み取り専用（計算値など）**: 枠なし、`--vt-surface` の面、値は `--text-muted`。ホバーしても変わらない
-- 押せるものには必ずホバー（`--vt-state-hover` を重ねる、影を強くする）を付ける。押したときは少し縮める（`scale(0.92〜0.99)`）
-- 無効なボタンは不透明度 0.38
+- **編集できるもの**: `--vt-outline` の枠（3:1）+ `--vt-surface` の面（カードの面より一段明るい）+ 上のアイコン
+- **読み取り専用（計算値など）**: 枠なし、`--vt-surface-container` の面、値は `--vt-on-surface-variant`。ホバーしても変わらない
 
-## レイアウト
+## 10. レイアウト
 
 - issue 画面のヘッダーは左右に 12px の余白を取る
 - セクションの間は 12px。カードの中も 12px
-- `.vt-header` に `container-type: inline-size` を付け、**ペインの幅が 480px 以下**なら横並びを縦並びにする（`@container`）。画面幅の `@media` は使わない
+- `.vt-header` に `container-type: inline-size` を付け、ペインの幅で切り替える（`@container`）
+  - 480px 以下（`--vt-breakpoint-pane-narrow`）: 横並びを縦並びにする
+  - 300px 以下（`--vt-breakpoint-pane-compact`）: 工数のタイルを 1 列にする
+- **必須**: 画面の幅・高さの `@media` は使わない。`@container` の幅は breakpoint のトークンと同じ数字にする（`@container` の中では var() が使えないので、検査で照合する）
 - 縦並びにしたとき、`flex: 1 1 0` の子は高さが潰れるので `flex: none` に戻す
 - 長い文字は省略（`text-overflow: ellipsis`）し、`min-width: 0` を忘れない。グリッドは `minmax(0, 1fr)`
 
-## ダークテーマ
+## 11. M3 との違い
 
-- 色トークンは `body.theme-dark` でダーク用に置き換える。container は暗く、on（文字）は明るくする
-- 新しい色を足すときは、ライトとダークの両方を定義する
+| 項目 | M3 | このリポジトリ | 理由 |
+|---|---|---|---|
+| label-small | 小文字のまま | 欄の名前・曜日は大文字 | frontmatter のキー（estimated など）を、値と見分けやすくする |
+| headline-small の太さ | 400 | 600 | summary を画面の見出しとして目立たせる |
+| title-large | 22px | 20px | 工数のタイル 3 つが狭いペインで折り返さないように |
+| 本文の大きさ | 14px（body-medium） | 15px / 13px | Obsidian の UI の文字（`--font-ui-medium` / `--font-ui-small`）にそろえる |
+| 影 | elevation の 2 層の影 | 1 層の薄い影 | Obsidian の平らな見た目に合わせる |
+| 押せる大きさ | 48dp | 24px（WCAG 2.5.8 の最小） | デスクトップの密度を優先する。モバイルの対応は今後の課題 |
+| 色 | ソースカラーから HCT で生成 | 手で選んだ値を、コントラストの検査で保証する | 依存を増やさない（ADR-0014） |
 
-## アクセシビリティ
+## 12. 検査の一覧
 
-- アイコンだけのボタンには `aria-label` と `title` を付ける
-- 今のページは `aria-current="page"`、トグルは `aria-pressed`
-- 文字と面の組み合わせは、container と on の組（または白文字と濃い色）にする
+ID は検査が出すメッセージと同じ。新しい検査を足したら、ここにも書く（書き忘れは `pnpm check` で見つかる）。
 
-## 確認のしかた
+### CSS（`pnpm check`。`packages/design/src/css-lint.ts`）
 
-Obsidian がなくても、ブラウザで見た目を確認できる。
+| ID | 内容 | 根拠 |
+|---|---|---|
+| `color/no-literal` | 色を直接書かない（16 進、rgb() などの関数、色の名前、color-mix()） | 2・4 章 |
+| `var/known` | var() はトークン、ファイル内で定義した --vt- の変数、Obsidian のフォントの変数だけ | 3・4 章 |
+| `var/local` | ファイル内で定義する変数（例: `--vt-dot`）は --vt- で始め、トークンを上書きせず、値はトークン 1 つの var() | 2 章 |
+| `type/font-size` | font-size はトークン | 5 章 |
+| `type/font-weight` | font-weight はトークン | 5 章 |
+| `type/letter-spacing` | letter-spacing はトークンか normal / 0 | 5 章 |
+| `type/line-height` | line-height はトークンか normal / 1 | 5 章 |
+| `type/font-family` | font-family は inherit か Obsidian のフォントの変数 | 3 章 |
+| `shape/radius` | 角丸はトークンか 0 | 6 章、M3 shape |
+| `space/scale` | 余白・位置は space の値 | 6 章、M3 の 4dp グリッド |
+| `size/grid` | 大きさの px は 4 の倍数 | 6 章、M3 の 4dp グリッド |
+| `border/width` | 枠線の太さは 1px / 2px | 6 章 |
+| `elevation/shadow` | box-shadow は elevation のトークンか inset の枠線だけ | 6 章 |
+| `state/opacity` | opacity は 0 / 1 / トークン（@keyframes の中は除く） | 4・7 章、M3 state |
+| `motion/tokens` | transition / animation の時間と緩急はトークン | 7 章、M3 motion |
+| `motion/scale` | scale() はトークン（@keyframes の中は除く） | 7 章 |
+| `color/no-filter` | filter / backdrop-filter / mix-blend-mode を使わない | 7 章 |
+| `css/no-important` | !important を使わない | 2 章 |
+| `layout/no-viewport-media` | 画面の幅・高さの @media を使わない | 10 章 |
+| `layout/container-breakpoint` | @container の幅は breakpoint のトークン | 10 章 |
+| `a11y/focus-visible` | :focus-visible で --vt-focus-ring の outline を付ける | WCAG 2.4.7 |
+| `a11y/no-outline-none` | outline: none / 0 で枠を消さない | WCAG 2.4.7 |
+| `a11y/reduced-motion` | transition / animation を使うなら prefers-reduced-motion で止める | WCAG 2.3.3 |
+
+### トークン・生成物・文書（`pnpm check`。`packages/design/test/repo.test.ts`）
+
+- `tokens.json` の書式（DTCG の型、components と hex、別名、role ごとのコントラストの下限）と、整形済みであること
+- すべての `contrast` の条件を、ライト / ダークの両方で満たすこと（WCAG 1.4.3 / 1.4.11）
+- 生成物が `tokens.json` と食い違っていないこと（`pnpm build` 忘れ）
+- このファイルの `--vt-*` とクラス名が実在し、色の値を書いていないこと、検査の ID がすべて載っていること
+
+### Obsidian の設定（`pnpm check`。`packages/design/src/obsidian-config.ts`）
+
+| ID | 内容 |
+|---|---|
+| `obsidian/no-css-theme` | コミュニティテーマを使わない |
+| `obsidian/snippets` | 有効なスニペットは vault-theme だけ |
+| `obsidian/accent` | accentColor はトークンの primary |
+| `obsidian/no-translucency` | 半透明のウィンドウを使わない |
+
+### 描画した画面（`pnpm preview:ui`。`packages/design/src/audit.ts`）
+
+| ID | 内容 | 根拠 |
+|---|---|---|
+| `run/contrast` | 描画された文字と、その下の面（重なりと opacity を含む）の比が 4.5:1（大きい文字は 3:1）以上 | WCAG 1.4.3 |
+| `run/target-size` | 押せるものは 24×24px 以上（小さいときは周りに間隔） | WCAG 2.5.8 |
+| `run/focus-visible` | Tab で選んだものに 2px 以上の枠が出る | WCAG 2.4.7 |
+| `run/keyboard` | マウスで押せるもの（cursor: pointer）は Tab で選べる | WCAG 2.1.1 |
+
+- ホバー中の見た目は描画の検査では見ていない。ホバーで面が変わる組み合わせは、トークンの `contrast.on` に重ねた面を書いて静的に確かめる
+- `aria-hidden` の要素（飾りの記号）は文字のコントラストの対象外
+
+### データ（`pnpm task:lint`）
+
+- `low-contrast-label`: labels.json の色と `--vt-on-label` の比が 4.5:1 未満
+
+## 13. 確認と変更のしかた
 
 ```sh
-cd .plugin-src/packages/vault-task
-pnpm preview:ui      # preview/out/ に light / dark × 広い / 狭いペインの PNG を出す
+cd .plugin-src
+pnpm build                   # tokens.json から生成物を作り直す（プラグインのビルドも）
+pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
+cd packages/vault-task
+pnpm preview:ui              # light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
 ```
 
-- `preview/fixture.tsx` のデータで issue 画面のヘッダーを描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替える
-- UI を変えたら、ライト / ダークと狭いペインの 4 枚を見てからコミットする。実行時のエラーがあると失敗する
-- 新しい View を作ったら、fixture に足して同じように確認できるようにする
+- `preview/fixture.tsx` のデータで issue 画面のヘッダーを描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む
+- **必須**: UI を変えたら `pnpm preview:ui` を通し、ライト / ダークと狭いペインの 4 枚を見てからコミットする
+- 新しい View を作ったら、fixture に足して同じように確認・検査できるようにする
+- 値を変えるときは `tokens.json` を編集して `pnpm build`。ルールを変えるときはこのファイルと検査を一緒に変え、決定が変わるなら ADR を足す

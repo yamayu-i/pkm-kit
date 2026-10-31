@@ -3,7 +3,7 @@
 自作プラグインとそのデータ配置について、決めたことと理由を残す。
 
 - 1 決定 = 1 ファイル。`NNNN-短い名前.md`
-- 状態: `提案`（未確定）→ `承認` → 必要なら `廃止` / `置換（ADR-NNNN）`
+- 状態: `提案`（未確定）→ `承認` → 必要なら `廃止` / `置換（ADR-NNNN）` / `一部置換（ADR-NNNN）`
 - 承認済みの ADR は書き換えない。決定を変えるときは新しい ADR を作り、古い方の状態を `置換` にする
 - 書式は [template.md](template.md)
 
@@ -23,4 +23,5 @@
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
-| [0013](0013-design-system.md) | 承認 | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
+| [0013](0013-design-system.md) | 一部置換（0014） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
+| [0014](0014-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |

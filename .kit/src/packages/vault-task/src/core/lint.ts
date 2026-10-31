@@ -1,4 +1,7 @@
+import { contrastRatio, formatRatio, parseHex, stack } from "../../../design/src/color.ts";
+import { colors } from "../../../design/generated/tokens.ts";
 import { TaskIndex, type VaultData } from "./index";
+import { LABELS_PATH } from "./labels";
 import { isId } from "./ids";
 import type { Problem } from "./problem";
 import { STATUS_DETAIL_MAX } from "./schema";
@@ -14,6 +17,22 @@ function safeDecode(path: string): string {
 	} catch {
 		return path;
 	}
+}
+
+/** label の文字と面の比の下限（WCAG 1.4.3） */
+export const LABEL_CONTRAST_MIN = 4.5;
+
+/**
+ * label の面（ユーザーが書いた色）と文字（トークン on-label）の比。ライト / ダークの低い方。
+ * 半透明の色はカードの面（surface-container）に重ねて測る
+ */
+export function labelContrast(color: string): number {
+	return Math.min(
+		...(["light", "dark"] as const).map((mode) => {
+			const bg = stack([parseHex(colors[mode]["color.surface-container"]), parseHex(color)]);
+			return contrastRatio(parseHex(colors[mode]["color.on-label"]), bg);
+		}),
+	);
 }
 
 /** 整合性の検査（ADR-0001）。パース時の問題とは別に、ファイルをまたいだ問題を見る */
@@ -37,6 +56,12 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 	}
 
 	const labelNames = new Set(data.labels.map((l) => l.name));
+	for (const label of data.labels) {
+		const ratio = labelContrast(label.color);
+		if (ratio < LABEL_CONTRAST_MIN) {
+			add("error", LABELS_PATH, "low-contrast-label", `label「${label.name}」の色 ${label.color} は文字との比が ${formatRatio(ratio)} で、${LABEL_CONTRAST_MIN} に届きません（docs/design.md）`);
+		}
+	}
 	for (const issue of data.issues) {
 		const { path } = issue;
 		if (issue.parent !== null) {

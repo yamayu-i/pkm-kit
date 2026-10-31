@@ -1,0 +1,58 @@
+/**
+ * このリポジトリの実物の検査。pnpm check で毎回走る
+ * （トークン ↔ 生成物 ↔ CSS ↔ Obsidian の設定 ↔ design.md の食い違いを見つける）
+ */
+import { existsSync, readFileSync } from "node:fs";
+import { relative } from "node:path";
+import { describe, expect, it } from "vitest";
+import { buildOutputs, readTokens } from "../node/build.ts";
+import { formatRatio } from "../src/color.ts";
+import { checkContrast } from "../src/contrast.ts";
+import { lintCss } from "../src/css-lint.ts";
+import { lintDesignDoc } from "../src/doc-lint.ts";
+import { formatTokens } from "../src/format.ts";
+import { checkAppearance } from "../src/obsidian-config.ts";
+import { APPEARANCE_JSON, DESIGN_DOC, OUTPUTS, PLUGIN_CSS, SNIPPET_NAME, TOKENS_JSON, VAULT_ROOT } from "../node/paths.ts";
+
+const tokens = readTokens();
+
+describe("このリポジトリのデザイン", () => {
+	it("tokens.json の書式が整っている（pnpm --filter design build で整う）", () => {
+		const text = readFileSync(TOKENS_JSON, "utf8");
+		expect(text).toBe(formatTokens(JSON.parse(text)));
+	});
+
+	it("トークンに書いたコントラストの条件を、ライト / ダークとも満たす", () => {
+		const failed = checkContrast(tokens)
+			.filter((r) => !r.ok)
+			.map((r) => `${r.token}（${r.mode}）on ${r.on.join(" + ")}: ${formatRatio(r.ratio)} < ${r.min}`);
+		expect(failed).toEqual([]);
+	});
+
+	it("生成物が tokens.json と食い違っていない（pnpm --filter design build を忘れていない）", () => {
+		const outputs = buildOutputs(tokens);
+		for (const [key, path] of Object.entries(OUTPUTS)) {
+			const where = relative(VAULT_ROOT, path);
+			expect(existsSync(path), where).toBe(true);
+			expect(readFileSync(path, "utf8"), where).toBe(outputs[key as keyof typeof OUTPUTS]);
+		}
+	});
+
+	for (const path of PLUGIN_CSS) {
+		it(`${relative(VAULT_ROOT, path)} がデザインルールに沿っている`, () => {
+			const problems = lintCss(readFileSync(path, "utf8"), { tokens }).map((p) => `${p.line}: [${p.rule}] ${p.message}`);
+			expect(problems).toEqual([]);
+		});
+	}
+
+	it("Obsidian の外観の設定が固定されている", () => {
+		const appearance = JSON.parse(readFileSync(APPEARANCE_JSON, "utf8"));
+		expect(checkAppearance(appearance, tokens, SNIPPET_NAME).map((p) => p.message)).toEqual([]);
+		expect(OUTPUTS.obsidianSnippet.endsWith(`/.obsidian/snippets/${SNIPPET_NAME}.css`)).toBe(true);
+	});
+
+	it("design.md がトークン・CSS・検査と食い違っていない", () => {
+		const css = PLUGIN_CSS.map((p) => readFileSync(p, "utf8")).join("\n");
+		expect(lintDesignDoc(readFileSync(DESIGN_DOC, "utf8"), tokens, css)).toEqual([]);
+	});
+});

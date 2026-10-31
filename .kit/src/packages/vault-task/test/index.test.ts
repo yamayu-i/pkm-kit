@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TaskIndex, isInbox, organizeQueue, type VaultData } from "../src/core/index";
-import { lintVault } from "../src/core/lint";
+import { LABEL_CONTRAST_MIN, labelContrast, lintVault } from "../src/core/lint";
 import { parseIssue, parseMember, parseRoutine, type Issue, type Member, type Routine } from "../src/core/schema";
 import type { WorklogEntry } from "../src/core/worklog";
 
@@ -102,6 +102,18 @@ describe("lintVault", () => {
 
 	it("問題がなければ空", () => {
 		expect(codes(data({ issues: [issue("i-1"), issue("i-2", { parent: "i-1" })] }))).toEqual([]);
+	});
+
+	it("label の色が暗くて文字が読めない", () => {
+		const d = data({
+			labels: [
+				{ name: "ok", color: "#d0d0d0" },
+				{ name: "dark", color: "#555555" },
+				{ name: "faint", color: "#00000080" },
+			],
+		});
+		expect(codes(d)).toEqual(["issue/labels.json low-contrast-label", "issue/labels.json low-contrast-label"]);
+		expect(labelContrast("#d0d0d0")).toBeGreaterThan(LABEL_CONTRAST_MIN);
 	});
 
 	it("ID の重複", () => {

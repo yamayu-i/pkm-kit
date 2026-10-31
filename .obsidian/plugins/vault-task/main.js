@@ -1421,7 +1421,7 @@ function IdBadge(props) {
 var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
 function PriorityBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
     props.priority ?? "priority",
     props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
   ] });
@@ -1872,7 +1872,19 @@ function DueFields(props) {
 function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", onClick: (e3) => void props.ctx.openPath(props.issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false), children: props.issue.summary }),
+    /* @__PURE__ */ u3(
+      "span",
+      {
+        class: "vt-link",
+        role: "link",
+        tabIndex: 0,
+        onClick: (e3) => void props.ctx.openPath(props.issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false),
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter") void props.ctx.openPath(props.issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false);
+        },
+        children: props.issue.summary
+      }
+    ),
     props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", title: "\u5916\u3059", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }

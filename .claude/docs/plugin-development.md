@@ -64,14 +64,33 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
 | `cli/lint.ts` | `pnpm task:lint` の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
+## design（デザイントークンと検査）
+
+`.plugin-src/packages/design`。プラグインではなく、デザインの値の正本と検査を置く（ADR-0014）。
+
+| パス | 役割 |
+|---|---|
+| `tokens.json` | 値の正本（Design Tokens Format Module 2025.10） |
+| `src/tokens.ts` | 読み込みと書式の検査 |
+| `src/color.ts` / `src/contrast.ts` | WCAG のコントラスト比と、トークンに書いた条件の検査 |
+| `src/emit.ts` / `scripts/generate.ts` | 生成（`pnpm build` に含まれる） |
+| `node/` | ファイルの読み書きとパス。Node の API を使うので `src/` の外に置く（security-scan は `src/` で Node の API を禁止している） |
+| `src/css-lint.ts` / `src/obsidian-config.ts` / `src/doc-lint.ts` | CSS・Obsidian の設定・design.md の検査（`pnpm check` の test で走る） |
+| `src/audit.ts` | 描画した画面の検査（`pnpm preview:ui` から使う） |
+| `generated/tokens.ts` | TS から使う色（vault-task の label の検査）。生成物 |
+
+- vault-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
+- スクリプトは Node の型の除去で `.ts` をそのまま動かす（ビルドしない）
+
 ### 注意点
 
 - frontmatter の更新は `fileManager.processFrontMatter` で行う（ほかの欄や書式を壊さない）。値が空なら欄ごと消す
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
-- **UI はデザインルール `.plugin-src/docs/design.md` に従う**（トークン・部品・編集できるものの目印・レイアウト）。新しい色や部品を足したら、そのファイルも更新する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。UI を変えたら見てからコミットする
+- **UI はデザインルール `.plugin-src/docs/design.md` に従う**（ADR-0014）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
+- `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする
 
 ## 進め方
 
