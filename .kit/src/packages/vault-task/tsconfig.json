@@ -15,5 +15,5 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "preact"
 	},
-	"include": ["src", "cli", "test", "*.ts"]
+	"include": ["src", "cli", "test", "preview", "*.ts"]
 }

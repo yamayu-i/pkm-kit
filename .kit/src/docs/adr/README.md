@@ -23,3 +23,4 @@
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
+| [0013](0013-design-system.md) | 承認 | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |

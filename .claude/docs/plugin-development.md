@@ -61,6 +61,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 | `src/obsidian/` | 索引の保持（metadataCache から）、Vault への書き込み、モーダル、一括登録 | あり |
 | `src/header/` | issue 画面のヘッダー（CodeMirror の block widget + preact） | あり |
 | `src/ui/` | preact の部品（バッジ、フォーム、カレンダー） | 一部 |
+| `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
 | `cli/lint.ts` | `pnpm task:lint` の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
 ### 注意点
@@ -69,7 +70,8 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
-- UI は Obsidian なしで確認できる: preact の部品を、`obsidian` をモックに差し替えて esbuild で束ね、Playwright の Chromium で表示する
+- **UI はデザインルール `.plugin-src/docs/design.md` に従う**（トークン・部品・編集できるものの目印・レイアウト）。新しい色や部品を足したら、そのファイルも更新する
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。UI を変えたら見てからコミットする
 
 ## 進め方
 
