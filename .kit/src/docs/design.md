@@ -1,7 +1,7 @@
 # デザインルール
 
 自作プラグインの UI（vault-task の issue 画面・モーダル・今後の View）と、Vault の Obsidian の外観についてのルール。
-決めた経緯は [ADR-0013](adr/0013-design-system.md)（Material 3 を参考にする）と [ADR-0014](adr/0014-design-under-control.md)（デザインを管理下に置く）。
+決めた経緯は [ADR-0013](adr/0013-design-system.md)（Material 3 を参考にする）と [ADR-0016](adr/0016-design-under-control.md)（デザインを管理下に置く）。
 
 - **必須**: 守らなければならない。ほとんどは検査で機械的に確かめている（下の「検査の一覧」）
 - **推奨**: 理由があれば外してよい。外すときはこのファイルか ADR に理由を書く
@@ -85,6 +85,7 @@ packages/design/tokens.json（正本）
 | `--vt-surface` | 面 | 基本の面（Obsidian のエディタの背景）。編集できるものの面 |
 | `--vt-surface-container` | 面 | カードの面 |
 | `--vt-surface-container-high` | 面 | 一段強い面（日付ブロック、関係のチップ、件数） |
+| `--vt-secondary-container` / `--vt-on-secondary-container` | 面 / 文字 | 選んでいるもの（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） |
 | `--vt-on-surface` | 文字（7:1） | 本文 |
 | `--vt-on-surface-variant` | 文字（4.5:1） | 補助の文字、ラベル、アイコン、未入力の表示 |
 | `--vt-outline` | 印（3:1） | 編集できるものの枠線 |
@@ -139,11 +140,11 @@ packages/design/tokens.json（正本）
 
 ## 6. 形・余白・大きさ
 
-- **必須**: 角丸は `--vt-radius-xs` / `--vt-radius-s` / `--vt-radius-m` / `--vt-radius-l` / `--vt-radius-full`（M3 の corner-extra-small〜full）。丸は `--vt-radius-full`
-- **必須**: 余白と位置（padding・margin・gap・inset・outline-offset）は space の値（2 / 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48px）。2px は細かい位置合わせだけに使う
+- **必須**: 角丸は `--vt-radius-xs` / `--vt-radius-s` / `--vt-radius-m` / `--vt-radius-l` / `--vt-radius-xl` / `--vt-radius-full`（M3 の corner-extra-small〜full）。丸は `--vt-radius-full`
+- **必須**: 余白と位置（padding・margin・gap・inset・outline-offset）は space の値（2 / 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 / 96px）。2px は細かい位置合わせだけ、64 / 96px は大きい領域だけに使う
 - **必須**: 大きさ（width・height・flex-basis・grid の列）の px は 4 の倍数（M3 の 4dp グリッド）
 - **必須**: 枠線の太さは 1px（`--vt-border-width-thin`）か 2px（`--vt-border-width-thick`）
-- **必須**: 影は `--vt-elevation-1`（押せるカード）/ `--vt-elevation-2`（編集できるタイルのホバー）/ `--vt-elevation-3`（押せるカードのホバー）。枠線の代わりの `inset 0 0 0 1px var(--vt-*)` は可
+- **必須**: 影は `--vt-elevation-1`（押せるカード）/ `--vt-elevation-2`（編集できるタイル・行のホバー）/ `--vt-elevation-3`（押せるカードのホバー）/ `--vt-elevation-4`（浮いている操作バー）/ `--vt-elevation-5`（持ち上げて動かすカード）。枠線の代わりの `inset 0 0 0 1px var(--vt-*)` と、選んだものの輪 `0 0 0 1px var(--vt-*)` は可
 - **必須**: 押せるものは 24×24px 以上（WCAG 2.5.8。`--vt-size-target-min`）。小さいときは、中心から 24px 四方に他の押せるものを置かない
 - 指で押す画面（モバイル）では 40px 以上を目安にする（推奨。M3 は 48dp）
 
@@ -153,7 +154,7 @@ packages/design/tokens.json（正本）
 - **必須**: キーボードで選んだものには `:focus-visible` で 2px の `--vt-focus-ring` の枠を出す（WCAG 2.4.7）。`outline: none` で消さない
 - **必須**: マウスで押せるものは Tab でも選べるようにする（button を使う。使えないときは `tabindex="0"` と Enter の処理）（WCAG 2.1.1）
 - **必須**: 無効なものは `--vt-opacity-disabled`（0.38）
-- 押したときは少し縮める。小さい丸いボタン・日付は `--vt-scale-press-small`、カードは `--vt-scale-press-large`
+- 押したときは少し縮める。小さい丸いボタン・日付は `--vt-scale-press-small`、ボタンは `--vt-scale-press-medium`、カードは `--vt-scale-press-large`
 - **必須**: transition / animation の時間は `--vt-duration-*`、緩急は `--vt-easing-standard`（M3 の値）
 - **必須**: `@media (prefers-reduced-motion: reduce)` では transition と animation を止める
 - **必須**: filter・backdrop-filter・mix-blend-mode を使わない（できる色が決まらず、コントラストを保証できない）
@@ -177,6 +178,21 @@ packages/design/tokens.json（正本）
 | ページング | `.vt-pager` | 丸い前後ボタン（40px、枠線）+ ページ番号（今のページは primary で塗る）。多いときは `…` で省略 |
 | アイコンボタン | `.vt-icon-button` | 24px の丸、ホバーで面が付く |
 | 空の状態 | `.vt-empty` | 点線の枠 + 弱い文字 |
+| ボタン | `.vt-button`（`.is-primary` / `.is-text`） | 丸い 36px。outlined が既定、主な操作は filled（primary）、補助は text |
+| 段階表示 | `.vt-stepper` / `.vt-step` | 丸い番号 + ラベル + 件数（赤い tonal）。今の段階は secondary-container の面、済みは緑のチェック |
+| 一覧の行 | `.vt-table` / `.vt-tr` | 押せるカードの行（48px 以上）。選んだ行は primary の枠 + secondary-container の面。狭いペインでは補助の列を隠す |
+| 操作バー | `.vt-actionbar` | 選んだ行への操作。下に貼り付き、選ぶと浮き上がる（`--vt-elevation-4`） |
+| 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
+| 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
+| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠 |
+| 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
+| グループ | `.vt-group` | ボードの枠。1 階層目は横に等分（`.vt-board-columns`、狭いペインでは縦）、サブグループは中に縦に積む。カードを落とせるときは primary の枠 + secondary-container の面 |
+| 未分類 | `.vt-group.is-ungrouped` | グループと並べず、ボードの上に横長に置く（点線の枠、カードは横に並ぶ）。カードがすべてグループに入ったら出さない |
+| 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
+| スイッチ | `.vt-switch` | M3 の switch（52×32、つまみは 16px → 24px）。routine の一時停止 |
+| 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下にエラー。その場で作る・変える編集に使う |
+| 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
+| 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
 
 アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。
 
@@ -196,9 +212,11 @@ packages/design/tokens.json（正本）
 
 ## 10. レイアウト
 
-- issue 画面のヘッダーは左右に 12px の余白を取る
+- issue 画面のヘッダーは左右に 12px の余白を取る。View（`.vt-page`）は 16px、最大幅 1200px で中央に置く
+- View の見出しは「タイトル（headline-small）+ 件数のチップ + 右に主な操作」
 - セクションの間は 12px。カードの中も 12px
-- `.vt-header` に `container-type: inline-size` を付け、ペインの幅で切り替える（`@container`）
+- `.vt-header` と `.vt-view` に `container-type: inline-size` を付け、ペインの幅で切り替える（`@container`）
+  - 720px 以下（`--vt-breakpoint-pane-medium`）: 一覧の補助の列を隠し、ボードのグループを縦に積む
   - 480px 以下（`--vt-breakpoint-pane-narrow`）: 横並びを縦並びにする
   - 300px 以下（`--vt-breakpoint-pane-compact`）: 工数のタイルを 1 列にする
 - **必須**: 画面の幅・高さの `@media` は使わない。`@container` の幅は breakpoint のトークンと同じ数字にする（`@container` の中では var() が使えないので、検査で照合する）
@@ -215,7 +233,7 @@ packages/design/tokens.json（正本）
 | 本文の大きさ | 14px（body-medium） | 15px / 13px | Obsidian の UI の文字（`--font-ui-medium` / `--font-ui-small`）にそろえる |
 | 影 | elevation の 2 層の影 | 1 層の薄い影 | Obsidian の平らな見た目に合わせる |
 | 押せる大きさ | 48dp | 24px（WCAG 2.5.8 の最小） | デスクトップの密度を優先する。モバイルの対応は今後の課題 |
-| 色 | ソースカラーから HCT で生成 | 手で選んだ値を、コントラストの検査で保証する | 依存を増やさない（ADR-0014） |
+| 色 | ソースカラーから HCT で生成 | 手で選んだ値を、コントラストの検査で保証する | 依存を増やさない（ADR-0016） |
 
 ## 12. 検査の一覧
 
@@ -227,7 +245,7 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 |---|---|---|
 | `color/no-literal` | 色を直接書かない（16 進、rgb() などの関数、色の名前、color-mix()） | 2・4 章 |
 | `var/known` | var() はトークン、ファイル内で定義した --vt- の変数、Obsidian のフォントの変数だけ | 3・4 章 |
-| `var/local` | ファイル内で定義する変数（例: `--vt-dot`）は --vt- で始め、トークンを上書きせず、値はトークン 1 つの var() | 2 章 |
+| `var/local` | ファイル内で定義する変数（例: `--vt-dot`、`--vt-cols`）は --vt- で始め、トークンを上書きせず、値はトークン 1 つの var() か数 | 2 章 |
 | `type/font-size` | font-size はトークン | 5 章 |
 | `type/font-weight` | font-weight はトークン | 5 章 |
 | `type/letter-spacing` | letter-spacing はトークンか normal / 0 | 5 章 |
@@ -237,7 +255,7 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 | `space/scale` | 余白・位置は space の値 | 6 章、M3 の 4dp グリッド |
 | `size/grid` | 大きさの px は 4 の倍数 | 6 章、M3 の 4dp グリッド |
 | `border/width` | 枠線の太さは 1px / 2px | 6 章 |
-| `elevation/shadow` | box-shadow は elevation のトークンか inset の枠線だけ | 6 章 |
+| `elevation/shadow` | box-shadow は elevation のトークンか、枠線・輪（`(inset) 0 0 0 1px`）だけ | 6 章 |
 | `state/opacity` | opacity は 0 / 1 / トークン（@keyframes の中は除く） | 4・7 章、M3 state |
 | `motion/tokens` | transition / animation の時間と緩急はトークン | 7 章、M3 motion |
 | `motion/scale` | scale() はトークン（@keyframes の中は除く） | 7 章 |
@@ -288,10 +306,11 @@ cd .plugin-src
 pnpm build                   # tokens.json から生成物を作り直す（プラグインのビルドも）
 pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
 cd packages/vault-task
-pnpm preview:ui              # light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
+pnpm preview:ui              # 画面 × light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
+pnpm preview:ui board inbox  # 画面を絞る（header / daily / board / issues / inbox / organize / scheduled / someday / routines / groups）
 ```
 
-- `preview/fixture.tsx` のデータで issue 画面のヘッダーを描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む
-- **必須**: UI を変えたら `pnpm preview:ui` を通し、ライト / ダークと狭いペインの 4 枚を見てからコミットする
+- `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む
+- **必須**: UI を変えたら `pnpm preview:ui` を通し、変えた画面のライト / ダークと狭いペインを見てからコミットする
 - 新しい View を作ったら、fixture に足して同じように確認・検査できるようにする
 - 値を変えるときは `tokens.json` を編集して `pnpm build`。ルールを変えるときはこのファイルと検査を一緒に変え、決定が変わるなら ADR を足す

@@ -99,7 +99,7 @@ export interface LintProblem {
 export const CSS_RULES = {
 	"color/no-literal": "色を直接書かない（16 進、rgb() などの関数、色の名前、color-mix()）。トークンを使う",
 	"var/known": "var() はトークン、このファイルで定義した --vt- の変数、Obsidian のフォントの変数だけ",
-	"var/local": "ファイル内で定義する変数は --vt- で始め、トークンと同じ名前にせず、値はトークン 1 つの var() にする",
+	"var/local": "ファイル内で定義する変数は --vt- で始め、トークンと同じ名前にせず、値はトークン 1 つの var() か数にする",
 	"type/font-size": "font-size は文字の役割のトークン（--vt-type-*-size）",
 	"type/font-weight": "font-weight はトークン（--vt-weight-* / --vt-type-*-weight）",
 	"type/letter-spacing": "letter-spacing はトークン（--vt-type-*-tracking）か normal / 0",
@@ -109,7 +109,7 @@ export const CSS_RULES = {
 	"space/scale": "余白・位置（padding / margin / gap / inset / outline-offset）は space の値（4px 刻み）",
 	"size/grid": "大きさ（width / height / flex-basis / grid の列）の px は 4 の倍数",
 	"border/width": "枠線の太さは border-width の値（1px / 2px）",
-	"elevation/shadow": "box-shadow は none、elevation のトークン、枠線の代わりの inset 0 0 0 (1|2)px var(--vt-*) だけ",
+	"elevation/shadow": "box-shadow は none、elevation のトークン、枠線の代わりの (inset) 0 0 0 (1|2)px var(--vt-*) だけ",
 	"state/opacity": "opacity は 0 / 1 / トークン（--vt-opacity-*）。文字を薄くするのに使わない（@keyframes の中は除く）",
 	"motion/tokens": "transition / animation の時間と緩急はトークン（--vt-duration-* / --vt-easing-*）",
 	"motion/scale": "scale() はトークン（--vt-scale-*）（@keyframes の中は除く）",
@@ -214,7 +214,8 @@ export function lintCss(source: string, { tokens }: LintContext): LintProblem[] 
 		if (prop.startsWith("--")) {
 			if (!prop.startsWith("--vt-")) add("var/local", line, `${prop}`);
 			else if (tokenVars.has(prop)) add("var/local", line, `${prop} はトークンと同じ名前です（トークンを上書きしない）`);
-			else if (!/^var\(\s*--vt-[\w-]+\s*\)$/.test(value) || !tokenVars.has(varsIn(value)[0] as string)) {
+			// 値はトークン 1 つの var() か、数（列の数など。TSX の style からも渡す）
+			else if (!/^\d+$/.test(value) && (!/^var\(\s*--vt-[\w-]+\s*\)$/.test(value) || !tokenVars.has(varsIn(value)[0] as string))) {
 				add("var/local", line, `${prop}: ${value}`);
 			}
 		}
@@ -268,7 +269,8 @@ export function lintCss(source: string, { tokens }: LintContext): LintProblem[] 
 		if (prop === "box-shadow" && value !== "none") {
 			for (const layer of value.split(/,(?![^(]*\))/).map((s) => s.trim())) {
 				if (isVar(layer, /^--vt-elevation-[\w-]+$/)) continue;
-				const m = /^inset 0 0 0 (\d+)px (var\(--vt-[\w-]+\))$/.exec(layer);
+				// 枠線の代わり（内側）と、選んだものの輪（外側）
+				const m = /^(?:inset )?0 0 0 (\d+)px (var\(--vt-[\w-]+\))$/.exec(layer);
 				if (m && borders.has(Number(m[1])) && isVar(m[2] as string, /^--vt-/)) continue;
 				add("elevation/shadow", line, layer);
 			}

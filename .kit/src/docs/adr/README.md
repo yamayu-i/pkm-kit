@@ -23,5 +23,7 @@
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
-| [0013](0013-design-system.md) | 一部置換（0014） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
-| [0014](0014-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
+| [0013](0013-design-system.md) | 一部置換（0016） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
+| [0014](0014-daily-board.md) | 承認（一部置換: 0015） | DailyTaskView と task board の保存形式・細部 |
+| [0015](0015-board-layout-simplified.md) | 承認 | task board のグループの並べ方を簡単にし、カードの ID を外す |
+| [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |

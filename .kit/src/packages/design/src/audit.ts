@@ -111,6 +111,8 @@ export function auditInPage({ rootSelector, targetMin }: { rootSelector: string;
 	// キーボードで選べるか（WCAG 2.1.1）
 	for (const el of root.querySelectorAll("*")) {
 		if (!visible(el) || isDisabled(el) || getComputedStyle(el).cursor !== "pointer") continue;
+		// 親から cursor を継承しているだけの子は数えない（押せる範囲の一番外側だけを見る）
+		if (el.parentElement && getComputedStyle(el.parentElement).cursor === "pointer") continue;
 		if ((el as HTMLElement).tabIndex >= 0 || el.closest("button, a[href], label, input, select, textarea") !== null) continue;
 		problems.push({ rule: "run/keyboard", where: describe(el), message: "Tab で選べません（button にするか、tabindex と Enter の処理を付ける）" });
 	}

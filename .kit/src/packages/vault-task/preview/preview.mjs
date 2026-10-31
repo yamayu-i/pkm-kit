@@ -1,9 +1,9 @@
 /**
- * issue 画面の見た目を、Obsidian なしで確認して検査する（docs/design.md「確認のしかた」）。
+ * issue 画面と各 View の見た目を、Obsidian なしで確認して検査する（docs/design.md「確認のしかた」）。
  * obsidian をモックに差し替えて束ね、Chromium（Playwright）でライト / ダークのスクリーンショットを撮る。
  * 撮ったあと、描画した画面を検査する（run/contrast・run/target-size・run/focus-visible・run/keyboard）。違反があれば失敗する。
  *
- * 使い方: pnpm preview:ui  → preview/out/*.png
+ * 使い方: pnpm preview:ui [画面名...]  → preview/out/<画面>-<light|dark>(-narrow).png
  * Playwright と Chromium は開発環境に入っているものを使う（このリポジトリの依存にはしない）
  */
 import { mkdir, writeFile } from "node:fs/promises";
@@ -49,36 +49,43 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 	);
 }
 
+// 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
+const SCREENS = ["header", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups"];
+const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
+const screens = wanted.length > 0 ? wanted : SCREENS;
+
 const { chromium } = createRequire(import.meta.url)("playwright");
 const browser = await chromium.launch();
 const problems = [];
-for (const name of ["light", "dark"]) {
-	const page = await browser.newPage({ viewport: { width: 800, height: 1500 } });
-	page.on("pageerror", (e) => problems.push(`${name}: 実行時のエラー: ${e.message}`));
-	await page.goto(`file://${out}${name}.html`);
-	await page.waitForTimeout(300);
-	await page.locator("#wide").screenshot({ path: `${out}${name}.png` });
-	await page.locator("#narrow").screenshot({ path: `${out}${name}-narrow.png` });
-	console.log(`${out}${name}.png / ${name}-narrow.png`);
+for (const theme of ["light", "dark"]) {
+	for (const screen of screens) {
+		const where = `${theme}/${screen}`;
+		const page = await browser.newPage({ viewport: { width: 1100, height: 1500 } });
+		page.on("pageerror", (e) => problems.push(`${where}: 実行時のエラー: ${e.message}`));
+		await page.goto(`file://${out}${theme}.html#${screen}`);
+		await page.waitForTimeout(300);
+		await page.locator("#wide").screenshot({ path: `${out}${screen}-${theme}.png` });
+		await page.locator("#narrow").screenshot({ path: `${out}${screen}-${theme}-narrow.png` });
 
-	for (const root of ["#wide", "#narrow"]) {
-		for (const p of await page.evaluate(auditInPage, { rootSelector: root, targetMin })) {
-			problems.push(`${name} ${root}: [${p.rule}] ${p.where}: ${p.message}`);
+		for (const root of ["#wide", "#narrow"]) {
+			for (const p of await page.evaluate(auditInPage, { rootSelector: root, targetMin })) {
+				problems.push(`${where} ${root}: [${p.rule}] ${p.where}: ${p.message}`);
+			}
 		}
+		// Tab で順に選び、どれにも枠が出るかを見る
+		const seen = new Set();
+		for (let i = 0; i < 300; i++) {
+			await page.keyboard.press("Tab");
+			const r = await page.evaluate(focusRingInPage, ringWidth);
+			if (r === null) break;
+			// 一周したら終わり
+			if (seen.has(r.where) && r.where === [...seen][0]) break;
+			seen.add(r.where);
+			if (!r.ok) problems.push(`${where}: [run/focus-visible] ${r.where}: 枠が出ません`);
+		}
+		await page.close();
 	}
-	// Tab で順に選び、どれにも枠が出るかを見る
-	const seen = new Set();
-	for (let i = 0; i < 300; i++) {
-		await page.keyboard.press("Tab");
-		const r = await page.evaluate(focusRingInPage, ringWidth);
-		if (r === null) break;
-		// 一周したら終わり
-		if (seen.has(r.where) && r.where === [...seen][0]) break;
-		seen.add(r.where);
-		if (!r.ok) problems.push(`${name}: [run/focus-visible] ${r.where}: 枠が出ません`);
-	}
-	console.log(`${name}: Tab で ${seen.size} 個を確かめました`);
-	await page.close();
+	console.log(`${out}<画面>-${theme}(-narrow).png`);
 }
 await browser.close();
 

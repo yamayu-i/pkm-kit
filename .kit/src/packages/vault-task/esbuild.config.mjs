@@ -25,10 +25,11 @@ const plugin = {
 	logLevel: "info",
 };
 
-/** lint の CLI（プラグインには同梱しない。Claude Code から使う） */
+/** CLI（プラグインには同梱しない。Claude Code とスキルから使う） */
 const cli = {
-	entryPoints: ["cli/lint.ts"],
-	outfile: "dist/cli.mjs",
+	entryPoints: ["cli/lint.ts", "cli/worklog-review.ts"],
+	outdir: "dist",
+	outExtension: { ".js": ".mjs" },
 	bundle: true,
 	format: "esm",
 	platform: "node",

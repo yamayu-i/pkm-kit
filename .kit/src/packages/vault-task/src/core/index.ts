@@ -1,5 +1,7 @@
 import { diffDays, type LocalDate } from "./dates";
+import type { DailyBoard } from "./board";
 import { prorateEffort } from "./effort";
+import type { GroupDef } from "./groups";
 import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
@@ -11,6 +13,14 @@ export interface VaultData {
 	members: Member[];
 	labels: LabelDef[];
 	worklogs: WorklogEntry[];
+	/** デイリーノートの frontmatter にあるボードの状態 */
+	boards: DailyBoard[];
+	/** task board のグループ（issue/board-groups.json） */
+	groups: GroupDef[];
+}
+
+export function emptyVaultData(): VaultData {
+	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -115,6 +125,15 @@ export class TaskIndex {
 	effortMinutes(now: number): Map<string, number> {
 		const ms = prorateEffort(this.data.worklogs, now);
 		return new Map([...ms].map(([id, v]) => [id, v / 60_000]));
+	}
+
+	board(date: LocalDate): DailyBoard | undefined {
+		return this.data.boards.find((b) => b.date === date);
+	}
+
+	/** 記録中（to が空）の worklog */
+	running(taskId?: string): WorklogEntry[] {
+		return this.data.worklogs.filter((l) => l.toMs === null && (taskId === undefined || l.taskId === taskId));
 	}
 
 	routinesOn(date: LocalDate): Routine[] {

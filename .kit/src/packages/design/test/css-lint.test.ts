@@ -47,7 +47,8 @@ describe("lintCss", () => {
 	transform: scale(var(--vt-scale-press-small));
 	background: var(--vt-dot);
 }
-.b { box-shadow: var(--vt-elevation-1), inset 0 0 0 2px var(--vt-red); }
+.b { box-shadow: var(--vt-elevation-1), inset 0 0 0 2px var(--vt-red); --vt-cols: 3; }
+.c { box-shadow: 0 0 0 1px var(--vt-primary); grid-template-columns: repeat(var(--vt-cols), 112px); }
 @container (max-width: 480px) { .a { flex: none; } }
 @keyframes p { 50% { opacity: 0.35; transform: scale(0.7); } }
 `;
@@ -62,6 +63,7 @@ describe("lintCss", () => {
 		["知らない変数", ".a { color: var(--text-normal); }", "var/known"],
 		["トークンの上書き", ".a { --vt-primary: var(--vt-red); }", "var/local"],
 		["ローカル変数に直接の値", ".a { --vt-dot: 4px; }", "var/local"],
+		["外側の輪の太さ", ".a { box-shadow: 0 0 0 3px var(--vt-primary); }", "elevation/shadow"],
 		["px の font-size", ".a { font-size: 12px; }", "type/font-size"],
 		["em の font-size", ".a { font-size: 1.6em; }", "type/font-size"],
 		["数の font-weight", ".a { font-weight: 600; }", "type/font-weight"],

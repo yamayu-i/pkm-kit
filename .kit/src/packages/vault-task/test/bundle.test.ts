@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 function obsidianMock() {
 	const commands: { id: string; name: string }[] = [];
 	const extensions: unknown[] = [];
+	const views: string[] = [];
 	let layoutReady: (() => void) | null = null;
 	class Plugin {
 		app = {
@@ -25,12 +26,23 @@ function obsidianMock() {
 		}
 		addRibbonIcon() {}
 		registerEvent() {}
+		registerView(type: string) {
+			views.push(type);
+		}
+		addSettingTab() {}
+		async loadData() {
+			return null;
+		}
+		async saveData() {}
 	}
 	class Modal {}
 	return {
 		obsidian: {
 			Plugin,
 			Modal,
+			ItemView: class {},
+			PluginSettingTab: class {},
+			Setting: class {},
 			SuggestModal: Modal,
 			FuzzySuggestModal: Modal,
 			Notice: class {},
@@ -43,6 +55,7 @@ function obsidianMock() {
 		},
 		commands,
 		extensions,
+		views,
 		ready: () => layoutReady?.(),
 	};
 }
@@ -63,7 +76,18 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		await plugin.onload();
 		mock.ready();
 		expect([...required].sort()).toEqual(["@codemirror/state", "@codemirror/view", "obsidian"]);
-		expect(mock.commands.map((c) => c.id)).toEqual(["capture-issues"]);
+		expect(mock.commands.map((c) => c.id)).toEqual([
+			"open-daily",
+			"open-issues",
+			"open-inbox",
+			"open-organize",
+			"open-scheduled",
+			"open-someday",
+			"open-routines",
+			"open-groups",
+			"capture-issues",
+		]);
+		expect(mock.views).toHaveLength(8);
 		expect(mock.extensions).toHaveLength(1);
 	});
 });

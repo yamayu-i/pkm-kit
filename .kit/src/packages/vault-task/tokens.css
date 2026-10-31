@@ -14,6 +14,9 @@ body {
 	--vt-primary: #6750a4;
 	--vt-on-primary: #ffffff;
 	--vt-primary-state-hover: #6750a414;
+	--vt-on-primary-state-hover: #ffffff14;
+	--vt-secondary-container: #e8def8;
+	--vt-on-secondary-container: #1d192b;
 	--vt-error: #b3261e;
 	--vt-focus-ring: var(--vt-primary);
 	--vt-green-container: #c4eed0;
@@ -54,6 +57,7 @@ body {
 	--vt-radius-s: 8px;
 	--vt-radius-m: 12px;
 	--vt-radius-l: 16px;
+	--vt-radius-xl: 28px;
 	--vt-radius-full: 9999px;
 	--vt-space-2: 2px;
 	--vt-space-4: 4px;
@@ -65,12 +69,15 @@ body {
 	--vt-space-32: 32px;
 	--vt-space-40: 40px;
 	--vt-space-48: 48px;
+	--vt-space-64: 64px;
+	--vt-space-96: 96px;
 	--vt-size-grid: 4px;
 	--vt-size-target-min: 24px;
 	--vt-border-width-thin: 1px;
 	--vt-border-width-thick: 2px;
 	--vt-breakpoint-pane-narrow: 480px;
 	--vt-breakpoint-pane-compact: 300px;
+	--vt-breakpoint-pane-medium: 720px;
 	--vt-weight-regular: 400;
 	--vt-weight-medium: 500;
 	--vt-weight-semibold: 600;
@@ -105,15 +112,19 @@ body {
 	--vt-type-label-small-tracking: 0.5px;
 	--vt-duration-short2: 100ms;
 	--vt-duration-short3: 150ms;
+	--vt-duration-short4: 200ms;
 	--vt-duration-pulse: 1400ms;
 	--vt-easing-standard: cubic-bezier(0.2, 0, 0, 1);
 	--vt-elevation-1: 0 1px 2px 0 #0000000f;
 	--vt-elevation-2: 0 1px 3px 0 #0000001f;
 	--vt-elevation-3: 0 2px 8px 0 #0000001f;
+	--vt-elevation-4: 0 4px 16px 0 #00000029;
+	--vt-elevation-5: 0 6px 24px 0 #00000024;
 	--vt-opacity-disabled: 0.38;
 	--vt-opacity-state-hover: 0.08;
 	--vt-opacity-state-press: 0.12;
 	--vt-scale-press-small: 0.92;
+	--vt-scale-press-medium: 0.97;
 	--vt-scale-press-large: 0.99;
 }
 
@@ -130,6 +141,9 @@ body.theme-dark {
 	--vt-primary: #d0bcff;
 	--vt-on-primary: #381e72;
 	--vt-primary-state-hover: #d0bcff14;
+	--vt-on-primary-state-hover: #381e7214;
+	--vt-secondary-container: #3d3749;
+	--vt-on-secondary-container: #e8def8;
 	--vt-error: #f2b8b5;
 	--vt-green-container: #0f5223;
 	--vt-on-green-container: #c4eed0;

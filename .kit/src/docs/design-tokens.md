@@ -12,15 +12,18 @@
 | `--vt-surface` | 面 | `#ffffff` | `#1e1e1e` | — | — | 基本の面。Obsidian のエディタの背景と同じにする Obsidian: `--background-primary` | Obsidian の標準テーマ（color-base-00） |
 | `--vt-surface-container` | 面 | `#f8f8f8` | `#242424` | — | — | カードの面（on-surface を 3% 重ねた色） | M3 surface-container |
 | `--vt-surface-container-high` | 面 | `#f0f0f0` | `#2b2b2b` | — | — | 一段強い面（日付ブロック、関係のチップ、件数）（on-surface を 7% 重ねた色） | M3 surface-container-high |
-| `--vt-on-surface` | 文字 | `#222222` | `#dadada` | 7:1 | 12.03 / 8.29 | 本文の文字 Obsidian: `--text-normal` | M3 on-surface（標準のコントラストで 7:1） |
-| `--vt-on-surface-variant` | 文字 | `#5c5c5c` | `#b3b3b3` | 4.5:1 | 5.05 / 5.53 | 補助の文字、ラベル、アイコン、未入力の表示 Obsidian: `--text-muted` | M3 on-surface-variant |
+| `--vt-on-surface` | 文字 | `#222222` | `#dadada` | 7:1 | 12.03 / 8.15 | 本文の文字 Obsidian: `--text-normal` | M3 on-surface（標準のコントラストで 7:1） |
+| `--vt-on-surface-variant` | 文字 | `#5c5c5c` | `#b3b3b3` | 4.5:1 | 5.05 / 5.44 | 補助の文字、ラベル、アイコン、未入力の表示 Obsidian: `--text-muted` | M3 on-surface-variant |
 | `--vt-outline` | 印 | `#858585` | `#7a7a7a` | 3:1 | 3.23 / 3.29 | 編集できるものの枠線 | M3 outline（3:1） |
 | `--vt-outline-variant` | 飾り | `#22222224` | `#dadada24` | — | — | カード・リスト・区切り線の枠（飾り。面の違いでも見分けられる） | M3 outline-variant |
 | `--vt-state-hover` | 状態 | `#22222214` | `#dadada14` | — | — | ホバーで重ねる色（on-surface の 8%） | M3 hover state layer 0.08 |
 | `--vt-state-press` | 状態 | `#2222221f` | `#dadada1f` | — | — | 押したときに重ねる色（on-surface の 12%） | M3 pressed state layer 0.12 |
-| `--vt-primary` | 文字 | `#6750a4` | `#d0bcff` | 4.5:1 | 4.87 / 6.80 | アクセント（今のページ、テキストボタン、リンク） Obsidian: `--interactive-accent` `--text-accent` `--color-accent` | M3 baseline primary |
-| `--vt-on-primary` | 文字 | `#ffffff` | `#381e72` | 4.5:1 | 6.44 / 7.71 | primary の上の文字 Obsidian: `--text-on-accent` | M3 baseline on-primary |
+| `--vt-primary` | 文字 | `#6750a4` | `#d0bcff` | 4.5:1 | 4.87 / 6.69 | アクセント（今のページ、テキストボタン、リンク） Obsidian: `--interactive-accent` `--text-accent` `--color-accent` | M3 baseline primary |
+| `--vt-on-primary` | 文字 | `#ffffff` | `#381e72` | 4.5:1 | 5.37 / 6.78 | primary の上の文字 Obsidian: `--text-on-accent` | M3 baseline on-primary |
 | `--vt-primary-state-hover` | 状態 | `#6750a414` | `#d0bcff14` | — | — | テキストボタンのホバー（primary の 8%） | M3 hover state layer 0.08 |
+| `--vt-on-primary-state-hover` | 状態 | `#ffffff14` | `#381e7214` | — | — | filled ボタンのホバー（on-primary の 8% を primary に重ねる） | M3 hover state layer 0.08 |
+| `--vt-secondary-container` | 面 | `#e8def8` | `#3d3749` | — | — | 選んでいるものの面（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） | M3 baseline secondary-container。ダークは M3 の #4a4458 では文字が 7:1 に届かないので暗くした |
+| `--vt-on-secondary-container` | 文字 | `#1d192b` | `#e8def8` | 4.5:1 | 11.45 / 7.25 | secondary-container の上の文字 | M3 baseline on-secondary-container |
 | `--vt-error` | 文字 | `#b3261e` | `#f2b8b5` | 4.5:1 | 5.73 / 8.29 | エラーの文字、削除ボタン Obsidian: `--text-error` | M3 baseline error |
 | `--vt-focus-ring` | 印 | `#6750a4`（= --vt-primary） | `#d0bcff`（= --vt-primary） | 3:1 | 5.65 / 8.30 | キーボードで選んだときの枠 |  |
 | `--vt-text-faint` | 文字 | `#707070` | `#8c8c8c` | 4.5:1 | 4.95 / 4.95 | Obsidian 本体の薄い文字。プラグインでは使わない（標準の値は 4.5:1 に届かないので上げる） （プラグインでは使わない） Obsidian: `--text-faint` | WCAG 1.4.3 |
@@ -67,22 +70,25 @@
 | `--vt-radius-s` | `8px` | チップ、入力欄、小さいボタン | M3 corner-small |
 | `--vt-radius-m` | `12px` | 日付の枠、期限、worklog のカード | M3 corner-medium |
 | `--vt-radius-l` | `16px` | セクションのカード、工数のタイル | M3 corner-large |
+| `--vt-radius-xl` | `28px` | Organize のカード | M3 corner-extra-large |
 | `--vt-radius-full` | `9999px` | status、ID、丸いボタン | M3 corner-full |
 
 ## space
 
 | CSS 変数 | 値 | 用途 | 根拠 |
 |---|---|---|---|
-| `--vt-space-2` | `2px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-4` | `4px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-8` | `8px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-12` | `12px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-16` | `16px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-20` | `20px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-24` | `24px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-32` | `32px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-40` | `40px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
-| `--vt-space-48` | `48px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけに使う |  |
+| `--vt-space-2` | `2px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-4` | `4px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-8` | `8px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-12` | `12px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-16` | `16px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-20` | `20px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-24` | `24px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-32` | `32px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-40` | `40px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-48` | `48px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-64` | `64px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
+| `--vt-space-96` | `96px` | 余白（padding / margin / gap / 位置）に使える値。4px 刻み。2px は細かい位置合わせだけ、64 / 96px は大きい領域（Organize のスワイプの余白）だけに使う |  |
 
 ## size
 
@@ -104,6 +110,7 @@
 |---|---|---|---|
 | `--vt-breakpoint-pane-narrow` | `480px` | これ以下で横並びを縦並びにする |  |
 | `--vt-breakpoint-pane-compact` | `300px` | これ以下で工数のタイルを 1 列にする |  |
+| `--vt-breakpoint-pane-medium` | `720px` | これ以下で一覧の補助の列を隠し、ボードのグループを縦に積む |  |
 
 ## weight
 
@@ -153,6 +160,7 @@
 |---|---|---|---|
 | `--vt-duration-short2` | `100ms` | 押したときの縮み | M3 duration-short2 |
 | `--vt-duration-short3` | `150ms` | ホバーの色・影・不透明度 | M3 duration-short3 |
+| `--vt-duration-short4` | `200ms` | 大きいものの移動（Organize のカードが戻る） | M3 duration-short4 |
 | `--vt-duration-pulse` | `1400ms` | 記録中の点の点滅の周期（飾り。動きを減らす設定では止める） |  |
 
 ## easing
@@ -168,6 +176,8 @@
 | `--vt-elevation-1` | `0 1px 2px 0 #0000000f` | 押せるカード |  |
 | `--vt-elevation-2` | `0 1px 3px 0 #0000001f` | 編集できるタイルのホバー |  |
 | `--vt-elevation-3` | `0 2px 8px 0 #0000001f` | 押せるカードのホバー |  |
+| `--vt-elevation-4` | `0 4px 16px 0 #00000029` | 浮いている操作バー |  |
+| `--vt-elevation-5` | `0 6px 24px 0 #00000024` | Organize のカード（持ち上げて動かすもの） |  |
 
 ## opacity
 
@@ -182,4 +192,5 @@
 | CSS 変数 | 値 | 用途 | 根拠 |
 |---|---|---|---|
 | `--vt-scale-press-small` | `0.92` | 40px 以下の丸いボタン・日付を押したとき |  |
+| `--vt-scale-press-medium` | `0.97` | ボタンを押したとき |  |
 | `--vt-scale-press-large` | `0.99` | カードを押したとき |  |

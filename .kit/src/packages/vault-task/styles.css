@@ -1,5 +1,5 @@
 /*
- * vault-task（ADR-0006, 0012, 0013, 0014）
+ * vault-task（ADR-0006, 0012, 0013, 0016）
  * ルールは .plugin-src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
  * ビルドで tokens.css の後ろに連結して .obsidian/plugins/vault-task/styles.css にする。
  * 検査: pnpm check（packages/design の test）
@@ -1080,4 +1080,1273 @@ button.vt-badge:disabled::after {
 .vt-notice-button {
 	margin-top: 8px;
 	border-radius: var(--vt-radius-full);
+}
+
+/* =====================================================================
+ * View（ADR-0009）。docs/design.md のトークンと部品を使う
+ * ===================================================================== */
+
+/* Obsidian の .view-content の余白を外す（!important を使わず、詳細度で上書きする） */
+.workspace-leaf-content .view-content.vt-view {
+	container-type: inline-size;
+	padding: 0;
+}
+
+.vt-page {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 16px 16px 32px;
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-page-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+/* M3 の headline-small */
+.vt-page-title {
+	margin: 0;
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	font-weight: var(--vt-type-headline-small-weight);
+	letter-spacing: var(--vt-type-headline-small-tracking);
+}
+
+/* M3 の title-medium */
+.vt-h {
+	margin: 0;
+	font-size: var(--vt-type-title-medium-size);
+	line-height: var(--vt-type-title-medium-line-height);
+	font-weight: var(--vt-type-title-medium-weight);
+}
+
+.vt-page-foot {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.vt-banner {
+	padding: 12px 16px;
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-blue-container);
+	color: var(--vt-on-blue-container);
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-done-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-done-label .vt-icon {
+	color: var(--vt-green);
+}
+
+/* ---------- ボタン（M3 の filled / outlined / text） ---------- */
+
+.vt-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 36px;
+	padding: 0 16px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+	font-weight: var(--vt-weight-medium);
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-button:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-button:active:not(:disabled) {
+	transform: scale(var(--vt-scale-press-medium));
+}
+
+.vt-button:disabled {
+	opacity: var(--vt-opacity-disabled);
+	cursor: default;
+}
+
+.vt-button.is-primary {
+	border-color: transparent;
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+}
+
+.vt-button.is-primary:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-on-primary-state-hover), var(--vt-on-primary-state-hover));
+}
+
+.vt-button.is-text {
+	border-color: transparent;
+	background: transparent;
+	color: var(--vt-primary);
+	padding: 0 12px;
+}
+
+.vt-button.is-text:hover:not(:disabled) {
+	background: var(--vt-primary-state-hover);
+}
+
+.vt-button.is-danger {
+	color: var(--vt-error);
+}
+
+/* ---------- 段階表示（DailyTaskView） ---------- */
+
+.vt-stepper {
+	display: flex;
+	gap: 8px;
+	overflow-x: auto;
+	padding-bottom: 2px;
+}
+
+.vt-step {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 40px;
+	padding: 0 16px 0 8px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.vt-step:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-step-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-step.is-done .vt-step-icon {
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+}
+
+.vt-step.is-current {
+	border-color: transparent;
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-step.is-current .vt-step-icon {
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+}
+
+.vt-step-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 4px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1;
+}
+
+/* ---------- 一覧（行表示） ---------- */
+
+.vt-table {
+	/* 補助の列の数（IssueTable.tsx が style で上書きする） */
+	--vt-cols: 3;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.vt-tr {
+	display: grid;
+	grid-template-columns: 20px minmax(0, 1fr) 80px 120px repeat(var(--vt-cols), 112px);
+	align-items: center;
+	gap: 12px;
+	min-height: 48px;
+	padding: 4px 12px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	font-size: var(--vt-type-body-small-size);
+	transition:
+		border-color var(--vt-duration-short3) var(--vt-easing-standard),
+		box-shadow var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-tr:not(.vt-thead):hover {
+	border-color: var(--vt-outline);
+	box-shadow: var(--vt-elevation-2);
+}
+
+.vt-tr.is-selected {
+	border-color: var(--vt-primary);
+	background: var(--vt-secondary-container);
+}
+
+.vt-thead {
+	min-height: 28px;
+	border: none;
+	background: transparent;
+}
+
+/* 見出しの列は押せない（.vt-col-main の cursor を戻す） */
+.vt-thead .vt-col-main {
+	cursor: default;
+}
+
+.vt-th {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
+	text-transform: uppercase;
+}
+
+.vt-col-main {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.vt-tr:not(.vt-thead) .vt-col-main:hover .vt-cell-summary {
+	color: var(--vt-primary);
+}
+
+.vt-cell-summary {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-cell-detail {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-col-status .vt-badge {
+	width: 100%;
+}
+
+.vt-due-chip {
+	display: inline-flex;
+	align-items: center;
+	height: 24px;
+	padding: 0 8px;
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface-container-high);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.vt-due-chip.vt-due-3 { background: var(--vt-due-3); color: var(--vt-on-due); }
+.vt-due-chip.vt-due-2 { background: var(--vt-due-2); color: var(--vt-on-due); }
+.vt-due-chip.vt-due-1 { background: var(--vt-due-1); color: var(--vt-on-due); }
+.vt-due-chip.vt-due-0 { background: var(--vt-due-0); color: var(--vt-on-due-0); }
+.vt-due-chip.vt-due-overdue { background: var(--vt-red-container); color: var(--vt-on-red-container); box-shadow: inset 0 0 0 2px var(--vt-red); }
+
+.vt-tr input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+@container (max-width: 720px) {
+	.vt-tr {
+		grid-template-columns: 20px minmax(0, 1fr) auto auto;
+	}
+
+	.vt-tr > [class*="vt-col-"]:not(.vt-col-main, .vt-col-status, .vt-col-deadline),
+	.vt-thead {
+		display: none;
+	}
+
+	.vt-col-status .vt-badge {
+		width: auto;
+	}
+
+	.vt-tr > .vt-col-deadline {
+		grid-column: 2 / -1;
+	}
+
+	.vt-tr > .vt-col-deadline:has(.vt-muted) {
+		display: none;
+	}
+}
+
+/* 選択した行への操作（下に貼り付く） */
+.vt-actionbar {
+	position: sticky;
+	bottom: 8px;
+	z-index: 2;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 8px 8px 16px;
+	border: 1px solid transparent;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container-high);
+	transition: box-shadow var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-actionbar.is-active {
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-4);
+	border-color: var(--vt-outline-variant);
+}
+
+.vt-actionbar-count {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-actionbar.is-active .vt-actionbar-count {
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
+}
+
+/* ---------- task board ---------- */
+
+.vt-board {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.vt-board-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 1 階層目は横に並べる。狭いペインでは縦（ADR-0015） */
+.vt-board-columns {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	overflow-x: auto;
+	padding-bottom: 4px;
+}
+
+.vt-board-columns > .vt-group {
+	flex: 1 1 0;
+	min-width: 240px;
+}
+
+@container (max-width: 720px) {
+	.vt-board-columns {
+		flex-direction: column;
+		align-items: stretch;
+		overflow-x: visible;
+	}
+
+	.vt-board-columns > .vt-group {
+		min-width: 0;
+	}
+}
+
+.vt-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+	padding: 12px;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container);
+	border: 1px solid var(--vt-outline-variant);
+	transition: border-color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+/* 未分類: ボードの上に横長に置き、カードを横に並べる */
+.vt-group.is-ungrouped {
+	border-style: dashed;
+	border-color: var(--vt-outline);
+}
+
+.vt-group.is-ungrouped > .vt-group-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.vt-group.is-sub {
+	background: var(--vt-surface);
+}
+
+/* カードを落とせるとき */
+.vt-group.is-over {
+	border-color: var(--vt-primary);
+	background: var(--vt-secondary-container);
+}
+
+.vt-group-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 2px 0 4px;
+}
+
+.vt-group-name {
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-group-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* 2 階層目はグループの中に縦に並べる */
+.vt-subgroups {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-drop-hint {
+	padding: 12px;
+	border: 1px dashed var(--vt-outline);
+	border-radius: var(--vt-radius-m);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	text-align: center;
+}
+
+.vt-task {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px 12px 8px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-1);
+	cursor: grab;
+	transition:
+		box-shadow var(--vt-duration-short3) var(--vt-easing-standard),
+		border-color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-task:hover {
+	border-color: var(--vt-outline);
+	box-shadow: var(--vt-elevation-3);
+}
+
+.vt-task.is-running {
+	border-color: var(--vt-green);
+	box-shadow: 0 0 0 1px var(--vt-green);
+}
+
+/* 済み: 打ち消し線（色は 4.5:1 を保つ） */
+.vt-task.is-done .vt-task-summary {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-task-top,
+.vt-task-bottom {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.vt-task-bottom {
+	flex-wrap: wrap;
+}
+
+.vt-task .vt-badge {
+	height: 24px;
+}
+
+.vt-task .vt-play {
+	flex: none;
+}
+
+.vt-task-summary {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: var(--vt-weight-medium);
+	cursor: pointer;
+}
+
+.vt-task-summary:hover {
+	color: var(--vt-primary);
+}
+
+.vt-routine-id {
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+}
+
+/* 再生 / 停止（M3 の FAB 風の小さい丸） */
+.vt-play {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	min-width: 36px;
+	height: 36px;
+	padding: 0 8px;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+	box-shadow: none;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-play:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-play:active:not(:disabled) {
+	transform: scale(var(--vt-scale-press-small));
+}
+
+.vt-play:disabled {
+	opacity: var(--vt-opacity-disabled);
+	cursor: default;
+}
+
+.vt-play.is-running {
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+}
+
+.vt-play .vt-icon svg {
+	width: 16px;
+	height: 16px;
+	fill: currentColor;
+}
+
+.vt-unfinished {
+	gap: 12px;
+}
+
+.vt-routine-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.vt-routine-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 4px 8px 4px 12px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+}
+
+.vt-date-chip,
+.vt-chip-mini {
+	display: inline-flex;
+	align-items: center;
+	height: 24px;
+	padding: 0 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	white-space: nowrap;
+}
+
+.vt-chip-mini.is-today {
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+}
+
+/* ---------- Issue List の絞り込み ---------- */
+
+.vt-filters {
+	gap: 12px;
+}
+
+.vt-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 44px;
+	padding: 0 16px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	border: 1px solid var(--vt-outline);
+	color: var(--vt-on-surface-variant);
+}
+
+/* 中の入力欄は枠と面を持たない（Obsidian の input の見た目を、同じ詳細度で後から上書きする） */
+.vt-search input,
+.vt-search input:hover,
+.vt-search input:focus,
+.vt-quick-add input,
+.vt-quick-add input:hover,
+.vt-quick-add input:focus {
+	flex: 1;
+	height: 100%;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-filter-row,
+.vt-chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-filter-row > .vt-field-label {
+	min-width: 64px;
+}
+
+/* M3 の filter chip */
+.vt-filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 32px;
+	padding: 0 12px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-s);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+	cursor: pointer;
+}
+
+.vt-filter-chip:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-filter-chip.is-on {
+	border-color: transparent;
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	font-weight: var(--vt-weight-medium);
+}
+
+.vt-filter-chip .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-quick-add {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 48px;
+	padding: 0 4px 0 16px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-small-input {
+	width: 80px;
+	height: 32px;
+}
+
+.vt-date-presets {
+	display: flex;
+	gap: 8px;
+}
+
+/* ---------- Scheduled ---------- */
+
+.vt-sched-scroll {
+	overflow-x: auto;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface);
+}
+
+.vt-sched {
+	border-collapse: separate;
+	border-spacing: 0;
+	min-width: 100%;
+}
+
+.vt-sched th,
+.vt-sched td {
+	padding: 8px 4px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+	text-align: center;
+	font-weight: var(--vt-weight-regular);
+}
+
+.vt-sched thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--vt-surface-container);
+}
+
+.vt-sched thead th > span {
+	display: block;
+}
+
+.vt-sched-date {
+	font-size: var(--vt-type-label-medium-size);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-sched th.is-weekend .vt-weekday {
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-bold);
+}
+
+/* 左の列を固定する（.vt-sched th / td より強い詳細度にする） */
+.vt-sched .vt-sched-sticky {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	width: 260px;
+	max-width: 260px;
+	padding-left: 12px;
+	border-right: 1px solid var(--vt-outline-variant);
+	background: var(--vt-surface);
+	text-align: left;
+}
+
+.vt-sched thead .vt-sched-sticky {
+	z-index: 3;
+	background: var(--vt-surface-container);
+}
+
+.vt-sched-issue {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.vt-sched-issue:hover .vt-cell-summary {
+	color: var(--vt-primary);
+}
+
+@container (max-width: 480px) {
+	.vt-sched .vt-sched-sticky {
+		width: 140px;
+		max-width: 140px;
+	}
+}
+
+/* ---------- Organize ---------- */
+
+.vt-organize {
+	max-width: 760px;
+}
+
+.vt-chunk {
+	display: flex;
+	gap: 4px;
+}
+
+.vt-chunk-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	box-shadow: inset 0 0 0 1px var(--vt-outline);
+}
+
+.vt-chunk-dot.is-on {
+	background: var(--vt-primary);
+	box-shadow: none;
+}
+
+.vt-swipe-area {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	padding: 40px 96px;
+	touch-action: none;
+}
+
+@container (max-width: 720px) {
+	.vt-swipe-area {
+		padding: 40px 0;
+	}
+
+	.vt-swipe-hint.is-left:not(.is-active),
+	.vt-swipe-hint.is-right:not(.is-active) {
+		opacity: 0;
+	}
+
+	.vt-swipe-hint.is-left.is-active,
+	.vt-swipe-hint.is-right.is-active {
+		z-index: 2;
+	}
+}
+
+.vt-swipe-hint {
+	position: absolute;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 12px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard),
+		opacity var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-swipe-hint.is-left { left: 0; top: 50%; transform: translateY(-50%); }
+.vt-swipe-hint.is-right { right: 0; top: 50%; transform: translateY(-50%); }
+.vt-swipe-hint.is-up { top: 0; left: 50%; transform: translateX(-50%); }
+.vt-swipe-hint.is-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+.vt-swipe-hint.is-left.is-active { background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
+.vt-swipe-hint.is-right.is-active { background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-swipe-hint.is-up.is-active { background: var(--vt-amber-container); color: var(--vt-on-amber-container); }
+.vt-swipe-hint.is-down.is-active { background: var(--vt-red-container); color: var(--vt-on-red-container); }
+
+.vt-organize-card {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: min(100%, 460px);
+	min-height: 260px;
+	padding: 20px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-xl);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-5);
+	cursor: grab;
+	user-select: none;
+	touch-action: none;
+	transition: transform var(--vt-duration-short4) var(--vt-easing-standard);
+}
+
+.vt-organize-card.is-dragging {
+	cursor: grabbing;
+	transition: none;
+}
+
+.vt-organize-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--vt-type-label-medium-size);
+}
+
+/* M3 の title-large */
+.vt-organize-summary {
+	margin: 0;
+	font-size: var(--vt-type-title-large-size);
+	font-weight: var(--vt-type-title-large-weight);
+	line-height: var(--vt-type-title-large-line-height);
+}
+
+.vt-organize-excerpt {
+	flex: 1;
+	margin: 0;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	white-space: pre-line;
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+}
+
+.vt-organize-actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.vt-round {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	width: 64px;
+	height: 64px;
+	padding: 0;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface);
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-label-small-size);
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-round .vt-icon svg {
+	width: 24px;
+	height: 24px;
+}
+
+.vt-round:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-round:active:not(:disabled) {
+	transform: scale(var(--vt-scale-press-small));
+}
+
+.vt-round:disabled {
+	opacity: var(--vt-opacity-disabled);
+	cursor: default;
+}
+
+.vt-round.is-schedule { border-color: transparent; background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-round.is-someday { border-color: transparent; background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
+.vt-round.is-cancel { border-color: transparent; background: var(--vt-red-container); color: var(--vt-on-red-container); }
+
+.vt-organize-foot {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--vt-type-label-medium-size);
+}
+
+.vt-organize-done {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 48px 16px;
+}
+
+.vt-organize-done .vt-icon svg {
+	width: 32px;
+	height: 32px;
+}
+
+.vt-sheet {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/* ---------- Routine List ---------- */
+
+.vt-routine-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-routine-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 56px;
+	padding: 8px 12px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+}
+
+/* 一時停止中: 薄くせず（4.5:1 を保つ）、沈んだ面と弱い文字にする */
+.vt-routine-item.is-paused {
+	border-style: dashed;
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-routine-item.is-paused .vt-routine-summary {
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-routine-main {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	cursor: pointer;
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-routine-summary {
+	font-size: var(--vt-type-body-medium-size);
+	font-weight: var(--vt-weight-medium);
+}
+
+.vt-routine-main:hover .vt-routine-summary {
+	color: var(--vt-primary);
+}
+
+/* M3 の switch（52×32、つまみは 16px → 24px） */
+.vt-switch {
+	position: relative;
+	flex: none;
+	width: 52px;
+	height: 32px;
+	padding: 0;
+	border: 2px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	box-shadow: none;
+	cursor: pointer;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		border-color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-switch-thumb {
+	position: absolute;
+	top: 50%;
+	left: 8px;
+	width: 16px;
+	height: 16px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-on-surface-variant);
+	transform: translateY(-50%);
+	transition:
+		left var(--vt-duration-short3) var(--vt-easing-standard),
+		width var(--vt-duration-short3) var(--vt-easing-standard),
+		height var(--vt-duration-short3) var(--vt-easing-standard),
+		background-color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-switch.is-on {
+	border-color: var(--vt-primary);
+	background: var(--vt-primary);
+}
+
+.vt-switch.is-on .vt-switch-thumb {
+	left: 20px;
+	width: 24px;
+	height: 24px;
+	background: var(--vt-on-primary);
+}
+
+/* ---------- グループの編集（ADR-0015） ---------- */
+
+.vt-group-manager {
+	max-width: 760px;
+}
+
+.vt-layout-preview {
+	gap: 8px;
+}
+
+.vt-preview-columns {
+	display: flex;
+	gap: 8px;
+	overflow-x: auto;
+}
+
+.vt-preview-col {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 72px;
+	padding: 8px;
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface);
+	border: 1px solid var(--vt-outline-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-preview-col.is-ungrouped {
+	color: var(--vt-on-surface-variant);
+	border-style: dashed;
+	border-color: var(--vt-outline);
+}
+
+.vt-preview-sub {
+	padding: 4px 8px;
+	border-radius: var(--vt-radius-xs);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-weight: var(--vt-weight-medium);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-group-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-group-edit {
+	gap: 12px;
+}
+
+.vt-group-edit-head,
+.vt-sub-edit {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-row-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding-top: 8px;
+}
+
+.vt-sub-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-left: 12px;
+	padding-left: 12px;
+	border-left: 2px solid var(--vt-outline-variant);
+}
+
+.vt-sub-mark {
+	padding-top: 12px;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-add-sub {
+	align-self: flex-start;
+}
+
+/* M3 の outlined text field 風: 枠の上にラベル */
+.vt-name-field {
+	position: relative;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vt-name-label {
+	position: absolute;
+	top: -8px;
+	left: 12px;
+	padding: 0 4px;
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	line-height: 1;
+}
+
+.vt-name-field input {
+	height: 44px;
+	padding: 0 16px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface);
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-name-field input:focus {
+	border-color: var(--vt-primary);
+	box-shadow: 0 0 0 1px var(--vt-primary);
+}
+
+.vt-name-field.is-error input {
+	border-color: var(--vt-error);
+}
+
+.vt-name-field.is-error .vt-name-label,
+.vt-name-error {
+	color: var(--vt-error);
+}
+
+.vt-name-error {
+	padding: 4px 16px 0;
+	font-size: var(--vt-type-label-small-size);
+}
+
+.vt-add-group {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	height: 56px;
+	border: 2px dashed var(--vt-outline);
+	border-radius: var(--vt-radius-l);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-primary);
+	font-weight: var(--vt-weight-semibold);
+	cursor: pointer;
+}
+
+.vt-add-group:hover {
+	background: var(--vt-primary-state-hover);
+}
+
+@container (max-width: 480px) {
+	.vt-organize-actions {
+		gap: 8px;
+	}
+
+	.vt-round {
+		width: 56px;
+		height: 56px;
+	}
 }

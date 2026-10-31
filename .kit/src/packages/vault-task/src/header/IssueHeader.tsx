@@ -13,7 +13,9 @@ import { CalendarForm, DateForm, DayCell, TextForm, WorklogForm } from "../ui/fo
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
+import { Pager } from "../ui/Pager";
 import { LabelForm } from "../ui/LabelForm";
+import { linkProps } from "../ui/a11y";
 
 const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 const WORKLOG_PAGE = 5;
@@ -298,15 +300,7 @@ function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => voi
 	return (
 		<span class="vt-relation">
 			<IdBadge issue={props.issue} />
-			<span
-				class="vt-link"
-				role="link"
-				tabIndex={0}
-				onClick={(e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false)}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false);
-				}}
-			>
+			<span class="vt-link" {...linkProps((e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false))}>
 				{props.issue.summary}
 			</span>
 			{props.onRemove && (
@@ -431,43 +425,6 @@ function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save:
 				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated - actual)}</span>
 			</div>
 		</div>
-	);
-}
-
-/** 表示するページ番号（多いときは先頭・末尾・前後だけ） */
-function pageItems(current: number, pages: number): (number | null)[] {
-	if (pages <= 7) return Array.from({ length: pages }, (_, i) => i);
-	const keep = new Set([0, pages - 1, current - 1, current, current + 1].filter((i) => i >= 0 && i < pages));
-	const out: (number | null)[] = [];
-	let prev = -1;
-	for (const i of [...keep].sort((a, b) => a - b)) {
-		if (i - prev > 1) out.push(null);
-		out.push(i);
-		prev = i;
-	}
-	return out;
-}
-
-function Pager(props: { current: number; pages: number; onChange: (page: number) => void }) {
-	const { current, pages, onChange } = props;
-	return (
-		<nav class="vt-pager" aria-label="worklog のページ">
-			<button class="vt-pager-step" disabled={current === 0} onClick={() => onChange(current - 1)} aria-label="新しい方へ">
-				<Icon name="chevron-left" />
-			</button>
-			{pageItems(current, pages).map((i) =>
-				i === null ? (
-					<span class="vt-pager-gap">…</span>
-				) : (
-					<button class={`vt-pager-page${i === current ? " is-current" : ""}`} aria-current={i === current ? "page" : undefined} onClick={() => onChange(i)}>
-						{i + 1}
-					</button>
-				),
-			)}
-			<button class="vt-pager-step" disabled={current >= pages - 1} onClick={() => onChange(current + 1)} aria-label="古い方へ">
-				<Icon name="chevron-right" />
-			</button>
-		</nav>
 	);
 }
 
