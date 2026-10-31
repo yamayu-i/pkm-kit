@@ -1,11 +1,11 @@
-import { TFile, normalizePath, type App } from "obsidian";
-import { BOARD_KEY, dailyNotePath, parseBoard, serializeBoard, type BoardState } from "../core/board";
+import { TFile, normalizePath, parseYaml, stringifyYaml, type App } from "obsidian";
+import { BOARD_KEY, dailyNotePath, parseBoardForWrite, serializeBoard, type BoardState } from "../core/board";
+import { closeBoardNote } from "../core/board-note";
 import { localDateTime, type LocalDate } from "../core/dates";
 import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
 import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, type LabelDef } from "../core/labels";
-import { upsertSummary } from "../core/summary";
 import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
@@ -153,17 +153,19 @@ export class TaskWriter {
 	async updateBoard(date: LocalDate, mutate: (board: BoardState) => void): Promise<void> {
 		const file = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent());
 		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-			const board = parseBoard(fm[BOARD_KEY]);
+			const board = parseBoardForWrite(fm[BOARD_KEY]);
 			mutate(board);
-			fm[BOARD_KEY] = serializeBoard(board);
+			fm[BOARD_KEY] = serializeBoard(parseBoardForWrite(board));
 		});
 		this.store.refreshSoon();
 	}
 
-	/** ボードを締めたときの要約をデイリーノートの本文に書く */
-	async writeSummary(date: LocalDate, summary: string): Promise<void> {
-		const file = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent());
-		await this.app.vault.process(file, (text) => upsertSummary(text, summary));
+	/** 未完了を再検査し、closed と要約を同じ vault.process で保存する。 */
+	async closeBoard(date: LocalDate): Promise<void> {
+		await this.app.vault.process(this.file(dailyNotePath(date)), (text) =>
+			closeBoardNote(text, date, this.store.index, { parse: parseYaml, stringify: stringifyYaml }),
+		);
+		this.store.refreshSoon();
 	}
 
 	/** task board のグループの定義を保存する */
