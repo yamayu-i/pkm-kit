@@ -1,0 +1,49 @@
+# 自作プラグインの検査。ソースか成果物を変えたときだけ動く。決定: .claude/docs/adr/0005-checks-in-ci.md
+name: plugin
+
+on:
+  pull_request:
+    paths:
+      - ".plugin-src/**"
+      - ".obsidian/plugins/**"
+      - "mise.toml"
+      - ".github/workflows/plugin.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".plugin-src/**"
+      - ".obsidian/plugins/**"
+      - "mise.toml"
+      - ".github/workflows/plugin.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: .plugin-src
+    steps:
+      - uses: actions/checkout@v6
+      - name: Node と pnpm の版を mise.toml から読む
+        id: versions
+        working-directory: .
+        run: |
+          echo "node=$(sed -nE 's/^node *= *"(.*)"/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+          echo "pnpm=$(sed -nE 's/^pnpm *= *"(.*)"/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+      - name: pnpm を入れる
+        run: npm install -g "pnpm@${{ steps.versions.outputs.pnpm }}"
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+      - name: 型チェック・ビルド・テスト
+        run: pnpm check
+      - name: ビルドし直した main.js がコミットされたものと一致する
+        run: git diff --exit-code -- ../.obsidian/plugins
+      - name: セキュリティチェックの機械的な部分
+        run: pnpm security:scan

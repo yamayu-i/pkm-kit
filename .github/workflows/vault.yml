@@ -1,0 +1,45 @@
+# ハーネスと Vault の検査。決定: .claude/docs/adr/0005-checks-in-ci.md
+# 各端末の Vault Git の push でも動く。人のノートの書式の問題は警告だけで、失敗にしない。
+name: vault
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # wiki の操作のコミットを遡って検査するため
+      - name: Node の版を mise.toml から読む
+        id: versions
+        run: echo "node=$(sed -nE 's/^node *= *"(.*)"/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+      - name: スクリプトのテスト
+        run: node --test .claude/scripts/test/*.test.mjs
+      - name: 文書の構造
+        run: node .claude/scripts/check-docs.mjs
+      - name: wiki の lint
+        run: node .claude/scripts/wiki-lint.mjs
+      - name: wiki の操作が追記だけか
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            node .claude/scripts/check-append-only.mjs "$BASE..HEAD"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            node .claude/scripts/check-append-only.mjs -1 "$GITHUB_SHA"
+          else
+            node .claude/scripts/check-append-only.mjs "$BEFORE..$GITHUB_SHA"
+          fi
