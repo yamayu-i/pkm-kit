@@ -1,15 +1,14 @@
 import type { Problem } from "./problem";
 
 export const GROUPS_PATH = "issue/board-groups.json";
-/** ボードの横の段数。グループはこのうち何段分を使うか（span）で並べる */
-export const BOARD_COLUMNS = 4;
 export const UNGROUPED = "";
 
-/** task board のグループ（ADR-0014）。2 階層まで */
+/**
+ * task board のグループ（ADR-0015）。2 階層まで。
+ * 1 階層目はボードに横に並び（狭いペインでは縦）、2 階層目はグループの中に縦に並ぶ
+ */
 export interface GroupDef {
 	name: string;
-	/** 横幅（1〜BOARD_COLUMNS 段） */
-	span: number;
 	children: GroupDef[];
 }
 
@@ -20,16 +19,17 @@ function parseGroup(value: unknown, depth: number, problems: string[]): GroupDef
 		problems.push(`グループ名がないか、/ を含んでいます: ${JSON.stringify(value)}`);
 		return null;
 	}
-	const span = typeof o.span === "number" && Number.isInteger(o.span) ? Math.min(BOARD_COLUMNS, Math.max(1, o.span)) : 1;
 	const children: GroupDef[] = [];
 	if (Array.isArray(o.children)) {
 		if (depth >= 1 && o.children.length > 0) problems.push(`グループは 2 階層までです: ${name}`);
-		else for (const c of o.children) {
-			const g = parseGroup(c, depth + 1, problems);
-			if (g && !children.some((x) => x.name === g.name)) children.push(g);
-		}
+		else
+			for (const c of o.children) {
+				const g = parseGroup(c, depth + 1, problems);
+				if (g && !children.some((x) => x.name === g.name)) children.push(g);
+			}
 	}
-	return { name, span, children };
+	// 以前の形式の span（横幅）は使わないので読み捨てる
+	return { name, children };
 }
 
 /** `issue/board-groups.json` を読む */
@@ -53,8 +53,20 @@ export function parseGroups(text: string): { groups: GroupDef[]; problems: Probl
 }
 
 export function serializeGroups(groups: GroupDef[]): string {
-	const strip = (g: GroupDef): unknown => ({ name: g.name, span: g.span, ...(g.children.length > 0 ? { children: g.children.map(strip) } : {}) });
+	const strip = (g: GroupDef): unknown => ({ name: g.name, ...(g.children.length > 0 ? { children: g.children.map(strip) } : {}) });
 	return `${JSON.stringify(groups.map(strip), null, 2)}\n`;
+}
+
+/**
+ * グループ名の入力の検査。`siblings` は同じ階層のグループ、`current` は改名するときの元の名前。
+ * 問題がなければ null
+ */
+export function groupNameError(name: string, siblings: GroupDef[], current?: string): string | null {
+	const n = name.trim();
+	if (!n) return "名前を入れてください";
+	if (n.includes("/")) return "/ は使えません";
+	if (n !== current && siblings.some((g) => g.name === n)) return "同じ名前があります";
+	return null;
 }
 
 /** グループの鍵（`親` / `親/子`）の一覧 */

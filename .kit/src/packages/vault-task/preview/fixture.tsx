@@ -58,8 +58,8 @@ const { data } = collectVault({
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"}]',
 	groups: JSON.stringify([
-		{ name: "午前", span: 2, children: [{ name: "集中" }, { name: "雑務" }] },
-		{ name: "午後", span: 1 },
+		{ name: "午前", children: [{ name: "集中" }, { name: "雑務" }] },
+		{ name: "午後" },
 	]),
 });
 

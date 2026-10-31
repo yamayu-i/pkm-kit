@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cancelPatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
 import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, serializeBoard, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
-import { groupKeys, inGroup, parseGroups, serializeGroups } from "../src/core/groups";
+import { groupKeys, groupNameError, inGroup, parseGroups, serializeGroups } from "../src/core/groups";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
 import { defaultQuery, queryIssues } from "../src/core/list";
 import { describeRepeat, parseRepeat } from "../src/core/repeat";
@@ -102,21 +102,35 @@ describe("board", () => {
 });
 
 describe("groups", () => {
-	it("2 階層まで。span は 1〜4 に収める", () => {
+	it("2 階層まで。古い span は読み捨てる", () => {
 		const { groups, problems } = parseGroups(
 			JSON.stringify([
 				{ name: "午前", span: 2, children: [{ name: "集中" }, { name: "雑務", children: [{ name: "深い" }] }] },
-				{ name: "午後", span: 9 },
+				{ name: "午後" },
 				{ name: "a/b" },
 			]),
 		);
-		expect(groups.map((g) => [g.name, g.span])).toEqual([
-			["午前", 2],
-			["午後", 4],
+		expect(groups).toEqual([
+			{ name: "午前", children: [{ name: "集中", children: [] }, { name: "雑務", children: [] }] },
+			{ name: "午後", children: [] },
 		]);
 		expect(groupKeys(groups)).toEqual(["午前", "午前/集中", "午前/雑務", "午後"]);
 		expect(problems.map((p) => p.message)).toEqual(["グループは 2 階層までです: 雑務", expect.stringContaining("/ を含んでいます")]);
+		expect(serializeGroups(groups)).not.toContain("span");
 		expect(parseGroups(serializeGroups(groups)).groups).toEqual(groups);
+	});
+
+	it("名前の検査（グループ管理の入力欄）", () => {
+		const groups = [
+			{ name: "午前", children: [{ name: "集中", children: [] }] },
+			{ name: "午後", children: [] },
+		];
+		expect(groupNameError("", groups)).toBe("名前を入れてください");
+		expect(groupNameError("a/b", groups)).toBe("/ は使えません");
+		expect(groupNameError("午後", groups)).toBe("同じ名前があります");
+		expect(groupNameError("午後", groups, "午後")).toBeNull();
+		expect(groupNameError("集中", groups[0]!.children)).toBe("同じ名前があります");
+		expect(groupNameError("夜", groups)).toBeNull();
 	});
 
 	it("inGroup は子のグループも含む", () => {

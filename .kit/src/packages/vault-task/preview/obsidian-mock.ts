@@ -43,6 +43,7 @@ const PATHS: Record<string, string> = {
   "external-link": '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   "party-popper": '<path d="M5.8 11.3 2 22l10.7-3.8M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/>',
   "arrow-down-wide-narrow": '<path d="m3 16 4 4 4-4M7 20V4m4 0h10m-10 4h7m-7 4h4"/>',
+  "corner-down-right": '<path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
   tag: '<path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.59-8.59a1 1 0 0 0 0-1.41Z"/>',
 };
 export function setIcon(el: HTMLElement, name: string) {

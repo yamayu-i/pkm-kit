@@ -88,12 +88,13 @@ vault-task の UI（issue 画面、モーダル、今後の View）はこのル�
 | 操作バー | `.vt-actionbar` | 選んだ行への操作。下に貼り付き、選ぶと浮き上がる（影） |
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on でアクセントの面 + チェック |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
-| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。記録中は緑の枠 |
+| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠 |
 | 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
-| グループ | `.vt-group` | ボードの枠。カードを落とせるときはアクセントの枠 |
+| グループ | `.vt-group` | ボードの枠。1 階層目は横に等分（`.vt-board-columns`、狭いペインでは縦）、サブグループは中に縦に積む。カードを落とせるときはアクセントの枠 |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
 | スイッチ | `.vt-switch` | M3 の switch（routine の一時停止） |
-| segmented button | `.vt-segmented` | 少ない選択肢から 1 つ（グループの横幅） |
+| 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下にエラー。その場で作る・変える編集に使う |
+| 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
 
 アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない。

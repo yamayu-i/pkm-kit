@@ -2018,7 +2018,6 @@ function pendingBoards(index, boards, today) {
 
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
-var BOARD_COLUMNS = 4;
 var UNGROUPED = "";
 function parseGroup(value, depth, problems) {
   const o3 = typeof value === "object" && value !== null ? value : {};
@@ -2027,16 +2026,16 @@ function parseGroup(value, depth, problems) {
     problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
     return null;
   }
-  const span = typeof o3.span === "number" && Number.isInteger(o3.span) ? Math.min(BOARD_COLUMNS, Math.max(1, o3.span)) : 1;
   const children = [];
   if (Array.isArray(o3.children)) {
     if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else for (const c3 of o3.children) {
-      const g2 = parseGroup(c3, depth + 1, problems);
-      if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-    }
+    else
+      for (const c3 of o3.children) {
+        const g2 = parseGroup(c3, depth + 1, problems);
+        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
+      }
   }
-  return { name, span, children };
+  return { name, children };
 }
 function parseGroups(text) {
   const messages = [];
@@ -2057,9 +2056,16 @@ function parseGroups(text) {
   return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
 }
 function serializeGroups(groups) {
-  const strip = (g2) => ({ name: g2.name, span: g2.span, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
+  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
   return `${JSON.stringify(groups.map(strip), null, 2)}
 `;
+}
+function groupNameError(name, siblings, current) {
+  const n2 = name.trim();
+  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
+  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
+  return null;
 }
 function groupKeys(groups) {
   return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
@@ -2830,8 +2836,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          issue ? /* @__PURE__ */ u3(IdBadge, { issue }) : /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: id }),
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: summary, onClick: (e3) => void ctx.openPath(path, import_obsidian11.Keymap.isModEvent(e3) !== false), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, onClick: (e3) => void ctx.openPath(path, import_obsidian11.Keymap.isModEvent(e3) !== false), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -2867,7 +2872,6 @@ function GroupBox(props) {
     "section",
     {
       class: `vt-group${props.sub ? " is-sub" : ""}${over ? " is-over" : ""}`,
-      style: props.span ? { gridColumn: `span ${props.span}` } : void 0,
       onDragOver: (e3) => {
         e3.preventDefault();
         e3.stopPropagation();
@@ -2935,9 +2939,9 @@ function Board(props) {
       ] })
     ] }),
     items.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u300C\u4ECA\u65E5\u306E\u4E88\u5B9A\u300D\u304B\u3089\u8F09\u305B\u308B\u304B\u3001\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u8FFD\u52A0\u3057\u307E\u3059" }),
-    /* @__PURE__ */ u3("div", { class: "vt-board-grid", style: { gridTemplateColumns: `repeat(${BOARD_COLUMNS}, minmax(0, 1fr))` }, children: [
-      (ungrouped.length > 0 || groups.length === 0) && items.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now, span: groups.length === 0 ? BOARD_COLUMNS : 1 }),
-      groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, span: g2.span, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
+    /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: [
+      (ungrouped.length > 0 || groups.length === 0) && items.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now }),
+      groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
         GroupBox,
         {
           ctx,
@@ -3187,6 +3191,9 @@ function DailyView(props) {
 }
 
 // src/views/GroupManagerView.tsx
+var nextKey = 1;
+var toDraft = (g2) => ({ key: nextKey++, name: g2.name, children: g2.children.map(toDraft) });
+var toDef = (d3) => ({ name: d3.name.trim(), children: d3.children.map(toDef) });
 function move(list, i3, d3) {
   const j3 = i3 + d3;
   if (j3 < 0 || j3 >= list.length) return list;
@@ -3194,77 +3201,138 @@ function move(list, i3, d3) {
   [next[i3], next[j3]] = [next[j3], next[i3]];
   return next;
 }
+function errorOf(d3, siblings) {
+  return groupNameError(
+    d3.name,
+    siblings.filter((s3) => s3.key !== d3.key).map(toDef)
+  );
+}
+function NameField(props) {
+  const ref = A2(null);
+  h2(() => {
+    if (props.autoFocus) ref.current?.focus();
+  }, []);
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
+    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: "\u540D\u524D", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
+    props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
+  ] });
+}
+function RowTools(props) {
+  return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0A\u3078", "aria-label": "\u4E0A\u3078", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0B\u3078", "aria-label": "\u4E0B\u3078", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: `${props.what}\u3092\u524A\u9664`, "aria-label": `${props.what}\u3092\u524A\u9664`, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
+  ] });
+}
 function GroupManagerView(props) {
   const { ctx } = props;
   const version = useStoreVersion(ctx.store);
-  const [groups, setGroups] = d2(ctx.store.index.data.groups);
+  const [drafts, setDrafts] = d2(() => ctx.store.index.data.groups.map(toDraft));
   const [dirty, setDirty] = d2(false);
+  const [focusKey, setFocusKey] = d2(null);
   h2(() => {
-    if (!dirty) setGroups(ctx.store.index.data.groups);
+    if (!dirty) setDrafts(ctx.store.index.data.groups.map(toDraft));
   }, [version]);
   const update = (next) => {
-    setGroups(next);
+    setDrafts(next);
     setDirty(true);
   };
-  const ask = (title, initial, fn) => new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
-    TextForm,
-    {
-      initial,
-      onSubmit: (v3) => {
-        close();
-        if (v3 && !v3.includes("/")) fn(v3);
-        else if (v3) ctx.report("\u30B0\u30EB\u30FC\u30D7\u540D\u306B / \u306F\u4F7F\u3048\u307E\u305B\u3093");
-      }
-    }
-  )).open();
-  const save = () => void ctx.writer.saveGroups(groups).then(
+  const setGroup = (key, fn) => update(drafts.map((d3) => d3.key === key ? fn(d3) : d3));
+  const addGroup = () => {
+    const d3 = { key: nextKey++, name: "", children: [] };
+    setFocusKey(d3.key);
+    update([...drafts, d3]);
+  };
+  const addSub = (parent) => {
+    const c3 = { key: nextKey++, name: "", children: [] };
+    setFocusKey(c3.key);
+    setGroup(parent, (g2) => ({ ...g2, children: [...g2.children, c3] }));
+  };
+  const hasError = drafts.some((g2) => errorOf(g2, drafts) !== null || g2.children.some((c3) => errorOf(c3, g2.children) !== null));
+  const save = () => void ctx.writer.saveGroups(drafts.map(toDef)).then(
     () => setDirty(false),
     (e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
   );
-  const unique = (list, name) => !list.some((g2) => g2.name === name);
-  return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
+  return /* @__PURE__ */ u3("div", { class: "vt-page vt-group-manager", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Board groups" }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      /* @__PURE__ */ u3("button", { class: "vt-button", onClick: () => ask("\u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0", "", (name) => unique(groups, name) && update([...groups, { name, span: 1, children: [] }])), children: [
-        /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " \u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0"
-      ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty, onClick: save, children: [
+      dirty ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => {
+        setDrafts(ctx.store.index.data.groups.map(toDraft));
+        setDirty(false);
+      }, children: "\u5143\u306B\u623B\u3059" }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u4FDD\u5B58\u6E08\u307F" }),
+      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty || hasError, onClick: save, children: [
         /* @__PURE__ */ u3(Icon, { name: "save" }),
         " \u4FDD\u5B58"
       ] })
     ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: [
-      "\u30DC\u30FC\u30C9\u306F\u6A2A ",
-      BOARD_COLUMNS,
-      " \u6BB5\u3067\u3059\u3002\u30B0\u30EB\u30FC\u30D7\u3054\u3068\u306B\u6A2A\u5E45\uFF08\u6BB5\u6570\uFF09\u3092\u9078\u3079\u307E\u3059\u3002\u5B50\u30B0\u30EB\u30FC\u30D7\u306F\u30B0\u30EB\u30FC\u30D7\u306E\u4E2D\u306B\u6A2A\u306B\u4E26\u3073\u307E\u3059\uFF082 \u968E\u5C64\u307E\u3067\uFF09\u3002"
-    ] }),
-    groups.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30B0\u30EB\u30FC\u30D7\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u306A\u304F\u3066\u3082\u30DC\u30FC\u30C9\u306F\u300C\u672A\u5206\u985E\u300D\u3060\u3051\u3067\u4F7F\u3048\u307E\u3059" }),
-    /* @__PURE__ */ u3("div", { class: "vt-group-editor", children: groups.map((g2, i3) => /* @__PURE__ */ u3("section", { class: "vt-card", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-group-name", children: g2.name }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u540D\u524D\u3092\u5909\u3048\u308B", onClick: () => ask("\u30B0\u30EB\u30FC\u30D7\u540D", g2.name, (name) => (name === g2.name || unique(groups, name)) && update(groups.map((x2, k3) => k3 === i3 ? { ...x2, name } : x2))), children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) }),
-        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u6A2A\u5E45" }),
-        /* @__PURE__ */ u3("div", { class: "vt-segmented", children: Array.from({ length: BOARD_COLUMNS }, (_2, k3) => k3 + 1).map((n2) => /* @__PURE__ */ u3("button", { class: g2.span === n2 ? "is-on" : "", onClick: () => update(groups.map((x2, k3) => k3 === i3 ? { ...x2, span: n2 } : x2)), children: n2 })) }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0A\u3078", disabled: i3 === 0, onClick: () => update(move(groups, i3, -1)), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0B\u3078", disabled: i3 === groups.length - 1, onClick: () => update(move(groups, i3, 1)), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u524A\u9664", onClick: () => update(groups.filter((_2, k3) => k3 !== i3)), children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
+    /* @__PURE__ */ u3("section", { class: "vt-card vt-layout-preview", "aria-label": "\u30DC\u30FC\u30C9\u3067\u306E\u4E26\u3073\u65B9", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u30DC\u30FC\u30C9\u3067\u306E\u4E26\u3073\u65B9" }),
+      /* @__PURE__ */ u3("div", { class: "vt-preview-columns", children: [
+        /* @__PURE__ */ u3("div", { class: "vt-preview-col is-ungrouped", children: /* @__PURE__ */ u3("span", { children: "\u672A\u5206\u985E" }) }),
+        drafts.map((g2) => /* @__PURE__ */ u3("div", { class: "vt-preview-col", children: [
+          /* @__PURE__ */ u3("span", { children: g2.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09" }),
+          g2.children.map((c3) => /* @__PURE__ */ u3("span", { class: "vt-preview-sub", children: c3.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09" }))
+        ] }))
       ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
-        g2.children.map((c3, j3) => /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-link", onClick: () => ask("\u5B50\u30B0\u30EB\u30FC\u30D7\u540D", c3.name, (name) => (name === c3.name || unique(g2.children, name)) && update(groups.map((x2, k3) => k3 === i3 ? { ...x2, children: x2.children.map((y3, m3) => m3 === j3 ? { ...y3, name } : y3) } : x2))), children: c3.name }),
-          /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u5DE6\u3078", disabled: j3 === 0, onClick: () => update(groups.map((x2, k3) => k3 === i3 ? { ...x2, children: move(x2.children, j3, -1) } : x2)), children: /* @__PURE__ */ u3(Icon, { name: "chevron-left" }) }),
-          /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u524A\u9664", onClick: () => update(groups.map((x2, k3) => k3 === i3 ? { ...x2, children: x2.children.filter((_2, m3) => m3 !== j3) } : x2)), children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
-        ] })),
-        /* @__PURE__ */ u3("button", { class: "vt-field-chip is-placeholder", onClick: () => ask("\u5B50\u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0", "", (name) => unique(g2.children, name) && update(groups.map((x2, k3) => k3 === i3 ? { ...x2, children: [...x2.children, { name, span: 1, children: [] }] } : x2))), children: [
-          /* @__PURE__ */ u3(Icon, { name: "plus" }),
-          " \u5B50\u30B0\u30EB\u30FC\u30D7"
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u30B0\u30EB\u30FC\u30D7\u306F\u30DC\u30FC\u30C9\u306B\u6A2A\u306B\u4E26\u3073\u307E\u3059\uFF08\u72ED\u3044\u753B\u9762\u3067\u306F\u7E26\uFF09\u3002\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u306F\u30B0\u30EB\u30FC\u30D7\u306E\u4E2D\u306B\u7E26\u306B\u4E26\u3073\u307E\u3059\u3002" })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-group-editor", children: [
+      drafts.map((g2, i3) => /* @__PURE__ */ u3("section", { class: "vt-card vt-group-edit", children: [
+        /* @__PURE__ */ u3("div", { class: "vt-group-edit-head", children: [
+          /* @__PURE__ */ u3(
+            NameField,
+            {
+              label: "\u30B0\u30EB\u30FC\u30D7\u540D",
+              value: g2.name,
+              error: errorOf(g2, drafts),
+              autoFocus: focusKey === g2.key,
+              onInput: (v3) => setGroup(g2.key, (x2) => ({ ...x2, name: v3 }))
+            }
+          ),
+          /* @__PURE__ */ u3(RowTools, { what: "\u30B0\u30EB\u30FC\u30D7", index: i3, count: drafts.length, onMove: (d3) => update(move(drafts, i3, d3)), onDelete: () => update(drafts.filter((x2) => x2.key !== g2.key)) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-sub-list", children: [
+          g2.children.map((c3, j3) => /* @__PURE__ */ u3("div", { class: "vt-sub-edit", children: [
+            /* @__PURE__ */ u3(Icon, { name: "corner-down-right", class: "vt-sub-mark" }),
+            /* @__PURE__ */ u3(
+              NameField,
+              {
+                label: "\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u540D",
+                value: c3.name,
+                error: errorOf(c3, g2.children),
+                autoFocus: focusKey === c3.key,
+                onInput: (v3) => setGroup(g2.key, (x2) => ({ ...x2, children: x2.children.map((y3) => y3.key === c3.key ? { ...y3, name: v3 } : y3) }))
+              }
+            ),
+            /* @__PURE__ */ u3(
+              RowTools,
+              {
+                what: "\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7",
+                index: j3,
+                count: g2.children.length,
+                onMove: (d3) => setGroup(g2.key, (x2) => ({ ...x2, children: move(x2.children, j3, d3) })),
+                onDelete: () => setGroup(g2.key, (x2) => ({ ...x2, children: x2.children.filter((y3) => y3.key !== c3.key) }))
+              }
+            )
+          ] }, c3.key)),
+          /* @__PURE__ */ u3("button", { class: "vt-button is-text vt-add-sub", onClick: () => addSub(g2.key), children: [
+            /* @__PURE__ */ u3(Icon, { name: "plus" }),
+            " \u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0"
+          ] })
         ] })
+      ] }, g2.key)),
+      /* @__PURE__ */ u3("button", { class: "vt-add-group", onClick: addGroup, children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        " \u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0"
       ] })
-    ] }, g2.name)) }),
-    dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093" })
+    ] }),
+    dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
+      "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
+      hasError ? "\uFF08\u540D\u524D\u306E\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : ""
+    ] }),
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u30B0\u30EB\u30FC\u30D7\u306E\u540D\u524D\u3092\u5909\u3048\u3066\u3082\u3001\u904E\u53BB\u306E\u30DC\u30FC\u30C9\u3067\u305D\u306E\u30B0\u30EB\u30FC\u30D7\u306B\u7F6E\u3044\u305F\u30AB\u30FC\u30C9\u306F\u79FB\u308A\u307E\u305B\u3093\uFF08\u672A\u5206\u985E\u306B\u51FA\u307E\u3059\uFF09\u3002" })
   ] });
 }
 

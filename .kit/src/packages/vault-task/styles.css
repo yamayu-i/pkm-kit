@@ -1520,19 +1520,29 @@ button.vt-badge:disabled::after {
 	gap: 8px;
 }
 
-.vt-board-grid {
-	display: grid;
+/* 1 階層目は横に並べる。狭いペインでは縦（ADR-0015） */
+.vt-board-columns {
+	display: flex;
+	align-items: flex-start;
 	gap: 12px;
-	align-items: start;
+	overflow-x: auto;
+	padding-bottom: 4px;
+}
+
+.vt-board-columns > .vt-group {
+	flex: 1 1 0;
+	min-width: 240px;
 }
 
 @container (max-width: 720px) {
-	.vt-board-grid {
-		grid-template-columns: minmax(0, 1fr) !important;
+	.vt-board-columns {
+		flex-direction: column;
+		align-items: stretch;
+		overflow-x: visible;
 	}
 
-	.vt-board-grid > .vt-group {
-		grid-column: auto !important;
+	.vt-board-columns > .vt-group {
+		min-width: 0;
 	}
 }
 
@@ -1549,7 +1559,6 @@ button.vt-badge:disabled::after {
 }
 
 .vt-group.is-sub {
-	flex: 1 1 200px;
 	background: var(--background-primary);
 }
 
@@ -1575,9 +1584,10 @@ button.vt-badge:disabled::after {
 	gap: 8px;
 }
 
+/* 2 階層目はグループの中に縦に並べる */
 .vt-subgroups {
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
 	gap: 8px;
 }
 
@@ -2202,41 +2212,161 @@ thead .vt-sched-sticky {
 	background: var(--vt-on-primary);
 }
 
-/* ---------- グループの編集 ---------- */
+/* ---------- グループの編集（ADR-0015） ---------- */
+
+.vt-group-manager {
+	max-width: 760px;
+}
+
+.vt-layout-preview {
+	gap: 8px;
+}
+
+.vt-preview-columns {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+}
+
+.vt-preview-col {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 72px;
+	padding: 6px;
+	border-radius: var(--vt-radius-s);
+	background: var(--background-primary);
+	border: 1px solid var(--vt-outline);
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.vt-preview-col.is-ungrouped {
+	color: var(--text-faint);
+	border-style: dashed;
+}
+
+.vt-preview-sub {
+	padding: 3px 6px;
+	border-radius: 6px;
+	background: var(--vt-surface-high);
+	color: var(--text-muted);
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 
 .vt-group-editor {
 	display: flex;
 	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-group-edit {
 	gap: 10px;
 }
 
-/* M3 の segmented button */
-.vt-segmented {
-	display: inline-flex;
-	border: 1px solid var(--vt-outline-strong);
-	border-radius: var(--vt-radius-full);
-	overflow: hidden;
+.vt-group-edit-head,
+.vt-sub-edit {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
 }
 
-.vt-segmented button {
-	min-width: 36px;
-	height: 32px;
-	padding: 0 10px;
-	border: none;
-	border-radius: 0;
+.vt-row-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding-top: 10px;
+}
+
+.vt-sub-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-left: 12px;
+	padding-left: 12px;
+	border-left: 2px solid var(--vt-outline);
+}
+
+.vt-sub-mark {
+	padding-top: 12px;
+	color: var(--text-faint);
+}
+
+.vt-add-sub {
+	align-self: flex-start;
+}
+
+/* M3 の outlined text field 風: 枠の上にラベル */
+.vt-name-field {
+	position: relative;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vt-name-label {
+	position: absolute;
+	top: -7px;
+	left: 10px;
+	padding: 0 4px;
+	background: var(--vt-surface);
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 14px;
+}
+
+.vt-name-field input {
+	height: 44px;
+	padding: 0 14px;
+	border: 1px solid var(--vt-outline-strong);
+	border-radius: var(--vt-radius-s);
+	background: var(--background-primary);
+	font-size: var(--font-ui-medium);
+}
+
+.vt-name-field input:focus {
+	border-color: var(--vt-primary);
+	box-shadow: 0 0 0 1px var(--vt-primary);
+}
+
+.vt-name-field.is-error input {
+	border-color: var(--text-error);
+}
+
+.vt-name-field.is-error .vt-name-label,
+.vt-name-error {
+	color: var(--text-error);
+}
+
+.vt-name-error {
+	padding: 4px 14px 0;
+	font-size: 11px;
+}
+
+.vt-add-group {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 56px;
+	border: 2px dashed var(--vt-outline-strong);
+	border-radius: var(--vt-radius-l);
 	background: transparent;
 	box-shadow: none;
-	font-variant-numeric: tabular-nums;
-	cursor: pointer;
-}
-
-.vt-segmented button + button {
-	border-left: 1px solid var(--vt-outline-strong);
-}
-
-.vt-segmented button.is-on {
-	background: color-mix(in srgb, var(--vt-primary) 18%, var(--background-primary));
+	color: var(--vt-primary);
 	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 120ms ease;
+}
+
+.vt-add-group:hover {
+	background: color-mix(in srgb, var(--vt-primary) 8%, transparent);
 }
 
 @container (max-width: 420px) {

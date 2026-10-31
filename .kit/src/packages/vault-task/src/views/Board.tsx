@@ -4,7 +4,7 @@ import { closePatch, cancelPatch } from "../core/actions";
 import { boardItems, unfinished, type BoardState } from "../core/board";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { BOARD_COLUMNS, UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
+import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
 import {
@@ -21,7 +21,7 @@ import {
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues } from "../obsidian/issue-actions";
 import { IssueSuggestModal } from "../obsidian/modals";
-import { IdBadge, PriorityBadge, StatusBadge } from "../ui/badges";
+import { PriorityBadge, StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow } from "../ui/hooks";
@@ -86,8 +86,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			onDragStart={(e) => e.dataTransfer?.setData("text/plain", id)}
 		>
 			<div class="vt-task-top">
-				{issue ? <IdBadge issue={issue} /> : <span class="vt-badge vt-id vt-routine-id">{id}</span>}
-				<span class="vt-task-summary" title={summary} onClick={(e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false)}>
+				<span class="vt-task-summary" title={`${id} ${summary}`} onClick={(e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false)}>
 					{summary}
 				</span>
 				<button
@@ -123,7 +122,6 @@ function GroupBox(props: {
 	placement: (it: Item) => string;
 	keys: string[];
 	now: number;
-	span?: number;
 	sub?: boolean;
 	children?: preact.ComponentChildren;
 }) {
@@ -136,7 +134,6 @@ function GroupBox(props: {
 	return (
 		<section
 			class={`vt-group${props.sub ? " is-sub" : ""}${over ? " is-over" : ""}`}
-			style={props.span ? { gridColumn: `span ${props.span}` } : undefined}
 			onDragOver={(e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -211,12 +208,13 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				</button>
 			</div>
 			{items.length === 0 && <div class="vt-empty">ボードは空です。「今日の予定」から載せるか、上のボタンで追加します</div>}
-			<div class="vt-board-grid" style={{ gridTemplateColumns: `repeat(${BOARD_COLUMNS}, minmax(0, 1fr))` }}>
+			{/* 1 階層目は横に並べ、2 階層目はグループの中に縦に並べる（ADR-0015） */}
+			<div class="vt-board-columns">
 				{(ungrouped.length > 0 || groups.length === 0) && items.length > 0 && (
-					<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} span={groups.length === 0 ? BOARD_COLUMNS : 1} />
+					<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} />
 				)}
 				{groups.map((g) => (
-					<GroupBox ctx={ctx} date={date} board={board} name={g.name} groupKey={g.name} items={items} placement={placement} keys={keys} now={now} span={g.span}>
+					<GroupBox ctx={ctx} date={date} board={board} name={g.name} groupKey={g.name} items={items} placement={placement} keys={keys} now={now}>
 						{g.children.length > 0 &&
 							g.children.map((c) => (
 								<GroupBox
