@@ -50,7 +50,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ## vault-task（タスク管理）
 
-設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
+設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
 ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint、issue 画面・一括登録、DailyTaskView・タイマー、dead / caution の整理、グループ管理・各 View）。
 
 ### コードの構成（`.plugin-src/packages/vault-task`）
@@ -71,6 +71,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、デイリーノートの frontmatter の `board`（ADR-0014）
 - 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
+- 間違っていそうな worklog は [worklog-review スキル](../skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.plugin-src/docs/design.md` に従う**（トークン・部品・編集できるものの目印・レイアウト）。新しい色や部品を足したら、そのファイルも更新する
@@ -78,6 +79,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 ## 進め方
 
-- 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする
+- 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
+- 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
 - 新しいプラグインを作るときは `.plugin-src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す

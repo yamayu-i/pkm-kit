@@ -26,9 +26,15 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 | `member/m-N.md` | 委任先の人 |
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
+| `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
+| `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
 | それ以外 | 通常のノート。新規ノートの既定の作成先は Vault ルート |
+
+`sources/` と `wiki/` の書式と、LLM がどのノートを変えてよいか（所有の区分）は [LLM wiki の仕組み](llm-wiki.md) にある。
 
 ## 編集するとき
 
+- 人が書いたノート（`daily/` やルートのメモ）の既存の内容は、ユーザーの許可なく変えない。LLM ができるのは追記だけ（[ADR-0004](adr/0004-human-notes-append-only.md)）
+- 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る

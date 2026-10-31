@@ -10,6 +10,19 @@ Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/p
 - 添付: `asset/` 直下
 - デイリーノート: `daily/YYYY/MM/YYYY-MM-DD.md`
 
+## LLM wiki
+
+Claude Code が、取り込んだ資料やデイリーノートをもとに wiki をまとめる。仕組みは `.claude/docs/llm-wiki.md`。
+
+| フォルダ | 内容 |
+|---|---|
+| `sources/` | 取り込んだ元資料（Claude Code が作り、変更しない） |
+| `wiki/` | Claude Code がまとめるページ。目次は `wiki/index.md`、操作の記録は `wiki/log.md` |
+| `wiki/feedback.md` | 使っていて気づいたことを書く場所（月 1 回の見直しで読まれる） |
+
+Claude Code への頼み方の例: 「この記事を取り込んで: <URL>」「wiki から〇〇について調べて」「wiki を点検して」「デイリーノートを整理して」。
+人が書いたノート（`daily/` など）は、Claude Code が書き換えることはない（末尾にリンクを追記するだけ）。
+
 ## Vault Git の使い方
 
 | 操作 | 内容 |
@@ -41,7 +54,7 @@ PC: このリポジトリを `git clone` して Vault として開く。
 
 ## 開発
 
-`.plugin-src/` にソースがある。詳細は `.claude/CLAUDE.md`。
+`.plugin-src/` にソースがある。Claude Code 用のハーネス（進め方・スキル・検査）は `.claude/` にあり、入口は `.claude/CLAUDE.md`。
 
 ```sh
 mise install
