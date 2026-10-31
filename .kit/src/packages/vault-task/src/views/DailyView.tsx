@@ -7,7 +7,7 @@ import type { Issue } from "../core/schema";
 import { boardSummary } from "../core/summary";
 import { addToBoard, carryIssues } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues, scheduleToday } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow, useStoreVersion } from "../ui/hooks";
@@ -24,7 +24,7 @@ const STEPS: { key: Step; label: string; icon: string }[] = [
 ];
 
 /** deadline / mid_due の 2 つの表と操作（dead と caution で共通） */
-function DueStep(props: { ctx: TaskContext; lists: DueLists; empty: string }) {
+function DueStep(props: { ctx: TaskContext; lists: DueLists; empty: string; canScheduleToday?: boolean }) {
 	const sections: { key: RescheduleTarget; title: string; issues: Issue[] }[] = [
 		{ key: "deadline", title: "deadline", issues: props.lists.deadline },
 		{ key: "mid_due", title: "mid_due", issues: props.lists.midDue },
@@ -32,13 +32,13 @@ function DueStep(props: { ctx: TaskContext; lists: DueLists; empty: string }) {
 	return (
 		<>
 			{sections.map((s) => (
-				<DueSection ctx={props.ctx} target={s.key} title={s.title} issues={s.issues} empty={props.empty} />
+				<DueSection ctx={props.ctx} target={s.key} title={s.title} issues={s.issues} empty={props.empty} canScheduleToday={props.canScheduleToday} />
 			))}
 		</>
 	);
 }
 
-function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: string; issues: Issue[]; empty: string }) {
+function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: string; issues: Issue[]; empty: string; canScheduleToday?: boolean }) {
 	const { ctx, target, issues } = props;
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const sel = issues.filter((i) => selected.has(i.id));
@@ -54,6 +54,7 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 				<ActionBar
 					count={sel.length}
 					actions={[
+						...(props.canScheduleToday ? [{ label: "今日やる", icon: "calendar-check", tone: "primary" as const, run: () => void scheduleToday(ctx, sel).then(done) }] : []),
 						{ label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
 						{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 						{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
@@ -217,7 +218,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 
 			{step === "dead" && <DueStep ctx={ctx} lists={dead} empty="期限切れはありません" />}
 			{step === "previous" && (pending.length > 0 ? <PreviousStep ctx={ctx} boards={pending} /> : <div class="vt-empty">片付いていないボードはありません</div>)}
-			{step === "caution" && <DueStep ctx={ctx} lists={caution} empty="3 日以内の期限はありません" />}
+			{step === "caution" && <DueStep ctx={ctx} lists={caution} empty="3 日以内の期限はありません" canScheduleToday />}
 			{step === "scheduled" && <ScheduledStep ctx={ctx} issues={scheduled} today={today} />}
 			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
 

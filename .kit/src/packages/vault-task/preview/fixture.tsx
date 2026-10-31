@@ -4,6 +4,7 @@ import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
+import { DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
 import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
@@ -86,6 +87,12 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	someday: SomedayView,
 	routines: RoutineListView,
 	groups: GroupManagerView,
+	forms: () => (
+		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
+			<DateForm initial={t} onSubmit={() => {}} />
+			<WorklogForm initial={{ fromMs: Date.now() - 3_600_000, toMs: Date.now(), description: "作業" }} onSubmit={() => {}} onDelete={() => {}} />
+		</div>
+	),
 };
 
 const name = location.hash.slice(1) || "header";

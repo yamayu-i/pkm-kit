@@ -105,6 +105,19 @@ export function replaceWorklogLine(
 	return lines.join("\n");
 }
 
+/** 記録に残す長さの下限 */
+export const MIN_WORKLOG_MS = 60_000;
+
+/**
+ * 記録中の行を止める。下限に満たない行は残さず消す。
+ * 行を消すと後ろの行番号がずれるので、後ろの行から処理する
+ */
+export function stopWorklogLines(text: string, entries: WorklogEntry[], to: string, toMs: number): string {
+	return [...entries]
+		.sort((a, b) => b.line - a.line)
+		.reduce((t, e) => replaceWorklogLine(t, e, toMs - e.fromMs < MIN_WORKLOG_MS ? null : { from: e.from, to, description: e.description }), text);
+}
+
 /** worklog の ID（`wl_` + 10 文字）。random は 0 以上 1 未満を返す関数 */
 export function newWorklogId(random: () => number = Math.random): string {
 	const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
