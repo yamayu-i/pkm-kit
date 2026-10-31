@@ -58,6 +58,7 @@
 | 文書の構造 | `check-docs.mjs` | CLAUDE.md の行数、リンク切れ、辿れない文書、スキルの frontmatter |
 | wiki の lint | `wiki-lint.mjs` | 書式（Markdown リンク、ルートからのパス、asset/、タブ）、wiki のページの frontmatter、index への掲載 |
 | 追記だけか | `check-append-only.mjs` | `wiki(...)` のコミットが所有の区分を守っているか（[ADR-0004](adr/0004-human-notes-append-only.md)） |
+| Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` 直下の JSON に末尾改行がないか（Obsidian の保存形式に合わせ、開いたときの差分を防ぐ） |
 | プラグイン | `.plugin-src` の `pnpm check` | 型・ビルド・テスト（`--plugin` を付けたとき、CI ではプラグインを変えたとき） |
 
 規約を足す前に、検査で強制できないかを考える。検査を緩める変更は、大きい変更として扱う。
