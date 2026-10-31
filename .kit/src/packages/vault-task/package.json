@@ -7,8 +7,9 @@
     "dev": "node esbuild.config.mjs --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint:vault": "node esbuild.config.mjs && node dist/cli.mjs ../../..",
-    "preview:ui": "node preview/preview.mjs"
+    "lint:vault": "node esbuild.config.mjs && node dist/lint.mjs ../../..",
+    "preview:ui": "node preview/preview.mjs",
+    "worklog:review": "node esbuild.config.mjs && node dist/worklog-review.mjs ../../.."
   },
   "devDependencies": {
     "@codemirror/state": "6.7.6",

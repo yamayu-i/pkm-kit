@@ -21,3 +21,25 @@ export function newMemberContent(id: string, name: string, created: string): str
 		"\n",
 	);
 }
+
+/** 新しい routine（ADR-0010）。repeat は JSON の形で書く（YAML のフロー形式として読める） */
+export function newRoutineContent(
+	id: string,
+	summary: string,
+	repeat: Record<string, unknown>,
+	created: string,
+	extra: { group?: string | null; estimated?: number | null; start?: string | null } = {},
+): string {
+	const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+	if (extra.start) lines.push(`start: ${extra.start}`);
+	lines.push("active: true");
+	if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+	if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+	lines.push(`created: ${created}`, "---", "", "## 手順", "", "- [ ] ", "");
+	return lines.join("\n");
+}
+
+/** board だけを持つデイリーノート（まだないとき） */
+export function newDailyContent(): string {
+	return "---\nboard: {}\n---\n";
+}

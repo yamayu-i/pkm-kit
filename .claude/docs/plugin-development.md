@@ -51,7 +51,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 ## vault-task（タスク管理）
 
 設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
-進み具合: 段階 1（スキーマ・索引・lint）と段階 2（issue 画面のヘッダー・一括登録）まで（ADR-0001 の順番）。
+ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint、issue 画面・一括登録、DailyTaskView・タイマー、dead / caution の整理、グループ管理・各 View）。
 
 ### コードの構成（`.plugin-src/packages/vault-task`）
 
@@ -60,14 +60,18 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 | `src/core/` | スキーマ、repeat、按分、索引、lint、ファイルの中身の生成 | なし |
 | `src/obsidian/` | 索引の保持（metadataCache から）、Vault への書き込み、モーダル、一括登録 | あり |
 | `src/header/` | issue 画面のヘッダー（CodeMirror の block widget + preact） | あり |
-| `src/ui/` | preact の部品（バッジ、フォーム、カレンダー） | 一部 |
+| `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
+| `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
-| `cli/lint.ts` | `pnpm task:lint` の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
+| `cli/` | `pnpm task:lint` と `pnpm task:worklog-review`（worklog-review スキル用）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
 ### 注意点
 
 - frontmatter の更新は `fileManager.processFrontMatter` で行う（ほかの欄や書式を壊さない）。値が空なら欄ごと消す
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
+- データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、デイリーノートの frontmatter の `board`（ADR-0014）
+- 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
+- 間違っていそうな worklog は [worklog-review スキル](../skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.plugin-src/docs/design.md` に従う**（トークン・部品・編集できるものの目印・レイアウト）。新しい色や部品を足したら、そのファイルも更新する

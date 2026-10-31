@@ -35,7 +35,7 @@ export function TextForm(props: { initial: string; maxLength?: number; placehold
 }
 
 /** 日付を 1 つ選ぶ。クリアもできる */
-export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: LocalDate | null) => void }) {
+export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: LocalDate | null) => void; allowClear?: boolean; presets?: boolean }) {
 	const [value, setValue] = useState(props.initial ?? "");
 	return (
 		<form
@@ -45,10 +45,25 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 				props.onSubmit(value || null);
 			}}
 		>
+			{props.presets !== false && (
+				<div class="vt-date-presets">
+					{[
+						["今日", 0],
+						["明日", 1],
+						["来週", 7],
+					].map(([label, n]) => (
+						<button type="button" class="vt-field-chip" onClick={() => props.onSubmit(addDays(localToday(), n as number))}>
+							{label}
+						</button>
+					))}
+				</div>
+			)}
 			<input type="date" value={value} onInput={(e) => setValue(e.currentTarget.value)} />
-			<button type="button" onClick={() => props.onSubmit(null)}>
-				クリア
-			</button>
+			{props.allowClear !== false && (
+				<button type="button" onClick={() => props.onSubmit(null)}>
+					クリア
+				</button>
+			)}
 			<button type="submit" class="mod-cta">
 				保存
 			</button>

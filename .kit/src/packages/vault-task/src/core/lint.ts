@@ -74,6 +74,12 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		}
 	}
 
+	for (const b of data.boards) {
+		for (const id of b.board.issues) {
+			if (!index.issues.has(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
+		}
+	}
+
 	const logIds = new Map<string, string>();
 	for (const log of data.worklogs) {
 		const where = `${log.path}:${log.line}`;

@@ -19,9 +19,16 @@ export interface WorklogEntry {
 /** `worklog/<端末名>/YYYY-MM.jsonl` */
 export const WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
 
+/** 端末名をフォルダ名に使える形にする（区切り文字と先頭の . を除く）。空になったら使えない */
+export function sanitizeDeviceName(name: string): string {
+	return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+}
+
 export function worklogPath(device: string, from: Date): string {
+	const safe = sanitizeDeviceName(device);
+	if (!safe) throw new Error("端末名が空です");
 	const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
-	return `worklog/${device}/${month}.jsonl`;
+	return `worklog/${safe}/${month}.jsonl`;
 }
 
 export function parseWorklog(path: string, text: string): { entries: WorklogEntry[]; problems: Problem[] } {
@@ -96,4 +103,15 @@ export function replaceWorklogLine(
 	if (next === null) lines.splice(i, 1);
 	else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
 	return lines.join("\n");
+}
+
+/** worklog の ID（`wl_` + 10 文字）。random は 0 以上 1 未満を返す関数 */
+export function newWorklogId(random: () => number = Math.random): string {
+	const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+	return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+
+/** jsonl の末尾に 1 行足す（最後に改行がなければ補う） */
+export function appendWorklogLine(text: string, line: string): string {
+	return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}\n`;
 }

@@ -21,6 +21,11 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 |---|---|
 | `daily/YYYY/MM/YYYY-MM-DD.md` | デイリーノート |
 | `asset/` | 添付ファイル（サブフォルダを作らない） |
+| `issue/i-N.md` | タスク管理の issue（vault-task。frontmatter が正本。`.plugin-src/docs/adr/` 参照） |
+| `routine/r-N.md` | くり返しのタスク |
+| `member/m-N.md` | 委任先の人 |
+| `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
+| `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
 | それ以外 | 通常のノート。新規ノートの既定の作成先は Vault ルート |

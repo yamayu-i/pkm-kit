@@ -133,3 +133,31 @@ export function occursOn(rule: RepeatRule, anchor: LocalDate, date: LocalDate): 
 	}
 }
 
+
+const ORDINAL = ["", "第 1", "第 2", "第 3", "第 4", "第 5"];
+
+/** 表示用の説明（例: 隔週 mon, thu / 毎月 第 2 tue） */
+export function describeRepeat(rule: RepeatRule): string {
+	const every = (unit: string, each: string) => (rule.interval === 1 ? each : `${rule.interval} ${unit}ごと`);
+	switch (rule.every) {
+		case "day":
+			return every("日", "毎日");
+		case "week":
+			return `${rule.interval === 2 ? "隔週" : every("週", "毎週")} ${rule.weekdays.map((w) => WEEKDAY_NAMES[w]).join(", ")}`;
+		case "month": {
+			const days = rule.days.map((d) => {
+				switch (d.kind) {
+					case "day":
+						return `${d.day} 日`;
+					case "last":
+						return "月末";
+					case "nth":
+						return `${ORDINAL[d.n]} ${WEEKDAY_NAMES[d.weekday]}`;
+					case "lastWeekday":
+						return `最終 ${WEEKDAY_NAMES[d.weekday]}`;
+				}
+			});
+			return `${rule.interval === 2 ? "隔月" : every("か月", "毎月")} ${days.join(", ")}`;
+		}
+	}
+}
