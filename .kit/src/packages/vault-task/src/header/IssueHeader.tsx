@@ -478,7 +478,23 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 }
 
 function Worklog(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
+	const { ctx, issue } = props;
 	const [page, setPage] = useState(0);
+	const add = () => {
+		const now = Date.now();
+		new PreactModal(ctx.app, "worklog を追加", (close) => (
+			<WorklogForm
+				initial={{ fromMs: now - 3_600_000, toMs: now, description: "" }}
+				onSubmit={(d) => {
+					close();
+					const from = new Date(d.fromMs);
+					void ctx.writer
+						.addWorklog(issue.id, ctx.settings.deviceName, { from: localDateTime(from), to: d.toMs === null ? null : localDateTime(new Date(d.toMs)), description: d.description }, from)
+						.catch((e) => ctx.report("worklog を追加できませんでした", e));
+				}}
+			/>
+		)).open();
+	};
 	const logs = props.index.data.worklogs.filter((l) => l.taskId === props.issue.id).sort((a, b) => b.fromMs - a.fromMs);
 	const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
 	const current = Math.min(page, pages - 1);
@@ -488,6 +504,10 @@ function Worklog(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
 			<div class="vt-section-head">
 				<span class="vt-field-label">worklog</span>
 				{logs.length > 0 && <span class="vt-count">{logs.length} 件</span>}
+				<span class="vt-spacer" />
+				<button class="vt-text-button" onClick={add}>
+					<Icon name="plus" /> 追加
+				</button>
 			</div>
 			{logs.length === 0 && <div class="vt-empty">まだ記録がありません</div>}
 			<div class="vt-log-list">

@@ -287,150 +287,6 @@ n = w.slice, l = { __e: function(n2, l3, u4, t3) {
   return n2.__v.__b - l3.__v.__b;
 }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
 
-// src/header/IssueHeader.tsx
-var import_obsidian3 = require("obsidian");
-
-// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
-var t2;
-var r2;
-var u2;
-var i2;
-var o2 = 0;
-var f2 = [];
-var c2 = l;
-var e2 = c2.__b;
-var a2 = c2.__r;
-var v2 = c2.diffed;
-var l2 = c2.__c;
-var m2 = c2.unmount;
-var p2 = c2.__;
-function s2(n2, t3) {
-  c2.__h && c2.__h(r2, n2, o2 || t3), o2 = 0;
-  var u4 = r2.__H || (r2.__H = { __: [], __h: [] });
-  return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
-}
-function d2(n2) {
-  return o2 = 1, y2(D2, n2);
-}
-function y2(n2, u4, i3) {
-  var o3 = s2(t2++, 2);
-  if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
-    var t3 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t3, n3);
-    t3 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
-  }], o3.__c = r2, !r2.__f)) {
-    var f4 = function(n3, t3, r3) {
-      if (!o3.__c.__H) return true;
-      var u5 = false, i4 = o3.__c.props !== n3;
-      if (o3.__c.__H.__.some(function(n4) {
-        if (n4.__N) {
-          u5 = true;
-          var t4 = n4.__[0];
-          n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
-        }
-      }), c3) {
-        var f5 = c3.call(this, n3, t3, r3);
-        return u5 ? f5 || i4 : f5;
-      }
-      return !u5 || i4;
-    };
-    r2.__f = true;
-    var c3 = r2.shouldComponentUpdate, e3 = r2.componentWillUpdate;
-    r2.componentWillUpdate = function(n3, t3, r3) {
-      if (this.__e) {
-        var u5 = c3;
-        c3 = void 0, f4(n3, t3, r3), c3 = u5;
-      }
-      e3 && e3.call(this, n3, t3, r3);
-    }, r2.shouldComponentUpdate = f4;
-  }
-  return o3.__N || o3.__;
-}
-function h2(n2, u4) {
-  var i3 = s2(t2++, 3);
-  !c2.__s && C2(i3.__H, u4) && (i3.__ = n2, i3.u = u4, r2.__H.__h.push(i3));
-}
-function A2(n2) {
-  return o2 = 5, T2(function() {
-    return { current: n2 };
-  }, []);
-}
-function T2(n2, r3) {
-  var u4 = s2(t2++, 7);
-  return C2(u4.__H, r3) && (u4.__ = n2(), u4.__H = r3, u4.__h = n2), u4.__;
-}
-function j2() {
-  for (var n2; n2 = f2.shift(); ) {
-    var t3 = n2.__H;
-    if (n2.__P && t3) try {
-      t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
-    } catch (r3) {
-      t3.__h = [], c2.__e(r3, n2.__v);
-    }
-  }
-}
-c2.__b = function(n2) {
-  r2 = null, e2 && e2(n2);
-}, c2.__ = function(n2, t3) {
-  n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
-}, c2.__r = function(n2) {
-  a2 && a2(n2), t2 = 0;
-  var i3 = (r2 = n2.__c).__H;
-  i3 && (u2 === r2 ? (i3.__h = [], r2.__h = [], i3.__.some(function(n3) {
-    n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
-  })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u2 = r2;
-}, c2.diffed = function(n2) {
-  v2 && v2(n2);
-  var t3 = n2.__c;
-  t3 && t3.__H && (t3.__H.__h.length && (1 !== f2.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
-    n3.u && (n3.__H = n3.u, n3.u = void 0);
-  })), u2 = r2 = null;
-}, c2.__c = function(n2, t3) {
-  t3.some(function(n3) {
-    try {
-      n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
-        return !n4.__ || B2(n4);
-      });
-    } catch (r3) {
-      t3.some(function(n4) {
-        n4.__h && (n4.__h = []);
-      }), t3 = [], c2.__e(r3, n3.__v);
-    }
-  }), l2 && l2(n2, t3);
-}, c2.unmount = function(n2) {
-  m2 && m2(n2);
-  var t3, r3 = n2.__c;
-  r3 && r3.__H && (r3.__H.__.some(function(n3) {
-    try {
-      z2(n3);
-    } catch (n4) {
-      t3 = n4;
-    }
-  }), r3.__H = void 0, t3 && c2.__e(t3, r3.__v));
-};
-var k2 = "function" == typeof requestAnimationFrame;
-function w2(n2) {
-  var t3, r3 = function() {
-    clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
-  }, u4 = setTimeout(r3, 35);
-  k2 && (t3 = requestAnimationFrame(r3));
-}
-function z2(n2) {
-  var t3 = r2, u4 = n2.__c;
-  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t3;
-}
-function B2(n2) {
-  var t3 = r2;
-  n2.__c = n2.__(), r2 = t3;
-}
-function C2(n2, t3) {
-  return !n2 || n2.length !== t3.length || t3.some(function(t4, r3) {
-    return t4 !== n2[r3];
-  });
-}
-function D2(n2, t3) {
-  return "function" == typeof t3 ? t3(n2) : t3;
-}
-
 // src/core/dates.ts
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var DAY_MS = 864e5;
@@ -490,36 +346,25 @@ function formatShortDate(date) {
   return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
 }
 
-// src/core/effort.ts
-function prorateEffort(intervals, now) {
-  const events = [];
-  for (const iv of intervals) {
-    const to = iv.toMs ?? Math.max(now, iv.fromMs);
-    if (!(to > iv.fromMs)) continue;
-    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+function nextIds(prefix, existing, count = 1) {
+  let max = 0;
+  for (const id of existing) {
+    const n2 = idNumber(id, prefix);
+    if (n2 !== null && n2 > max) max = n2;
   }
-  events.sort((a3, b2) => a3.t - b2.t);
-  const result = /* @__PURE__ */ new Map();
-  const active = /* @__PURE__ */ new Map();
-  let k3 = 0;
-  let prev = 0;
-  for (let i3 = 0; i3 < events.length; ) {
-    const t3 = events[i3].t;
-    if (k3 > 0 && t3 > prev) {
-      const share = (t3 - prev) / k3;
-      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
-    }
-    for (; i3 < events.length && events[i3].t === t3; i3++) {
-      const e3 = events[i3];
-      const count = (active.get(e3.taskId) ?? 0) + e3.delta;
-      if (count === 0) active.delete(e3.taskId);
-      else active.set(e3.taskId, count);
-      k3 += e3.delta;
-      if (!result.has(e3.taskId)) result.set(e3.taskId, 0);
-    }
-    prev = t3;
-  }
-  return result;
+  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
+}
+function pathForId(id) {
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  return `${folder}/${id}.md`;
 }
 
 // src/core/repeat.ts
@@ -652,156 +497,6 @@ function describeRepeat(rule) {
       return `${rule.interval === 2 ? "\u9694\u6708" : every("\u304B\u6708", "\u6BCE\u6708")} ${days.join(", ")}`;
     }
   }
-}
-
-// src/core/index.ts
-function emptyVaultData() {
-  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
-}
-var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
-function isActive(issue) {
-  return !INACTIVE_STATUSES.includes(issue.status);
-}
-function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
-}
-function routineAnchor(routine) {
-  return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
-}
-function routineOccursOn(routine, date) {
-  if (!routine.active || routine.repeat === null) return false;
-  const anchor = routineAnchor(routine);
-  if (anchor === null) return false;
-  if (routine.end !== null && diffDays(date, routine.end) > 0) return false;
-  return occursOn(routine.repeat, anchor, date);
-}
-function compareNullableAsc(a3, b2) {
-  if (a3 === b2) return 0;
-  if (a3 === null) return -1;
-  if (b2 === null) return 1;
-  return a3 < b2 ? -1 : 1;
-}
-function organizeQueue(issues, today) {
-  const inbox = [];
-  const revisitDue = [];
-  const someday = [];
-  for (const issue of issues) {
-    if (isInbox(issue)) inbox.push(issue);
-    else if (issue.status === "someday") {
-      if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
-      else someday.push(issue);
-    }
-  }
-  inbox.sort((a3, b2) => compareNullableAsc(a3.created, b2.created));
-  revisitDue.sort((a3, b2) => compareNullableAsc(a3.revisit, b2.revisit));
-  someday.sort((a3, b2) => compareNullableAsc(a3.reviewed, b2.reviewed));
-  return [...inbox, ...revisitDue, ...someday];
-}
-var TaskIndex = class {
-  constructor(data) {
-    this.data = data;
-    for (const i3 of data.issues) if (!this.issues.has(i3.id)) this.issues.set(i3.id, i3);
-    for (const r3 of data.routines) if (!this.routines.has(r3.id)) this.routines.set(r3.id, r3);
-    for (const m3 of data.members) if (!this.members.has(m3.id)) this.members.set(m3.id, m3);
-    for (const i3 of data.issues) this.issuesByPath.set(i3.path, i3);
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
-    }
-  }
-  data;
-  issues = /* @__PURE__ */ new Map();
-  routines = /* @__PURE__ */ new Map();
-  members = /* @__PURE__ */ new Map();
-  issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
-  }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
-  }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a3) => a3.id === childId);
-  }
-  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
-  effortMinutes(now) {
-    const ms = prorateEffort(this.data.worklogs, now);
-    return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
-  }
-  board(date) {
-    return this.data.boards.find((b2) => b2.date === date);
-  }
-  /** 記録中（to が空）の worklog */
-  running(taskId) {
-    return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
-  }
-  routinesOn(date) {
-    return [...this.routines.values()].filter((r3) => routineOccursOn(r3, date));
-  }
-};
-
-// src/core/due.ts
-function dueLevel(issue, due, today) {
-  if (due === null || !isActive(issue)) return "none";
-  const left = diffDays(due, today);
-  if (left < 0) return "overdue";
-  if (left > 3) return "none";
-  return String(left);
-}
-
-// src/core/format.ts
-var MINUTES_PER_DAY = 8 * 60;
-function formatMinutes(minutes) {
-  const sign = minutes < 0 ? "-" : "";
-  let rest = Math.round(Math.abs(minutes));
-  const d3 = Math.floor(rest / MINUTES_PER_DAY);
-  rest -= d3 * MINUTES_PER_DAY;
-  const h3 = Math.floor(rest / 60);
-  const m3 = rest - h3 * 60;
-  const parts = [d3 ? `${d3}d` : "", h3 ? `${h3}h` : "", m3 ? `${m3}m` : ""].join("");
-  return sign + (parts || "0m");
-}
-function parseDaysInput(input) {
-  const m3 = /^\s*(\d+(?:\.\d+)?)\s*d?\s*$/i.exec(input);
-  if (!m3) return null;
-  return Math.round(Number(m3[1]) * MINUTES_PER_DAY);
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m3 ? Number(m3[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-function nextIds(prefix, existing, count = 1) {
-  let max = 0;
-  for (const id of existing) {
-    const n2 = idNumber(id, prefix);
-    if (n2 !== null && n2 > max) max = n2;
-  }
-  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
-}
-function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
-  return `${folder}/${id}.md`;
 }
 
 // src/core/schema.ts
@@ -969,6 +664,344 @@ function parseMember(path, fm) {
   return { value: id === null ? null : { path, id, name }, problems: r3.problems };
 }
 
+// src/core/issue-file.ts
+var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function newIssueContent(id, summary, created, parent = null) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  if (parent !== null) lines.push(`parent: ${parent}`);
+  lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  return lines.join("\n");
+}
+function newMemberContent(id, name, created) {
+  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
+    "\n"
+  );
+}
+function newRoutineContent(id, summary, repeat, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  if (extra.start) lines.push(`start: ${extra.start}`);
+  lines.push("active: true");
+  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+  lines.push(`created: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
+  return lines.join("\n");
+}
+function frontmatterRange(text) {
+  const m3 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
+  return m3 ? { from: 0, to: m3[0].length } : null;
+}
+function newDailyContent() {
+  return "---\nboard: {}\n---\n";
+}
+
+// src/header/IssueHeader.tsx
+var import_obsidian3 = require("obsidian");
+
+// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
+var t2;
+var r2;
+var u2;
+var i2;
+var o2 = 0;
+var f2 = [];
+var c2 = l;
+var e2 = c2.__b;
+var a2 = c2.__r;
+var v2 = c2.diffed;
+var l2 = c2.__c;
+var m2 = c2.unmount;
+var p2 = c2.__;
+function s2(n2, t3) {
+  c2.__h && c2.__h(r2, n2, o2 || t3), o2 = 0;
+  var u4 = r2.__H || (r2.__H = { __: [], __h: [] });
+  return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
+}
+function d2(n2) {
+  return o2 = 1, y2(D2, n2);
+}
+function y2(n2, u4, i3) {
+  var o3 = s2(t2++, 2);
+  if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
+    var t3 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t3, n3);
+    t3 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
+  }], o3.__c = r2, !r2.__f)) {
+    var f4 = function(n3, t3, r3) {
+      if (!o3.__c.__H) return true;
+      var u5 = false, i4 = o3.__c.props !== n3;
+      if (o3.__c.__H.__.some(function(n4) {
+        if (n4.__N) {
+          u5 = true;
+          var t4 = n4.__[0];
+          n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
+        }
+      }), c3) {
+        var f5 = c3.call(this, n3, t3, r3);
+        return u5 ? f5 || i4 : f5;
+      }
+      return !u5 || i4;
+    };
+    r2.__f = true;
+    var c3 = r2.shouldComponentUpdate, e3 = r2.componentWillUpdate;
+    r2.componentWillUpdate = function(n3, t3, r3) {
+      if (this.__e) {
+        var u5 = c3;
+        c3 = void 0, f4(n3, t3, r3), c3 = u5;
+      }
+      e3 && e3.call(this, n3, t3, r3);
+    }, r2.shouldComponentUpdate = f4;
+  }
+  return o3.__N || o3.__;
+}
+function h2(n2, u4) {
+  var i3 = s2(t2++, 3);
+  !c2.__s && C2(i3.__H, u4) && (i3.__ = n2, i3.u = u4, r2.__H.__h.push(i3));
+}
+function A2(n2) {
+  return o2 = 5, T2(function() {
+    return { current: n2 };
+  }, []);
+}
+function T2(n2, r3) {
+  var u4 = s2(t2++, 7);
+  return C2(u4.__H, r3) && (u4.__ = n2(), u4.__H = r3, u4.__h = n2), u4.__;
+}
+function j2() {
+  for (var n2; n2 = f2.shift(); ) {
+    var t3 = n2.__H;
+    if (n2.__P && t3) try {
+      t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
+    } catch (r3) {
+      t3.__h = [], c2.__e(r3, n2.__v);
+    }
+  }
+}
+c2.__b = function(n2) {
+  r2 = null, e2 && e2(n2);
+}, c2.__ = function(n2, t3) {
+  n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
+}, c2.__r = function(n2) {
+  a2 && a2(n2), t2 = 0;
+  var i3 = (r2 = n2.__c).__H;
+  i3 && (u2 === r2 ? (i3.__h = [], r2.__h = [], i3.__.some(function(n3) {
+    n3.__N && (n3.__ = n3.__N), n3.u = n3.__N = void 0;
+  })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u2 = r2;
+}, c2.diffed = function(n2) {
+  v2 && v2(n2);
+  var t3 = n2.__c;
+  t3 && t3.__H && (t3.__H.__h.length && (1 !== f2.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
+    n3.u && (n3.__H = n3.u, n3.u = void 0);
+  })), u2 = r2 = null;
+}, c2.__c = function(n2, t3) {
+  t3.some(function(n3) {
+    try {
+      n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
+        return !n4.__ || B2(n4);
+      });
+    } catch (r3) {
+      t3.some(function(n4) {
+        n4.__h && (n4.__h = []);
+      }), t3 = [], c2.__e(r3, n3.__v);
+    }
+  }), l2 && l2(n2, t3);
+}, c2.unmount = function(n2) {
+  m2 && m2(n2);
+  var t3, r3 = n2.__c;
+  r3 && r3.__H && (r3.__H.__.some(function(n3) {
+    try {
+      z2(n3);
+    } catch (n4) {
+      t3 = n4;
+    }
+  }), r3.__H = void 0, t3 && c2.__e(t3, r3.__v));
+};
+var k2 = "function" == typeof requestAnimationFrame;
+function w2(n2) {
+  var t3, r3 = function() {
+    clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
+  }, u4 = setTimeout(r3, 35);
+  k2 && (t3 = requestAnimationFrame(r3));
+}
+function z2(n2) {
+  var t3 = r2, u4 = n2.__c;
+  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t3;
+}
+function B2(n2) {
+  var t3 = r2;
+  n2.__c = n2.__(), r2 = t3;
+}
+function C2(n2, t3) {
+  return !n2 || n2.length !== t3.length || t3.some(function(t4, r3) {
+    return t4 !== n2[r3];
+  });
+}
+function D2(n2, t3) {
+  return "function" == typeof t3 ? t3(n2) : t3;
+}
+
+// src/core/effort.ts
+function prorateEffort(intervals, now) {
+  const events = [];
+  for (const iv of intervals) {
+    const to = iv.toMs ?? Math.max(now, iv.fromMs);
+    if (!(to > iv.fromMs)) continue;
+    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+  }
+  events.sort((a3, b2) => a3.t - b2.t);
+  const result = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Map();
+  let k3 = 0;
+  let prev = 0;
+  for (let i3 = 0; i3 < events.length; ) {
+    const t3 = events[i3].t;
+    if (k3 > 0 && t3 > prev) {
+      const share = (t3 - prev) / k3;
+      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
+    }
+    for (; i3 < events.length && events[i3].t === t3; i3++) {
+      const e3 = events[i3];
+      const count = (active.get(e3.taskId) ?? 0) + e3.delta;
+      if (count === 0) active.delete(e3.taskId);
+      else active.set(e3.taskId, count);
+      k3 += e3.delta;
+      if (!result.has(e3.taskId)) result.set(e3.taskId, 0);
+    }
+    prev = t3;
+  }
+  return result;
+}
+
+// src/core/index.ts
+function emptyVaultData() {
+  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+}
+var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
+function isActive(issue) {
+  return !INACTIVE_STATUSES.includes(issue.status);
+}
+function isInbox(issue) {
+  return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
+}
+function routineAnchor(routine) {
+  return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
+}
+function routineOccursOn(routine, date) {
+  if (!routine.active || routine.repeat === null) return false;
+  const anchor = routineAnchor(routine);
+  if (anchor === null) return false;
+  if (routine.end !== null && diffDays(date, routine.end) > 0) return false;
+  return occursOn(routine.repeat, anchor, date);
+}
+function compareNullableAsc(a3, b2) {
+  if (a3 === b2) return 0;
+  if (a3 === null) return -1;
+  if (b2 === null) return 1;
+  return a3 < b2 ? -1 : 1;
+}
+function organizeQueue(issues, today) {
+  const inbox = [];
+  const revisitDue = [];
+  const someday = [];
+  for (const issue of issues) {
+    if (isInbox(issue)) inbox.push(issue);
+    else if (issue.status === "someday") {
+      if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
+      else someday.push(issue);
+    }
+  }
+  inbox.sort((a3, b2) => compareNullableAsc(a3.created, b2.created));
+  revisitDue.sort((a3, b2) => compareNullableAsc(a3.revisit, b2.revisit));
+  someday.sort((a3, b2) => compareNullableAsc(a3.reviewed, b2.reviewed));
+  return [...inbox, ...revisitDue, ...someday];
+}
+var TaskIndex = class {
+  constructor(data) {
+    this.data = data;
+    for (const i3 of data.issues) if (!this.issues.has(i3.id)) this.issues.set(i3.id, i3);
+    for (const r3 of data.routines) if (!this.routines.has(r3.id)) this.routines.set(r3.id, r3);
+    for (const m3 of data.members) if (!this.members.has(m3.id)) this.members.set(m3.id, m3);
+    for (const i3 of data.issues) this.issuesByPath.set(i3.path, i3);
+    for (const issue of this.issues.values()) {
+      if (issue.parent === null) continue;
+      const list = this.childrenOf.get(issue.parent) ?? [];
+      list.push(issue);
+      this.childrenOf.set(issue.parent, list);
+    }
+  }
+  data;
+  issues = /* @__PURE__ */ new Map();
+  routines = /* @__PURE__ */ new Map();
+  members = /* @__PURE__ */ new Map();
+  issuesByPath = /* @__PURE__ */ new Map();
+  childrenOf = /* @__PURE__ */ new Map();
+  children(id) {
+    return this.childrenOf.get(id) ?? [];
+  }
+  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
+  ancestors(id) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set([id]);
+    let parent = this.issues.get(id)?.parent ?? null;
+    while (parent !== null && !seen.has(parent)) {
+      seen.add(parent);
+      const issue = this.issues.get(parent);
+      if (!issue) break;
+      out.push(issue);
+      parent = issue.parent;
+    }
+    return out;
+  }
+  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
+  canSetParent(childId, parentId) {
+    if (childId === parentId || !this.issues.has(parentId)) return false;
+    return !this.ancestors(parentId).some((a3) => a3.id === childId);
+  }
+  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+  effortMinutes(now) {
+    const ms = prorateEffort(this.data.worklogs, now);
+    return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
+  }
+  board(date) {
+    return this.data.boards.find((b2) => b2.date === date);
+  }
+  /** 記録中（to が空）の worklog */
+  running(taskId) {
+    return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
+  }
+  routinesOn(date) {
+    return [...this.routines.values()].filter((r3) => routineOccursOn(r3, date));
+  }
+};
+
+// src/core/due.ts
+function dueLevel(issue, due, today) {
+  if (due === null || !isActive(issue)) return "none";
+  const left = diffDays(due, today);
+  if (left < 0) return "overdue";
+  if (left > 3) return "none";
+  return String(left);
+}
+
+// src/core/format.ts
+var MINUTES_PER_DAY = 8 * 60;
+function formatMinutes(minutes) {
+  const sign = minutes < 0 ? "-" : "";
+  let rest = Math.round(Math.abs(minutes));
+  const d3 = Math.floor(rest / MINUTES_PER_DAY);
+  rest -= d3 * MINUTES_PER_DAY;
+  const h3 = Math.floor(rest / 60);
+  const m3 = rest - h3 * 60;
+  const parts = [d3 ? `${d3}d` : "", h3 ? `${h3}h` : "", m3 ? `${m3}m` : ""].join("");
+  return sign + (parts || "0m");
+}
+function parseDaysInput(input) {
+  const m3 = /^\s*(\d+(?:\.\d+)?)\s*d?\s*$/i.exec(input);
+  if (!m3) return null;
+  return Math.round(Number(m3[1]) * MINUTES_PER_DAY);
+}
+
 // src/obsidian/modals.ts
 var import_obsidian = require("obsidian");
 var PreactModal = class extends import_obsidian.Modal {
@@ -1078,6 +1111,58 @@ function LabelBadge(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
 }
 
+// src/core/date-input.ts
+function ymd(year, month, day) {
+  const date = `${year}-${month}-${day}`;
+  return isLocalDate(date) ? date : null;
+}
+function daysInMonth2(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function addMonths(date, n2) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  const first = new Date(Date.UTC(y3, m3 - 1 + n2, 1));
+  const year = first.getUTCFullYear();
+  const month = first.getUTCMonth() + 1;
+  return fromEpochDay(Date.UTC(year, month - 1, Math.min(d3, daysInMonth2(year, month))) / 864e5);
+}
+function addWeekdays(date, weekday, sign, n2) {
+  const gap = (sign * (weekday - weekdayOf(date)) + 7) % 7 || 7;
+  return addDays(date, sign * (gap + (n2 - 1) * 7));
+}
+function parseDateInput(input, today) {
+  const s3 = input.trim().toLowerCase();
+  const separated = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s3);
+  if (separated) return ymd(separated[1], separated[2], separated[3]);
+  if (/^\d+$/.test(s3)) {
+    const [year, month] = today.split("-");
+    if (s3.length === 2) return ymd(year, month, s3);
+    if (s3.length === 4) return ymd(year, s3.slice(0, 2), s3.slice(2));
+    if (s3.length === 6) return ymd(`20${s3.slice(0, 2)}`, s3.slice(2, 4), s3.slice(4));
+    if (s3.length === 8) return ymd(s3.slice(0, 4), s3.slice(4, 6), s3.slice(6));
+    return null;
+  }
+  const bare = WEEKDAY_NAMES.indexOf(s3);
+  if (bare >= 0) return addWeekdays(today, bare, 1, 1);
+  const m3 = /^([+-])(\d*)([a-z]*)$/.exec(s3);
+  if (!m3) return null;
+  const sign = m3[1] === "+" ? 1 : -1;
+  const digits = m3[2];
+  const unit = m3[3];
+  const n2 = digits === "" ? 1 : Number(digits);
+  if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
+  if (unit === "w") return addDays(today, sign * n2 * 7);
+  if (unit === "m") return addMonths(today, sign * n2);
+  const weekday = WEEKDAY_NAMES.indexOf(unit);
+  if (weekday < 0 || n2 < 1) return null;
+  return addWeekdays(today, weekday, sign, n2);
+}
+function parseTimeInput(input) {
+  const m3 = /^(\d{2}):?(\d{2})$/.exec(input.trim());
+  if (!m3 || Number(m3[1]) > 23 || Number(m3[2]) > 59) return null;
+  return `${m3[1]}:${m3[2]}`;
+}
+
 // src/ui/forms.tsx
 function TextForm(props) {
   const [value, setValue] = d2(props.initial);
@@ -1113,52 +1198,21 @@ function TextForm(props) {
     }
   );
 }
-function DateForm(props) {
-  const [value, setValue] = d2(props.initial ?? "");
-  return /* @__PURE__ */ u3(
-    "form",
-    {
-      class: "vt-form",
-      onSubmit: (e3) => {
-        e3.preventDefault();
-        props.onSubmit(value || null);
-      },
-      children: [
-        props.presets !== false && /* @__PURE__ */ u3("div", { class: "vt-date-presets", children: [
-          ["\u4ECA\u65E5", 0],
-          ["\u660E\u65E5", 1],
-          ["\u6765\u9031", 7]
-        ].map(([label, n2]) => /* @__PURE__ */ u3("button", { type: "button", class: "vt-field-chip", onClick: () => props.onSubmit(addDays(localToday(), n2)), children: label })) }),
-        /* @__PURE__ */ u3("input", { type: "date", value, onInput: (e3) => setValue(e3.currentTarget.value) }),
-        props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "\u30AF\u30EA\u30A2" }),
-        /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", children: "\u4FDD\u5B58" })
-      ]
-    }
-  );
-}
-function CalendarForm(props) {
+function MonthCalendar(props) {
   const today = localToday();
-  const [selected, setSelected] = d2(new Set(props.initial));
-  const [month, setMonth] = d2(today.slice(0, 7));
+  const { month } = props;
   const first = `${month}-01`;
   const start = addDays(first, -((weekdayOf(first) + 6) % 7));
   const days = Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
   const shift = (n2) => {
     const [y3, m3] = month.split("-").map(Number);
-    const d3 = new Date(Date.UTC(y3, m3 - 1 + n2, 1));
-    setMonth(d3.toISOString().slice(0, 7));
-  };
-  const toggle2 = (d3) => {
-    const next = new Set(selected);
-    if (next.has(d3)) next.delete(d3);
-    else next.add(d3);
-    setSelected(next);
+    props.onMonth(new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7));
   };
   return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
     /* @__PURE__ */ u3("div", { class: "vt-calendar-nav", children: [
-      /* @__PURE__ */ u3("button", { onClick: () => shift(-1), children: "\u2039" }),
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u524D\u306E\u6708", onClick: () => shift(-1), children: "\u2039" }),
       /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
-      /* @__PURE__ */ u3("button", { onClick: () => shift(1), children: "\u203A" })
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u6B21\u306E\u6708", onClick: () => shift(1), children: "\u203A" })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-calendar-grid", children: [
       [1, 2, 3, 4, 5, 6, 0].map((w3) => /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[w3] })),
@@ -1167,14 +1221,81 @@ function CalendarForm(props) {
         {
           date: d3,
           dimmed: !d3.startsWith(month),
-          scheduled: selected.has(d3),
-          midDue: props.midDue,
-          deadline: props.deadline,
+          scheduled: props.isSelected(d3),
+          midDue: props.midDue ?? null,
+          deadline: props.deadline ?? null,
           today,
-          onClick: () => toggle2(d3)
+          onClick: () => props.onPick(d3)
         }
       ))
-    ] }),
+    ] })
+  ] });
+}
+function DateHint(props) {
+  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "\u4F8B: 15 / 1224 / +3 / mon / +2w / +m" });
+  if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
+  return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: `${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}` });
+}
+function DateForm(props) {
+  const today = localToday();
+  const [text, setText] = d2(props.initial ?? "");
+  const [month, setMonth] = d2((props.initial ?? today).slice(0, 7));
+  const ref = A2(null);
+  h2(() => ref.current?.select(), []);
+  const parsed = parseDateInput(text, today);
+  const invalid = text.trim() !== "" && parsed === null;
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-date-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (!invalid) props.onSubmit(parsed);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-date-field", children: [
+          /* @__PURE__ */ u3(
+            "input",
+            {
+              ref,
+              type: "text",
+              "aria-label": "\u65E5\u4ED8",
+              value: text,
+              onInput: (e3) => {
+                const value = e3.currentTarget.value;
+                setText(value);
+                const next = parseDateInput(value, today);
+                if (next !== null) setMonth(next.slice(0, 7));
+              }
+            }
+          ),
+          /* @__PURE__ */ u3(DateHint, { text, parsed })
+        ] }),
+        props.presets !== false && /* @__PURE__ */ u3("div", { class: "vt-date-presets", children: [
+          ["\u4ECA\u65E5", 0],
+          ["\u660E\u65E5", 1],
+          ["\u6765\u9031", 7]
+        ].map(([label, n2]) => /* @__PURE__ */ u3("button", { type: "button", class: "vt-field-chip", onClick: () => props.onSubmit(addDays(today, n2)), children: label })) }),
+        /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => d3 === parsed, onPick: (d3) => props.onSubmit(d3) }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "\u30AF\u30EA\u30A2" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "\u4FDD\u5B58" })
+        ] })
+      ]
+    }
+  );
+}
+function CalendarForm(props) {
+  const [selected, setSelected] = d2(new Set(props.initial));
+  const [month, setMonth] = d2(localToday().slice(0, 7));
+  const toggle2 = (d3) => {
+    const next = new Set(selected);
+    if (next.has(d3)) next.delete(d3);
+    else next.add(d3);
+    setSelected(next);
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
+    /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => selected.has(d3), onPick: toggle2, midDue: props.midDue, deadline: props.deadline }),
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         selected.size,
@@ -1194,46 +1315,93 @@ function DayCell(props) {
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  return /* @__PURE__ */ u3("button", { class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, title: props.date, children: Number(props.date.slice(8, 10)) });
+  return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, title: props.date, children: Number(props.date.slice(8, 10)) });
 }
-function toInputValue(ms) {
+var pad2 = (n2) => String(n2).padStart(2, "0");
+function dateOfMs(ms) {
   if (ms === null) return "";
   const d3 = new Date(ms);
-  const pad = (n2) => String(n2).padStart(2, "0");
-  return `${d3.getFullYear()}-${pad(d3.getMonth() + 1)}-${pad(d3.getDate())}T${pad(d3.getHours())}:${pad(d3.getMinutes())}`;
+  return `${d3.getFullYear()}-${pad2(d3.getMonth() + 1)}-${pad2(d3.getDate())}`;
+}
+function timeOfMs(ms) {
+  if (ms === null) return "";
+  const d3 = new Date(ms);
+  return `${pad2(d3.getHours())}:${pad2(d3.getMinutes())}`;
+}
+function DateTimeField(props) {
+  const today = localToday();
+  const parsed = parseDateInput(props.date, today);
+  const [open, setOpen] = d2(false);
+  const [month, setMonth] = d2((parsed ?? today).slice(0, 7));
+  return /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+    /* @__PURE__ */ u3("span", { children: props.label }),
+    /* @__PURE__ */ u3("div", { class: "vt-datetime", children: [
+      /* @__PURE__ */ u3(
+        "input",
+        {
+          type: "text",
+          "aria-label": `${props.label}\u306E\u65E5\u4ED8`,
+          placeholder: "\u65E5\u4ED8",
+          value: props.date,
+          onInput: (e3) => {
+            props.onDate(e3.currentTarget.value);
+            const next = parseDateInput(e3.currentTarget.value, today);
+            if (next !== null) setMonth(next.slice(0, 7));
+          }
+        }
+      ),
+      /* @__PURE__ */ u3("input", { class: "vt-time-input", type: "text", "aria-label": `${props.label}\u306E\u6642\u523B`, placeholder: "hhmm", value: props.time, onInput: (e3) => props.onTime(e3.currentTarget.value) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-calendar-toggle", "aria-label": `${props.label}\u306E\u30AB\u30EC\u30F3\u30C0\u30FC`, "aria-expanded": open, onClick: () => setOpen(!open), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) })
+    ] }),
+    props.date.trim() !== "" && /* @__PURE__ */ u3(DateHint, { text: props.date, parsed }),
+    open && /* @__PURE__ */ u3(
+      MonthCalendar,
+      {
+        month,
+        onMonth: setMonth,
+        isSelected: (d3) => d3 === parsed,
+        onPick: (d3) => {
+          props.onDate(d3);
+          setOpen(false);
+        }
+      }
+    )
+  ] });
+}
+function toMs(date, time) {
+  const d3 = parseDateInput(date, localToday());
+  const t3 = parseTimeInput(time);
+  return d3 === null || t3 === null ? null : (/* @__PURE__ */ new Date(`${d3}T${t3}:00`)).getTime();
 }
 function WorklogForm(props) {
-  const [from, setFrom] = d2(toInputValue(props.initial.fromMs));
-  const [to, setTo] = d2(toInputValue(props.initial.toMs));
+  const [fromDate, setFromDate] = d2(dateOfMs(props.initial.fromMs));
+  const [fromTime, setFromTime] = d2(timeOfMs(props.initial.fromMs));
+  const [toDate, setToDate] = d2(dateOfMs(props.initial.toMs));
+  const [toTime, setToTime] = d2(timeOfMs(props.initial.toMs));
   const [description, setDescription] = d2(props.initial.description);
   const [confirming, setConfirming] = d2(false);
-  const fromMs = Date.parse(from);
-  const toMs = to ? Date.parse(to) : null;
-  const error = Number.isNaN(fromMs) ? "\u958B\u59CB\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" : toMs !== null && (Number.isNaN(toMs) || toMs <= fromMs) ? "\u7D42\u4E86\u306F\u958B\u59CB\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" : null;
+  const fromMs = toMs(fromDate, fromTime);
+  const running = toDate.trim() === "" && toTime.trim() === "";
+  const endMs = running ? null : toMs(toDate.trim() === "" ? fromDate : toDate, toTime);
+  const error = fromMs === null ? "\u958B\u59CB\u306E\u65E5\u4ED8\u3068\u6642\u523B\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" : !running && endMs === null ? "\u7D42\u4E86\u306E\u65E5\u4ED8\u3068\u6642\u523B\u3092\u78BA\u304B\u3081\u3066\u304F\u3060\u3055\u3044" : endMs !== null && endMs <= fromMs ? "\u7D42\u4E86\u306F\u958B\u59CB\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" : null;
   return /* @__PURE__ */ u3(
     "form",
     {
       class: "vt-worklog-form",
       onSubmit: (e3) => {
         e3.preventDefault();
-        if (error === null) props.onSubmit({ fromMs, toMs, description: description.trim() });
+        if (error === null) props.onSubmit({ fromMs, toMs: endMs, description: description.trim() });
       },
       children: [
-        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "\u958B\u59CB" }),
-          /* @__PURE__ */ u3("input", { type: "datetime-local", value: from, onInput: (e3) => setFrom(e3.currentTarget.value) })
-        ] }),
-        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "\u7D42\u4E86\uFF08\u7A7A\u306A\u3089\u8A18\u9332\u4E2D\uFF09" }),
-          /* @__PURE__ */ u3("input", { type: "datetime-local", value: to, onInput: (e3) => setTo(e3.currentTarget.value) })
-        ] }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "\u958B\u59CB", date: fromDate, time: fromTime, onDate: setFromDate, onTime: setFromTime }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "\u7D42\u4E86\uFF08\u7A7A\u306A\u3089\u8A18\u9332\u4E2D\uFF09", date: toDate, time: toTime, onDate: setToDate, onTime: setToTime }),
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "\u5185\u5BB9" }),
           /* @__PURE__ */ u3("input", { type: "text", value: description, onInput: (e3) => setDescription(e3.currentTarget.value) })
         ] }),
         error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-          /* @__PURE__ */ u3("button", { type: "button", class: confirming ? "mod-warning" : "vt-danger-text", onClick: () => confirming ? props.onDelete() : setConfirming(true), children: confirming ? "\u3082\u3046\u4E00\u5EA6\u62BC\u3059\u3068\u524A\u9664" : "\u524A\u9664" }),
+          props.onDelete && /* @__PURE__ */ u3("button", { type: "button", class: confirming ? "mod-warning" : "vt-danger-text", onClick: () => confirming ? props.onDelete() : setConfirming(true), children: confirming ? "\u3082\u3046\u4E00\u5EA6\u62BC\u3059\u3068\u524A\u9664" : "\u524A\u9664" }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
           /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "\u4FDD\u5B58" })
         ] })
@@ -1722,7 +1890,22 @@ function WorklogItem(props) {
   ] });
 }
 function Worklog(props) {
+  const { ctx, issue } = props;
   const [page, setPage] = d2(0);
+  const add = () => {
+    const now = Date.now();
+    new PreactModal(ctx.app, "worklog \u3092\u8FFD\u52A0", (close) => /* @__PURE__ */ u3(
+      WorklogForm,
+      {
+        initial: { fromMs: now - 36e5, toMs: now, description: "" },
+        onSubmit: (d3) => {
+          close();
+          const from = new Date(d3.fromMs);
+          void ctx.writer.addWorklog(issue.id, ctx.settings.deviceName, { from: localDateTime(from), to: d3.toMs === null ? null : localDateTime(new Date(d3.toMs)), description: d3.description }, from).catch((e3) => ctx.report("worklog \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+        }
+      }
+    )).open();
+  };
   const logs = props.index.data.worklogs.filter((l3) => l3.taskId === props.issue.id).sort((a3, b2) => b2.fromMs - a3.fromMs);
   const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
   const current = Math.min(page, pages - 1);
@@ -1733,6 +1916,11 @@ function Worklog(props) {
       logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: [
         logs.length,
         " \u4EF6"
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: add, children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        " \u8FFD\u52A0"
       ] })
     ] }),
     logs.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u307E\u3060\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093" }),
@@ -1773,18 +1961,27 @@ function issueHeaderExtension(ctx) {
     const path = state.field(import_obsidian4.editorInfoField, false)?.file?.path ?? null;
     return path !== null && ISSUE_PATH_RE.test(path) ? path : null;
   };
-  const build = (path) => ({
-    path,
-    decorations: path === null ? import_view.Decoration.none : import_view.Decoration.set([import_view.Decoration.widget({ widget: new HeaderWidget(ctx, path), block: true, side: -1 }).range(0)])
-  });
+  const livePreviewOf = (state) => state.field(import_obsidian4.editorLivePreviewField, false) === true;
+  const build = (state) => {
+    const path = pathOf(state);
+    const livePreview = livePreviewOf(state);
+    if (path === null) return { path, livePreview, decorations: import_view.Decoration.none };
+    const widget = new HeaderWidget(ctx, path);
+    const range = livePreview ? frontmatterRange(state.doc.toString()) : null;
+    const decoration = range ? import_view.Decoration.replace({ widget, block: true }).range(range.from, range.to) : import_view.Decoration.widget({ widget, block: true, side: -1 }).range(0);
+    return { path, livePreview, decorations: import_view.Decoration.set([decoration]) };
+  };
   return import_state.StateField.define({
-    create: (state) => build(pathOf(state)),
+    create: build,
     update(value, tr) {
-      const path = pathOf(tr.state);
-      if (path !== value.path) return build(path);
-      return tr.docChanged ? { path, decorations: value.decorations.map(tr.changes) } : value;
+      if (tr.docChanged || pathOf(tr.state) !== value.path || livePreviewOf(tr.state) !== value.livePreview) return build(tr.state);
+      return value;
     },
-    provide: (field) => import_view.EditorView.decorations.from(field, (v3) => v3.decorations)
+    provide: (field) => [
+      import_view.EditorView.decorations.from(field, (v3) => v3.decorations),
+      // カーソルが隠した frontmatter の中に入らないようにする
+      import_view.EditorView.atomicRanges.of((view) => view.state.field(field).decorations)
+    ]
   });
 }
 
@@ -1907,10 +2104,10 @@ function parseWorklog(path, text) {
     if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
     const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
     if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs = null;
+    let toMs2 = null;
     if (o3.to !== null && o3.to !== void 0) {
-      toMs = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
-      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      toMs2 = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
+      if (Number.isNaN(toMs2)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     }
     entries.push({
       path,
@@ -1918,10 +2115,10 @@ function parseWorklog(path, text) {
       id: o3.id,
       taskId: o3.task_id,
       from: o3.from,
-      to: toMs === null ? null : o3.to,
+      to: toMs2 === null ? null : o3.to,
       description: typeof o3.description === "string" ? o3.description : "",
       fromMs,
-      toMs
+      toMs: toMs2
     });
   });
   return { entries, problems };
@@ -1944,6 +2141,10 @@ function replaceWorklogLine(text, entry, next) {
   if (next === null) lines.splice(i3, 1);
   else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
   return lines.join("\n");
+}
+var MIN_WORKLOG_MS = 6e4;
+function stopWorklogLines(text, entries, to, toMs2) {
+  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
 }
 function newWorklogId(random = Math.random) {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -2271,63 +2472,30 @@ var TaskStore = class {
 
 // src/obsidian/view.ts
 var import_obsidian8 = require("obsidian");
-var PreactView = class extends import_obsidian8.ItemView {
-  constructor(leaf, spec, ctx) {
-    super(leaf);
-    this.spec = spec;
-    this.ctx = ctx;
+function preactViewCreator(spec, ctx) {
+  class PreactView extends import_obsidian8.ItemView {
+    getViewType() {
+      return spec.type;
+    }
+    getDisplayText() {
+      return spec.title;
+    }
+    getIcon() {
+      return spec.icon;
+    }
+    async onOpen() {
+      this.contentEl.addClass("vt-view");
+      R(k(spec.component, { ctx }), this.contentEl);
+    }
+    async onClose() {
+      R(null, this.contentEl);
+    }
   }
-  spec;
-  ctx;
-  getViewType() {
-    return this.spec.type;
-  }
-  getDisplayText() {
-    return this.spec.title;
-  }
-  getIcon() {
-    return this.spec.icon;
-  }
-  async onOpen() {
-    this.contentEl.addClass("vt-view");
-    R(k(this.spec.component, { ctx: this.ctx }), this.contentEl);
-  }
-  async onClose() {
-    R(null, this.contentEl);
-  }
-};
+  return (leaf) => new PreactView(leaf);
+}
 
 // src/obsidian/writer.ts
 var import_obsidian9 = require("obsidian");
-
-// src/core/issue-file.ts
-var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString(s3) {
-  return JSON.stringify(s3);
-}
-function newIssueContent(id, summary, created, parent = null) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
-  lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
-  return lines.join("\n");
-}
-function newMemberContent(id, name, created) {
-  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
-    "\n"
-  );
-}
-function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
-  if (extra.start) lines.push(`start: ${extra.start}`);
-  lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
-  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-  lines.push(`created: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
-  return lines.join("\n");
-}
-function newDailyContent() {
-  return "---\nboard: {}\n---\n";
-}
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -2502,15 +2670,20 @@ var TaskWriter = class {
   }
   /** 記録を止める（to を今にする） */
   async stopTimer(entries) {
-    const to = localDateTime();
+    const now = /* @__PURE__ */ new Date();
+    const to = localDateTime(now);
     const byFile = /* @__PURE__ */ new Map();
     for (const e3 of entries) byFile.set(e3.path, [...byFile.get(e3.path) ?? [], e3]);
     for (const [path, list] of byFile) {
-      await this.app.vault.process(
-        this.file(path),
-        (text) => list.reduce((t3, e3) => replaceWorklogLine(t3, e3, { from: e3.from, to, description: e3.description }), text)
-      );
+      await this.app.vault.process(this.file(path), (text) => stopWorklogLines(text, list, to, now.getTime()));
     }
+    this.store.refreshSoon();
+  }
+  /** worklog を手で足す。保存先は開始日の月のファイル */
+  async addWorklog(taskId, device, entry, fromDate) {
+    if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
+    const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(worklogPath(device, fromDate)), "");
+    await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
@@ -2644,6 +2817,10 @@ var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u
 var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
 var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
 var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
+async function scheduleToday(ctx, issues) {
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
+  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
+}
 async function rescheduleIssues(ctx, issues, target, from = null) {
   const title = target === "scheduled" ? "\u5B9F\u884C\u65E5\u3092\u79FB\u3059" : `${target} \u3092\u30EA\u30B9\u30B1`;
   const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
@@ -3039,7 +3216,7 @@ function DueStep(props) {
     { key: "deadline", title: "deadline", issues: props.lists.deadline },
     { key: "mid_due", title: "mid_due", issues: props.lists.midDue }
   ];
-  return /* @__PURE__ */ u3(S, { children: sections.map((s3) => /* @__PURE__ */ u3(DueSection, { ctx: props.ctx, target: s3.key, title: s3.title, issues: s3.issues, empty: props.empty })) });
+  return /* @__PURE__ */ u3(S, { children: sections.map((s3) => /* @__PURE__ */ u3(DueSection, { ctx: props.ctx, target: s3.key, title: s3.title, issues: s3.issues, empty: props.empty, canScheduleToday: props.canScheduleToday })) });
 }
 function DueSection(props) {
   const { ctx, target, issues } = props;
@@ -3057,6 +3234,7 @@ function DueSection(props) {
       {
         count: sel.length,
         actions: [
+          ...props.canScheduleToday ? [{ label: "\u4ECA\u65E5\u3084\u308B", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) }] : [],
           { label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
@@ -3190,7 +3368,7 @@ function DailyView(props) {
     }) }),
     step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "\u671F\u9650\u5207\u308C\u306F\u3042\u308A\u307E\u305B\u3093" }),
     step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u7247\u4ED8\u3044\u3066\u3044\u306A\u3044\u30DC\u30FC\u30C9\u306F\u3042\u308A\u307E\u305B\u3093" })),
-    step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "3 \u65E5\u4EE5\u5185\u306E\u671F\u9650\u306F\u3042\u308A\u307E\u305B\u3093" }),
+    step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "3 \u65E5\u4EE5\u5185\u306E\u671F\u9650\u306F\u3042\u308A\u307E\u305B\u3093", canScheduleToday: true }),
     step === "scheduled" && /* @__PURE__ */ u3(ScheduledStep, { ctx, issues: scheduled, today }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
@@ -4170,7 +4348,7 @@ var VaultTaskPlugin = class extends import_obsidian16.Plugin {
       }
     };
     for (const spec of VIEWS) {
-      this.registerView(spec.type, (leaf) => new PreactView(leaf, spec, ctx));
+      this.registerView(spec.type, preactViewCreator(spec, ctx));
       this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void ctx.openView(spec.type) });
     }
     this.registerEditorExtension(issueHeaderExtension(ctx));

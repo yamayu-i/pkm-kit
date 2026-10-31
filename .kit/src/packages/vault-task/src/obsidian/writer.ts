@@ -6,7 +6,7 @@ import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, type LabelDef } from "../core/labels";
 import { upsertSummary } from "../core/summary";
-import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, worklogPath, type WorklogEntry } from "../core/worklog";
+import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
@@ -138,14 +138,21 @@ export class TaskWriter {
 
 	/** 記録を止める（to を今にする） */
 	async stopTimer(entries: WorklogEntry[]): Promise<void> {
-		const to = localDateTime();
+		const now = new Date();
+		const to = localDateTime(now);
 		const byFile = new Map<string, WorklogEntry[]>();
 		for (const e of entries) byFile.set(e.path, [...(byFile.get(e.path) ?? []), e]);
 		for (const [path, list] of byFile) {
-			await this.app.vault.process(this.file(path), (text) =>
-				list.reduce((t, e) => replaceWorklogLine(t, e, { from: e.from, to, description: e.description }), text),
-			);
+			await this.app.vault.process(this.file(path), (text) => stopWorklogLines(text, list, to, now.getTime()));
 		}
+		this.store.refreshSoon();
+	}
+
+	/** worklog を手で足す。保存先は開始日の月のファイル */
+	async addWorklog(taskId: string, device: string, entry: Pick<WorklogEntry, "from" | "to" | "description">, fromDate: Date): Promise<void> {
+		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
+		const file = await this.getOrCreate(normalizePath(worklogPath(device, fromDate)), "");
+		await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
 		this.store.refreshSoon();
 	}
 

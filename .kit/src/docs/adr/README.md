@@ -27,3 +27,4 @@
 | [0014](0014-daily-board.md) | 承認（一部置換: 0015） | DailyTaskView と task board の保存形式・細部 |
 | [0015](0015-board-layout-simplified.md) | 承認 | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
+| [0017](0017-date-input.md) | 承認 | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
