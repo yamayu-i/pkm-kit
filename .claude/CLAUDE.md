@@ -5,7 +5,7 @@
 
 ## 構成
 
-- ノート: リポジトリ直下の通常のフォルダ
+- ノート: リポジトリ直下の通常のフォルダ（素の Markdown。デイリーノートは `daily/`、添付は `asset/`）
 - `.obsidian/plugins/vault-git/` : 自作 git 同期プラグインの**ビルド成果物**（`main.js` / `manifest.json`）。モバイルではビルドできないのでコミットする
 - `.plugin-src/` : プラグインのソース（pnpm workspace）。Obsidian に索引されないよう隠しフォルダに置いている
 - `.claude/` : Claude Code 用（このファイル、スキル、フック、セキュリティチェックの記録）
@@ -32,3 +32,4 @@ pnpm security:scan           # セキュリティチェックの機械的な部�
 
 - プラグインの設計と開発の進め方: @docs/plugin-development.md
 - セキュリティチェックの頻度と実施ルール: @docs/security-check-schedule.md
+- ノートの書式と配置（Markdown リンク、`asset/`、`daily/`）: @docs/vault-conventions.md

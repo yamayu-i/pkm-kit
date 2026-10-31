@@ -2,6 +2,14 @@
 
 Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/plugins/vault-git/`）で行う。コミュニティプラグインは使わない。
 
+## ノートの書式
+
+素の Markdown で書く（wiki リンクは使わない）。詳細は `.claude/docs/vault-conventions.md`。
+
+- リンク: `[タイトル](folder/note.md)`（Vault ルートからのパス）
+- 添付: `asset/` 直下
+- デイリーノート: `daily/YYYY/MM/YYYY-MM-DD.md`
+
 ## Vault Git の使い方
 
 | 操作 | 内容 |
