@@ -48,6 +48,10 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 - トークンは SecretStorage に置き、`data.json` には ID しか保存しない。エラーメッセージは `redactSecrets` で伏せる
 - トークンは設定の「トークンを送るホスト」の `https://` にだけ送る（`src/git/auth-target.ts`）。onAuth と、HTTP 送信直前（Authorization ヘッダー付きのとき）の二段で検査する。http はループバックのみ例外
 
+## vault-task（タスク管理、設計中）
+
+設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
+
 ## 進め方
 
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする

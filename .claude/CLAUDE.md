@@ -8,6 +8,7 @@
 - ノート: リポジトリ直下の通常のフォルダ（素の Markdown。デイリーノートは `daily/`、添付は `asset/`）
 - `.obsidian/plugins/vault-git/` : 自作 git 同期プラグインの**ビルド成果物**（`main.js` / `manifest.json`）。モバイルではビルドできないのでコミットする
 - `.plugin-src/` : プラグインのソース（pnpm workspace）。Obsidian に索引されないよう隠しフォルダに置いている
+- `.plugin-src/docs/adr/` : 設計判断の記録（ADR）。設計を変えるときはここに追記する
 - `.claude/` : Claude Code 用（このファイル、スキル、フック、セキュリティチェックの記録）
 - `mise.toml` : Node と pnpm のバージョン
 
