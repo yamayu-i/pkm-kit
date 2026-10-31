@@ -2,7 +2,7 @@ import { TFile, type App, type EventRef } from "obsidian";
 
 /** Plugin#registerEvent。プラグインの unload で外れる */
 type RegisterEvent = (ref: EventRef) => void;
-import { TaskIndex } from "../core/index";
+import { TaskIndex, emptyVaultData } from "../core/index";
 import { collectVault, fileKind, type VaultInput } from "../core/load";
 import type { Problem } from "../core/problem";
 
@@ -11,7 +11,7 @@ import type { Problem } from "../core/problem";
  * worklog と labels.json はファイルを読んで持つ。変更があったら少し待ってから作り直す
  */
 export class TaskStore {
-	index = new TaskIndex({ issues: [], routines: [], members: [], labels: [], worklogs: [] });
+	index = new TaskIndex(emptyVaultData());
 	problems: Problem[] = [];
 	/** 作り直すたびに増える。UI の再描画に使う */
 	version = 0;
@@ -64,7 +64,7 @@ export class TaskStore {
 
 	private async readText(file: TFile): Promise<void> {
 		const kind = fileKind(file.path);
-		if (kind === "worklog" || kind === "labels") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+		if (kind === "worklog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
 	}
 
 	private touch(file: TFile): void {
@@ -80,10 +80,10 @@ export class TaskStore {
 	}
 
 	private rebuild(): void {
-		const input: VaultInput = { markdown: [], worklogs: [], labels: null };
+		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null };
 		for (const file of this.app.vault.getMarkdownFiles()) {
 			const kind = fileKind(file.path);
-			if (kind !== "issue" && kind !== "routine" && kind !== "member") continue;
+			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
 			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
 			input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null });
 		}
@@ -91,6 +91,7 @@ export class TaskStore {
 			const kind = fileKind(path);
 			if (kind === "worklog") input.worklogs.push({ path, text });
 			else if (kind === "labels") input.labels = text;
+			else if (kind === "groups") input.groups = text;
 		}
 		const { data, problems } = collectVault(input);
 		this.index = new TaskIndex(data);

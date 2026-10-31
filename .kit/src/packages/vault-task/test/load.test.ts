@@ -15,7 +15,9 @@ describe("fileKind", () => {
 		expect(fileKind("worklog/iphone/2026-10.jsonl")).toBe("worklog");
 		expect(fileKind("worklog/2026-10.jsonl")).toBeNull();
 		expect(fileKind("issue/sub/i-1.md")).toBeNull();
-		expect(fileKind("daily/2026/10/2026-10-31.md")).toBeNull();
+		expect(fileKind("daily/2026/10/2026-10-31.md")).toBe("daily");
+		expect(fileKind("issue/board-groups.json")).toBe("groups");
+		expect(fileKind("daily/2026-10-31.md")).toBeNull();
 	});
 });
 

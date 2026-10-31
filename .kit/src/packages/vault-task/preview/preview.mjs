@@ -1,8 +1,8 @@
 /**
- * issue 画面の見た目を、Obsidian なしで確認する（docs/design.md「確認のしかた」）。
+ * issue 画面と各 View の見た目を、Obsidian なしで確認する（docs/design.md「確認のしかた」）。
  * obsidian をモックに差し替えて束ね、Chromium（Playwright）でライト / ダークのスクリーンショットを撮る。
  *
- * 使い方: pnpm preview:ui  → preview/out/*.png
+ * 使い方: pnpm preview:ui [画面名...]  → preview/out/<画面>-<light|dark>(-narrow).png
  * Playwright と Chromium は開発環境に入っているものを使う（このリポジトリの依存にはしない）
  */
 import { mkdir, writeFile } from "node:fs/promises";
@@ -41,20 +41,28 @@ button{font:inherit;color:inherit;background:#f0f0f0;border:none;border-radius:4
 	);
 }
 
+// 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
+const SCREENS = ["header", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups"];
+const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
+const screens = wanted.length > 0 ? wanted : SCREENS;
+
 const { chromium } = createRequire(import.meta.url)("playwright");
 const browser = await chromium.launch();
 let failed = false;
-for (const name of Object.keys(themes)) {
-	const page = await browser.newPage({ viewport: { width: 800, height: 1500 } });
-	page.on("pageerror", (e) => {
-		failed = true;
-		console.error(`${name}: ${e.message}`);
-	});
-	await page.goto(`file://${out}${name}.html`);
-	await page.waitForTimeout(300);
-	await page.locator("#wide").screenshot({ path: `${out}${name}.png` });
-	await page.locator("#narrow").screenshot({ path: `${out}${name}-narrow.png` });
-	console.log(`${out}${name}.png / ${name}-narrow.png`);
+for (const theme of Object.keys(themes)) {
+	for (const screen of screens) {
+		const page = await browser.newPage({ viewport: { width: 1100, height: 1500 } });
+		page.on("pageerror", (e) => {
+			failed = true;
+			console.error(`${theme}/${screen}: ${e.message}`);
+		});
+		await page.goto(`file://${out}${theme}.html#${screen}`);
+		await page.waitForTimeout(300);
+		await page.locator("#wide").screenshot({ path: `${out}${screen}-${theme}.png` });
+		await page.locator("#narrow").screenshot({ path: `${out}${screen}-${theme}-narrow.png` });
+		await page.close();
+	}
+	console.log(`${out}<画面>-${theme}(-narrow).png`);
 }
 await browser.close();
 process.exit(failed ? 1 : 0);

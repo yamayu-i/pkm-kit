@@ -1,9 +1,12 @@
 import { TFile, normalizePath, type App } from "obsidian";
-import { localDateTime } from "../core/dates";
+import { BOARD_KEY, dailyNotePath, parseBoard, serializeBoard, type BoardState } from "../core/board";
+import { localDateTime, type LocalDate } from "../core/dates";
+import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
 import { nextIds, pathForId } from "../core/ids";
-import { newIssueContent, newMemberContent } from "../core/issue-file";
+import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, type LabelDef } from "../core/labels";
-import { replaceWorklogLine, type WorklogEntry } from "../core/worklog";
+import { upsertSummary } from "../core/summary";
+import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
@@ -25,9 +28,25 @@ export class TaskWriter {
 		return file;
 	}
 
+	/** 親フォルダを（途中の階層も）作る */
 	private async ensureFolder(path: string): Promise<void> {
-		const folder = path.slice(0, path.lastIndexOf("/"));
-		if (folder && !this.app.vault.getFolderByPath(folder)) await this.app.vault.createFolder(folder);
+		const parts = path.split("/").slice(0, -1);
+		for (let i = 1; i <= parts.length; i++) {
+			const folder = parts.slice(0, i).join("/");
+			if (!this.app.vault.getFolderByPath(folder)) await this.app.vault.createFolder(folder);
+		}
+	}
+
+	private async getOrCreate(path: string, initial: string): Promise<TFile> {
+		const existing = this.app.vault.getFileByPath(path);
+		if (existing) return existing;
+		await this.ensureFolder(path);
+		return this.app.vault.create(path, initial);
+	}
+
+	/** 同じ欄の更新を複数の issue に（DailyTaskView などの一括操作） */
+	async updateMany(paths: string[], fields: Record<string, FieldValue> | ((path: string) => Record<string, FieldValue>)): Promise<void> {
+		for (const path of paths) await this.update(path, typeof fields === "function" ? fields(path) : fields);
 	}
 
 	/** frontmatter の欄をまとめて更新する */
@@ -99,5 +118,73 @@ export class TaskWriter {
 	async updateWorklog(entry: WorklogEntry, next: Pick<WorklogEntry, "from" | "to" | "description"> | null): Promise<void> {
 		await this.app.vault.process(this.file(entry.path), (text) => replaceWorklogLine(text, entry, next));
 		this.store.refreshSoon();
+	}
+
+	/** 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く */
+	async startTimer(taskIds: string[], device: string): Promise<void> {
+		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
+		const running = new Set(this.store.index.running().map((l) => l.taskId));
+		const targets = taskIds.filter((id) => !running.has(id));
+		if (targets.length === 0) return;
+		const now = new Date();
+		const from = localDateTime(now);
+		const path = normalizePath(worklogPath(device, now));
+		const file = await this.getOrCreate(path, "");
+		await this.app.vault.process(file, (text) =>
+			targets.reduce((t, taskId) => appendWorklogLine(t, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text),
+		);
+		this.store.refreshSoon();
+	}
+
+	/** 記録を止める（to を今にする） */
+	async stopTimer(entries: WorklogEntry[]): Promise<void> {
+		const to = localDateTime();
+		const byFile = new Map<string, WorklogEntry[]>();
+		for (const e of entries) byFile.set(e.path, [...(byFile.get(e.path) ?? []), e]);
+		for (const [path, list] of byFile) {
+			await this.app.vault.process(this.file(path), (text) =>
+				list.reduce((t, e) => replaceWorklogLine(t, e, { from: e.from, to, description: e.description }), text),
+			);
+		}
+		this.store.refreshSoon();
+	}
+
+	/** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
+	async updateBoard(date: LocalDate, mutate: (board: BoardState) => void): Promise<void> {
+		const file = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent());
+		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			const board = parseBoard(fm[BOARD_KEY]);
+			mutate(board);
+			fm[BOARD_KEY] = serializeBoard(board);
+		});
+		this.store.refreshSoon();
+	}
+
+	/** ボードを締めたときの要約をデイリーノートの本文に書く */
+	async writeSummary(date: LocalDate, summary: string): Promise<void> {
+		const file = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent());
+		await this.app.vault.process(file, (text) => upsertSummary(text, summary));
+	}
+
+	/** task board のグループの定義を保存する */
+	async saveGroups(groups: GroupDef[]): Promise<void> {
+		if (this.store.problems.some((p) => p.path === GROUPS_PATH)) throw new Error(`${GROUPS_PATH} を直してから保存してください`);
+		const file = await this.getOrCreate(GROUPS_PATH, "[]\n");
+		await this.app.vault.modify(file, serializeGroups(groups));
+		this.store.refreshSoon();
+	}
+
+	/** routine を作る（ADR-0010） */
+	async createRoutine(
+		summary: string,
+		repeat: Record<string, unknown>,
+		extra: { group?: string | null; estimated?: number | null; start?: string | null } = {},
+	): Promise<TFile> {
+		const [id] = nextIds("r", this.takenIds());
+		const path = normalizePath(pathForId(id!));
+		await this.ensureFolder(path);
+		const file = await this.app.vault.create(path, newRoutineContent(id!, summary, repeat, localDateTime(), extra));
+		this.store.refreshSoon();
+		return file;
 	}
 }

@@ -23,6 +23,7 @@ pnpm install --frozen-lockfile
 pnpm check                   # 型チェック → ビルド → テスト
 pnpm security:scan           # セキュリティチェックの機械的な部分
 pnpm task:lint               # タスク管理データ（issue/ routine/ member/ worklog/）の整合性検査
+pnpm task:worklog-review     # 間違っていそうな worklog の候補（worklog-review スキルから使う）
 ```
 
 ## ルール

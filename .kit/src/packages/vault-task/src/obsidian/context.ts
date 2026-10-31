@@ -1,4 +1,5 @@
 import type { App } from "obsidian";
+import type { TaskSettings } from "./settings";
 import type { TaskStore } from "./store";
 import type { TaskWriter } from "./writer";
 
@@ -7,8 +8,12 @@ export interface TaskContext {
 	app: App;
 	store: TaskStore;
 	writer: TaskWriter;
+	settings: TaskSettings;
+	saveSettings(): Promise<void>;
 	/** issue を開く。newTab なら新しいタブで */
 	openPath(path: string, newTab?: boolean): Promise<void>;
+	/** View を開く（すでに開いていればそれを前に出す） */
+	openView(type: string): Promise<void>;
 	/** 書き込みの失敗などを知らせる */
 	report(message: string, error?: unknown): void;
 }

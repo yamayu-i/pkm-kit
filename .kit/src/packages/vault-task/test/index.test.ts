@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TaskIndex, isInbox, organizeQueue, type VaultData } from "../src/core/index";
+import { TaskIndex, emptyVaultData, isInbox, organizeQueue, type VaultData } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
 import { parseIssue, parseMember, parseRoutine, type Issue, type Member, type Routine } from "../src/core/schema";
 import type { WorklogEntry } from "../src/core/worklog";
@@ -25,7 +25,7 @@ function log(id: string, taskId: string, from: string, to: string | null, path =
 }
 
 function data(partial: Partial<VaultData>): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], ...partial };
+	return { ...emptyVaultData(), ...partial };
 }
 
 describe("TaskIndex", () => {

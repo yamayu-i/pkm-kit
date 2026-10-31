@@ -82,6 +82,19 @@ vault-task の UI（issue 画面、モーダル、今後の View）はこのル�
 | ページング | `.vt-pager` | 丸い前後ボタン（40px、枠線）+ ページ番号（今のページはアクセントカラーで塗る）。多いときは `…` で省略 |
 | アイコンボタン | `.vt-icon-button` | 24px の丸、ホバーで面が付く |
 | 空の状態 | `.vt-empty` | 点線の枠 + 薄い文字 |
+| ボタン | `.vt-button`（`.is-primary` / `.is-text`） | 丸い 36px。outlined が既定、主な操作は filled（アクセントカラー）、補助は text |
+| 段階表示 | `.vt-stepper` / `.vt-step` | 丸い番号 + ラベル + 件数（赤い tonal）。今の段階はアクセントの面、済みは緑のチェック |
+| 一覧の行 | `.vt-table` / `.vt-tr` | 押せるカードの行（48px 以上）。選んだ行はアクセントの枠。狭いペインでは補助の列を隠す |
+| 操作バー | `.vt-actionbar` | 選んだ行への操作。下に貼り付き、選ぶと浮き上がる（影） |
+| 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on でアクセントの面 + チェック |
+| 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
+| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。記録中は緑の枠 |
+| 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
+| グループ | `.vt-group` | ボードの枠。カードを落とせるときはアクセントの枠 |
+| 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
+| スイッチ | `.vt-switch` | M3 の switch（routine の一時停止） |
+| segmented button | `.vt-segmented` | 少ない選択肢から 1 つ（グループの横幅） |
+| 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
 
 アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない。
 
@@ -103,9 +116,10 @@ vault-task の UI（issue 画面、モーダル、今後の View）はこのル�
 
 ## レイアウト
 
-- issue 画面のヘッダーは左右に 12px の余白を取る
+- issue 画面のヘッダーは左右に 12px の余白を取る。View（`.vt-page`）は 16px、最大幅 1200px で中央に置く
+- View の見出しは「タイトル（1.5em / 600）+ 件数のチップ + 右に主な操作」
 - セクションの間は 12px。カードの中も 12px
-- `.vt-header` に `container-type: inline-size` を付け、**ペインの幅が 480px 以下**なら横並びを縦並びにする（`@container`）。画面幅の `@media` は使わない
+- `.vt-header` と `.vt-view` に `container-type: inline-size` を付け、**ペインの幅が 480px 以下**なら横並びを縦並びにする（`@container`）。画面幅の `@media` は使わない
 - 縦並びにしたとき、`flex: 1 1 0` の子は高さが潰れるので `flex: none` に戻す
 - 長い文字は省略（`text-overflow: ellipsis`）し、`min-width: 0` を忘れない。グリッドは `minmax(0, 1fr)`
 
@@ -126,9 +140,10 @@ Obsidian がなくても、ブラウザで見た目を確認できる。
 
 ```sh
 cd .plugin-src/packages/vault-task
-pnpm preview:ui      # preview/out/ に light / dark × 広い / 狭いペインの PNG を出す
+pnpm preview:ui            # preview/out/ に 画面 × light / dark × 広い / 狭いペインの PNG を出す
+pnpm preview:ui board inbox # 画面を絞る（header / daily / board / issues / inbox / organize / scheduled / someday / routines / groups）
 ```
 
-- `preview/fixture.tsx` のデータで issue 画面のヘッダーを描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替える
-- UI を変えたら、ライト / ダークと狭いペインの 4 枚を見てからコミットする。実行時のエラーがあると失敗する
+- `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替える
+- UI を変えたら、変えた画面のライト / ダークと狭いペインを見てからコミットする。実行時のエラーがあると失敗する
 - 新しい View を作ったら、fixture に足して同じように確認できるようにする
