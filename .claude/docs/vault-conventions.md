@@ -34,7 +34,25 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 ## 編集するとき
 
-- 人が書いたノート（`daily/` やルートのメモ）の既存の内容は、ユーザーの許可なく変えない。LLM ができるのは追記だけ（[ADR-0004](adr/0004-human-notes-append-only.md)）
+- DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外（[ADR-0007](adr/0007-note-format.md)）
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
+
+## 共通 frontmatter
+
+決定と移行状態は [ADR-0007](adr/0007-note-format.md)。対象はPKMノートの Markdown。temporary/、template/、隠しパス、管理用 README.md（各階層）は除く。除外は入力資料としてLLMに読ませないという意味ではない。
+
+- type: 必須の単一文字列。英小文字とハイフン。話題・進行状態ではなくノートの役割。
+- created: このVaultにノートを作った日時。秒までのISO 8601、UTCのZまたはオフセット付き。改名・移動で変えない。
+- updated: ノートを変更してコミットした日時。人・AIは入力・更新しない。コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。
+- 自動付与の実装までは updated の空欄・既存値の保持を許す。既存ノートの不明な created は捏造せず、移行時に確認する。
+- 記事の公開日時、dailyが表す日付、知識の確認日時は別項目。updated は内容の正確さや最新性を示さない。
+
+新しいtypeを使う前に template/file/<type>.md を作る。テンプレートは初期構造の実例であり、本文の空見出しをすべて埋める義務はない。通常のメモは note とする。追加は独自の項目・構造・処理が必要な場合に限る。
+
+現在のtype: note、daily、source、concept、entity、topic、answer、issue、routine、member、index、log、feedback。
+
+同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（プラグイン管理の board 等は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
+
+template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。Obsidian Templatesのフォルダ設定は template/file とする。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。

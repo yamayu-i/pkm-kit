@@ -24,6 +24,8 @@
 | [0001](0001-harness-scope.md) | 承認 | ハーネスは Claude Code 専用。正本は `.claude/` に置く |
 | [0002](0002-workflow-by-size.md) | 承認 | 工程は変更の大きさで分ける。wiki の操作は main に直接コミットする |
 | [0003](0003-wiki-layout.md) | 承認 | wiki は `sources/`・`wiki/` に分ける。`daily/` はその場で元資料として扱う |
-| [0004](0004-human-notes-append-only.md) | 承認 | 人のノートに LLM は追記だけ。CI で検査する |
+| [0004](0004-human-notes-append-only.md) | 置換（0007） | 人のノートに LLM は追記だけ。CI で検査する |
 | [0005](0005-checks-in-ci.md) | 承認 | 検査は依存なしの Node スクリプトにし、GitHub Actions で実行する |
 | [0006](0006-self-improvement-loop.md) | 承認 | 自己改善は 4 つの観測から月 1 回評価し、提案までにする |
+
+| [0007](0007-note-format.md) | 承認 | PKMの共通frontmatter・type別テンプレート・DailyNote本文の保護 |
