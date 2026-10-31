@@ -1,6 +1,6 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { addDays, formatShortDate, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
+import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { dueLevel } from "../core/due";
 import { formatMinutes, parseDaysInput } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
@@ -9,7 +9,9 @@ import type { TaskContext } from "../obsidian/context";
 import { IssueSuggestModal, MemberSuggestModal, PreactModal } from "../obsidian/modals";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
-import { CalendarForm, DateForm, DayCell, TextForm } from "../ui/forms";
+import { CalendarForm, DateForm, DayCell, TextForm, WorklogForm } from "../ui/forms";
+import { Icon } from "../ui/Icon";
+import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
 import { LabelForm } from "../ui/LabelForm";
 
@@ -67,7 +69,7 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 			</section>
 			<Effort ctx={ctx} issue={issue} index={index} save={save} />
 			<hr class="vt-sep" />
-			<Worklog issue={issue} index={index} />
+			<Worklog ctx={ctx} issue={issue} index={index} />
 			<hr class="vt-sep" />
 		</div>
 	);
@@ -97,8 +99,9 @@ function Title(props: { issue: Issue; save: Save }) {
 					}}
 				/>
 			) : (
-				<span class="vt-summary" onClick={() => setEditing(true)}>
+				<span class="vt-summary" onClick={() => setEditing(true)} title="クリックで編集">
 					{issue.summary || "（summary なし）"}
+					<Icon name="pencil" class="vt-hover-icon" />
 				</span>
 			)}
 		</div>
@@ -163,18 +166,21 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 			<StatusBadge status={issue.status} wide onClick={menu} />
 			<div class="vt-status-detail">
 				{issue.status === "delegated" && (
-					<span class="vt-link" onClick={() => pickMember(ctx, index, (id) => save({ delegated_to: id }))}>
-						→ {member ? member.name : issue.delegatedTo ?? "委任先を選ぶ"}
-					</span>
+					<button class="vt-field-chip" onClick={() => pickMember(ctx, index, (id) => save({ delegated_to: id }))}>
+						<Icon name="user" />
+						{member ? member.name : issue.delegatedTo ?? "委任先を選ぶ"}
+					</button>
 				)}
 				{issue.status === "someday" && (
-					<span class="vt-link" onClick={editRevisit}>
+					<button class="vt-field-chip" onClick={editRevisit}>
+						<Icon name="calendar-clock" />
 						revisit {issue.revisit ? formatShortDate(issue.revisit) : "—"}
-					</span>
+					</button>
 				)}
-				<span class="vt-link" onClick={editDetail}>
-					{issue.statusDetail || "（詳細）"}
-				</span>
+				<button class={`vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`} onClick={editDetail}>
+					<Icon name="pencil" />
+					{issue.statusDetail || "詳細を追加"}
+				</button>
 			</div>
 		</>
 	);
@@ -207,12 +213,15 @@ function LabelsField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 			/>
 		)).open();
 	return (
-		<div class="vt-labels" onClick={edit}>
-			{issue.labels.length === 0 && <span class="vt-badge vt-label is-empty">label</span>}
+		<button class="vt-labels" onClick={edit} title="label を編集">
 			{issue.labels.map((name) => (
 				<LabelBadge name={name} color={colors.get(name) ?? "var(--background-modifier-border)"} />
 			))}
-		</div>
+			<span class="vt-badge vt-label is-empty">
+				<Icon name={issue.labels.length === 0 ? "tag" : "pencil"} />
+				{issue.labels.length === 0 ? "label" : ""}
+			</span>
+		</button>
 	);
 }
 
@@ -273,7 +282,8 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	const row = (label: string, key: "mid_due" | "deadline", value: LocalDate | null) => (
 		<button class={`vt-due vt-due-${dueLevel(issue, value, today)}`} onClick={edit(key, value)}>
 			<span class="vt-due-label">{label}</span>
-			<span>{value ? formatShortDate(value) : "—"}</span>
+			<span class="vt-due-value">{value ? formatShortDate(value) : "未設定"}</span>
+			<Icon name="calendar" class="vt-trailing" />
 		</button>
 	);
 	return (
@@ -292,8 +302,8 @@ function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => voi
 				{props.issue.summary}
 			</span>
 			{props.onRemove && (
-				<button class="vt-icon-button" aria-label="外す" onClick={props.onRemove}>
-					×
+				<button class="vt-icon-button" aria-label="外す" title="外す" onClick={props.onRemove}>
+					<Icon name="x" />
 				</button>
 			)}
 		</span>
@@ -340,8 +350,8 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Parent
-					<button class="vt-icon-button" aria-label="親を選ぶ" onClick={pickParent}>
-						✎
+					<button class="vt-icon-button" aria-label="親を選ぶ" title="親を選ぶ" onClick={pickParent}>
+						<Icon name="pencil" />
 					</button>
 				</div>
 				{parent ? (
@@ -355,8 +365,8 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Children
-					<button class="vt-icon-button" aria-label="子を追加" onClick={addChild}>
-						＋
+					<button class="vt-icon-button" aria-label="子を追加" title="子を追加" onClick={addChild}>
+						<Icon name="plus" />
 					</button>
 				</div>
 				<div class="vt-wrap">
@@ -397,15 +407,18 @@ function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save:
 	};
 	return (
 		<div class="vt-effort">
-			<button class="vt-effort-cell" onClick={menu}>
-				<span class="vt-field-label">estimated</span>
+			<button class="vt-effort-cell is-editable" onClick={menu}>
+				<span class="vt-field-label">
+					estimated
+					<Icon name="chevron-down" class="vt-trailing" />
+				</span>
 				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated)}</span>
 			</button>
-			<div class="vt-effort-cell">
+			<div class="vt-effort-cell is-readonly" title="worklog から自動で計算">
 				<span class="vt-field-label">actual</span>
 				<span class="vt-effort-value">{formatMinutes(actual)}</span>
 			</div>
-			<div class="vt-effort-cell">
+			<div class="vt-effort-cell is-readonly" title="estimated − actual">
 				<span class="vt-field-label">remained</span>
 				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated - actual)}</span>
 			</div>
@@ -413,37 +426,111 @@ function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save:
 	);
 }
 
-function Worklog(props: { issue: Issue; index: TaskIndex }) {
+/** 表示するページ番号（多いときは先頭・末尾・前後だけ） */
+function pageItems(current: number, pages: number): (number | null)[] {
+	if (pages <= 7) return Array.from({ length: pages }, (_, i) => i);
+	const keep = new Set([0, pages - 1, current - 1, current, current + 1].filter((i) => i >= 0 && i < pages));
+	const out: (number | null)[] = [];
+	let prev = -1;
+	for (const i of [...keep].sort((a, b) => a - b)) {
+		if (i - prev > 1) out.push(null);
+		out.push(i);
+		prev = i;
+	}
+	return out;
+}
+
+function Pager(props: { current: number; pages: number; onChange: (page: number) => void }) {
+	const { current, pages, onChange } = props;
+	return (
+		<nav class="vt-pager" aria-label="worklog のページ">
+			<button class="vt-pager-step" disabled={current === 0} onClick={() => onChange(current - 1)} aria-label="新しい方へ">
+				<Icon name="chevron-left" />
+			</button>
+			{pageItems(current, pages).map((i) =>
+				i === null ? (
+					<span class="vt-pager-gap">…</span>
+				) : (
+					<button class={`vt-pager-page${i === current ? " is-current" : ""}`} aria-current={i === current ? "page" : undefined} onClick={() => onChange(i)}>
+						{i + 1}
+					</button>
+				),
+			)}
+			<button class="vt-pager-step" disabled={current >= pages - 1} onClick={() => onChange(current + 1)} aria-label="古い方へ">
+				<Icon name="chevron-right" />
+			</button>
+		</nav>
+	);
+}
+
+function formatTime(ms: number): string {
+	return formatDateTime(ms).slice(11);
+}
+
+function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
+	const { ctx, log } = props;
+	const date = formatDateTime(log.fromMs).slice(0, 10);
+	const running = log.toMs === null;
+	const edit = () =>
+		new PreactModal(ctx.app, "worklog を編集", (close) => (
+			<WorklogForm
+				initial={{ fromMs: log.fromMs, toMs: log.toMs, description: log.description }}
+				onSubmit={(d) => {
+					close();
+					void ctx.writer
+						.updateWorklog(log, {
+							from: localDateTime(new Date(d.fromMs)),
+							to: d.toMs === null ? null : localDateTime(new Date(d.toMs)),
+							description: d.description,
+						})
+						.catch((e) => ctx.report("worklog を保存できませんでした", e));
+				}}
+				onDelete={() => {
+					close();
+					void ctx.writer.updateWorklog(log, null).catch((e) => ctx.report("worklog を削除できませんでした", e));
+				}}
+			/>
+		)).open();
+	return (
+		<button class={`vt-log${running ? " is-running" : ""}`} onClick={edit} title="クリックで編集">
+			<span class="vt-log-date">
+				<span class="vt-log-day">{date.slice(5).replace("-", "/")}</span>
+				<span class="vt-log-weekday">{WEEKDAY_NAMES[weekdayOf(date)]}</span>
+			</span>
+			<span class="vt-log-main">
+				<span class="vt-log-time vt-num">
+					{formatTime(log.fromMs)} – {running ? "記録中" : formatTime(log.toMs!)}
+				</span>
+				<span class={`vt-log-desc${log.description ? "" : " is-placeholder"}`}>{log.description || "内容なし"}</span>
+			</span>
+			<span class="vt-log-duration vt-num">
+				{running && <span class="vt-live-dot" />}
+				{formatMinutes(((log.toMs ?? Date.now()) - log.fromMs) / 60_000)}
+			</span>
+			<Icon name="pencil" class="vt-log-edit" />
+		</button>
+	);
+}
+
+function Worklog(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
 	const [page, setPage] = useState(0);
 	const logs = props.index.data.worklogs.filter((l) => l.taskId === props.issue.id).sort((a, b) => b.fromMs - a.fromMs);
 	const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
 	const current = Math.min(page, pages - 1);
 	const shown = logs.slice(current * WORKLOG_PAGE, (current + 1) * WORKLOG_PAGE);
 	return (
-		<div class="vt-worklog vt-small">
-			<div class="vt-field-label">worklog</div>
-			{logs.length === 0 && <span class="vt-muted">まだ記録がありません</span>}
-			{shown.map((l) => (
-				<div class="vt-worklog-row">
-					<span class="vt-num">{formatDateTime(l.fromMs)}</span>
-					<span class="vt-num">– {l.toMs === null ? "記録中" : formatDateTime(l.toMs).slice(11)}</span>
-					<span class="vt-muted vt-num">{l.toMs === null ? "" : formatMinutes((l.toMs - l.fromMs) / 60_000)}</span>
-					<span class="vt-worklog-desc">{l.description}</span>
-				</div>
-			))}
-			{pages > 1 && (
-				<div class="vt-pager">
-					<button disabled={current === 0} onClick={() => setPage(current - 1)}>
-						‹
-					</button>
-					<span>
-						{current + 1} / {pages}
-					</span>
-					<button disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
-						›
-					</button>
-				</div>
-			)}
-		</div>
+		<section class="vt-worklog">
+			<div class="vt-section-head">
+				<span class="vt-field-label">worklog</span>
+				{logs.length > 0 && <span class="vt-count">{logs.length} 件</span>}
+			</div>
+			{logs.length === 0 && <div class="vt-empty">まだ記録がありません</div>}
+			<div class="vt-log-list">
+				{shown.map((l) => (
+					<WorklogItem ctx={props.ctx} log={l} key={l.id} />
+				))}
+			</div>
+			{pages > 1 && <Pager current={current} pages={pages} onChange={setPage} />}
+		</section>
 	);
 }

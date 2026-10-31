@@ -95,7 +95,7 @@ body.theme-dark {
 /* ---------- 全体 ---------- */
 
 .vt-header {
-	padding: 8px 0 4px;
+	padding: 8px 12px 4px;
 	font-size: var(--font-ui-medium);
 	user-select: text;
 	/* ペインの幅で縦並びに切り替える（画面幅ではなく） */
@@ -262,6 +262,72 @@ body.theme-dark {
 	border-radius: var(--vt-radius-s);
 }
 
+/* ---------- アイコンと「編集できる」の目印 ---------- */
+
+.vt-icon {
+	display: inline-flex;
+	align-items: center;
+	flex: none;
+}
+
+.vt-icon svg {
+	width: 16px;
+	height: 16px;
+	stroke-width: 2;
+}
+
+.vt-badge .vt-icon svg,
+.vt-field-label .vt-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.vt-trailing {
+	opacity: 0.7;
+}
+
+.vt-hover-icon {
+	margin-left: 8px;
+	vertical-align: middle;
+	color: var(--text-faint);
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.vt-summary:hover .vt-hover-icon {
+	opacity: 1;
+}
+
+/* status-detail・委任先・revisit: M3 の input chip 風（枠線 + 先頭のアイコン） */
+.vt-field-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 12px 0 10px;
+	border: 1px solid var(--vt-outline-strong);
+	border-radius: var(--vt-radius-s);
+	background: var(--background-primary);
+	box-shadow: none;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: background-color 120ms ease;
+}
+
+.vt-field-chip .vt-icon {
+	color: var(--text-muted);
+}
+
+.vt-field-chip:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-field-chip.is-placeholder {
+	border-style: dashed;
+	color: var(--text-faint);
+}
+
 /* ---------- バッジ・チップ ---------- */
 
 .vt-badge {
@@ -328,10 +394,22 @@ button.vt-badge:disabled::after {
 /* status は M3 の filled tonal button 風 */
 .vt-badge.is-wide {
 	width: 100%;
-	height: 40px;
+	height: 44px;
+	padding: 0 40px;
 	border-radius: var(--vt-radius-full);
-	font-size: var(--font-ui-small);
-	letter-spacing: 0.04em;
+	font-size: 16px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+.vt-badge.is-wide .vt-dot {
+	width: 10px;
+	height: 10px;
+}
+
+.vt-badge.is-wide .vt-trailing {
+	position: absolute;
+	right: 16px;
 }
 
 .vt-dot {
@@ -377,10 +455,15 @@ button.vt-badge:disabled::after {
 .vt-labels {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 6px;
+	height: auto;
 	padding: 2px;
 	margin: -2px;
+	border: none;
 	border-radius: var(--vt-radius-s);
+	background: transparent;
+	box-shadow: none;
 	cursor: pointer;
 }
 
@@ -393,9 +476,17 @@ button.vt-badge:disabled::after {
 }
 
 .vt-label.is-empty {
+	gap: 4px;
+	padding: 0 8px;
 	background: transparent;
-	box-shadow: inset 0 0 0 1px var(--vt-outline);
-	color: var(--text-faint);
+	box-shadow: inset 0 0 0 1px var(--vt-outline-strong);
+	border: none;
+	color: var(--text-muted);
+}
+
+.vt-labels:hover .vt-label.is-empty {
+	color: var(--text-normal);
+	box-shadow: inset 0 0 0 1px var(--text-muted);
 }
 
 .vt-status-detail {
@@ -552,7 +643,7 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	width: 190px;
+	width: 220px;
 }
 
 .vt-due {
@@ -560,11 +651,11 @@ button.vt-badge:disabled::after {
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	height: 36px;
-	padding: 0 12px;
-	border: none;
+	height: 38px;
+	padding: 0 10px 0 12px;
+	border: 1px solid var(--vt-outline-strong);
 	border-radius: var(--vt-radius-m);
-	background: var(--vt-surface-high);
+	background: var(--background-primary);
 	box-shadow: none;
 	color: var(--text-normal);
 	font-size: var(--font-ui-small);
@@ -577,6 +668,11 @@ button.vt-badge:disabled::after {
 	filter: brightness(0.96);
 }
 
+.vt-due-value {
+	margin-left: auto;
+	white-space: nowrap;
+}
+
 .vt-due-label {
 	color: var(--text-muted);
 	font-size: 11px;
@@ -585,6 +681,10 @@ button.vt-badge:disabled::after {
 	text-transform: uppercase;
 }
 
+.vt-due-3,
+.vt-due-2,
+.vt-due-1,
+.vt-due-0 { border-color: transparent; }
 .vt-due-3 { background: var(--vt-due-3); color: var(--vt-on-due); }
 .vt-due-2 { background: var(--vt-due-2); color: var(--vt-on-due); }
 .vt-due-1 { background: var(--vt-due-1); color: var(--vt-on-due); }
@@ -652,6 +752,11 @@ button.vt-badge:disabled::after {
 	cursor: pointer;
 }
 
+.vt-icon-button .vt-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
 .vt-icon-button:hover {
 	background: var(--vt-state-hover);
 	color: var(--text-normal);
@@ -687,13 +792,34 @@ button.vt-badge:disabled::after {
 	text-align: left;
 }
 
-button.vt-effort-cell {
+/* 編集できるもの: 枠線 + 面の色 + ▾。読み取り専用: 枠なしで沈ませる */
+.vt-effort-cell.is-editable {
+	border: 1px solid var(--vt-outline-strong);
+	background: var(--background-primary);
 	cursor: pointer;
-	transition: background-color 120ms ease;
+	transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
-button.vt-effort-cell:hover {
-	background: var(--vt-surface-high);
+.vt-effort-cell.is-editable .vt-field-label {
+	width: 100%;
+}
+
+.vt-effort-cell.is-editable .vt-trailing {
+	margin-left: auto;
+}
+
+.vt-effort-cell.is-editable:hover {
+	background: var(--vt-state-hover);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.vt-effort-cell.is-readonly {
+	border-color: transparent;
+	background: var(--vt-surface);
+}
+
+.vt-effort-cell.is-readonly .vt-effort-value {
+	color: var(--text-muted);
 }
 
 /* M3 の title-large 相当 */
@@ -704,62 +830,238 @@ button.vt-effort-cell:hover {
 	color: var(--text-normal);
 }
 
-/* ---------- worklog ---------- */
+/* ---------- worklog（1 件ずつ押せるカード） ---------- */
 
 .vt-worklog {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 8px;
 }
 
-.vt-worklog-row {
+.vt-section-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-count {
+	padding: 1px 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-high);
+	color: var(--text-muted);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-empty {
+	padding: 16px;
+	border: 1px dashed var(--vt-outline-strong);
+	border-radius: var(--vt-radius-m);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+	text-align: center;
+}
+
+.vt-log-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.vt-log {
 	display: grid;
-	grid-template-columns: auto auto 4.5em 1fr;
-	align-items: baseline;
-	gap: 10px;
-	padding: 6px 8px;
+	grid-template-columns: 52px minmax(0, 1fr) auto 20px;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	height: auto;
+	padding: 8px 12px 8px 8px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-m);
+	background: var(--background-primary);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	text-align: left;
+	cursor: pointer;
+	transition: box-shadow 150ms ease, border-color 150ms ease, transform 80ms ease;
+}
+
+.vt-log:hover {
+	border-color: var(--vt-outline-strong);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.vt-log:active {
+	transform: scale(0.99);
+}
+
+.vt-log-date {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 44px;
 	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface-high);
+	line-height: 1.15;
 }
 
-.vt-worklog-row:hover {
-	background: var(--vt-state-hover);
+.vt-log-day {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
 }
 
-.vt-worklog-desc {
+.vt-log-weekday {
+	color: var(--text-muted);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.vt-log-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.vt-log-time {
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+.vt-log-desc {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: var(--font-ui-medium);
 }
 
-@container (max-width: 480px) {
-	.vt-worklog-row {
-		grid-template-columns: auto auto 1fr;
-	}
-
-	.vt-worklog-desc {
-		grid-column: 1 / -1;
-	}
+.vt-log-desc.is-placeholder {
+	color: var(--text-faint);
 }
+
+.vt-log-duration {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 26px;
+	padding: 0 10px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-blue-c);
+	color: var(--vt-blue-on);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.vt-log-edit {
+	color: var(--text-faint);
+	opacity: 0.5;
+	transition: opacity 120ms ease;
+}
+
+.vt-log:hover .vt-log-edit {
+	opacity: 1;
+	color: var(--text-normal);
+}
+
+.vt-log.is-running {
+	border-color: var(--vt-green);
+}
+
+.vt-log.is-running .vt-log-duration {
+	background: var(--vt-green-c);
+	color: var(--vt-green-on);
+}
+
+.vt-live-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--vt-green);
+	animation: vt-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes vt-pulse {
+	0%,
+	100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* ---------- ページング ---------- */
 
 .vt-pager {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	font-variant-numeric: tabular-nums;
-	color: var(--text-muted);
+	justify-content: center;
+	gap: 6px;
+	padding-top: 4px;
 }
 
-.vt-pager button {
-	width: 32px;
-	height: 32px;
+.vt-pager-step,
+.vt-pager-page {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	padding: 0;
 	border-radius: var(--vt-radius-full);
-	background: transparent;
 	box-shadow: none;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	transition: background-color 120ms ease, color 120ms ease, transform 80ms ease;
 }
 
-.vt-pager button:hover:not(:disabled) {
+.vt-pager-step {
+	width: 40px;
+	height: 40px;
+	border: 1px solid var(--vt-outline-strong);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.vt-pager-step .vt-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.vt-pager-page {
+	min-width: 36px;
+	height: 36px;
+	padding: 0 8px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.vt-pager-step:hover:not(:disabled),
+.vt-pager-page:hover:not(.is-current) {
 	background: var(--vt-state-hover);
+	color: var(--text-normal);
+}
+
+.vt-pager-step:active:not(:disabled),
+.vt-pager-page:active {
+	transform: scale(0.92);
+}
+
+.vt-pager-step:disabled {
+	opacity: 0.38;
+	cursor: default;
+}
+
+.vt-pager-page.is-current {
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+	font-weight: 700;
+	cursor: default;
+}
+
+.vt-pager-gap {
+	min-width: 20px;
+	color: var(--text-faint);
+	text-align: center;
 }
 
 /* ---------- モーダル ---------- */
@@ -816,6 +1118,42 @@ button.vt-effort-cell:hover {
 
 .vt-check:hover {
 	background: var(--vt-state-hover);
+}
+
+.vt-worklog-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-text-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.vt-text-field input {
+	height: 40px;
+	border-radius: var(--vt-radius-s);
+	font-size: var(--font-ui-medium);
+}
+
+.vt-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.vt-spacer {
+	flex: 1;
+}
+
+.vt-danger-text.vt-danger-text {
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-error);
 }
 
 .vt-notice-button {

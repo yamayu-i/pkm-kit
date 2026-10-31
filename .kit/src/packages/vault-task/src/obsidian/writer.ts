@@ -3,6 +3,7 @@ import { localDateTime } from "../core/dates";
 import { nextIds, pathForId } from "../core/ids";
 import { newIssueContent, newMemberContent } from "../core/issue-file";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, type LabelDef } from "../core/labels";
+import { replaceWorklogLine, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
@@ -91,6 +92,12 @@ export class TaskWriter {
 			await this.ensureFolder(LABELS_PATH);
 			await this.app.vault.create(LABELS_PATH, text);
 		}
+		this.store.refreshSoon();
+	}
+
+	/** worklog の 1 行を書き換える。next が null なら行を消す（ADR-0012） */
+	async updateWorklog(entry: WorklogEntry, next: Pick<WorklogEntry, "from" | "to" | "description"> | null): Promise<void> {
+		await this.app.vault.process(this.file(entry.path), (text) => replaceWorklogLine(text, entry, next));
 		this.store.refreshSoon();
 	}
 }

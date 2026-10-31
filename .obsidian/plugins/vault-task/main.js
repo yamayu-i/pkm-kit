@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/obsidian/capture.tsx
 var import_obsidian2 = require("obsidian");
@@ -1110,6 +1110,25 @@ function parseWorklog(path, text) {
   });
   return { entries, problems };
 }
+function serializeWorklogEntry(e3) {
+  return JSON.stringify({ id: e3.id, task_id: e3.taskId, from: e3.from, to: e3.to, description: e3.description });
+}
+function replaceWorklogLine(text, entry, next) {
+  const lines = text.split("\n");
+  const i3 = entry.line - 1;
+  let current;
+  try {
+    current = JSON.parse(lines[i3] ?? "");
+  } catch {
+    current = null;
+  }
+  if (typeof current !== "object" || current === null || current.id !== entry.id) {
+    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
+  if (next === null) lines.splice(i3, 1);
+  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  return lines.join("\n");
+}
 
 // src/core/load.ts
 function fileKind(path) {
@@ -1334,15 +1353,20 @@ var TaskWriter = class {
     }
     this.store.refreshSoon();
   }
+  /** worklog の 1 行を書き換える。next が null なら行を消す（ADR-0012） */
+  async updateWorklog(entry, next) {
+    await this.app.vault.process(this.file(entry.path), (text) => replaceWorklogLine(text, entry, next));
+    this.store.refreshSoon();
+  }
 };
 
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/header/IssueHeader.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/core/due.ts
 function dueLevel(issue, due, today) {
@@ -1371,11 +1395,24 @@ function parseDaysInput(input) {
   return Math.round(Number(m3[1]) * MINUTES_PER_DAY);
 }
 
+// src/ui/Icon.tsx
+var import_obsidian5 = require("obsidian");
+function Icon(props) {
+  const ref = A2(null);
+  h2(() => {
+    if (!ref.current) return;
+    ref.current.replaceChildren();
+    (0, import_obsidian5.setIcon)(ref.current, props.name);
+  }, [props.name]);
+  return /* @__PURE__ */ u3("span", { ref, class: `vt-icon ${props.class ?? ""}`, "aria-hidden": "true" });
+}
+
 // src/ui/badges.tsx
 function StatusBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
     /* @__PURE__ */ u3("span", { class: "vt-dot" }),
-    props.status
+    props.status,
+    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
   ] });
 }
 function IdBadge(props) {
@@ -1385,7 +1422,8 @@ var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB
 function PriorityBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
     /* @__PURE__ */ u3("span", { class: "vt-priority-icon", children: PRIORITY_ICONS[props.priority ?? "none"] }),
-    props.priority ?? "priority"
+    props.priority ?? "priority",
+    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
   ] });
 }
 function LabelBadge(props) {
@@ -1505,6 +1543,51 @@ function DayCell(props) {
   if (props.dimmed) cls.push("is-dimmed");
   return /* @__PURE__ */ u3("button", { class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, title: props.date, children: Number(props.date.slice(8, 10)) });
 }
+function toInputValue(ms) {
+  if (ms === null) return "";
+  const d3 = new Date(ms);
+  const pad = (n2) => String(n2).padStart(2, "0");
+  return `${d3.getFullYear()}-${pad(d3.getMonth() + 1)}-${pad(d3.getDate())}T${pad(d3.getHours())}:${pad(d3.getMinutes())}`;
+}
+function WorklogForm(props) {
+  const [from, setFrom] = d2(toInputValue(props.initial.fromMs));
+  const [to, setTo] = d2(toInputValue(props.initial.toMs));
+  const [description, setDescription] = d2(props.initial.description);
+  const [confirming, setConfirming] = d2(false);
+  const fromMs = Date.parse(from);
+  const toMs = to ? Date.parse(to) : null;
+  const error = Number.isNaN(fromMs) ? "\u958B\u59CB\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" : toMs !== null && (Number.isNaN(toMs) || toMs <= fromMs) ? "\u7D42\u4E86\u306F\u958B\u59CB\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" : null;
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-worklog-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (error === null) props.onSubmit({ fromMs, toMs, description: description.trim() });
+      },
+      children: [
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "\u958B\u59CB" }),
+          /* @__PURE__ */ u3("input", { type: "datetime-local", value: from, onInput: (e3) => setFrom(e3.currentTarget.value) })
+        ] }),
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "\u7D42\u4E86\uFF08\u7A7A\u306A\u3089\u8A18\u9332\u4E2D\uFF09" }),
+          /* @__PURE__ */ u3("input", { type: "datetime-local", value: to, onInput: (e3) => setTo(e3.currentTarget.value) })
+        ] }),
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "\u5185\u5BB9" }),
+          /* @__PURE__ */ u3("input", { type: "text", value: description, onInput: (e3) => setDescription(e3.currentTarget.value) })
+        ] }),
+        error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          /* @__PURE__ */ u3("button", { type: "button", class: confirming ? "mod-warning" : "vt-danger-text", onClick: () => confirming ? props.onDelete() : setConfirming(true), children: confirming ? "\u3082\u3046\u4E00\u5EA6\u62BC\u3059\u3068\u524A\u9664" : "\u524A\u9664" }),
+          /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "\u4FDD\u5B58" })
+        ] })
+      ]
+    }
+  );
+}
 
 // src/ui/hooks.ts
 function useStoreVersion(store) {
@@ -1597,7 +1680,7 @@ function IssueHeader(props) {
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }) }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
-    /* @__PURE__ */ u3(Worklog, { issue, index }),
+    /* @__PURE__ */ u3(Worklog, { ctx, issue, index }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" })
   ] });
 }
@@ -1622,7 +1705,10 @@ function Title(props) {
           if (e3.key === "Escape") setEditing(false);
         }
       }
-    ) : /* @__PURE__ */ u3("span", { class: "vt-summary", onClick: () => setEditing(true), children: issue.summary || "\uFF08summary \u306A\u3057\uFF09" })
+    ) : /* @__PURE__ */ u3("span", { class: "vt-summary", onClick: () => setEditing(true), title: "\u30AF\u30EA\u30C3\u30AF\u3067\u7DE8\u96C6", children: [
+      issue.summary || "\uFF08summary \u306A\u3057\uFF09",
+      /* @__PURE__ */ u3(Icon, { name: "pencil", class: "vt-hover-icon" })
+    ] })
   ] });
 }
 function pickMember(ctx, index, onPick) {
@@ -1646,7 +1732,7 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -1676,21 +1762,25 @@ function StatusField(props) {
   return /* @__PURE__ */ u3(S, { children: [
     /* @__PURE__ */ u3(StatusBadge, { status: issue.status, wide: true, onClick: menu }),
     /* @__PURE__ */ u3("div", { class: "vt-status-detail", children: [
-      issue.status === "delegated" && /* @__PURE__ */ u3("span", { class: "vt-link", onClick: () => pickMember(ctx, index, (id) => save({ delegated_to: id })), children: [
-        "\u2192 ",
+      issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, index, (id) => save({ delegated_to: id })), children: [
+        /* @__PURE__ */ u3(Icon, { name: "user" }),
         member ? member.name : issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076"
       ] }),
-      issue.status === "someday" && /* @__PURE__ */ u3("span", { class: "vt-link", onClick: editRevisit, children: [
+      issue.status === "someday" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRevisit, children: [
+        /* @__PURE__ */ u3(Icon, { name: "calendar-clock" }),
         "revisit ",
         issue.revisit ? formatShortDate(issue.revisit) : "\u2014"
       ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-link", onClick: editDetail, children: issue.statusDetail || "\uFF08\u8A73\u7D30\uFF09" })
+      /* @__PURE__ */ u3("button", { class: `vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`, onClick: editDetail, children: [
+        /* @__PURE__ */ u3(Icon, { name: "pencil" }),
+        issue.statusDetail || "\u8A73\u7D30\u3092\u8FFD\u52A0"
+      ] })
     ] })
   ] });
 }
 function PriorityField(props) {
   const menu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const p3 of PRIORITIES) m3.addItem((item) => item.setTitle(p3).setChecked(p3 === props.issue.priority).onClick(() => props.save({ priority: p3 })));
     m3.addItem((item) => item.setTitle("\u306A\u3057").onClick(() => props.save({ priority: null })));
     m3.showAtMouseEvent(e3);
@@ -1713,9 +1803,12 @@ function LabelsField(props) {
       onError: (e3) => ctx.report("label \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
     }
   )).open();
-  return /* @__PURE__ */ u3("div", { class: "vt-labels", onClick: edit, children: [
-    issue.labels.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: "label" }),
-    issue.labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors.get(name) ?? "var(--background-modifier-border)" }))
+  return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: edit, title: "label \u3092\u7DE8\u96C6", children: [
+    issue.labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors.get(name) ?? "var(--background-modifier-border)" })),
+    /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: [
+      /* @__PURE__ */ u3(Icon, { name: issue.labels.length === 0 ? "tag" : "pencil" }),
+      issue.labels.length === 0 ? "label" : ""
+    ] })
   ] });
 }
 function ScheduleStrip(props) {
@@ -1768,7 +1861,8 @@ function DueFields(props) {
   )).open();
   const row = (label, key, value) => /* @__PURE__ */ u3("button", { class: `vt-due vt-due-${dueLevel(issue, value, today)}`, onClick: edit(key, value), children: [
     /* @__PURE__ */ u3("span", { class: "vt-due-label", children: label }),
-    /* @__PURE__ */ u3("span", { children: value ? formatShortDate(value) : "\u2014" })
+    /* @__PURE__ */ u3("span", { class: "vt-due-value", children: value ? formatShortDate(value) : "\u672A\u8A2D\u5B9A" }),
+    /* @__PURE__ */ u3(Icon, { name: "calendar", class: "vt-trailing" })
   ] });
   return /* @__PURE__ */ u3("div", { class: "vt-dues", children: [
     row("mid_due", "mid_due", issue.midDue),
@@ -1778,8 +1872,8 @@ function DueFields(props) {
 function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", onClick: (e3) => void props.ctx.openPath(props.issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false), children: props.issue.summary }),
-    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", onClick: props.onRemove, children: "\xD7" })
+    /* @__PURE__ */ u3("span", { class: "vt-link", onClick: (e3) => void props.ctx.openPath(props.issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false), children: props.issue.summary }),
+    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", title: "\u5916\u3059", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }
 function Relations(props) {
@@ -1791,7 +1885,7 @@ function Relations(props) {
     new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "\u89AA\u306B\u3059\u308B issue \u3092\u691C\u7D22").open();
   };
   const addChild = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     m3.addItem(
       (item) => item.setTitle("\u65E2\u5B58\u306E issue \u3092\u5B50\u306B\u3059\u308B").onClick(() => {
         const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
@@ -1819,7 +1913,7 @@ function Relations(props) {
     /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Parent",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u89AA\u3092\u9078\u3076", onClick: pickParent, children: "\u270E" })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u89AA\u3092\u9078\u3076", title: "\u89AA\u3092\u9078\u3076", onClick: pickParent, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) })
       ] }),
       parent ? /* @__PURE__ */ u3(IssueLink, { ctx, issue: parent, onRemove: () => save({ parent: null }) }) : issue.parent !== null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         issue.parent,
@@ -1829,7 +1923,7 @@ function Relations(props) {
     /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Children",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5B50\u3092\u8FFD\u52A0", onClick: addChild, children: "\uFF0B" })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5B50\u3092\u8FFD\u52A0", title: "\u5B50\u3092\u8FFD\u52A0", onClick: addChild, children: /* @__PURE__ */ u3(Icon, { name: "plus" }) })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-wrap", children: [
         children.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }),
@@ -1842,7 +1936,7 @@ function Effort(props) {
   const { ctx, issue, index, save } = props;
   const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
   const menu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
     m3.addItem(
       (item) => item.setTitle("\u65E5\u6570\u3067\u5165\u529B\u2026").onClick(
@@ -1865,18 +1959,88 @@ function Effort(props) {
     m3.showAtMouseEvent(e3);
   };
   return /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-effort-cell", onClick: menu, children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "estimated" }),
+    /* @__PURE__ */ u3("button", { class: "vt-effort-cell is-editable", onClick: menu, children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
+        "estimated",
+        /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+      ] }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated) })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-effort-cell", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-effort-cell", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "estimated \u2212 actual", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "remained" }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated - actual) })
     ] })
+  ] });
+}
+function pageItems(current, pages) {
+  if (pages <= 7) return Array.from({ length: pages }, (_2, i3) => i3);
+  const keep = new Set([0, pages - 1, current - 1, current, current + 1].filter((i3) => i3 >= 0 && i3 < pages));
+  const out = [];
+  let prev = -1;
+  for (const i3 of [...keep].sort((a3, b2) => a3 - b2)) {
+    if (i3 - prev > 1) out.push(null);
+    out.push(i3);
+    prev = i3;
+  }
+  return out;
+}
+function Pager(props) {
+  const { current, pages, onChange } = props;
+  return /* @__PURE__ */ u3("nav", { class: "vt-pager", "aria-label": "worklog \u306E\u30DA\u30FC\u30B8", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current === 0, onClick: () => onChange(current - 1), "aria-label": "\u65B0\u3057\u3044\u65B9\u3078", children: /* @__PURE__ */ u3(Icon, { name: "chevron-left" }) }),
+    pageItems(current, pages).map(
+      (i3) => i3 === null ? /* @__PURE__ */ u3("span", { class: "vt-pager-gap", children: "\u2026" }) : /* @__PURE__ */ u3("button", { class: `vt-pager-page${i3 === current ? " is-current" : ""}`, "aria-current": i3 === current ? "page" : void 0, onClick: () => onChange(i3), children: i3 + 1 })
+    ),
+    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current >= pages - 1, onClick: () => onChange(current + 1), "aria-label": "\u53E4\u3044\u65B9\u3078", children: /* @__PURE__ */ u3(Icon, { name: "chevron-right" }) })
+  ] });
+}
+function formatTime(ms) {
+  return formatDateTime(ms).slice(11);
+}
+function WorklogItem(props) {
+  const { ctx, log } = props;
+  const date = formatDateTime(log.fromMs).slice(0, 10);
+  const running = log.toMs === null;
+  const edit = () => new PreactModal(ctx.app, "worklog \u3092\u7DE8\u96C6", (close) => /* @__PURE__ */ u3(
+    WorklogForm,
+    {
+      initial: { fromMs: log.fromMs, toMs: log.toMs, description: log.description },
+      onSubmit: (d3) => {
+        close();
+        void ctx.writer.updateWorklog(log, {
+          from: localDateTime(new Date(d3.fromMs)),
+          to: d3.toMs === null ? null : localDateTime(new Date(d3.toMs)),
+          description: d3.description
+        }).catch((e3) => ctx.report("worklog \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      },
+      onDelete: () => {
+        close();
+        void ctx.writer.updateWorklog(log, null).catch((e3) => ctx.report("worklog \u3092\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
+  return /* @__PURE__ */ u3("button", { class: `vt-log${running ? " is-running" : ""}`, onClick: edit, title: "\u30AF\u30EA\u30C3\u30AF\u3067\u7DE8\u96C6", children: [
+    /* @__PURE__ */ u3("span", { class: "vt-log-date", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-log-day", children: date.slice(5).replace("-", "/") }),
+      /* @__PURE__ */ u3("span", { class: "vt-log-weekday", children: WEEKDAY_NAMES[weekdayOf(date)] })
+    ] }),
+    /* @__PURE__ */ u3("span", { class: "vt-log-main", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-log-time vt-num", children: [
+        formatTime(log.fromMs),
+        " \u2013 ",
+        running ? "\u8A18\u9332\u4E2D" : formatTime(log.toMs)
+      ] }),
+      /* @__PURE__ */ u3("span", { class: `vt-log-desc${log.description ? "" : " is-placeholder"}`, children: log.description || "\u5185\u5BB9\u306A\u3057" })
+    ] }),
+    /* @__PURE__ */ u3("span", { class: "vt-log-duration vt-num", children: [
+      running && /* @__PURE__ */ u3("span", { class: "vt-live-dot" }),
+      formatMinutes(((log.toMs ?? Date.now()) - log.fromMs) / 6e4)
+    ] }),
+    /* @__PURE__ */ u3(Icon, { name: "pencil", class: "vt-log-edit" })
   ] });
 }
 function Worklog(props) {
@@ -1885,27 +2049,17 @@ function Worklog(props) {
   const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
   const current = Math.min(page, pages - 1);
   const shown = logs.slice(current * WORKLOG_PAGE, (current + 1) * WORKLOG_PAGE);
-  return /* @__PURE__ */ u3("div", { class: "vt-worklog vt-small", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "worklog" }),
-    logs.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u307E\u3060\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093" }),
-    shown.map((l3) => /* @__PURE__ */ u3("div", { class: "vt-worklog-row", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-num", children: formatDateTime(l3.fromMs) }),
-      /* @__PURE__ */ u3("span", { class: "vt-num", children: [
-        "\u2013 ",
-        l3.toMs === null ? "\u8A18\u9332\u4E2D" : formatDateTime(l3.toMs).slice(11)
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-muted vt-num", children: l3.toMs === null ? "" : formatMinutes((l3.toMs - l3.fromMs) / 6e4) }),
-      /* @__PURE__ */ u3("span", { class: "vt-worklog-desc", children: l3.description })
-    ] })),
-    pages > 1 && /* @__PURE__ */ u3("div", { class: "vt-pager", children: [
-      /* @__PURE__ */ u3("button", { disabled: current === 0, onClick: () => setPage(current - 1), children: "\u2039" }),
-      /* @__PURE__ */ u3("span", { children: [
-        current + 1,
-        " / ",
-        pages
-      ] }),
-      /* @__PURE__ */ u3("button", { disabled: current >= pages - 1, onClick: () => setPage(current + 1), children: "\u203A" })
-    ] })
+  return /* @__PURE__ */ u3("section", { class: "vt-worklog", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "worklog" }),
+      logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: [
+        logs.length,
+        " \u4EF6"
+      ] })
+    ] }),
+    logs.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u307E\u3060\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093" }),
+    /* @__PURE__ */ u3("div", { class: "vt-log-list", children: shown.map((l3) => /* @__PURE__ */ u3(WorklogItem, { ctx: props.ctx, log: l3 }, l3.id)) }),
+    pages > 1 && /* @__PURE__ */ u3(Pager, { current, pages, onChange: setPage })
   ] });
 }
 
@@ -1938,7 +2092,7 @@ var HeaderWidget = class extends import_view.WidgetType {
 };
 function issueHeaderExtension(ctx) {
   const pathOf = (state) => {
-    const path = state.field(import_obsidian6.editorInfoField, false)?.file?.path ?? null;
+    const path = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? null;
     return path !== null && ISSUE_PATH_RE.test(path) ? path : null;
   };
   const build = (path) => ({
@@ -1957,7 +2111,7 @@ function issueHeaderExtension(ctx) {
 }
 
 // src/main.ts
-var VaultTaskPlugin = class extends import_obsidian7.Plugin {
+var VaultTaskPlugin = class extends import_obsidian8.Plugin {
   store = null;
   async onload() {
     const store = new TaskStore(this.app);
@@ -1973,7 +2127,7 @@ var VaultTaskPlugin = class extends import_obsidian7.Plugin {
       report: (message, error) => {
         if (error !== void 0) console.error(`vault-task: ${message}`, error);
         const detail = error instanceof Error ? `: ${error.message}` : "";
-        new import_obsidian7.Notice(`${message}${detail}`);
+        new import_obsidian8.Notice(`${message}${detail}`);
       }
     };
     this.registerEditorExtension(issueHeaderExtension(ctx));

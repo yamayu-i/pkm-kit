@@ -138,3 +138,68 @@ export function DayCell(props: {
 		</button>
 	);
 }
+
+function toInputValue(ms: number | null): string {
+	if (ms === null) return "";
+	const d = new Date(ms);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export interface WorklogDraft {
+	fromMs: number;
+	/** 空なら記録中 */
+	toMs: number | null;
+	description: string;
+}
+
+/** worklog 1 件の編集（ADR-0012）。削除は 2 回押して確定する */
+export function WorklogForm(props: {
+	initial: WorklogDraft;
+	onSubmit: (draft: WorklogDraft) => void;
+	onDelete: () => void;
+}) {
+	const [from, setFrom] = useState(toInputValue(props.initial.fromMs));
+	const [to, setTo] = useState(toInputValue(props.initial.toMs));
+	const [description, setDescription] = useState(props.initial.description);
+	const [confirming, setConfirming] = useState(false);
+	const fromMs = Date.parse(from);
+	const toMs = to ? Date.parse(to) : null;
+	const error = Number.isNaN(fromMs)
+		? "開始を入力してください"
+		: toMs !== null && (Number.isNaN(toMs) || toMs <= fromMs)
+			? "終了は開始より後にしてください"
+			: null;
+	return (
+		<form
+			class="vt-worklog-form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				if (error === null) props.onSubmit({ fromMs, toMs, description: description.trim() });
+			}}
+		>
+			<label class="vt-text-field">
+				<span>開始</span>
+				<input type="datetime-local" value={from} onInput={(e) => setFrom(e.currentTarget.value)} />
+			</label>
+			<label class="vt-text-field">
+				<span>終了（空なら記録中）</span>
+				<input type="datetime-local" value={to} onInput={(e) => setTo(e.currentTarget.value)} />
+			</label>
+			<label class="vt-text-field">
+				<span>内容</span>
+				<input type="text" value={description} onInput={(e) => setDescription(e.currentTarget.value)} />
+			</label>
+			{error !== null && <div class="vt-error">{error}</div>}
+			<div class="vt-form">
+				<button type="button" class={confirming ? "mod-warning" : "vt-danger-text"} onClick={() => (confirming ? props.onDelete() : setConfirming(true))}>
+					{confirming ? "もう一度押すと削除" : "削除"}
+				</button>
+				<span class="vt-spacer" />
+				<button type="submit" class="mod-cta" disabled={error !== null}>
+					保存
+				</button>
+			</div>
+		</form>
+	);
+}

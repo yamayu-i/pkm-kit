@@ -67,6 +67,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 - frontmatter の更新は `fileManager.processFrontMatter` で行う（ほかの欄や書式を壊さない）。値が空なら欄ごと消す
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
+- worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - UI は Obsidian なしで確認できる: preact の部品を、`obsidian` をモックに差し替えて esbuild で束ね、Playwright の Chromium で表示する
 

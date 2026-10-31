@@ -72,3 +72,28 @@ export function parseWorklog(path: string, text: string): { entries: WorklogEntr
 export function serializeWorklogEntry(e: Pick<WorklogEntry, "id" | "taskId" | "from" | "to" | "description">): string {
 	return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
 }
+
+/**
+ * jsonl の中の `entry` の行を書き換える。next が null なら行を消す。
+ * 読み込んだ後にファイルが変わって行がずれていたら（その行の ID が合わなければ）例外にする
+ */
+export function replaceWorklogLine(
+	text: string,
+	entry: Pick<WorklogEntry, "line" | "id" | "taskId">,
+	next: Pick<WorklogEntry, "from" | "to" | "description"> | null,
+): string {
+	const lines = text.split("\n");
+	const i = entry.line - 1;
+	let current: unknown;
+	try {
+		current = JSON.parse(lines[i] ?? "");
+	} catch {
+		current = null;
+	}
+	if (typeof current !== "object" || current === null || (current as { id?: unknown }).id !== entry.id) {
+		throw new Error("worklog のファイルが変わっています。開き直してから編集してください");
+	}
+	if (next === null) lines.splice(i, 1);
+	else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+	return lines.join("\n");
+}

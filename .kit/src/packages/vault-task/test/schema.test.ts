@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseIssue, parseRoutine } from "../src/core/schema";
-import { parseWorklog } from "../src/core/worklog";
+import { parseWorklog, replaceWorklogLine } from "../src/core/worklog";
 
 describe("parseIssue", () => {
 	it("frontmatter を読む", () => {
@@ -101,5 +101,29 @@ describe("parseWorklog", () => {
 		]);
 		expect(entries[0]!.toMs! - entries[0]!.fromMs).toBe(30 * 60_000);
 		expect(problems.map((p) => p.message)).toEqual(["4 行目: JSON として読めません", "5 行目: from が日時ではありません"]);
+	});
+});
+
+describe("replaceWorklogLine", () => {
+	const text = ['{"id":"w1","task_id":"i-1","from":"a","to":"b"}', '{"id":"w2","task_id":"i-1","from":"c","to":null}', ""].join("\n");
+
+	it("指定した行だけを書き換える", () => {
+		const out = replaceWorklogLine(text, { line: 2, id: "w2", taskId: "i-1" }, { from: "c", to: "d", description: "メモ" });
+		expect(out.split("\n")).toEqual([
+			'{"id":"w1","task_id":"i-1","from":"a","to":"b"}',
+			'{"id":"w2","task_id":"i-1","from":"c","to":"d","description":"メモ"}',
+			"",
+		]);
+	});
+
+	it("null なら行を消す", () => {
+		expect(replaceWorklogLine(text, { line: 1, id: "w1", taskId: "i-1" }, null)).toBe(
+			'{"id":"w2","task_id":"i-1","from":"c","to":null}\n',
+		);
+	});
+
+	it("行の ID が合わなければ書き換えない（読み込んだ後にファイルが変わった）", () => {
+		expect(() => replaceWorklogLine(text, { line: 1, id: "w2", taskId: "i-1" }, null)).toThrow(/変わっています/);
+		expect(() => replaceWorklogLine(text, { line: 9, id: "w1", taskId: "i-1" }, null)).toThrow();
 	});
 });

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import type { Issue, Priority, Status } from "../core/schema";
 
 export function StatusBadge(props: { status: Status; wide?: boolean; onClick?: (e: MouseEvent) => void }) {
@@ -5,6 +6,7 @@ export function StatusBadge(props: { status: Status; wide?: boolean; onClick?: (
 		<button class={`vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`} onClick={props.onClick} disabled={!props.onClick}>
 			<span class="vt-dot" />
 			{props.status}
+			{props.onClick && props.wide && <Icon name="chevron-down" class="vt-trailing" />}
 		</button>
 	);
 }
@@ -21,6 +23,7 @@ export function PriorityBadge(props: { priority: Priority | null; onClick?: (e: 
 		<button class={`vt-badge vt-priority vt-priority-${props.priority ?? "none"}`} onClick={props.onClick} disabled={!props.onClick}>
 			<span class="vt-priority-icon">{PRIORITY_ICONS[props.priority ?? "none"]}</span>
 			{props.priority ?? "priority"}
+			{props.onClick && <Icon name="chevron-down" class="vt-trailing" />}
 		</button>
 	);
 }
