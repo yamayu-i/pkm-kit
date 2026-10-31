@@ -50,10 +50,11 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ## vault-task（タスク管理、設計中）
 
-設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
+設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
 
 ## 進め方
 
-- 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする
+- 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
+- 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
 - 新しいプラグインを作るときは `.plugin-src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す

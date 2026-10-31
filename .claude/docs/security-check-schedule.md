@@ -27,6 +27,7 @@
 - 依存の追加・更新（`package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` の変更）
 - 認証・通信・ファイル書き込みに関わるコードの変更（`src/git/`, `src/fs/`, `src/obsidian/`）
 - ビルド設定（`esbuild.config.mjs`）の変更
+- CI（`.github/workflows/`）の変更
 
 ## 記録
 
