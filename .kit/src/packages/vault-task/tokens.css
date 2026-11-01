@@ -2,15 +2,15 @@
 
 /* モーダルでも使うので body に置く */
 body {
-	--vt-surface: #ffffff;
-	--vt-surface-container: #f8f8f8;
-	--vt-surface-container-high: #f0f0f0;
-	--vt-on-surface: #222222;
-	--vt-on-surface-variant: #5c5c5c;
-	--vt-outline: #858585;
-	--vt-outline-variant: #22222224;
-	--vt-state-hover: #22222214;
-	--vt-state-press: #2222221f;
+	--vt-surface: #f6f5f2;
+	--vt-surface-container: #efeeea;
+	--vt-surface-container-high: #e8e7e2;
+	--vt-on-surface: #2b2a28;
+	--vt-on-surface-variant: #57564f;
+	--vt-outline: #7f7e76;
+	--vt-outline-variant: #2b2a2824;
+	--vt-state-hover: #2b2a2814;
+	--vt-state-press: #2b2a281f;
 	--vt-primary: #6750a4;
 	--vt-on-primary: #ffffff;
 	--vt-primary-state-hover: #6750a414;
@@ -132,12 +132,12 @@ body.theme-dark {
 	--vt-surface: #1e1e1e;
 	--vt-surface-container: #242424;
 	--vt-surface-container-high: #2b2b2b;
-	--vt-on-surface: #dadada;
+	--vt-on-surface: #d0d0d0;
 	--vt-on-surface-variant: #b3b3b3;
 	--vt-outline: #7a7a7a;
-	--vt-outline-variant: #dadada24;
-	--vt-state-hover: #dadada14;
-	--vt-state-press: #dadada1f;
+	--vt-outline-variant: #d0d0d024;
+	--vt-state-hover: #d0d0d014;
+	--vt-state-press: #d0d0d01f;
 	--vt-primary: #d0bcff;
 	--vt-on-primary: #381e72;
 	--vt-primary-state-hover: #d0bcff14;
