@@ -28,7 +28,7 @@ function Value({ app, v }: { app: App; v: HeaderValue }) {
 	return <span class="vt-tpl-value">{v.text}</span>;
 }
 
-/** ノートのヘッダー(ADR-0025)。表示のみ。daily は右に日曜始まりの 7 枠を出す */
+/** ノートのヘッダー(ADR-0026)。表示のみ。daily は右に日曜始まりの 7 枠を出す */
 export function NoteHeader({ app, model }: { app: App; model: HeaderModel }) {
 	return (
 		<div class="vt-tpl-note-header-body">

@@ -6,7 +6,7 @@ import { TemplateSettingTab } from "./obsidian/SettingTab";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
 
-/** 一覧 View(ADR-0025)。vault-task の View と区別するため接頭辞は vault-template- */
+/** 一覧 View(ADR-0026)。vault-task の View と区別するため接頭辞は vault-template- */
 const LIST_VIEWS: ViewSpec[] = [
 	{ type: "vault-template-daily-list", title: "Daily notes", icon: "calendar-days", component: DailyListView },
 	{ type: "vault-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },

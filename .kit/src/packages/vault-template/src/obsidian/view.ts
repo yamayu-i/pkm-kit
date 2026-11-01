@@ -8,7 +8,7 @@ export interface ViewSpec {
 	component: FunctionComponent<{ app: App }>;
 }
 
-/** Preact の部品を中身にする View を作る関数を返す(ADR-0025。vault-task の同名の仕組みとは独立に持つ) */
+/** Preact の部品を中身にする View を作る関数を返す(ADR-0026。vault-task の同名の仕組みとは独立に持つ) */
 export function preactViewCreator(spec: ViewSpec, app: App): (leaf: WorkspaceLeaf) => ItemView {
 	class PreactView extends ItemView {
 		getViewType(): string {

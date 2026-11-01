@@ -12,7 +12,7 @@ export interface NoteInfo {
 export type SortKey = "title" | "created" | "name";
 export type SortOrder = "asc" | "desc";
 
-/** wiki のページの type（ADR-0025） */
+/** wiki のページの type（ADR-0026） */
 export const WIKI_TYPES: readonly string[] = ["concept", "entity", "topic", "answer"];
 
 /** vault-task が自分のヘッダーを出す type */

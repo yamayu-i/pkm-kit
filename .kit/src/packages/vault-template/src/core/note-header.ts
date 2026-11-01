@@ -15,7 +15,7 @@ export interface HeaderItem {
 	values: HeaderValue[];
 }
 
-/** ヘッダーに出す内容(ADR-0025)。描画する側はこれをそのまま並べる */
+/** ヘッダーに出す内容(ADR-0026)。描画する側はこれをそのまま並べる */
 export interface HeaderModel {
 	title: string;
 	/** daily の曜日(0 = 日曜)。7 枠のうちフォーカスを当てる枠。daily でなければ null */

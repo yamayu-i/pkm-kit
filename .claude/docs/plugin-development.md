@@ -67,7 +67,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
-| `cli/` | `pnpm task:lint` と `pnpm task:worklog-review`（worklog-review スキル用）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
+| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0025）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
 ### 注意点
 
@@ -92,7 +92,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
 - コマンド「今日のデイリーノートを開く」（とリボン）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
 - 連番の関数は vault-task（`core/ids.ts`）と vault-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
-- 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0025）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
+- 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
 - `test/templates-repo.test.ts` が、リポジトリの `template/` を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
 
 ### コードの構成（`.plugin-src/packages/vault-template`）

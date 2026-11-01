@@ -1,4 +1,4 @@
-# ADR-0025: 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す
+# ADR-0026: 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す
 
 - 状態: 承認
 - 日付: 2026-11-01

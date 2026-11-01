@@ -10,7 +10,7 @@ const HEADER_CLASS = "vt-tpl-note-header";
 const SIZERS = ".cm-sizer, .markdown-preview-sizer";
 
 /**
- * ノートの先頭(Properties 欄より上)にヘッダーを差し込む(ADR-0025)。
+ * ノートの先頭(Properties 欄より上)にヘッダーを差し込む(ADR-0026)。
  * 編集(ソース / Live Preview)とリーディングの両方に同じものを出す。標準のタイトルは app.json で隠している
  */
 export function installNoteHeaders(plugin: Plugin): void {

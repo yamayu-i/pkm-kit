@@ -179,7 +179,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		expect([...required]).toEqual(["obsidian"]);
 		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list"]);
 		expect(mock.views).toEqual(["vault-template-daily-list", "vault-template-note-list", "vault-template-source-list"]);
-		// ヘッダーを差し込むための購読(ADR-0025)
+		// ヘッダーを差し込むための購読(ADR-0026)
 		expect(mock.events).toEqual(expect.arrayContaining(["file-open", "layout-change", "active-leaf-change", "changed", "resolved"]));
 
 		const templates = await plugin.manager.loadEnabledTemplates();

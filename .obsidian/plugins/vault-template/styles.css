@@ -355,7 +355,7 @@ body.theme-dark {
 	line-height: var(--vt-type-body-small-line-height);
 }
 
-/* ---------- ノートのヘッダー(ADR-0025) ---------- */
+/* ---------- ノートのヘッダー(ADR-0026) ---------- */
 
 .vt-tpl-note-header {
 	padding: var(--vt-space-8) var(--vt-space-16) var(--vt-space-4);
@@ -459,7 +459,7 @@ body.theme-dark {
 	cursor: pointer;
 }
 
-/* ---------- 一覧 View(ADR-0025) ---------- */
+/* ---------- 一覧 View(ADR-0026) ---------- */
 
 .vt-tpl-view {
 	color: var(--vt-on-surface);

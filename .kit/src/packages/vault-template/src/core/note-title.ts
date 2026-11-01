@@ -1,5 +1,5 @@
 /**
- * ノートのタイトルの決め方と、daily の日付・曜日（ADR-0025）。Obsidian には依存しない。
+ * ノートのタイトルの決め方と、daily の日付・曜日（ADR-0026）。Obsidian には依存しない。
  */
 export type Frontmatter = Record<string, unknown>;
 
