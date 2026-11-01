@@ -10,7 +10,7 @@
       "file": "member.md",
       "enabled": true,
       "folder": "member",
-      "fileNamePattern": "{{title}}"
+      "fileNamePattern": "{{id:m}}"
     },
     {
       "file": "source.md",
@@ -58,13 +58,13 @@
       "file": "issue.md",
       "enabled": false,
       "folder": "issue",
-      "fileNamePattern": ""
+      "fileNamePattern": "{{id:i}}"
     },
     {
       "file": "routine.md",
       "enabled": false,
       "folder": "routine",
-      "fileNamePattern": ""
+      "fileNamePattern": "{{id:r}}"
     },
     {
       "file": "index.md",

@@ -696,11 +696,11 @@ function newIssueContent(id, summary, created, parent = null, scheduled = []) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
   if (parent !== null) lines.push(`parent: ${parent}`);
   if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
-  lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
 }
 function newMemberContent(id, name, created) {
-  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
+  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, `updated: ${created}`, "---", ""].join(
     "\n"
   );
 }
@@ -710,7 +710,7 @@ function newRoutineContent(id, summary, repeat, created, extra = {}) {
   lines.push("active: true");
   if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
   if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-  lines.push(`created: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
   return lines.join("\n");
 }
 function frontmatterRange(text) {
@@ -721,7 +721,7 @@ function newDailyContent(created) {
   return `---
 type: daily
 created: ${created}
-updated:
+updated: ${created}
 ---
 `;
 }

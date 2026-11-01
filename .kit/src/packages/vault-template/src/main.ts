@@ -24,6 +24,21 @@ export default class VaultTemplatePlugin extends Plugin {
 			callback: () => void openCreateModal(),
 		});
 
+		const openToday = async () => {
+			try {
+				await this.manager.openTodaysDaily();
+			} catch (err) {
+				this.report("今日のデイリーノートを開けませんでした", err);
+			}
+		};
+
+		this.addCommand({
+			id: "open-todays-daily",
+			name: "今日のデイリーノートを開く",
+			callback: () => void openToday(),
+		});
+
+		this.addRibbonIcon("calendar-check", "今日のデイリーノートを開く", () => void openToday());
 		this.addRibbonIcon("file-plus-2", "テンプレートから新規ファイルを作成", () => void openCreateModal());
 		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}

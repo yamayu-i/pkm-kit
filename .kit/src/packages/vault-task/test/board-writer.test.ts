@@ -118,7 +118,7 @@ describe("ボードを締める", () => {
 		const f = fixture("closed", { [logPath]: `${line}\n` });
 		await f.writer.closeBoard(date, "pc");
 		const text = f.texts.get(notePath)!;
-		expect(text).toMatch(/^---\ntype: daily\ncreated: \d{4}-\d{2}-\d{2}T[^\n]+\nupdated:\n---\n/);
+		expect(text).toMatch(/^---\ntype: daily\ncreated: (\d{4}-\d{2}-\d{2}T[^\n]+)\nupdated: \1\n---\n/);
 		expect(text).toContain("## Task board");
 	});
 	it("締めたボードにはもう書かない", async () => {

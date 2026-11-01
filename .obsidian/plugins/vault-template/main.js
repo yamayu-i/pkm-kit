@@ -475,6 +475,24 @@ function formatDateTime(date, format = "YYYY-MM-DD") {
   });
 }
 
+// src/core/ids.ts
+var ID_PREFIXES = ["i", "r", "m"];
+function isIdPrefix(value) {
+  return ID_PREFIXES.includes(value);
+}
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
+}
+function nextId(prefix, existingNames) {
+  let max = 0;
+  for (const name of existingNames) {
+    const n2 = idNumber(name, prefix);
+    if (n2 !== null && n2 > max) max = n2;
+  }
+  return `${prefix}-${max + 1}`;
+}
+
 // src/core/template.ts
 var PLACEHOLDER_RE = /\{\{([^{}\n]+)\}\}/g;
 function parsePromptSpec(body) {
@@ -505,6 +523,10 @@ function expandInlineToken(token, ctx) {
   if (token === "title") return ctx.title;
   if (token === "path") return ctx.path;
   if (token === "folder") return ctx.folder;
+  if (token.startsWith("id:")) {
+    const prefix = token.slice("id:".length).trim();
+    return isIdPrefix(prefix) ? nextId(prefix, ctx.takenNames ?? []) : null;
+  }
   const prompt = parsePromptSpec(token);
   if (prompt) {
     const val = ctx.prompts[prompt.label];
@@ -532,10 +554,14 @@ function renderTemplate(template, ctx) {
   out += template.slice(lastIndex);
   return { content: out, cursorOffset };
 }
-function expandPathPattern(pattern, now, title, prompts) {
+var ID_FILE_NAME_RE = /\{\{\s*id:[irm]\s*\}\}/;
+function usesIdFileName(fileNamePattern) {
+  return ID_FILE_NAME_RE.test(fileNamePattern);
+}
+function expandPathPattern(pattern, now, title, prompts, takenNames = []) {
   return pattern.replace(PLACEHOLDER_RE, (full, raw) => {
     const token = raw.trim();
-    const expanded = expandInlineToken(token, { now, title, path: "", folder: "", prompts });
+    const expanded = expandInlineToken(token, { now, title, path: "", folder: "", prompts, takenNames });
     return expanded !== null ? expanded : full;
   });
 }
@@ -549,6 +575,7 @@ function validateSegments(segments) {
   return null;
 }
 function resolveOutputPath(input) {
+  if (usesIdFileName(input.fileNamePattern)) return resolveIdOutputPath(input);
   const rawNameInput = input.titleInput.trim();
   const rawBaseName = rawNameInput || expandPathPattern(input.fileNamePattern.trim(), input.now, "", input.prompts).trim();
   if (!rawBaseName) {
@@ -576,6 +603,31 @@ function resolveOutputPath(input) {
   const folder = rawSegments.join("/");
   const path = allSegments.join("/");
   return { path, folder, fileName, title, error: null };
+}
+function resolveIdOutputPath(input) {
+  const fail = (error2) => ({ path: "", folder: "", fileName: "", title: "", error: error2 });
+  const title = input.titleInput.trim();
+  if (!title) return fail("\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const takenNames = input.takenNames ?? [];
+  const name = expandPathPattern(input.fileNamePattern.trim(), input.now, title, input.prompts, takenNames).trim().replace(/\.md$/i, "");
+  const folder = expandPathPattern(input.folder.trim(), input.now, title, input.prompts, takenNames).trim().replace(/^\/+|\/+$/g, "");
+  if (input.folder.trim().startsWith("/")) return fail("\u30D1\u30B9\u306E\u5148\u982D\u306B / \u306F\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093");
+  const folderSegments = folder ? folder.split("/") : [];
+  const fileName = `${name}.md`;
+  const error = validateSegments([...folderSegments, fileName]);
+  if (error) return fail(error);
+  return { path: [...folderSegments, fileName].join("/"), folder, fileName, title, error: null };
+}
+var DEFAULT_DAILY_FOLDER = "daily/{{date:YYYY}}/{{date:MM}}";
+var DEFAULT_DAILY_PATTERN = "{{date:YYYY-MM-DD}}";
+function resolveDailyPath(entry, now) {
+  return resolveOutputPath({
+    folder: entry?.folder || DEFAULT_DAILY_FOLDER,
+    fileNamePattern: entry?.fileNamePattern || DEFAULT_DAILY_PATTERN,
+    titleInput: "",
+    now,
+    prompts: {}
+  });
 }
 function offsetToPos(text, offset) {
   const clamped = Math.max(0, Math.min(offset, text.length));
@@ -609,6 +661,7 @@ function CreateNoteForm(props) {
   const [submitting, setSubmitting] = d2(false);
   const titleRef = A2(null);
   const now = T2(() => /* @__PURE__ */ new Date(), []);
+  const takenNames = T2(() => manager.takenNames(), [manager]);
   h2(() => {
     titleRef.current?.focus();
   }, [selectedIdx]);
@@ -616,13 +669,15 @@ function CreateNoteForm(props) {
     return /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: "\u6709\u52B9\u306A\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u30D7\u30E9\u30B0\u30A4\u30F3\u8A2D\u5B9A\u307E\u305F\u306F template/file/ \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002" });
   }
   const current = templates[selectedIdx] ?? templates[0];
-  const defaultFileNameHint = current.entry.fileNamePattern ? formatDateTime(now, current.entry.fileNamePattern.replace(/\{\{date(?::([^{}]+))?\}\}/g, (_2, f4) => f4 || "YYYY-MM-DD")) : "";
+  const idFileName = usesIdFileName(current.entry.fileNamePattern);
+  const defaultFileNameHint = !idFileName && current.entry.fileNamePattern ? formatDateTime(now, current.entry.fileNamePattern.replace(/\{\{date(?::([^{}]+))?\}\}/g, (_2, f4) => f4 || "YYYY-MM-DD")) : "";
   const resolved = resolveOutputPath({
     folder: current.entry.folder,
     fileNamePattern: current.entry.fileNamePattern,
     titleInput,
     now,
-    prompts: promptValues
+    prompts: promptValues,
+    takenNames
   });
   const alreadyExists = !resolved.error && resolved.path ? manager.fileExists(resolved.path) : false;
   const errorMessage = resolved.error ?? (alreadyExists ? `\u3059\u3067\u306B\u540C\u3058\u540D\u524D\u306E\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u3059: ${resolved.path}` : null);
@@ -674,7 +729,7 @@ function CreateNoteForm(props) {
       }) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-tpl-section", children: [
-      /* @__PURE__ */ u3("label", { class: "vt-tpl-label", for: "vt-tpl-title-input", children: "\u30D5\u30A1\u30A4\u30EB\u540D / \u30BF\u30A4\u30C8\u30EB" }),
+      /* @__PURE__ */ u3("label", { class: "vt-tpl-label", for: "vt-tpl-title-input", children: idFileName ? "\u30BF\u30A4\u30C8\u30EB" : "\u30D5\u30A1\u30A4\u30EB\u540D / \u30BF\u30A4\u30C8\u30EB" }),
       /* @__PURE__ */ u3(
         "input",
         {
@@ -682,7 +737,7 @@ function CreateNoteForm(props) {
           ref: titleRef,
           type: "text",
           class: "vt-tpl-input",
-          placeholder: defaultFileNameHint ? `\u7A7A\u6B04\u306A\u3089 ${defaultFileNameHint}` : "\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\uFF08\u4F8B: my-note\uFF09",
+          placeholder: idFileName ? "\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\uFF08\u30D5\u30A1\u30A4\u30EB\u540D\u306F ID \u3067\u6C7A\u307E\u308A\u307E\u3059\uFF09" : defaultFileNameHint ? `\u7A7A\u6B04\u306A\u3089 ${defaultFileNameHint}` : "\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\uFF08\u4F8B: my-note\uFF09",
           value: titleInput,
           onInput: (e3) => setTitleInput(e3.currentTarget.value),
           onKeyDown: (e3) => {
@@ -894,22 +949,47 @@ var TemplateManager = class {
     await this.ensureFolder(TEMPLATE_CONFIG_PATH);
     await this.app.vault.create(TEMPLATE_CONFIG_PATH, serializeTemplateConfig(entries));
   }
+  /** テンプレート 1 件の中身とプロンプト定義を読み込む。ファイルがなければ null */
+  async loadTemplate(entry) {
+    const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
+    if (!file) return null;
+    const rawContent = await this.app.vault.cachedRead(file);
+    return { entry, rawContent, prompts: extractPrompts(rawContent) };
+  }
   /** モーダルに表示する有効なテンプレートとその中身・プロンプト定義を読み込む */
   async loadEnabledTemplates() {
     const { entries } = await this.loadConfig();
-    const enabled = entries.filter((e3) => e3.enabled);
     const loaded = [];
-    for (const entry of enabled) {
-      const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
-      if (!file) continue;
-      const rawContent = await this.app.vault.cachedRead(file);
-      loaded.push({
-        entry,
-        rawContent,
-        prompts: extractPrompts(rawContent)
-      });
+    for (const entry of entries.filter((e3) => e3.enabled)) {
+      const template = await this.loadTemplate(entry);
+      if (template) loaded.push(template);
     }
     return loaded;
+  }
+  /** `{{id:…}}` の連番を決めるための、Vault 内のすべてのノートの basename（vault-task と同じ見方） */
+  takenNames() {
+    return this.app.vault.getMarkdownFiles().map((f4) => f4.basename);
+  }
+  /**
+   * 今日のデイリーノートを開く。なければ `template/file/daily.md` から作る。
+   * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
+   */
+  async openTodaysDaily(now = /* @__PURE__ */ new Date()) {
+    const { entries } = await this.loadConfig();
+    const entry = entries.find((e3) => e3.file === "daily.md");
+    const resolved = resolveDailyPath(entry, now);
+    if (resolved.error) throw new Error(resolved.error);
+    const path = (0, import_obsidian2.normalizePath)(resolved.path);
+    const existing = this.app.vault.getFileByPath(path);
+    if (existing) {
+      await this.app.workspace.getLeaf(false).openFile(existing);
+      return existing;
+    }
+    const template = await this.loadTemplate(
+      entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" }
+    );
+    if (!template) throw new Error(`${TEMPLATE_DIR}/daily.md \u304C\u3042\u308A\u307E\u305B\u3093`);
+    return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
   }
   fileExists(path) {
     return Boolean(this.app.vault.getFileByPath((0, import_obsidian2.normalizePath)(path)));
@@ -917,12 +997,14 @@ var TemplateManager = class {
   /** テンプレートを展開してファイルを作成し、エディタで開いてカーソルを移動する */
   async createNoteFromTemplate(params) {
     const now = params.now ?? /* @__PURE__ */ new Date();
+    const takenNames = this.takenNames();
     const resolved = resolveOutputPath({
       folder: params.template.entry.folder,
       fileNamePattern: params.template.entry.fileNamePattern,
       titleInput: params.titleInput,
       now,
-      prompts: params.prompts
+      prompts: params.prompts,
+      takenNames
     });
     if (resolved.error) {
       throw new Error(resolved.error);
@@ -936,7 +1018,8 @@ var TemplateManager = class {
       title: resolved.title,
       path: normalized,
       folder: resolved.folder,
-      prompts: params.prompts
+      prompts: params.prompts,
+      takenNames
     });
     await this.ensureFolder(normalized);
     const created = await this.app.vault.create(normalized, rendered.content);
@@ -1049,6 +1132,19 @@ var VaultTemplatePlugin = class extends import_obsidian4.Plugin {
       name: "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210",
       callback: () => void openCreateModal()
     });
+    const openToday = async () => {
+      try {
+        await this.manager.openTodaysDaily();
+      } catch (err) {
+        this.report("\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err);
+      }
+    };
+    this.addCommand({
+      id: "open-todays-daily",
+      name: "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F",
+      callback: () => void openToday()
+    });
+    this.addRibbonIcon("calendar-check", "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F", () => void openToday());
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
   }

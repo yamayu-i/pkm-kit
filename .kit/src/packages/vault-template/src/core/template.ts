@@ -1,4 +1,6 @@
+import type { TemplateEntry } from "./config";
 import { formatDateTime } from "./date-format";
+import { isIdPrefix, nextId } from "./ids";
 
 export interface PromptField {
 	label: string;
@@ -11,6 +13,8 @@ export interface RenderContext {
 	path: string;
 	folder: string;
 	prompts: Record<string, string>;
+	/** `{{id:…}}` の連番を決めるための既存の名前（ファイルの basename）。省略時は空 */
+	takenNames?: readonly string[];
 }
 
 export interface RenderResult {
@@ -24,6 +28,7 @@ export interface ResolvePathInput {
 	titleInput: string;
 	now: Date;
 	prompts: Record<string, string>;
+	takenNames?: readonly string[];
 }
 
 export interface ResolvedOutputPath {
@@ -67,6 +72,10 @@ function expandInlineToken(token: string, ctx: RenderContext): string | null {
 	if (token === "title") return ctx.title;
 	if (token === "path") return ctx.path;
 	if (token === "folder") return ctx.folder;
+	if (token.startsWith("id:")) {
+		const prefix = token.slice("id:".length).trim();
+		return isIdPrefix(prefix) ? nextId(prefix, ctx.takenNames ?? []) : null;
+	}
 	const prompt = parsePromptSpec(token);
 	if (prompt) {
 		const val = ctx.prompts[prompt.label];
@@ -102,10 +111,23 @@ export function renderTemplate(template: string, ctx: RenderContext): RenderResu
 	return { content: out, cursorOffset };
 }
 
-function expandPathPattern(pattern: string, now: Date, title: string, prompts: Record<string, string>): string {
+const ID_FILE_NAME_RE = /\{\{\s*id:[irm]\s*\}\}/;
+
+/** fileNamePattern が `{{id:…}}` を含むか。含むとき、ファイル名はパターンで固定され、入力欄は title 専用になる */
+export function usesIdFileName(fileNamePattern: string): boolean {
+	return ID_FILE_NAME_RE.test(fileNamePattern);
+}
+
+function expandPathPattern(
+	pattern: string,
+	now: Date,
+	title: string,
+	prompts: Record<string, string>,
+	takenNames: readonly string[] = [],
+): string {
 	return pattern.replace(PLACEHOLDER_RE, (full, raw: string) => {
 		const token = raw.trim();
-		const expanded = expandInlineToken(token, { now, title, path: "", folder: "", prompts });
+		const expanded = expandInlineToken(token, { now, title, path: "", folder: "", prompts, takenNames });
 		return expanded !== null ? expanded : full;
 	});
 }
@@ -125,6 +147,7 @@ function validateSegments(segments: string[]): string | null {
  * 生成先パスと `{{title}}` の値を決定し、安全性を検査する。
  */
 export function resolveOutputPath(input: ResolvePathInput): ResolvedOutputPath {
+	if (usesIdFileName(input.fileNamePattern)) return resolveIdOutputPath(input);
 	const rawNameInput = input.titleInput.trim();
 	const rawBaseName = rawNameInput || expandPathPattern(input.fileNamePattern.trim(), input.now, "", input.prompts).trim();
 	if (!rawBaseName) {
@@ -158,6 +181,42 @@ export function resolveOutputPath(input: ResolvePathInput): ResolvedOutputPath {
 	const folder = rawSegments.join("/");
 	const path = allSegments.join("/");
 	return { path, folder, fileName, title, error: null };
+}
+
+/** ファイル名が ID で決まるテンプレート（issue / routine / member）。入力は title になる */
+function resolveIdOutputPath(input: ResolvePathInput): ResolvedOutputPath {
+	const fail = (error: string): ResolvedOutputPath => ({ path: "", folder: "", fileName: "", title: "", error });
+	const title = input.titleInput.trim();
+	if (!title) return fail("タイトルを入力してください");
+
+	const takenNames = input.takenNames ?? [];
+	const name = expandPathPattern(input.fileNamePattern.trim(), input.now, title, input.prompts, takenNames)
+		.trim()
+		.replace(/\.md$/i, "");
+	const folder = expandPathPattern(input.folder.trim(), input.now, title, input.prompts, takenNames)
+		.trim()
+		.replace(/^\/+|\/+$/g, "");
+	if (input.folder.trim().startsWith("/")) return fail("パスの先頭に / は付けられません");
+
+	const folderSegments = folder ? folder.split("/") : [];
+	const fileName = `${name}.md`;
+	const error = validateSegments([...folderSegments, fileName]);
+	if (error) return fail(error);
+	return { path: [...folderSegments, fileName].join("/"), folder, fileName, title, error: null };
+}
+
+const DEFAULT_DAILY_FOLDER = "daily/{{date:YYYY}}/{{date:MM}}";
+const DEFAULT_DAILY_PATTERN = "{{date:YYYY-MM-DD}}";
+
+/** 今日のデイリーノートのパス。`daily.md` の設定があればそれを、なければ規約どおりの場所を使う */
+export function resolveDailyPath(entry: TemplateEntry | undefined, now: Date): ResolvedOutputPath {
+	return resolveOutputPath({
+		folder: entry?.folder || DEFAULT_DAILY_FOLDER,
+		fileNamePattern: entry?.fileNamePattern || DEFAULT_DAILY_PATTERN,
+		titleInput: "",
+		now,
+		prompts: {},
+	});
 }
 
 /** 文字オフセットをエディタの行・列（0 始まり）に変換する */

@@ -42,6 +42,6 @@ describe("要約を書いて締める", () => {
 describe("newDailyContent", () => {
 	it("規約の type と created を持ち、board を持たない", () => {
 		const text = newDailyContent("2026-11-01T08:00:00+09:00");
-		expect(text).toBe("---\ntype: daily\ncreated: 2026-11-01T08:00:00+09:00\nupdated:\n---\n");
+		expect(text).toBe("---\ntype: daily\ncreated: 2026-11-01T08:00:00+09:00\nupdated: 2026-11-01T08:00:00+09:00\n---\n");
 	});
 });
