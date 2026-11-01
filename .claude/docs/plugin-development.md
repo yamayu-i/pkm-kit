@@ -67,7 +67,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
-| `cli/` | `pnpm task:lint` と `pnpm task:worklog-review`（worklog-review スキル用）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
+| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0021）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
 ### 注意点
 
