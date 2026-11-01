@@ -32,4 +32,5 @@
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
 | [0021](0021-routine-effort-and-sidebar.md) | 承認 | routine 画面の total / average と左サイドバーのナビゲーション View |
-| [0022](0022-template-plugin.md) | 承認 | テンプレートからのノート作成を自作プラグイン vault-template として作る |
+| [0022](0022-template-plugin.md) | 承認（一部補足: 0023） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
+| [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
