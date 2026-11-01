@@ -51,6 +51,11 @@ describe("このリポジトリのデザイン", () => {
 		expect(OUTPUTS.obsidianSnippet.endsWith(`/.obsidian/snippets/${SNIPPET_NAME}.css`)).toBe(true);
 	});
 
+	it("Obsidian のサイドバーの面をカードの面と同じ値に固定する（ADR-0019）", () => {
+		const container = tokens.find((t) => t.path === "color.surface-container");
+		expect(container?.obsidian).toContain("--background-secondary");
+	});
+
 	it("design.md がトークン・CSS・検査と食い違っていない", () => {
 		const css = PLUGIN_CSS.map((p) => readFileSync(p, "utf8")).join("\n");
 		expect(lintDesignDoc(readFileSync(DESIGN_DOC, "utf8"), tokens, css)).toEqual([]);
