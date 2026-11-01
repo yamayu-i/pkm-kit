@@ -1,6 +1,6 @@
 ---
 name: worklog-review
-description: タスク管理（vault-task）の worklog のうち、間違っていそうなもの（止め忘れ・長すぎる・日またぎ・重なりすぎ・閉じた後・存在しないタスク）を挙げ、ユーザーと一緒に 1 件ずつ直す。ユーザーが「worklog を見直したい」「止め忘れを直したい」「工数がおかしい」と言ったときに使う。
+description: タスク管理（vault-task）の worklog のうち、間違っていそうなもの（止め忘れ・長すぎる・日またぎ・重なりすぎ・存在しないタスク）を挙げ、ユーザーと一緒に 1 件ずつ直す。ユーザーが「worklog を見直したい」「止め忘れを直したい」「工数がおかしい」と言ったときに使う。
 ---
 
 # worklog の見直し
@@ -24,6 +24,7 @@ TZ=Asia/Tokyo pnpm task:worklog-review -- --json   # 日またぎの判定はタ
   - `many-overlaps`: たくさんのログと時間が重なっている（グループで再生したまま、など）
   - `unknown-task`: `task_id` の issue / routine がない
 - `effort` は issue ごとの按分前（`raw`）と按分後（`prorated`）の実績（分）。按分は ADR-0005
+- CLI は issue を閉じた日時を取得しないため、閉じた後のログは検出しない。
 
 候補が 0 件なら、そう伝えて終わる。
 

@@ -30,7 +30,11 @@ function localDay(ms: number): string {
  * 間違っていそうな worklog を挙げる。`closedAt` は issue を閉じた日時（分からなければ渡さない）
  */
 export function reviewWorklogs(index: TaskIndex, now: number, options: Partial<ReviewOptions> = {}, closedAt: Map<string, number> = new Map()): WorklogFinding[] {
-	const o = { ...DEFAULT_REVIEW, ...options };
+	const o = {
+		runningHours: options.runningHours ?? DEFAULT_REVIEW.runningHours,
+		longHours: options.longHours ?? DEFAULT_REVIEW.longHours,
+		overlapCount: options.overlapCount ?? DEFAULT_REVIEW.overlapCount,
+	};
 	const logs = index.data.worklogs;
 	const findings: WorklogFinding[] = [];
 	const add = (entry: WorklogEntry, code: WorklogFinding["code"], message: string) => findings.push({ entry, code, message });
