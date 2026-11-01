@@ -231,20 +231,20 @@ export class VaultGit {
 			return { kind: "fast-forward", snapshot, changed };
 		}
 
-		const [baseMap, oursMap, theirsMap] = await Promise.all([
+		const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
 			base ? readTreeMap(this.ctx, base) : Promise.resolve(new Map<string, TreeEntry>()),
 			readTreeMap(this.ctx, local),
 			readTreeMap(this.ctx, remote),
-		]);
-		const { entries, conflicts } = await mergeTrees({
+		]));
+		const { entries, conflicts } = await this.measure("merge", () => mergeTrees({
 			base: baseMap,
 			ours: oursMap,
 			theirs: theirsMap,
 			readBlob: async (oid) => (await git.readBlob({ ...this.ctx, oid })).blob,
 			labels: { ours: `local (${this.device})`, theirs: `remote (${this.remote}/${branch})` },
 			copySuffix: `${this.device} ${formatStamp(this.now())}`,
-		});
-		const tree = await writeTreeMap(this.ctx, entries);
+		}));
+		const tree = await this.measure("write-tree", () => writeTreeMap(this.ctx, entries));
 		const merged = await git.commit({
 			...this.ctx,
 			message: this.mergeMessage(branch, conflicts),
@@ -329,7 +329,7 @@ export class VaultGit {
 		const branch = await this.currentBranch();
 		const remote = await this.measure("fetch", () => this.fetch(branch));
 		const before = await git.resolveRef({ ...this.ctx, ref: branch });
-		if (remote && remote !== before && (await this.mergeBase(before, remote)) !== remote) {
+		if (remote && remote !== before && (await this.measure("merge-base", () => this.mergeBase(before, remote))) !== remote) {
 			return { kind: "behind" };
 		}
 		const snapshot = await this.measure("snapshot", () => this.snapshot());
@@ -345,4 +345,3 @@ export class VaultGit {
 		return { kind: "pushed", snapshot };
 	}
 }
-

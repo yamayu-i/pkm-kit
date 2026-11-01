@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { VaultGit } from "../../src/git/engine";
+import { VaultGit, type EngineOptions } from "../../src/git/engine";
 import { createHttpClient, type RequestFn } from "../../src/git/http";
 import { NodeFileStore } from "./node-store";
 import { TEST_TOKEN } from "./git-server";
@@ -30,11 +30,13 @@ export function createDevice(
 	name: string,
 	token: string | null = TEST_TOKEN,
 	authHost = "127.0.0.1",
+	onTiming?: EngineOptions["onTiming"],
 ): Device {
 	const root = mkdtempSync(join(tmpdir(), `vault-git-${name}-`));
 	const store = new NodeFileStore(root);
 	const git = new VaultGit({
 		store,
+		onTiming,
 		http: createHttpClient(fetchRequest, authHost),
 		authHost,
 		deviceName: name,

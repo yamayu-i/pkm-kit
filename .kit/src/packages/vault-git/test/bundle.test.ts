@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDevice, type Device } from "./helpers/device";
 import { GitServer, TEST_TOKEN } from "./helpers/git-server";
 import { createObsidianMock } from "./helpers/obsidian-mock";
@@ -50,6 +50,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 	});
 
 	afterEach(async () => {
+		vi.restoreAllMocks();
 		pc.cleanup();
 		rmSync(phoneRoot, { recursive: true, force: true });
 		await server.stop();
@@ -105,6 +106,21 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 
 	it("グローバルの Buffer を参照していない", () => {
 		expect(readFileSync(bundlePath, "utf8")).not.toMatch(/(globalThis|global|window|self)\.Buffer\b/);
+	});
+
+	it("状態更新を計測し、ログ出力に失敗しても同期を完了する", async () => {
+		const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))();
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1" };
+		await plugin.onload();
+		await plugin.pull();
+		expect(debug.mock.calls.some(([message]) => /^\[vault-git\] refreshStatus: \d+\.\d ms$/.test(message))).toBe(true);
+		debug.mockImplementation(() => { throw new Error("console unavailable"); });
+		await pc.write("new.md", "remote\n");
+		await pc.git.push();
+		await expect(plugin.pull()).resolves.toBeUndefined();
+		expect(readFileSync(join(phoneRoot, "new.md"), "utf8")).toBe("remote\n");
 	});
 
 	it("トークンがエラーメッセージに出ない", async () => {

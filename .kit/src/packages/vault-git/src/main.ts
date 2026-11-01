@@ -9,6 +9,13 @@ import { BehindModal, ConfirmModal, ConflictsModal, type ConflictItem } from "./
 import { DEFAULT_SETTINGS, VaultGitSettingTab, type VaultGitSettings } from "./obsidian/settings";
 import { VaultFileStore } from "./obsidian/vault-store";
 
+/** 固定の工程名と時間だけを出力し、診断の失敗を同期へ伝播させない。 */
+function reportTiming(phase: string, elapsedMs: number): void {
+	try {
+		console.debug(`[vault-git] ${phase}: ${elapsedMs.toFixed(1)} ms`);
+	} catch { /* diagnostic only */ }
+}
+
 const CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
 
 const CONFLICT_NOTES: Record<MergeConflict["kind"], string> = {
@@ -73,7 +80,7 @@ export default class VaultGitPlugin extends Plugin {
 				return { status: res.status, headers: res.headers, arrayBuffer: res.arrayBuffer };
 			}, s.authHost),
 			deviceName: s.deviceName,
-			onTiming: (phase, elapsedMs) => console.debug(`[vault-git] ${phase}: ${elapsedMs.toFixed(1)} ms`),
+			onTiming: reportTiming,
 			author: {
 				name: s.authorName || s.deviceName,
 				email: s.authorEmail || "vault-git@localhost",
@@ -230,12 +237,16 @@ export default class VaultGitPlugin extends Plugin {
 
 	private async refreshStatus(): Promise<void> {
 		if (this.busy) return;
-		const n = (await this.findUnresolved()).length;
-		this.statusEl.setText(n > 0 ? `Git: ⚠ 未解決 ${n}` : "Git: ✓");
+		const start = performance.now();
+		try {
+			const n = (await this.findUnresolved()).length;
+			this.statusEl.setText(n > 0 ? `Git: ⚠ 未解決 ${n}` : "Git: ✓");
+		} finally {
+			reportTiming("refreshStatus", performance.now() - start);
+		}
 	}
 
 	private async showUnresolved(): Promise<void> {
 		new ConflictsModal(this.app, "未解決のコンフリクト", await this.findUnresolved()).open();
 	}
 }
-
