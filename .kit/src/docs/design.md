@@ -27,6 +27,7 @@
 packages/design/tokens.json（正本）
   ├─ pnpm --filter design build（pnpm build に含まれる）
   │    ├─ packages/vault-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
+  │    ├─ packages/vault-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ .obsidian/snippets/vault-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
   │    ├─ docs/design-tokens.md                 … 値とコントラスト比の一覧
   │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）

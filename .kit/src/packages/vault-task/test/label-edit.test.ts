@@ -16,7 +16,7 @@ const routine = (id: string, label: unknown) => parseRoutine(`routine/${id}.md`,
 let key = 1;
 const draft = (from: string | null, name: string, color = "#d0d0d0"): LabelDraft => ({ key: key++, from, name, color });
 
-describe("label の名前の検査（ADR-0022）", () => {
+describe("label の名前の検査（ADR-0023）", () => {
 	it("空と、前後の空白を除いた重複はエラー", () => {
 		expect(labelNameError("", [])).not.toBeNull();
 		expect(labelNameError("  ", [])).not.toBeNull();
@@ -25,7 +25,7 @@ describe("label の名前の検査（ADR-0022）", () => {
 	});
 });
 
-describe("label の色の検査（ADR-0022）", () => {
+describe("label の色の検査（ADR-0023）", () => {
 	it("16 進の 3 / 6 / 8 桁でなければエラー", () => {
 		expect(labelColorError("d0d0d0")).not.toBeNull();
 		expect(labelColorError("#d0d0d")).not.toBeNull();
@@ -74,7 +74,7 @@ describe("frontmatter の label 欄の書き換え", () => {
 	});
 });
 
-describe("保存内容の計画（ADR-0022）", () => {
+describe("保存内容の計画（ADR-0023）", () => {
 	const original: LabelDef[] = [
 		{ name: "仕事", color: "#d0d0d0" },
 		{ name: "私用", color: "#c0e0c0" },

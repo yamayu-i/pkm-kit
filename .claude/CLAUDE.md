@@ -14,7 +14,7 @@
 ## 構成
 
 - ノート: リポジトリ直下の見えるフォルダ（素の Markdown）。デイリーノートは `daily/`、添付は `asset/`、LLM wiki は `sources/`（元資料）と `wiki/`
-- `.obsidian/plugins/<id>/` : 自作プラグイン（vault-git、vault-task）の**ビルド成果物**（`main.js` / `manifest.json` / `styles.css`）。モバイルではビルドできないのでコミットする
+- `.obsidian/plugins/<id>/` : 自作プラグイン（vault-git、vault-task、vault-template）の**ビルド成果物**（`main.js` / `manifest.json` / `styles.css`）。モバイルではビルドできないのでコミットする
 - `.plugin-src/` : プラグインのソース（pnpm workspace）と ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）。デザインの値の正本は `packages/design/tokens.json`（CSS に直接書かない）
 - `.obsidian/appearance.json` と `.obsidian/snippets/vault-theme.css` : Obsidian の外観の固定（後者は生成物）。変えるとデザインの検査が落ちる
 - `.claude/` : ハーネス（このファイル、文書、スキル、検査スクリプト、フック、記録）

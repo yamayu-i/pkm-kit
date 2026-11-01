@@ -22,7 +22,7 @@ function pickerValue(color: string): string {
 }
 
 /**
- * Labels（ADR-0022）。label の追加・改名・色の変更・並べ替え・削除を、下書きにしてまとめて保存する。
+ * Labels（ADR-0023）。label の追加・改名・色の変更・並べ替え・削除を、下書きにしてまとめて保存する。
  * 改名は、その label が付いた issue と routine にも反映する。使われている label は削除できない
  */
 export function LabelManagerView(props: { ctx: TaskContext }) {

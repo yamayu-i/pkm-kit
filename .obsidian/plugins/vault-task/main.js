@@ -3469,7 +3469,7 @@ var TaskWriter = class {
     await this.writeLabelsFile(labels);
   }
   /**
-   * Labels 画面の保存（ADR-0022）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+   * Labels 画面の保存（ADR-0023）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
    * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
    */
   async saveLabels(plan) {
