@@ -21,8 +21,8 @@ interface ListSpec {
 	columns: Column[];
 }
 
-const created: Column = { label: "作成", sort: "created", cell: (n) => shortDate(n.frontmatter.created) };
-const titleColumn: Column = { label: "タイトル", sort: "title", cell: (n) => noteTitle(n.frontmatter, n.basename) };
+const created: Column = { label: "Created", sort: "created", cell: (n) => shortDate(n.frontmatter.created) };
+const titleColumn: Column = { label: "Title", sort: "title", cell: (n) => noteTitle(n.frontmatter, n.basename) };
 
 /** daily は title を使わず、ファイル名の日付から `2026-11-01 SUN` にする */
 const SPECS = {
@@ -30,13 +30,13 @@ const SPECS = {
 		type: "daily",
 		empty: "デイリーノートがありません",
 		sort: "name",
-		columns: [{ label: "日付", sort: "name", cell: (n) => dailyDate(n.basename)?.label ?? n.basename }, created],
+		columns: [{ label: "Date", sort: "name", cell: (n) => dailyDate(n.basename)?.label ?? n.basename }, created],
 	},
 	note: {
 		type: "note",
 		empty: "ノートがありません",
 		sort: "created",
-		columns: [titleColumn, { label: "タグ", cell: (n) => tagList(n.frontmatter.tags).join(" ") }, created],
+		columns: [titleColumn, { label: "Tags", cell: (n) => tagList(n.frontmatter.tags).join(" ") }, created],
 	},
 	source: {
 		type: "source",
@@ -44,9 +44,9 @@ const SPECS = {
 		sort: "created",
 		columns: [
 			titleColumn,
-			{ label: "出典", cell: (n) => (typeof n.frontmatter.origin === "string" ? n.frontmatter.origin : "") },
-			{ label: "取得", cell: (n) => shortDate(n.frontmatter.retrieved) },
-			{ label: "取り込み", cell: (n, ctx) => (ctx.imported.has(n.path) ? "済" : "未") },
+			{ label: "Origin", cell: (n) => (typeof n.frontmatter.origin === "string" ? n.frontmatter.origin : "") },
+			{ label: "Retrieved", cell: (n) => shortDate(n.frontmatter.retrieved) },
+			{ label: "Imported", cell: (n, ctx) => (ctx.imported.has(n.path) ? "Yes" : "No") },
 		],
 	},
 } satisfies Record<string, ListSpec>;

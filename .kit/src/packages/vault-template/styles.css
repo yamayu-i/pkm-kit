@@ -343,3 +343,9 @@
 .vt-tpl-table tbody tr:hover {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
+
+/* ヘッダーが frontmatter の主な項目を表示する type では、Properties 欄を隠す(ADR-0026)。
+   ソースモードでは YAML をそのまま編集できる */
+.view-content:has(.vt-tpl-note-header-body[data-hide-properties="true"]) .metadata-container:not(.mod-error) {
+	display: none;
+}

@@ -1134,6 +1134,7 @@ function hasNoteHeader(path, frontmatter) {
 }
 
 // src/core/note-header.ts
+var PROPERTY_HEADER_TYPES = ["daily", "note", "source", ...WIKI_TYPES];
 function isWebUrl(value) {
   return /^https?:\/\/\S+$/i.test(value);
 }
@@ -1143,23 +1144,24 @@ function item(label, values) {
 function buildHeader(note, ctx) {
   const fm = note.frontmatter;
   const type = typeof fm.type === "string" ? fm.type : "";
+  const hideProperties = PROPERTY_HEADER_TYPES.includes(type);
   if (type === "daily") {
     const d3 = dailyDate(note.basename);
-    if (d3) return { title: d3.label, weekday: d3.weekday, items: [] };
+    if (d3) return { title: d3.label, weekday: d3.weekday, items: [], hideProperties };
   }
   const title = noteTitle(fm, note.basename);
   let items = [];
   if (type === "note") {
     const created2 = shortDate(fm.created);
-    items = [...item("\u30BF\u30B0", tagList(fm.tags).map((text2) => ({ text: text2 }))), ...item("\u4F5C\u6210", created2 ? [{ text: created2 }] : [])];
+    items = [...item("Tags", tagList(fm.tags).map((text2) => ({ text: text2 }))), ...item("Created", created2 ? [{ text: created2 }] : [])];
   } else if (type === "source") {
     const origin = typeof fm.origin === "string" ? fm.origin.trim() : "";
     const retrieved = shortDate(fm.retrieved);
     const citedBy = ctx.notes.filter((n2) => typeof n2.frontmatter.type === "string" && WIKI_TYPES.includes(n2.frontmatter.type) && Array.isArray(n2.frontmatter.sources) && n2.frontmatter.sources.includes(note.path)).map((n2) => ({ text: noteTitle(n2.frontmatter, n2.basename), path: n2.path }));
     items = [
-      ...item("\u51FA\u5178", origin ? [isWebUrl(origin) ? { text: origin, url: origin } : { text: origin }] : []),
-      ...item("\u53D6\u5F97", retrieved ? [{ text: retrieved }] : []),
-      ...item("\u53D6\u308A\u8FBC\u307F\u5148", citedBy)
+      ...item("Origin", origin ? [isWebUrl(origin) ? { text: origin, url: origin } : { text: origin }] : []),
+      ...item("Retrieved", retrieved ? [{ text: retrieved }] : []),
+      ...item("Cited by", citedBy)
     ];
   } else if (WIKI_TYPES.includes(type)) {
     const byPath = new Map(ctx.notes.map((n2) => [n2.path, n2]));
@@ -1170,9 +1172,9 @@ function buildHeader(note, ctx) {
       if (found) sources.push({ text: noteTitle(found.frontmatter, found.basename), path: found.path });
       else sources.push(isWebUrl(s3) ? { text: s3, url: s3 } : { text: s3 });
     }
-    items = [...item("\u51FA\u5178", sources), ...item("\u88AB\u30EA\u30F3\u30AF", ctx.backlinks > 0 ? [{ text: String(ctx.backlinks) }] : [])];
+    items = [...item("Sources", sources), ...item("Backlinks", ctx.backlinks > 0 ? [{ text: String(ctx.backlinks) }] : [])];
   }
-  return { title, weekday: null, items };
+  return { title, weekday: null, items, hideProperties };
 }
 
 // src/obsidian/NoteHeader.tsx
@@ -1198,7 +1200,7 @@ function Value({ app, v: v3 }) {
   return /* @__PURE__ */ u3("span", { class: "vt-tpl-value", children: v3.text });
 }
 function NoteHeader({ app, model }) {
-  return /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-body", children: [
+  return /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-body", "data-hide-properties": model.hideProperties ? "true" : void 0, children: [
     /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-top", children: [
       /* @__PURE__ */ u3("div", { class: "vt-tpl-note-title", children: model.title }),
       model.weekday !== null && /* @__PURE__ */ u3("ol", { class: "vt-tpl-week", "aria-label": "\u66DC\u65E5", children: WEEKDAYS2.map((w3, i3) => /* @__PURE__ */ u3("li", { class: i3 === model.weekday ? "vt-tpl-week-day is-current" : "vt-tpl-week-day", "aria-current": i3 === model.weekday ? "date" : void 0, children: w3 }, w3)) })
@@ -1397,20 +1399,20 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var created = { label: "\u4F5C\u6210", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
-var titleColumn = { label: "\u30BF\u30A4\u30C8\u30EB", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
+var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
+var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
   daily: {
     type: "daily",
     empty: "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
     sort: "name",
-    columns: [{ label: "\u65E5\u4ED8", sort: "name", cell: (n2) => dailyDate(n2.basename)?.label ?? n2.basename }, created]
+    columns: [{ label: "Date", sort: "name", cell: (n2) => dailyDate(n2.basename)?.label ?? n2.basename }, created]
   },
   note: {
     type: "note",
     empty: "\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
     sort: "created",
-    columns: [titleColumn, { label: "\u30BF\u30B0", cell: (n2) => tagList(n2.frontmatter.tags).join(" ") }, created]
+    columns: [titleColumn, { label: "Tags", cell: (n2) => tagList(n2.frontmatter.tags).join(" ") }, created]
   },
   source: {
     type: "source",
@@ -1418,9 +1420,9 @@ var SPECS = {
     sort: "created",
     columns: [
       titleColumn,
-      { label: "\u51FA\u5178", cell: (n2) => typeof n2.frontmatter.origin === "string" ? n2.frontmatter.origin : "" },
-      { label: "\u53D6\u5F97", cell: (n2) => shortDate(n2.frontmatter.retrieved) },
-      { label: "\u53D6\u308A\u8FBC\u307F", cell: (n2, ctx) => ctx.imported.has(n2.path) ? "\u6E08" : "\u672A" }
+      { label: "Origin", cell: (n2) => typeof n2.frontmatter.origin === "string" ? n2.frontmatter.origin : "" },
+      { label: "Retrieved", cell: (n2) => shortDate(n2.frontmatter.retrieved) },
+      { label: "Imported", cell: (n2, ctx) => ctx.imported.has(n2.path) ? "Yes" : "No" }
     ]
   }
 };
