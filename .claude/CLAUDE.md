@@ -48,6 +48,7 @@
 | wiki を根拠に答え、回答を蓄積する | [wiki-query](skills/wiki-query/SKILL.md) |
 | wiki を保守する | [wiki-lint](skills/wiki-lint/SKILL.md) |
 | デイリーノートを wiki に反映する | [wiki-daily](skills/wiki-daily/SKILL.md) |
+| タスク状況を把握し、計画・助言・振り返りを行う | [task-coach](skills/task-coach/SKILL.md) |
 | 気づきを記録する | [harness-note](skills/harness-note/SKILL.md) |
 | ハーネスと wiki の仕組みを評価する（月 1 回） | [harness-review](skills/harness-review/SKILL.md) |
 | セキュリティチェック（週 1 回） | [security-check](skills/security-check/SKILL.md) |

@@ -8,6 +8,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint:vault": "node esbuild.config.mjs && node dist/lint.mjs ../../..",
+    "mcp": "node dist/mcp.mjs ../../..",
     "preview:ui": "node preview/preview.mjs",
     "worklog:review": "node esbuild.config.mjs && node dist/worklog-review.mjs ../../.."
   },

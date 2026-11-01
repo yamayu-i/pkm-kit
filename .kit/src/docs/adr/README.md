@@ -35,3 +35,4 @@
 | [0022](0022-template-plugin.md) | 承認（一部補足: 0023） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
+| [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
