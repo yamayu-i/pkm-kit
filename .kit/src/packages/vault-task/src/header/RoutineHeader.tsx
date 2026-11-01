@@ -106,7 +106,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 		}
 		m.showAtMouseEvent(e);
 	};
-	const actual = index.effortMinutes(Date.now()).get(routine.id) ?? 0;
+	const effort = index.routineEffort(routine.id, Date.now());
 	return (
 		<div class="vt-issue">
 			<div class="vt-meta">
@@ -162,8 +162,12 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					<span class="vt-effort-value">{routine.estimated === null ? "—" : formatMinutes(routine.estimated)}</span>
 				</button>
 				<div class="vt-effort-cell is-readonly" title="worklog から自動で計算">
-					<span class="vt-field-label">actual</span>
-					<span class="vt-effort-value">{formatMinutes(actual)}</span>
+					<span class="vt-field-label">total</span>
+					<span class="vt-effort-value">{formatMinutes(effort.total)}</span>
+				</div>
+				<div class="vt-effort-cell is-readonly" title={effort.days > 0 ? `記録のある ${effort.days} 日分の 1 日あたり平均` : "worklog から自動で計算"}>
+					<span class="vt-field-label">average</span>
+					<span class="vt-effort-value">{effort.average === null ? "—" : formatMinutes(effort.average)}</span>
 				</div>
 			</div>
 			<hr class="vt-sep" />

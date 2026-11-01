@@ -14,12 +14,15 @@ import { IssueListView } from "../src/views/IssueListView";
 import { OrganizeView } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
 import { ScheduledView } from "../src/views/ScheduledView";
+import { SidebarView } from "../src/views/SidebarView";
 import { SomedayView } from "../src/views/SomedayView";
 
 const t = localToday();
 const at = (day: string, hm: string) => localDateTime(new Date(`${day}T${hm}:00`));
 const logs = [
 	JSON.stringify({ id: "run", task_id: "i-2", from: new Date(Date.now() - 30 * 60_000).toISOString(), to: null, description: "" }),
+	JSON.stringify({ id: "r1a", task_id: "r-1", from: at(addDays(t, -1), "08:00"), to: at(addDays(t, -1), "08:15"), description: "メール処理" }),
+	JSON.stringify({ id: "r1b", task_id: "r-1", from: at(addDays(t, -2), "08:00"), to: at(addDays(t, -2), "08:25"), description: "" }),
 	...Array.from({ length: 13 }, (_, i) => {
 		const day = addDays(t, -(i + 1));
 		return JSON.stringify({ id: `w${i}`, task_id: "i-2", from: at(day, "10:00"), to: at(day, "11:30"), description: i % 3 ? `作業 ${i}` : "" });
@@ -98,6 +101,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	someday: SomedayView,
 	routines: RoutineListView,
 	groups: GroupManagerView,
+	sidebar: SidebarView,
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
 			<DateForm initial={t} onSubmit={() => {}} />

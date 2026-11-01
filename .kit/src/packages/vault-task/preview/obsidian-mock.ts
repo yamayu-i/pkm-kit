@@ -46,6 +46,9 @@ const PATHS: Record<string, string> = {
   "arrow-down-wide-narrow": '<path d="m3 16 4 4 4-4M7 20V4m4 0h10m-10 4h7m-7 4h4"/>',
   "corner-down-right": '<path d="m15 10 5 5-5 5"/><path d="M4 4v7a4 4 0 0 0 4 4h12"/>',
   tag: '<path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.59-8.59a1 1 0 0 0 0-1.41Z"/>',
+  "calendar-range": '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M17 14h-6M13 18H7"/>',
+  "list-todo": '<rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4M13 6h8M13 12h8M13 18h8"/>',
+  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
 };
 export function setIcon(el: HTMLElement, name: string) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

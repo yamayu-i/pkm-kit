@@ -50,7 +50,7 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 }
 
 // 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
-const SCREENS = ["header", "routine", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups", "forms"];
+const SCREENS = ["header", "routine", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups", "sidebar", "forms"];
 const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
 const screens = wanted.length > 0 ? wanted : SCREENS;
 

@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
@@ -870,6 +870,91 @@ function D2(n2, t3) {
   return "function" == typeof t3 ? t3(n2) : t3;
 }
 
+// src/core/board.ts
+var BOARD_KEY = "board";
+function emptyBoard() {
+  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function parseBoard(value) {
+  const raw = record(value);
+  const board = emptyBoard();
+  if (Array.isArray(raw.issues)) {
+    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
+  }
+  if (Array.isArray(raw.carried)) {
+    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
+  }
+  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
+  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
+  board.closed = raw.closed === true;
+  return board;
+}
+function dailyNotePath(date) {
+  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+}
+var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function boardItems(index, date, board) {
+  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
+  return { issues, routines: index.routinesOn(date) };
+}
+function unfinished(index, date, board) {
+  const items = boardItems(index, date, board);
+  return {
+    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
+    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
+  };
+}
+function markCarried(board, ids) {
+  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
+}
+function routineResults(index, routine, today, days) {
+  return Array.from({ length: days }, (_2, i3) => {
+    const date = addDays(today, i3 - days + 1);
+    const result = index.board(date)?.board.routines[routine.id];
+    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
+  });
+}
+function pendingBoards(index, boards, today) {
+  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
+    const u4 = unfinished(index, b2.date, b2.board);
+    return u4.issues.length > 0 || u4.routines.length > 0;
+  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
+}
+function placementOf(board, id, fallback, keys) {
+  const key = board.groups[id] ?? fallback ?? "";
+  return key !== "" && keys.includes(key) ? key : "";
+}
+
+// src/core/daily.ts
+var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
+function deadIssues(issues, today) {
+  const deadline = [];
+  const midDue = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
+    if (i3.midDue !== null && i3.midDue < today) midDue.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+}
+function cautionIssues(issues, today, days = 3) {
+  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
+  const deadline = [];
+  const midDue = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (within(i3.deadline)) deadline.push(i3);
+    if (within(i3.midDue)) midDue.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+}
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+
 // src/core/effort.ts
 function prorateEffort(intervals, now) {
   const events = [];
@@ -992,6 +1077,18 @@ var TaskIndex = class {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
   }
+  /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+  routineEffort(taskId, now) {
+    const total = this.effortMinutes(now).get(taskId) ?? 0;
+    const dates = /* @__PURE__ */ new Set();
+    for (const l3 of this.data.worklogs) {
+      if (l3.taskId !== taskId) continue;
+      const to = l3.toMs ?? Math.max(now, l3.fromMs);
+      if (to > l3.fromMs) dates.add(localToday(new Date(l3.fromMs)));
+    }
+    const days = dates.size;
+    return { total, days, average: days > 0 ? total / days : null };
+  }
   board(date) {
     return this.data.boards.find((b2) => b2.date === date);
   }
@@ -1003,6 +1100,27 @@ var TaskIndex = class {
     return [...this.routines.values()].filter((r3) => routineOccursOn(r3, date));
   }
 };
+function sidebarCounts(index, today) {
+  const issues = [...index.issues.values()];
+  const dead = deadIssues(issues, today);
+  const pending = pendingBoards(index, index.data.boards, today);
+  const todayBoard = index.board(today)?.board ?? emptyBoard();
+  const scheduledToday = scheduledOn(issues, today, new Set(todayBoard.issues));
+  const todayLeft = unfinished(index, today, todayBoard);
+  const previousCount = pending.reduce((n2, b2) => {
+    const u4 = unfinished(index, b2.date, b2.board);
+    return n2 + u4.issues.length + u4.routines.length;
+  }, 0);
+  return {
+    daily: dead.deadline.length + dead.midDue.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+    inbox: issues.filter(isInbox).length,
+    organize: organizeQueue(issues, today).length,
+    scheduled: issues.filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).length,
+    issues: issues.filter(isActive).length,
+    someday: issues.filter((i3) => i3.status === "someday").length,
+    routines: [...index.routines.values()].filter((r3) => r3.active).length
+  };
+}
 
 // src/core/due.ts
 function dueLevel(issue, due, today) {
@@ -2103,64 +2221,6 @@ function Worklog(props) {
 // src/header/RoutineHeader.tsx
 var import_obsidian5 = require("obsidian");
 
-// src/core/board.ts
-var BOARD_KEY = "board";
-function emptyBoard() {
-  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
-}
-function record(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-}
-function parseBoard(value) {
-  const raw = record(value);
-  const board = emptyBoard();
-  if (Array.isArray(raw.issues)) {
-    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
-  }
-  if (Array.isArray(raw.carried)) {
-    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
-  }
-  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
-  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
-  board.closed = raw.closed === true;
-  return board;
-}
-function dailyNotePath(date) {
-  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
-}
-var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
-function boardItems(index, date, board) {
-  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
-  return { issues, routines: index.routinesOn(date) };
-}
-function unfinished(index, date, board) {
-  const items = boardItems(index, date, board);
-  return {
-    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
-    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
-  };
-}
-function markCarried(board, ids) {
-  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
-}
-function routineResults(index, routine, today, days) {
-  return Array.from({ length: days }, (_2, i3) => {
-    const date = addDays(today, i3 - days + 1);
-    const result = index.board(date)?.board.routines[routine.id];
-    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
-  });
-}
-function pendingBoards(index, boards, today) {
-  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return u4.issues.length > 0 || u4.routines.length > 0;
-  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
-}
-function placementOf(board, id, fallback, keys) {
-  const key = board.groups[id] ?? fallback ?? "";
-  return key !== "" && keys.includes(key) ? key : "";
-}
-
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
 var UNGROUPED = "";
@@ -2362,7 +2422,7 @@ function RoutineHeader(props) {
     }
     m3.showAtMouseEvent(e3);
   };
-  const actual = index.effortMinutes(Date.now()).get(routine.id) ?? 0;
+  const effort = index.routineEffort(routine.id, Date.now());
   return /* @__PURE__ */ u3("div", { class: "vt-issue", children: [
     /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
       /* @__PURE__ */ u3("span", { children: [
@@ -2425,8 +2485,12 @@ function RoutineHeader(props) {
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: routine.estimated === null ? "\u2014" : formatMinutes(routine.estimated) })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
-        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "total" }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(effort.total) })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: effort.days > 0 ? `\u8A18\u9332\u306E\u3042\u308B ${effort.days} \u65E5\u5206\u306E 1 \u65E5\u3042\u305F\u308A\u5E73\u5747` : "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "average" }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: effort.average === null ? "\u2014" : formatMinutes(effort.average) })
       ] })
     ] }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
@@ -3263,33 +3327,6 @@ var TaskWriter = class {
     return file;
   }
 };
-
-// src/core/daily.ts
-var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
-function deadIssues(issues, today) {
-  const deadline = [];
-  const midDue = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
-    if (i3.midDue !== null && i3.midDue < today) midDue.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
-}
-function cautionIssues(issues, today, days = 3) {
-  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
-  const deadline = [];
-  const midDue = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (within(i3.deadline)) deadline.push(i3);
-    if (within(i3.midDue)) midDue.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
-}
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
-}
 
 // src/obsidian/issue-actions.tsx
 function askDate(ctx, title, initial = null) {
@@ -4709,6 +4746,69 @@ function ScheduledView(props) {
   ] });
 }
 
+// src/views/SidebarView.tsx
+var import_obsidian18 = require("obsidian");
+function SidebarView(props) {
+  const { ctx } = props;
+  useStoreVersion(ctx.store);
+  const now = useNow(3e4);
+  const today = localToday(new Date(now));
+  const index = ctx.store.index;
+  const counts = sidebarCounts(index, today);
+  const runningByTask = /* @__PURE__ */ new Map();
+  for (const l3 of index.running()) {
+    const elapsed = Math.max(0, now - l3.fromMs);
+    runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
+  }
+  const items = [
+    { type: "vault-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+    { type: "vault-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
+    { type: "vault-task-organize", title: "Organize", icon: "layers", count: counts.organize },
+    { type: "vault-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
+    { type: "vault-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
+    { type: "vault-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
+    { type: "vault-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
+    { type: "vault-task-groups", title: "Board groups", icon: "layout-grid" }
+  ];
+  return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-button is-primary vt-sidebar-capture", onClick: () => openCaptureModal(ctx), children: [
+      /* @__PURE__ */ u3(Icon, { name: "plus" }),
+      " issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210"
+    ] }),
+    runningByTask.size > 0 && /* @__PURE__ */ u3("section", { class: "vt-sidebar-section", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "\u8A18\u9332\u4E2D" }),
+      /* @__PURE__ */ u3("div", { class: "vt-sidebar-running", children: [...runningByTask.entries()].map(([taskId, elapsed]) => {
+        const issue = index.issues.get(taskId);
+        const routine = index.routines.get(taskId);
+        const summary = issue?.summary || routine?.summary || taskId;
+        const path = issue?.path ?? routine?.path ?? null;
+        return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          /* @__PURE__ */ u3(
+            "button",
+            {
+              class: "vt-play is-running",
+              "aria-label": "\u8A18\u9332\u3092\u6B62\u3081\u308B",
+              title: "\u8A18\u9332\u3092\u6B62\u3081\u308B",
+              onClick: () => void stopTimer(ctx, [taskId]),
+              children: [
+                /* @__PURE__ */ u3(Icon, { name: "square" }),
+                /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+              ]
+            }
+          )
+        ] }) }, taskId);
+      }) })
+    ] }),
+    /* @__PURE__ */ u3("nav", { class: "vt-sidebar-nav", "aria-label": "Vault Task Views", children: items.map((item) => /* @__PURE__ */ u3("button", { class: "vt-nav-item", onClick: () => void ctx.openView(item.type), children: [
+      /* @__PURE__ */ u3(Icon, { name: item.icon }),
+      /* @__PURE__ */ u3("span", { class: "vt-nav-label", children: item.title }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      item.count !== void 0 && item.count > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: item.count })
+    ] }, item.type)) })
+  ] });
+}
+
 // src/views/SomedayView.tsx
 var ORDERS = [
   { key: "reviewed", label: "\u898B\u76F4\u3057\u305F\u65E5\u304C\u53E4\u3044\u9806" },
@@ -4784,7 +4884,8 @@ var VIEWS = [
   { type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
   { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView }
 ];
-var VaultTaskPlugin = class extends import_obsidian18.Plugin {
+var SIDEBAR_VIEW = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
+var VaultTaskPlugin = class extends import_obsidian19.Plugin {
   store = null;
   taskSettings = { ...DEFAULT_SETTINGS };
   async onload() {
@@ -4811,13 +4912,23 @@ var VaultTaskPlugin = class extends import_obsidian18.Plugin {
       report: (message, error) => {
         if (error !== void 0) console.error(`vault-task: ${message}`, error);
         const detail = error instanceof Error ? `: ${error.message}` : "";
-        new import_obsidian18.Notice(`${message}${detail}`);
+        new import_obsidian19.Notice(`${message}${detail}`);
       }
+    };
+    const openSidebar = async (reveal = true) => {
+      const { workspace } = this.app;
+      const existing = workspace.getLeavesOfType?.(SIDEBAR_VIEW.type)[0];
+      const leaf = existing ?? workspace.getLeftLeaf?.(false);
+      if (!leaf) return;
+      if (!existing) await leaf.setViewState({ type: SIDEBAR_VIEW.type, active: reveal });
+      if (reveal) await workspace.revealLeaf(leaf);
     };
     for (const spec of VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, ctx));
       this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void ctx.openView(spec.type) });
     }
+    this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
+    this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
     this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));
@@ -4825,6 +4936,7 @@ var VaultTaskPlugin = class extends import_obsidian18.Plugin {
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      void openSidebar(false).catch((e3) => ctx.report("\u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
     });
   }
   onunload() {
