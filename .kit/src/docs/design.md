@@ -110,6 +110,7 @@ packages/design/tokens.json（正本）
 
 - それぞれ `--vt-<色>-container`（面）/ `--vt-on-<色>-container`（文字）/ `--vt-<色>`（印）がある
 - status の色は ADR-0006 の割り当てに従う。ID のバッジも status と同じ色にする
+- 実行日の枠では、mid_due と deadline を面の外側に隙間を空けた枠で示す（実行日の面の色と重ならないように）
 - 期限は `--vt-due-3` → `--vt-due-0`（薄い黄色 → 黄色 → オレンジ → 赤）。期限を過ぎたら赤い枠（ADR-0006）
 - 実行日は `--vt-scheduled`（面）と `--vt-on-scheduled`（文字）
 - **必須**: 色だけで意味を伝えない（WCAG 1.4.1）。status・priority は文字でも書く。期限は日付と「MID_DUE / DEADLINE」の文字を出す

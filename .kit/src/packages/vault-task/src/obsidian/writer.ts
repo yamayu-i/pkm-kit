@@ -68,8 +68,8 @@ export class TaskWriter {
 		return ids;
 	}
 
-	/** Inbox に issue を作る（ADR-0011）。作れなかった summary は failed に入る */
-	async createIssues(summaries: string[], parent: string | null = null): Promise<{ created: TFile[]; failed: string[] }> {
+	/** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
+	async createIssues(summaries: string[], parent: string | null = null, scheduled: LocalDate[] = []): Promise<{ created: TFile[]; failed: string[] }> {
 		const ids = nextIds("i", this.takenIds(), summaries.length);
 		const created: TFile[] = [];
 		const failed: string[] = [];
@@ -78,7 +78,7 @@ export class TaskWriter {
 			const path = normalizePath(pathForId(ids[i]!));
 			try {
 				await this.ensureFolder(path);
-				created.push(await this.app.vault.create(path, newIssueContent(ids[i]!, summary, now, parent)));
+				created.push(await this.app.vault.create(path, newIssueContent(ids[i]!, summary, now, parent, scheduled)));
 			} catch (e) {
 				console.error("vault-task: issue を作れませんでした", path, e);
 				failed.push(summary);

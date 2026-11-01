@@ -1,3 +1,4 @@
+import type { LocalDate } from "./dates";
 import { SCHEMA_VERSION } from "./schema";
 
 /** 新しい issue の本文の既定の見出し（ADR-0012） */
@@ -8,10 +9,11 @@ function yamlString(s: string): string {
 	return JSON.stringify(s);
 }
 
-/** Inbox に入る新しい issue のファイルの中身（ADR-0011） */
-export function newIssueContent(id: string, summary: string, created: string, parent: string | null = null): string {
+/** 新しい issue のファイルの中身。scheduled がなければ Inbox に入る（ADR-0011） */
+export function newIssueContent(id: string, summary: string, created: string, parent: string | null = null, scheduled: LocalDate[] = []): string {
 	const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
 	if (parent !== null) lines.push(`parent: ${parent}`);
+	if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
 	lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
 	return lines.join("\n");
 }
