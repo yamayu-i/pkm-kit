@@ -76,7 +76,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.plugin-src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `vault-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter vault-task exec playwright install chromium` で入れる
 
 ## design（デザイントークンと検査）
 
