@@ -2696,7 +2696,7 @@ button.vt-badge:disabled::after {
 	}
 }
 
-/* ---------- 左サイドバー（ADR-0020） ---------- */
+/* ---------- 左サイドバー（ADR-0021） ---------- */
 
 .vt-sidebar {
 	display: flex;

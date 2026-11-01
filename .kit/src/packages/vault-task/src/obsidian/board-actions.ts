@@ -1,5 +1,5 @@
 import { inboxPatch, reschedulePatch } from "../core/actions";
-import { markCarried, type RoutineResult } from "../core/board";
+import type { RoutineResult } from "../core/board";
 import type { LocalDate } from "../core/dates";
 import { UNGROUPED } from "../core/groups";
 import type { Issue } from "../core/schema";
@@ -17,11 +17,7 @@ export const addToBoard = (ctx: TaskContext, date: LocalDate, ids: string[]) =>
 	guard(
 		ctx,
 		"ボードに載せられませんでした",
-		ctx.writer.updateBoard(date, (b) => {
-			for (const id of ids) if (!b.issues.includes(id)) b.issues.push(id);
-			b.carried = b.carried.filter((id) => !ids.includes(id));
-			b.closed = false;
-		}),
+		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task }))),
 	);
 
 /** その日を実行日にした issue を作って、ボードに載せる */
@@ -37,35 +33,17 @@ export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: 
 }
 
 export const removeFromBoard = (ctx: TaskContext, date: LocalDate, id: string) =>
-	guard(
-		ctx,
-		"ボードから外せませんでした",
-		ctx.writer.updateBoard(date, (b) => {
-			b.issues = b.issues.filter((x) => x !== id);
-			b.carried = b.carried.filter((x) => x !== id);
-			delete b.groups[id];
-		}),
-	);
+	guard(ctx, "ボードから外せませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
 
 export const setPlacement = (ctx: TaskContext, date: LocalDate, id: string, group: string) =>
 	guard(
 		ctx,
 		"グループを変えられませんでした",
-		ctx.writer.updateBoard(date, (b) => {
-			if (group === UNGROUPED) delete b.groups[id];
-			else b.groups[id] = group;
-		}),
+		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }]),
 	);
 
 export const setRoutineResult = (ctx: TaskContext, date: LocalDate, id: string, result: RoutineResult | null) =>
-	guard(
-		ctx,
-		"routine を更新できませんでした",
-		ctx.writer.updateBoard(date, (b) => {
-			if (result === null) delete b.routines[id];
-			else b.routines[id] = result;
-		}),
-	);
+	guard(ctx, "routine を更新できませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]));
 
 /**
  * ボードの issue をリスケ / Inbox で片付ける。ボードには残し、未完了に数えない（carried）。
@@ -81,9 +59,7 @@ export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Iss
 		for (const issue of issues) {
 			await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to!, date));
 		}
-		await ctx.writer.updateBoard(date, (b) => {
-			markCarried(b, issues.map((i) => i.id));
-		});
+		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i) => ({ op: "carry", task: i.id })));
 	} catch (e) {
 		ctx.report("片付けられませんでした", e);
 	}
@@ -92,20 +68,14 @@ export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Iss
 /** ボードを締める: closed にして、デイリーノートに要約を書く（ADR-0009） */
 export async function closeBoard(ctx: TaskContext, date: LocalDate): Promise<void> {
 	try {
-		await ctx.writer.closeBoard(date);
+		await ctx.writer.closeBoard(date, ctx.settings.deviceName);
 	} catch (e) {
 		ctx.report("ボードを締められませんでした", e);
 	}
 }
 
 export const reopenBoard = (ctx: TaskContext, date: LocalDate) =>
-	guard(
-		ctx,
-		"ボードを開き直せませんでした",
-		ctx.writer.updateBoard(date, (b) => {
-			b.closed = false;
-		}),
-	);
+	guard(ctx, "ボードを開き直せませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
 
 export function startTimer(ctx: TaskContext, ids: string[]): Promise<void> {
 	return guard(ctx, "記録を始められませんでした", ctx.writer.startTimer(ids, ctx.settings.deviceName));

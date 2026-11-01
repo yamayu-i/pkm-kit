@@ -717,8 +717,13 @@ function frontmatterRange(text) {
   const m3 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
   return m3 ? { from: 0, to: m3[0].length } : null;
 }
-function newDailyContent() {
-  return "---\nboard: {}\n---\n";
+function newDailyContent(created) {
+  return `---
+type: daily
+created: ${created}
+updated:
+---
+`;
 }
 
 // src/header/IssueHeader.tsx
@@ -886,43 +891,6 @@ function parseBoard(value) {
   for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
   board.closed = raw.closed === true;
   return board;
-}
-function parseBoardForWrite(value) {
-  if (value === void 0) return emptyBoard();
-  const fail = () => {
-    throw new Error("board \u306E\u5F62\u5F0F\u304C\u4E0D\u6B63\u3067\u3059\u3002\u4FEE\u6B63\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
-  };
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail();
-  if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) return fail();
-  const raw = value;
-  if (Object.keys(raw).some((key) => !["issues", "groups", "routines", "carried", "closed"].includes(key))) fail();
-  for (const key of ["issues", "carried"]) {
-    if (!(key in raw)) continue;
-    const list = raw[key];
-    if (!Array.isArray(list) || list.some((id) => typeof id !== "string" || !id) || new Set(list).size !== list.length) fail();
-  }
-  for (const key of ["groups", "routines"]) {
-    if (!(key in raw)) continue;
-    const map = raw[key];
-    if (typeof map !== "object" || map === null || Array.isArray(map)) return fail();
-    if (![Object.prototype, null].includes(Object.getPrototypeOf(map))) return fail();
-    for (const [id, v3] of Object.entries(map)) {
-      if (!id || id === "__proto__" || (key === "groups" ? typeof v3 !== "string" || !v3 : v3 !== "closed" && v3 !== "canceled")) fail();
-    }
-  }
-  if ("closed" in raw && typeof raw.closed !== "boolean") fail();
-  const board = parseBoard(raw);
-  if (board.carried.some((id) => !board.issues.includes(id))) fail();
-  return board;
-}
-function serializeBoard(board) {
-  const out = {};
-  if (board.issues.length > 0) out.issues = board.issues;
-  if (Object.keys(board.groups).length > 0) out.groups = board.groups;
-  if (Object.keys(board.routines).length > 0) out.routines = board.routines;
-  if (board.carried.length > 0) out.carried = board.carried;
-  if (board.closed) out.closed = true;
-  return out;
 }
 function dailyNotePath(date) {
   return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
@@ -1109,7 +1077,7 @@ var TaskIndex = class {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
   }
-  /** routine 画面の工数（ADR-0020）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+  /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
   routineEffort(taskId, now) {
     const total = this.effortMinutes(now).get(taskId) ?? 0;
     const dates = /* @__PURE__ */ new Set();
@@ -2782,6 +2750,117 @@ var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
 // src/obsidian/store.ts
 var import_obsidian9 = require("obsidian");
 
+// src/core/board-log.ts
+var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function boardLogPath(device, date) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
+}
+function nextBoardAt(nowMs, latestMs) {
+  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
+}
+function parseOp(o3) {
+  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
+  switch (o3.op) {
+    case "add":
+    case "remove":
+    case "carry":
+      return task ? { op: o3.op, task } : null;
+    case "place":
+      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
+    case "routine":
+      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
+    case "close":
+      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
+    case "reopen":
+      return { op: "reopen" };
+    default:
+      return null;
+  }
+}
+function parseBoardLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const op = parseOp(o3);
+    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
+  });
+  return { entries, problems };
+}
+function serializeBoardLogEntry(e3) {
+  return JSON.stringify(e3);
+}
+function newBoardLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function compareEntries(a3, b2) {
+  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
+  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
+  return a3.line - b2.line;
+}
+function apply(board, op) {
+  switch (op.op) {
+    case "add":
+      if (!board.issues.includes(op.task)) board.issues.push(op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      board.closed = false;
+      break;
+    case "remove":
+      board.issues = board.issues.filter((id) => id !== op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      delete board.groups[op.task];
+      break;
+    case "place":
+      if (op.group === null) delete board.groups[op.task];
+      else board.groups[op.task] = op.group;
+      break;
+    case "routine":
+      if (op.result === null) delete board.routines[op.task];
+      else board.routines[op.task] = op.result;
+      break;
+    case "carry":
+      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
+      break;
+    case "close":
+    case "reopen":
+      board.closed = op.op === "close";
+      break;
+  }
+}
+function replayBoard(initial, entries) {
+  const board = { ...emptyBoard(), ...structuredClone(initial) };
+  let lastClose = null;
+  for (const e3 of [...entries].sort(compareEntries)) {
+    apply(board, e3.op);
+    if (e3.op.op === "close") lastClose = e3.op.tasks;
+  }
+  const seen = lastClose;
+  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
+  return board;
+}
+
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
 var DEFAULT_LABEL_COLOR = "#d0d0d0";
@@ -2823,17 +2902,19 @@ function fileKind(path) {
   if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
+  if (BOARD_LOG_PATH_RE.test(path)) return "board";
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
   const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
   const problems = [];
+  const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
-        data.boards.push({ date: DAILY_PATH_RE.exec(path)[1], path, board: parseBoard(frontmatter[BOARD_KEY]) });
+        initialBoards.set(DAILY_PATH_RE.exec(path)[1], parseBoard(frontmatter[BOARD_KEY]));
       }
       continue;
     }
@@ -2860,6 +2941,21 @@ function collectVault(input) {
     const r3 = parseWorklog(path, text);
     problems.push(...r3.problems);
     data.worklogs.push(...r3.entries);
+  }
+  const logsByDate = /* @__PURE__ */ new Map();
+  for (const { path, text } of [...input.boardLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
+    const r3 = parseBoardLog(path, text);
+    problems.push(...r3.problems);
+    for (const e3 of r3.entries) logsByDate.set(e3.date, [...logsByDate.get(e3.date) ?? [], e3]);
+  }
+  for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
+    const logs = logsByDate.get(date) ?? [];
+    data.boards.push({
+      date,
+      path: dailyNotePath(date),
+      board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
+      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e3) => e3.atMs)) } : {}
+    });
   }
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
@@ -2924,7 +3020,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "worklog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "worklog" || kind === "board" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -2937,7 +3033,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null };
+    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -2947,6 +3043,7 @@ var TaskStore = class {
     for (const [path, text] of this.texts) {
       const kind = fileKind(path);
       if (kind === "worklog") input.worklogs.push({ path, text });
+      else if (kind === "board") input.boardLogs.push({ path, text });
       else if (kind === "labels") input.labels = text;
       else if (kind === "groups") input.groups = text;
     }
@@ -3046,38 +3143,15 @@ function upsertSummary(text, summary) {
 }
 
 // src/core/board-note.ts
-function closeBoardNote(text, date, index, yaml) {
+function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  const fm = /^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/.exec(text);
-  if (!fm) throw new Error("board \u306E frontmatter \u304C\u3042\u308A\u307E\u305B\u3093");
-  const raw = yaml.parse(fm[2]);
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("frontmatter \u304C\u4E0D\u6B63\u3067\u3059");
-  const fields = raw;
-  if (!("board" in fields)) throw new Error("board \u304C\u3042\u308A\u307E\u305B\u3093");
-  const board = parseBoardForWrite(fields.board);
-  if (board.closed) return text;
   for (const id of board.issues) {
     if (!index.issues.has(id)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
   }
   const remaining = unfinished(index, date, board);
   if (remaining.issues.length + remaining.routines.length > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
-  board.closed = true;
-  const eol = fm[1].endsWith("\r\n") ? "\r\n" : "\n";
-  const lines = fm[2].split(/\r?\n/);
-  const starts = lines.flatMap((line, i3) => /^(?:board|"board"|'board')\s*:/.test(line) ? [i3] : []);
-  if (starts.length !== 1) throw new Error("board \u306E\u4F4D\u7F6E\u3092\u5B89\u5168\u306B\u7279\u5B9A\u3067\u304D\u307E\u305B\u3093");
-  const start = starts[0];
-  let end = start + 1;
-  while (end < lines.length && /^(?:[ \t]|#|$)/.test(lines[end])) end++;
-  while (end > start + 1 && /^(?:\s*#.*|\s*)$/.test(lines[end - 1])) end--;
-  const replacement = yaml.stringify({ board: serializeBoard(board) }).trimEnd().split(/\r?\n/);
-  const nextFm = [...lines.slice(0, start), ...replacement, ...lines.slice(end)].join(eol);
-  const nextFields = yaml.parse(nextFm);
-  const withoutBoard = (value) => Object.fromEntries(Object.entries(value).filter(([key]) => key !== "board"));
-  if (JSON.stringify(withoutBoard(fields)) !== JSON.stringify(withoutBoard(nextFields))) throw new Error("board \u4EE5\u5916\u306E\u6B04\u304C\u5909\u308F\u308B\u305F\u3081\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093");
-  const next = fm[1] + nextFm + fm[3] + text.slice(fm[0].length);
-  return upsertSummary(next, boardSummary(index, date, board));
+  return upsertSummary(text, boardSummary(index, date, board));
 }
 
 // src/obsidian/writer.ts
@@ -3088,6 +3162,8 @@ var TaskWriter = class {
   }
   app;
   store;
+  /** この端末が最後に書いたボードの操作の時刻（索引に載る前の次の操作のため） */
+  lastBoardAt = 0;
   file(path) {
     const file = this.app.vault.getFileByPath(path);
     if (!file) throw new Error(`\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093: ${path}`);
@@ -3209,23 +3285,30 @@ var TaskWriter = class {
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
-  /** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
-  async updateBoard(date, mutate) {
-    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent());
-    await this.app.fileManager.processFrontMatter(file, (fm) => {
-      const board = parseBoardForWrite(fm[BOARD_KEY]);
-      mutate(board);
-      fm[BOARD_KEY] = serializeBoard(parseBoardForWrite(board));
+  /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
+  async appendBoardOps(date, device, ops) {
+    if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
+    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(boardLogPath(device, date)), "");
+    let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
+    const now = Date.now();
+    const lines = ops.map((op) => {
+      latest = nextBoardAt(now, latest);
+      return serializeBoardLogEntry({ id: newBoardLogId(), at: new Date(latest).toISOString(), date, ...op });
     });
+    await this.app.vault.process(file, (text) => lines.reduce(appendWorklogLine, text));
+    if (latest !== null) this.lastBoardAt = latest;
     this.store.refreshSoon();
   }
-  /** 未完了を再検査し、closed と要約を同じ vault.process で保存する。 */
-  async closeBoard(date) {
-    await this.app.vault.process(
-      this.file(dailyNotePath(date)),
-      (text) => closeBoardNote(text, date, this.store.index, { parse: import_obsidian11.parseYaml, stringify: import_obsidian11.stringifyYaml })
-    );
-    this.store.refreshSoon();
+  /** 未完了を再検査して本文に要約を書き、それから close を追記する。途中で失敗しても締め直せば要約は置き換わる */
+  async closeBoard(date, device) {
+    const { index } = this.store;
+    const board = index.board(date)?.board ?? emptyBoard();
+    if (board.closed) return;
+    if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
+    closeBoardNote("", date, index, board);
+    const note = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
+    await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
   /** task board のグループの定義を保存する */
   async saveGroups(groups) {
@@ -3312,11 +3395,7 @@ function guard(ctx, label, p3) {
 var addToBoard = (ctx, date, ids) => guard(
   ctx,
   "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    for (const id of ids) if (!b2.issues.includes(id)) b2.issues.push(id);
-    b2.carried = b2.carried.filter((id) => !ids.includes(id));
-    b2.closed = false;
-  })
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
 );
 async function createOnBoard(ctx, date, summary) {
   try {
@@ -3328,31 +3407,13 @@ async function createOnBoard(ctx, date, summary) {
     ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
-var removeFromBoard = (ctx, date, id) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    b2.issues = b2.issues.filter((x2) => x2 !== id);
-    b2.carried = b2.carried.filter((x2) => x2 !== id);
-    delete b2.groups[id];
-  })
-);
+var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
 var setPlacement = (ctx, date, id, group) => guard(
   ctx,
   "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    if (group === UNGROUPED) delete b2.groups[id];
-    else b2.groups[id] = group;
-  })
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
 );
-var setRoutineResult = (ctx, date, id, result) => guard(
-  ctx,
-  "routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    if (result === null) delete b2.routines[id];
-    else b2.routines[id] = result;
-  })
-);
+var setRoutineResult = (ctx, date, id, result) => guard(ctx, "routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]));
 async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
   let to = fixedTo;
   if (kind === "reschedule" && to === null) {
@@ -3363,27 +3424,19 @@ async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
     for (const issue of issues) {
       await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
     }
-    await ctx.writer.updateBoard(date, (b2) => {
-      markCarried(b2, issues.map((i3) => i3.id));
-    });
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
   } catch (e3) {
     ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
 async function closeBoard(ctx, date) {
   try {
-    await ctx.writer.closeBoard(date);
+    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
   } catch (e3) {
     ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
-var reopenBoard = (ctx, date) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    b2.closed = false;
-  })
-);
+var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
 function startTimer(ctx, ids) {
   return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
 }
@@ -3833,7 +3886,7 @@ function DailyView(props) {
       const u4 = unfinished(index, b2.date, b2.board);
       if (u4.issues.length + u4.routines.length > 0) continue;
       closing.current.add(b2.date);
-      void ctx.writer.closeBoard(b2.date).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
+      void ctx.writer.closeBoard(b2.date, ctx.settings.deviceName).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
     }
   });
   const next = () => {
@@ -4333,7 +4386,7 @@ function OrganizeView(props) {
   const queue = organizeQueue(ctx.store.index.issues.values(), today).filter((i3) => !handled.has(i3.id));
   const issue = queue[0];
   const excerpt = useExcerpt(ctx, issue);
-  const apply = async (patch, label) => {
+  const apply2 = async (patch, label) => {
     if (!issue) return;
     const full = { ...patch, reviewed: today };
     const prev = snapshot(issue, full);
@@ -4369,7 +4422,7 @@ function OrganizeView(props) {
         requireEstimate: isInbox(target),
         onSubmit: (date, est) => {
           close2();
-          void apply(schedulePatch(target, [date], est), `${formatShortDate(date)} \u306B\u4E88\u5B9A`);
+          void apply2(schedulePatch(target, [date], est), `${formatShortDate(date)} \u306B\u4E88\u5B9A`);
         },
         onPickDate: () => {
           close2();
@@ -4383,7 +4436,7 @@ function OrganizeView(props) {
                 requireEstimate: needEstimate,
                 onSubmit: (_2, est) => {
                   c22();
-                  void apply(schedulePatch(target, [d3], est), `${formatShortDate(d3)} \u306B\u4E88\u5B9A`);
+                  void apply2(schedulePatch(target, [d3], est), `${formatShortDate(d3)} \u306B\u4E88\u5B9A`);
                 },
                 onPickDate: () => void 0
               }
@@ -4394,10 +4447,10 @@ function OrganizeView(props) {
     ));
     modal.open();
   };
-  const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
-  const later = () => void apply({}, "\u3042\u3068\u3067");
-  const cancel = () => void apply(cancelPatch(), "Cancel");
-  const close = () => void apply(closePatch(), "Closed");
+  const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
+  const later = () => void apply2({}, "\u3042\u3068\u3067");
+  const cancel = () => void apply2(cancelPatch(), "Cancel");
+  const close = () => void apply2(closePatch(), "Closed");
   h2(() => {
     const onKey = (e3) => {
       if (!issue || !root.current || root.current.offsetParent === null) return;

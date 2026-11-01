@@ -1,4 +1,4 @@
-# ADR-0020: routine 画面の total / average と左サイドバーのナビゲーション View
+# ADR-0021: routine 画面の total / average と左サイドバーのナビゲーション View
 
 - 状態: 承認
 - 日付: 2026-11-01

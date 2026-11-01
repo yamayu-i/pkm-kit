@@ -16,7 +16,7 @@ interface NavItem {
 	count?: number;
 }
 
-/** 左サイドバー常駐のナビゲーション View（ADR-0020） */
+/** 左サイドバー常駐のナビゲーション View（ADR-0021） */
 export function SidebarView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);

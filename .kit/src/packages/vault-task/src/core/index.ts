@@ -14,7 +14,7 @@ export interface VaultData {
 	members: Member[];
 	labels: LabelDef[];
 	worklogs: WorklogEntry[];
-	/** デイリーノートの frontmatter にあるボードの状態 */
+	/** ボードの状態（操作ログの再生結果。ADR-0020） */
 	boards: DailyBoard[];
 	/** task board のグループ（issue/board-groups.json） */
 	groups: GroupDef[];
@@ -128,7 +128,7 @@ export class TaskIndex {
 		return new Map([...ms].map(([id, v]) => [id, v / 60_000]));
 	}
 
-	/** routine 画面の工数（ADR-0020）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+	/** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
 	routineEffort(taskId: string, now: number): { total: number; days: number; average: number | null } {
 		const total = this.effortMinutes(now).get(taskId) ?? 0;
 		const dates = new Set<LocalDate>();
@@ -165,7 +165,7 @@ export interface SidebarCounts {
 	routines: number;
 }
 
-/** 左サイドバーに出す各 View の件数（ADR-0020） */
+/** 左サイドバーに出す各 View の件数（ADR-0021） */
 export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts {
 	const issues = [...index.issues.values()];
 	const dead = deadIssues(issues, today);

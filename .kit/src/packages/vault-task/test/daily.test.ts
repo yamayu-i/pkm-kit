@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cancelPatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
-import { boardItems, dailyNotePath, placementOf, emptyBoard, parseBoard, pendingBoards, serializeBoard, unfinished, type DailyBoard } from "../src/core/board";
+import { boardItems, dailyNotePath, placementOf, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
 import { groupKeys, groupNameError, inGroup, parseGroups, serializeGroups } from "../src/core/groups";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
@@ -73,11 +73,9 @@ describe("dead / caution / scheduled", () => {
 });
 
 describe("board", () => {
-	it("frontmatter との読み書き。壊れた値は捨てる", () => {
+	it("既存の frontmatter を読む。壊れた値は捨てる", () => {
 		const b = parseBoard({ issues: ["i-1", "i-1", 3], groups: { "i-1": "午前", "r-1": 5 }, routines: { "r-1": "closed", "r-2": "done" }, closed: true });
 		expect(b).toEqual({ issues: ["i-1"], groups: { "i-1": "午前" }, routines: { "r-1": "closed" }, carried: [], closed: true });
-		expect(serializeBoard(emptyBoard())).toEqual({});
-		expect(parseBoard(serializeBoard(b))).toEqual(b);
 		expect(dailyNotePath("2026-10-31")).toBe("daily/2026/10/2026-10-31.md");
 	});
 

@@ -16,7 +16,7 @@ import { ScheduledView } from "./views/ScheduledView";
 import { SidebarView } from "./views/SidebarView";
 import { SomedayView } from "./views/SomedayView";
 
-/** View の一覧（ADR-0009, 0010, 0020） */
+/** View の一覧（ADR-0009, 0010, 0021） */
 const VIEWS: ViewSpec[] = [
 	{ type: "vault-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
 	{ type: "vault-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
