@@ -46,6 +46,27 @@ function asList(value: unknown): unknown[] {
 	return Array.isArray(value) ? value : [value];
 }
 
+function serializeMonthSpec(spec: MonthSpec): number | string {
+	switch (spec.kind) {
+		case "day":
+			return spec.day;
+		case "last":
+			return "last";
+		case "nth":
+			return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
+		case "lastWeekday":
+			return `last-${WEEKDAY_NAMES[spec.weekday]}`;
+	}
+}
+
+/** frontmatter に書く形。interval が 1 なら省く */
+export function serializeRepeat(rule: RepeatRule): Record<string, unknown> {
+	const interval = rule.interval > 1 ? { interval: rule.interval } : {};
+	if (rule.every === "day") return { every: "day", ...interval };
+	if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w) => WEEKDAY_NAMES[w]) };
+	return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
+}
+
 /** frontmatter の `repeat` を読む */
 export function parseRepeat(value: unknown): ParseResult<RepeatRule> {
 	if (typeof value !== "object" || value === null || Array.isArray(value)) {

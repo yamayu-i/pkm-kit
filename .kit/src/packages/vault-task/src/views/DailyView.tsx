@@ -7,7 +7,7 @@ import type { Issue } from "../core/schema";
 import { boardSummary } from "../core/summary";
 import { addToBoard, carryIssues } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues, scheduleToday } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues, scheduleIssues, scheduleToday } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow, useStoreVersion } from "../ui/hooks";
@@ -49,12 +49,13 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 				<span class="vt-field-label">{props.title}</span>
 				<span class="vt-count">{issues.length}</span>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} empty={props.empty} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "mid_due", "deadline"]} empty={props.empty} />
 			{issues.length > 0 && (
 				<ActionBar
 					count={sel.length}
 					actions={[
-						...(props.canScheduleToday ? [{ label: "今日やる", icon: "calendar-check", tone: "primary" as const, run: () => void scheduleToday(ctx, sel).then(done) }] : []),
+						...(props.canScheduleToday ? [{ label: "Do Today", icon: "calendar-check", tone: "primary" as const, run: () => void scheduleToday(ctx, sel).then(done) }] : []),
+						{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 						{ label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
 						{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 						{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
@@ -93,10 +94,11 @@ function PreviousBoard(props: { ctx: TaskContext; board: DailyBoard; issues: Iss
 				<span class="vt-field-label">{formatShortDate(board.date)} のボード</span>
 				<span class="vt-count">{issues.length}</span>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "deadline"]} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} />
 			<ActionBar
 				count={sel.length}
 				actions={[
+					{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void carryIssues(ctx, board.date, sel, "reschedule", localToday()).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
@@ -122,7 +124,7 @@ function ScheduledStep(props: { ctx: TaskContext; issues: Issue[]; today: LocalD
 					すべてボードへ
 				</button>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "mid_due", "deadline", "estimated"]} />
 			<ActionBar
 				count={sel.length}
 				actions={[

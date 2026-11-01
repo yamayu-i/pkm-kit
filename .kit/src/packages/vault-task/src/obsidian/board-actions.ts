@@ -1,5 +1,5 @@
 import { inboxPatch, reschedulePatch } from "../core/actions";
-import { emptyBoard, type BoardState, type RoutineResult } from "../core/board";
+import { emptyBoard, markCarried, type BoardState, type RoutineResult } from "../core/board";
 import type { LocalDate } from "../core/dates";
 import { UNGROUPED } from "../core/groups";
 import type { Issue } from "../core/schema";
@@ -69,11 +69,12 @@ export const setRoutineResult = (ctx: TaskContext, date: LocalDate, id: string, 
 	);
 
 /**
- * ボードの issue をリスケ / Inbox で片付ける。ボードには残し、未完了に数えない（carried）
+ * ボードの issue をリスケ / Inbox で片付ける。ボードには残し、未完了に数えない（carried）。
+ * fixedTo があれば日付を聞かずにそこへ移す（Do Today / Do Tomorrow。ADR-0018）
  */
-export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Issue[], kind: "reschedule" | "inbox"): Promise<void> {
-	let to: LocalDate | null = null;
-	if (kind === "reschedule") {
+export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Issue[], kind: "reschedule" | "inbox", fixedTo: LocalDate | null = null): Promise<void> {
+	let to = fixedTo;
+	if (kind === "reschedule" && to === null) {
 		to = await askDate(ctx, "実行日を移す");
 		if (to === null) return;
 	}
@@ -82,7 +83,7 @@ export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Iss
 			await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to!, date));
 		}
 		await ctx.writer.updateBoard(date, (b) => {
-			for (const i of issues) if (!b.carried.includes(i.id)) b.carried.push(i.id);
+			markCarried(b, issues.map((i) => i.id));
 		});
 	} catch (e) {
 		ctx.report("片付けられませんでした", e);

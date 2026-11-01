@@ -1475,11 +1475,15 @@ button.vt-badge:disabled::after {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+	/* 列が多い表は、ページではなく表の中で横に動かす */
+	overflow-x: auto;
 }
 
 .vt-tr {
 	display: grid;
-	grid-template-columns: 20px minmax(0, 1fr) 80px 120px repeat(var(--vt-cols), 112px);
+	grid-template-columns: 20px minmax(200px, 1fr) 96px 120px repeat(var(--vt-cols), 96px) 32px;
+	/* 行ごとに幅が変わると列がずれるので、列の幅の合計から決める（固定の列と余白で 544px、補助の列は 1 つ 108px） */
+	min-width: calc(544px + 108px * var(--vt-cols));
 	align-items: center;
 	gap: 12px;
 	min-height: 48px;
@@ -1534,6 +1538,38 @@ button.vt-badge:disabled::after {
 	color: var(--vt-primary);
 }
 
+/* セルの編集ボタン。枠を出さず、ホバーで押せることを示す */
+.vt-table .vt-cell-edit {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	height: auto;
+	min-height: var(--vt-size-target-min);
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-s);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font-family: inherit;
+	font-size: var(--vt-type-body-small-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-table .vt-cell-edit:hover {
+	background: var(--vt-surface-container-high);
+}
+
+/* 表を横に動かしても「…」は見えるままにする */
+.vt-col-menu {
+	position: sticky;
+	right: 0;
+	display: flex;
+	justify-content: flex-end;
+	background: inherit;
+}
+
 .vt-cell-summary {
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1578,9 +1614,10 @@ button.vt-badge:disabled::after {
 @container (max-width: 720px) {
 	.vt-tr {
 		grid-template-columns: 20px minmax(0, 1fr) auto auto;
+		min-width: 0;
 	}
 
-	.vt-tr > [class*="vt-col-"]:not(.vt-col-main, .vt-col-status, .vt-col-deadline),
+	.vt-tr > [class*="vt-col-"]:not(.vt-col-main, .vt-col-status, .vt-col-deadline, .vt-col-menu),
 	.vt-thead {
 		display: none;
 	}
@@ -1595,6 +1632,11 @@ button.vt-badge:disabled::after {
 
 	.vt-tr > .vt-col-deadline:has(.vt-muted) {
 		display: none;
+	}
+
+	.vt-tr > .vt-col-menu {
+		grid-row: 1;
+		grid-column: 4;
 	}
 }
 
@@ -2168,6 +2210,7 @@ button.vt-badge:disabled::after {
 
 	.vt-swipe-hint.is-left:not(.is-active),
 	.vt-swipe-hint.is-right:not(.is-active) {
+		visibility: hidden;
 		opacity: 0;
 	}
 
@@ -2358,6 +2401,67 @@ button.vt-badge:disabled::after {
 
 .vt-routine-item.is-paused .vt-routine-summary {
 	color: var(--vt-on-surface-variant);
+}
+
+/* routine 画面（ADR-0018） */
+.vt-routine-title {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.vt-routine-title .vt-title {
+	flex: 1;
+	min-width: 0;
+}
+
+.vt-routine-results {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-results {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.vt-result {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 36px;
+	padding: 4px 0;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+}
+
+.vt-result.is-closed {
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+}
+
+.vt-result.is-canceled {
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+}
+
+.vt-result.is-off {
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-result-weekday {
+	font-size: var(--vt-type-label-small-size);
+}
+
+.vt-result-mark {
+	min-height: 1.2em;
+	font-weight: var(--vt-weight-bold);
 }
 
 .vt-routine-main {

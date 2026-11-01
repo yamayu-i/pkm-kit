@@ -1,12 +1,14 @@
 import { Keymap, Menu } from "obsidian";
+import type { ComponentChild } from "preact";
 import { useState } from "preact/hooks";
 import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { dueLevel } from "../core/due";
-import { formatMinutes, parseDaysInput } from "../core/format";
+import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
-import { PRIORITIES, STATUSES, STATUS_DETAIL_MAX, type Issue, type Status } from "../core/schema";
+import { STATUSES, type Issue, type Status } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { IssueSuggestModal, MemberSuggestModal, PreactModal } from "../obsidian/modals";
+import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
+import { IssueSuggestModal, PreactModal } from "../obsidian/modals";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
 import { CalendarForm, DateForm, DayCell, TextForm, WorklogForm } from "../ui/forms";
@@ -14,13 +16,11 @@ import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
 import { Pager } from "../ui/Pager";
-import { LabelForm } from "../ui/LabelForm";
 import { linkProps } from "../ui/a11y";
 
-const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 const WORKLOG_PAGE = 5;
 
-function formatDateTime(value: string | number | null): string {
+export function formatDateTime(value: string | number | null): string {
 	if (value === null) return "—";
 	const d = new Date(value);
 	if (Number.isNaN(d.getTime())) return "—";
@@ -50,14 +50,14 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 				<span>created {formatDateTime(issue.created)}</span>
 				<span>updated {formatDateTime(ctx.store.mtime(path))}</span>
 			</div>
-			<Title issue={issue} save={save} />
+			<SummaryField badge={<IdBadge issue={issue} />} summary={issue.summary} save={save} />
 			<section class="vt-card">
 				<div class="vt-row vt-halves">
 					<StatusField ctx={ctx} issue={issue} index={index} save={save} />
 				</div>
 				<div class="vt-row vt-chips">
-					<PriorityField issue={issue} save={save} />
-					<LabelsField ctx={ctx} issue={issue} index={index} save={save} />
+					<PriorityBadge priority={issue.priority} onClick={(e) => priorityMenu(e, issue.priority, save)} />
+					<LabelsField ctx={ctx} labels={issue.labels} index={index} save={save} />
 				</div>
 			</section>
 			<section class="vt-card">
@@ -71,7 +71,7 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 			</section>
 			<Effort ctx={ctx} issue={issue} index={index} save={save} />
 			<hr class="vt-sep" />
-			<Worklog ctx={ctx} issue={issue} index={index} />
+			<Worklog ctx={ctx} taskId={issue.id} index={index} />
 			<hr class="vt-sep" />
 		</div>
 	);
@@ -79,20 +79,21 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 
 type Save = (fields: Record<string, FieldValue>, target?: string) => void;
 
-function Title(props: { issue: Issue; save: Save }) {
-	const { issue, save } = props;
+/** ID と summary。summary はクリックで編集する（issue と routine で共通） */
+export function SummaryField(props: { badge: ComponentChild; summary: string; save: Save }) {
+	const { summary, save } = props;
 	const [editing, setEditing] = useState(false);
 	const commit = (value: string) => {
 		setEditing(false);
-		if (value.trim() && value.trim() !== issue.summary) save({ summary: value.trim() });
+		if (value.trim() && value.trim() !== summary) save({ summary: value.trim() });
 	};
 	return (
 		<div class="vt-title">
-			<IdBadge issue={issue} />
+			{props.badge}
 			{editing ? (
 				<input
 					class="vt-summary-input"
-					value={issue.summary}
+					value={summary}
 					ref={(el) => el?.focus()}
 					onBlur={(e) => commit(e.currentTarget.value)}
 					onKeyDown={(e) => {
@@ -102,7 +103,7 @@ function Title(props: { issue: Issue; save: Save }) {
 				/>
 			) : (
 				<span class="vt-summary" onClick={() => setEditing(true)} title="クリックで編集">
-					{issue.summary || "（summary なし）"}
+					{summary || "（summary なし）"}
 					<Icon name="pencil" class="vt-hover-icon" />
 				</span>
 			)}
@@ -110,23 +111,12 @@ function Title(props: { issue: Issue; save: Save }) {
 	);
 }
 
-function pickMember(ctx: TaskContext, index: TaskIndex, onPick: (id: string) => void): void {
-	new MemberSuggestModal(ctx.app, [...index.members.values()], (choice) => {
-		if (choice.kind === "member") onPick(choice.member.id);
-		else
-			void ctx.writer
-				.createMember(choice.name)
-				.then(onPick)
-				.catch((e) => ctx.report("委任先を作れませんでした", e));
-	}).open();
-}
-
 function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
 	const { ctx, issue, index, save } = props;
 	const change = (next: Status) => {
 		if (next === issue.status) return;
 		if (next === "delegated") {
-			pickMember(ctx, index, (id) => save({ status: next, delegated_to: id }));
+			pickMember(ctx, (id) => save({ status: next, delegated_to: id }));
 			return;
 		}
 		const fields: Record<string, FieldValue> = { status: next, delegated_to: null };
@@ -140,18 +130,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 		for (const s of STATUSES) m.addItem((item) => item.setTitle(s).setChecked(s === issue.status).onClick(() => change(s)));
 		m.showAtMouseEvent(e);
 	};
-	const editDetail = () =>
-		new PreactModal(ctx.app, "status-detail", (close) => (
-			<TextForm
-				initial={issue.statusDetail}
-				maxLength={STATUS_DETAIL_MAX}
-				placeholder="例: 返事待ち"
-				onSubmit={(v) => {
-					close();
-					save({ "status-detail": v });
-				}}
-			/>
-		)).open();
+	const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
 	const editRevisit = () =>
 		new PreactModal(ctx.app, "revisit（この日を過ぎたら Organize に出す）", (close) => (
 			<DateForm
@@ -168,7 +147,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 			<StatusBadge status={issue.status} wide onClick={menu} />
 			<div class="vt-status-detail">
 				{issue.status === "delegated" && (
-					<button class="vt-field-chip" onClick={() => pickMember(ctx, index, (id) => save({ delegated_to: id }))}>
+					<button class="vt-field-chip" onClick={() => pickMember(ctx, (id) => save({ delegated_to: id }))}>
 						<Icon name="user" />
 						{member ? member.name : issue.delegatedTo ?? "委任先を選ぶ"}
 					</button>
@@ -188,40 +167,17 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 	);
 }
 
-function PriorityField(props: { issue: Issue; save: Save }) {
-	const menu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const p of PRIORITIES) m.addItem((item) => item.setTitle(p).setChecked(p === props.issue.priority).onClick(() => props.save({ priority: p })));
-		m.addItem((item) => item.setTitle("なし").onClick(() => props.save({ priority: null })));
-		m.showAtMouseEvent(e);
-	};
-	return <PriorityBadge priority={props.issue.priority} onClick={menu} />;
-}
-
-function LabelsField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
-	const { ctx, issue, index, save } = props;
+export function LabelsField(props: { ctx: TaskContext; labels: string[]; index: TaskIndex; save: Save }) {
+	const { ctx, labels, index, save } = props;
 	const colors = new Map(index.data.labels.map((l) => [l.name, l.color]));
-	const edit = () =>
-		new PreactModal(ctx.app, "label", (close) => (
-			<LabelForm
-				labels={index.data.labels}
-				initial={issue.labels}
-				onCreate={(name) => ctx.writer.addLabel(name)}
-				onSubmit={(names) => {
-					close();
-					save({ label: names });
-				}}
-				onError={(e) => ctx.report("label を追加できませんでした", e)}
-			/>
-		)).open();
 	return (
-		<button class="vt-labels" onClick={edit} title="label を編集">
-			{issue.labels.map((name) => (
+		<button class="vt-labels" onClick={() => editLabels(ctx, labels, save)} title="label を編集">
+			{labels.map((name) => (
 				<LabelBadge name={name} color={colors.get(name) ?? "var(--background-modifier-border)"} />
 			))}
 			<span class="vt-badge vt-label is-empty">
-				<Icon name={issue.labels.length === 0 ? "tag" : "pencil"} />
-				{issue.labels.length === 0 ? "label" : ""}
+				<Icon name={labels.length === 0 ? "tag" : "pencil"} />
+				{labels.length === 0 ? "label" : ""}
 			</span>
 		</button>
 	);
@@ -385,28 +341,7 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
 	const { ctx, issue, index, save } = props;
 	const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
-	const menu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const min of ESTIMATE_PRESETS) m.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
-		m.addItem((item) =>
-			item.setTitle("日数で入力…").onClick(() =>
-				new PreactModal(ctx.app, "estimated（日数。1d = 8h）", (close) => (
-					<TextForm
-						initial={issue.estimated === null ? "" : String(issue.estimated / 480)}
-						placeholder="例: 0.5"
-						onSubmit={(v) => {
-							const min = parseDaysInput(v);
-							if (min === null) return ctx.report(`日数として読めません: ${v}`);
-							close();
-							save({ estimated: min });
-						}}
-					/>
-				)).open(),
-			),
-		);
-		m.addItem((item) => item.setTitle("クリア").onClick(() => save({ estimated: null })));
-		m.showAtMouseEvent(e);
-	};
+	const menu = (e: MouseEvent) => estimateMenu(ctx, e, issue.estimated, save);
 	return (
 		<div class="vt-effort">
 			<button class="vt-effort-cell is-editable" onClick={menu}>
@@ -477,8 +412,9 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 	);
 }
 
-function Worklog(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
-	const { ctx, issue } = props;
+/** worklog の一覧と追加（issue と routine で共通） */
+export function Worklog(props: { ctx: TaskContext; taskId: string; index: TaskIndex }) {
+	const { ctx, taskId } = props;
 	const [page, setPage] = useState(0);
 	const add = () => {
 		const now = Date.now();
@@ -489,13 +425,13 @@ function Worklog(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
 					close();
 					const from = new Date(d.fromMs);
 					void ctx.writer
-						.addWorklog(issue.id, ctx.settings.deviceName, { from: localDateTime(from), to: d.toMs === null ? null : localDateTime(new Date(d.toMs)), description: d.description }, from)
+						.addWorklog(taskId, ctx.settings.deviceName, { from: localDateTime(from), to: d.toMs === null ? null : localDateTime(new Date(d.toMs)), description: d.description }, from)
 						.catch((e) => ctx.report("worklog を追加できませんでした", e));
 				}}
 			/>
 		)).open();
 	};
-	const logs = props.index.data.worklogs.filter((l) => l.taskId === props.issue.id).sort((a, b) => b.fromMs - a.fromMs);
+	const logs = props.index.data.worklogs.filter((l) => l.taskId === taskId).sort((a, b) => b.fromMs - a.fromMs);
 	const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
 	const current = Math.min(page, pages - 1);
 	const shown = logs.slice(current * WORKLOG_PAGE, (current + 1) * WORKLOG_PAGE);

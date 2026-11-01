@@ -23,12 +23,12 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
-var import_obsidian4 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -401,6 +401,24 @@ function asList(value) {
   if (value === void 0 || value === null) return [];
   return Array.isArray(value) ? value : [value];
 }
+function serializeMonthSpec(spec) {
+  switch (spec.kind) {
+    case "day":
+      return spec.day;
+    case "last":
+      return "last";
+    case "nth":
+      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
+    case "lastWeekday":
+      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
+  }
+}
+function serializeRepeat(rule) {
+  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
+  if (rule.every === "day") return { every: "day", ...interval };
+  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
+  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
+}
 function parseRepeat(value) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
@@ -704,7 +722,7 @@ function newDailyContent() {
 }
 
 // src/header/IssueHeader.tsx
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
@@ -1008,137 +1026,49 @@ function parseDaysInput(input) {
   return Math.round(Number(m3[1]) * MINUTES_PER_DAY);
 }
 
-// src/obsidian/modals.ts
-var import_obsidian = require("obsidian");
-var PreactModal = class extends import_obsidian.Modal {
-  constructor(app, title, view) {
-    super(app);
-    this.title = title;
-    this.view = view;
-  }
-  title;
-  view;
-  onOpen() {
-    this.setTitle(this.title);
-    R(k(() => this.view(() => this.close()), {}), this.contentEl);
-  }
-  onClose() {
-    R(null, this.contentEl);
-  }
-};
-var IssueSuggestModal = class extends import_obsidian.FuzzySuggestModal {
-  constructor(app, items, onChoose, placeholder = "issue \u3092\u691C\u7D22\uFF08ID / summary\uFF09") {
-    super(app);
-    this.items = items;
-    this.onChoose = onChoose;
-    this.setPlaceholder(placeholder);
-  }
-  items;
-  onChoose;
-  getItems() {
-    return this.items;
-  }
-  getItemText(issue) {
-    return `${issue.id} ${issue.summary}`;
-  }
-  onChooseItem(issue) {
-    this.onChoose(issue);
-  }
-};
-var BoardIssueModal = class extends import_obsidian.SuggestModal {
-  constructor(app, items, onChoose) {
-    super(app);
-    this.items = items;
-    this.onChoose = onChoose;
-    this.setPlaceholder("issue \u3092\u691C\u7D22\u3002\u306A\u3051\u308C\u3070 summary \u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
-  }
-  items;
-  onChoose;
-  getSuggestions(query) {
-    const summary = query.trim();
-    if (!summary) return this.items.map((issue) => ({ kind: "issue", issue }));
-    const match = (0, import_obsidian.prepareFuzzySearch)(summary);
-    const hits = this.items.map((issue) => ({ issue, result: match(`${issue.id} ${issue.summary}`) })).filter((h3) => h3.result !== null).sort((a3, b2) => b2.result.score - a3.result.score).map(({ issue }) => ({ kind: "issue", issue }));
-    return [...hits, { kind: "create", summary }];
-  }
-  renderSuggestion(choice, el) {
-    if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
-    else el.createEl("div", { text: `\uFF0B\u300C${choice.summary}\u300D\u3092\u4F5C\u6210\u3057\u3066\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B` });
-  }
-  onChooseSuggestion(choice) {
-    this.onChoose(choice);
-  }
-};
-var MemberSuggestModal = class extends import_obsidian.SuggestModal {
-  constructor(app, members, onChoose) {
-    super(app);
-    this.members = members;
-    this.onChoose = onChoose;
-    this.setPlaceholder("\u59D4\u4EFB\u5148\u3092\u540D\u524D\u3067\u691C\u7D22\u3002\u306A\u3051\u308C\u3070\u540D\u524D\u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
-  }
-  members;
-  onChoose;
-  getSuggestions(query) {
-    const q2 = query.trim().toLowerCase();
-    const hits = this.members.filter((m3) => m3.name.toLowerCase().includes(q2)).map((member) => ({ kind: "member", member }));
-    if (q2 && !this.members.some((m3) => m3.name.toLowerCase() === q2)) hits.push({ kind: "create", name: query.trim() });
-    return hits;
-  }
-  renderSuggestion(choice, el) {
-    if (choice.kind === "member") el.createEl("div", { text: choice.member.name });
-    else el.createEl("div", { text: `\uFF0B\u300C${choice.name}\u300D\u3092\u65B0\u3057\u304F\u4F5C\u308B` });
-  }
-  onChooseSuggestion(choice) {
-    this.onChoose(choice);
-  }
-};
+// src/obsidian/issue-editors.tsx
+var import_obsidian3 = require("obsidian");
 
-// src/ui/Icon.tsx
-var import_obsidian2 = require("obsidian");
-
-// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
-var f3 = 0;
-function u3(e3, t3, n2, o3, i3, u4) {
-  t3 || (t3 = {});
-  var a3, c3, p3 = t3;
-  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
-  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
-  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
-  return l.vnode && l.vnode(l3), l3;
+// src/core/actions.ts
+function cancelPatch() {
+  return { status: "canceled", mid_due: null, deadline: null, delegated_to: null, revisit: null };
 }
-
-// src/ui/Icon.tsx
-function Icon(props) {
-  const ref = A2(null);
-  h2(() => {
-    if (!ref.current) return;
-    ref.current.replaceChildren();
-    (0, import_obsidian2.setIcon)(ref.current, props.name);
-  }, [props.name]);
-  return /* @__PURE__ */ u3("span", { ref, class: `vt-icon ${props.class ?? ""}`, "aria-hidden": "true" });
+function closePatch() {
+  return { status: "closed", delegated_to: null, revisit: null };
 }
-
-// src/ui/badges.tsx
-function StatusBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-dot" }),
-    props.status,
-    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
+function inboxPatch() {
+  return { status: "open", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit: null };
 }
-function IdBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
+function somedayPatch(revisit = null) {
+  return { status: "someday", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit };
 }
-var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
-function PriorityBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
-    props.priority ?? "priority",
-    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
+function reopenPatch() {
+  return { status: "open", revisit: null };
 }
-function LabelBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
+function statusPatch(status, delegatedTo = null) {
+  if (status === "closed") return closePatch();
+  if (status === "canceled") return cancelPatch();
+  if (status === "someday") return somedayPatch();
+  return { status, delegated_to: status === "delegated" ? delegatedTo : null, revisit: null };
+}
+function duePatch(issue, key, date) {
+  return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function scheduledPatch(issue, dates) {
+  return { scheduled: dates, ...issue.status === "someday" && dates.length > 0 ? reopenPatch() : {} };
+}
+function reschedulePatch(issue, target, to, from = null) {
+  if (target !== "scheduled") return { [target]: to };
+  const dates = new Set(issue.scheduled);
+  if (from !== null) dates.delete(from);
+  dates.add(to);
+  return { scheduled: [...dates].sort() };
+}
+function schedulePatch(issue, dates, estimated = null) {
+  const patch = { scheduled: [.../* @__PURE__ */ new Set([...issue.scheduled, ...dates])].sort() };
+  if (issue.status === "someday") Object.assign(patch, reopenPatch());
+  if (estimated !== null) patch.estimated = estimated;
+  return patch;
 }
 
 // src/core/date-input.ts
@@ -1191,6 +1121,31 @@ function parseTimeInput(input) {
   const m3 = /^(\d{2}):?(\d{2})$/.exec(input.trim());
   if (!m3 || Number(m3[1]) > 23 || Number(m3[2]) > 59) return null;
   return `${m3[1]}:${m3[2]}`;
+}
+
+// src/ui/Icon.tsx
+var import_obsidian = require("obsidian");
+
+// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
+var f3 = 0;
+function u3(e3, t3, n2, o3, i3, u4) {
+  t3 || (t3 = {});
+  var a3, c3, p3 = t3;
+  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
+  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
+  return l.vnode && l.vnode(l3), l3;
+}
+
+// src/ui/Icon.tsx
+function Icon(props) {
+  const ref = A2(null);
+  h2(() => {
+    if (!ref.current) return;
+    ref.current.replaceChildren();
+    (0, import_obsidian.setIcon)(ref.current, props.name);
+  }, [props.name]);
+  return /* @__PURE__ */ u3("span", { ref, class: `vt-icon ${props.class ?? ""}`, "aria-hidden": "true" });
 }
 
 // src/ui/forms.tsx
@@ -1440,6 +1395,286 @@ function WorklogForm(props) {
   );
 }
 
+// src/ui/LabelForm.tsx
+function LabelForm(props) {
+  const [selected, setSelected] = d2(new Set(props.initial));
+  const [extra, setExtra] = d2([]);
+  const [draft, setDraft] = d2("");
+  const names = [...props.labels.map((l3) => l3.name), ...extra.filter((n2) => !props.labels.some((l3) => l3.name === n2))];
+  for (const n2 of props.initial) if (!names.includes(n2)) names.push(n2);
+  const toggle2 = (name) => {
+    const next = new Set(selected);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setSelected(next);
+  };
+  const create = (e3) => {
+    e3.preventDefault();
+    const name = draft.trim();
+    if (!name) return;
+    props.onCreate(name).then(() => {
+      setExtra([...extra, name]);
+      setSelected(/* @__PURE__ */ new Set([...selected, name]));
+      setDraft("");
+    }).catch(props.onError);
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-label-form", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: names.map((name) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(name), onChange: () => toggle2(name) }),
+      name
+    ] })) }),
+    /* @__PURE__ */ u3("form", { class: "vt-form", onSubmit: create, children: [
+      /* @__PURE__ */ u3("input", { type: "text", placeholder: "\u65B0\u3057\u3044 label", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
+      /* @__PURE__ */ u3("button", { type: "submit", children: "\u8FFD\u52A0" })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { class: "mod-cta", onClick: () => props.onSubmit(names.filter((n2) => selected.has(n2))), children: "\u4FDD\u5B58" }) })
+  ] });
+}
+
+// src/obsidian/modals.ts
+var import_obsidian2 = require("obsidian");
+var PreactModal = class extends import_obsidian2.Modal {
+  constructor(app, title, view) {
+    super(app);
+    this.title = title;
+    this.view = view;
+  }
+  title;
+  view;
+  onOpen() {
+    this.setTitle(this.title);
+    R(k(() => this.view(() => this.close()), {}), this.contentEl);
+  }
+  onClose() {
+    R(null, this.contentEl);
+  }
+};
+var IssueSuggestModal = class extends import_obsidian2.FuzzySuggestModal {
+  constructor(app, items, onChoose, placeholder = "issue \u3092\u691C\u7D22\uFF08ID / summary\uFF09") {
+    super(app);
+    this.items = items;
+    this.onChoose = onChoose;
+    this.setPlaceholder(placeholder);
+  }
+  items;
+  onChoose;
+  getItems() {
+    return this.items;
+  }
+  getItemText(issue) {
+    return `${issue.id} ${issue.summary}`;
+  }
+  onChooseItem(issue) {
+    this.onChoose(issue);
+  }
+};
+var BoardIssueModal = class extends import_obsidian2.SuggestModal {
+  constructor(app, items, onChoose) {
+    super(app);
+    this.items = items;
+    this.onChoose = onChoose;
+    this.setPlaceholder("issue \u3092\u691C\u7D22\u3002\u306A\u3051\u308C\u3070 summary \u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+  }
+  items;
+  onChoose;
+  getSuggestions(query) {
+    const summary = query.trim();
+    if (!summary) return this.items.map((issue) => ({ kind: "issue", issue }));
+    const match = (0, import_obsidian2.prepareFuzzySearch)(summary);
+    const hits = this.items.map((issue) => ({ issue, result: match(`${issue.id} ${issue.summary}`) })).filter((h3) => h3.result !== null).sort((a3, b2) => b2.result.score - a3.result.score).map(({ issue }) => ({ kind: "issue", issue }));
+    return [...hits, { kind: "create", summary }];
+  }
+  renderSuggestion(choice, el) {
+    if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
+    else el.createEl("div", { text: `\uFF0B\u300C${choice.summary}\u300D\u3092\u4F5C\u6210\u3057\u3066\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B` });
+  }
+  onChooseSuggestion(choice) {
+    this.onChoose(choice);
+  }
+};
+var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
+  constructor(app, members, onChoose) {
+    super(app);
+    this.members = members;
+    this.onChoose = onChoose;
+    this.setPlaceholder("\u59D4\u4EFB\u5148\u3092\u540D\u524D\u3067\u691C\u7D22\u3002\u306A\u3051\u308C\u3070\u540D\u524D\u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+  }
+  members;
+  onChoose;
+  getSuggestions(query) {
+    const q2 = query.trim().toLowerCase();
+    const hits = this.members.filter((m3) => m3.name.toLowerCase().includes(q2)).map((member) => ({ kind: "member", member }));
+    if (q2 && !this.members.some((m3) => m3.name.toLowerCase() === q2)) hits.push({ kind: "create", name: query.trim() });
+    return hits;
+  }
+  renderSuggestion(choice, el) {
+    if (choice.kind === "member") el.createEl("div", { text: choice.member.name });
+    else el.createEl("div", { text: `\uFF0B\u300C${choice.name}\u300D\u3092\u65B0\u3057\u304F\u4F5C\u308B` });
+  }
+  onChooseSuggestion(choice) {
+    this.onChoose(choice);
+  }
+};
+
+// src/obsidian/issue-editors.tsx
+var ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
+var saveIssue = (ctx, issue) => (fields) => void ctx.writer.update(issue.path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+function pickMember(ctx, onPick) {
+  new MemberSuggestModal(ctx.app, [...ctx.store.index.members.values()], (choice) => {
+    if (choice.kind === "member") onPick(choice.member.id);
+    else
+      void ctx.writer.createMember(choice.name).then(onPick).catch((e3) => ctx.report("\u59D4\u4EFB\u5148\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  }).open();
+}
+function priorityMenu(e3, current, save) {
+  const m3 = new import_obsidian3.Menu();
+  for (const p3 of PRIORITIES) m3.addItem((item) => item.setTitle(p3).setChecked(p3 === current).onClick(() => save({ priority: p3 })));
+  m3.addItem((item) => item.setTitle("\u306A\u3057").onClick(() => save({ priority: null })));
+  m3.showAtMouseEvent(e3);
+}
+function editLabels(ctx, current, save) {
+  new PreactModal(ctx.app, "label", (close) => /* @__PURE__ */ u3(
+    LabelForm,
+    {
+      labels: ctx.store.index.data.labels,
+      initial: current,
+      onCreate: (name) => ctx.writer.addLabel(name),
+      onSubmit: (names) => {
+        close();
+        save({ label: names });
+      },
+      onError: (e3) => ctx.report("label \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
+    }
+  )).open();
+}
+function editStatusDetail(ctx, current, save) {
+  new PreactModal(ctx.app, "status-detail", (close) => /* @__PURE__ */ u3(
+    TextForm,
+    {
+      initial: current,
+      maxLength: STATUS_DETAIL_MAX,
+      placeholder: "\u4F8B: \u8FD4\u4E8B\u5F85\u3061",
+      onSubmit: (v3) => {
+        close();
+        save({ "status-detail": v3 });
+      }
+    }
+  )).open();
+}
+function estimateMenu(ctx, e3, current, save) {
+  const m3 = new import_obsidian3.Menu();
+  for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
+  m3.addItem(
+    (item) => item.setTitle("\u65E5\u6570\u3067\u5165\u529B\u2026").onClick(
+      () => new PreactModal(ctx.app, "estimated\uFF08\u65E5\u6570\u30021d = 8h\uFF09", (close) => /* @__PURE__ */ u3(
+        TextForm,
+        {
+          initial: current === null ? "" : String(current / 480),
+          placeholder: "\u4F8B: 0.5",
+          onSubmit: (v3) => {
+            const min = parseDaysInput(v3);
+            if (min === null) return ctx.report(`\u65E5\u6570\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
+            close();
+            save({ estimated: min });
+          }
+        }
+      )).open()
+    )
+  );
+  m3.addItem((item) => item.setTitle("\u30AF\u30EA\u30A2").onClick(() => save({ estimated: null })));
+  m3.showAtMouseEvent(e3);
+}
+function statusMenu(ctx, e3, issue) {
+  const save = saveIssue(ctx, issue);
+  const m3 = new import_obsidian3.Menu();
+  for (const s3 of STATUSES) {
+    m3.addItem(
+      (item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => {
+        if (s3 === issue.status) return;
+        if (s3 === "delegated") pickMember(ctx, (id) => save(statusPatch(s3, id)));
+        else save(statusPatch(s3));
+      })
+    );
+  }
+  m3.showAtMouseEvent(e3);
+}
+function editDue(ctx, issue, key) {
+  new PreactModal(ctx.app, key, (close) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial: key === "mid_due" ? issue.midDue : issue.deadline,
+      onSubmit: (v3) => {
+        close();
+        saveIssue(ctx, issue)(duePatch(issue, key, v3));
+      }
+    }
+  )).open();
+}
+function editScheduled(ctx, issue) {
+  new PreactModal(ctx.app, "\u5B9F\u884C\u65E5", (close) => /* @__PURE__ */ u3(
+    CalendarForm,
+    {
+      initial: issue.scheduled,
+      midDue: issue.midDue,
+      deadline: issue.deadline,
+      onSubmit: (dates) => {
+        close();
+        saveIssue(ctx, issue)(scheduledPatch(issue, dates));
+      }
+    }
+  )).open();
+}
+function editSummary(ctx, issue) {
+  new PreactModal(ctx.app, "summary", (close) => /* @__PURE__ */ u3(
+    TextForm,
+    {
+      initial: issue.summary,
+      onSubmit: (v3) => {
+        close();
+        if (v3 && v3 !== issue.summary) saveIssue(ctx, issue)({ summary: v3 });
+      }
+    }
+  )).open();
+}
+function issueRowMenu(ctx, e3, issue) {
+  const save = saveIssue(ctx, issue);
+  const m3 = new import_obsidian3.Menu();
+  m3.addItem((item) => item.setTitle("summary").setIcon("pencil").onClick(() => editSummary(ctx, issue)));
+  m3.addItem((item) => item.setTitle("status").setIcon("circle-dot").onClick(() => statusMenu(ctx, e3, issue)));
+  m3.addItem((item) => item.setTitle("status-detail").setIcon("pencil").onClick(() => editStatusDetail(ctx, issue.statusDetail, save)));
+  m3.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e3, issue.priority, save)));
+  m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
+  m3.addSeparator();
+  m3.addItem((item) => item.setTitle("\u5B9F\u884C\u65E5").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+  m3.addItem((item) => item.setTitle("mid_due").setIcon("calendar").onClick(() => editDue(ctx, issue, "mid_due")));
+  m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
+  m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
+  m3.showAtMouseEvent(e3);
+}
+
+// src/ui/badges.tsx
+function StatusBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-dot" }),
+    props.status,
+    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function IdBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
+}
+var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
+function PriorityBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    props.priority ?? "priority",
+    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function LabelBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
+}
+
 // src/ui/hooks.ts
 function useStoreVersion(store) {
   const [version, setVersion] = d2(store.version);
@@ -1479,42 +1714,6 @@ function Pager(props) {
   ] });
 }
 
-// src/ui/LabelForm.tsx
-function LabelForm(props) {
-  const [selected, setSelected] = d2(new Set(props.initial));
-  const [extra, setExtra] = d2([]);
-  const [draft, setDraft] = d2("");
-  const names = [...props.labels.map((l3) => l3.name), ...extra.filter((n2) => !props.labels.some((l3) => l3.name === n2))];
-  for (const n2 of props.initial) if (!names.includes(n2)) names.push(n2);
-  const toggle2 = (name) => {
-    const next = new Set(selected);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    setSelected(next);
-  };
-  const create = (e3) => {
-    e3.preventDefault();
-    const name = draft.trim();
-    if (!name) return;
-    props.onCreate(name).then(() => {
-      setExtra([...extra, name]);
-      setSelected(/* @__PURE__ */ new Set([...selected, name]));
-      setDraft("");
-    }).catch(props.onError);
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-label-form", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: names.map((name) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
-      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(name), onChange: () => toggle2(name) }),
-      name
-    ] })) }),
-    /* @__PURE__ */ u3("form", { class: "vt-form", onSubmit: create, children: [
-      /* @__PURE__ */ u3("input", { type: "text", placeholder: "\u65B0\u3057\u3044 label", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
-      /* @__PURE__ */ u3("button", { type: "submit", children: "\u8FFD\u52A0" })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { class: "mod-cta", onClick: () => props.onSubmit(names.filter((n2) => selected.has(n2))), children: "\u4FDD\u5B58" }) })
-  ] });
-}
-
 // src/ui/a11y.ts
 function linkProps(open) {
   return {
@@ -1531,7 +1730,6 @@ function linkProps(open) {
 }
 
 // src/header/IssueHeader.tsx
-var ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 var WORKLOG_PAGE = 5;
 function formatDateTime(value) {
   if (value === null) return "\u2014";
@@ -1563,12 +1761,12 @@ function IssueHeader(props) {
         formatDateTime(ctx.store.mtime(path))
       ] })
     ] }),
-    /* @__PURE__ */ u3(Title, { issue, save }),
+    /* @__PURE__ */ u3(SummaryField, { badge: /* @__PURE__ */ u3(IdBadge, { issue }), summary: issue.summary, save }),
     /* @__PURE__ */ u3("section", { class: "vt-card", children: [
       /* @__PURE__ */ u3("div", { class: "vt-row vt-halves", children: /* @__PURE__ */ u3(StatusField, { ctx, issue, index, save }) }),
       /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
-        /* @__PURE__ */ u3(PriorityField, { issue, save }),
-        /* @__PURE__ */ u3(LabelsField, { ctx, issue, index, save })
+        /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: (e3) => priorityMenu(e3, issue.priority, save) }),
+        /* @__PURE__ */ u3(LabelsField, { ctx, labels: issue.labels, index, save })
       ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3("div", { class: "vt-row vt-schedule", children: [
@@ -1578,24 +1776,24 @@ function IssueHeader(props) {
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }) }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
-    /* @__PURE__ */ u3(Worklog, { ctx, issue, index }),
+    /* @__PURE__ */ u3(Worklog, { ctx, taskId: issue.id, index }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" })
   ] });
 }
-function Title(props) {
-  const { issue, save } = props;
+function SummaryField(props) {
+  const { summary, save } = props;
   const [editing, setEditing] = d2(false);
   const commit = (value) => {
     setEditing(false);
-    if (value.trim() && value.trim() !== issue.summary) save({ summary: value.trim() });
+    if (value.trim() && value.trim() !== summary) save({ summary: value.trim() });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-title", children: [
-    /* @__PURE__ */ u3(IdBadge, { issue }),
+    props.badge,
     editing ? /* @__PURE__ */ u3(
       "input",
       {
         class: "vt-summary-input",
-        value: issue.summary,
+        value: summary,
         ref: (el) => el?.focus(),
         onBlur: (e3) => commit(e3.currentTarget.value),
         onKeyDown: (e3) => {
@@ -1604,24 +1802,17 @@ function Title(props) {
         }
       }
     ) : /* @__PURE__ */ u3("span", { class: "vt-summary", onClick: () => setEditing(true), title: "\u30AF\u30EA\u30C3\u30AF\u3067\u7DE8\u96C6", children: [
-      issue.summary || "\uFF08summary \u306A\u3057\uFF09",
+      summary || "\uFF08summary \u306A\u3057\uFF09",
       /* @__PURE__ */ u3(Icon, { name: "pencil", class: "vt-hover-icon" })
     ] })
   ] });
-}
-function pickMember(ctx, index, onPick) {
-  new MemberSuggestModal(ctx.app, [...index.members.values()], (choice) => {
-    if (choice.kind === "member") onPick(choice.member.id);
-    else
-      void ctx.writer.createMember(choice.name).then(onPick).catch((e3) => ctx.report("\u59D4\u4EFB\u5148\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-  }).open();
 }
 function StatusField(props) {
   const { ctx, issue, index, save } = props;
   const change = (next) => {
     if (next === issue.status) return;
     if (next === "delegated") {
-      pickMember(ctx, index, (id) => save({ status: next, delegated_to: id }));
+      pickMember(ctx, (id) => save({ status: next, delegated_to: id }));
       return;
     }
     const fields = { status: next, delegated_to: null };
@@ -1630,22 +1821,11 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian3.Menu();
+    const m3 = new import_obsidian4.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
-  const editDetail = () => new PreactModal(ctx.app, "status-detail", (close) => /* @__PURE__ */ u3(
-    TextForm,
-    {
-      initial: issue.statusDetail,
-      maxLength: STATUS_DETAIL_MAX,
-      placeholder: "\u4F8B: \u8FD4\u4E8B\u5F85\u3061",
-      onSubmit: (v3) => {
-        close();
-        save({ "status-detail": v3 });
-      }
-    }
-  )).open();
+  const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
   const editRevisit = () => new PreactModal(ctx.app, "revisit\uFF08\u3053\u306E\u65E5\u3092\u904E\u304E\u305F\u3089 Organize \u306B\u51FA\u3059\uFF09", (close) => /* @__PURE__ */ u3(
     DateForm,
     {
@@ -1660,7 +1840,7 @@ function StatusField(props) {
   return /* @__PURE__ */ u3(S, { children: [
     /* @__PURE__ */ u3(StatusBadge, { status: issue.status, wide: true, onClick: menu }),
     /* @__PURE__ */ u3("div", { class: "vt-status-detail", children: [
-      issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, index, (id) => save({ delegated_to: id })), children: [
+      issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, (id) => save({ delegated_to: id })), children: [
         /* @__PURE__ */ u3(Icon, { name: "user" }),
         member ? member.name : issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076"
       ] }),
@@ -1676,36 +1856,14 @@ function StatusField(props) {
     ] })
   ] });
 }
-function PriorityField(props) {
-  const menu = (e3) => {
-    const m3 = new import_obsidian3.Menu();
-    for (const p3 of PRIORITIES) m3.addItem((item) => item.setTitle(p3).setChecked(p3 === props.issue.priority).onClick(() => props.save({ priority: p3 })));
-    m3.addItem((item) => item.setTitle("\u306A\u3057").onClick(() => props.save({ priority: null })));
-    m3.showAtMouseEvent(e3);
-  };
-  return /* @__PURE__ */ u3(PriorityBadge, { priority: props.issue.priority, onClick: menu });
-}
 function LabelsField(props) {
-  const { ctx, issue, index, save } = props;
+  const { ctx, labels, index, save } = props;
   const colors = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
-  const edit = () => new PreactModal(ctx.app, "label", (close) => /* @__PURE__ */ u3(
-    LabelForm,
-    {
-      labels: index.data.labels,
-      initial: issue.labels,
-      onCreate: (name) => ctx.writer.addLabel(name),
-      onSubmit: (names) => {
-        close();
-        save({ label: names });
-      },
-      onError: (e3) => ctx.report("label \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
-    }
-  )).open();
-  return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: edit, title: "label \u3092\u7DE8\u96C6", children: [
-    issue.labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors.get(name) ?? "var(--background-modifier-border)" })),
+  return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: () => editLabels(ctx, labels, save), title: "label \u3092\u7DE8\u96C6", children: [
+    labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors.get(name) ?? "var(--background-modifier-border)" })),
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: [
-      /* @__PURE__ */ u3(Icon, { name: issue.labels.length === 0 ? "tag" : "pencil" }),
-      issue.labels.length === 0 ? "label" : ""
+      /* @__PURE__ */ u3(Icon, { name: labels.length === 0 ? "tag" : "pencil" }),
+      labels.length === 0 ? "label" : ""
     ] })
   ] });
 }
@@ -1770,7 +1928,7 @@ function DueFields(props) {
 function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian3.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
+    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian4.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
     props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", title: "\u5916\u3059", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }
@@ -1783,7 +1941,7 @@ function Relations(props) {
     new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "\u89AA\u306B\u3059\u308B issue \u3092\u691C\u7D22").open();
   };
   const addChild = (e3) => {
-    const m3 = new import_obsidian3.Menu();
+    const m3 = new import_obsidian4.Menu();
     m3.addItem(
       (item) => item.setTitle("\u65E2\u5B58\u306E issue \u3092\u5B50\u306B\u3059\u308B").onClick(() => {
         const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
@@ -1833,29 +1991,7 @@ function Relations(props) {
 function Effort(props) {
   const { ctx, issue, index, save } = props;
   const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
-  const menu = (e3) => {
-    const m3 = new import_obsidian3.Menu();
-    for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
-    m3.addItem(
-      (item) => item.setTitle("\u65E5\u6570\u3067\u5165\u529B\u2026").onClick(
-        () => new PreactModal(ctx.app, "estimated\uFF08\u65E5\u6570\u30021d = 8h\uFF09", (close) => /* @__PURE__ */ u3(
-          TextForm,
-          {
-            initial: issue.estimated === null ? "" : String(issue.estimated / 480),
-            placeholder: "\u4F8B: 0.5",
-            onSubmit: (v3) => {
-              const min = parseDaysInput(v3);
-              if (min === null) return ctx.report(`\u65E5\u6570\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
-              close();
-              save({ estimated: min });
-            }
-          }
-        )).open()
-      )
-    );
-    m3.addItem((item) => item.setTitle("\u30AF\u30EA\u30A2").onClick(() => save({ estimated: null })));
-    m3.showAtMouseEvent(e3);
-  };
+  const menu = (e3) => estimateMenu(ctx, e3, issue.estimated, save);
   return /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
     /* @__PURE__ */ u3("button", { class: "vt-effort-cell is-editable", onClick: menu, children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
@@ -1920,7 +2056,7 @@ function WorklogItem(props) {
   ] });
 }
 function Worklog(props) {
-  const { ctx, issue } = props;
+  const { ctx, taskId } = props;
   const [page, setPage] = d2(0);
   const add = () => {
     const now = Date.now();
@@ -1931,12 +2067,12 @@ function Worklog(props) {
         onSubmit: (d3) => {
           close();
           const from = new Date(d3.fromMs);
-          void ctx.writer.addWorklog(issue.id, ctx.settings.deviceName, { from: localDateTime(from), to: d3.toMs === null ? null : localDateTime(new Date(d3.toMs)), description: d3.description }, from).catch((e3) => ctx.report("worklog \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+          void ctx.writer.addWorklog(taskId, ctx.settings.deviceName, { from: localDateTime(from), to: d3.toMs === null ? null : localDateTime(new Date(d3.toMs)), description: d3.description }, from).catch((e3) => ctx.report("worklog \u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
         }
       }
     )).open();
   };
-  const logs = props.index.data.worklogs.filter((l3) => l3.taskId === props.issue.id).sort((a3, b2) => b2.fromMs - a3.fromMs);
+  const logs = props.index.data.worklogs.filter((l3) => l3.taskId === taskId).sort((a3, b2) => b2.fromMs - a3.fromMs);
   const pages = Math.max(1, Math.ceil(logs.length / WORKLOG_PAGE));
   const current = Math.min(page, pages - 1);
   const shown = logs.slice(current * WORKLOG_PAGE, (current + 1) * WORKLOG_PAGE);
@@ -1959,8 +2095,353 @@ function Worklog(props) {
   ] });
 }
 
+// src/header/RoutineHeader.tsx
+var import_obsidian5 = require("obsidian");
+
+// src/core/board.ts
+var BOARD_KEY = "board";
+function emptyBoard() {
+  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function parseBoard(value) {
+  const raw = record(value);
+  const board = emptyBoard();
+  if (Array.isArray(raw.issues)) {
+    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
+  }
+  if (Array.isArray(raw.carried)) {
+    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
+  }
+  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
+  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
+  board.closed = raw.closed === true;
+  return board;
+}
+function serializeBoard(board) {
+  const out = {};
+  if (board.issues.length > 0) out.issues = board.issues;
+  if (Object.keys(board.groups).length > 0) out.groups = board.groups;
+  if (Object.keys(board.routines).length > 0) out.routines = board.routines;
+  if (board.carried.length > 0) out.carried = board.carried;
+  if (board.closed) out.closed = true;
+  return out;
+}
+function dailyNotePath(date) {
+  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+}
+var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function boardItems(index, date, board) {
+  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
+  return { issues, routines: index.routinesOn(date) };
+}
+function unfinished(index, date, board) {
+  const items = boardItems(index, date, board);
+  return {
+    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
+    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
+  };
+}
+function markCarried(board, ids) {
+  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
+}
+function routineResults(index, routine, today, days) {
+  return Array.from({ length: days }, (_2, i3) => {
+    const date = addDays(today, i3 - days + 1);
+    const result = index.board(date)?.board.routines[routine.id];
+    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
+  });
+}
+function pendingBoards(index, boards, today) {
+  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
+    const u4 = unfinished(index, b2.date, b2.board);
+    return u4.issues.length > 0 || u4.routines.length > 0;
+  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
+}
+function placementOf(board, id, fallback, keys) {
+  const key = board.groups[id] ?? fallback ?? "";
+  return key !== "" && keys.includes(key) ? key : "";
+}
+
+// src/core/groups.ts
+var GROUPS_PATH = "issue/board-groups.json";
+var UNGROUPED = "";
+function parseGroup(value, depth, problems) {
+  const o3 = typeof value === "object" && value !== null ? value : {};
+  const name = typeof o3.name === "string" ? o3.name.trim() : "";
+  if (!name || name.includes("/")) {
+    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
+    return null;
+  }
+  const children = [];
+  if (Array.isArray(o3.children)) {
+    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
+    else
+      for (const c3 of o3.children) {
+        const g2 = parseGroup(c3, depth + 1, problems);
+        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
+      }
+  }
+  return { name, children };
+}
+function parseGroups(text) {
+  const messages = [];
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  const groups = [];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const g2 = parseGroup(item, 0, messages);
+      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
+    }
+  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
+}
+function serializeGroups(groups) {
+  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
+  return `${JSON.stringify(groups.map(strip), null, 2)}
+`;
+}
+function groupNameError(name, siblings, current) {
+  const n2 = name.trim();
+  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
+  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
+  return null;
+}
+function groupKeys(groups) {
+  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
+}
+function inGroup(key, group) {
+  return key === group || key.startsWith(`${group}/`);
+}
+
+// src/ui/RepeatFields.tsx
+function defaultRepeatDraft() {
+  return { every: "week", interval: 1, weekdays: ["mon"], monthText: "1" };
+}
+function repeatDraftOf(rule) {
+  if (rule === null) return defaultRepeatDraft();
+  const on = serializeRepeat(rule).on ?? [];
+  return {
+    ...defaultRepeatDraft(),
+    every: rule.every,
+    interval: rule.interval,
+    ...rule.every === "week" ? { weekdays: on } : {},
+    ...rule.every === "month" ? { monthText: on.join(", ") } : {}
+  };
+}
+function readRepeatDraft(draft) {
+  const { every, interval } = draft;
+  const on = every === "week" ? draft.weekdays : every === "month" ? draft.monthText.split(/[,\s]+/).filter(Boolean).map((s3) => /^\d+$/.test(s3) ? Number(s3) : s3) : void 0;
+  const repeat = { every, ...interval > 1 ? { interval } : {}, ...on ? { on } : {} };
+  const parsed = parseRepeat(repeat);
+  const badMonth = every === "month" && on.some((v3) => parseMonthSpec(v3) === null);
+  return {
+    repeat,
+    error: !parsed.ok ? parsed.error : badMonth ? "\u65E5\u4ED8\u306E\u66F8\u304D\u65B9\u304C\u8AAD\u3081\u307E\u305B\u3093" : null,
+    description: parsed.ok ? describeRepeat(parsed.value) : ""
+  };
+}
+function RepeatFields(props) {
+  const { draft, onChange } = props;
+  const set = (patch) => onChange({ ...draft, ...patch });
+  return /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "\u304F\u308A\u8FD4\u3057" }),
+      /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
+        [
+          ["day", "\u6BCE\u65E5"],
+          ["week", "\u6BCE\u9031"],
+          ["month", "\u6BCE\u6708"]
+        ].map(([v3, label]) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-filter-chip${draft.every === v3 ? " is-on" : ""}`, onClick: () => set({ every: v3 }), children: label })),
+        /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u9593\u9694" }),
+        /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "number", min: 1, value: draft.interval, onInput: (e3) => set({ interval: Math.max(1, Number(e3.currentTarget.value) || 1) }) })
+      ] })
+    ] }),
+    draft.every === "week" && /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [1, 2, 3, 4, 5, 6, 0].map((w3) => {
+      const name = WEEKDAY_NAMES[w3];
+      const onDay = draft.weekdays.includes(name);
+      return /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: `vt-filter-chip${onDay ? " is-on" : ""}`,
+          onClick: () => set({ weekdays: onDay ? draft.weekdays.filter((x2) => x2 !== name) : [...draft.weekdays, name] }),
+          children: name
+        }
+      );
+    }) }),
+    draft.every === "month" && /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "\u65E5\u4ED8\uFF08\u30AB\u30F3\u30DE\u533A\u5207\u308A\u300215 / last = \u6708\u672B / 2th-tue = \u7B2C 2 \u706B\u66DC / last-fri = \u6700\u7D42\u91D1\u66DC\uFF09" }),
+      /* @__PURE__ */ u3("input", { type: "text", value: draft.monthText, onInput: (e3) => set({ monthText: e3.currentTarget.value }) })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-muted", children: readRepeatDraft(draft).description })
+  ] });
+}
+
+// src/header/RoutineHeader.tsx
+var RESULT_DAYS = 14;
+var RESULT_MARK = { closed: "\u2713", canceled: "\xD7", none: "\u30FB", off: "" };
+var RESULT_LABEL = { closed: "closed", canceled: "canceled", none: "\u672A\u8A18\u9332", off: "\u4E88\u5B9A\u306A\u3057" };
+function RepeatForm(props) {
+  const [draft, setDraft] = d2(repeatDraftOf(props.rule));
+  const read = readRepeatDraft(draft);
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-worklog-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (read.error === null) props.onSubmit(read.repeat);
+      },
+      children: [
+        /* @__PURE__ */ u3(RepeatFields, { draft, onChange: setDraft }),
+        read.error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: read.error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: read.error !== null, children: "\u4FDD\u5B58" }) })
+      ]
+    }
+  );
+}
+function Results(props) {
+  return /* @__PURE__ */ u3("div", { class: "vt-routine-results", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
+      "\u76F4\u8FD1 ",
+      RESULT_DAYS,
+      " \u65E5"
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-results", children: props.results.map((r3) => {
+      const label = `${r3.date} ${RESULT_LABEL[r3.state]}`;
+      return /* @__PURE__ */ u3("div", { class: `vt-result is-${r3.state}`, title: label, "aria-label": label, role: "img", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-result-weekday", children: WEEKDAY_NAMES[weekdayOf(r3.date)] }),
+        /* @__PURE__ */ u3("span", { class: "vt-num", children: Number(r3.date.slice(8, 10)) }),
+        /* @__PURE__ */ u3("span", { class: "vt-result-mark", children: RESULT_MARK[r3.state] })
+      ] });
+    }) }),
+    /* @__PURE__ */ u3("div", { class: "vt-muted", children: "\u2713 closed\u3000\xD7 canceled\u3000\u30FB \u672A\u8A18\u9332\u3000\u7A7A\u6B04 \u4E88\u5B9A\u306A\u3057" })
+  ] });
+}
+function RoutineHeader(props) {
+  const { ctx, path } = props;
+  useStoreVersion(ctx.store);
+  const index = ctx.store.index;
+  const routine = [...index.routines.values()].find((r3) => r3.path === path);
+  if (!routine) {
+    return /* @__PURE__ */ u3("div", { class: "vt-header-missing", children: "routine \u306E frontmatter \u3092\u8AAD\u3081\u307E\u305B\u3093\uFF08type / id \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF09" });
+  }
+  const save = (fields) => void ctx.writer.update(path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const editRepeat = () => new PreactModal(ctx.app, "\u304F\u308A\u8FD4\u3057", (close) => /* @__PURE__ */ u3(
+    RepeatForm,
+    {
+      rule: routine.repeat,
+      onSubmit: (repeat) => {
+        close();
+        save({ repeat });
+      }
+    }
+  )).open();
+  const editDate = (key, current) => () => new PreactModal(ctx.app, key, (close) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial: current,
+      onSubmit: (v3) => {
+        close();
+        save({ [key]: v3 });
+      }
+    }
+  )).open();
+  const groupMenu = (e3) => {
+    const m3 = new import_obsidian5.Menu();
+    for (const key of ["", ...groupKeys(index.data.groups)]) {
+      m3.addItem(
+        (item) => item.setTitle(key || "\u672A\u5206\u985E").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
+      );
+    }
+    m3.showAtMouseEvent(e3);
+  };
+  const actual = index.effortMinutes(Date.now()).get(routine.id) ?? 0;
+  return /* @__PURE__ */ u3("div", { class: "vt-issue", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
+      /* @__PURE__ */ u3("span", { children: [
+        "created ",
+        formatDateTime(routine.created)
+      ] }),
+      /* @__PURE__ */ u3("span", { children: [
+        "updated ",
+        formatDateTime(ctx.store.mtime(path))
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-routine-title", children: [
+      /* @__PURE__ */ u3(SummaryField, { badge: /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: routine.id }), summary: routine.summary, save }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: `vt-switch${routine.active ? " is-on" : ""}`,
+          role: "switch",
+          "aria-checked": routine.active,
+          "aria-label": routine.active ? "\u4E00\u6642\u505C\u6B62\u3059\u308B" : "\u518D\u958B\u3059\u308B",
+          title: routine.active ? "\u4E00\u6642\u505C\u6B62\u3059\u308B" : "\u518D\u958B\u3059\u308B",
+          onClick: () => save({ active: !routine.active }),
+          children: /* @__PURE__ */ u3("span", { class: "vt-switch-thumb" })
+        }
+      )
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
+        /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRepeat, children: [
+          /* @__PURE__ */ u3(Icon, { name: "repeat" }),
+          routine.repeat ? describeRepeat(routine.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093"
+        ] }),
+        /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editDate("start", routine.start), children: [
+          /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+          "start ",
+          routine.start ? formatShortDate(routine.start) : "\u2014"
+        ] }),
+        /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editDate("end", routine.end), children: [
+          /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+          "end ",
+          routine.end ? formatShortDate(routine.end) : "\u2014"
+        ] })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
+        /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: groupMenu, children: [
+          /* @__PURE__ */ u3(Icon, { name: "layout-grid" }),
+          routine.group ?? "\u672A\u5206\u985E"
+        ] }),
+        /* @__PURE__ */ u3(PriorityBadge, { priority: routine.priority, onClick: (e3) => priorityMenu(e3, routine.priority, save) }),
+        /* @__PURE__ */ u3(LabelsField, { ctx, labels: routine.labels, index, save })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Results, { results: routineResults(index, routine, localToday(), RESULT_DAYS) }) }),
+    /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-effort-cell is-editable", onClick: (e3) => estimateMenu(ctx, e3, routine.estimated, save), children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
+          "estimated",
+          /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+        ] }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: routine.estimated === null ? "\u2014" : formatMinutes(routine.estimated) })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
+    /* @__PURE__ */ u3(Worklog, { ctx, taskId: routine.id, index }),
+    /* @__PURE__ */ u3("hr", { class: "vt-sep" })
+  ] });
+}
+
 // src/header/extension.ts
 var ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
+var ROUTINE_PATH_RE = /^routine\/[^/]+\.md$/;
 var HeaderWidget = class extends import_view.WidgetType {
   constructor(ctx, path) {
     super();
@@ -1975,7 +2456,7 @@ var HeaderWidget = class extends import_view.WidgetType {
   toDOM() {
     const el = document.createElement("div");
     el.className = "vt-header";
-    R(k(IssueHeader, { ctx: this.ctx, path: this.path }), el);
+    R(k(ROUTINE_PATH_RE.test(this.path) ? RoutineHeader : IssueHeader, { ctx: this.ctx, path: this.path }), el);
     return el;
   }
   destroy(dom) {
@@ -1988,10 +2469,10 @@ var HeaderWidget = class extends import_view.WidgetType {
 };
 function issueHeaderExtension(ctx) {
   const pathOf = (state) => {
-    const path = state.field(import_obsidian4.editorInfoField, false)?.file?.path ?? null;
-    return path !== null && ISSUE_PATH_RE.test(path) ? path : null;
+    const path = state.field(import_obsidian6.editorInfoField, false)?.file?.path ?? null;
+    return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path)) ? path : null;
   };
-  const livePreviewOf = (state) => state.field(import_obsidian4.editorLivePreviewField, false) === true;
+  const livePreviewOf = (state) => state.field(import_obsidian6.editorLivePreviewField, false) === true;
   const build = (state) => {
     const path = pathOf(state);
     const livePreview = livePreviewOf(state);
@@ -2016,7 +2497,7 @@ function issueHeaderExtension(ctx) {
 }
 
 // src/obsidian/capture.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/core/capture.ts
 var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
@@ -2053,7 +2534,7 @@ function CaptureForm(props) {
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         summaries.length,
         " \u4EF6\u4F5C\u6210\u3057\u307E\u3059",
-        import_obsidian5.Platform.isMobile ? "" : "\uFF08Mod+Enter\uFF09"
+        import_obsidian7.Platform.isMobile ? "" : "\uFF08Mod+Enter\uFF09"
       ] }),
       /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "\u4F5C\u6210" })
     ] })
@@ -2083,7 +2564,7 @@ function showCreatedNotice(ctx, created, failed) {
       void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
     });
   }
-  notice = new import_obsidian5.Notice(fragment, NOTICE_MS);
+  notice = new import_obsidian7.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
   new PreactModal(ctx.app, "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
@@ -2098,7 +2579,7 @@ function openCaptureModal(ctx) {
 }
 
 // src/obsidian/settings.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -2187,7 +2668,7 @@ function appendWorklogLine(text, line) {
 
 // src/obsidian/settings.ts
 var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
-var TaskSettingTab = class extends import_obsidian6.PluginSettingTab {
+var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -2197,7 +2678,7 @@ var TaskSettingTab = class extends import_obsidian6.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian6.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08vault-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+    new import_obsidian8.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08vault-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
       (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
@@ -2207,122 +2688,7 @@ var TaskSettingTab = class extends import_obsidian6.PluginSettingTab {
 };
 
 // src/obsidian/store.ts
-var import_obsidian7 = require("obsidian");
-
-// src/core/board.ts
-var BOARD_KEY = "board";
-function emptyBoard() {
-  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
-}
-function record(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-}
-function parseBoard(value) {
-  const raw = record(value);
-  const board = emptyBoard();
-  if (Array.isArray(raw.issues)) {
-    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
-  }
-  if (Array.isArray(raw.carried)) {
-    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
-  }
-  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
-  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
-  board.closed = raw.closed === true;
-  return board;
-}
-function serializeBoard(board) {
-  const out = {};
-  if (board.issues.length > 0) out.issues = board.issues;
-  if (Object.keys(board.groups).length > 0) out.groups = board.groups;
-  if (Object.keys(board.routines).length > 0) out.routines = board.routines;
-  if (board.carried.length > 0) out.carried = board.carried;
-  if (board.closed) out.closed = true;
-  return out;
-}
-function dailyNotePath(date) {
-  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
-}
-var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
-function boardItems(index, date, board) {
-  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
-  return { issues, routines: index.routinesOn(date) };
-}
-function unfinished(index, date, board) {
-  const items = boardItems(index, date, board);
-  return {
-    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
-    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
-  };
-}
-function pendingBoards(index, boards, today) {
-  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return u4.issues.length > 0 || u4.routines.length > 0;
-  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
-}
-function placementOf(board, id, fallback, keys) {
-  const key = board.groups[id] ?? fallback ?? "";
-  return key !== "" && keys.includes(key) ? key : "";
-}
-
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-var UNGROUPED = "";
-function parseGroup(value, depth, problems) {
-  const o3 = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o3.name === "string" ? o3.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o3.children)) {
-    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c3 of o3.children) {
-        const g2 = parseGroup(c3, depth + 1, problems);
-        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g2 = parseGroup(item, 0, messages);
-      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-function serializeGroups(groups) {
-  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
-  return `${JSON.stringify(groups.map(strip), null, 2)}
-`;
-}
-function groupNameError(name, siblings, current) {
-  const n2 = name.trim();
-  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
-  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
-  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
-  return null;
-}
-function groupKeys(groups) {
-  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
-}
-function inGroup(key, group) {
-  return key === group || key.startsWith(`${group}/`);
-}
+var import_obsidian9 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -2434,15 +2800,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian7.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian7.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian9.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian9.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian7.TFile) this.touch(file);
+        if (file instanceof import_obsidian9.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian7.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian9.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -2501,9 +2867,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian8.ItemView {
+  class PreactView extends import_obsidian10.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -2525,7 +2891,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -2641,7 +3007,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian9.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian11.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
@@ -2655,7 +3021,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian9.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian11.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -2690,7 +3056,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian9.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian11.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -2712,13 +3078,13 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
   async updateBoard(date, mutate) {
-    const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(dailyNotePath(date)), newDailyContent());
+    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent());
     await this.app.fileManager.processFrontMatter(file, (fm) => {
       const board = parseBoard(fm[BOARD_KEY]);
       mutate(board);
@@ -2728,7 +3094,7 @@ var TaskWriter = class {
   }
   /** ボードを締めたときの要約をデイリーノートの本文に書く */
   async writeSummary(date, summary) {
-    const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(dailyNotePath(date)), newDailyContent());
+    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent());
     await this.app.vault.process(file, (text) => upsertSummary(text, summary));
   }
   /** task board のグループの定義を保存する */
@@ -2741,7 +3107,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian9.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian11.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -2774,36 +3140,6 @@ function cautionIssues(issues, today, days = 3) {
 }
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
   return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
-}
-
-// src/core/actions.ts
-function cancelPatch() {
-  return { status: "canceled", mid_due: null, deadline: null, delegated_to: null, revisit: null };
-}
-function closePatch() {
-  return { status: "closed", delegated_to: null, revisit: null };
-}
-function inboxPatch() {
-  return { status: "open", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit: null };
-}
-function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit };
-}
-function reopenPatch() {
-  return { status: "open", revisit: null };
-}
-function reschedulePatch(issue, target, to, from = null) {
-  if (target !== "scheduled") return { [target]: to };
-  const dates = new Set(issue.scheduled);
-  if (from !== null) dates.delete(from);
-  dates.add(to);
-  return { scheduled: [...dates].sort() };
-}
-function schedulePatch(issue, dates, estimated = null) {
-  const patch = { scheduled: [.../* @__PURE__ */ new Set([...issue.scheduled, ...dates])].sort() };
-  if (issue.status === "someday") Object.assign(patch, reopenPatch());
-  if (estimated !== null) patch.estimated = estimated;
-  return patch;
 }
 
 // src/obsidian/issue-actions.tsx
@@ -2850,6 +3186,11 @@ var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somed
 async function scheduleToday(ctx, issues) {
   await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
   ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
+}
+async function scheduleIssues(ctx, issues) {
+  const date = await askDate(ctx, "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059");
+  if (date === null) return;
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
 }
 async function rescheduleIssues(ctx, issues, target, from = null) {
   const title = target === "scheduled" ? "\u5B9F\u884C\u65E5\u3092\u79FB\u3059" : `${target} \u3092\u30EA\u30B9\u30B1`;
@@ -2909,9 +3250,9 @@ var setRoutineResult = (ctx, date, id, result) => guard(
     else b2.routines[id] = result;
   })
 );
-async function carryIssues(ctx, date, issues, kind) {
-  let to = null;
-  if (kind === "reschedule") {
+async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
+  let to = fixedTo;
+  if (kind === "reschedule" && to === null) {
     to = await askDate(ctx, "\u5B9F\u884C\u65E5\u3092\u79FB\u3059");
     if (to === null) return;
   }
@@ -2920,7 +3261,7 @@ async function carryIssues(ctx, date, issues, kind) {
       await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
     }
     await ctx.writer.updateBoard(date, (b2) => {
-      for (const i3 of issues) if (!b2.carried.includes(i3.id)) b2.carried.push(i3.id);
+      markCarried(b2, issues.map((i3) => i3.id));
     });
   } catch (e3) {
     ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -2955,7 +3296,7 @@ function stopTimer(ctx, ids) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian10 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "mid_due", "deadline"];
@@ -2970,19 +3311,24 @@ function IssueTable(props) {
   const all = selected !== void 0 && issues.length > 0 && issues.every((i3) => selected.has(i3.id));
   if (issues.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: props.empty ?? "\u3042\u308A\u307E\u305B\u3093" });
   const due = (issue, value) => value ? /* @__PURE__ */ u3("span", { class: `vt-due-chip vt-due-${dueLevel(issue, value, today)}`, children: formatShortDate(value) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
+  const editable = (issue, c3, open, content) => /* @__PURE__ */ u3("button", { class: "vt-cell-edit", "aria-label": `${issue.id} \u306E ${c3} \u3092\u7DE8\u96C6`, title: `${c3} \u3092\u7DE8\u96C6`, onClick: open, children: content });
+  const text = (value) => value ? /* @__PURE__ */ u3("span", { class: "vt-cell-detail", children: value }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
   const cell = (issue, c3) => {
+    const save = saveIssue(ctx, issue);
     switch (c3) {
       case "status-detail":
-        return /* @__PURE__ */ u3("span", { class: "vt-cell-detail", children: issue.statusDetail });
+        return editable(issue, c3, () => editStatusDetail(ctx, issue.statusDetail, save), text(issue.statusDetail));
       case "mid_due":
-        return due(issue, issue.midDue);
+        return editable(issue, c3, () => editDue(ctx, issue, "mid_due"), due(issue, issue.midDue));
       case "deadline":
-        return due(issue, issue.deadline);
+        return editable(issue, c3, () => editDue(ctx, issue, "deadline"), due(issue, issue.deadline));
       case "labels":
-        return /* @__PURE__ */ u3("span", { class: "vt-cell-detail", children: issue.labels.join(", ") });
+        return editable(issue, c3, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
+      case "estimated":
+        return editable(issue, c3, (e3) => estimateMenu(ctx, e3, issue.estimated, save), issue.estimated === null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }) : /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(issue.estimated) }));
       case "next": {
         const next = issue.scheduled.find((d3) => d3 >= today);
-        return next ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(next) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
+        return editable(issue, c3, () => editScheduled(ctx, issue), next ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(next) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }));
       }
       case "revisit":
         return issue.revisit ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(issue.revisit) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
@@ -2998,18 +3344,20 @@ function IssueTable(props) {
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-main", children: "issue" }),
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-priority", children: "priority" }),
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-status", children: "status" }),
-      columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-th vt-col-${c3}`, children: c3 }))
+      columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-th vt-col-${c3}`, children: c3 })),
+      /* @__PURE__ */ u3("span", { class: "vt-th vt-col-menu" })
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian10.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian12.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
       ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-priority", children: /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority }) }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-status", children: /* @__PURE__ */ u3(StatusBadge, { status: issue.status }) }),
-      columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-col-${c3}`, children: cell(issue, c3) }))
+      /* @__PURE__ */ u3("span", { class: "vt-col-priority", children: /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: (e3) => priorityMenu(e3, issue.priority, saveIssue(ctx, issue)) }) }),
+      /* @__PURE__ */ u3("span", { class: "vt-col-status", children: /* @__PURE__ */ u3(StatusBadge, { status: issue.status, onClick: (e3) => statusMenu(ctx, e3, issue) }) }),
+      columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-col-${c3}`, children: cell(issue, c3) })),
+      /* @__PURE__ */ u3("span", { class: "vt-col-menu", children: /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": `${issue.id} \u3092\u7DE8\u96C6`, title: "\u7DE8\u96C6", onClick: (e3) => issueRowMenu(ctx, e3, issue), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) }) })
     ] }, issue.id))
   ] });
 }
@@ -3022,7 +3370,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian11 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 var QUICK_STATUSES = ["open", "in-progress", "waiting", "closed", "canceled"];
 function routineStatus(board, r3) {
@@ -3038,8 +3386,8 @@ function TaskCard(props) {
   const summary = issue ? issue.summary : item.routine.summary;
   const path = issue ? issue.path : item.routine.path;
   const done = status === "closed" || status === "canceled";
-  const statusMenu = (e3) => {
-    const m3 = new import_obsidian11.Menu();
+  const statusMenu2 = (e3) => {
+    const m3 = new import_obsidian13.Menu();
     for (const s3 of QUICK_STATUSES) {
       if (!issue && s3 !== "open" && s3 !== "closed" && s3 !== "canceled") continue;
       m3.addItem(
@@ -3053,7 +3401,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian11.Menu();
+    const m3 = new import_obsidian13.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked((board.groups[id] ?? "") === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -3072,7 +3420,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian11.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian13.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -3089,7 +3437,7 @@ function TaskCard(props) {
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-task-bottom", children: [
           issue ? /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority }) : /* @__PURE__ */ u3("span", { class: "vt-badge vt-priority", children: "routine" }),
-          /* @__PURE__ */ u3(StatusBadge, { status, onClick: statusMenu }),
+          /* @__PURE__ */ u3(StatusBadge, { status, onClick: statusMenu2 }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
           /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u30E1\u30CB\u30E5\u30FC", title: "\u30B0\u30EB\u30FC\u30D7\u306E\u79FB\u52D5\u306A\u3069", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
         ] })
@@ -3213,12 +3561,13 @@ function Board(props) {
         )
       ] }),
       leftIssues.length + left.routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: items.length === 0 ? "\u2014" : "\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }) : /* @__PURE__ */ u3(S, { children: [
-        /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "deadline"], empty: "issue \u306F\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }),
+        /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"], empty: "issue \u306F\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }),
         leftIssues.length > 0 && /* @__PURE__ */ u3(
           ActionBar,
           {
             count: sel.length,
             actions: [
+              { label: "Do Tomorrow", icon: "calendar-plus", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
@@ -3268,13 +3617,14 @@ function DueSection(props) {
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: props.title }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, empty: props.empty }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "mid_due", "deadline"], empty: props.empty }),
     issues.length > 0 && /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          ...props.canScheduleToday ? [{ label: "\u4ECA\u65E5\u3084\u308B", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) }] : [],
+          ...props.canScheduleToday ? [{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) }] : [],
+          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
@@ -3305,12 +3655,13 @@ function PreviousBoard(props) {
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "deadline"] }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"] }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
+          { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void carryIssues(ctx, board.date, sel, "reschedule", localToday()).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
@@ -3332,7 +3683,7 @@ function ScheduledStep(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-text", disabled: issues.length === 0, onClick: () => void addToBoard(ctx, today, issues.map((i3) => i3.id)), children: "\u3059\u3079\u3066\u30DC\u30FC\u30C9\u3078" })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "mid_due", "deadline", "estimated"] }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
@@ -3583,10 +3934,6 @@ function InboxView(props) {
     setDraft("");
     void ctx.writer.createIssues([summary]).catch((err) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err));
   };
-  const today = () => void ctx.writer.updateMany(
-    sel.map((i3) => i3.path),
-    (path) => schedulePatch(sel.find((i3) => i3.path === path), [localToday()])
-  ).then(done, (e3) => ctx.report("\u4E88\u5B9A\u3092\u5165\u308C\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Inbox" }),
@@ -3602,13 +3949,14 @@ function InboxView(props) {
       /* @__PURE__ */ u3("input", { type: "text", placeholder: "summary \u3092\u5165\u529B\u3057\u3066 Enter\uFF08Inbox \u306B\u5165\u308A\u307E\u3059\uFF09", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
       /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openCaptureModal(ctx), children: "\u307E\u3068\u3081\u3066\u4F5C\u6210" })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "created"], empty: "Inbox \u306F\u7A7A\u3067\u3059" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "estimated", "created"], empty: "Inbox \u306F\u7A7A\u3067\u3059" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          { label: "\u4ECA\u65E5\u3084\u308B", icon: "calendar-check", tone: "primary", run: today },
+          { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
+          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
@@ -3619,7 +3967,7 @@ function InboxView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -3711,7 +4059,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian12.Menu();
+    const m3 = new import_obsidian14.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -3783,12 +4131,13 @@ function IssueListView(props) {
         /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => set(defaultQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
       ] })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["labels", "next", "mid_due", "deadline"], empty: "\u6761\u4EF6\u306B\u5408\u3046 issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "mid_due", "deadline", "estimated"], empty: "\u6761\u4EF6\u306B\u5408\u3046 issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
+          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
@@ -3801,7 +4150,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian13 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -3981,14 +4330,14 @@ function OrganizeView(props) {
     else if (dir === "up") later();
     else if (dir === "down") cancel();
   };
-  const priorityMenu = (e3) => {
+  const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian13.Menu();
+    const m3 = new import_obsidian15.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("\u306A\u3057").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
   };
-  const editLabels = () => {
+  const editLabels2 = () => {
     if (!issue) return;
     new PreactModal(ctx.app, "label", (c3) => /* @__PURE__ */ u3(
       LabelForm,
@@ -4067,9 +4416,9 @@ function OrganizeView(props) {
             /* @__PURE__ */ u3("h3", { class: "vt-organize-summary", children: issue.summary }),
             excerpt && /* @__PURE__ */ u3("p", { class: "vt-organize-excerpt", children: excerpt }),
             /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
-              /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: priorityMenu }),
+              /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: priorityMenu2 }),
               issue.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors.get(l3) ?? "var(--background-modifier-border)" })),
-              /* @__PURE__ */ u3("button", { class: "vt-badge vt-label is-empty", onClick: editLabels, children: [
+              /* @__PURE__ */ u3("button", { class: "vt-badge vt-label is-empty", onClick: editLabels2, children: [
                 /* @__PURE__ */ u3(Icon, { name: "tag" }),
                 "label"
               ] }),
@@ -4126,62 +4475,28 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian14 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
-  const [every, setEvery] = d2("week");
-  const [interval, setInterval] = d2(1);
-  const [weekdays, setWeekdays] = d2(["mon"]);
-  const [monthText, setMonthText] = d2("1");
+  const [draft, setDraft] = d2(defaultRepeatDraft());
   const [group, setGroup] = d2("");
   const [estimated, setEstimated] = d2("");
-  const on = every === "week" ? weekdays : every === "month" ? monthText.split(/[,\s]+/).filter(Boolean).map((s3) => /^\d+$/.test(s3) ? Number(s3) : s3) : void 0;
-  const repeat = { every, ...interval > 1 ? { interval } : {}, ...on ? { on } : {} };
-  const parsed = parseRepeat(repeat);
-  const badMonth = every === "month" && on.some((v3) => parseMonthSpec(v3) === null);
-  const error = !summary.trim() ? "summary \u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044" : !parsed.ok ? parsed.error : badMonth ? "\u65E5\u4ED8\u306E\u66F8\u304D\u65B9\u304C\u8AAD\u3081\u307E\u305B\u3093" : null;
+  const read = readRepeatDraft(draft);
+  const error = !summary.trim() ? "summary \u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044" : read.error;
   return /* @__PURE__ */ u3(
     "form",
     {
       class: "vt-worklog-form",
       onSubmit: (e3) => {
         e3.preventDefault();
-        if (error === null) props.onSubmit(summary.trim(), repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
+        if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
       },
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "summary" }),
           /* @__PURE__ */ u3("input", { type: "text", value: summary, placeholder: "\u4F8B: \u9031\u6B21\u30EC\u30D3\u30E5\u30FC", onInput: (e3) => setSummary(e3.currentTarget.value) })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "\u304F\u308A\u8FD4\u3057" }),
-          /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
-            [
-              ["day", "\u6BCE\u65E5"],
-              ["week", "\u6BCE\u9031"],
-              ["month", "\u6BCE\u6708"]
-            ].map(([v3, label]) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-filter-chip${every === v3 ? " is-on" : ""}`, onClick: () => setEvery(v3), children: label })),
-            /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u9593\u9694" }),
-            /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "number", min: 1, value: interval, onInput: (e3) => setInterval(Math.max(1, Number(e3.currentTarget.value) || 1)) })
-          ] })
-        ] }),
-        every === "week" && /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [1, 2, 3, 4, 5, 6, 0].map((w3) => {
-          const name = WEEKDAY_NAMES[w3];
-          const onDay = weekdays.includes(name);
-          return /* @__PURE__ */ u3(
-            "button",
-            {
-              type: "button",
-              class: `vt-filter-chip${onDay ? " is-on" : ""}`,
-              onClick: () => setWeekdays(onDay ? weekdays.filter((x2) => x2 !== name) : [...weekdays, name]),
-              children: name
-            }
-          );
-        }) }),
-        every === "month" && /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "\u65E5\u4ED8\uFF08\u30AB\u30F3\u30DE\u533A\u5207\u308A\u300215 / last = \u6708\u672B / 2th-tue = \u7B2C 2 \u706B\u66DC / last-fri = \u6700\u7D42\u91D1\u66DC\uFF09" }),
-          /* @__PURE__ */ u3("input", { type: "text", value: monthText, onInput: (e3) => setMonthText(e3.currentTarget.value) })
-        ] }),
+        /* @__PURE__ */ u3(RepeatFields, { draft, onChange: setDraft }),
         /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
             /* @__PURE__ */ u3("span", { children: "\u30B0\u30EB\u30FC\u30D7\uFF08\u4EFB\u610F\uFF09" }),
@@ -4195,7 +4510,6 @@ function RoutineForm(props) {
             /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "number", min: 0, value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
           ] })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-muted", children: parsed.ok ? describeRepeat(parsed.value) : "" }),
         error !== null && summary && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "\u4F5C\u6210" }) })
       ]
@@ -4232,7 +4546,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
@@ -4247,7 +4561,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -4273,7 +4587,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -4338,6 +4652,7 @@ function SomedayView(props) {
         count: sel.length,
         actions: [
           { label: "Inbox \u306B\u623B\u3059", icon: "inbox", tone: "primary", run: reopen },
+          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
         ]
@@ -4357,7 +4672,7 @@ var VIEWS = [
   { type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
   { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView }
 ];
-var VaultTaskPlugin = class extends import_obsidian16.Plugin {
+var VaultTaskPlugin = class extends import_obsidian18.Plugin {
   store = null;
   taskSettings = { ...DEFAULT_SETTINGS };
   async onload() {
@@ -4384,7 +4699,7 @@ var VaultTaskPlugin = class extends import_obsidian16.Plugin {
       report: (message, error) => {
         if (error !== void 0) console.error(`vault-task: ${message}`, error);
         const detail = error instanceof Error ? `: ${error.message}` : "";
-        new import_obsidian16.Notice(`${message}${detail}`);
+        new import_obsidian18.Notice(`${message}${detail}`);
       }
     };
     for (const spec of VIEWS) {
