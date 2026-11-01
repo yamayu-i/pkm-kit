@@ -1,0 +1,176 @@
+/*
+ * vault-template（ADR-0020）
+ * ルールは .plugin-src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/vault-template/styles.css にする。
+ */
+
+:is([class*="vt-tpl-"], [class*="vt-tpl-"] *):focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[class*="vt-tpl-"],
+	[class*="vt-tpl-"] * {
+		transition: none;
+		animation: none;
+	}
+}
+
+.vt-tpl-modal {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 4px 0;
+	font-size: var(--vt-type-body-medium-size);
+	color: var(--vt-on-surface);
+}
+
+.vt-tpl-empty {
+	padding: 16px;
+	border-radius: var(--vt-radius-m);
+	border: 1px dashed var(--vt-outline-variant);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+
+.vt-tpl-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-tpl-label {
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
+	color: var(--vt-on-surface-variant);
+	text-transform: uppercase;
+}
+
+.vt-tpl-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.vt-tpl-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 32px;
+	padding: 4px 12px;
+	border-radius: var(--vt-radius-s);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	cursor: pointer;
+}
+
+.vt-tpl-chip:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-chip.is-active {
+	border-color: var(--vt-primary);
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-tpl-input {
+	width: 100%;
+	height: 36px;
+	padding: 0 12px;
+	border-radius: var(--vt-radius-s);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	font-size: var(--vt-type-body-medium-size);
+	line-height: var(--vt-type-body-medium-line-height);
+}
+
+.vt-tpl-footer {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding-top: 8px;
+	border-top: 1px solid var(--vt-outline-variant);
+}
+
+.vt-tpl-preview {
+	font-family: var(--font-monospace);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+	color: var(--vt-on-surface-variant);
+	word-break: break-all;
+}
+
+.vt-tpl-preview.is-error {
+	color: var(--vt-error);
+}
+
+.vt-tpl-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.vt-tpl-hint {
+	margin-right: auto;
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-tpl-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 36px;
+	padding: 0 16px;
+	border-radius: var(--vt-radius-full);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	cursor: pointer;
+}
+
+.vt-tpl-button:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-button.is-primary {
+	border-color: var(--vt-primary);
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+}
+
+.vt-tpl-button:disabled {
+	opacity: var(--vt-opacity-disabled);
+	cursor: not-allowed;
+}
+
+.vt-tpl-setting-error {
+	margin-bottom: 12px;
+	padding: 12px 16px;
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}

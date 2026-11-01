@@ -128,6 +128,12 @@ const plugins = [
 		// CodeMirror は Obsidian 本体が提供するもの（同梱しない）
 		allowedRequires: ["obsidian", "@codemirror/state", "@codemirror/view"],
 	},
+	{
+		id: "vault-template",
+		outdirEnv: "VAULT_TEMPLATE_OUTDIR",
+		files: ["main.js", "manifest.json", "styles.css"],
+		allowedRequires: ["obsidian"],
+	},
 ];
 
 check("コミット済みの main.js がソースから再現できる", () => {

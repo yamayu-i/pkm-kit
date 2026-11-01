@@ -30,3 +30,4 @@
 | [0017](0017-date-input.md) | 承認 | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
 | [0018](0018-list-edit-routine-screen.md) | 承認 | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
+| [0020](0020-template-plugin.md) | 承認 | テンプレートからのノート作成を自作プラグイン vault-template として作る |

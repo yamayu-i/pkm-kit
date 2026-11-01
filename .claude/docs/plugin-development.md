@@ -83,6 +83,20 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
 - UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `vault-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter vault-task exec playwright install chromium` で入れる
 
+## vault-template（テンプレートからのノート作成）
+
+`template/file/` のテンプレートを選び、日時・タイトル・プロンプト入力・カーソル位置を展開してノートを作成するプラグイン（ADR-0020）。
+
+### コードの構成（`.plugin-src/packages/vault-template`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/date-format.ts` | `{{date:FORMAT}}` / `{{time:FORMAT}}` の日時フォーマット展開 | なし |
+| `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証 | なし |
+| `src/core/config.ts` | `template/config.json` の読み書きと `template/file/*.md` 一覧とのマージ・並び替え | なし |
+| `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動 | あり |
+| `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
+
 ## design（デザイントークンと検査）
 
 `.plugin-src/packages/design`。プラグインではなく、デザインの値の正本と検査を置く（ADR-0016）。

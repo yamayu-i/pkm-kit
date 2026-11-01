@@ -1,0 +1,82 @@
+{
+  "templates": [
+    {
+      "file": "note.md",
+      "enabled": true,
+      "folder": "",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "daily.md",
+      "enabled": true,
+      "folder": "daily/{{date:YYYY}}/{{date:MM}}",
+      "fileNamePattern": "{{date:YYYY-MM-DD}}"
+    },
+    {
+      "file": "source.md",
+      "enabled": true,
+      "folder": "sources",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "concept.md",
+      "enabled": true,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "entity.md",
+      "enabled": true,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "topic.md",
+      "enabled": true,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "answer.md",
+      "enabled": true,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "feedback.md",
+      "enabled": true,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "issue.md",
+      "enabled": false,
+      "folder": "issue",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "routine.md",
+      "enabled": false,
+      "folder": "routine",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "member.md",
+      "enabled": false,
+      "folder": "member",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "index.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": "index"
+    },
+    {
+      "file": "log.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": "log"
+    }
+  ]
+}
