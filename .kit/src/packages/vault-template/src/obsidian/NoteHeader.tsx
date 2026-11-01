@@ -31,7 +31,7 @@ function Value({ app, v }: { app: App; v: HeaderValue }) {
 /** ノートのヘッダー(ADR-0026)。表示のみ。daily は右に日曜始まりの 7 枠を出す */
 export function NoteHeader({ app, model }: { app: App; model: HeaderModel }) {
 	return (
-		<div class="vt-tpl-note-header-body">
+		<div class="vt-tpl-note-header-body" data-hide-properties={model.hideProperties ? "true" : undefined}>
 			<div class="vt-tpl-note-header-top">
 				<div class="vt-tpl-note-title">{model.title}</div>
 				{model.weekday !== null && (
