@@ -47,7 +47,7 @@ export function frontmatterRange(text: string): { from: number; to: number } | n
 	return m ? { from: 0, to: m[0].length } : null;
 }
 
-/** board だけを持つデイリーノート（まだないとき） */
-export function newDailyContent(): string {
-	return "---\nboard: {}\n---\n";
+/** デイリーノート（ボードを締めるときにまだないとき） */
+export function newDailyContent(created: string): string {
+	return `---\ntype: daily\ncreated: ${created}\nupdated:\n---\n`;
 }
