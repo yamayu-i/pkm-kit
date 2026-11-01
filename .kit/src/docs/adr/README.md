@@ -31,3 +31,4 @@
 | [0018](0018-list-edit-routine-screen.md) | 承認 | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
+| [0021](0021-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
