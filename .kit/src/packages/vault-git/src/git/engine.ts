@@ -23,6 +23,8 @@ export interface EngineOptions {
 	authHost: string;
 	remote?: string;
 	now?: () => Date;
+	/** 処理名と経過時間のみ。パス・本文・認証情報は渡さない */
+	onTiming?: (phase: string, elapsedMs: number) => void;
 }
 
 export type PullResult =
@@ -73,6 +75,16 @@ export class VaultGit {
 		this.fs = createGitFs(opts.store);
 		this.remote = opts.remote ?? "origin";
 		this.now = opts.now ?? (() => new Date());
+	}
+
+	private async measure<T>(phase: string, run: () => Promise<T>): Promise<T> {
+		const start = performance.now();
+		try {
+			return await run();
+		} finally {
+			// 診断コードの失敗で同期の結果を変えない。
+			try { this.opts.onTiming?.(phase, performance.now() - start); } catch { /* diagnostic only */ }
+		}
 	}
 
 	private get ctx() {
@@ -207,32 +219,32 @@ export class VaultGit {
 
 	async pull(): Promise<PullResult> {
 		const branch = await this.currentBranch();
-		const snapshot = await this.snapshot();
-		const remote = await this.fetch(branch);
+		const snapshot = await this.measure("snapshot", () => this.snapshot());
+		const remote = await this.measure("fetch", () => this.fetch(branch));
 		const local = await git.resolveRef({ ...this.ctx, ref: branch });
 		if (!remote || remote === local) return { kind: "up-to-date", snapshot };
 
-		const base = await this.mergeBase(local, remote);
+		const base = await this.measure("merge-base", () => this.mergeBase(local, remote));
 		if (base === remote) return { kind: "ahead", snapshot };
 		if (base === local) {
-			const changed = await this.moveTo(branch, local, remote);
+			const changed = await this.measure("moveTo", () => this.moveTo(branch, local, remote));
 			return { kind: "fast-forward", snapshot, changed };
 		}
 
-		const [baseMap, oursMap, theirsMap] = await Promise.all([
+		const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
 			base ? readTreeMap(this.ctx, base) : Promise.resolve(new Map<string, TreeEntry>()),
 			readTreeMap(this.ctx, local),
 			readTreeMap(this.ctx, remote),
-		]);
-		const { entries, conflicts } = await mergeTrees({
+		]));
+		const { entries, conflicts } = await this.measure("merge", () => mergeTrees({
 			base: baseMap,
 			ours: oursMap,
 			theirs: theirsMap,
 			readBlob: async (oid) => (await git.readBlob({ ...this.ctx, oid })).blob,
 			labels: { ours: `local (${this.device})`, theirs: `remote (${this.remote}/${branch})` },
 			copySuffix: `${this.device} ${formatStamp(this.now())}`,
-		});
-		const tree = await writeTreeMap(this.ctx, entries);
+		}));
+		const tree = await this.measure("write-tree", () => writeTreeMap(this.ctx, entries));
 		const merged = await git.commit({
 			...this.ctx,
 			message: this.mergeMessage(branch, conflicts),
@@ -241,7 +253,7 @@ export class VaultGit {
 			parent: [local, remote],
 			noUpdateBranch: true,
 		});
-		const changed = await this.moveTo(branch, local, merged);
+		const changed = await this.measure("moveTo", () => this.moveTo(branch, local, merged, oursMap));
 		return { kind: "merged", snapshot, changed, conflicts };
 	}
 
@@ -258,8 +270,14 @@ export class VaultGit {
 	 * 作業ツリー・インデックス・ブランチを from から to に進める。
 	 * 途中で落ちても「リモートの変更を巻き戻すコミット」が作られないよう、ブランチの更新は最後に行う。
 	 */
-	private async moveTo(branch: string, from: string, to: string): Promise<string[]> {
-		const [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, from), readTreeMap(this.ctx, to)]);
+	private async moveTo(
+		branch: string, from: string, to: string, knownFrom?: ReadonlyMap<string, TreeEntry>,
+	): Promise<string[]> {
+		// マージ時は既に展開した local のツリーを再利用する。
+		// 作業ファイルの内容は以下で必ず再確認する。
+		const [fromMap, toMap] = await Promise.all([
+			knownFrom ?? readTreeMap(this.ctx, from), readTreeMap(this.ctx, to),
+		]);
 		const writes: string[] = [];
 		const deletes: string[] = [];
 		for (const [path, e] of toMap) {
@@ -309,16 +327,16 @@ export class VaultGit {
 
 	async push(): Promise<PushResult> {
 		const branch = await this.currentBranch();
-		const remote = await this.fetch(branch);
+		const remote = await this.measure("fetch", () => this.fetch(branch));
 		const before = await git.resolveRef({ ...this.ctx, ref: branch });
-		if (remote && remote !== before && (await this.mergeBase(before, remote)) !== remote) {
+		if (remote && remote !== before && (await this.measure("merge-base", () => this.mergeBase(before, remote))) !== remote) {
 			return { kind: "behind" };
 		}
-		const snapshot = await this.snapshot();
+		const snapshot = await this.measure("snapshot", () => this.snapshot());
 		const local = await git.resolveRef({ ...this.ctx, ref: branch });
 		if (local === remote) return { kind: "nothing" };
 		try {
-			const res = await git.push({ ...this.ctx, ...this.net, remote: this.remote, ref: branch });
+			const res = await this.measure("push", () => git.push({ ...this.ctx, ...this.net, remote: this.remote, ref: branch }));
 			if (!res.ok) return { kind: "rejected", snapshot };
 		} catch (e) {
 			if (e instanceof Errors.PushRejectedError) return { kind: "rejected", snapshot };
