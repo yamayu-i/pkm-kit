@@ -73,6 +73,7 @@ export default class VaultGitPlugin extends Plugin {
 				return { status: res.status, headers: res.headers, arrayBuffer: res.arrayBuffer };
 			}, s.authHost),
 			deviceName: s.deviceName,
+			onTiming: (phase, elapsedMs) => console.debug(`[vault-git] ${phase}: ${elapsedMs.toFixed(1)} ms`),
 			author: {
 				name: s.authorName || s.deviceName,
 				email: s.authorEmail || "vault-git@localhost",
@@ -237,3 +238,4 @@ export default class VaultGitPlugin extends Plugin {
 		new ConflictsModal(this.app, "未解決のコンフリクト", await this.findUnresolved()).open();
 	}
 }
+
