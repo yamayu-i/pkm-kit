@@ -1,7 +1,17 @@
 import { Notice, Plugin } from "obsidian";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
+import { installNoteHeaders } from "./obsidian/header-mount";
 import { TemplateSettingTab } from "./obsidian/SettingTab";
+import { preactViewCreator, type ViewSpec } from "./obsidian/view";
+import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
+
+/** 一覧 View(ADR-0026)。vault-task の View と区別するため接頭辞は vault-template- */
+const LIST_VIEWS: ViewSpec[] = [
+	{ type: "vault-template-daily-list", title: "Daily notes", icon: "calendar-days", component: DailyListView },
+	{ type: "vault-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
+	{ type: "vault-template-source-list", title: "Sources", icon: "library", component: SourceListView },
+];
 
 export default class VaultTemplatePlugin extends Plugin {
 	manager!: TemplateManager;
@@ -38,9 +48,23 @@ export default class VaultTemplatePlugin extends Plugin {
 			callback: () => void openToday(),
 		});
 
+		for (const spec of LIST_VIEWS) {
+			this.registerView(spec.type, preactViewCreator(spec, this.app));
+			this.addCommand({ id: `open-${spec.type.replace("vault-template-", "")}`, name: `${spec.title} を開く`, callback: () => void this.openView(spec.type) });
+		}
+
 		this.addRibbonIcon("calendar-check", "今日のデイリーノートを開く", () => void openToday());
 		this.addRibbonIcon("file-plus-2", "テンプレートから新規ファイルを作成", () => void openCreateModal());
+		installNoteHeaders(this);
 		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
+	}
+
+	private async openView(type: string): Promise<void> {
+		const { workspace } = this.app;
+		const existing = workspace.getLeavesOfType(type)[0];
+		const leaf = existing ?? workspace.getLeaf("tab");
+		if (!existing) await leaf.setViewState({ type, active: true });
+		await workspace.revealLeaf(leaf);
 	}
 
 	private report(message: string, error?: unknown): void {

@@ -36,3 +36,4 @@
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
+| [0026](0026-note-views.md) | 承認 | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |

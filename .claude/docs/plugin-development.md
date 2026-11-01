@@ -92,6 +92,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
 - コマンド「今日のデイリーノートを開く」（とリボン）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
 - 連番の関数は vault-task（`core/ids.ts`）と vault-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
+- 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
 - `test/templates-repo.test.ts` が、リポジトリの `template/` を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
 
 ### コードの構成（`.plugin-src/packages/vault-template`）
@@ -102,7 +103,10 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証、今日のデイリーノートのパス | なし |
 | `src/core/ids.ts` | `{{id:…}}` の連番（vault-task の `core/ids.ts` と同じ規則） | なし |
 | `src/core/config.ts` | `template/config.json` の読み書きと `template/file/*.md` 一覧とのマージ・並び替え | なし |
-| `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動 | あり |
+| `src/core/note-title.ts` | タイトルの決め方（`title` → `name` → ファイル名）、daily の日付と曜日 | なし |
+| `src/core/note-list.ts` / `note-format.ts` / `note-header.ts` | 一覧の絞り込み・並べ替え・取り込み状態の導出、値の整形、ヘッダーに出す内容の組み立て | なし |
+| `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
+| `src/views/` | 一覧 View（Preact） | あり |
 | `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
 
 ## design（デザイントークンと検査）

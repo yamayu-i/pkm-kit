@@ -47,6 +47,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 - type: 必須の単一文字列。英小文字とハイフン。話題・進行状態ではなくノートの役割。
 - created: このVaultにノートを作った日時。秒までのISO 8601、UTCのZまたはオフセット付き。改名・移動で変えない。
 - updated: ノートを作成・変更した日時。作成時は created と同じ値を入れる（テンプレートとプラグインのコードが入れる。[ADR-0008](adr/0008-updated-on-create.md)）。変更したときの更新は、コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。人・AIは手で入力・更新しない。
+- タイトル（ノートの先頭に出る名前）: `title`、なければ `name`、なければファイル名。daily は `title` を持たず、ファイル名の日付（`2026-11-01 SUN`）を使う。ファイル名とタイトルは一致しなくてよい。Obsidian 標準のタイトルは `.obsidian/app.json` の `showInlineTitle: false` で隠し、vault-task か vault-template のヘッダーが出す（[ADR-0026](../../.plugin-src/docs/adr/0026-note-views.md)）。
 - コミット時の自動付与の実装までは、変更しても updated は作成時の値のままになる。既存ノートの空欄・不明な値は捏造せず、移行時に確認する。
 - ノートを作る仕組み（テンプレート、プラグインのコード）を足すときは、作成時に created と updated の両方を入れる。
 - 記事の公開日時、dailyが表す日付、知識の確認日時は別項目。updated は内容の正確さや最新性を示さない。
