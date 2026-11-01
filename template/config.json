@@ -3,14 +3,14 @@
     {
       "file": "note.md",
       "enabled": true,
-      "folder": "",
-      "fileNamePattern": ""
+      "folder": "note",
+      "fileNamePattern": "{{title}}"
     },
     {
-      "file": "daily.md",
+      "file": "member.md",
       "enabled": true,
-      "folder": "daily/{{date:YYYY}}/{{date:MM}}",
-      "fileNamePattern": "{{date:YYYY-MM-DD}}"
+      "folder": "member",
+      "fileNamePattern": "{{title}}"
     },
     {
       "file": "source.md",
@@ -19,32 +19,38 @@
       "fileNamePattern": ""
     },
     {
+      "file": "daily.md",
+      "enabled": false,
+      "folder": "daily/{{date:YYYY}}/{{date:MM}}",
+      "fileNamePattern": "{{date:YYYY-MM-DD}}"
+    },
+    {
       "file": "concept.md",
-      "enabled": true,
+      "enabled": false,
       "folder": "wiki",
       "fileNamePattern": ""
     },
     {
       "file": "entity.md",
-      "enabled": true,
+      "enabled": false,
       "folder": "wiki",
       "fileNamePattern": ""
     },
     {
       "file": "topic.md",
-      "enabled": true,
+      "enabled": false,
       "folder": "wiki",
       "fileNamePattern": ""
     },
     {
       "file": "answer.md",
-      "enabled": true,
+      "enabled": false,
       "folder": "wiki",
       "fileNamePattern": ""
     },
     {
       "file": "feedback.md",
-      "enabled": true,
+      "enabled": false,
       "folder": "wiki",
       "fileNamePattern": ""
     },
@@ -58,12 +64,6 @@
       "file": "routine.md",
       "enabled": false,
       "folder": "routine",
-      "fileNamePattern": ""
-    },
-    {
-      "file": "member.md",
-      "enabled": false,
-      "folder": "member",
       "fileNamePattern": ""
     },
     {
