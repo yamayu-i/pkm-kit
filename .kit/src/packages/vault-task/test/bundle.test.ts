@@ -94,10 +94,11 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"open-someday",
 			"open-routines",
 			"open-groups",
+			"open-labels",
 			"open-sidebar",
 			"capture-issues",
 		]);
-		expect(mock.views).toHaveLength(9);
+		expect(mock.views).toHaveLength(10);
 		expect(mock.extensions).toHaveLength(1);
 	});
 
@@ -107,7 +108,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const module = { exports: {} as { default: new () => { onload(): Promise<void> } } };
 		new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
 		await new module.exports.default().onload();
-		expect(mock.creators.size).toBe(9);
+		expect(mock.creators.size).toBe(10);
 		for (const [type, create] of mock.creators) {
 			const view = create({});
 			expect(view.getViewType()).toBe(type);

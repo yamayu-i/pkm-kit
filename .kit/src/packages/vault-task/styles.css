@@ -2505,6 +2505,65 @@ button.vt-badge:disabled::after {
 	background: var(--vt-primary-state-hover);
 }
 
+/* ---------- label の編集（ADR-0022） ---------- */
+
+.vt-label-manager {
+	max-width: 760px;
+}
+
+.vt-label-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-label-edit {
+	gap: 8px;
+}
+
+.vt-label-edit-fields {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-label-edit-fields > .vt-name-field {
+	min-width: 160px;
+}
+
+.vt-label-edit-fields > .vt-color-field {
+	flex: 0 1 160px;
+	min-width: 120px;
+}
+
+.vt-color-field input {
+	font-family: var(--font-monospace);
+}
+
+.vt-color-swatch {
+	flex: none;
+	width: 44px;
+	height: 44px;
+	padding: 4px;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface);
+	cursor: pointer;
+}
+
+.vt-color-swatch:focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+.vt-label-edit-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
 @container (max-width: 480px) {
 	.vt-organize-actions {
 		gap: 8px;

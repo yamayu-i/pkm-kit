@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { groupNameError, type GroupDef } from "../core/groups";
 import type { TaskContext } from "../obsidian/context";
+import { NameField, RowTools, move } from "../ui/EditRow";
 import { Icon } from "../ui/Icon";
 import { useStoreVersion } from "../ui/hooks";
 
@@ -15,50 +16,11 @@ let nextKey = 1;
 const toDraft = (g: GroupDef): Draft => ({ key: nextKey++, name: g.name, children: g.children.map(toDraft) });
 const toDef = (d: Draft): GroupDef => ({ name: d.name.trim(), children: d.children.map(toDef) });
 
-function move<T>(list: T[], i: number, d: number): T[] {
-	const j = i + d;
-	if (j < 0 || j >= list.length) return list;
-	const next = [...list];
-	[next[i], next[j]] = [next[j]!, next[i]!];
-	return next;
-}
-
 /** 入力欄の名前の検査。同じ階層のほかの名前と比べる */
 function errorOf(d: Draft, siblings: Draft[]): string | null {
 	return groupNameError(
 		d.name,
 		siblings.filter((s) => s.key !== d.key).map(toDef),
-	);
-}
-
-/** 名前の入力欄（M3 の outlined text field 風） */
-function NameField(props: { value: string; label: string; error: string | null; autoFocus: boolean; onInput: (v: string) => void }) {
-	const ref = useRef<HTMLInputElement>(null);
-	useEffect(() => {
-		if (props.autoFocus) ref.current?.focus();
-	}, []);
-	return (
-		<label class={`vt-name-field${props.error ? " is-error" : ""}`}>
-			<span class="vt-name-label">{props.label}</span>
-			<input ref={ref} type="text" value={props.value} placeholder="名前" onInput={(e) => props.onInput(e.currentTarget.value)} />
-			{props.error && <span class="vt-name-error">{props.error}</span>}
-		</label>
-	);
-}
-
-function RowTools(props: { index: number; count: number; onMove: (d: number) => void; onDelete: () => void; what: string }) {
-	return (
-		<span class="vt-row-tools">
-			<button class="vt-icon-button" title="上へ" aria-label="上へ" disabled={props.index === 0} onClick={() => props.onMove(-1)}>
-				<Icon name="arrow-up" />
-			</button>
-			<button class="vt-icon-button" title="下へ" aria-label="下へ" disabled={props.index === props.count - 1} onClick={() => props.onMove(1)}>
-				<Icon name="arrow-down" />
-			</button>
-			<button class="vt-icon-button" title={`${props.what}を削除`} aria-label={`${props.what}を削除`} onClick={props.onDelete}>
-				<Icon name="trash-2" />
-			</button>
-		</span>
 	);
 }
 
