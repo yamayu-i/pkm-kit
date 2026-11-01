@@ -3,6 +3,7 @@ export class Menu { items: any[] = []; addItem(cb: any) { const it: any = { setT
 export class Modal { contentEl = document.createElement("div"); constructor(public app: any) {} setTitle() {} open() { document.body.append(this.contentEl); (this as any).onOpen?.(); } close() { (this as any).onClose?.(); this.contentEl.remove(); } }
 export class SuggestModal extends Modal { setPlaceholder() {} }
 export class FuzzySuggestModal extends SuggestModal {}
+export const prepareFuzzySearch = (q: string) => (t: string) => (t.includes(q) ? { score: 0 } : null);
 export const Keymap = { isModEvent: () => false };
 export class Notice { constructor(m: any) { console.log("notice", m); } }
 export const Platform = { isMobile: false };

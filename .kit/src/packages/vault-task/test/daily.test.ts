@@ -9,7 +9,9 @@ import { describeRepeat, parseRepeat } from "../src/core/repeat";
 import { reviewWorklogs } from "../src/core/review";
 import { parseIssue, parseRoutine, type Issue } from "../src/core/schema";
 import { boardSummary, upsertSummary } from "../src/core/summary";
-import { appendWorklogLine, newWorklogId, sanitizeDeviceName, worklogPath, type WorklogEntry } from "../src/core/worklog";
+import { appendWorklogLine, newWorklogId, parseWorklog, sanitizeDeviceName, stopWorklogLines, worklogPath, type WorklogEntry } from "../src/core/worklog";
+import { frontmatterRange, newIssueContent } from "../src/core/issue-file";
+import { monthGridDays } from "../src/core/dates";
 
 function issue(id: string, fm: Record<string, unknown> = {}): Issue {
 	return parseIssue(`issue/${id}.md`, { type: "issue", id, summary: `s${id}`, status: "open", ...fm }).value!;
@@ -271,5 +273,79 @@ describe("小物", () => {
 		expect(sanitizeDeviceName("..")).toBe("");
 		expect(worklogPath("../x", new Date(2026, 9, 31))).toBe("worklog/-x/2026-10.jsonl");
 		expect(() => worklogPath("..", new Date())).toThrow();
+	});
+});
+
+describe("stopWorklogLines", () => {
+	const line = (id: string, from: string, to: string | null = null) => JSON.stringify({ id, task_id: "i-1", from, to, description: "" });
+	const parse = (text: string) => parseWorklog("worklog/pc/2026-10.jsonl", text).entries;
+	const stop = "2026-10-31T10:10:00+09:00";
+
+	it("1 分以上なら to を入れ、1 分未満なら行を消す", () => {
+		const text = `${line("long", "2026-10-31T10:00:00+09:00")}\n${line("short", "2026-10-31T10:09:01+09:00")}\n`;
+		const result = parse(stopWorklogLines(text, parse(text), stop, Date.parse(stop)));
+		expect(result.map((e) => [e.id, e.to])).toEqual([["long", stop]]);
+	});
+
+	it("ちょうど 1 分は残す", () => {
+		const text = `${line("edge", "2026-10-31T10:09:00+09:00")}\n`;
+		expect(parse(stopWorklogLines(text, parse(text), stop, Date.parse(stop))).map((e) => e.id)).toEqual(["edge"]);
+	});
+
+	it("前の行を消しても後ろの行を書き換えられる。止めない行は変えない", () => {
+		const other = line("other", "2026-10-31T08:00:00+09:00", "2026-10-31T09:00:00+09:00");
+		const text = `${line("short", "2026-10-31T10:09:30+09:00")}\n${other}\n${line("long", "2026-10-31T10:00:00+09:00")}\n`;
+		const targets = parse(text).filter((e) => e.id !== "other");
+		const result = parse(stopWorklogLines(text, targets, stop, Date.parse(stop)));
+		expect(result.map((e) => [e.id, e.to])).toEqual([
+			["other", "2026-10-31T09:00:00+09:00"],
+			["long", stop],
+		]);
+	});
+});
+
+describe("frontmatterRange", () => {
+	it("frontmatter の始まりから閉じる行の終わりまで", () => {
+		const text = "---\nid: i-1\n---\n\n## ToDo\n";
+		expect(frontmatterRange(text)).toEqual({ from: 0, to: "---\nid: i-1\n---".length });
+	});
+
+	it("空の frontmatter と CRLF を読む", () => {
+		expect(frontmatterRange("---\n---\nbody")).toEqual({ from: 0, to: 7 });
+		expect(frontmatterRange("---\r\nid: i-1\r\n---\r\nbody")).toEqual({ from: 0, to: 17 });
+	});
+
+	it("ファイルの終わりで閉じていてもよい", () => {
+		expect(frontmatterRange("---\nid: i-1\n---")).toEqual({ from: 0, to: 15 });
+	});
+
+	it("frontmatter がない、閉じていないときは null", () => {
+		expect(frontmatterRange("# title\n---\n")).toBeNull();
+		expect(frontmatterRange("---\nid: i-1\n")).toBeNull();
+		expect(frontmatterRange("---\nid: i-1\n----\n")).toBeNull();
+		expect(frontmatterRange("")).toBeNull();
+	});
+});
+
+describe("monthGridDays", () => {
+	it("日曜から始まる 42 日を返す", () => {
+		const days = monthGridDays("2026-11");
+		expect(days).toHaveLength(42);
+		expect(days[0]).toBe("2026-11-01");
+		expect(days[41]).toBe("2026-12-12");
+		expect(monthGridDays("2026-12")[0]).toBe("2026-11-29");
+	});
+});
+
+describe("newIssueContent", () => {
+	it("scheduled を渡すと実行日の入った issue になり、Inbox に入らない", () => {
+		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", null, ["2026-11-01"]))![1]!;
+		const line = yaml.split("\n").find((l) => l.startsWith("scheduled:"));
+		expect(line).toBe('scheduled: ["2026-11-01"]');
+		expect(issue("i-1", { scheduled: ["2026-11-01"] }).scheduled).toEqual(["2026-11-01"]);
+	});
+
+	it("scheduled がなければ欄を書かない", () => {
+		expect(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00")).not.toContain("scheduled");
 	});
 });

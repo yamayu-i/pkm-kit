@@ -16,11 +16,12 @@ import {
 	setPlacement,
 	setRoutineResult,
 	startTimer,
+	createOnBoard,
 	stopTimer,
 } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues } from "../obsidian/issue-actions";
-import { IssueSuggestModal } from "../obsidian/modals";
+import { BoardIssueModal } from "../obsidian/modals";
 import { PriorityBadge, StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
@@ -191,7 +192,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	const sel = leftIssues.filter((i) => selected.has(i.id));
 	const addIssue = () => {
 		const candidates = [...index.issues.values()].filter((i) => isActive(i) && !board.issues.includes(i.id));
-		new IssueSuggestModal(ctx.app, candidates, (i) => void addToBoard(ctx, date, [i.id]), "ボードに載せる issue を検索").open();
+		new BoardIssueModal(ctx.app, candidates, (choice) => void (choice.kind === "issue" ? addToBoard(ctx, date, [choice.issue.id]) : createOnBoard(ctx, date, choice.summary))).open();
 	};
 	const ungrouped = items.filter((it) => placement(it) === UNGROUPED);
 	return (

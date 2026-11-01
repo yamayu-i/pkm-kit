@@ -24,6 +24,7 @@ const steps = [
 	["スクリプトのテスト", node, ["--test", ...tests]],
 	["文書の構造", node, [join(scripts, "check-docs.mjs")]],
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
+	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
 	hasOriginMain
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), "origin/main..HEAD"]]
 		: ["wiki の操作が追記だけか（origin/main がないので省略）", null, []],

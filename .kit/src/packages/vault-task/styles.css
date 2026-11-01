@@ -22,7 +22,8 @@
 
 .vt-header button,
 .modal .vt-form button,
-.modal .vt-calendar button {
+.modal .vt-calendar button,
+.modal .vt-date-form button {
 	font-family: inherit;
 }
 
@@ -497,10 +498,13 @@ button.vt-badge:disabled::after {
 /* 別の月の日（押せるので薄くはしない。文字と枠を一段弱くする） */
 .vt-day.is-dimmed { color: var(--vt-on-surface-variant); border-color: var(--vt-outline-variant); }
 .vt-day.is-after-deadline { background: var(--vt-surface-container-high); color: var(--vt-on-surface-variant); border-color: transparent; }
-.vt-day.is-mid-due { border: 2px solid var(--vt-amber); }
-.vt-day.is-deadline { border: 2px solid var(--vt-red); }
 .vt-day.is-scheduled { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
 .vt-day.is-scheduled:hover { background: var(--vt-scheduled-hover); }
+/* 期限は面の外側に隙間を空けた枠で示す（実行日の面の色と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
+.vt-day.is-mid-due:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-amber); outline-offset: 2px; }
+.vt-day.is-deadline:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-red); outline-offset: 2px; }
+/* mid_due と deadline が同じ日は、内側の輪を amber にして両方を示す */
+.vt-day.is-mid-due.is-deadline { box-shadow: 0 0 0 2px var(--vt-amber); }
 
 .vt-text-button {
 	align-self: flex-start;
@@ -550,7 +554,7 @@ button.vt-badge:disabled::after {
 .vt-calendar-grid {
 	display: grid;
 	grid-template-columns: repeat(7, 40px);
-	gap: 4px;
+	gap: 8px;
 	justify-content: center;
 }
 
@@ -995,8 +999,7 @@ button.vt-badge:disabled::after {
 	margin-top: 12px;
 }
 
-.vt-form input[type="text"],
-.vt-form input[type="date"] {
+.vt-form input[type="text"] {
 	flex: 1;
 	height: 40px;
 	border-radius: var(--vt-radius-s);
@@ -1805,6 +1808,64 @@ button.vt-badge:disabled::after {
 .vt-date-presets {
 	display: flex;
 	gap: 8px;
+}
+
+.vt-date-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-date-form .vt-form {
+	margin-top: 0;
+}
+
+.vt-date-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.vt-date-field input {
+	width: 100%;
+	height: 40px;
+	border-radius: var(--vt-radius-s);
+}
+
+.vt-date-hint {
+	min-height: 20px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-datetime {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-datetime input {
+	flex: 1;
+	min-width: 0;
+}
+
+.vt-datetime .vt-time-input {
+	flex: 0 0 88px;
+}
+
+.vt-calendar-toggle.vt-calendar-toggle {
+	flex: none;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+}
+
+.vt-calendar-toggle.vt-calendar-toggle:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 /* ---------- Scheduled ---------- */
