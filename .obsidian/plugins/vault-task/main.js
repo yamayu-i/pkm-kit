@@ -2000,6 +2000,34 @@ function parseBoard(value) {
   board.closed = raw.closed === true;
   return board;
 }
+function parseBoardForWrite(value) {
+  if (value === void 0) return emptyBoard();
+  const fail = () => {
+    throw new Error("board \u306E\u5F62\u5F0F\u304C\u4E0D\u6B63\u3067\u3059\u3002\u4FEE\u6B63\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
+  };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail();
+  if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) return fail();
+  const raw = value;
+  if (Object.keys(raw).some((key) => !["issues", "groups", "routines", "carried", "closed"].includes(key))) fail();
+  for (const key of ["issues", "carried"]) {
+    if (!(key in raw)) continue;
+    const list = raw[key];
+    if (!Array.isArray(list) || list.some((id) => typeof id !== "string" || !id) || new Set(list).size !== list.length) fail();
+  }
+  for (const key of ["groups", "routines"]) {
+    if (!(key in raw)) continue;
+    const map = raw[key];
+    if (typeof map !== "object" || map === null || Array.isArray(map)) return fail();
+    if (![Object.prototype, null].includes(Object.getPrototypeOf(map))) return fail();
+    for (const [id, v3] of Object.entries(map)) {
+      if (!id || id === "__proto__" || (key === "groups" ? typeof v3 !== "string" || !v3 : v3 !== "closed" && v3 !== "canceled")) fail();
+    }
+  }
+  if ("closed" in raw && typeof raw.closed !== "boolean") fail();
+  const board = parseBoard(raw);
+  if (board.carried.some((id) => !board.issues.includes(id))) fail();
+  return board;
+}
 function serializeBoard(board) {
   const out = {};
   if (board.issues.length > 0) out.issues = board.issues;
@@ -2300,35 +2328,6 @@ var PreactView = class extends import_obsidian8.ItemView {
 // src/obsidian/writer.ts
 var import_obsidian9 = require("obsidian");
 
-// src/core/issue-file.ts
-var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString(s3) {
-  return JSON.stringify(s3);
-}
-function newIssueContent(id, summary, created, parent = null) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
-  lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
-  return lines.join("\n");
-}
-function newMemberContent(id, name, created) {
-  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
-    "\n"
-  );
-}
-function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
-  if (extra.start) lines.push(`start: ${extra.start}`);
-  lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
-  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-  lines.push(`created: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
-  return lines.join("\n");
-}
-function newDailyContent() {
-  return "---\nboard: {}\n---\n";
-}
-
 // src/core/summary.ts
 var SECTION = "## Task board";
 function hm(ms) {
@@ -2387,6 +2386,70 @@ function upsertSummary(text, summary) {
   if (end < 0) end = lines.length;
   const after = lines.slice(end).join("\n");
   return head + [...lines.slice(0, start), summary.trimEnd(), ...after ? ["", after] : [""]].join("\n");
+}
+
+// src/core/board-note.ts
+function closeBoardNote(text, date, index, yaml) {
+  if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
+  if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
+  const fm = /^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/.exec(text);
+  if (!fm) throw new Error("board \u306E frontmatter \u304C\u3042\u308A\u307E\u305B\u3093");
+  const raw = yaml.parse(fm[2]);
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("frontmatter \u304C\u4E0D\u6B63\u3067\u3059");
+  const fields = raw;
+  if (!("board" in fields)) throw new Error("board \u304C\u3042\u308A\u307E\u305B\u3093");
+  const board = parseBoardForWrite(fields.board);
+  if (board.closed) return text;
+  for (const id of board.issues) {
+    if (!index.issues.has(id)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
+  }
+  const remaining = unfinished(index, date, board);
+  if (remaining.issues.length + remaining.routines.length > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
+  board.closed = true;
+  const eol = fm[1].endsWith("\r\n") ? "\r\n" : "\n";
+  const lines = fm[2].split(/\r?\n/);
+  const starts = lines.flatMap((line, i3) => /^(?:board|"board"|'board')\s*:/.test(line) ? [i3] : []);
+  if (starts.length !== 1) throw new Error("board \u306E\u4F4D\u7F6E\u3092\u5B89\u5168\u306B\u7279\u5B9A\u3067\u304D\u307E\u305B\u3093");
+  const start = starts[0];
+  let end = start + 1;
+  while (end < lines.length && /^(?:[ \t]|#|$)/.test(lines[end])) end++;
+  while (end > start + 1 && /^(?:\s*#.*|\s*)$/.test(lines[end - 1])) end--;
+  const replacement = yaml.stringify({ board: serializeBoard(board) }).trimEnd().split(/\r?\n/);
+  const nextFm = [...lines.slice(0, start), ...replacement, ...lines.slice(end)].join(eol);
+  const nextFields = yaml.parse(nextFm);
+  const withoutBoard = (value) => Object.fromEntries(Object.entries(value).filter(([key]) => key !== "board"));
+  if (JSON.stringify(withoutBoard(fields)) !== JSON.stringify(withoutBoard(nextFields))) throw new Error("board \u4EE5\u5916\u306E\u6B04\u304C\u5909\u308F\u308B\u305F\u3081\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093");
+  const next = fm[1] + nextFm + fm[3] + text.slice(fm[0].length);
+  return upsertSummary(next, boardSummary(index, date, board));
+}
+
+// src/core/issue-file.ts
+var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function newIssueContent(id, summary, created, parent = null) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  if (parent !== null) lines.push(`parent: ${parent}`);
+  lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  return lines.join("\n");
+}
+function newMemberContent(id, name, created) {
+  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
+    "\n"
+  );
+}
+function newRoutineContent(id, summary, repeat, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  if (extra.start) lines.push(`start: ${extra.start}`);
+  lines.push("active: true");
+  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+  lines.push(`created: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
+  return lines.join("\n");
+}
+function newDailyContent() {
+  return "---\nboard: {}\n---\n";
 }
 
 // src/obsidian/writer.ts
@@ -2517,16 +2580,19 @@ var TaskWriter = class {
   async updateBoard(date, mutate) {
     const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(dailyNotePath(date)), newDailyContent());
     await this.app.fileManager.processFrontMatter(file, (fm) => {
-      const board = parseBoard(fm[BOARD_KEY]);
+      const board = parseBoardForWrite(fm[BOARD_KEY]);
       mutate(board);
-      fm[BOARD_KEY] = serializeBoard(board);
+      fm[BOARD_KEY] = serializeBoard(parseBoardForWrite(board));
     });
     this.store.refreshSoon();
   }
-  /** ボードを締めたときの要約をデイリーノートの本文に書く */
-  async writeSummary(date, summary) {
-    const file = await this.getOrCreate((0, import_obsidian9.normalizePath)(dailyNotePath(date)), newDailyContent());
-    await this.app.vault.process(file, (text) => upsertSummary(text, summary));
+  /** 未完了を再検査し、closed と要約を同じ vault.process で保存する。 */
+  async closeBoard(date) {
+    await this.app.vault.process(
+      this.file(dailyNotePath(date)),
+      (text) => closeBoardNote(text, date, this.store.index, { parse: import_obsidian9.parseYaml, stringify: import_obsidian9.stringifyYaml })
+    );
+    this.store.refreshSoon();
   }
   /** task board のグループの定義を保存する */
   async saveGroups(groups) {
@@ -2710,13 +2776,8 @@ async function carryIssues(ctx, date, issues, kind) {
   }
 }
 async function closeBoard(ctx, date) {
-  let closed = emptyBoard();
   try {
-    await ctx.writer.updateBoard(date, (b2) => {
-      b2.closed = true;
-      closed = b2;
-    });
-    await ctx.writer.writeSummary(date, boardSummary(ctx.store.index, date, closed));
+    await ctx.writer.closeBoard(date);
   } catch (e3) {
     ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
@@ -3166,9 +3227,7 @@ function DailyView(props) {
       const u4 = unfinished(index, b2.date, b2.board);
       if (u4.issues.length + u4.routines.length > 0) continue;
       closing.current.add(b2.date);
-      void ctx.writer.updateBoard(b2.date, (x2) => {
-        x2.closed = true;
-      }).then(() => ctx.writer.writeSummary(b2.date, boardSummary(index, b2.date, { ...b2.board, closed: true }))).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      void ctx.writer.closeBoard(b2.date).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
     }
   });
   const next = () => {
