@@ -1,10 +1,8 @@
 import { useState } from "preact/hooks";
-import { schedulePatch } from "../core/actions";
-import { localToday } from "../core/dates";
 import { isInbox } from "../core/index";
 import { openCaptureModal } from "../obsidian/capture";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, somedayIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, scheduleIssues, scheduleToday, somedayIssues } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
@@ -25,13 +23,6 @@ export function InboxView(props: { ctx: TaskContext }) {
 		setDraft("");
 		void ctx.writer.createIssues([summary]).catch((err) => ctx.report("issue を作成できませんでした", err));
 	};
-	const today = () =>
-		void ctx.writer
-			.updateMany(
-				sel.map((i) => i.path),
-				(path) => schedulePatch(sel.find((i) => i.path === path)!, [localToday()]),
-			)
-			.then(done, (e) => ctx.report("予定を入れられませんでした", e));
 	return (
 		<div class="vt-page">
 			<header class="vt-page-head">
@@ -49,11 +40,12 @@ export function InboxView(props: { ctx: TaskContext }) {
 					まとめて作成
 				</button>
 			</form>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "created"]} empty="Inbox は空です" />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "estimated", "created"]} empty="Inbox は空です" />
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "今日やる", icon: "calendar-check", tone: "primary", run: today },
+					{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
+					{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },

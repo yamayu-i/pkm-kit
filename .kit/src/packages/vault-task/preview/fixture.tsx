@@ -4,6 +4,7 @@ import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
+import { RoutineHeader } from "../src/header/RoutineHeader";
 import { DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
 import { GroupManagerView } from "../src/views/GroupManagerView";
@@ -55,6 +56,8 @@ const { data } = collectVault({
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤さん" } },
 		{ path: `daily/${t.slice(0, 4)}/${t.slice(5, 7)}/${t}.md`, frontmatter: { board: { issues: ["i-6", "i-1", "i-2"], groups: { "i-6": "午前/集中", "i-2": "午後" } } } },
+		{ path: `daily/${addDays(t, -1).slice(0, 4)}/${addDays(t, -1).slice(5, 7)}/${addDays(t, -1)}.md`, frontmatter: { board: { routines: { "r-1": "closed" } } } },
+		{ path: `daily/${addDays(t, -2).slice(0, 4)}/${addDays(t, -2).slice(5, 7)}/${addDays(t, -2)}.md`, frontmatter: { board: { routines: { "r-1": "canceled" } } } },
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"}]',
@@ -96,7 +99,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 };
 
 const name = location.hash.slice(1) || "header";
-if (name === "header") {
+if (name === "header" || name === "routine") {
 	for (const [id, width] of [
 		["wide", 760],
 		["narrow", 360],
@@ -107,7 +110,7 @@ if (name === "header") {
 		el.style.width = `${width}px`;
 		el.style.margin = "8px";
 		document.body.append(el);
-		render(h(IssueHeader, { ctx: ctx as never, path: "issue/i-2.md" }), el);
+		render(name === "routine" ? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" }) : h(IssueHeader, { ctx: ctx as never, path: "issue/i-2.md" }), el);
 	}
 } else {
 	for (const [id, width] of [
@@ -116,6 +119,8 @@ if (name === "header") {
 	] as const) {
 		const el = document.createElement("div");
 		el.className = "vt-view";
+		// Obsidian の .view-content.vt-view と同じ（幅に応じた表示を確かめる）
+		el.style.containerType = "inline-size";
 		el.id = id;
 		el.style.width = `${width}px`;
 		el.style.border = "1px solid #8884";

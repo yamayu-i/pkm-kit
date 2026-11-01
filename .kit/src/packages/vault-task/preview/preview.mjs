@@ -4,7 +4,7 @@
  * 撮ったあと、描画した画面を検査する（run/contrast・run/target-size・run/focus-visible・run/keyboard）。違反があれば失敗する。
  *
  * 使い方: pnpm preview:ui [画面名...]  → preview/out/<画面>-<light|dark>(-narrow).png
- * Playwright と Chromium は開発環境に入っているものを使う（このリポジトリの依存にはしない）
+ * 初回だけ Chromium を入れる: pnpm --filter vault-task exec playwright install chromium
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -50,7 +50,7 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 }
 
 // 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
-const SCREENS = ["header", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups", "forms"];
+const SCREENS = ["header", "routine", "daily", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups", "forms"];
 const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
 const screens = wanted.length > 0 ? wanted : SCREENS;
 

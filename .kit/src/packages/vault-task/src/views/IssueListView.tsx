@@ -4,7 +4,7 @@ import { localToday } from "../core/dates";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../core/list";
 import { PRIORITIES, STATUSES } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, inboxIssues, somedayIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, inboxIssues, scheduleIssues, somedayIssues } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { TextForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
@@ -157,10 +157,11 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					</button>
 				</div>
 			</section>
-			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["labels", "next", "mid_due", "deadline"]} empty="条件に合う issue はありません" />
+			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "mid_due", "deadline", "estimated"]} empty="条件に合う issue はありません" />
 			<ActionBar
 				count={sel.length}
 				actions={[
+					{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },

@@ -2,7 +2,7 @@ import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { closePatch, cancelPatch } from "../core/actions";
 import { boardItems, placementOf, unfinished, type BoardState } from "../core/board";
-import { formatShortDate, type LocalDate } from "../core/dates";
+import { addDays, formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
 import { isActive, type TaskIndex } from "../core/index";
@@ -264,11 +264,12 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					<div class="vt-empty">{items.length === 0 ? "—" : "すべて片付きました"}</div>
 				) : (
 					<>
-						<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "deadline"]} empty="issue はすべて片付きました" />
+						<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="issue はすべて片付きました" />
 						{leftIssues.length > 0 && (
 							<ActionBar
 								count={sel.length}
 								actions={[
+									{ label: "Do Tomorrow", icon: "calendar-plus", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(new Set())) },
 									{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(new Set())) },
 									{ label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(new Set())) },
 									{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(new Set())) },

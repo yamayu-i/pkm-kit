@@ -1,5 +1,5 @@
-import type { LocalDate } from "./dates";
-import { isActive, type TaskIndex } from "./index";
+import { addDays, type LocalDate } from "./dates";
+import { isActive, routineOccursOn, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
 
 /** routine のその日の結果（ADR-0010: その日のうちに closed か canceled にする） */
@@ -111,6 +111,26 @@ export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState)
 		issues: items.issues.filter((i) => isActive(i) && !board.carried.includes(i.id)),
 		routines: items.routines.filter((r) => board.routines[r.id] === undefined),
 	};
+}
+
+/** 片付けた issue として記録する（ボードには残る） */
+export function markCarried(board: BoardState, ids: string[]): void {
+	for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
+}
+
+/** routine のある日の結果。none は予定があって未記録、off は予定なし */
+export interface RoutineDayResult {
+	date: LocalDate;
+	state: RoutineResult | "none" | "off";
+}
+
+/** 今日までの `days` 日分の結果（古い順。ADR-0018） */
+export function routineResults(index: TaskIndex, routine: Routine, today: LocalDate, days: number): RoutineDayResult[] {
+	return Array.from({ length: days }, (_, i) => {
+		const date = addDays(today, i - days + 1);
+		const result = index.board(date)?.board.routines[routine.id];
+		return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
+	});
 }
 
 /**

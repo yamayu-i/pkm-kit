@@ -308,7 +308,7 @@ pnpm build                   # tokens.json から生成物を作り直す（プ�
 pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
 cd packages/vault-task
 pnpm preview:ui              # 画面 × light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
-pnpm preview:ui board inbox  # 画面を絞る（header / daily / board / issues / inbox / organize / scheduled / someday / routines / groups / forms）
+pnpm preview:ui board inbox  # 画面を絞る（header / routine / daily / board / issues / inbox / organize / scheduled / someday / routines / groups / forms）
 ```
 
 - `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む

@@ -10,7 +10,7 @@ import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEn
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
-export type FieldValue = string | number | boolean | string[] | null | undefined;
+export type FieldValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined;
 
 /**
  * Vault への書き込み。ノートは Vault API で書く（開いているエディタとキャッシュに反映させるため）。

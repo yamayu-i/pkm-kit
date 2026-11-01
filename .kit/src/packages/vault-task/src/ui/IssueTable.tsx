@@ -3,13 +3,16 @@ import type { ComponentChild } from "preact";
 import { formatShortDate, localToday } from "../core/dates";
 import { dueLevel } from "../core/due";
 import type { Issue } from "../core/schema";
+import { formatMinutes } from "../core/format";
 import type { TaskContext } from "../obsidian/context";
+import { editDue, editLabels, editScheduled, editStatusDetail, estimateMenu, issueRowMenu, priorityMenu, saveIssue, statusMenu } from "../obsidian/issue-editors";
 import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
+import { Icon } from "./Icon";
 import { linkProps } from "./a11y";
 
-export type Column = "status-detail" | "mid_due" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created";
+export type Column = "status-detail" | "mid_due" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created" | "estimated";
 
-/** 選択できる issue の一覧（ADR-0009 の行表示）。行をクリックすると issue を開く */
+/** 選択できる issue の一覧（ADR-0009 の行表示）。summary をクリックすると issue を開き、ほかのセルと「…」で編集する（ADR-0018） */
 export function IssueTable(props: {
 	ctx: TaskContext;
 	issues: Issue[];
@@ -34,19 +37,28 @@ export function IssueTable(props: {
 	if (issues.length === 0) return <div class="vt-empty">{props.empty ?? "ありません"}</div>;
 	const due = (issue: Issue, value: string | null) =>
 		value ? <span class={`vt-due-chip vt-due-${dueLevel(issue, value, today)}`}>{formatShortDate(value)}</span> : <span class="vt-muted">—</span>;
+	const editable = (issue: Issue, c: Column, open: (e: MouseEvent) => void, content: ComponentChild) => (
+		<button class="vt-cell-edit" aria-label={`${issue.id} の ${c} を編集`} title={`${c} を編集`} onClick={open}>
+			{content}
+		</button>
+	);
+	const text = (value: string) => (value ? <span class="vt-cell-detail">{value}</span> : <span class="vt-muted">—</span>);
 	const cell = (issue: Issue, c: Column): ComponentChild => {
+		const save = saveIssue(ctx, issue);
 		switch (c) {
 			case "status-detail":
-				return <span class="vt-cell-detail">{issue.statusDetail}</span>;
+				return editable(issue, c, () => editStatusDetail(ctx, issue.statusDetail, save), text(issue.statusDetail));
 			case "mid_due":
-				return due(issue, issue.midDue);
+				return editable(issue, c, () => editDue(ctx, issue, "mid_due"), due(issue, issue.midDue));
 			case "deadline":
-				return due(issue, issue.deadline);
+				return editable(issue, c, () => editDue(ctx, issue, "deadline"), due(issue, issue.deadline));
 			case "labels":
-				return <span class="vt-cell-detail">{issue.labels.join(", ")}</span>;
+				return editable(issue, c, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
+			case "estimated":
+				return editable(issue, c, (e) => estimateMenu(ctx, e, issue.estimated, save), issue.estimated === null ? <span class="vt-muted">—</span> : <span class="vt-num">{formatMinutes(issue.estimated)}</span>);
 			case "next": {
 				const next = issue.scheduled.find((d) => d >= today);
-				return next ? <span class="vt-num">{formatShortDate(next)}</span> : <span class="vt-muted">—</span>;
+				return editable(issue, c, () => editScheduled(ctx, issue), next ? <span class="vt-num">{formatShortDate(next)}</span> : <span class="vt-muted">—</span>);
 			}
 			case "revisit":
 				return issue.revisit ? <span class="vt-num">{formatShortDate(issue.revisit)}</span> : <span class="vt-muted">—</span>;
@@ -68,6 +80,7 @@ export function IssueTable(props: {
 				{columns.map((c) => (
 					<span class={`vt-th vt-col-${c}`}>{c}</span>
 				))}
+				<span class="vt-th vt-col-menu" />
 			</div>
 			{issues.map((issue) => (
 				<div class={`vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`} role="row" key={issue.id}>
@@ -80,14 +93,19 @@ export function IssueTable(props: {
 						</span>
 					</span>
 					<span class="vt-col-priority">
-						<PriorityBadge priority={issue.priority} />
+						<PriorityBadge priority={issue.priority} onClick={(e) => priorityMenu(e, issue.priority, saveIssue(ctx, issue))} />
 					</span>
 					<span class="vt-col-status">
-						<StatusBadge status={issue.status} />
+						<StatusBadge status={issue.status} onClick={(e) => statusMenu(ctx, e, issue)} />
 					</span>
 					{columns.map((c) => (
 						<span class={`vt-col-${c}`}>{cell(issue, c)}</span>
 					))}
+					<span class="vt-col-menu">
+						<button class="vt-icon-button" aria-label={`${issue.id} を編集`} title="編集" onClick={(e) => issueRowMenu(ctx, e, issue)}>
+							<Icon name="more-horizontal" />
+						</button>
+					</span>
 				</div>
 			))}
 		</div>

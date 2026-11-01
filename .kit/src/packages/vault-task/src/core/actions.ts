@@ -1,5 +1,5 @@
 import type { LocalDate } from "./dates";
-import type { Issue } from "./schema";
+import type { Issue, Status } from "./schema";
 
 /** frontmatter の更新内容。null / 空配列は欄ごと消す（TaskWriter.update と同じ） */
 export type Patch = Record<string, string | number | boolean | string[] | null>;
@@ -27,6 +27,24 @@ export function somedayPatch(revisit: LocalDate | null = null): Patch {
 /** someday から戻すときは open にして revisit を外す */
 export function reopenPatch(): Patch {
 	return { status: "open", revisit: null };
+}
+
+/** リストからの status の変更（ADR-0018）。委任先は delegated のときだけ使う */
+export function statusPatch(status: Status, delegatedTo: string | null = null): Patch {
+	if (status === "closed") return closePatch();
+	if (status === "canceled") return cancelPatch();
+	if (status === "someday") return somedayPatch();
+	return { status, delegated_to: status === "delegated" ? delegatedTo : null, revisit: null };
+}
+
+/** 期限を変える。someday は期限を持たないので、入れるときは open に戻す（ADR-0018） */
+export function duePatch(issue: Issue, key: "mid_due" | "deadline", date: LocalDate | null): Patch {
+	return { [key]: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };
+}
+
+/** 実行日を置き換える。someday に入れるときは open に戻す（ADR-0018） */
+export function scheduledPatch(issue: Issue, dates: LocalDate[]): Patch {
+	return { scheduled: dates, ...(issue.status === "someday" && dates.length > 0 ? reopenPatch() : {}) };
 }
 
 export type RescheduleTarget = "scheduled" | "mid_due" | "deadline";

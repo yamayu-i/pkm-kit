@@ -8,7 +8,7 @@
 ### 共通
 
 - どの View でも、issue をクリックすると issue 画面を開く
-- 一覧の行に出すもの: ID（status 色のバッジ）、summary（固定幅、はみ出しは省略）、priority、status、status-detail、mid_due、deadline
+- 一覧の行に出すもの: ID（status 色のバッジ）、summary（はみ出しは省略）、priority、status、画面ごとの列（ADR-0018）
 
 ### DailyTaskView
 

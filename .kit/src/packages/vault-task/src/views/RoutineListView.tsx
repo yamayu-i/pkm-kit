@@ -1,86 +1,39 @@
 import { Keymap } from "obsidian";
 import { useState } from "preact/hooks";
-import { localToday, WEEKDAY_NAMES } from "../core/dates";
+import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { groupKeys } from "../core/groups";
 import { routineOccursOn } from "../core/index";
-import { describeRepeat, parseMonthSpec, parseRepeat } from "../core/repeat";
+import { describeRepeat } from "../core/repeat";
 import type { Routine } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { PreactModal } from "../obsidian/modals";
 import { Icon } from "../ui/Icon";
+import { RepeatFields, defaultRepeatDraft, readRepeatDraft } from "../ui/RepeatFields";
 import { useStoreVersion } from "../ui/hooks";
 import { linkProps } from "../ui/a11y";
-
-type Every = "day" | "week" | "month";
 
 /** routine を作るフォーム。月は `15, last, 2th-tue, last-fri` のように書く（ADR-0010） */
 function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repeat: Record<string, unknown>, extra: { group: string | null; estimated: number | null }) => void }) {
 	const [summary, setSummary] = useState("");
-	const [every, setEvery] = useState<Every>("week");
-	const [interval, setInterval] = useState(1);
-	const [weekdays, setWeekdays] = useState<string[]>(["mon"]);
-	const [monthText, setMonthText] = useState("1");
+	const [draft, setDraft] = useState(defaultRepeatDraft());
 	const [group, setGroup] = useState("");
 	const [estimated, setEstimated] = useState("");
-	const on = every === "week" ? weekdays : every === "month" ? monthText.split(/[,\s]+/).filter(Boolean).map((s) => (/^\d+$/.test(s) ? Number(s) : s)) : undefined;
-	const repeat: Record<string, unknown> = { every, ...(interval > 1 ? { interval } : {}), ...(on ? { on } : {}) };
-	const parsed = parseRepeat(repeat);
-	const badMonth = every === "month" && (on as unknown[]).some((v) => parseMonthSpec(v) === null);
-	const error = !summary.trim() ? "summary を入れてください" : !parsed.ok ? parsed.error : badMonth ? "日付の書き方が読めません" : null;
+	const read = readRepeatDraft(draft);
+	const error = !summary.trim() ? "summary を入れてください" : read.error;
 	return (
 		<form
 			class="vt-worklog-form"
 			onSubmit={(e) => {
 				e.preventDefault();
-				if (error === null) props.onSubmit(summary.trim(), repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
+				if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
 			}}
 		>
 			<label class="vt-text-field">
 				<span>summary</span>
 				<input type="text" value={summary} placeholder="例: 週次レビュー" onInput={(e) => setSummary(e.currentTarget.value)} />
 			</label>
-			<div class="vt-text-field">
-				<span>くり返し</span>
-				<div class="vt-chip-row">
-					{(
-						[
-							["day", "毎日"],
-							["week", "毎週"],
-							["month", "毎月"],
-						] as const
-					).map(([v, label]) => (
-						<button type="button" class={`vt-filter-chip${every === v ? " is-on" : ""}`} onClick={() => setEvery(v)}>
-							{label}
-						</button>
-					))}
-					<span class="vt-muted">間隔</span>
-					<input class="vt-small-input" type="number" min={1} value={interval} onInput={(e) => setInterval(Math.max(1, Number(e.currentTarget.value) || 1))} />
-				</div>
-			</div>
-			{every === "week" && (
-				<div class="vt-chip-row">
-					{[1, 2, 3, 4, 5, 6, 0].map((w) => {
-						const name = WEEKDAY_NAMES[w]!;
-						const onDay = weekdays.includes(name);
-						return (
-							<button
-								type="button"
-								class={`vt-filter-chip${onDay ? " is-on" : ""}`}
-								onClick={() => setWeekdays(onDay ? weekdays.filter((x) => x !== name) : [...weekdays, name])}
-							>
-								{name}
-							</button>
-						);
-					})}
-				</div>
-			)}
-			{every === "month" && (
-				<label class="vt-text-field">
-					<span>日付（カンマ区切り。15 / last = 月末 / 2th-tue = 第 2 火曜 / last-fri = 最終金曜）</span>
-					<input type="text" value={monthText} onInput={(e) => setMonthText(e.currentTarget.value)} />
-				</label>
-			)}
+			<RepeatFields draft={draft} onChange={setDraft} />
 			<div class="vt-chip-row">
 				<label class="vt-text-field">
 					<span>グループ（任意）</span>
@@ -96,7 +49,6 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 					<input class="vt-small-input" type="number" min={0} value={estimated} onInput={(e) => setEstimated(e.currentTarget.value)} />
 				</label>
 			</div>
-			<div class="vt-muted">{parsed.ok ? describeRepeat(parsed.value) : ""}</div>
 			{error !== null && summary && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				<button type="submit" class="mod-cta" disabled={error !== null}>
