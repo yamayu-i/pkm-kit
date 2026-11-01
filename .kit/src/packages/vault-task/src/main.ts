@@ -13,9 +13,10 @@ import { IssueListView } from "./views/IssueListView";
 import { OrganizeView } from "./views/OrganizeView";
 import { RoutineListView } from "./views/RoutineListView";
 import { ScheduledView } from "./views/ScheduledView";
+import { SidebarView } from "./views/SidebarView";
 import { SomedayView } from "./views/SomedayView";
 
-/** View の一覧（ADR-0009, 0010） */
+/** View の一覧（ADR-0009, 0010, 0019） */
 const VIEWS: ViewSpec[] = [
 	{ type: "vault-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
 	{ type: "vault-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
@@ -26,6 +27,8 @@ const VIEWS: ViewSpec[] = [
 	{ type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
 	{ type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
 ];
+
+const SIDEBAR_VIEW: ViewSpec = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
 
 export default class VaultTaskPlugin extends Plugin {
 	private store: TaskStore | null = null;
@@ -59,10 +62,21 @@ export default class VaultTaskPlugin extends Plugin {
 			},
 		};
 
+		const openSidebar = async (reveal = true) => {
+			const { workspace } = this.app;
+			const existing = workspace.getLeavesOfType?.(SIDEBAR_VIEW.type)[0];
+			const leaf = existing ?? workspace.getLeftLeaf?.(false);
+			if (!leaf) return;
+			if (!existing) await leaf.setViewState({ type: SIDEBAR_VIEW.type, active: reveal });
+			if (reveal) await workspace.revealLeaf(leaf);
+		};
+
 		for (const spec of VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, ctx));
 			this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} を開く`, callback: () => void ctx.openView(spec.type) });
 		}
+		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
+		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", callback: () => void openSidebar(true) });
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
 		this.addRibbonIcon("list-plus", "issue をまとめて作成", () => openCaptureModal(ctx));
@@ -70,6 +84,7 @@ export default class VaultTaskPlugin extends Plugin {
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));
+			void openSidebar(false).catch((e) => ctx.report("サイドバーを開けませんでした", e));
 		});
 	}
 
