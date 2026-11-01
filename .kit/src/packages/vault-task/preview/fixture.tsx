@@ -11,6 +11,7 @@ import { DailyView } from "../src/views/DailyView";
 import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
+import { LabelManagerView } from "../src/views/LabelManagerView";
 import { OrganizeView } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
 import { ScheduledView } from "../src/views/ScheduledView";
@@ -71,7 +72,7 @@ const { data } = collectVault({
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
 	boardLogs: [{ path: "board/pc/2026-10.jsonl", text: boardLog.join("\n") }],
-	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"}]',
+	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"},{"name":"読書","color":"#f5e6c8"}]',
 	groups: JSON.stringify([
 		{ name: "午前", children: [{ name: "集中" }, { name: "雑務" }] },
 		{ name: "午後" },
@@ -101,6 +102,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	someday: SomedayView,
 	routines: RoutineListView,
 	groups: GroupManagerView,
+	labels: LabelManagerView,
 	sidebar: SidebarView,
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>

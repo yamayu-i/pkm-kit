@@ -7,7 +7,14 @@ import {
 	TEMPLATE_DIR,
 	type TemplateEntry,
 } from "../core/config";
-import { extractPrompts, offsetToPos, renderTemplate, resolveOutputPath, type PromptField } from "../core/template";
+import {
+	extractPrompts,
+	offsetToPos,
+	renderTemplate,
+	resolveDailyPath,
+	resolveOutputPath,
+	type PromptField,
+} from "../core/template";
 
 export interface LoadedTemplate {
 	entry: TemplateEntry;
@@ -63,22 +70,52 @@ export class TemplateManager {
 		await this.app.vault.create(TEMPLATE_CONFIG_PATH, serializeTemplateConfig(entries));
 	}
 
+	/** テンプレート 1 件の中身とプロンプト定義を読み込む。ファイルがなければ null */
+	private async loadTemplate(entry: TemplateEntry): Promise<LoadedTemplate | null> {
+		const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
+		if (!file) return null;
+		const rawContent = await this.app.vault.cachedRead(file);
+		return { entry, rawContent, prompts: extractPrompts(rawContent) };
+	}
+
 	/** モーダルに表示する有効なテンプレートとその中身・プロンプト定義を読み込む */
 	async loadEnabledTemplates(): Promise<LoadedTemplate[]> {
 		const { entries } = await this.loadConfig();
-		const enabled = entries.filter((e) => e.enabled);
 		const loaded: LoadedTemplate[] = [];
-		for (const entry of enabled) {
-			const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
-			if (!file) continue;
-			const rawContent = await this.app.vault.cachedRead(file);
-			loaded.push({
-				entry,
-				rawContent,
-				prompts: extractPrompts(rawContent),
-			});
+		for (const entry of entries.filter((e) => e.enabled)) {
+			const template = await this.loadTemplate(entry);
+			if (template) loaded.push(template);
 		}
 		return loaded;
+	}
+
+	/** `{{id:…}}` の連番を決めるための、Vault 内のすべてのノートの basename（vault-task と同じ見方） */
+	takenNames(): string[] {
+		return this.app.vault.getMarkdownFiles().map((f) => f.basename);
+	}
+
+	/**
+	 * 今日のデイリーノートを開く。なければ `template/file/daily.md` から作る。
+	 * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
+	 */
+	async openTodaysDaily(now: Date = new Date()): Promise<TFile> {
+		const { entries } = await this.loadConfig();
+		const entry = entries.find((e) => e.file === "daily.md");
+		const resolved = resolveDailyPath(entry, now);
+		if (resolved.error) throw new Error(resolved.error);
+
+		const path = normalizePath(resolved.path);
+		const existing = this.app.vault.getFileByPath(path);
+		if (existing) {
+			await this.app.workspace.getLeaf(false).openFile(existing);
+			return existing;
+		}
+
+		const template = await this.loadTemplate(
+			entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" },
+		);
+		if (!template) throw new Error(`${TEMPLATE_DIR}/daily.md がありません`);
+		return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
 	}
 
 	fileExists(path: string): boolean {
@@ -94,12 +131,14 @@ export class TemplateManager {
 		newTab?: boolean;
 	}): Promise<TFile> {
 		const now = params.now ?? new Date();
+		const takenNames = this.takenNames();
 		const resolved = resolveOutputPath({
 			folder: params.template.entry.folder,
 			fileNamePattern: params.template.entry.fileNamePattern,
 			titleInput: params.titleInput,
 			now,
 			prompts: params.prompts,
+			takenNames,
 		});
 		if (resolved.error) {
 			throw new Error(resolved.error);
@@ -115,6 +154,7 @@ export class TemplateManager {
 			path: normalized,
 			folder: resolved.folder,
 			prompts: params.prompts,
+			takenNames,
 		});
 
 		await this.ensureFolder(normalized);

@@ -1,6 +1,6 @@
 # ADR-0007: PKMの共通書式とDailyNote本文の保護
 
-- 状態: 承認
+- 状態: 承認（一部置換: ADR-0008）
 - 日付: 2026-10-31
 - 置換: [ADR-0004](0004-human-notes-append-only.md)
 

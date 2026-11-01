@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { localDateTime } from "../src/core/dates";
 import { dueLevel } from "../src/core/due";
-import { newIssueContent } from "../src/core/issue-file";
+import { newIssueContent, newMemberContent, newRoutineContent } from "../src/core/issue-file";
 import { collectVault, fileKind } from "../src/core/load";
 import { parseIssue } from "../src/core/schema";
 import { parse } from "yaml";
@@ -54,6 +54,17 @@ describe("newIssueContent", () => {
 		expect(problems).toEqual([]);
 		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", parent: "i-1", created });
 		expect(text).toContain("## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n");
+		expect(fm.updated).toBe(created);
+	});
+
+	it("member と routine も作成時に updated を created と同じ値で入れる", () => {
+		const created = "2026-11-01T08:00:00+09:00";
+		const member = parse(/^---\n([\s\S]*?)\n---/.exec(newMemberContent("m-1", "山田", created))![1]!) as Record<string, unknown>;
+		expect(member).toMatchObject({ type: "member", id: "m-1", name: "山田", created, updated: created });
+		const routine = parse(
+			/^---\n([\s\S]*?)\n---/.exec(newRoutineContent("r-1", "週次", { every: "week", on: ["mon"] }, created))![1]!,
+		) as Record<string, unknown>;
+		expect(routine).toMatchObject({ type: "routine", id: "r-1", created, updated: created });
 	});
 
 	it("localDateTime はタイムゾーン付き", () => {

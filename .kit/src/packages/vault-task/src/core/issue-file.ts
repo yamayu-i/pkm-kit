@@ -14,12 +14,12 @@ export function newIssueContent(id: string, summary: string, created: string, pa
 	const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
 	if (parent !== null) lines.push(`parent: ${parent}`);
 	if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
-	lines.push(`created: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+	lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
 	return lines.join("\n");
 }
 
 export function newMemberContent(id: string, name: string, created: string): string {
-	return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, "---", ""].join(
+	return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, `updated: ${created}`, "---", ""].join(
 		"\n",
 	);
 }
@@ -37,7 +37,7 @@ export function newRoutineContent(
 	lines.push("active: true");
 	if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
 	if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-	lines.push(`created: ${created}`, "---", "", "## 手順", "", "- [ ] ", "");
+	lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## 手順", "", "- [ ] ", "");
 	return lines.join("\n");
 }
 
@@ -49,5 +49,5 @@ export function frontmatterRange(text: string): { from: number; to: number } | n
 
 /** デイリーノート（ボードを締めるときにまだないとき） */
 export function newDailyContent(created: string): string {
-	return `---\ntype: daily\ncreated: ${created}\nupdated:\n---\n`;
+	return `---\ntype: daily\ncreated: ${created}\nupdated: ${created}\n---\n`;
 }

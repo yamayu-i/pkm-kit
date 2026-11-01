@@ -40,3 +40,8 @@ export function parseLabels(text: string): { labels: LabelDef[]; problems: Probl
 	}
 	return { labels, problems };
 }
+
+/** `issue/labels.json` の中身を作る */
+export function serializeLabels(labels: readonly LabelDef[]): string {
+	return `${JSON.stringify(labels.map((l) => ({ name: l.name, color: l.color })), null, 2)}\n`;
+}

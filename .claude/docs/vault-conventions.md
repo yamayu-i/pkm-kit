@@ -21,9 +21,9 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 |---|---|
 | `daily/YYYY/MM/YYYY-MM-DD.md` | デイリーノート |
 | `asset/` | 添付ファイル（サブフォルダを作らない） |
-| `issue/i-N.md` | タスク管理の issue（vault-task。frontmatter が正本。`.plugin-src/docs/adr/` 参照） |
-| `routine/r-N.md` | くり返しのタスク |
-| `member/m-N.md` | 委任先の人 |
+| `issue/i-N.md` | タスク管理の issue（frontmatter が正本。`.plugin-src/docs/adr/` 参照）。vault-task でも vault-template でも作れる |
+| `routine/r-N.md` | くり返しのタスク（同上） |
+| `member/m-N.md` | 委任先の人（同上） |
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
 | `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
@@ -46,8 +46,9 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 - type: 必須の単一文字列。英小文字とハイフン。話題・進行状態ではなくノートの役割。
 - created: このVaultにノートを作った日時。秒までのISO 8601、UTCのZまたはオフセット付き。改名・移動で変えない。
-- updated: ノートを変更してコミットした日時。人・AIは入力・更新しない。コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。
-- 自動付与の実装までは updated の空欄・既存値の保持を許す。既存ノートの不明な created は捏造せず、移行時に確認する。
+- updated: ノートを作成・変更した日時。作成時は created と同じ値を入れる（テンプレートとプラグインのコードが入れる。[ADR-0008](adr/0008-updated-on-create.md)）。変更したときの更新は、コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。人・AIは手で入力・更新しない。
+- コミット時の自動付与の実装までは、変更しても updated は作成時の値のままになる。既存ノートの空欄・不明な値は捏造せず、移行時に確認する。
+- ノートを作る仕組み（テンプレート、プラグインのコード）を足すときは、作成時に created と updated の両方を入れる。
 - 記事の公開日時、dailyが表す日付、知識の確認日時は別項目。updated は内容の正確さや最新性を示さない。
 
 新しいtypeを使う前に template/file/<type>.md を作る。テンプレートは初期構造の実例であり、本文の空見出しをすべて埋める義務はない。通常のメモは note とする。追加は独自の項目・構造・処理が必要な場合に限る。
@@ -56,4 +57,6 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 
-template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template（設定は template/config.json）でテンプレート選択・変数展開・生成先フォルダの解決を行う。Obsidian Templatesのフォルダ設定は template/file とする。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
+template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template（設定は template/config.json）でテンプレート選択・変数展開・生成先フォルダの解決を行う。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
+
+issue / routine / member は vault-task 専用ではない。vault-task でも vault-template でも作れる Vault の通常のノートで、どちらで作っても同じ項目が揃う。テンプレートは vault-task が正常に動くのに必要な項目（schema、id、summary / name、status / repeat など）をすべて持つ。ID（`i-N` / `r-N` / `m-N`）は連番で、テンプレートでは `{{id:i}}` などで振る（[ADR-0023](../../.plugin-src/docs/adr/0023-template-id-and-daily.md)）。連番の規則は vault-task と vault-template の両方が持つ。

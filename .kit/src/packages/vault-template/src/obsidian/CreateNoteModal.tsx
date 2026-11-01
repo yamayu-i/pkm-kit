@@ -2,7 +2,7 @@ import { Modal, Platform, type App } from "obsidian";
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { formatDateTime } from "../core/date-format";
-import { resolveOutputPath } from "../core/template";
+import { resolveOutputPath, usesIdFileName } from "../core/template";
 import type { LoadedTemplate, TemplateManager } from "./creator";
 
 function templateLabel(file: string): string {
@@ -22,6 +22,7 @@ function CreateNoteForm(props: {
 	const [submitting, setSubmitting] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
 	const now = useMemo(() => new Date(), []);
+	const takenNames = useMemo(() => manager.takenNames(), [manager]);
 
 	useEffect(() => {
 		titleRef.current?.focus();
@@ -36,7 +37,8 @@ function CreateNoteForm(props: {
 	}
 
 	const current = templates[selectedIdx] ?? templates[0]!;
-	const defaultFileNameHint = current.entry.fileNamePattern
+	const idFileName = usesIdFileName(current.entry.fileNamePattern);
+	const defaultFileNameHint = !idFileName && current.entry.fileNamePattern
 		? formatDateTime(now, current.entry.fileNamePattern.replace(/\{\{date(?::([^{}]+))?\}\}/g, (_, f) => f || "YYYY-MM-DD"))
 		: "";
 
@@ -46,6 +48,7 @@ function CreateNoteForm(props: {
 		titleInput,
 		now,
 		prompts: promptValues,
+		takenNames,
 	});
 
 	const alreadyExists = !resolved.error && resolved.path ? manager.fileExists(resolved.path) : false;
@@ -109,14 +112,20 @@ function CreateNoteForm(props: {
 
 			<div class="vt-tpl-section">
 				<label class="vt-tpl-label" for="vt-tpl-title-input">
-					ファイル名 / タイトル
+					{idFileName ? "タイトル" : "ファイル名 / タイトル"}
 				</label>
 				<input
 					id="vt-tpl-title-input"
 					ref={titleRef}
 					type="text"
 					class="vt-tpl-input"
-					placeholder={defaultFileNameHint ? `空欄なら ${defaultFileNameHint}` : "タイトルを入力（例: my-note）"}
+					placeholder={
+						idFileName
+							? "タイトルを入力（ファイル名は ID で決まります）"
+							: defaultFileNameHint
+								? `空欄なら ${defaultFileNameHint}`
+								: "タイトルを入力（例: my-note）"
+					}
 					value={titleInput}
 					onInput={(e) => setTitleInput(e.currentTarget.value)}
 					onKeyDown={(e) => {
