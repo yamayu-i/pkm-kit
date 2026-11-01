@@ -41,6 +41,7 @@ export function SidebarView(props: { ctx: TaskContext }) {
 		{ type: "vault-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
 		{ type: "vault-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
 		{ type: "vault-task-groups", title: "Board groups", icon: "layout-grid" },
+		{ type: "vault-task-labels", title: "Labels", icon: "tag" },
 	];
 
 	return (

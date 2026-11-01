@@ -1981,9 +1981,9 @@ function StatusField(props) {
 }
 function LabelsField(props) {
   const { ctx, labels, index, save } = props;
-  const colors = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
+  const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
   return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: () => editLabels(ctx, labels, save), title: "label \u3092\u7DE8\u96C6", children: [
-    labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors.get(name) ?? "var(--background-modifier-border)" })),
+    labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors2.get(name) ?? "var(--background-modifier-border)" })),
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: [
       /* @__PURE__ */ u3(Icon, { name: labels.length === 0 ? "tag" : "pencil" }),
       labels.length === 0 ? "label" : ""
@@ -2895,6 +2895,10 @@ function parseLabels(text) {
   }
   return { labels, problems };
 }
+function serializeLabels(labels) {
+  return `${JSON.stringify(labels.map((l3) => ({ name: l3.name, color: l3.color })), null, 2)}
+`;
+}
 
 // src/core/load.ts
 function fileKind(path) {
@@ -3154,6 +3158,232 @@ function closeBoardNote(text, date, index, board) {
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
+// ../design/src/color.ts
+var HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+function isHex(text) {
+  return HEX.test(text);
+}
+function parseHex(text) {
+  if (!isHex(text)) throw new Error(`\u8272\u306E\u66F8\u5F0F\u304C\u9055\u3044\u307E\u3059: ${text}`);
+  let h3 = text.slice(1);
+  if (h3.length <= 4) h3 = [...h3].map((c3) => c3 + c3).join("");
+  const n2 = (i3) => Number.parseInt(h3.slice(i3, i3 + 2), 16);
+  return { r: n2(0), g: n2(2), b: n2(4), a: h3.length === 8 ? n2(6) / 255 : 1 };
+}
+function over(top, bottom) {
+  const a3 = top.a;
+  return {
+    r: top.r * a3 + bottom.r * (1 - a3),
+    g: top.g * a3 + bottom.g * (1 - a3),
+    b: top.b * a3 + bottom.b * (1 - a3),
+    a: 1
+  };
+}
+function stack(layers) {
+  const [first, ...rest] = layers;
+  if (!first) throw new Error("\u91CD\u306D\u308B\u8272\u304C\u3042\u308A\u307E\u305B\u3093");
+  if (first.a < 1) throw new Error("\u4E00\u756A\u4E0B\u306E\u8272\u306F\u4E0D\u900F\u660E\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  return rest.reduce((acc, c3) => over(c3, acc), first);
+}
+function channel(v3) {
+  const s3 = v3 / 255;
+  return s3 <= 0.04045 ? s3 / 12.92 : ((s3 + 0.055) / 1.055) ** 2.4;
+}
+function relativeLuminance(c3) {
+  return 0.2126 * channel(c3.r) + 0.7152 * channel(c3.g) + 0.0722 * channel(c3.b);
+}
+function contrastRatio(foreground, background) {
+  if (background.a < 1) throw new Error("\u80CC\u666F\u306F\u4E0D\u900F\u660E\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const fg = foreground.a < 1 ? over(foreground, background) : foreground;
+  const l1 = relativeLuminance(fg);
+  const l22 = relativeLuminance(background);
+  return (Math.max(l1, l22) + 0.05) / (Math.min(l1, l22) + 0.05);
+}
+function formatRatio(ratio) {
+  return (Math.floor(ratio * 100) / 100).toFixed(2);
+}
+
+// ../design/generated/tokens.ts
+var colors = {
+  light: {
+    "color.surface": "#f6f5f2",
+    "color.surface-container": "#efeeea",
+    "color.surface-container-high": "#e8e7e2",
+    "color.on-surface": "#2b2a28",
+    "color.on-surface-variant": "#57564f",
+    "color.outline": "#7f7e76",
+    "color.outline-variant": "#2b2a2824",
+    "color.state-hover": "#2b2a2814",
+    "color.state-press": "#2b2a281f",
+    "color.primary": "#6750a4",
+    "color.on-primary": "#ffffff",
+    "color.primary-state-hover": "#6750a414",
+    "color.on-primary-state-hover": "#ffffff14",
+    "color.secondary-container": "#e8def8",
+    "color.on-secondary-container": "#1d192b",
+    "color.error": "#b3261e",
+    "color.focus-ring": "#6750a4",
+    "color.text-faint": "#696860",
+    "color.green-container": "#c4eed0",
+    "color.on-green-container": "#072711",
+    "color.green": "#1e8e3e",
+    "color.blue-container": "#d3e3fd",
+    "color.on-blue-container": "#041e49",
+    "color.blue": "#0b57d0",
+    "color.purple-container": "#eaddff",
+    "color.on-purple-container": "#21005d",
+    "color.purple": "#6750a4",
+    "color.gray-container": "#e3e3e3",
+    "color.on-gray-container": "#1f1f1f",
+    "color.gray": "#747775",
+    "color.sky-container": "#c2e7ff",
+    "color.on-sky-container": "#001d35",
+    "color.sky": "#00639b",
+    "color.pink-container": "#ffd8e4",
+    "color.on-pink-container": "#3e001d",
+    "color.pink": "#c2185b",
+    "color.red-container": "#f9dedc",
+    "color.on-red-container": "#410e0b",
+    "color.red": "#d93025",
+    "color.amber-container": "#ffecb3",
+    "color.on-amber-container": "#3a2a00",
+    "color.amber": "#b06d00",
+    "color.scheduled": "#188038",
+    "color.scheduled-hover": "#137333",
+    "color.on-scheduled": "#ffffff",
+    "color.due-3": "#fff8e1",
+    "color.due-2": "#ffe082",
+    "color.due-1": "#ffb74d",
+    "color.on-due": "#3a2a00",
+    "color.due-0": "#d93025",
+    "color.on-due-0": "#ffffff",
+    "color.on-label": "#1f1f1f"
+  },
+  dark: {
+    "color.surface": "#1e1e1e",
+    "color.surface-container": "#242424",
+    "color.surface-container-high": "#2b2b2b",
+    "color.on-surface": "#d0d0d0",
+    "color.on-surface-variant": "#b3b3b3",
+    "color.outline": "#7a7a7a",
+    "color.outline-variant": "#d0d0d024",
+    "color.state-hover": "#d0d0d014",
+    "color.state-press": "#d0d0d01f",
+    "color.primary": "#d0bcff",
+    "color.on-primary": "#381e72",
+    "color.primary-state-hover": "#d0bcff14",
+    "color.on-primary-state-hover": "#381e7214",
+    "color.secondary-container": "#3d3749",
+    "color.on-secondary-container": "#e8def8",
+    "color.error": "#f2b8b5",
+    "color.focus-ring": "#d0bcff",
+    "color.text-faint": "#8c8c8c",
+    "color.green-container": "#0f5223",
+    "color.on-green-container": "#c4eed0",
+    "color.green": "#6dd58c",
+    "color.blue-container": "#0842a0",
+    "color.on-blue-container": "#d3e3fd",
+    "color.blue": "#a8c7fa",
+    "color.purple-container": "#4f378b",
+    "color.on-purple-container": "#eaddff",
+    "color.purple": "#d0bcff",
+    "color.gray-container": "#444746",
+    "color.on-gray-container": "#e3e3e3",
+    "color.gray": "#c4c7c5",
+    "color.sky-container": "#004a77",
+    "color.on-sky-container": "#c2e7ff",
+    "color.sky": "#7fcfff",
+    "color.pink-container": "#8c1d4f",
+    "color.on-pink-container": "#ffd8e4",
+    "color.pink": "#ffb0c8",
+    "color.red-container": "#8c1d18",
+    "color.on-red-container": "#f9dedc",
+    "color.red": "#f2b8b5",
+    "color.amber-container": "#5c4300",
+    "color.on-amber-container": "#ffecb3",
+    "color.amber": "#ffd54f",
+    "color.scheduled": "#2e7d32",
+    "color.scheduled-hover": "#296e2c",
+    "color.on-scheduled": "#ffffff",
+    "color.due-3": "#4a3f14",
+    "color.due-2": "#6b5300",
+    "color.due-1": "#8a4b00",
+    "color.on-due": "#fff3d6",
+    "color.due-0": "#b3261e",
+    "color.on-due-0": "#ffffff",
+    "color.on-label": "#1f1f1f"
+  }
+};
+
+// src/core/lint.ts
+var LABEL_CONTRAST_MIN = 4.5;
+function labelContrast(color) {
+  return Math.min(
+    ...["light", "dark"].map((mode) => {
+      const bg = stack([parseHex(colors[mode]["color.surface-container"]), parseHex(color)]);
+      return contrastRatio(parseHex(colors[mode]["color.on-label"]), bg);
+    })
+  );
+}
+
+// src/core/label-edit.ts
+function labelNameError(name, others) {
+  const n2 = name.trim();
+  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (others.some((o3) => o3.trim() === n2)) return "\u540C\u3058\u540D\u524D\u306E label \u304C\u3042\u308A\u307E\u3059";
+  return null;
+}
+function labelColorError(color) {
+  if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color)) return "#rrggbb \u306E\u5F62\u3067\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  const ratio = labelContrast(color);
+  if (ratio < LABEL_CONTRAST_MIN) return `\u6587\u5B57\u3068\u306E\u6BD4\u304C ${formatRatio(ratio)} \u3067\u3001${LABEL_CONTRAST_MIN} \u306B\u5C4A\u304D\u307E\u305B\u3093`;
+  return null;
+}
+function labelUsage(index) {
+  const usage = /* @__PURE__ */ new Map();
+  for (const item of [...index.issues.values(), ...index.routines.values()]) {
+    for (const l3 of item.labels) usage.set(l3, (usage.get(l3) ?? 0) + 1);
+  }
+  return usage;
+}
+function renameLabelField(raw, renames) {
+  const list = Array.isArray(raw) ? raw : typeof raw === "string" ? [raw] : null;
+  if (list === null) return void 0;
+  let changed = false;
+  const next = [];
+  for (const v3 of list) {
+    const to = typeof v3 === "string" ? renames.get(v3.trim()) : void 0;
+    if (to !== void 0) changed = true;
+    const value = to ?? v3;
+    if (typeof value === "string" && next.some((x2) => typeof x2 === "string" && x2.trim() === value.trim())) {
+      changed = true;
+      continue;
+    }
+    next.push(value);
+  }
+  if (!changed) return void 0;
+  return typeof raw === "string" && next.length === 1 ? next[0] : next;
+}
+function planLabelSave(original, drafts, usage) {
+  const labels = [];
+  const renames = /* @__PURE__ */ new Map();
+  for (const d3 of drafts) {
+    const name = d3.name.trim();
+    const error = labelNameError(name, drafts.filter((x2) => x2.key !== d3.key).map((x2) => x2.name)) ?? labelColorError(d3.color);
+    if (error) throw new Error(`label\u300C${name}\u300D: ${error}`);
+    labels.push({ name, color: d3.color });
+    if (d3.from !== null && d3.from !== name) renames.set(d3.from, name);
+  }
+  const kept = new Set(drafts.map((d3) => d3.from));
+  const removed = original.map((l3) => l3.name).filter((n2) => !kept.has(n2));
+  assertUnused(removed, usage);
+  return { labels, renames, removed };
+}
+function assertUnused(removed, usage) {
+  const used = removed.filter((n2) => (usage.get(n2) ?? 0) > 0);
+  if (used.length > 0) throw new Error(`\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u524A\u9664\u3067\u304D\u307E\u305B\u3093: ${used.join(", ")}`);
+}
+
 // src/obsidian/writer.ts
 var TaskWriter = class {
   constructor(app, store) {
@@ -3236,8 +3466,29 @@ var TaskWriter = class {
     const labels = [...this.store.index.data.labels];
     if (labels.some((l3) => l3.name === name)) return;
     labels.push({ name, color });
-    const text = `${JSON.stringify(labels, null, 2)}
-`;
+    await this.writeLabelsFile(labels);
+  }
+  /**
+   * Labels 画面の保存（ADR-0024）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+   * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
+   */
+  async saveLabels(plan) {
+    if (this.store.problems.some((p3) => p3.path === LABELS_PATH)) throw new Error(`${LABELS_PATH} \u3092\u76F4\u3057\u3066\u304B\u3089\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044`);
+    const { index } = this.store;
+    assertUnused(plan.removed, labelUsage(index));
+    if (plan.renames.size > 0) {
+      const targets = [...index.issues.values(), ...index.routines.values()].filter((x2) => x2.labels.some((l3) => plan.renames.has(l3)));
+      for (const { path } of targets) {
+        await this.app.fileManager.processFrontMatter(this.file(path), (fm) => {
+          const next = renameLabelField(fm.label, plan.renames);
+          if (next !== void 0) fm.label = next;
+        });
+      }
+    }
+    await this.writeLabelsFile(plan.labels);
+  }
+  async writeLabelsFile(labels) {
+    const text = serializeLabels(labels);
     const file = this.app.vault.getFileByPath(LABELS_PATH);
     if (file) await this.app.vault.modify(file, text);
     else {
@@ -3598,7 +3849,7 @@ function TaskCard(props) {
 }
 function GroupBox(props) {
   const { ctx, date, groupKey } = props;
-  const [over, setOver] = d2(false);
+  const [over2, setOver] = d2(false);
   const all = props.items.filter((it) => groupKey === UNGROUPED ? props.placement(it) === UNGROUPED : inGroup(props.placement(it), groupKey));
   const own = props.items.filter((it) => props.placement(it) === groupKey);
   const ids = all.filter((it) => it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open").map(itemId);
@@ -3606,7 +3857,7 @@ function GroupBox(props) {
   return /* @__PURE__ */ u3(
     "section",
     {
-      class: `vt-group${props.sub ? " is-sub" : ""}${props.ungrouped ? " is-ungrouped" : ""}${over ? " is-over" : ""}`,
+      class: `vt-group${props.sub ? " is-sub" : ""}${props.ungrouped ? " is-ungrouped" : ""}${over2 ? " is-over" : ""}`,
       onDragOver: (e3) => {
         e3.preventDefault();
         e3.stopPropagation();
@@ -3921,10 +4172,7 @@ function DailyView(props) {
   ] });
 }
 
-// src/views/GroupManagerView.tsx
-var nextKey = 1;
-var toDraft = (g2) => ({ key: nextKey++, name: g2.name, children: g2.children.map(toDraft) });
-var toDef = (d3) => ({ name: d3.name.trim(), children: d3.children.map(toDef) });
+// src/ui/EditRow.tsx
 function move(list, i3, d3) {
   const j3 = i3 + d3;
   if (j3 < 0 || j3 >= list.length) return list;
@@ -3932,29 +4180,35 @@ function move(list, i3, d3) {
   [next[i3], next[j3]] = [next[j3], next[i3]];
   return next;
 }
-function errorOf(d3, siblings) {
-  return groupNameError(
-    d3.name,
-    siblings.filter((s3) => s3.key !== d3.key).map(toDef)
-  );
-}
 function NameField(props) {
   const ref = A2(null);
   h2(() => {
     if (props.autoFocus) ref.current?.focus();
   }, []);
-  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}`, children: [
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
     /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
-    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: "\u540D\u524D", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
+    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "\u540D\u524D", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
     props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
   ] });
 }
 function RowTools(props) {
+  const deleteTitle = props.deleteDisabled ?? `${props.what}\u3092\u524A\u9664`;
   return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
     /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0A\u3078", "aria-label": "\u4E0A\u3078", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
     /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0B\u3078", "aria-label": "\u4E0B\u3078", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: `${props.what}\u3092\u524A\u9664`, "aria-label": `${props.what}\u3092\u524A\u9664`, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
   ] });
+}
+
+// src/views/GroupManagerView.tsx
+var nextKey = 1;
+var toDraft = (g2) => ({ key: nextKey++, name: g2.name, children: g2.children.map(toDraft) });
+var toDef = (d3) => ({ name: d3.name.trim(), children: d3.children.map(toDef) });
+function errorOf(d3, siblings) {
+  return groupNameError(
+    d3.name,
+    siblings.filter((s3) => s3.key !== d3.key).map(toDef)
+  );
 }
 function GroupManagerView(props) {
   const { ctx } = props;
@@ -4112,6 +4366,134 @@ function InboxView(props) {
         ]
       }
     )
+  ] });
+}
+
+// src/views/LabelManagerView.tsx
+var nextKey2 = 1;
+var toDraft2 = (l3) => ({ key: nextKey2++, from: l3.name, name: l3.name, color: l3.color });
+var HEX2 = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+function pickerValue(color) {
+  const m3 = HEX2.exec(color);
+  if (!m3) return DEFAULT_LABEL_COLOR;
+  const hex = m3[1];
+  if (hex.length === 3) return `#${[...hex].map((c3) => c3 + c3).join("")}`.toLowerCase();
+  return `#${hex.slice(0, 6)}`.toLowerCase();
+}
+function LabelManagerView(props) {
+  const { ctx } = props;
+  const version = useStoreVersion(ctx.store);
+  const [drafts, setDrafts] = d2(() => ctx.store.index.data.labels.map(toDraft2));
+  const [dirty, setDirty] = d2(false);
+  const [saving, setSaving] = d2(false);
+  const [focusKey, setFocusKey] = d2(null);
+  h2(() => {
+    if (!dirty) setDrafts(ctx.store.index.data.labels.map(toDraft2));
+  }, [version]);
+  const usage = labelUsage(ctx.store.index);
+  const update = (next) => {
+    setDrafts(next);
+    setDirty(true);
+  };
+  const setLabel = (key, patch) => update(drafts.map((d3) => d3.key === key ? { ...d3, ...patch } : d3));
+  const add = () => {
+    const d3 = { key: nextKey2++, from: null, name: "", color: DEFAULT_LABEL_COLOR };
+    setFocusKey(d3.key);
+    update([...drafts, d3]);
+  };
+  const nameError = (d3) => labelNameError(d3.name, drafts.filter((x2) => x2.key !== d3.key).map((x2) => x2.name));
+  const hasError = drafts.some((d3) => nameError(d3) !== null || labelColorError(d3.color) !== null);
+  const renamed = drafts.filter((d3) => d3.from !== null && d3.from !== d3.name.trim()).reduce((n2, d3) => n2 + (usage.get(d3.from) ?? 0), 0);
+  const save = () => {
+    setSaving(true);
+    void Promise.resolve().then(() => ctx.writer.saveLabels(planLabelSave(ctx.store.index.data.labels, drafts, usage))).then(
+      () => setDirty(false),
+      (e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
+    ).finally(() => setSaving(false));
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-page vt-label-manager", children: [
+    /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
+      /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Labels" }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      dirty ? /* @__PURE__ */ u3(
+        "button",
+        {
+          class: "vt-button is-text",
+          onClick: () => {
+            setDrafts(ctx.store.index.data.labels.map(toDraft2));
+            setDirty(false);
+          },
+          children: "\u5143\u306B\u623B\u3059"
+        }
+      ) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u4FDD\u5B58\u6E08\u307F" }),
+      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty || hasError || saving, onClick: save, children: [
+        /* @__PURE__ */ u3(Icon, { name: "save" }),
+        " \u4FDD\u5B58"
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-label-editor", children: [
+      drafts.map((d3, i3) => {
+        const used = d3.from === null ? 0 : usage.get(d3.from) ?? 0;
+        const colorError = labelColorError(d3.color);
+        return /* @__PURE__ */ u3("section", { class: "vt-card vt-label-edit", "aria-label": `label ${d3.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09"}`, children: [
+          /* @__PURE__ */ u3("div", { class: "vt-label-edit-fields", children: [
+            /* @__PURE__ */ u3(
+              "input",
+              {
+                type: "color",
+                class: "vt-color-swatch",
+                value: pickerValue(d3.color),
+                title: "\u8272\u3092\u9078\u3076",
+                "aria-label": "\u8272\u3092\u9078\u3076",
+                onInput: (e3) => setLabel(d3.key, { color: e3.currentTarget.value })
+              }
+            ),
+            /* @__PURE__ */ u3(NameField, { label: "\u540D\u524D", value: d3.name, error: nameError(d3), autoFocus: focusKey === d3.key, onInput: (v3) => setLabel(d3.key, { name: v3 }) }),
+            /* @__PURE__ */ u3(
+              NameField,
+              {
+                label: "\u8272",
+                class: "vt-color-field",
+                placeholder: "#rrggbb",
+                value: d3.color,
+                error: colorError,
+                autoFocus: false,
+                onInput: (v3) => setLabel(d3.key, { color: v3.trim() })
+              }
+            ),
+            /* @__PURE__ */ u3(
+              RowTools,
+              {
+                what: "label",
+                index: i3,
+                count: drafts.length,
+                onMove: (n2) => update(move(drafts, i3, n2)),
+                onDelete: () => update(drafts.filter((x2) => x2.key !== d3.key)),
+                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
+              }
+            )
+          ] }),
+          /* @__PURE__ */ u3("div", { class: "vt-label-edit-meta", children: [
+            /* @__PURE__ */ u3(LabelBadge, { name: d3.name.trim() || "\uFF08\u540D\u524D\u306A\u3057\uFF09", color: HEX2.test(d3.color) ? d3.color : DEFAULT_LABEL_COLOR }),
+            /* @__PURE__ */ u3("span", { class: "vt-muted", children: used > 0 ? `${used} \u4EF6\u3067\u4F7F\u7528\u4E2D` : "\u672A\u4F7F\u7528" }),
+            d3.from !== null && d3.from !== d3.name.trim() && /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+              "\uFF08\u5143\u306E\u540D\u524D: ",
+              d3.from,
+              "\uFF09"
+            ] })
+          ] })
+        ] }, d3.key);
+      }),
+      /* @__PURE__ */ u3("button", { class: "vt-add-group", onClick: add, children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        " label \u3092\u8FFD\u52A0"
+      ] })
+    ] }),
+    dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
+      "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
+      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
+    ] }),
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue \u3068 routine \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
   ] });
 }
 
@@ -4502,7 +4884,7 @@ function OrganizeView(props) {
       }
     )).open();
   };
-  const colors = new Map(ctx.store.index.data.labels.map((l3) => [l3.name, l3.color]));
+  const colors2 = new Map(ctx.store.index.data.labels.map((l3) => [l3.name, l3.color]));
   const inChunk = count % CHUNK;
   return /* @__PURE__ */ u3("div", { class: "vt-page vt-organize", ref: root, children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
@@ -4566,7 +4948,7 @@ function OrganizeView(props) {
             excerpt && /* @__PURE__ */ u3("p", { class: "vt-organize-excerpt", children: excerpt }),
             /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
               /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: priorityMenu2 }),
-              issue.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors.get(l3) ?? "var(--background-modifier-border)" })),
+              issue.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? "var(--background-modifier-border)" })),
               /* @__PURE__ */ u3("button", { class: "vt-badge vt-label is-empty", onClick: editLabels2, children: [
                 /* @__PURE__ */ u3(Icon, { name: "tag" }),
                 "label"
@@ -4768,7 +5150,8 @@ function SidebarView(props) {
     { type: "vault-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
     { type: "vault-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
     { type: "vault-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
-    { type: "vault-task-groups", title: "Board groups", icon: "layout-grid" }
+    { type: "vault-task-groups", title: "Board groups", icon: "layout-grid" },
+    { type: "vault-task-labels", title: "Labels", icon: "tag" }
   ];
   return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
     /* @__PURE__ */ u3("button", { class: "vt-button is-primary vt-sidebar-capture", onClick: () => openCaptureModal(ctx), children: [
@@ -4882,7 +5265,8 @@ var VIEWS = [
   { type: "vault-task-scheduled", title: "Scheduled", icon: "calendar-range", component: ScheduledView },
   { type: "vault-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
   { type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
-  { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView }
+  { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
+  { type: "vault-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
 var VaultTaskPlugin = class extends import_obsidian19.Plugin {

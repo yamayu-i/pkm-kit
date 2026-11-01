@@ -6,7 +6,8 @@ import { localDateTime, type LocalDate } from "../core/dates";
 import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
 import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
-import { DEFAULT_LABEL_COLOR, LABELS_PATH, type LabelDef } from "../core/labels";
+import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
+import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
 import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
@@ -108,7 +109,31 @@ export class TaskWriter {
 		const labels: LabelDef[] = [...this.store.index.data.labels];
 		if (labels.some((l) => l.name === name)) return;
 		labels.push({ name, color });
-		const text = `${JSON.stringify(labels, null, 2)}\n`;
+		await this.writeLabelsFile(labels);
+	}
+
+	/**
+	 * Labels 画面の保存（ADR-0024）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+	 * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
+	 */
+	async saveLabels(plan: LabelSavePlan): Promise<void> {
+		if (this.store.problems.some((p) => p.path === LABELS_PATH)) throw new Error(`${LABELS_PATH} を直してから保存してください`);
+		const { index } = this.store;
+		assertUnused(plan.removed, labelUsage(index));
+		if (plan.renames.size > 0) {
+			const targets = [...index.issues.values(), ...index.routines.values()].filter((x) => x.labels.some((l) => plan.renames.has(l)));
+			for (const { path } of targets) {
+				await this.app.fileManager.processFrontMatter(this.file(path), (fm: Record<string, unknown>) => {
+					const next = renameLabelField(fm.label, plan.renames);
+					if (next !== undefined) fm.label = next;
+				});
+			}
+		}
+		await this.writeLabelsFile(plan.labels);
+	}
+
+	private async writeLabelsFile(labels: LabelDef[]): Promise<void> {
+		const text = serializeLabels(labels);
 		const file = this.app.vault.getFileByPath(LABELS_PATH);
 		if (file) await this.app.vault.modify(file, text);
 		else {

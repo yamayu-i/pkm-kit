@@ -17,9 +17,9 @@
 | [0004](0004-worklog-storage.md) | 承認 | worklog は端末別・月別の jsonl |
 | [0005](0005-effort-proration.md) | 承認 | 実績工数は重複を按分して都度計算する |
 | [0006](0006-status-inbox-someday.md) | 承認 | status の定義、Inbox と Someday |
-| [0007](0007-labels-and-members.md) | 承認 | label の定義ファイルと、委任先（member） |
+| [0007](0007-labels-and-members.md) | 承認（一部置換: 0024） | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認 | UI は Preact。issue 画面は CodeMirror の widget |
-| [0009](0009-views.md) | 承認（一部置換: 0018, 0021） | View の一覧と各 View の振る舞い |
+| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024） | View の一覧と各 View の振る舞い |
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
@@ -31,6 +31,7 @@
 | [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
-| [0021](0021-routine-effort-and-sidebar.md) | 承認 | routine 画面の total / average と左サイドバーのナビゲーション View |
+| [0021](0021-routine-effort-and-sidebar.md) | 承認（一部置換: 0024） | routine 画面の total / average と左サイドバーのナビゲーション View |
 | [0022](0022-template-plugin.md) | 承認（一部補足: 0023） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
+| [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
