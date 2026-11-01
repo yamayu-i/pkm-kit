@@ -15,6 +15,8 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 	const folders = new Set<string>(["template", "template/file"]);
 	const commands: { id: string; name: string; callback?: () => void }[] = [];
 	const notices: string[] = [];
+	const views: string[] = [];
+	const events: string[] = [];
 	let cursorPos: { line: number; ch: number } | null = null;
 	let openedPath: string | null = null;
 
@@ -68,8 +70,19 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 			workspace: {
 				getLeaf: () => leaf,
 				getActiveViewOfType: () => ({ editor }),
+				on: (name: string) => name,
+				onLayoutReady: () => {},
+				iterateAllLeaves: () => {},
 			},
+			metadataCache: { on: (name: string) => name, getFileCache: () => null, resolvedLinks: {} },
 		};
+		registerView(type: string) {
+			views.push(type);
+		}
+		registerEvent(ref: string) {
+			events.push(ref);
+		}
+		register() {}
 		addCommand(c: { id: string; name: string; callback?: () => void }) {
 			commands.push(c);
 		}
@@ -92,6 +105,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 			PluginSettingTab: class {},
 			Setting: class {},
 			MarkdownView: class {},
+			ItemView: class {},
 			Notice: class {
 				constructor(msg: string) {
 					notices.push(msg);
@@ -106,6 +120,8 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 		folders,
 		commands,
 		notices,
+		views,
+		events,
 		getOpenedPath: () => openedPath,
 		getCursorPos: () => cursorPos,
 	};
@@ -161,7 +177,10 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		await plugin.onload();
 
 		expect([...required]).toEqual(["obsidian"]);
-		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily"]);
+		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list"]);
+		expect(mock.views).toEqual(["vault-template-daily-list", "vault-template-note-list", "vault-template-source-list"]);
+		// ヘッダーを差し込むための購読(ADR-0025)
+		expect(mock.events).toEqual(expect.arrayContaining(["file-open", "layout-change", "active-leaf-change", "changed", "resolved"]));
 
 		const templates = await plugin.manager.loadEnabledTemplates();
 		expect(templates).toHaveLength(1);

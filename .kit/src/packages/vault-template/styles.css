@@ -174,3 +174,172 @@
 	font-size: var(--vt-type-body-small-size);
 	line-height: var(--vt-type-body-small-line-height);
 }
+
+/* ---------- ノートのヘッダー(ADR-0025) ---------- */
+
+.vt-tpl-note-header {
+	padding: var(--vt-space-8) var(--vt-space-16) var(--vt-space-4);
+	color: var(--vt-on-surface);
+	user-select: text;
+	/* ペインの幅で折り返す */
+	container-type: inline-size;
+}
+
+.vt-tpl-note-header-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-8);
+}
+
+.vt-tpl-note-header-top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--vt-space-8) var(--vt-space-16);
+}
+
+.vt-tpl-note-title {
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	font-weight: var(--vt-type-headline-small-weight);
+	letter-spacing: var(--vt-type-headline-small-tracking);
+	overflow-wrap: anywhere;
+}
+
+/* daily の 7 枠。表示だけで、押せない */
+.vt-tpl-week {
+	display: flex;
+	gap: var(--vt-space-4);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.vt-tpl-week-day {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 40px;
+	padding: var(--vt-space-4) var(--vt-space-8);
+	border-radius: var(--vt-radius-s);
+	border: 1px solid var(--vt-outline-variant);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: var(--vt-type-label-small-tracking);
+}
+
+.vt-tpl-week-day.is-current {
+	border-color: var(--vt-primary);
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-tpl-meta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-4);
+	margin: 0;
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+
+.vt-tpl-meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--vt-space-4) var(--vt-space-12);
+}
+
+.vt-tpl-meta dt {
+	min-width: 5em;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-tpl-meta dd {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--vt-space-4) var(--vt-space-8);
+	margin: 0;
+}
+
+.vt-tpl-link {
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	height: auto;
+	color: var(--vt-primary);
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+	text-align: left;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+/* ---------- 一覧 View(ADR-0025) ---------- */
+
+.vt-tpl-view {
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-tpl-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-12);
+	padding: var(--vt-space-8) 0;
+}
+
+.vt-tpl-search {
+	width: 100%;
+	height: 36px;
+	padding: 0 var(--vt-space-12);
+	border-radius: var(--vt-radius-s);
+	border: 1px solid var(--vt-outline);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-tpl-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.vt-tpl-table th,
+.vt-tpl-table td {
+	padding: var(--vt-space-8) var(--vt-space-12);
+	border-bottom: 1px solid var(--vt-outline-variant);
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.vt-tpl-table th {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+}
+
+.vt-tpl-sort {
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	height: auto;
+	color: inherit;
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+	cursor: pointer;
+}
+
+.vt-tpl-table tbody tr:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
