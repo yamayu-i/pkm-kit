@@ -3,7 +3,7 @@ import type { TaskIndex } from "./index";
 import type { LabelDef } from "./labels";
 import { LABEL_CONTRAST_MIN, labelContrast } from "./lint";
 
-/** Labels 画面で編集中の label（ADR-0023）。from は labels.json での元の名前（新しく足したものは null） */
+/** Labels 画面で編集中の label（ADR-0024）。from は labels.json での元の名前（新しく足したものは null） */
 export interface LabelDraft {
 	key: number;
 	from: string | null;
@@ -83,7 +83,7 @@ export function planLabelSave(original: readonly LabelDef[], drafts: readonly La
 	return { labels, renames, removed };
 }
 
-/** 使われている label を消そうとしていたら例外（ADR-0023） */
+/** 使われている label を消そうとしていたら例外（ADR-0024） */
 export function assertUnused(removed: readonly string[], usage: ReadonlyMap<string, number>): void {
 	const used = removed.filter((n) => (usage.get(n) ?? 0) > 0);
 	if (used.length > 0) throw new Error(`使われている label は削除できません: ${used.join(", ")}`);

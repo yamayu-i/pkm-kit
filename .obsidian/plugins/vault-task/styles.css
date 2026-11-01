@@ -2685,7 +2685,7 @@ button.vt-badge:disabled::after {
 	background: var(--vt-primary-state-hover);
 }
 
-/* ---------- label の編集（ADR-0023） ---------- */
+/* ---------- label の編集（ADR-0024） ---------- */
 
 .vt-label-manager {
 	max-width: 760px;

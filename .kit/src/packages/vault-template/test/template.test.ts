@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractPrompts, offsetToPos, renderTemplate, resolveOutputPath } from "../src/core/template";
+import { extractPrompts, offsetToPos, renderTemplate, resolveDailyPath, resolveOutputPath, usesIdFileName } from "../src/core/template";
 
 describe("offsetToPos", () => {
 	it("文字オフセットを行・列（0 始まり）に変換する", () => {
@@ -213,5 +213,72 @@ describe("resolveOutputPath", () => {
 				prompts: {},
 			}).error,
 		).toContain("隠しフォルダ");
+	});
+});
+
+describe("{{id:…}} の展開", () => {
+	const now = new Date(2026, 10, 1, 13, 20, 30);
+	const taken = ["i-1", "i-4", "m-2", "daily"];
+
+	it("renderTemplate は既存の最大値 + 1 の ID を、同じ値で何度でも展開する", () => {
+		const res = renderTemplate('id: "{{id:i}}"\nref: {{id:i}}\nmember: {{id:m}}', {
+			now,
+			title: "t",
+			path: "",
+			folder: "",
+			prompts: {},
+			takenNames: taken,
+		});
+		expect(res.content).toBe('id: "i-5"\nref: i-5\nmember: m-3');
+	});
+
+	it("接頭辞が不正な {{id:x}} はそのまま残す", () => {
+		const res = renderTemplate("{{id:x}}", { now, title: "t", path: "", folder: "", prompts: {}, takenNames: taken });
+		expect(res.content).toBe("{{id:x}}");
+	});
+
+	it("fileNamePattern に {{id:…}} があるとき、ファイル名は ID で固定し、入力は title になる", () => {
+		const res = resolveOutputPath({
+			folder: "member",
+			fileNamePattern: "{{id:m}}",
+			titleInput: "山田 太郎",
+			now,
+			prompts: {},
+			takenNames: taken,
+		});
+		expect(res).toEqual({ path: "member/m-3.md", folder: "member", fileName: "m-3.md", title: "山田 太郎", error: null });
+	});
+
+	it("ID 固定のとき、title が空ならエラーにする", () => {
+		const res = resolveOutputPath({
+			folder: "issue",
+			fileNamePattern: "{{id:i}}",
+			titleInput: "  ",
+			now,
+			prompts: {},
+			takenNames: taken,
+		});
+		expect(res.path).toBe("");
+		expect(res.error).toBe("タイトルを入力してください");
+	});
+
+	it("usesIdFileName は fileNamePattern の {{id:…}} を判定する", () => {
+		expect(usesIdFileName("{{id:i}}")).toBe(true);
+		expect(usesIdFileName("{{ id:r }}")).toBe(true);
+		expect(usesIdFileName("{{date:YYYY-MM-DD}}")).toBe(false);
+		expect(usesIdFileName("{{id:x}}")).toBe(false);
+	});
+});
+
+describe("今日のデイリーノートの出力先", () => {
+	it("config の daily.md の folder と fileNamePattern から決める", () => {
+		const now = new Date(2026, 10, 1, 23, 59, 0);
+		const res = resolveDailyPath({ file: "daily.md", enabled: false, folder: "daily/{{date:YYYY}}/{{date:MM}}", fileNamePattern: "{{date:YYYY-MM-DD}}" }, now);
+		expect(res.path).toBe("daily/2026/11/2026-11-01.md");
+	});
+
+	it("設定がなければ規約どおり daily/YYYY/MM/YYYY-MM-DD.md にする", () => {
+		const now = new Date(2027, 0, 5, 0, 0, 0);
+		expect(resolveDailyPath(undefined, now).path).toBe("daily/2027/01/2027-01-05.md");
 	});
 });

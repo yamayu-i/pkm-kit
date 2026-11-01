@@ -28,4 +28,5 @@
 | [0005](0005-checks-in-ci.md) | 承認 | 検査は依存なしの Node スクリプトにし、GitHub Actions で実行する |
 | [0006](0006-self-improvement-loop.md) | 承認 | 自己改善は 4 つの観測から月 1 回評価し、提案までにする |
 
-| [0007](0007-note-format.md) | 承認 | PKMの共通frontmatter・type別テンプレート・DailyNote本文の保護 |
+| [0007](0007-note-format.md) | 承認（一部置換: 0008） | PKMの共通frontmatter・type別テンプレート・DailyNote本文の保護 |
+| [0008](0008-updated-on-create.md) | 承認 | updated は作成時にも入れる（作成時は created と同じ値） |

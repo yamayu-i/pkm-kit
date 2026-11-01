@@ -86,14 +86,21 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 ## vault-template（テンプレートからのノート作成）
 
-`template/file/` のテンプレートを選び、日時・タイトル・プロンプト入力・カーソル位置を展開してノートを作成するプラグイン（ADR-0022）。
+`template/file/` のテンプレートを選び、日時・タイトル・プロンプト入力・ID・カーソル位置を展開してノートを作成するプラグイン（ADR-0022、ADR-0023）。
+
+- 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。vault-task と同じ規則）
+- `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
+- コマンド「今日のデイリーノートを開く」（とリボン）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
+- 連番の関数は vault-task（`core/ids.ts`）と vault-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
+- `test/templates-repo.test.ts` が、リポジトリの `template/` を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
 
 ### コードの構成（`.plugin-src/packages/vault-template`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
 | `src/core/date-format.ts` | `{{date:FORMAT}}` / `{{time:FORMAT}}` の日時フォーマット展開 | なし |
-| `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証 | なし |
+| `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証、今日のデイリーノートのパス | なし |
+| `src/core/ids.ts` | `{{id:…}}` の連番（vault-task の `core/ids.ts` と同じ規則） | なし |
 | `src/core/config.ts` | `template/config.json` の読み書きと `template/file/*.md` 一覧とのマージ・並び替え | なし |
 | `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動 | あり |
 | `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
