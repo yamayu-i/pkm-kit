@@ -9,8 +9,10 @@ export function readTokens(): Token[] {
 }
 
 export function buildOutputs(tokens: readonly Token[]): Record<keyof typeof OUTPUTS, string> {
+	const css = pluginCss(tokens);
 	return {
-		pluginCss: pluginCss(tokens),
+		pluginCss: css,
+		templatePluginCss: css,
 		obsidianSnippet: obsidianSnippet(tokens),
 		doc: tokensDoc(tokens),
 		ts: tsModule(tokens),

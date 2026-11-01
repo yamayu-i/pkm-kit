@@ -1,0 +1,9 @@
+{
+	"id": "vault-template",
+	"name": "Vault Template",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "template/file/ のテンプレートから日時・タイトル・プロンプト・カーソル位置を展開してノートを作成する自作プラグイン。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}
