@@ -32,3 +32,4 @@
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
 | [0021](0021-routine-effort-and-sidebar.md) | 承認 | routine 画面の total / average と左サイドバーのナビゲーション View |
+| [0022](0022-label-manager.md) | 提案 | label を編集する画面（Labels） |
