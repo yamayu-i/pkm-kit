@@ -84,7 +84,7 @@ describe("routine 画面（ADR-0018）", () => {
 		]);
 	});
 
-	it("total と average: worklog がある日数（ユニークな日付数）で割る。0日なら average は null（ADR-0019）", () => {
+	it("total と average: worklog がある日数（ユニークな日付数）で割る。0日なら average は null（ADR-0020）", () => {
 		const logs = parseWorklog(
 			"worklog/pc/2026-10.jsonl",
 			[
@@ -102,7 +102,7 @@ describe("routine 画面（ADR-0018）", () => {
 	});
 });
 
-describe("左サイドバーの件数集計（ADR-0019）", () => {
+describe("左サイドバーの件数集計（ADR-0020）", () => {
 	it("各 View の件数を返す", () => {
 		const r1 = parseRoutine("routine/r-1.md", {
 			type: "routine",

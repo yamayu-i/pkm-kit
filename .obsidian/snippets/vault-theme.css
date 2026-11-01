@@ -2,20 +2,22 @@
 /* Obsidian 本体の色をデザイントークンと同じ値に固定する（.plugin-src/docs/design.md「Obsidian 側の固定」） */
 
 body.theme-light {
-	--background-primary: #ffffff;
-	--text-normal: #222222;
-	--text-muted: #5c5c5c;
+	--background-primary: #f6f5f2;
+	--background-secondary: #efeeea;
+	--text-normal: #2b2a28;
+	--text-muted: #57564f;
 	--interactive-accent: #6750a4;
 	--text-accent: #6750a4;
 	--color-accent: #6750a4;
 	--text-on-accent: #ffffff;
 	--text-error: #b3261e;
-	--text-faint: #707070;
+	--text-faint: #696860;
 }
 
 body.theme-dark {
 	--background-primary: #1e1e1e;
-	--text-normal: #dadada;
+	--background-secondary: #242424;
+	--text-normal: #d0d0d0;
 	--text-muted: #b3b3b3;
 	--interactive-accent: #d0bcff;
 	--text-accent: #d0bcff;

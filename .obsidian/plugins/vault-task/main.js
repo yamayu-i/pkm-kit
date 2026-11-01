@@ -1109,7 +1109,7 @@ var TaskIndex = class {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
   }
-  /** routine 画面の工数（ADR-0019）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+  /** routine 画面の工数（ADR-0020）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
   routineEffort(taskId, now) {
     const total = this.effortMinutes(now).get(taskId) ?? 0;
     const dates = /* @__PURE__ */ new Set();

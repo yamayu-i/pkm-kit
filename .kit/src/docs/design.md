@@ -68,7 +68,7 @@ packages/design/tokens.json（正本）
   - `accentColor` はトークンの primary（ライト）と同じ
   - `translucency` は `false`
   - `theme` は自由（ライト / ダークの両方を定義しているので `system` にしている）
-- **必須**: Obsidian 本体の色の変数（`--background-primary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
+- **必須**: Obsidian 本体の色の変数（`--background-primary`、`--background-secondary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
 - Obsidian の標準の `--text-faint` は 4.5:1 に届かないので、スニペットで上げている
 - フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
 
@@ -235,6 +235,7 @@ packages/design/tokens.json（正本）
 | 本文の大きさ | 14px（body-medium） | 15px / 13px | Obsidian の UI の文字（`--font-ui-medium` / `--font-ui-small`）にそろえる |
 | 影 | elevation の 2 層の影 | 1 層の薄い影 | Obsidian の平らな見た目に合わせる |
 | 押せる大きさ | 48dp | 24px（WCAG 2.5.8 の最小） | デスクトップの密度を優先する。モバイルの対応は今後の課題 |
+| ライトの基本の面と本文 | 白に近い面と濃い文字 | 純白を避けた暖かい白と、少し抑えた文字（比は 7:1 以上を保つ） | 長く読んでも目が疲れにくいように（ADR-0019） |
 | 色 | ソースカラーから HCT で生成 | 手で選んだ値を、コントラストの検査で保証する | 依存を増やさない（ADR-0016） |
 
 ## 12. 検査の一覧
