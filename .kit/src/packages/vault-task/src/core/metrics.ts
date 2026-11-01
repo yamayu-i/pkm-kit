@@ -4,7 +4,7 @@ import { addDays, type LocalDate } from "./dates";
 import { isActive, isInbox, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
 
-/** 1 日の集中作業に使える時間の既定値（分。ADR-0021） */
+/** 1 日の集中作業に使える時間の既定値（分。ADR-0023） */
 export const DEFAULT_AVAILABLE_MINUTES = 240;
 
 /** in-progress のまま worklog がないときに停滞とみなす日数の既定値 */
@@ -186,7 +186,7 @@ export interface TaskOverview {
 	estimation: EstimationStats;
 }
 
-/** AI が 1 回の呼び出しでタスク状況の全体を把握するためのサマリを作る（ADR-0021） */
+/** AI が 1 回の呼び出しでタスク状況の全体を把握するためのサマリを作る（ADR-0023） */
 export function buildOverview(index: TaskIndex, date: LocalDate, now: number, options: OverviewOptions = {}): TaskOverview {
 	const availableMinutes = options.availableMinutes ?? DEFAULT_AVAILABLE_MINUTES;
 	const staleDays = options.staleDays ?? DEFAULT_STALE_DAYS;

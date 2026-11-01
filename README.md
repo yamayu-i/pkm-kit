@@ -1,6 +1,6 @@
 # yamayu-pkm
 
-Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/plugins/vault-git/`）で行う。コミュニティプラグインは使わない。
+Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/plugins/vault-git/`）、テンプレートからのノート作成は **Vault Template**（`.obsidian/plugins/vault-template/`、設定は `template/config.json`。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）で行う。コミュニティプラグインは使わない。
 
 ## ノートの書式
 

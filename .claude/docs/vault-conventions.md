@@ -56,4 +56,4 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 
-template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。Obsidian Templatesのフォルダ設定は template/file とする。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
+template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template（設定は template/config.json）でテンプレート選択・変数展開・生成先フォルダの解決を行う。Obsidian Templatesのフォルダ設定は template/file とする。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。

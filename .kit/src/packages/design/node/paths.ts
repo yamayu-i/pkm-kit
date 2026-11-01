@@ -10,13 +10,14 @@ export const VAULT_ROOT = at("../../../../");
 /** 生成物（どれもコミットする。テストで正本と食い違っていないかを見る） */
 export const OUTPUTS = {
 	pluginCss: at("../../vault-task/tokens.css"),
+	templatePluginCss: at("../../vault-template/tokens.css"),
 	obsidianSnippet: at("../../../../.obsidian/snippets/vault-theme.css"),
 	doc: at("../../../docs/design-tokens.md"),
 	ts: at("../generated/tokens.ts"),
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../vault-task/styles.css")];
+export const PLUGIN_CSS = [at("../../vault-task/styles.css"), at("../../vault-template/styles.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 export const APPEARANCE_JSON = at("../../../../.obsidian/appearance.json");

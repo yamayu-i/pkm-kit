@@ -1,5 +1,6 @@
-import { diffDays, type LocalDate } from "./dates";
-import type { DailyBoard } from "./board";
+import { diffDays, localToday, type LocalDate } from "./dates";
+import { emptyBoard, pendingBoards, unfinished, type DailyBoard } from "./board";
+import { deadIssues, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { GroupDef } from "./groups";
 import type { LabelDef } from "./labels";
@@ -127,6 +128,19 @@ export class TaskIndex {
 		return new Map([...ms].map(([id, v]) => [id, v / 60_000]));
 	}
 
+	/** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+	routineEffort(taskId: string, now: number): { total: number; days: number; average: number | null } {
+		const total = this.effortMinutes(now).get(taskId) ?? 0;
+		const dates = new Set<LocalDate>();
+		for (const l of this.data.worklogs) {
+			if (l.taskId !== taskId) continue;
+			const to = l.toMs ?? Math.max(now, l.fromMs);
+			if (to > l.fromMs) dates.add(localToday(new Date(l.fromMs)));
+		}
+		const days = dates.size;
+		return { total, days, average: days > 0 ? total / days : null };
+	}
+
 	board(date: LocalDate): DailyBoard | undefined {
 		return this.data.boards.find((b) => b.date === date);
 	}
@@ -139,4 +153,37 @@ export class TaskIndex {
 	routinesOn(date: LocalDate): Routine[] {
 		return [...this.routines.values()].filter((r) => routineOccursOn(r, date));
 	}
+}
+
+export interface SidebarCounts {
+	daily: number;
+	inbox: number;
+	organize: number;
+	scheduled: number;
+	issues: number;
+	someday: number;
+	routines: number;
+}
+
+/** 左サイドバーに出す各 View の件数（ADR-0021） */
+export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts {
+	const issues = [...index.issues.values()];
+	const dead = deadIssues(issues, today);
+	const pending = pendingBoards(index, index.data.boards, today);
+	const todayBoard = index.board(today)?.board ?? emptyBoard();
+	const scheduledToday = scheduledOn(issues, today, new Set(todayBoard.issues));
+	const todayLeft = unfinished(index, today, todayBoard);
+	const previousCount = pending.reduce((n, b) => {
+		const u = unfinished(index, b.date, b.board);
+		return n + u.issues.length + u.routines.length;
+	}, 0);
+	return {
+		daily: dead.deadline.length + dead.midDue.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+		inbox: issues.filter(isInbox).length,
+		organize: organizeQueue(issues, today).length,
+		scheduled: issues.filter((i) => isActive(i) && i.scheduled.some((d) => d >= today)).length,
+		issues: issues.filter(isActive).length,
+		someday: issues.filter((i) => i.status === "someday").length,
+		routines: [...index.routines.values()].filter((r) => r.active).length,
+	};
 }

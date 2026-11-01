@@ -67,7 +67,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
-| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0021）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
+| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0023）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
 
 ### 注意点
 
@@ -83,6 +83,20 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - **UI はデザインルール `.plugin-src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
 - UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `vault-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter vault-task exec playwright install chromium` で入れる
+
+## vault-template（テンプレートからのノート作成）
+
+`template/file/` のテンプレートを選び、日時・タイトル・プロンプト入力・カーソル位置を展開してノートを作成するプラグイン（ADR-0022）。
+
+### コードの構成（`.plugin-src/packages/vault-template`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/date-format.ts` | `{{date:FORMAT}}` / `{{time:FORMAT}}` の日時フォーマット展開 | なし |
+| `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証 | なし |
+| `src/core/config.ts` | `template/config.json` の読み書きと `template/file/*.md` 一覧とのマージ・並び替え | なし |
+| `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動 | あり |
+| `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
 
 ## design（デザイントークンと検査）
 

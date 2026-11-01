@@ -471,7 +471,7 @@ export function stopTimerOnDisk(root: string, index: TaskIndex, taskIds: string[
 	return running.map((e) => e.taskId);
 }
 
-/** デイリーノート本文の末尾にセクションを追記する（既存の行は変更・削除しない。ADR-0021） */
+/** デイリーノート本文の末尾にセクションを追記する（既存の行は変更・削除しない。ADR-0023） */
 export function appendDailyNoteOnDisk(
 	root: string,
 	date: LocalDate,
