@@ -207,6 +207,8 @@ describe("reviewWorklogs", () => {
 		);
 		const closedAt = new Map([["i-3", Date.parse("2026-10-29T12:00:00+09:00")]]);
 		const found = reviewWorklogs(index, now, {}, closedAt).map((f) => `${f.entry.id} ${f.code}`);
+		expect(reviewWorklogs(index, now, { runningHours: undefined, longHours: undefined, overlapCount: undefined }, closedAt).map((f) => `${f.entry.id} ${f.code}`)).toEqual(found);
+		expect(reviewWorklogs(index, now, { runningHours: 12, longHours: 9, overlapCount: 4 }, closedAt).map((f) => f.code)).not.toEqual(expect.arrayContaining(["still-running", "too-long", "many-overlaps"]));
 		expect(found).toEqual(
 			expect.arrayContaining([
 				"run still-running",
