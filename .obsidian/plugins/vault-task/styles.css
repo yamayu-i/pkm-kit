@@ -196,7 +196,7 @@ body.theme-dark {
 }
 
 /* issue を開いているときは Properties 欄を隠す（ヘッダーが代わりに表示する） */
-.markdown-source-view:has(.vt-header) .metadata-container {
+.markdown-source-view.is-live-preview.show-properties:has(.vt-header) .metadata-container:not(.mod-error) {
 	display: none;
 }
 
