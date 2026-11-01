@@ -27,7 +27,7 @@ const plugin = {
 
 /** CLI（プラグインには同梱しない。Claude Code とスキルから使う） */
 const cli = {
-	entryPoints: ["cli/lint.ts", "cli/worklog-review.ts"],
+	entryPoints: ["cli/lint.ts", "cli/worklog-review.ts", "cli/mcp.ts"],
 	outdir: "dist",
 	outExtension: { ".js": ".mjs" },
 	bundle: true,
