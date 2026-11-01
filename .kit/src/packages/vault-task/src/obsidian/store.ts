@@ -8,7 +8,7 @@ import type { Problem } from "../core/problem";
 
 /**
  * メモリ上の索引（ADR-0002）。issue / routine / member は metadataCache から、
- * worklog と labels.json はファイルを読んで持つ。変更があったら少し待ってから作り直す
+ * worklog とボードの操作ログと labels.json はファイルを読んで持つ。変更があったら少し待ってから作り直す
  */
 export class TaskStore {
 	index = new TaskIndex(emptyVaultData());
@@ -64,7 +64,7 @@ export class TaskStore {
 
 	private async readText(file: TFile): Promise<void> {
 		const kind = fileKind(file.path);
-		if (kind === "worklog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+		if (kind === "worklog" || kind === "board" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
 	}
 
 	private touch(file: TFile): void {
@@ -80,7 +80,7 @@ export class TaskStore {
 	}
 
 	private rebuild(): void {
-		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null };
+		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
 		for (const file of this.app.vault.getMarkdownFiles()) {
 			const kind = fileKind(file.path);
 			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -90,6 +90,7 @@ export class TaskStore {
 		for (const [path, text] of this.texts) {
 			const kind = fileKind(path);
 			if (kind === "worklog") input.worklogs.push({ path, text });
+			else if (kind === "board") input.boardLogs!.push({ path, text });
 			else if (kind === "labels") input.labels = text;
 			else if (kind === "groups") input.groups = text;
 		}

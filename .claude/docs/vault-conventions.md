@@ -25,6 +25,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 | `routine/r-N.md` | くり返しのタスク |
 | `member/m-N.md` | 委任先の人 |
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
+| `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
@@ -53,6 +54,6 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 現在のtype: note、daily、source、concept、entity、topic、answer、issue、routine、member、index、log、feedback。
 
-同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（プラグイン管理の board 等は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
+同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 
 template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template（設定は template/config.json）でテンプレート選択・変数展開・生成先フォルダの解決を行う。Obsidian Templatesのフォルダ設定は template/file とする。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。

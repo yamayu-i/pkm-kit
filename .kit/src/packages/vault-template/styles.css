@@ -1,5 +1,5 @@
 /*
- * vault-template（ADR-0020）
+ * vault-template（ADR-0022）
  * ルールは .plugin-src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
  * ビルドで tokens.css の後ろに連結して .obsidian/plugins/vault-template/styles.css にする。
  */

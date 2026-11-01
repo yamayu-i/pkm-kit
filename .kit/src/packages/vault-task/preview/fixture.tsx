@@ -1,5 +1,6 @@
 /** プレビュー用のデータ。#header / #daily などで描く画面を選ぶ（preview.mjs が順に撮る） */
 import { h, render, type FunctionComponent } from "preact";
+import { serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
@@ -13,18 +14,30 @@ import { IssueListView } from "../src/views/IssueListView";
 import { OrganizeView } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
 import { ScheduledView } from "../src/views/ScheduledView";
+import { SidebarView } from "../src/views/SidebarView";
 import { SomedayView } from "../src/views/SomedayView";
 
 const t = localToday();
 const at = (day: string, hm: string) => localDateTime(new Date(`${day}T${hm}:00`));
 const logs = [
 	JSON.stringify({ id: "run", task_id: "i-2", from: new Date(Date.now() - 30 * 60_000).toISOString(), to: null, description: "" }),
+	JSON.stringify({ id: "r1a", task_id: "r-1", from: at(addDays(t, -1), "08:00"), to: at(addDays(t, -1), "08:15"), description: "メール処理" }),
+	JSON.stringify({ id: "r1b", task_id: "r-1", from: at(addDays(t, -2), "08:00"), to: at(addDays(t, -2), "08:25"), description: "" }),
 	...Array.from({ length: 13 }, (_, i) => {
 		const day = addDays(t, -(i + 1));
 		return JSON.stringify({ id: `w${i}`, task_id: "i-2", from: at(day, "10:00"), to: at(day, "11:30"), description: i % 3 ? `作業 ${i}` : "" });
 	}),
 ];
 const issue = (id: string, fm: Record<string, unknown>) => ({ path: `issue/${id}.md`, frontmatter: { type: "issue", id, status: "open", ...fm } });
+const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
+const boardLog = [
+	...["i-6", "i-1", "i-2"].map((task) => boardOp(t, { op: "add", task })),
+	boardOp(t, { op: "place", task: "i-6", group: "午前/集中" }),
+	boardOp(t, { op: "place", task: "i-2", group: "午後" }),
+	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
+	boardOp(addDays(t, -2), { op: "routine", task: "r-1", result: "canceled" }),
+];
+
 const { data } = collectVault({
 	markdown: [
 		issue("i-1", { summary: "親の issue", status: "in-progress", priority: "mid" }),
@@ -55,11 +68,9 @@ const { data } = collectVault({
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤さん" } },
-		{ path: `daily/${t.slice(0, 4)}/${t.slice(5, 7)}/${t}.md`, frontmatter: { board: { issues: ["i-6", "i-1", "i-2"], groups: { "i-6": "午前/集中", "i-2": "午後" } } } },
-		{ path: `daily/${addDays(t, -1).slice(0, 4)}/${addDays(t, -1).slice(5, 7)}/${addDays(t, -1)}.md`, frontmatter: { board: { routines: { "r-1": "closed" } } } },
-		{ path: `daily/${addDays(t, -2).slice(0, 4)}/${addDays(t, -2).slice(5, 7)}/${addDays(t, -2)}.md`, frontmatter: { board: { routines: { "r-1": "canceled" } } } },
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
+	boardLogs: [{ path: "board/pc/2026-10.jsonl", text: boardLog.join("\n") }],
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"}]',
 	groups: JSON.stringify([
 		{ name: "午前", children: [{ name: "集中" }, { name: "雑務" }] },
@@ -90,6 +101,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	someday: SomedayView,
 	routines: RoutineListView,
 	groups: GroupManagerView,
+	sidebar: SidebarView,
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
 			<DateForm initial={t} onSubmit={() => {}} />

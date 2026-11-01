@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
@@ -717,8 +717,13 @@ function frontmatterRange(text) {
   const m3 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
   return m3 ? { from: 0, to: m3[0].length } : null;
 }
-function newDailyContent() {
-  return "---\nboard: {}\n---\n";
+function newDailyContent(created) {
+  return `---
+type: daily
+created: ${created}
+updated:
+---
+`;
 }
 
 // src/header/IssueHeader.tsx
@@ -865,6 +870,91 @@ function D2(n2, t3) {
   return "function" == typeof t3 ? t3(n2) : t3;
 }
 
+// src/core/board.ts
+var BOARD_KEY = "board";
+function emptyBoard() {
+  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function parseBoard(value) {
+  const raw = record(value);
+  const board = emptyBoard();
+  if (Array.isArray(raw.issues)) {
+    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
+  }
+  if (Array.isArray(raw.carried)) {
+    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
+  }
+  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
+  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
+  board.closed = raw.closed === true;
+  return board;
+}
+function dailyNotePath(date) {
+  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+}
+var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function boardItems(index, date, board) {
+  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
+  return { issues, routines: index.routinesOn(date) };
+}
+function unfinished(index, date, board) {
+  const items = boardItems(index, date, board);
+  return {
+    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
+    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
+  };
+}
+function markCarried(board, ids) {
+  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
+}
+function routineResults(index, routine, today, days) {
+  return Array.from({ length: days }, (_2, i3) => {
+    const date = addDays(today, i3 - days + 1);
+    const result = index.board(date)?.board.routines[routine.id];
+    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
+  });
+}
+function pendingBoards(index, boards, today) {
+  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
+    const u4 = unfinished(index, b2.date, b2.board);
+    return u4.issues.length > 0 || u4.routines.length > 0;
+  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
+}
+function placementOf(board, id, fallback, keys) {
+  const key = board.groups[id] ?? fallback ?? "";
+  return key !== "" && keys.includes(key) ? key : "";
+}
+
+// src/core/daily.ts
+var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
+function deadIssues(issues, today) {
+  const deadline = [];
+  const midDue = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
+    if (i3.midDue !== null && i3.midDue < today) midDue.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+}
+function cautionIssues(issues, today, days = 3) {
+  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
+  const deadline = [];
+  const midDue = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (within(i3.deadline)) deadline.push(i3);
+    if (within(i3.midDue)) midDue.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+}
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+
 // src/core/effort.ts
 function prorateEffort(intervals, now) {
   const events = [];
@@ -987,6 +1077,18 @@ var TaskIndex = class {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
   }
+  /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+  routineEffort(taskId, now) {
+    const total = this.effortMinutes(now).get(taskId) ?? 0;
+    const dates = /* @__PURE__ */ new Set();
+    for (const l3 of this.data.worklogs) {
+      if (l3.taskId !== taskId) continue;
+      const to = l3.toMs ?? Math.max(now, l3.fromMs);
+      if (to > l3.fromMs) dates.add(localToday(new Date(l3.fromMs)));
+    }
+    const days = dates.size;
+    return { total, days, average: days > 0 ? total / days : null };
+  }
   board(date) {
     return this.data.boards.find((b2) => b2.date === date);
   }
@@ -998,6 +1100,27 @@ var TaskIndex = class {
     return [...this.routines.values()].filter((r3) => routineOccursOn(r3, date));
   }
 };
+function sidebarCounts(index, today) {
+  const issues = [...index.issues.values()];
+  const dead = deadIssues(issues, today);
+  const pending = pendingBoards(index, index.data.boards, today);
+  const todayBoard = index.board(today)?.board ?? emptyBoard();
+  const scheduledToday = scheduledOn(issues, today, new Set(todayBoard.issues));
+  const todayLeft = unfinished(index, today, todayBoard);
+  const previousCount = pending.reduce((n2, b2) => {
+    const u4 = unfinished(index, b2.date, b2.board);
+    return n2 + u4.issues.length + u4.routines.length;
+  }, 0);
+  return {
+    daily: dead.deadline.length + dead.midDue.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+    inbox: issues.filter(isInbox).length,
+    organize: organizeQueue(issues, today).length,
+    scheduled: issues.filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).length,
+    issues: issues.filter(isActive).length,
+    someday: issues.filter((i3) => i3.status === "someday").length,
+    routines: [...index.routines.values()].filter((r3) => r3.active).length
+  };
+}
 
 // src/core/due.ts
 function dueLevel(issue, due, today) {
@@ -2098,101 +2221,6 @@ function Worklog(props) {
 // src/header/RoutineHeader.tsx
 var import_obsidian5 = require("obsidian");
 
-// src/core/board.ts
-var BOARD_KEY = "board";
-function emptyBoard() {
-  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
-}
-function record(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-}
-function parseBoard(value) {
-  const raw = record(value);
-  const board = emptyBoard();
-  if (Array.isArray(raw.issues)) {
-    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
-  }
-  if (Array.isArray(raw.carried)) {
-    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
-  }
-  for (const [id, g2] of Object.entries(record(raw.groups))) if (typeof g2 === "string" && g2) board.groups[id] = g2;
-  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
-  board.closed = raw.closed === true;
-  return board;
-}
-function parseBoardForWrite(value) {
-  if (value === void 0) return emptyBoard();
-  const fail = () => {
-    throw new Error("board \u306E\u5F62\u5F0F\u304C\u4E0D\u6B63\u3067\u3059\u3002\u4FEE\u6B63\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
-  };
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return fail();
-  if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) return fail();
-  const raw = value;
-  if (Object.keys(raw).some((key) => !["issues", "groups", "routines", "carried", "closed"].includes(key))) fail();
-  for (const key of ["issues", "carried"]) {
-    if (!(key in raw)) continue;
-    const list = raw[key];
-    if (!Array.isArray(list) || list.some((id) => typeof id !== "string" || !id) || new Set(list).size !== list.length) fail();
-  }
-  for (const key of ["groups", "routines"]) {
-    if (!(key in raw)) continue;
-    const map = raw[key];
-    if (typeof map !== "object" || map === null || Array.isArray(map)) return fail();
-    if (![Object.prototype, null].includes(Object.getPrototypeOf(map))) return fail();
-    for (const [id, v3] of Object.entries(map)) {
-      if (!id || id === "__proto__" || (key === "groups" ? typeof v3 !== "string" || !v3 : v3 !== "closed" && v3 !== "canceled")) fail();
-    }
-  }
-  if ("closed" in raw && typeof raw.closed !== "boolean") fail();
-  const board = parseBoard(raw);
-  if (board.carried.some((id) => !board.issues.includes(id))) fail();
-  return board;
-}
-function serializeBoard(board) {
-  const out = {};
-  if (board.issues.length > 0) out.issues = board.issues;
-  if (Object.keys(board.groups).length > 0) out.groups = board.groups;
-  if (Object.keys(board.routines).length > 0) out.routines = board.routines;
-  if (board.carried.length > 0) out.carried = board.carried;
-  if (board.closed) out.closed = true;
-  return out;
-}
-function dailyNotePath(date) {
-  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
-}
-var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
-function boardItems(index, date, board) {
-  const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
-  return { issues, routines: index.routinesOn(date) };
-}
-function unfinished(index, date, board) {
-  const items = boardItems(index, date, board);
-  return {
-    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
-    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
-  };
-}
-function markCarried(board, ids) {
-  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
-}
-function routineResults(index, routine, today, days) {
-  return Array.from({ length: days }, (_2, i3) => {
-    const date = addDays(today, i3 - days + 1);
-    const result = index.board(date)?.board.routines[routine.id];
-    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
-  });
-}
-function pendingBoards(index, boards, today) {
-  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return u4.issues.length > 0 || u4.routines.length > 0;
-  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
-}
-function placementOf(board, id, fallback, keys) {
-  const key = board.groups[id] ?? fallback ?? "";
-  return key !== "" && keys.includes(key) ? key : "";
-}
-
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
 var UNGROUPED = "";
@@ -2394,7 +2422,7 @@ function RoutineHeader(props) {
     }
     m3.showAtMouseEvent(e3);
   };
-  const actual = index.effortMinutes(Date.now()).get(routine.id) ?? 0;
+  const effort = index.routineEffort(routine.id, Date.now());
   return /* @__PURE__ */ u3("div", { class: "vt-issue", children: [
     /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
       /* @__PURE__ */ u3("span", { children: [
@@ -2457,8 +2485,12 @@ function RoutineHeader(props) {
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: routine.estimated === null ? "\u2014" : formatMinutes(routine.estimated) })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
-        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "total" }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(effort.total) })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: effort.days > 0 ? `\u8A18\u9332\u306E\u3042\u308B ${effort.days} \u65E5\u5206\u306E 1 \u65E5\u3042\u305F\u308A\u5E73\u5747` : "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "average" }),
+        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: effort.average === null ? "\u2014" : formatMinutes(effort.average) })
       ] })
     ] }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
@@ -2718,6 +2750,117 @@ var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
 // src/obsidian/store.ts
 var import_obsidian9 = require("obsidian");
 
+// src/core/board-log.ts
+var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function boardLogPath(device, date) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
+}
+function nextBoardAt(nowMs, latestMs) {
+  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
+}
+function parseOp(o3) {
+  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
+  switch (o3.op) {
+    case "add":
+    case "remove":
+    case "carry":
+      return task ? { op: o3.op, task } : null;
+    case "place":
+      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
+    case "routine":
+      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
+    case "close":
+      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
+    case "reopen":
+      return { op: "reopen" };
+    default:
+      return null;
+  }
+}
+function parseBoardLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const op = parseOp(o3);
+    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
+  });
+  return { entries, problems };
+}
+function serializeBoardLogEntry(e3) {
+  return JSON.stringify(e3);
+}
+function newBoardLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function compareEntries(a3, b2) {
+  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
+  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
+  return a3.line - b2.line;
+}
+function apply(board, op) {
+  switch (op.op) {
+    case "add":
+      if (!board.issues.includes(op.task)) board.issues.push(op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      board.closed = false;
+      break;
+    case "remove":
+      board.issues = board.issues.filter((id) => id !== op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      delete board.groups[op.task];
+      break;
+    case "place":
+      if (op.group === null) delete board.groups[op.task];
+      else board.groups[op.task] = op.group;
+      break;
+    case "routine":
+      if (op.result === null) delete board.routines[op.task];
+      else board.routines[op.task] = op.result;
+      break;
+    case "carry":
+      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
+      break;
+    case "close":
+    case "reopen":
+      board.closed = op.op === "close";
+      break;
+  }
+}
+function replayBoard(initial, entries) {
+  const board = { ...emptyBoard(), ...structuredClone(initial) };
+  let lastClose = null;
+  for (const e3 of [...entries].sort(compareEntries)) {
+    apply(board, e3.op);
+    if (e3.op.op === "close") lastClose = e3.op.tasks;
+  }
+  const seen = lastClose;
+  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
+  return board;
+}
+
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
 var DEFAULT_LABEL_COLOR = "#d0d0d0";
@@ -2759,17 +2902,19 @@ function fileKind(path) {
   if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
+  if (BOARD_LOG_PATH_RE.test(path)) return "board";
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
   const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
   const problems = [];
+  const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
-        data.boards.push({ date: DAILY_PATH_RE.exec(path)[1], path, board: parseBoard(frontmatter[BOARD_KEY]) });
+        initialBoards.set(DAILY_PATH_RE.exec(path)[1], parseBoard(frontmatter[BOARD_KEY]));
       }
       continue;
     }
@@ -2796,6 +2941,21 @@ function collectVault(input) {
     const r3 = parseWorklog(path, text);
     problems.push(...r3.problems);
     data.worklogs.push(...r3.entries);
+  }
+  const logsByDate = /* @__PURE__ */ new Map();
+  for (const { path, text } of [...input.boardLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
+    const r3 = parseBoardLog(path, text);
+    problems.push(...r3.problems);
+    for (const e3 of r3.entries) logsByDate.set(e3.date, [...logsByDate.get(e3.date) ?? [], e3]);
+  }
+  for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
+    const logs = logsByDate.get(date) ?? [];
+    data.boards.push({
+      date,
+      path: dailyNotePath(date),
+      board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
+      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e3) => e3.atMs)) } : {}
+    });
   }
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
@@ -2860,7 +3020,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "worklog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "worklog" || kind === "board" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -2873,7 +3033,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null };
+    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -2883,6 +3043,7 @@ var TaskStore = class {
     for (const [path, text] of this.texts) {
       const kind = fileKind(path);
       if (kind === "worklog") input.worklogs.push({ path, text });
+      else if (kind === "board") input.boardLogs.push({ path, text });
       else if (kind === "labels") input.labels = text;
       else if (kind === "groups") input.groups = text;
     }
@@ -2982,38 +3143,15 @@ function upsertSummary(text, summary) {
 }
 
 // src/core/board-note.ts
-function closeBoardNote(text, date, index, yaml) {
+function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  const fm = /^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))/.exec(text);
-  if (!fm) throw new Error("board \u306E frontmatter \u304C\u3042\u308A\u307E\u305B\u3093");
-  const raw = yaml.parse(fm[2]);
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("frontmatter \u304C\u4E0D\u6B63\u3067\u3059");
-  const fields = raw;
-  if (!("board" in fields)) throw new Error("board \u304C\u3042\u308A\u307E\u305B\u3093");
-  const board = parseBoardForWrite(fields.board);
-  if (board.closed) return text;
   for (const id of board.issues) {
     if (!index.issues.has(id)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
   }
   const remaining = unfinished(index, date, board);
   if (remaining.issues.length + remaining.routines.length > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
-  board.closed = true;
-  const eol = fm[1].endsWith("\r\n") ? "\r\n" : "\n";
-  const lines = fm[2].split(/\r?\n/);
-  const starts = lines.flatMap((line, i3) => /^(?:board|"board"|'board')\s*:/.test(line) ? [i3] : []);
-  if (starts.length !== 1) throw new Error("board \u306E\u4F4D\u7F6E\u3092\u5B89\u5168\u306B\u7279\u5B9A\u3067\u304D\u307E\u305B\u3093");
-  const start = starts[0];
-  let end = start + 1;
-  while (end < lines.length && /^(?:[ \t]|#|$)/.test(lines[end])) end++;
-  while (end > start + 1 && /^(?:\s*#.*|\s*)$/.test(lines[end - 1])) end--;
-  const replacement = yaml.stringify({ board: serializeBoard(board) }).trimEnd().split(/\r?\n/);
-  const nextFm = [...lines.slice(0, start), ...replacement, ...lines.slice(end)].join(eol);
-  const nextFields = yaml.parse(nextFm);
-  const withoutBoard = (value) => Object.fromEntries(Object.entries(value).filter(([key]) => key !== "board"));
-  if (JSON.stringify(withoutBoard(fields)) !== JSON.stringify(withoutBoard(nextFields))) throw new Error("board \u4EE5\u5916\u306E\u6B04\u304C\u5909\u308F\u308B\u305F\u3081\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093");
-  const next = fm[1] + nextFm + fm[3] + text.slice(fm[0].length);
-  return upsertSummary(next, boardSummary(index, date, board));
+  return upsertSummary(text, boardSummary(index, date, board));
 }
 
 // src/obsidian/writer.ts
@@ -3024,6 +3162,8 @@ var TaskWriter = class {
   }
   app;
   store;
+  /** この端末が最後に書いたボードの操作の時刻（索引に載る前の次の操作のため） */
+  lastBoardAt = 0;
   file(path) {
     const file = this.app.vault.getFileByPath(path);
     if (!file) throw new Error(`\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093: ${path}`);
@@ -3145,23 +3285,30 @@ var TaskWriter = class {
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
-  /** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
-  async updateBoard(date, mutate) {
-    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent());
-    await this.app.fileManager.processFrontMatter(file, (fm) => {
-      const board = parseBoardForWrite(fm[BOARD_KEY]);
-      mutate(board);
-      fm[BOARD_KEY] = serializeBoard(parseBoardForWrite(board));
+  /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
+  async appendBoardOps(date, device, ops) {
+    if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
+    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(boardLogPath(device, date)), "");
+    let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
+    const now = Date.now();
+    const lines = ops.map((op) => {
+      latest = nextBoardAt(now, latest);
+      return serializeBoardLogEntry({ id: newBoardLogId(), at: new Date(latest).toISOString(), date, ...op });
     });
+    await this.app.vault.process(file, (text) => lines.reduce(appendWorklogLine, text));
+    if (latest !== null) this.lastBoardAt = latest;
     this.store.refreshSoon();
   }
-  /** 未完了を再検査し、closed と要約を同じ vault.process で保存する。 */
-  async closeBoard(date) {
-    await this.app.vault.process(
-      this.file(dailyNotePath(date)),
-      (text) => closeBoardNote(text, date, this.store.index, { parse: import_obsidian11.parseYaml, stringify: import_obsidian11.stringifyYaml })
-    );
-    this.store.refreshSoon();
+  /** 未完了を再検査して本文に要約を書き、それから close を追記する。途中で失敗しても締め直せば要約は置き換わる */
+  async closeBoard(date, device) {
+    const { index } = this.store;
+    const board = index.board(date)?.board ?? emptyBoard();
+    if (board.closed) return;
+    if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
+    closeBoardNote("", date, index, board);
+    const note = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
+    await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
   /** task board のグループの定義を保存する */
   async saveGroups(groups) {
@@ -3180,33 +3327,6 @@ var TaskWriter = class {
     return file;
   }
 };
-
-// src/core/daily.ts
-var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
-function deadIssues(issues, today) {
-  const deadline = [];
-  const midDue = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
-    if (i3.midDue !== null && i3.midDue < today) midDue.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
-}
-function cautionIssues(issues, today, days = 3) {
-  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
-  const deadline = [];
-  const midDue = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (within(i3.deadline)) deadline.push(i3);
-    if (within(i3.midDue)) midDue.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
-}
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
-}
 
 // src/obsidian/issue-actions.tsx
 function askDate(ctx, title, initial = null) {
@@ -3275,11 +3395,7 @@ function guard(ctx, label, p3) {
 var addToBoard = (ctx, date, ids) => guard(
   ctx,
   "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    for (const id of ids) if (!b2.issues.includes(id)) b2.issues.push(id);
-    b2.carried = b2.carried.filter((id) => !ids.includes(id));
-    b2.closed = false;
-  })
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
 );
 async function createOnBoard(ctx, date, summary) {
   try {
@@ -3291,31 +3407,13 @@ async function createOnBoard(ctx, date, summary) {
     ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
-var removeFromBoard = (ctx, date, id) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    b2.issues = b2.issues.filter((x2) => x2 !== id);
-    b2.carried = b2.carried.filter((x2) => x2 !== id);
-    delete b2.groups[id];
-  })
-);
+var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
 var setPlacement = (ctx, date, id, group) => guard(
   ctx,
   "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    if (group === UNGROUPED) delete b2.groups[id];
-    else b2.groups[id] = group;
-  })
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
 );
-var setRoutineResult = (ctx, date, id, result) => guard(
-  ctx,
-  "routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    if (result === null) delete b2.routines[id];
-    else b2.routines[id] = result;
-  })
-);
+var setRoutineResult = (ctx, date, id, result) => guard(ctx, "routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]));
 async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
   let to = fixedTo;
   if (kind === "reschedule" && to === null) {
@@ -3326,27 +3424,19 @@ async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
     for (const issue of issues) {
       await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
     }
-    await ctx.writer.updateBoard(date, (b2) => {
-      markCarried(b2, issues.map((i3) => i3.id));
-    });
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
   } catch (e3) {
     ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
 async function closeBoard(ctx, date) {
   try {
-    await ctx.writer.closeBoard(date);
+    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
   } catch (e3) {
     ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
-var reopenBoard = (ctx, date) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.updateBoard(date, (b2) => {
-    b2.closed = false;
-  })
-);
+var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
 function startTimer(ctx, ids) {
   return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
 }
@@ -3796,7 +3886,7 @@ function DailyView(props) {
       const u4 = unfinished(index, b2.date, b2.board);
       if (u4.issues.length + u4.routines.length > 0) continue;
       closing.current.add(b2.date);
-      void ctx.writer.closeBoard(b2.date).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
+      void ctx.writer.closeBoard(b2.date, ctx.settings.deviceName).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
     }
   });
   const next = () => {
@@ -4296,7 +4386,7 @@ function OrganizeView(props) {
   const queue = organizeQueue(ctx.store.index.issues.values(), today).filter((i3) => !handled.has(i3.id));
   const issue = queue[0];
   const excerpt = useExcerpt(ctx, issue);
-  const apply = async (patch, label) => {
+  const apply2 = async (patch, label) => {
     if (!issue) return;
     const full = { ...patch, reviewed: today };
     const prev = snapshot(issue, full);
@@ -4332,7 +4422,7 @@ function OrganizeView(props) {
         requireEstimate: isInbox(target),
         onSubmit: (date, est) => {
           close2();
-          void apply(schedulePatch(target, [date], est), `${formatShortDate(date)} \u306B\u4E88\u5B9A`);
+          void apply2(schedulePatch(target, [date], est), `${formatShortDate(date)} \u306B\u4E88\u5B9A`);
         },
         onPickDate: () => {
           close2();
@@ -4346,7 +4436,7 @@ function OrganizeView(props) {
                 requireEstimate: needEstimate,
                 onSubmit: (_2, est) => {
                   c22();
-                  void apply(schedulePatch(target, [d3], est), `${formatShortDate(d3)} \u306B\u4E88\u5B9A`);
+                  void apply2(schedulePatch(target, [d3], est), `${formatShortDate(d3)} \u306B\u4E88\u5B9A`);
                 },
                 onPickDate: () => void 0
               }
@@ -4357,10 +4447,10 @@ function OrganizeView(props) {
     ));
     modal.open();
   };
-  const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
-  const later = () => void apply({}, "\u3042\u3068\u3067");
-  const cancel = () => void apply(cancelPatch(), "Cancel");
-  const close = () => void apply(closePatch(), "Closed");
+  const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
+  const later = () => void apply2({}, "\u3042\u3068\u3067");
+  const cancel = () => void apply2(cancelPatch(), "Cancel");
+  const close = () => void apply2(closePatch(), "Closed");
   h2(() => {
     const onKey = (e3) => {
       if (!issue || !root.current || root.current.offsetParent === null) return;
@@ -4656,6 +4746,69 @@ function ScheduledView(props) {
   ] });
 }
 
+// src/views/SidebarView.tsx
+var import_obsidian18 = require("obsidian");
+function SidebarView(props) {
+  const { ctx } = props;
+  useStoreVersion(ctx.store);
+  const now = useNow(3e4);
+  const today = localToday(new Date(now));
+  const index = ctx.store.index;
+  const counts = sidebarCounts(index, today);
+  const runningByTask = /* @__PURE__ */ new Map();
+  for (const l3 of index.running()) {
+    const elapsed = Math.max(0, now - l3.fromMs);
+    runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
+  }
+  const items = [
+    { type: "vault-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+    { type: "vault-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
+    { type: "vault-task-organize", title: "Organize", icon: "layers", count: counts.organize },
+    { type: "vault-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
+    { type: "vault-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
+    { type: "vault-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
+    { type: "vault-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
+    { type: "vault-task-groups", title: "Board groups", icon: "layout-grid" }
+  ];
+  return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-button is-primary vt-sidebar-capture", onClick: () => openCaptureModal(ctx), children: [
+      /* @__PURE__ */ u3(Icon, { name: "plus" }),
+      " issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210"
+    ] }),
+    runningByTask.size > 0 && /* @__PURE__ */ u3("section", { class: "vt-sidebar-section", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "\u8A18\u9332\u4E2D" }),
+      /* @__PURE__ */ u3("div", { class: "vt-sidebar-running", children: [...runningByTask.entries()].map(([taskId, elapsed]) => {
+        const issue = index.issues.get(taskId);
+        const routine = index.routines.get(taskId);
+        const summary = issue?.summary || routine?.summary || taskId;
+        const path = issue?.path ?? routine?.path ?? null;
+        return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          /* @__PURE__ */ u3(
+            "button",
+            {
+              class: "vt-play is-running",
+              "aria-label": "\u8A18\u9332\u3092\u6B62\u3081\u308B",
+              title: "\u8A18\u9332\u3092\u6B62\u3081\u308B",
+              onClick: () => void stopTimer(ctx, [taskId]),
+              children: [
+                /* @__PURE__ */ u3(Icon, { name: "square" }),
+                /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+              ]
+            }
+          )
+        ] }) }, taskId);
+      }) })
+    ] }),
+    /* @__PURE__ */ u3("nav", { class: "vt-sidebar-nav", "aria-label": "Vault Task Views", children: items.map((item) => /* @__PURE__ */ u3("button", { class: "vt-nav-item", onClick: () => void ctx.openView(item.type), children: [
+      /* @__PURE__ */ u3(Icon, { name: item.icon }),
+      /* @__PURE__ */ u3("span", { class: "vt-nav-label", children: item.title }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      item.count !== void 0 && item.count > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: item.count })
+    ] }, item.type)) })
+  ] });
+}
+
 // src/views/SomedayView.tsx
 var ORDERS = [
   { key: "reviewed", label: "\u898B\u76F4\u3057\u305F\u65E5\u304C\u53E4\u3044\u9806" },
@@ -4731,7 +4884,8 @@ var VIEWS = [
   { type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
   { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView }
 ];
-var VaultTaskPlugin = class extends import_obsidian18.Plugin {
+var SIDEBAR_VIEW = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
+var VaultTaskPlugin = class extends import_obsidian19.Plugin {
   store = null;
   taskSettings = { ...DEFAULT_SETTINGS };
   async onload() {
@@ -4758,13 +4912,23 @@ var VaultTaskPlugin = class extends import_obsidian18.Plugin {
       report: (message, error) => {
         if (error !== void 0) console.error(`vault-task: ${message}`, error);
         const detail = error instanceof Error ? `: ${error.message}` : "";
-        new import_obsidian18.Notice(`${message}${detail}`);
+        new import_obsidian19.Notice(`${message}${detail}`);
       }
+    };
+    const openSidebar = async (reveal = true) => {
+      const { workspace } = this.app;
+      const existing = workspace.getLeavesOfType?.(SIDEBAR_VIEW.type)[0];
+      const leaf = existing ?? workspace.getLeftLeaf?.(false);
+      if (!leaf) return;
+      if (!existing) await leaf.setViewState({ type: SIDEBAR_VIEW.type, active: reveal });
+      if (reveal) await workspace.revealLeaf(leaf);
     };
     for (const spec of VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, ctx));
       this.addCommand({ id: `open-${spec.type.replace("vault-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void ctx.openView(spec.type) });
     }
+    this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
+    this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
     this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));
@@ -4772,6 +4936,7 @@ var VaultTaskPlugin = class extends import_obsidian18.Plugin {
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      void openSidebar(false).catch((e3) => ctx.report("\u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
     });
   }
   onunload() {

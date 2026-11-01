@@ -1,4 +1,5 @@
-import { BOARD_KEY, DAILY_PATH_RE, parseBoard } from "./board";
+import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type BoardState } from "./board";
+import { BOARD_LOG_PATH_RE, parseBoardLog, replayBoard, type BoardLogEntry } from "./board-log";
 import { GROUPS_PATH, parseGroups } from "./groups";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
@@ -6,14 +7,15 @@ import type { Problem } from "./problem";
 import { parseIssue, parseMember, parseRoutine } from "./schema";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
-export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "groups" | "daily";
+export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "groups" | "daily" | "board";
 
-/** パスからどのデータのファイルかを決める（ADR-0002, 0004, 0007, 0010） */
+/** パスからどのデータのファイルかを決める（ADR-0002, 0004, 0007, 0010, 0020） */
 export function fileKind(path: string): FileKind | null {
 	if (path === LABELS_PATH) return "labels";
 	if (path === GROUPS_PATH) return "groups";
 	if (DAILY_PATH_RE.test(path)) return "daily";
 	if (WORKLOG_PATH_RE.test(path)) return "worklog";
+	if (BOARD_LOG_PATH_RE.test(path)) return "board";
 	const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
 	return m ? (m[1] as FileKind) : null;
 }
@@ -27,18 +29,21 @@ export interface VaultInput {
 	labels: string | null;
 	/** `issue/board-groups.json` の中身（ないなら null） */
 	groups?: string | null;
+	/** ボードの操作ログの jsonl */
+	boardLogs?: { path: string; text: string }[];
 }
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
 	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
 	const problems: Problem[] = [];
+	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
 		const kind = fileKind(path);
 		if (kind === "daily") {
-			// ボードの状態だけを読む。board がないデイリーノートは対象外
+			// 既存の board は読み取り専用の初期状態（ADR-0020）。board がないデイリーノートは対象外
 			if (frontmatter && frontmatter[BOARD_KEY] !== undefined) {
-				data.boards.push({ date: DAILY_PATH_RE.exec(path)![1]!, path, board: parseBoard(frontmatter[BOARD_KEY]) });
+				initialBoards.set(DAILY_PATH_RE.exec(path)![1]!, parseBoard(frontmatter[BOARD_KEY]));
 			}
 			continue;
 		}
@@ -65,6 +70,21 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		const r = parseWorklog(path, text);
 		problems.push(...r.problems);
 		data.worklogs.push(...r.entries);
+	}
+	const logsByDate = new Map<string, BoardLogEntry[]>();
+	for (const { path, text } of [...(input.boardLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
+		const r = parseBoardLog(path, text);
+		problems.push(...r.problems);
+		for (const e of r.entries) logsByDate.set(e.date, [...(logsByDate.get(e.date) ?? []), e]);
+	}
+	for (const date of [...new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
+		const logs = logsByDate.get(date) ?? [];
+		data.boards.push({
+			date,
+			path: dailyNotePath(date),
+			board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
+			...(logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {}),
+		});
 	}
 	if (input.labels !== null) {
 		const r = parseLabels(input.labels);

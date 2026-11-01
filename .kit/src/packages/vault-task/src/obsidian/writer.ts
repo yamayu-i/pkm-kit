@@ -1,5 +1,6 @@
-import { TFile, normalizePath, parseYaml, stringifyYaml, type App } from "obsidian";
-import { BOARD_KEY, dailyNotePath, parseBoardForWrite, serializeBoard, type BoardState } from "../core/board";
+import { TFile, normalizePath, type App } from "obsidian";
+import { dailyNotePath, emptyBoard } from "../core/board";
+import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
 import { localDateTime, type LocalDate } from "../core/dates";
 import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
@@ -17,6 +18,9 @@ export type FieldValue = string | number | boolean | string[] | Record<string, u
  * frontmatter の更新は processFrontMatter に任せ、ほかの欄や書式を壊さない
  */
 export class TaskWriter {
+	/** この端末が最後に書いたボードの操作の時刻（索引に載る前の次の操作のため） */
+	private lastBoardAt = 0;
+
 	constructor(
 		private readonly app: App,
 		private readonly store: TaskStore,
@@ -156,23 +160,32 @@ export class TaskWriter {
 		this.store.refreshSoon();
 	}
 
-	/** その日のボードの状態を書き換える（ADR-0009: デイリーノートの frontmatter の board） */
-	async updateBoard(date: LocalDate, mutate: (board: BoardState) => void): Promise<void> {
-		const file = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent());
-		await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-			const board = parseBoardForWrite(fm[BOARD_KEY]);
-			mutate(board);
-			fm[BOARD_KEY] = serializeBoard(parseBoardForWrite(board));
+	/** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
+	async appendBoardOps(date: LocalDate, device: string, ops: BoardOp[]): Promise<void> {
+		if (!device) throw new Error("設定で端末名を入れてください（ボードの保存先に使います）");
+		const file = await this.getOrCreate(normalizePath(boardLogPath(device, date)), "");
+		let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
+		const now = Date.now();
+		const lines = ops.map((op) => {
+			latest = nextBoardAt(now, latest);
+			return serializeBoardLogEntry({ id: newBoardLogId(), at: new Date(latest).toISOString(), date, ...op });
 		});
+		await this.app.vault.process(file, (text) => lines.reduce(appendWorklogLine, text));
+		if (latest !== null) this.lastBoardAt = latest;
 		this.store.refreshSoon();
 	}
 
-	/** 未完了を再検査し、closed と要約を同じ vault.process で保存する。 */
-	async closeBoard(date: LocalDate): Promise<void> {
-		await this.app.vault.process(this.file(dailyNotePath(date)), (text) =>
-			closeBoardNote(text, date, this.store.index, { parse: parseYaml, stringify: stringifyYaml }),
-		);
-		this.store.refreshSoon();
+	/** 未完了を再検査して本文に要約を書き、それから close を追記する。途中で失敗しても締め直せば要約は置き換わる */
+	async closeBoard(date: LocalDate, device: string): Promise<void> {
+		const { index } = this.store;
+		const board = index.board(date)?.board ?? emptyBoard();
+		if (board.closed) return;
+		if (!device) throw new Error("設定で端末名を入れてください（ボードの保存先に使います）");
+		// 締められないならノートを作らない
+		closeBoardNote("", date, index, board);
+		const note = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent(localDateTime()));
+		await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
+		await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
 	}
 
 	/** task board のグループの定義を保存する */

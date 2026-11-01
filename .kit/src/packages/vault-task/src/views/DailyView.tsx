@@ -186,7 +186,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 			if (u.issues.length + u.routines.length > 0) continue;
 			closing.current.add(b.date);
 			void ctx.writer
-				.closeBoard(b.date)
+				.closeBoard(b.date, ctx.settings.deviceName)
 				.catch((e) => ctx.report("前回のボードを締められませんでした", e))
 				.finally(() => closing.current.delete(b.date));
 		}
