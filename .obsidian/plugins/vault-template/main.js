@@ -1233,16 +1233,12 @@ function useVaultChanges(app) {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => setTick((n2) => n2 + 1), 150);
     };
-    const refs = [
-      app.metadataCache.on("resolved", bump),
-      app.metadataCache.on("changed", bump),
-      app.vault.on("create", bump),
-      app.vault.on("delete", bump),
-      app.vault.on("rename", bump)
-    ];
+    const metaRefs = [app.metadataCache.on("resolved", bump), app.metadataCache.on("changed", bump)];
+    const vaultRefs = [app.vault.on("create", bump), app.vault.on("delete", bump), app.vault.on("rename", bump)];
     return () => {
       window.clearTimeout(timer);
-      for (const ref of refs) app.metadataCache.offref(ref);
+      for (const ref of metaRefs) app.metadataCache.offref(ref);
+      for (const ref of vaultRefs) app.vault.offref(ref);
     };
   }, [app]);
   return tick;
@@ -1255,10 +1251,17 @@ function installNoteHeaders(plugin) {
   const { app } = plugin;
   const mount = (view) => {
     const file = view.file;
+    const info = file ? noteInfo(app, file) : null;
+    const show = info !== null && hasNoteHeader(info.path, info.frontmatter);
+    let model = null;
+    if (info && show) {
+      const type = info.frontmatter.type;
+      const needsVault = type === "source" || typeof type === "string" && WIKI_TYPES.includes(type);
+      model = buildHeader(info, { notes: needsVault ? collectNotes(app) : [], backlinks: needsVault ? backlinkCount(app, info.path) : 0 });
+    }
     for (const sizer of Array.from(view.contentEl.querySelectorAll(SIZERS))) {
       let host = sizer.querySelector(`:scope > .${HEADER_CLASS}`);
-      const info = file ? noteInfo(app, file) : null;
-      if (!info || !hasNoteHeader(info.path, info.frontmatter)) {
+      if (!model) {
         if (host) {
           R(null, host);
           host.remove();
@@ -1272,7 +1275,6 @@ function installNoteHeaders(plugin) {
       } else if (sizer.firstElementChild !== host) {
         sizer.prepend(host);
       }
-      const model = buildHeader(info, { notes: collectNotes(app), backlinks: backlinkCount(app, info.path) });
       R(k(NoteHeader, { app, model }), host);
     }
   };

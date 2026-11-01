@@ -1,7 +1,7 @@
 import { MarkdownView, type Plugin } from "obsidian";
 import { h, render } from "preact";
-import { buildHeader } from "../core/note-header";
-import { hasNoteHeader } from "../core/note-list";
+import { buildHeader, type HeaderModel } from "../core/note-header";
+import { hasNoteHeader, WIKI_TYPES } from "../core/note-list";
 import { NoteHeader } from "./NoteHeader";
 import { backlinkCount, collectNotes, noteInfo } from "./note-index";
 
@@ -18,10 +18,18 @@ export function installNoteHeaders(plugin: Plugin): void {
 
 	const mount = (view: MarkdownView): void => {
 		const file = view.file;
+		const info = file ? noteInfo(app, file) : null;
+		const show = info !== null && hasNoteHeader(info.path, info.frontmatter);
+		let model: HeaderModel | null = null;
+		if (info && show) {
+			// 全ノートの一覧と被リンクは、source と wiki のページでしか使わない
+			const type = info.frontmatter.type;
+			const needsVault = type === "source" || (typeof type === "string" && WIKI_TYPES.includes(type));
+			model = buildHeader(info, { notes: needsVault ? collectNotes(app) : [], backlinks: needsVault ? backlinkCount(app, info.path) : 0 });
+		}
 		for (const sizer of Array.from(view.contentEl.querySelectorAll<HTMLElement>(SIZERS))) {
 			let host = sizer.querySelector<HTMLElement>(`:scope > .${HEADER_CLASS}`);
-			const info = file ? noteInfo(app, file) : null;
-			if (!info || !hasNoteHeader(info.path, info.frontmatter)) {
+			if (!model) {
 				if (host) {
 					render(null, host);
 					host.remove();
@@ -35,7 +43,6 @@ export function installNoteHeaders(plugin: Plugin): void {
 			} else if (sizer.firstElementChild !== host) {
 				sizer.prepend(host);
 			}
-			const model = buildHeader(info, { notes: collectNotes(app), backlinks: backlinkCount(app, info.path) });
 			render(h(NoteHeader, { app, model }), host);
 		}
 	};

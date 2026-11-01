@@ -30,16 +30,12 @@ export function useVaultChanges(app: App): number {
 			window.clearTimeout(timer);
 			timer = window.setTimeout(() => setTick((n) => n + 1), 150);
 		};
-		const refs: EventRef[] = [
-			app.metadataCache.on("resolved", bump),
-			app.metadataCache.on("changed", bump),
-			app.vault.on("create", bump),
-			app.vault.on("delete", bump),
-			app.vault.on("rename", bump),
-		];
+		const metaRefs: EventRef[] = [app.metadataCache.on("resolved", bump), app.metadataCache.on("changed", bump)];
+		const vaultRefs: EventRef[] = [app.vault.on("create", bump), app.vault.on("delete", bump), app.vault.on("rename", bump)];
 		return () => {
 			window.clearTimeout(timer);
-			for (const ref of refs) app.metadataCache.offref(ref);
+			for (const ref of metaRefs) app.metadataCache.offref(ref);
+			for (const ref of vaultRefs) app.vault.offref(ref);
 		};
 	}, [app]);
 	return tick;
