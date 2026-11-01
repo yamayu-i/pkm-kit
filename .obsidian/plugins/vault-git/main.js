@@ -21518,6 +21518,17 @@ var VaultGit = class {
   cache = {};
   remote;
   now;
+  async measure(phase, run) {
+    const start = performance.now();
+    try {
+      return await run();
+    } finally {
+      try {
+        this.opts.onTiming?.(phase, performance.now() - start);
+      } catch {
+      }
+    }
+  }
   get ctx() {
     return { fs: this.fs, dir: this.dir, cache: this.cache };
   }
@@ -21634,30 +21645,30 @@ var VaultGit = class {
   }
   async pull() {
     const branch2 = await this.currentBranch();
-    const snapshot = await this.snapshot();
-    const remote = await this.fetch(branch2);
+    const snapshot = await this.measure("snapshot", () => this.snapshot());
+    const remote = await this.measure("fetch", () => this.fetch(branch2));
     const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
     if (!remote || remote === local) return { kind: "up-to-date", snapshot };
-    const base = await this.mergeBase(local, remote);
+    const base = await this.measure("merge-base", () => this.mergeBase(local, remote));
     if (base === remote) return { kind: "ahead", snapshot };
     if (base === local) {
-      const changed2 = await this.moveTo(branch2, local, remote);
+      const changed2 = await this.measure("moveTo", () => this.moveTo(branch2, local, remote));
       return { kind: "fast-forward", snapshot, changed: changed2 };
     }
-    const [baseMap, oursMap, theirsMap] = await Promise.all([
+    const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
       base ? readTreeMap(this.ctx, base) : Promise.resolve(/* @__PURE__ */ new Map()),
       readTreeMap(this.ctx, local),
       readTreeMap(this.ctx, remote)
-    ]);
-    const { entries, conflicts } = await mergeTrees({
+    ]));
+    const { entries, conflicts } = await this.measure("merge", () => mergeTrees({
       base: baseMap,
       ours: oursMap,
       theirs: theirsMap,
       readBlob: async (oid) => (await isomorphic_git_default.readBlob({ ...this.ctx, oid })).blob,
       labels: { ours: `local (${this.device})`, theirs: `remote (${this.remote}/${branch2})` },
       copySuffix: `${this.device} ${formatStamp(this.now())}`
-    });
-    const tree = await writeTreeMap(this.ctx, entries);
+    }));
+    const tree = await this.measure("write-tree", () => writeTreeMap(this.ctx, entries));
     const merged = await isomorphic_git_default.commit({
       ...this.ctx,
       message: this.mergeMessage(branch2, conflicts),
@@ -21666,7 +21677,7 @@ var VaultGit = class {
       parent: [local, remote],
       noUpdateBranch: true
     });
-    const changed = await this.moveTo(branch2, local, merged);
+    const changed = await this.measure("moveTo", () => this.moveTo(branch2, local, merged, oursMap));
     return { kind: "merged", snapshot, changed, conflicts };
   }
   mergeMessage(branch2, conflicts) {
@@ -21683,8 +21694,11 @@ var VaultGit = class {
    * 作業ツリー・インデックス・ブランチを from から to に進める。
    * 途中で落ちても「リモートの変更を巻き戻すコミット」が作られないよう、ブランチの更新は最後に行う。
    */
-  async moveTo(branch2, from, to) {
-    const [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, from), readTreeMap(this.ctx, to)]);
+  async moveTo(branch2, from, to, knownFrom) {
+    const [fromMap, toMap] = await Promise.all([
+      knownFrom ?? readTreeMap(this.ctx, from),
+      readTreeMap(this.ctx, to)
+    ]);
     const writes = [];
     const deletes = [];
     for (const [path, e] of toMap) {
@@ -21728,16 +21742,16 @@ var VaultGit = class {
   }
   async push() {
     const branch2 = await this.currentBranch();
-    const remote = await this.fetch(branch2);
+    const remote = await this.measure("fetch", () => this.fetch(branch2));
     const before = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
-    if (remote && remote !== before && await this.mergeBase(before, remote) !== remote) {
+    if (remote && remote !== before && await this.measure("merge-base", () => this.mergeBase(before, remote)) !== remote) {
       return { kind: "behind" };
     }
-    const snapshot = await this.snapshot();
+    const snapshot = await this.measure("snapshot", () => this.snapshot());
     const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
     if (local === remote) return { kind: "nothing" };
     try {
-      const res = await isomorphic_git_default.push({ ...this.ctx, ...this.net, remote: this.remote, ref: branch2 });
+      const res = await this.measure("push", () => isomorphic_git_default.push({ ...this.ctx, ...this.net, remote: this.remote, ref: branch2 }));
       if (!res.ok) return { kind: "rejected", snapshot };
     } catch (e) {
       if (e instanceof Errors.PushRejectedError) return { kind: "rejected", snapshot };
@@ -22020,6 +22034,12 @@ var VaultFileStore = class {
 };
 
 // src/main.ts
+function reportTiming(phase, elapsedMs) {
+  try {
+    console.debug(`[vault-git] ${phase}: ${elapsedMs.toFixed(1)} ms`);
+  } catch {
+  }
+}
 var CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
 var CONFLICT_NOTES = {
   markers: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u5165\u308A",
@@ -22074,6 +22094,7 @@ var VaultGitPlugin = class extends import_obsidian3.Plugin {
         return { status: res.status, headers: res.headers, arrayBuffer: res.arrayBuffer };
       }, s.authHost),
       deviceName: s.deviceName,
+      onTiming: reportTiming,
       author: {
         name: s.authorName || s.deviceName,
         email: s.authorEmail || "vault-git@localhost"
@@ -22224,8 +22245,13 @@ ${message}`, 1e4);
   }
   async refreshStatus() {
     if (this.busy) return;
-    const n = (await this.findUnresolved()).length;
-    this.statusEl.setText(n > 0 ? `Git: \u26A0 \u672A\u89E3\u6C7A ${n}` : "Git: \u2713");
+    const start = performance.now();
+    try {
+      const n = (await this.findUnresolved()).length;
+      this.statusEl.setText(n > 0 ? `Git: \u26A0 \u672A\u89E3\u6C7A ${n}` : "Git: \u2713");
+    } finally {
+      reportTiming("refreshStatus", performance.now() - start);
+    }
   }
   async showUnresolved() {
     new ConflictsModal(this.app, "\u672A\u89E3\u6C7A\u306E\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8", await this.findUnresolved()).open();

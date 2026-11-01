@@ -48,6 +48,10 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 - トークンは SecretStorage に置き、`data.json` には ID しか保存しない。エラーメッセージは `redactSecrets` で伏せる
 - トークンは設定の「トークンを送るホスト」の `https://` にだけ送る（`src/git/auth-target.ts`）。onAuth と、HTTP 送信直前（Authorization ヘッダー付きのとき）の二段で検査する。http はループバックのみ例外
 
+### 処理時間の計測
+
+工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../.plugin-src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
+
 ## vault-task（タスク管理）
 
 設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
