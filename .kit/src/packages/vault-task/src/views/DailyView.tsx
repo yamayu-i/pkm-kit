@@ -4,7 +4,6 @@ import { emptyBoard, unfinished, pendingBoards, type DailyBoard } from "../core/
 import { cautionIssues, deadIssues, scheduledOn, type DueLists } from "../core/daily";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
-import { boardSummary } from "../core/summary";
 import { addToBoard, carryIssues } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues, scheduleToday } from "../obsidian/issue-actions";
@@ -185,11 +184,9 @@ export function DailyView(props: { ctx: TaskContext }) {
 			if (u.issues.length + u.routines.length > 0) continue;
 			closing.current.add(b.date);
 			void ctx.writer
-				.updateBoard(b.date, (x) => {
-					x.closed = true;
-				})
-				.then(() => ctx.writer.writeSummary(b.date, boardSummary(index, b.date, { ...b.board, closed: true })))
-				.catch((e) => ctx.report("前回のボードを締められませんでした", e));
+				.closeBoard(b.date)
+				.catch((e) => ctx.report("前回のボードを締められませんでした", e))
+				.finally(() => closing.current.delete(b.date));
 		}
 	});
 

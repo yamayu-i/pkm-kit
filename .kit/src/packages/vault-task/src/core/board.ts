@@ -46,6 +46,34 @@ export function parseBoard(value: unknown): BoardState {
 	return board;
 }
 
+/** 表示用の寛容な parseBoard と違い、書き戻すと失われる値があれば止める。 */
+export function parseBoardForWrite(value: unknown): BoardState {
+	if (value === undefined) return emptyBoard();
+	const fail = () => { throw new Error("board の形式が不正です。修正してから編集してください"); };
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return fail();
+	if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) return fail();
+	const raw = value as Record<string, unknown>;
+	if (Object.keys(raw).some((key) => !["issues", "groups", "routines", "carried", "closed"].includes(key))) fail();
+	for (const key of ["issues", "carried"]) {
+		if (!(key in raw)) continue;
+		const list = raw[key];
+		if (!Array.isArray(list) || list.some((id) => typeof id !== "string" || !id) || new Set(list).size !== list.length) fail();
+	}
+	for (const key of ["groups", "routines"]) {
+		if (!(key in raw)) continue;
+		const map = raw[key];
+		if (typeof map !== "object" || map === null || Array.isArray(map)) return fail();
+		if (![Object.prototype, null].includes(Object.getPrototypeOf(map))) return fail();
+		for (const [id, v] of Object.entries(map)) {
+			if (!id || id === "__proto__" || (key === "groups" ? typeof v !== "string" || !v : v !== "closed" && v !== "canceled")) fail();
+		}
+	}
+	if ("closed" in raw && typeof raw.closed !== "boolean") fail();
+	const board = parseBoard(raw);
+	if (board.carried.some((id) => !board.issues.includes(id))) fail();
+	return board;
+}
+
 /** frontmatter に書く形。空の欄は省く */
 export function serializeBoard(board: BoardState): Record<string, unknown> {
 	const out: Record<string, unknown> = {};

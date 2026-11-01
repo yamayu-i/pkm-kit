@@ -72,6 +72,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 ### 注意点
 
 - frontmatter の更新は `fileManager.processFrontMatter` で行う（ほかの欄や書式を壊さない）。値が空なら欄ごと消す
+- ボードを締めるときは例外として `vault.process` で `closed` と本文の要約を一度に保存する。`closeBoardNote` が未完了を再検査し、YAML の `board` ブロックだけを置換する。安全に位置を特定できない YAML や、他の欄の値が変わる場合は保存しない
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、デイリーノートの frontmatter の `board`（ADR-0014）
 - 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない

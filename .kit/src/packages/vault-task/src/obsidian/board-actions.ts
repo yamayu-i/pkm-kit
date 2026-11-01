@@ -1,9 +1,8 @@
 import { inboxPatch, reschedulePatch } from "../core/actions";
-import { emptyBoard, type BoardState, type RoutineResult } from "../core/board";
+import type { RoutineResult } from "../core/board";
 import type { LocalDate } from "../core/dates";
 import { UNGROUPED } from "../core/groups";
 import type { Issue } from "../core/schema";
-import { boardSummary } from "../core/summary";
 import type { TaskContext } from "./context";
 import { askDate } from "./issue-actions";
 
@@ -91,13 +90,8 @@ export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Iss
 
 /** ボードを締める: closed にして、デイリーノートに要約を書く（ADR-0009） */
 export async function closeBoard(ctx: TaskContext, date: LocalDate): Promise<void> {
-	let closed: BoardState = emptyBoard();
 	try {
-		await ctx.writer.updateBoard(date, (b) => {
-			b.closed = true;
-			closed = b;
-		});
-		await ctx.writer.writeSummary(date, boardSummary(ctx.store.index, date, closed));
+		await ctx.writer.closeBoard(date);
 	} catch (e) {
 		ctx.report("ボードを締められませんでした", e);
 	}

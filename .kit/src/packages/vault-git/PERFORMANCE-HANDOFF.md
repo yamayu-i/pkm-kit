@@ -15,7 +15,7 @@ PR #20 の実装・正式検証・配布成果物更新は完了。同期の各�
 
 - Node 26.13.0 / pnpm 12.16.1、固定 lockfile で依存を準備。
 - 最新 main を取り込んで `node .claude/scripts/verify.mjs --plugin` が成功。
-- プラグイン全体 274 テスト成功（vault-git 64、vault-task 151、design 59）。
+- プラグイン全体 299 テスト成功（vault-git 64、vault-task 176、design 59）。
 - `pnpm security:scan` 8/8 成功。audit とビルド再現性を含む。`pnpm outdated` の更新候補なし。
 - ローカル Git smart HTTP サーバーで、通知される工程・例外の隔離・同期結果・途中編集の保護を確認。
 - 回帰テストで snapshot 後のツリー展開が base / local / remote / merged の4回で、local を再読しないことを確認。
