@@ -13,7 +13,7 @@ export interface VaultData {
 	members: Member[];
 	labels: LabelDef[];
 	worklogs: WorklogEntry[];
-	/** デイリーノートの frontmatter にあるボードの状態 */
+	/** ボードの状態（操作ログの再生結果。ADR-0020） */
 	boards: DailyBoard[];
 	/** task board のグループ（issue/board-groups.json） */
 	groups: GroupDef[];

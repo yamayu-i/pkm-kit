@@ -72,9 +72,10 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 ### 注意点
 
 - frontmatter の更新は `fileManager.processFrontMatter` で行う（ほかの欄や書式を壊さない）。値が空なら欄ごと消す
-- ボードを締めるときは例外として `vault.process` で `closed` と本文の要約を一度に保存する。`closeBoardNote` が未完了を再検査し、YAML の `board` ブロックだけを置換する。安全に位置を特定できない YAML や、他の欄の値が変わる場合は保存しない
+- ボードの操作は端末別のログに追記し、状態は全端末のログの再生で作る（`src/core/board-log.ts`。ADR-0020）。デイリーノートの frontmatter の `board` は読み取り専用の初期状態で、もう書かない
+- ボードを締めるときは `closeBoardNote` が未完了を再検査して本文に要約を書き、それから `close` を追記する
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
-- データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、デイリーノートの frontmatter の `board`（ADR-0014）
+- データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、`board/<端末名>/YYYY-MM.jsonl`（ADR-0020）
 - 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
 - 間違っていそうな worklog は [worklog-review スキル](../skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない

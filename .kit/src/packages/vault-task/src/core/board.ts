@@ -6,7 +6,7 @@ import type { Issue, Routine } from "./schema";
 export type RoutineResult = "closed" | "canceled";
 
 /**
- * その日の task board の状態（ADR-0009）。デイリーノートの frontmatter の `board` に置く
+ * その日の task board の状態。保存せず、操作ログを再生して作る（ADR-0020）
  */
 export interface BoardState {
 	/** ボードに載せた issue の ID（載せた順） */
@@ -30,7 +30,7 @@ function record(value: unknown): Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-/** frontmatter の `board` を読む。壊れた部分は捨てる */
+/** 既存のデイリーノートの frontmatter の `board`（読み取り専用）を読む。壊れた部分は捨てる */
 export function parseBoard(value: unknown): BoardState {
 	const raw = record(value);
 	const board = emptyBoard();
@@ -46,45 +46,6 @@ export function parseBoard(value: unknown): BoardState {
 	return board;
 }
 
-/** 表示用の寛容な parseBoard と違い、書き戻すと失われる値があれば止める。 */
-export function parseBoardForWrite(value: unknown): BoardState {
-	if (value === undefined) return emptyBoard();
-	const fail = () => { throw new Error("board の形式が不正です。修正してから編集してください"); };
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return fail();
-	if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) return fail();
-	const raw = value as Record<string, unknown>;
-	if (Object.keys(raw).some((key) => !["issues", "groups", "routines", "carried", "closed"].includes(key))) fail();
-	for (const key of ["issues", "carried"]) {
-		if (!(key in raw)) continue;
-		const list = raw[key];
-		if (!Array.isArray(list) || list.some((id) => typeof id !== "string" || !id) || new Set(list).size !== list.length) fail();
-	}
-	for (const key of ["groups", "routines"]) {
-		if (!(key in raw)) continue;
-		const map = raw[key];
-		if (typeof map !== "object" || map === null || Array.isArray(map)) return fail();
-		if (![Object.prototype, null].includes(Object.getPrototypeOf(map))) return fail();
-		for (const [id, v] of Object.entries(map)) {
-			if (!id || id === "__proto__" || (key === "groups" ? typeof v !== "string" || !v : v !== "closed" && v !== "canceled")) fail();
-		}
-	}
-	if ("closed" in raw && typeof raw.closed !== "boolean") fail();
-	const board = parseBoard(raw);
-	if (board.carried.some((id) => !board.issues.includes(id))) fail();
-	return board;
-}
-
-/** frontmatter に書く形。空の欄は省く */
-export function serializeBoard(board: BoardState): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
-	if (board.issues.length > 0) out.issues = board.issues;
-	if (Object.keys(board.groups).length > 0) out.groups = board.groups;
-	if (Object.keys(board.routines).length > 0) out.routines = board.routines;
-	if (board.carried.length > 0) out.carried = board.carried;
-	if (board.closed) out.closed = true;
-	return out;
-}
-
 /** `daily/YYYY/MM/YYYY-MM-DD.md`（.obsidian/daily-notes.json と同じ） */
 export function dailyNotePath(date: LocalDate): string {
 	return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
@@ -96,6 +57,8 @@ export interface DailyBoard {
 	date: LocalDate;
 	path: string;
 	board: BoardState;
+	/** このボードの最新の操作の時刻（ミリ秒）。操作がなければなし */
+	latestAt?: number;
 }
 
 /** ボードに載っているもの（その日に出てくる routine も含む） */

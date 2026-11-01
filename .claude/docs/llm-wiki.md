@@ -25,7 +25,7 @@
 | 元資料・添付 | `sources/`、`asset/` | 追加だけ |
 | 隠しパス | `.claude/` など | wiki の操作では変えない |
 
-タスク管理のデータ（`issue/`、`routine/`、`member/`、`worklog/`）は vault-task が管理する。wiki の操作では追記もしない（タスクの登録は vault-task の画面か一括登録で行う）。
+タスク管理のデータ（`issue/`、`routine/`、`member/`、`worklog/`、`board/`）は vault-task が管理する。wiki の操作では追記もしない（タスクの登録は vault-task の画面か一括登録で行う）。
 
 ## 元資料（`sources/`）
 
