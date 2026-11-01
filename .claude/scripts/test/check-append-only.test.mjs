@@ -72,3 +72,19 @@ test("removedLines は末尾に改行を足しただけの行を除く", () => {
 	assert.deepEqual(removedLines(changed), ["a"]);
 	assert.deepEqual(removedLines("@@ -2,0 +3 @@\n+c\n"), []);
 });
+
+test("wiki の操作のコミットで updated の行が変わるのは違反にしない(自動付与)", () => {
+	const root = tempRepo({ "daily/2026/10/2026-10-30.md": '---\ntype: daily\nupdated: "2026-10-30T09:00:00+09:00"\n---\n- メモ\n' });
+	const from = commit(root, "init2");
+	commit(root, "wiki(daily): 10/30 を反映", {
+		"daily/2026/10/2026-10-30.md": '---\ntype: daily\nupdated: "2026-11-01T13:30:00+09:00"\n---\n- メモ\n\n→ [A](wiki/a.md)\n',
+	});
+	assert.deepEqual(check(root, from), []);
+});
+
+test("updated 以外の frontmatter や本文を変えるのは、これまでどおり違反", () => {
+	const root = tempRepo({ "memo.md": '---\ntype: note\nupdated: "a"\n---\n本文\n' });
+	const from = commit(root, "init2");
+	commit(root, "wiki(daily): x", { "memo.md": '---\ntype: memo\nupdated: "b"\n---\n本文\n' });
+	assert.equal(check(root, from).length, 1);
+});

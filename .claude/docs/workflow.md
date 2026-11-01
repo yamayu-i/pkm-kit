@@ -35,6 +35,10 @@
 - wiki の操作は main に直接コミットして push する。push の前に `git pull --rebase origin main` で端末の snapshot を取り込む。人のノートで衝突したら、止めてユーザーに伝える
 - 例外として、気づきの記録（`.claude/notes/` だけの変更）は main に直接コミットしてよい（`harness(note): …`）。wiki の操作のコミットには含めない
 
+### updated の自動付与
+
+コミットする変更ノートの `updated` は、コミット時に自動で付く（[ADR-0028](../../.plugin-src/docs/adr/0028-auto-updated.md)）。PC の Git CLI では、リポジトリごとに 1 回 `git config core.hooksPath .githooks` を実行して pre-commit フックを有効にする（worktree 間で共有される）。手で書かない。コミット済みの `sources/` を変えようとするとフックが止める。
+
 ### コミットの形式
 
 ```

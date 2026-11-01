@@ -1,0 +1,248 @@
+{
+ "isTargetPath": [
+  [
+   "wiki/rag.md",
+   true
+  ],
+  [
+   "daily/2026/11/2026-11-01.md",
+   true
+  ],
+  [
+   "memo.md",
+   true
+  ],
+  [
+   "issue/i-1.md",
+   true
+  ],
+  [
+   "wiki/index.md",
+   true
+  ],
+  [
+   "README.md",
+   false
+  ],
+  [
+   "sources/README.md",
+   false
+  ],
+  [
+   "wiki/README.md",
+   false
+  ],
+  [
+   "temporary/a.md",
+   false
+  ],
+  [
+   "template/file/note.md",
+   false
+  ],
+  [
+   "tmp/a.md",
+   false
+  ],
+  [
+   ".claude/docs/a.md",
+   false
+  ],
+  [
+   ".plugin-src/docs/adr/a.md",
+   false
+  ],
+  [
+   "a/.hidden/b.md",
+   false
+  ],
+  [
+   "asset/a.png",
+   false
+  ],
+  [
+   "issue/labels.json",
+   false
+  ],
+  [
+   "worklog/mac/2026-11.jsonl",
+   false
+  ],
+  [
+   "temporary.md",
+   true
+  ],
+  [
+   "notes/template/a.md",
+   true
+  ]
+ ],
+ "setUpdated": [
+  {
+   "name": "既存の updated(引用符つき)を置き換える",
+   "input": "---\ntype: note\ncreated: \"2026-10-01T09:00:00+09:00\"\nupdated: \"2026-10-02T09:00:00+09:00\"\n---\n本文\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\ncreated: \"2026-10-01T09:00:00+09:00\"\nupdated: \"2026-11-01T13:30:00+09:00\"\n---\n本文\n"
+  },
+  {
+   "name": "引用符なしはそのまま引用符なし",
+   "input": "---\ntype: issue\ncreated: 2026-10-01T09:00:00+09:00\nupdated: 2026-10-02T09:00:00+09:00\n---\nx\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: issue\ncreated: 2026-10-01T09:00:00+09:00\nupdated: 2026-11-01T13:30:00+09:00\n---\nx\n"
+  },
+  {
+   "name": "空の updated を埋める",
+   "input": "---\ntype: note\ncreated: \"c\"\nupdated:\n---\nx\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\ncreated: \"c\"\nupdated: \"2026-11-01T13:30:00+09:00\"\n---\nx\n"
+  },
+  {
+   "name": "updated がなければ created の次に足す",
+   "input": "---\ntype: note\ncreated: \"c\"\ntitle: t\n---\nx\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\ncreated: \"c\"\nupdated: \"2026-11-01T13:30:00+09:00\"\ntitle: t\n---\nx\n"
+  },
+  {
+   "name": "created もなければ frontmatter の末尾に足す",
+   "input": "---\ntype: note\ntitle: t\n---\nx\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\ntitle: t\nupdated: \"2026-11-01T13:30:00+09:00\"\n---\nx\n"
+  },
+  {
+   "name": "CRLF を保つ",
+   "input": "---\r\ntype: note\r\ncreated: \"c\"\r\nupdated:\r\n---\r\nx\r\n",
+   "iso": "2026-11-01T13:30:00Z",
+   "output": "---\r\ntype: note\r\ncreated: \"c\"\r\nupdated: \"2026-11-01T13:30:00Z\"\r\n---\r\nx\r\n"
+  },
+  {
+   "name": "本文の updated: の行は触らない",
+   "input": "---\ntype: note\nupdated:\n---\nupdated: 本文\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\nupdated: \"2026-11-01T13:30:00+09:00\"\n---\nupdated: 本文\n"
+  },
+  {
+   "name": "frontmatter がなければ変えない",
+   "input": "# 見出し\nupdated: x\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "# 見出し\nupdated: x\n"
+  },
+  {
+   "name": "frontmatter が閉じていなければ変えない",
+   "input": "---\ntype: note\nupdated:\n本文\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: note\nupdated:\n本文\n"
+  },
+  {
+   "name": "daily の board など他の項目と本文は変えない",
+   "input": "---\ntype: daily\ncreated: \"c\"\nupdated: \"old\"\nboard:\n  issues:\n    - i-6\n---\n- メモ\n\nサンプル\n",
+   "iso": "2026-11-01T13:30:00+09:00",
+   "output": "---\ntype: daily\ncreated: \"c\"\nupdated: \"2026-11-01T13:30:00+09:00\"\nboard:\n  issues:\n    - i-6\n---\n- メモ\n\nサンプル\n"
+  }
+ ],
+ "shouldStamp": [
+  {
+   "name": "新規ファイルは付与する",
+   "old": null,
+   "new": "---\ntype: note\nupdated:\n---\nx\n",
+   "expected": true
+  },
+  {
+   "name": "本文が変われば付与する",
+   "old": "---\ntype: note\nupdated: \"a\"\n---\nx\n",
+   "new": "---\ntype: note\nupdated: \"a\"\n---\ny\n",
+   "expected": true
+  },
+  {
+   "name": "frontmatter の他の項目が変われば付与する",
+   "old": "---\ntype: note\ntags: [a]\nupdated: \"a\"\n---\nx\n",
+   "new": "---\ntype: note\ntags: [b]\nupdated: \"a\"\n---\nx\n",
+   "expected": true
+  },
+  {
+   "name": "updated の行だけの差は付与しない",
+   "old": "---\ntype: note\nupdated: \"a\"\n---\nx\n",
+   "new": "---\ntype: note\nupdated: \"b\"\n---\nx\n",
+   "expected": false
+  },
+  {
+   "name": "同じ内容は付与しない",
+   "old": "---\ntype: note\nupdated: \"a\"\n---\nx\n",
+   "new": "---\ntype: note\nupdated: \"a\"\n---\nx\n",
+   "expected": false
+  },
+  {
+   "name": "updated を空にしただけの差は付与しない",
+   "old": "---\ntype: note\nupdated: \"a\"\n---\nx\n",
+   "new": "---\ntype: note\nupdated:\n---\nx\n",
+   "expected": false
+  },
+  {
+   "name": "updated の行を足しただけの差は付与しない",
+   "old": "---\ntype: note\n---\nx\n",
+   "new": "---\ntype: note\nupdated: \"b\"\n---\nx\n",
+   "expected": false
+  }
+ ],
+ "mergeUpdated": [
+  {
+   "name": "新しい方の updated を採る",
+   "ours": "updated: \"2026-11-01T13:00:00+09:00\"",
+   "theirs": "updated: \"2026-11-01T14:00:00+09:00\"",
+   "expected": "updated: \"2026-11-01T14:00:00+09:00\""
+  },
+  {
+   "name": "オフセットが違っても時刻で比べる",
+   "ours": "updated: \"2026-11-01T13:00:00+09:00\"",
+   "theirs": "updated: \"2026-11-01T05:00:00Z\"",
+   "expected": "updated: \"2026-11-01T05:00:00Z\""
+  },
+  {
+   "name": "片方が空なら値のある方",
+   "ours": "updated:",
+   "theirs": "updated: \"2026-11-01T14:00:00+09:00\"",
+   "expected": "updated: \"2026-11-01T14:00:00+09:00\""
+  },
+  {
+   "name": "読めない値があれば ours",
+   "ours": "updated: x",
+   "theirs": "updated: \"2026-11-01T14:00:00+09:00\"",
+   "expected": "updated: x"
+  }
+ ],
+ "formatIso": [
+  {
+   "utc": "2026-11-01T04:30:00.000Z",
+   "offsetMinutes": -540,
+   "expected": "2026-11-01T13:30:00+09:00"
+  },
+  {
+   "utc": "2026-11-01T04:30:45.123Z",
+   "offsetMinutes": 0,
+   "expected": "2026-11-01T04:30:45Z"
+  },
+  {
+   "utc": "2026-11-01T04:30:00.000Z",
+   "offsetMinutes": 300,
+   "expected": "2026-10-31T23:30:00-05:00"
+  },
+  {
+   "utc": "2026-11-01T04:30:00.000Z",
+   "offsetMinutes": -330,
+   "expected": "2026-11-01T10:00:00+05:30"
+  }
+ ],
+ "setUpdatedThrows": [
+  {
+   "name": "updated が重複している",
+   "input": "---\ntype: note\nupdated: a\nupdated: b\n---\nx\n"
+  },
+  {
+   "name": "updated がリストになっている",
+   "input": "---\ntype: note\nupdated:\n  - a\n---\nx\n"
+  },
+  {
+   "name": "updated が複数の値",
+   "input": "---\ntype: note\nupdated: a b\n---\nx\n"
+  }
+ ]
+}

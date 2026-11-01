@@ -1,0 +1,10 @@
+#!/bin/sh
+# コミットする変更ノートに updated を付与する(ADR-0028)。有効にするには:
+#   git config core.hooksPath .githooks
+# node が見つからないときは警告だけ出して、コミットは止めない。
+root=$(git rev-parse --show-toplevel) || exit 0
+if ! command -v node >/dev/null 2>&1; then
+	echo "stamp-updated: node が見つからないので updated を付与しません" >&2
+	exit 0
+fi
+exec node "$root/.claude/scripts/stamp-updated.mjs" --staged

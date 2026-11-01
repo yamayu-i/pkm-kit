@@ -33,6 +33,7 @@
 |---|---|---|
 | `git/engine.ts` | pull / push / snapshot / clone | なし |
 | `merge/` | ツリーと行のマージ、パスの安全性検査 | なし |
+| `stamp/updated.ts` | コミット時の updated の付与の規則(ADR-0028)。PC の Git CLI 用の `.claude/scripts/lib/updated.mjs` と同じ規則で、`.claude/scripts/test/fixtures/updated-cases.json` を両方のテストが読んで揃える。規則を変えるときは両方を変える | なし |
 | `fs/` | isomorphic-git 用の fs アダプタ | なし |
 | `git/http.ts` | `requestUrl` を isomorphic-git の HTTP クライアントにする | なし（関数を注入） |
 | `obsidian/` | Vault への読み書き、設定画面、モーダル | あり |
@@ -43,6 +44,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ### 注意点
 
+- snapshot はコミットする変更ノートの `updated` の行だけを書き換える(ADR-0028)。付与できないノート(曖昧な `updated`、読んでから書くまでに編集された)は見送り、同期は止めない。マージでは `updated` を衝突の対象から外し、新しい方を採る
 - isomorphic-git はファイルの更新時刻を秒単位でしか比べないので、snapshot で racy な候補だけハッシュを比べ直している
 - 通常のノートは Vault API 経由で書く（開いているエディタとキャッシュに反映させるため）。`.git` / `.obsidian` などの隠しパスはアダプタで直接書く
 - トークンは SecretStorage に置き、`data.json` には ID しか保存しない。エラーメッセージは `redactSecrets` で伏せる
