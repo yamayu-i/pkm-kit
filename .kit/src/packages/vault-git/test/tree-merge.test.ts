@@ -69,4 +69,23 @@ describe("mergeTrees", () => {
 		expect(conflictCopyPath("a.md", "s", (p) => taken.has(p))).toBe("a (conflict s 2).md");
 		expect(conflictCopyPath("dir/Makefile", "s", () => false)).toBe("dir/Makefile (conflict s)");
 	});
+
+	it("md の updated は衝突させず、新しい方を採る(ADR-0028)", async () => {
+		const fm = (updated: string, body: string) => `---\ntype: note\nupdated: "${updated}"\n---\n${body}`;
+		const { run } = setup({
+			b: fm("2026-10-01T09:00:00+09:00", "1\n2\n3\n"),
+			o: fm("2026-10-25T09:00:00+09:00", "1\n2\n3 ours\n"),
+			t: fm("2026-10-20T09:00:00+09:00", "1 theirs\n2\n3\n"),
+		});
+		const { entries, conflicts } = await run({ "n.md": "b" }, { "n.md": "o" }, { "n.md": "t" });
+		expect(conflicts).toEqual([]);
+		const e = entries.get("n.md");
+		expect(e && "content" in e ? dec(e.content) : "").toBe(fm("2026-10-25T09:00:00+09:00", "1 theirs\n2\n3 ours\n"));
+	});
+
+	it("md 以外の updated: の行や、対象外のパスは従来どおりのマージ", async () => {
+		const { run } = setup({ b: "updated: a\n1\n", o: "updated: b\n1\n", t: "updated: c\n1\n" });
+		const { conflicts } = await run({ "README.md": "b" }, { "README.md": "o" }, { "README.md": "t" });
+		expect(conflicts.map((c) => c.kind)).toEqual(["markers"]);
+	});
 });

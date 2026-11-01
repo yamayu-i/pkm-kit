@@ -3,6 +3,7 @@ import { dirname, type FileStore } from "../fs/file-store";
 import { assertAuthTarget } from "./auth-target";
 import { createGitFs, GIT_DIR_ROOT } from "../fs/git-fs";
 import { assertSafeWorktreePath } from "../merge/path-safety";
+import { formatIso, isTargetPath, setUpdated, shouldStamp } from "../stamp/updated";
 import { mergeTrees, type MergeConflict, type TreeEntry } from "../merge/tree-merge";
 import { readTreeMap, writeTreeMap } from "./tree";
 
@@ -156,6 +157,11 @@ export class VaultGit {
 			if ((head === 0 && workdir !== 0) || (head === 1 && workdir !== 1)) changed = true;
 		}
 		for (const path of toRemove) await git.remove({ ...this.ctx, filepath: path });
+		if (toAdd.length > 0) {
+			// コミットする変更ノートに updated を付与する(1 回のコミットでは同じ時刻。ADR-0028)
+			const inHead = new Map(matrix.map(([path, head]) => [path, head === 1]));
+			await this.stampUpdated(toAdd.filter(isTargetPath), inHead, formatIso(this.now()));
+		}
 		if (toAdd.length > 0) await git.add({ ...this.ctx, filepath: toAdd });
 		if (!changed) return false;
 		await git.commit({
@@ -164,6 +170,40 @@ export class VaultGit {
 			author: this.signature(),
 		});
 		return true;
+	}
+
+	/**
+	 * 変更ノートの updated を iso にする(ADR-0028)。付与できない(曖昧な updated、読み込めない、
+	 * 読んでから書くまでの間に編集された)ノートは見送り、同期は止めない。
+	 * コミット済みの元資料(sources/)は変更されていても付与しない。
+	 */
+	private async stampUpdated(paths: string[], inHead: ReadonlyMap<string, boolean>, iso: string): Promise<void> {
+		const decoder = new TextDecoder("utf-8", { fatal: true });
+		const encoder = new TextEncoder();
+		let headOid: string | null = null;
+		for (const path of paths) {
+			try {
+				const stat = await this.store.stat(path);
+				if (!stat || stat.type !== "file") continue;
+				const bytes = await this.store.read(path);
+				const text = decoder.decode(bytes);
+				let old: string | null = null;
+				if (inHead.get(path)) {
+					if (path.startsWith("sources/")) continue;
+					headOid ??= await git.resolveRef({ ...this.ctx, ref: "HEAD" });
+					old = decoder.decode((await git.readBlob({ ...this.ctx, oid: headOid, filepath: path })).blob);
+				}
+				if (!shouldStamp(old, text)) continue;
+				const next = setUpdated(text, iso);
+				if (next === text) continue;
+				// 書き込みの直前に、読んだ内容から変わっていないことを確かめる
+				const current = await this.store.read(path);
+				if (current.length !== bytes.length || current.some((b, i) => b !== bytes[i])) continue;
+				await this.store.write(path, encoder.encode(next));
+			} catch {
+				// このノートへの付与は見送る
+			}
+		}
 	}
 
 	/**

@@ -42,7 +42,7 @@ export function git(root, ...args) {
 }
 
 export const page = (fields = {}) => {
-	const fm = { title: "T", type: "concept", created: "2026-10-01", updated: "2026-10-01", ...fields };
+	const fm = { title: "T", type: "concept", created: "2026-10-01T09:00:00+09:00", updated: "2026-10-01T09:00:00+09:00", ...fields };
 	const lines = Object.entries(fm).map(([k, v]) => (Array.isArray(v) ? `${k}:\n${v.map((x) => `  - ${x}`).join("\n")}` : `${k}: ${v}`));
 	if (!("sources" in fields)) lines.push("sources: []");
 	return `---\n${lines.join("\n")}\n---\n\n本文\n`;

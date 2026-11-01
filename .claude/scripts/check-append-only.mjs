@@ -85,7 +85,8 @@ export function checkCommits(repo, range = ["origin/main..HEAD"]) {
 			else if (kind === "D") add(path, "人のノートを消さない");
 			else if (kind === "M") {
 				const diff = git(repo, ["diff", "-U0", `${sha}^`, sha, "--", path]);
-				const removed = removedLines(diff);
+				// updated の行はコミット時に自動で付与される(ADR-0028)ので、変わっても数えない
+				const removed = removedLines(diff).filter((l) => !l.startsWith("updated:"));
 				if (removed.length)
 					add(path, `人のノートは追記だけ。変えた・消した行: ${removed.slice(0, 3).map((l) => JSON.stringify(l)).join(", ")}`);
 			} else add(path, `人のノートへの変更（${status}）は許されていない`);

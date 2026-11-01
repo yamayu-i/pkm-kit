@@ -10,7 +10,7 @@ test("規約どおりの Vault はエラーも警告もない", () => {
 		"wiki/index.md": "# 目次\n\n- [A](wiki/a.md)\n",
 		"wiki/log.md": "# ログ\n",
 		"wiki/a.md": page({ sources: ["sources/s.md", "daily/2026/10/2026-10-30.md", "https://example.com"] }) + "![図](asset/x.png)\n[見出し](wiki/a.md#本文)\n",
-		"sources/s.md": "---\ntitle: S\norigin: https://example.com\nretrieved: 2026-10-30\n---\n",
+		"sources/s.md": "---\ntitle: S\norigin: https://example.com\nretrieved: 2026-10-30\nupdated: \"2026-10-30T09:00:00+09:00\"\n---\n",
 		"daily/2026/10/2026-10-30.md": "- [A](wiki/a.md)\n",
 		"asset/x.png": "png",
 		".claude/ignored.md": "[[hidden]]",
@@ -44,15 +44,15 @@ test("wiki のページの frontmatter を検査する", () => {
 	});
 	assert.deepEqual(messages(lintVault(root).errors), [
 		"wiki/d.md type は concept / entity / topic / answer のどれか: memo",
-		"wiki/d.md updated は YYYY-MM-DD: 10/31",
+		"wiki/d.md updated は秒までの ISO 8601（オフセット付き。例 2026-11-01T13:30:00+09:00）: 10/31",
 		"wiki/d.md sources の参照先がない: sources/none.md",
 	]);
 });
 
 test("元資料・添付・デイリーノートの置き場所を検査する", () => {
 	const root = tempVault({
-		"sources/s.md": "---\ntitle: S\n---\n",
-		"sources/sub/t.md": "---\ntitle: T\norigin: x\nretrieved: 2026-10-01\n---\n",
+		"sources/s.md": "---\ntitle: S\nupdated: 2026-10-30T09:00:00+09:00\n---\n",
+		"sources/sub/t.md": "---\ntitle: T\norigin: x\nretrieved: 2026-10-01\nupdated: 2026-10-30T09:00:00+09:00\n---\n",
 		"asset/sub/x.png": "",
 		"daily/2026/11/2026-10-30.md": "",
 		"memo.md": "![x](img/x.png)\n",
@@ -68,5 +68,25 @@ test("元資料・添付・デイリーノートの置き場所を検査する",
 	assert.deepEqual(messages(warnings), [
 		"daily/2026/11/2026-10-30.md デイリーノートは daily/YYYY/MM/YYYY-MM-DD.md に置く",
 		"memo.md 添付は asset/ 直下に置く: img/x.png",
+	]);
+});
+
+test("frontmatter のあるノートは updated が必須(秒までの ISO 8601、オフセット付き)", () => {
+	const ok = '---\ntype: note\nupdated: "2026-11-01T13:30:00+09:00"\n---\n';
+	const root = tempVault({
+		"ok.md": ok,
+		"utc.md": '---\ntype: note\nupdated: 2026-11-01T04:30:00Z\n---\n',
+		"empty.md": "---\ntype: note\nupdated:\n---\n",
+		"missing.md": "---\ntype: note\n---\n",
+		"date-only.md": "---\ntype: note\nupdated: 2026-11-01\n---\n",
+		"plain.md": "# frontmatter なし\n",
+		"README.md": "---\ntype: note\n---\n",
+		"template/file/n.md": "---\ntype: note\nupdated:\n---\n",
+		"sources/README.md": "---\ntitle: R\n---\n",
+	});
+	assert.deepEqual(messages(lintVault(root).warnings), [
+		"date-only.md updated は秒までの ISO 8601（オフセット付き。例 2026-11-01T13:30:00+09:00）: 2026-11-01",
+		"empty.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）",
+		"missing.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）",
 	]);
 });

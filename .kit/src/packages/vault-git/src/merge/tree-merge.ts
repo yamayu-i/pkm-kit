@@ -1,4 +1,5 @@
 import { basename, dirname } from "../fs/file-store";
+import { isTargetPath, markUpdated, mergeUpdatedLine, unmarkUpdated, updatedLine } from "../stamp/updated";
 import { mergeText, type ConflictLabels } from "./text-merge";
 
 export interface TreeEntry {
@@ -57,6 +58,10 @@ function decodeText(data: Uint8Array): string | null {
 	} catch {
 		return null;
 	}
+}
+
+function withUpdated(merged: { clean: boolean; text: string }, line: string | null): { clean: boolean; text: string } {
+	return { clean: merged.clean, text: unmarkUpdated(merged.text, line) };
 }
 
 function sameEntry(a: TreeEntry | undefined, b: TreeEntry | undefined): boolean {
@@ -127,7 +132,10 @@ export async function mergeTrees(input: TreeMergeInput): Promise<TreeMergeResult
 			const theirsText = decodeText(theirsData);
 			const baseText = decodeText(baseData);
 			if (oursText !== null && theirsText !== null && baseText !== null) {
-				const merged = mergeText(baseText, oursText, theirsText, input.labels);
+				// updated は両側で必ず変わるので衝突の対象から外し、新しい方を採る(ADR-0028)
+				const merged = isTargetPath(path)
+					? withUpdated(mergeText(markUpdated(baseText), markUpdated(oursText), markUpdated(theirsText), input.labels), mergeUpdatedLine(updatedLine(oursText), updatedLine(theirsText)))
+					: mergeText(baseText, oursText, theirsText, input.labels);
 				if (merged.clean || MARKER_EXTENSIONS.has(extension(path))) {
 					entries.set(path, { mode: t.mode, content: new TextEncoder().encode(merged.text) });
 					if (!merged.clean) conflicts.push({ path, kind: "markers" });

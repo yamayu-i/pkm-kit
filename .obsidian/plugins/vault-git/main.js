@@ -317,9 +317,9 @@ var require_buffer = __commonJS({
           'The "value" argument must not be of type number. Received type number'
         );
       }
-      const valueOf = value.valueOf && value.valueOf();
-      if (valueOf != null && valueOf !== value) {
-        return Buffer3.from(valueOf, encodingOrOffset, length);
+      const valueOf2 = value.valueOf && value.valueOf();
+      if (valueOf2 != null && valueOf2 !== value) {
+        return Buffer3.from(valueOf2, encodingOrOffset, length);
       }
       const b = fromObject(value);
       if (b) return b;
@@ -21071,6 +21071,104 @@ function assertSafeWorktreePath(path) {
   if (!isSafeWorktreePath(path)) throw new Error(`unsafe path in tree: ${JSON.stringify(path)}`);
 }
 
+// src/stamp/updated.ts
+init_buffer();
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["temporary", "template", "tmp"]);
+function isTargetPath(path) {
+  if (!path.endsWith(".md")) return false;
+  const parts = path.split("/");
+  if (parts.some((p) => p.startsWith("."))) return false;
+  if (parts[parts.length - 1] === "README.md") return false;
+  if (parts.length > 1 && EXCLUDED_DIRS.has(parts[0])) return false;
+  return true;
+}
+function frontmatterEnd(lines) {
+  if (lines[0]?.replace(/\r$/, "") !== "---") return null;
+  for (let i = 1; i < lines.length; i++) if (lines[i].replace(/\r$/, "") === "---") return i;
+  return null;
+}
+var UPDATED_RE = /^updated:/;
+function findLine(lines, end, re) {
+  for (let i = 1; i < end; i++) if (re.test(lines[i])) return i;
+  return -1;
+}
+function setUpdated(text, iso) {
+  const lines = text.split("\n");
+  const end = frontmatterEnd(lines);
+  if (end === null) return text;
+  const cr = lines[0].endsWith("\r") ? "\r" : "";
+  const at = findLine(lines, end, UPDATED_RE);
+  if (lines.slice(1, end).filter((l) => UPDATED_RE.test(l)).length > 1) throw new Error("updated \u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059");
+  if (at !== -1) {
+    const value = lines[at].slice("updated:".length).replace(/\r$/, "").trim();
+    if (/^\s/.test(lines[at + 1] ?? "") && at + 1 < end) throw new Error("updated \u306F\u5358\u4E00\u306E\u65E5\u6642\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+    if (/\s/.test(value.replace(/^(["'])(.*)\1$/, "$2"))) throw new Error("updated \u306F\u5358\u4E00\u306E\u65E5\u6642\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+    const quote = value.startsWith("'") ? "'" : value === "" || value.startsWith('"') ? '"' : "";
+    lines[at] = `updated: ${quote}${iso}${quote}${cr}`;
+  } else {
+    const created = findLine(lines, end, /^created:/);
+    lines.splice(created !== -1 ? created + 1 : end, 0, `updated: "${iso}"${cr}`);
+  }
+  return lines.join("\n");
+}
+function withoutUpdated(text) {
+  const lines = text.split("\n");
+  const end = frontmatterEnd(lines);
+  if (end === null) return text;
+  const at = findLine(lines, end, UPDATED_RE);
+  if (at !== -1) lines.splice(at, 1);
+  return lines.join("\n");
+}
+function shouldStamp(old, next) {
+  if (frontmatterEnd(next.split("\n")) === null) return false;
+  if (old === null) return true;
+  return withoutUpdated(old) !== withoutUpdated(next);
+}
+function valueOf(line) {
+  return line.slice("updated:".length).replace(/\r$/, "").trim().replace(/^(["'])(.*)\1$/, "$2");
+}
+function mergeUpdatedLine(ours, theirs) {
+  if (ours === null || valueOf(ours) === "") return theirs ?? ours;
+  if (theirs === null || valueOf(theirs) === "") return ours;
+  const [o, t] = [Date.parse(valueOf(ours)), Date.parse(valueOf(theirs))];
+  if (Number.isNaN(o) || Number.isNaN(t)) return ours;
+  return t > o ? theirs : ours;
+}
+var pad = (n) => String(n).padStart(2, "0");
+function formatIso(date, offsetMinutes = date.getTimezoneOffset()) {
+  const l = new Date(date.getTime() - offsetMinutes * 6e4);
+  const stamp = `${l.getUTCFullYear()}-${pad(l.getUTCMonth() + 1)}-${pad(l.getUTCDate())}T${pad(l.getUTCHours())}:${pad(l.getUTCMinutes())}:${pad(l.getUTCSeconds())}`;
+  if (offsetMinutes === 0) return `${stamp}Z`;
+  const abs = Math.abs(offsetMinutes);
+  return `${stamp}${offsetMinutes < 0 ? "+" : "-"}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}
+function updatedLine(text) {
+  const lines = text.split("\n");
+  const end = frontmatterEnd(lines);
+  if (end === null) return null;
+  const at = findLine(lines, end, UPDATED_RE);
+  return at === -1 ? null : lines[at].replace(/\r$/, "");
+}
+var MERGE_MARK = "updated: __vault-git-merge__";
+function markUpdated(text) {
+  const lines = text.split("\n");
+  const end = frontmatterEnd(lines);
+  if (end === null) return text;
+  const at = findLine(lines, end, UPDATED_RE);
+  if (at === -1) return text;
+  lines[at] = MERGE_MARK + (lines[at].endsWith("\r") ? "\r" : "");
+  return lines.join("\n");
+}
+function unmarkUpdated(text, line) {
+  if (!text.includes(MERGE_MARK)) return text;
+  const out = [];
+  for (const l of text.split("\n")) {
+    if (l.replace(/\r$/, "") !== MERGE_MARK) out.push(l);
+    else if (line !== null) out.push(line + (l.endsWith("\r") ? "\r" : ""));
+  }
+  return out.join("\n");
+}
+
 // src/merge/tree-merge.ts
 init_buffer();
 
@@ -21354,6 +21452,9 @@ function decodeText(data) {
     return null;
   }
 }
+function withUpdated(merged, line) {
+  return { clean: merged.clean, text: unmarkUpdated(merged.text, line) };
+}
 function sameEntry(a, b) {
   if (!a || !b) return a === b;
   return a.oid === b.oid && a.mode === b.mode;
@@ -21409,7 +21510,7 @@ async function mergeTrees(input) {
       const theirsText = decodeText(theirsData);
       const baseText = decodeText(baseData);
       if (oursText !== null && theirsText !== null && baseText !== null) {
-        const merged = mergeText(baseText, oursText, theirsText, input.labels);
+        const merged = isTargetPath(path) ? withUpdated(mergeText(markUpdated(baseText), markUpdated(oursText), markUpdated(theirsText), input.labels), mergeUpdatedLine(updatedLine(oursText), updatedLine(theirsText))) : mergeText(baseText, oursText, theirsText, input.labels);
         if (merged.clean || MARKER_EXTENSIONS.has(extension(path))) {
           entries.set(path, { mode: t.mode, content: new TextEncoder().encode(merged.text) });
           if (!merged.clean) conflicts.push({ path, kind: "markers" });
@@ -21494,11 +21595,11 @@ var WorktreeChangedError = class extends Error {
   }
   paths;
 };
-function pad(n) {
+function pad2(n) {
   return String(n).padStart(2, "0");
 }
 function formatStamp(d) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}${pad2(d.getMinutes())}`;
 }
 function sanitizeDeviceName(name) {
   return name.replace(/[\\/:*?"<>|#^[\]\n\r\t]/g, "-").trim() || "device";
@@ -21589,6 +21690,10 @@ var VaultGit = class {
       if (head === 0 && workdir !== 0 || head === 1 && workdir !== 1) changed = true;
     }
     for (const path of toRemove) await isomorphic_git_default.remove({ ...this.ctx, filepath: path });
+    if (toAdd.length > 0) {
+      const inHead = new Map(matrix.map(([path, head]) => [path, head === 1]));
+      await this.stampUpdated(toAdd.filter(isTargetPath), inHead, formatIso(this.now()));
+    }
     if (toAdd.length > 0) await isomorphic_git_default.add({ ...this.ctx, filepath: toAdd });
     if (!changed) return false;
     await isomorphic_git_default.commit({
@@ -21598,6 +21703,37 @@ var VaultGit = class {
       author: this.signature()
     });
     return true;
+  }
+  /**
+   * 変更ノートの updated を iso にする(ADR-0028)。付与できない(曖昧な updated、読み込めない、
+   * 読んでから書くまでの間に編集された)ノートは見送り、同期は止めない。
+   * コミット済みの元資料(sources/)は変更されていても付与しない。
+   */
+  async stampUpdated(paths, inHead, iso) {
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const encoder = new TextEncoder();
+    let headOid = null;
+    for (const path of paths) {
+      try {
+        const stat = await this.store.stat(path);
+        if (!stat || stat.type !== "file") continue;
+        const bytes = await this.store.read(path);
+        const text = decoder.decode(bytes);
+        let old = null;
+        if (inHead.get(path)) {
+          if (path.startsWith("sources/")) continue;
+          headOid ??= await isomorphic_git_default.resolveRef({ ...this.ctx, ref: "HEAD" });
+          old = decoder.decode((await isomorphic_git_default.readBlob({ ...this.ctx, oid: headOid, filepath: path })).blob);
+        }
+        if (!shouldStamp(old, text)) continue;
+        const next = setUpdated(text, iso);
+        if (next === text) continue;
+        const current = await this.store.read(path);
+        if (current.length !== bytes.length || current.some((b, i) => b !== bytes[i])) continue;
+        await this.store.write(path, encoder.encode(next));
+      } catch {
+      }
+    }
   }
   /**
    * isomorphic-git はファイルの更新時刻を秒単位でしか比べないため、

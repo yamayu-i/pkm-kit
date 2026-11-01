@@ -11,9 +11,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractLinks, findWikiLinks, isExternal, parseFrontmatter, splitTarget, stripCode } from "./lib/markdown.mjs";
 import { classify, DAILY_RE, isWikiPage, vaultFiles, WIKI_INDEX } from "./lib/vault.mjs";
+import { isTargetPath } from "./lib/updated.mjs";
 
 export const PAGE_TYPES = ["concept", "entity", "topic", "answer"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** 秒までの ISO 8601。UTC の Z か、オフセット付き(ADR-0007、ADR-0028) */
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/;
+const DATETIME_HINT = "秒までの ISO 8601（オフセット付き。例 2026-11-01T13:30:00+09:00）";
 
 export function lintVault(root) {
 	const errors = [];
@@ -65,11 +69,22 @@ export function lintVault(root) {
 		}
 
 		if (isWikiPage(path)) lintWikiPage(path, text, report, exists);
+		else if (isTargetPath(path)) lintUpdated(path, text, report);
 		if (path.startsWith("sources/")) lintSourcePage(path, text, report);
 	}
 
 	lintIndex(files, fileSet, report, root);
 	return { errors, warnings };
+}
+
+/** frontmatter のあるノートは updated が必須。コミット時に自動で付与される(ADR-0028) */
+function lintUpdated(path, text, report) {
+	const { data } = parseFrontmatter(text);
+	if (!data) return;
+	const value = data.updated;
+	if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0))
+		return report(path, 1, "frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）");
+	if (typeof value !== "string" || !DATETIME_RE.test(value)) report(path, 1, `updated は${DATETIME_HINT}: ${value}`);
 }
 
 function lintWikiPage(path, text, report, exists) {
@@ -80,7 +95,7 @@ function lintWikiPage(path, text, report, exists) {
 	if (data.type && !PAGE_TYPES.includes(data.type))
 		report(path, 1, `type は ${PAGE_TYPES.join(" / ")} のどれか: ${data.type}`);
 	for (const key of ["created", "updated"])
-		if (typeof data[key] === "string" && !DATE_RE.test(data[key])) report(path, 1, `${key} は YYYY-MM-DD: ${data[key]}`);
+		if (typeof data[key] === "string" && !DATETIME_RE.test(data[key])) report(path, 1, `${key} は${DATETIME_HINT}: ${data[key]}`);
 	if (!Array.isArray(data.sources)) report(path, 1, "frontmatter に sources（リスト）がない");
 	else
 		for (const s of data.sources)
