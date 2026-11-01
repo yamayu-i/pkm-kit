@@ -1,4 +1,4 @@
-import { cancelPatch, closePatch, inboxPatch, reschedulePatch, somedayPatch, type Patch, type RescheduleTarget } from "../core/actions";
+import { cancelPatch, closePatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch, type Patch, type RescheduleTarget } from "../core/actions";
 import { localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
 import { DateForm } from "../ui/forms";
@@ -48,6 +48,12 @@ export const cancelIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx,
 export const inboxIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, inboxPatch(), "Inbox に戻すことが");
 export const somedayIssues = (ctx: TaskContext, issues: Issue[], revisit: LocalDate | null = null) =>
 	patchAll(ctx, issues, somedayPatch(revisit), "Someday に移すことが");
+
+/** 今日を実行日に足す（すでに入っていれば変わらない） */
+export async function scheduleToday(ctx: TaskContext, issues: Issue[]): Promise<void> {
+	await patchAll(ctx, issues, (i) => schedulePatch(i, [localToday()]), "今日の予定に入れることが");
+	ctx.report(`${issues.length} 件を今日の予定に入れました`);
+}
 
 /** リスケ。実行日なら from（今日など）を外して選んだ日に移す */
 export async function rescheduleIssues(ctx: TaskContext, issues: Issue[], target: RescheduleTarget, from: LocalDate | null = null): Promise<void> {

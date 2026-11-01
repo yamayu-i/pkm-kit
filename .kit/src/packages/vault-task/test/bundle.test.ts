@@ -11,7 +11,14 @@ function obsidianMock() {
 	const commands: { id: string; name: string }[] = [];
 	const extensions: unknown[] = [];
 	const views: string[] = [];
+	const creators = new Map<string, (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }>();
 	let layoutReady: (() => void) | null = null;
+	/** 本物の ItemView と同じく、コンストラクタの中で getViewType を呼ぶ */
+	class ItemView {
+		constructor(readonly leaf: unknown) {
+			(this as unknown as { getViewType(): string }).getViewType();
+		}
+	}
 	class Plugin {
 		app = {
 			vault: { getFiles: () => [], getMarkdownFiles: () => [], on: () => ({}) },
@@ -26,8 +33,9 @@ function obsidianMock() {
 		}
 		addRibbonIcon() {}
 		registerEvent() {}
-		registerView(type: string) {
+		registerView(type: string, creator: (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }) {
 			views.push(type);
+			creators.set(type, creator);
 		}
 		addSettingTab() {}
 		async loadData() {
@@ -40,7 +48,7 @@ function obsidianMock() {
 		obsidian: {
 			Plugin,
 			Modal,
-			ItemView: class {},
+			ItemView,
 			PluginSettingTab: class {},
 			Setting: class {},
 			SuggestModal: Modal,
@@ -56,6 +64,7 @@ function obsidianMock() {
 		commands,
 		extensions,
 		views,
+		creators,
 		ready: () => layoutReady?.(),
 	};
 }
@@ -89,5 +98,20 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		]);
 		expect(mock.views).toHaveLength(8);
 		expect(mock.extensions).toHaveLength(1);
+	});
+
+	it("登録した View をすべて作れる（親のコンストラクタが getViewType を呼んでも落ちない）", async () => {
+		const mock = obsidianMock();
+		const req = (name: string) => (name === "obsidian" ? mock.obsidian : require(name));
+		const module = { exports: {} as { default: new () => { onload(): Promise<void> } } };
+		new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
+		await new module.exports.default().onload();
+		expect(mock.creators.size).toBe(8);
+		for (const [type, create] of mock.creators) {
+			const view = create({});
+			expect(view.getViewType()).toBe(type);
+			expect(view.getDisplayText()).not.toBe("");
+			expect(view.getIcon()).not.toBe("");
+		}
 	});
 });

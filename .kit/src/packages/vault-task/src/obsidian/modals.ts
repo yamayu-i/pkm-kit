@@ -1,4 +1,4 @@
-import { FuzzySuggestModal, Modal, SuggestModal, type App } from "obsidian";
+import { FuzzySuggestModal, Modal, SuggestModal, prepareFuzzySearch, type App } from "obsidian";
 import { h, render, type ComponentChild } from "preact";
 import type { Issue, Member } from "../core/schema";
 
@@ -44,6 +44,42 @@ export class IssueSuggestModal extends FuzzySuggestModal<Issue> {
 
 	onChooseItem(issue: Issue): void {
 		this.onChoose(issue);
+	}
+}
+
+type BoardChoice = { kind: "issue"; issue: Issue } | { kind: "create"; summary: string };
+
+/** ボードに載せる issue を検索するか、入力した summary で新しく作る */
+export class BoardIssueModal extends SuggestModal<BoardChoice> {
+	constructor(
+		app: App,
+		private readonly items: Issue[],
+		private readonly onChoose: (choice: BoardChoice) => void,
+	) {
+		super(app);
+		this.setPlaceholder("issue を検索。なければ summary を入力して新規作成");
+	}
+
+	getSuggestions(query: string): BoardChoice[] {
+		const summary = query.trim();
+		if (!summary) return this.items.map((issue) => ({ kind: "issue", issue }));
+		const match = prepareFuzzySearch(summary);
+		const hits = this.items
+			.map((issue) => ({ issue, result: match(`${issue.id} ${issue.summary}`) }))
+			.filter((h) => h.result !== null)
+			.sort((a, b) => b.result!.score - a.result!.score)
+			.map(({ issue }): BoardChoice => ({ kind: "issue", issue }));
+		// 似た issue があっても新しく作れるように、常に最後に出す
+		return [...hits, { kind: "create", summary }];
+	}
+
+	renderSuggestion(choice: BoardChoice, el: HTMLElement): void {
+		if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
+		else el.createEl("div", { text: `＋「${choice.summary}」を作成してボードに載せる` });
+	}
+
+	onChooseSuggestion(choice: BoardChoice): void {
+		this.onChoose(choice);
 	}
 }
 

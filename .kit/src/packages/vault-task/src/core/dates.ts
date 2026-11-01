@@ -81,6 +81,13 @@ export function localDateTime(now: Date = new Date()): string {
 	);
 }
 
+/** 月のカレンダーに並べる 42 日（日曜始まり）。`month` は `YYYY-MM` */
+export function monthGridDays(month: string): LocalDate[] {
+	const first = `${month}-01`;
+	const start = addDays(first, -weekdayOf(first));
+	return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}
+
 /** `11/02 (mon)` */
 export function formatShortDate(date: LocalDate): string {
 	return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;

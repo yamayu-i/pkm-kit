@@ -110,6 +110,7 @@ packages/design/tokens.json（正本）
 
 - それぞれ `--vt-<色>-container`（面）/ `--vt-on-<色>-container`（文字）/ `--vt-<色>`（印）がある
 - status の色は ADR-0006 の割り当てに従う。ID のバッジも status と同じ色にする
+- 実行日の枠では、mid_due と deadline を面の外側に隙間を空けた枠で示す（実行日の面の色と重ならないように）
 - 期限は `--vt-due-3` → `--vt-due-0`（薄い黄色 → 黄色 → オレンジ → 赤）。期限を過ぎたら赤い枠（ADR-0006）
 - 実行日は `--vt-scheduled`（面）と `--vt-on-scheduled`（文字）
 - **必須**: 色だけで意味を伝えない（WCAG 1.4.1）。status・priority は文字でも書く。期限は日付と「MID_DUE / DEADLINE」の文字を出す
@@ -307,7 +308,7 @@ pnpm build                   # tokens.json から生成物を作り直す（プ�
 pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
 cd packages/vault-task
 pnpm preview:ui              # 画面 × light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
-pnpm preview:ui board inbox  # 画面を絞る（header / daily / board / issues / inbox / organize / scheduled / someday / routines / groups）
+pnpm preview:ui board inbox  # 画面を絞る（header / daily / board / issues / inbox / organize / scheduled / someday / routines / groups / forms）
 ```
 
 - `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む
