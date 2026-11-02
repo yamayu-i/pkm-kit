@@ -5,7 +5,7 @@ description: 前日までのデイリーノートを読み、知識になる内�
 
 # デイリーノートを整理する
 
-規約は [LLM wiki の仕組み](../../docs/llm-wiki.md)、扱いの決定は [ADR-0003](../../docs/adr/0003-wiki-layout.md)。始める前と終えるときは「操作の共通の手順」に従う。
+規約は [LLM wiki の仕組み](../../docs/llm-wiki.md)、扱いの決定は [ADR-0003](../../../.kit/harness/docs/adr/0003-wiki-layout.md)。始める前と終えるときは「操作の共通の手順」に従う。
 
 ## 1. 対象を決める
 

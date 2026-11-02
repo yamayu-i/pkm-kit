@@ -35,18 +35,18 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 ## 編集するとき
 
-- DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外（[ADR-0007](adr/0007-note-format.md)）
+- DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外（[ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)）
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
 
 ## 共通 frontmatter
 
-決定と移行状態は [ADR-0007](adr/0007-note-format.md)。対象はPKMノートの Markdown。temporary/、template/、隠しパス、管理用 README.md（各階層）は除く。除外は入力資料としてLLMに読ませないという意味ではない。
+決定と移行状態は [ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)。対象はPKMノートの Markdown。temporary/、template/、隠しパス、管理用 README.md（各階層）は除く。除外は入力資料としてLLMに読ませないという意味ではない。
 
 - type: 必須の単一文字列。英小文字とハイフン。話題・進行状態ではなくノートの役割。
 - created: このVaultにノートを作った日時。秒までのISO 8601、UTCのZまたはオフセット付き。改名・移動で変えない。
-- updated: ノートを作成・変更した日時。作成時は created と同じ値を入れる（テンプレートとプラグインのコードが入れる。[ADR-0008](adr/0008-updated-on-create.md)）。変更したときの更新は、コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。人・AIは手で入力・更新しない。
+- updated: ノートを作成・変更した日時。作成時は created と同じ値を入れる（テンプレートとプラグインのコードが入れる。[ADR-0008](../../.kit/harness/docs/adr/0008-updated-on-create.md)）。変更したときの更新は、コミット処理が付与する（[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)）。人・AIは手で入力・更新しない。
 - タイトル（ノートの先頭に出る名前）: `title`、なければ `name`、なければファイル名。daily は `title` を持たず、ファイル名の日付（`2026-11-01 SUN`）を使う。ファイル名とタイトルは一致しなくてよい。Obsidian 標準のタイトルは `.obsidian/app.json` の `showInlineTitle: false` で隠し、vault-task か vault-template のヘッダーが出す（[ADR-0026](../../.kit/src/docs/adr/0026-note-views.md)）。
 - コミット時の付与（[ADR-0028](../../.kit/src/docs/adr/0028-auto-updated.md)）: 変更したノートの updated の行だけを書き換える。対象は frontmatter のある md（temporary/、template/、tmp/、隠しパス、README.md を除く）。値は秒までの ISO 8601（オフセット付き）で、1 回のコミットでは同じ値。削除・未変更・同期で受け取っただけのノートには付けない。コミット済みの `sources/` は変更しない。PC の Git CLI は `git config core.hooksPath .githooks`（1 回）で有効になり、Vault Git は自動。既存ノートの空欄は `node .kit/bin/stamp-updated.mjs --migrate` で埋める。
 - ノートを作る仕組み（テンプレート、プラグインのコード）を足すときは、作成時に created と updated の両方を入れる。
@@ -58,6 +58,6 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 
 同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 
-テンプレートは、上流の既定（`.kit/templates/file/` と `.kit/templates/config.json`）に、その Vault のもの（`template/file/` と `template/config.json`）を重ねて使う。同じ名前のテンプレートはその Vault のものが優先し、`template/config.json` には上流と違う項目だけを書く（[ADR-0009](adr/0009-upstream-and-child-vaults.md)）。どちらもファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template でテンプレート選択・変数展開・生成先フォルダの解決を行う。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
+テンプレートは、上流の既定（`.kit/templates/file/` と `.kit/templates/config.json`）に、その Vault のもの（`template/file/` と `template/config.json`）を重ねて使う。同じ名前のテンプレートはその Vault のものが優先し、`template/config.json` には上流と違う項目だけを書く（[ADR-0009](../../.kit/harness/docs/adr/0009-upstream-and-child-vaults.md)）。どちらもファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template でテンプレート選択・変数展開・生成先フォルダの解決を行う。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
 
 issue / routine / member は vault-task 専用ではない。vault-task でも vault-template でも作れる Vault の通常のノートで、どちらで作っても同じ項目が揃う。テンプレートは vault-task が正常に動くのに必要な項目（schema、id、summary / name、status / repeat など）をすべて持つ。ID（`i-N` / `r-N` / `m-N`）は連番で、テンプレートでは `{{id:i}}` などで振る（[ADR-0023](../../.kit/src/docs/adr/0023-template-id-and-daily.md)）。連番の規則は vault-task と vault-template の両方が持つ。

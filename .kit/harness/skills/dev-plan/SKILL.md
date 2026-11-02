@@ -11,7 +11,7 @@ description: プラグイン・ハーネス・wiki の仕組みを変える前�
 
 - 触れる範囲のコードと文書
 - 関連する ADR: プラグインは `.kit/src/docs/adr/`、ハーネスと wiki は [adr/](../../docs/adr/README.md)
-- プラグインなら [プラグインの設計と開発](../../docs/plugin-development.md)、wiki なら [LLM wiki の仕組み](../../docs/llm-wiki.md)
+- プラグインなら [プラグインの設計と開発](../../docs/plugin-development.md)、wiki なら [LLM wiki の仕組み](../../../../.claude/docs/llm-wiki.md)
 - 未マージの PR（`gh pr list` か GitHub の MCP ツール）。同じ箇所に触れるものがあればユーザーに伝える
 
 依頼が曖昧で、何をもって完了とするかが決められない場合は、計画を書く前に質問する。

@@ -5,7 +5,7 @@
 
 ## 背景
 
-[ADR-0007](../../../.claude/docs/adr/0007-note-format.md) と [ノート規約](../../../.claude/docs/vault-conventions.md) で、ノートの `type` ごとに `template/file/<type>.md` を置く構成を採用した。
+[ADR-0007](../../../harness/docs/adr/0007-note-format.md) と [ノート規約](../../../../.claude/docs/vault-conventions.md) で、ノートの `type` ごとに `template/file/<type>.md` を置く構成を採用した。
 現状のテンプレートには `"{{date:YYYY-MM-DDTHH:mm:ssZ}}"` や `"{{title}}"` などのプレースホルダが書かれているが、Obsidian 標準の Templates コアプラグインは無効化されており、Templater 等のコミュニティプラグインも使わない方針である。
 
 ホットキー（`Cmd + N` など）からモーダルを開き、`template/file/` のテンプレートを選んで生成先フォルダ・ファイル名・変数の値を柔軟に解決してノートを作成できる自作プラグインが必要になった。
@@ -67,4 +67,4 @@
 
 - ファイルの書き込みを伴う新しいプラグインなので、実装後にセキュリティチェックの対象になる
 - `.obsidian/community-plugins.json` に `"vault-template"` を追加し、`.obsidian/plugins/vault-template/` にビルド成果物をコミットする
-- [プラグインの設計と開発](../../../.claude/docs/plugin-development.md) と [ノート規約](../../../.claude/docs/vault-conventions.md) に `vault-template` の説明を追加する
+- [プラグインの設計と開発](../../../harness/docs/plugin-development.md) と [ノート規約](../../../../.claude/docs/vault-conventions.md) に `vault-template` の説明を追加する

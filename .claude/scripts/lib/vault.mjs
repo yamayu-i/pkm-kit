@@ -1,5 +1,5 @@
 // Vault のパスの区分。定義は .claude/docs/llm-wiki.md の「所有の区分」と
-// .claude/docs/adr/0004-human-notes-append-only.md を参照。
+// .kit/harness/docs/adr/0004-human-notes-append-only.md を参照。
 import { walk } from "./markdown.mjs";
 
 export const WIKI_INDEX = "wiki/index.md";

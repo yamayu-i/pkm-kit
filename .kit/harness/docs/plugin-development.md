@@ -52,7 +52,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ### 処理時間の計測
 
-工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../.kit/src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
+工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
 
 ## vault-task（タスク管理）
 
@@ -79,7 +79,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、`board/<端末名>/YYYY-MM.jsonl`（ADR-0020）
 - 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
-- 間違っていそうな worklog は [worklog-review スキル](../skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
+- 間違っていそうな worklog は [worklog-review スキル](../../../.claude/skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する

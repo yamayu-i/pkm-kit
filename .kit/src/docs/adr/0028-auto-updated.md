@@ -5,7 +5,7 @@
 
 ## 背景
 
-[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)。[ハーネスの ADR-0007](../../../.claude/docs/adr/0007-note-format.md) は「updated は人や AI に記入させず、コミット時に自動で付与する」と決め、[ADR-0008](../../../.claude/docs/adr/0008-updated-on-create.md) は作成時にも入れるとした。コミット時の付与は未実装で、変更しても updated が作成時の値のままになっている。
+[Issue #9](https://github.com/yamayu-i/yamayu-pkm/issues/9)。[ハーネスの ADR-0007](../../../harness/docs/adr/0007-note-format.md) は「updated は人や AI に記入させず、コミット時に自動で付与する」と決め、[ADR-0008](../../../harness/docs/adr/0008-updated-on-create.md) は作成時にも入れるとした。コミット時の付与は未実装で、変更しても updated が作成時の値のままになっている。
 
 コミットの経路は 2 つある。
 

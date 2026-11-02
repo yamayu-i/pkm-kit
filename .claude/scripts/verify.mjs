@@ -22,7 +22,9 @@ const tests = readdirSync(join(scripts, "test"))
 
 const steps = [
 	["スクリプトのテスト", node, ["--test", ...tests]],
-	["文書の構造", node, [join(scripts, "check-docs.mjs")]],
+	["文書の構造（子向けのハーネス）", node, [join(scripts, "check-docs.mjs")]],
+	["文書の構造（上流のハーネス）", node, [join(scripts, "check-docs.mjs"), join(root, ".kit/harness")]],
+	["文書のリンク（プラグイン）", node, [join(scripts, "check-docs.mjs"), join(root, ".kit/src/docs"), "--links-only"]],
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
 	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
 	["所有の境界", node, [join(scripts, "check-kit-paths.mjs")]],

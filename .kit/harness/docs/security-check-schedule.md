@@ -5,8 +5,8 @@
 
 ## 期限の判定
 
-- 記録: `.claude/security/last-check.json`（`date`, `commit`, `result`, `report`）
-- セッション開始時に SessionStart フック（`.claude/hooks/security-check-status.mjs`）が経過日数を出力する
+- 記録: `.kit/harness/security/last-check.json`（`date`, `commit`, `result`, `report`）
+- セッション開始時に SessionStart フック（`.kit/harness/hooks/security-check-status.mjs`。上流のときだけ）が経過日数を出力する
 - 次のどれかに当てはまれば **期限切れ**:
   - `last-check.json` がない
   - `date` から 7 日以上経っている
@@ -31,5 +31,5 @@
 
 ## 記録
 
-- レポート: `.claude/security/reports/YYYY-MM-DD.md`
+- レポート: `.kit/harness/security/reports/YYYY-MM-DD.md`
 - 実施したら `last-check.json` を更新し、レポートと一緒にコミットする（他の端末やセッションから記録が見えるようにするため）

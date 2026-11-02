@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// SessionStart フック: ハーネスの評価の期限と、未処理の気づき・フィードバックの有無を Claude に伝える。
+// SessionStart フック: 子の Vault のハーネスの評価の期限と、未処理の気づきの数を Claude に伝える。
 // 判定ルールは .claude/skills/harness-review/SKILL.md の「いつ行うか」を参照。
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const INTERVAL_DAYS = 30;
 const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+// 子の Vault（.kit-local/ がある）のときだけ知らせる。上流では .kit/harness/hooks/kit-review-status.mjs が知らせる（ADR-0011）
+if (!existsSync(join(root, ".kit-local"))) process.exit(0);
 
 let last = null;
 try {

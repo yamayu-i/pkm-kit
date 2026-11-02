@@ -21,7 +21,7 @@ LLM wiki では、LLM が元資料を読み、まとめのページを書き、�
 | `wiki/feedback.md` | 使っていて気づいたこと | 人 |
 | `daily/` | デイリーノート。**移動しない**。人が書く元資料として扱う | 人 |
 
-書式の詳細（ページの種類、frontmatter、index と log の形式）は [LLM wiki の仕組み](../llm-wiki.md) にある。
+書式の詳細（ページの種類、frontmatter、index と log の形式）は [LLM wiki の仕組み](../../../../.claude/docs/llm-wiki.md) にある。
 
 `daily/` は次のように扱う。
 

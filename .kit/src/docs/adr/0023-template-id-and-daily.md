@@ -8,7 +8,7 @@
 - [ADR-0022](0022-template-plugin.md) で vault-template を作ったが、issue / routine / member のテンプレートは vault-task が必要とする項目が足りず、ファイル名も ID（`i-N` など）にできない。ADR-0022 は、これらを「vault-task が専用で生成するもの」として非表示にする前提だった
 - issue / routine / member は vault-task 専用ではなく、vault-task でも vault-template でも作れる Vault の通常のノートである
 - 当日のデイリーノートにすぐ行く手段がない
-- updated を作成時にも入れる決定は [ADR-0008（ハーネス）](../../../.claude/docs/adr/0008-updated-on-create.md)
+- updated を作成時にも入れる決定は [ADR-0008（ハーネス）](../../../harness/docs/adr/0008-updated-on-create.md)
 
 ## 決定
 

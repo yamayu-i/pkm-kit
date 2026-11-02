@@ -1,6 +1,6 @@
 # LLM wiki の仕組み
 
-この Vault を、人と LLM（Claude Code）が一緒に育てる wiki として運用するための規約。書式の基本（Markdown リンク、ルートからのパス、`asset/`）は [ノートの書式と配置](vault-conventions.md) に従う。構成の理由は [ADR-0003](adr/0003-wiki-layout.md)。
+この Vault を、人と LLM（Claude Code）が一緒に育てる wiki として運用するための規約。書式の基本（Markdown リンク、ルートからのパス、`asset/`）は [ノートの書式と配置](vault-conventions.md) に従う。構成の理由は [ADR-0003](../../.kit/harness/docs/adr/0003-wiki-layout.md)。
 
 ## 操作
 
@@ -15,7 +15,7 @@
 
 ## 所有の区分
 
-[ADR-0007](adr/0007-note-format.md)。検査の移行状況も同ADRを参照。
+[ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)。検査の移行状況も同ADRを参照。
 
 | 区分 | パス | LLM ができること |
 |---|---|---|
@@ -115,7 +115,7 @@ updated:
 
 ## フィードバック（`wiki/feedback.md`）
 
-ユーザーが、使っていて不便だったこと・欲しいことを書く場所。LLMは依頼の範囲で編集できる。月 1 回の評価で読む（[ADR-0006](adr/0006-self-improvement-loop.md)）。
+ユーザーが、使っていて不便だったこと・欲しいことを書く場所。LLMは依頼の範囲で編集できる。月 1 回の評価で読む（[ADR-0006](../../.kit/harness/docs/adr/0006-self-improvement-loop.md)）。
 
 ## 操作の共通の手順
 
@@ -128,7 +128,7 @@ git switch main && git pull --rebase origin main   # 端末の snapshot を取�
 git rev-parse --short HEAD                          # log の「- コミット:」に書く
 ```
 
-クラウドのセッションなどで決められたブランチにしかいられない場合は、そのブランチで作業し、最後に PR にする（[ADR-0002](adr/0002-workflow-by-size.md)）。
+クラウドのセッションなどで決められたブランチにしかいられない場合は、そのブランチで作業し、最後に PR にする（[ADR-0002](../../.kit/harness/docs/adr/0002-workflow-by-size.md)）。
 
 ### 終えるとき
 

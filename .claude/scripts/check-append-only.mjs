@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LLM による wiki の操作（件名が `wiki(` で始まるコミット）が、所有の区分を守っているかを検査する。
- * 決定: .claude/docs/adr/0004-human-notes-append-only.md
+ * 決定: .kit/harness/docs/adr/0004-human-notes-append-only.md
  *
  * - 人のノート（daily/、wiki/feedback.md、その他）: 既存の行を変えない・消さない。新しいファイルも作らない
  * - sources/、asset/: 追加だけ
