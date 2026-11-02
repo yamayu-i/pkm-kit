@@ -1,6 +1,6 @@
 # ADR-0011: ハーネスを親と子に分け、子で見つけた上流の改善はエスカレーションする
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-02
 - 前提: [ADR-0009](0009-upstream-and-child-vaults.md)（上流と子の 2 層）、[ADR-0010](0010-upstream-updates-and-migrations.md)（更新の取り込みと移行）
 - 置換: [ADR-0006](0006-self-improvement-loop.md) の評価の対象と出力の部分
@@ -93,7 +93,7 @@ Claude Code・Obsidian の更新 ───────────────�
 `node .kit/setup.mjs` が方法を尋ね、`.kit-local/config.json` に書く。後から変えてもよい。
 
 ```json
-{ "escalation": { "method": "issue", "repo": "<上流の owner/name>", "label": "escalation" } }
+{ "escalation": { "method": "issue", "repo": "yamayu-i/pkm-kit", "label": "escalation" } }
 ```
 
 | method | 動き | 向いている子 |

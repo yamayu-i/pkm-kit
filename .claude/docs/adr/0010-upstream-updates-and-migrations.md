@@ -1,6 +1,6 @@
 # ADR-0010: 上流の更新は merge と移行で取り込み、Breaking Change は AI が移行する
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-02
 - 前提: [ADR-0009](0009-upstream-and-child-vaults.md)（上流と子の 2 層）
 
