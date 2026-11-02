@@ -2,6 +2,7 @@
 
 - 状態: 提案
 - 日付: 2026-11-02
+- 関連: [ADR-0010](0010-vault-kit.md)（新しい Vault のセットアップ。取り込みのコマンドが何を置くか）
 
 ## 背景
 
@@ -27,7 +28,8 @@
 
 ### 1. リポジトリを分ける
 
-- 新しいリポジトリ（仮名 `yamayu-i/vault-plugins`。以下「プラグインのリポジトリ」）を作る。`.plugin-src/` の履歴を `git filter-repo --subdirectory-filter .plugin-src` で取り出し、そのリポジトリのルートにする
+- 新しい**公開**リポジトリ `yamayu-i/my-vault-plugins`（以下「プラグインのリポジトリ」）を作る
+- `.plugin-src/` の履歴を `git filter-repo --subdirectory-filter .plugin-src` で取り出し、そのリポジトリのルートにする。公開する前に、履歴全体に秘密情報や個人のノートの内容が含まれていないことを確かめる
 - 次のものはプラグインのリポジトリに移す
   - `packages/`、`scripts/`（security-scan）、`docs/`（プラグインの ADR 0001〜0028、`design.md`、`design-tokens.md`）
   - プラグインの CI。Vault の `plugin.yml` を元にする
@@ -39,15 +41,17 @@
 プラグインのリポジトリに `pnpm vault:install --vault <Vault のパス>` を用意する。このコマンドは次の順に動く。
 
 1. 作業ツリーに未コミットの変更があれば止める（どのコミットから作ったかを追えるようにするため）
-2. `pnpm check` を通してから、`dist/` にビルドする。ビルドの出力先は既定で `dist/<id>/`。Vault には直接書かない
+2. `pnpm check` を通してから、`dist/` にビルドする。ビルドの出力先は既定で `dist/`。Vault には直接書かない
 3. 下の表の「Vault との取り決めの検査」を、指定した Vault に対して実行する。1 つでも落ちたら何もコピーしない
-4. 成果物をコピーし、取り込みの記録 `.obsidian/plugins/vault-plugins.lock.json` を書く
+4. 成果物をコピーし、取り込みの記録 `.vault-plugins/lock.json` を書く
 
-| コピーするもの | Vault 側の置き場所 |
-|---|---|
-| 各プラグインの `main.js` / `manifest.json` / `styles.css` | `.obsidian/plugins/<id>/` |
-| デザイントークンから生成したスニペット | `.obsidian/snippets/vault-theme.css` |
-| vault-task の CLI のバンドル（`lint.mjs`、`mcp.mjs`、`worklog-review.mjs`） | `.claude/tools/vault-task/` |
+コピーするものと置き場所は [ADR-0010](0010-vault-kit.md) の「管理するファイル」で決める。主なものは次のとおり。
+
+- 各プラグインの成果物: `.obsidian/plugins/<id>/`
+- デザイントークンから生成したスニペット: `.obsidian/snippets/vault-theme.css`
+- vault-task の CLI のバンドル（`lint.mjs`、`mcp.mjs`、`worklog-review.mjs`）: `.vault-plugins/bin/`
+
+CLI のバンドルは、ビルド済みのもの（`yaml` などを束ねたもの）をコミットする。task-coach や worklog-review を使うときに、プラグインのリポジトリを取得してビルドしなくて済むようにするためである。security-check でこの確認にかかるトークンが大きすぎるようなら、見直す。
 
 取り込みの記録には、次のものを入れる。
 
@@ -55,7 +59,7 @@
 - コピーした各ファイルの SHA-256
 - `appearance.json` に求める値（`accentColor` など。デザイントークンから導いたもの）
 
-Vault 側では、取り込みをブランチで行い PR にする（開発の作業なので、今と同じ工程）。コミットの形式は `build(plugins): <要約>（vault-plugins@<短い SHA>）`。
+Vault 側では、取り込みをブランチで行い PR にする（開発の作業なので、今と同じ工程）。プラグインを変えるときは、プラグインのリポジトリの PR と、Vault の取り込みの PR がそれぞれ要る。コミットの形式は `build(plugins): <要約>（my-vault-plugins@<短い SHA>）`。
 
 ### 3. Vault との取り決めの検査を、どちらの側で行うか
 
@@ -65,9 +69,9 @@ Vault 側では、取り込みをブランチで行い PR にする（開発の�
 | ビルドの再現性（成果物がソースから作り直せる） | CI でビルドを 2 回し、一致を確かめる | — |
 | 成果物が手で書き換えられていない | — | `verify.mjs` と CI が、取り込みの記録の SHA-256 と照合する |
 | `appearance.json` がデザインの値どおり | `vault:install` が対象の Vault を検査する | `verify.mjs` が取り込みの記録の値と照合する（トークンを持たずに済む） |
-| テンプレート（`template/file/`）が vault-template・vault-task と合う | `vault:install` が対象の Vault を検査する（今の `templates-repo.test.ts` を CLI にする）。リポジトリのテストには代表的なテンプレートの写しを置く | テンプレートを変えたら、プラグインのリポジトリから `pnpm vault:check --vault <パス>` を実行する（手順として文書に書く） |
-| updated の付与の規則（ADR-0028）が PC の Git フックと揃う | 表の写しを `test/fixtures/updated-cases.json` に置く。`vault:install` は写しが Vault の正本と同じかを確かめる | 正本は Vault の `.claude/scripts/test/fixtures/updated-cases.json` のまま |
-| タスク管理データの整合性（`task:lint`） | — | `.claude/tools/vault-task/lint.mjs` で実行する（`pnpm task:lint` の代わり） |
+| テンプレート（`template/file/`）が vault-template・vault-task と合う | `vault:install` と `pnpm vault:check --vault <パス>` が対象の Vault を検査する（今の `templates-repo.test.ts` を CLI にする）。リポジトリのテストは、初期のテンプレート（ADR-0010）に対して行う | テンプレートを変えたら `vault:check` を実行する（手順として文書に書く） |
+| updated の付与の規則（ADR-0028） | 規則の正本を持ち、vault-git と PC の Git フック用のバンドルを同じソースから作る（ADR-0010） | — |
+| タスク管理データの整合性（`task:lint`） | — | `.vault-plugins/bin/lint.mjs` で実行する（`pnpm task:lint` の代わり） |
 
 ### 4. 文書とハーネスを分ける
 
@@ -76,19 +80,19 @@ Vault 側では、取り込みをブランチで行い PR にする（開発の�
 - `plugin-development.md` はプラグインのリポジトリに移す。Vault には、取り込みの手順と取り込みの記録の説明だけを残す
 - ハーネスのうち、プラグインのソースに関わるものの扱い
   - dev-implement のプラグイン向けの工程と、security-check はプラグインのリポジトリで行う
-  - security-check の実施記録（`.claude/security/`）と週 1 回の期限の管理は Vault に残す。レポートには、検査したプラグインのリポジトリのコミットを書く
-  - task-coach・worklog-review のスキルと MCP の設定は、`.claude/tools/vault-task/` のバンドルを使うように変える
-- CLAUDE.md のルール 7 は「プラグインの成果物は `vault:install` でだけ更新する。手で書き換えない」に置き換える
+  - security-check の実施記録（`.claude/security/`）と週 1 回の期限の管理は Vault に残す。レポートには、検査したプラグインのリポジトリのコミットを書く。Vault に入れたバンドル（`.vault-plugins/`）は、取り込みの記録とプラグインのリポジトリのコミットが合っていることだけを確かめる
+  - task-coach・worklog-review のスキルの扱いは [ADR-0010](0010-vault-kit.md)
+- CLAUDE.md のルール 7 は「プラグインの成果物と `.vault-plugins/` は `vault:install` でだけ更新する。手で書き換えない」に置き換える
 
 ### 5. 移行の順序
 
 成果物が古いままになる期間や、二重に管理する期間を作らないため、次の順に進める。
 
 1. プラグインのリポジトリを作る。リポジトリの作成はユーザーが行う
-2. 履歴を取り出して push し、パスを `dist/` 向けに直す PR を出す。`vault:install` もこの PR に入れる
+2. 履歴を取り出し、公開してよい内容かを確かめてから push する。続いて、パスを `dist/` 向けに直す PR を出す。`vault:install` もこの PR に入れる
 3. Vault 側の PR を出す
-   - `vault:install` で成果物を入れ直す。中身が今のコミット済みのものと同じになることを確かめる
-   - 取り込みの記録の検査と `.claude/tools/` を足す
+   - `vault:install` で成果物を入れ直す。`main.js` などの中身が、今のコミット済みのものと同じになることを確かめる
+   - 取り込みの記録の検査と `.vault-plugins/` を足す
    - `.plugin-src/` を消し、文書とスキルを直す
 4. Vault 側の PR をマージした後で、プラグインのリポジトリを正本とする。それまでは `.plugin-src/` を変えない
 
@@ -96,23 +100,25 @@ Vault 側では、取り込みをブランチで行い PR にする（開発の�
 
 - 成果物をコミットし続けるので、モバイルの Vault Git の動きは今と変わらない。submodule のような、モバイルの Git が扱いにくい仕組みを持ち込まない
 - Vault に置く成果物には、取り込みの記録のハッシュを付ける。こうすると、ソースがない Vault の側でも、成果物がどのコミットから来て、手で変えられていないかを確かめられる。今 CI が `git diff --exit-code` で保証していることを、リポジトリをまたいでも保てる
+- 公開リポジトリなので、成果物の元のコミットは誰でも辿れる。別の Vault からも、トークンなしで取り込みのコマンドを使える（ADR-0010）
 - Vault に依存する検査を `vault:install` にまとめると、取り決めが壊れた成果物は Vault に入らない
 - CLI をバンドルにして Vault に置くと、task-coach や worklog-review を使うときに、プラグインのリポジトリを取得してビルドしなくて済む。クラウドのセッションでも Vault だけで動く。今は手元で `pnpm build` しないと MCP サーバーが動かないので、この点はむしろ良くなる
-- 取り決めの正本を、それを守る側に置く。updated の規則とテンプレートは Vault、デザイントークンはプラグイン。写しの一致は取り込みのときに機械で確かめる
 
 ## 却下した案
 
 - **submodule で Vault に取り込む**: 相対パスはそのまま動く。しかしモバイルの Vault Git（isomorphic-git）は submodule を扱えない。Obsidian の同期でも中身が欠ける
 - **一つのリポジトリのままにする**: 分けたいという要望に応えられない。今の結びつきを保つだけなら、これがいちばん手間がかからない
-- **GitHub Release に成果物を置き、Vault 側のスクリプトで取得する**: 成果物が作られた経路は明確になる。ただし、Vault 側で取得するのにトークンが要る（プラグインのリポジトリを非公開にする場合）。リリースの運用も増える。必要になったら、取り込みの記録の形式を変えずに追加できる
+- **GitHub Release に成果物を置き、Vault 側のスクリプトで取得する**: 公開リポジトリなのでトークンは要らない。ただしリリースの運用が増える。それに、取り決めの検査をするにはどのみちプラグインのコードが手元に要る。必要になったら、取り込みの記録の形式を変えずに追加できる
 - **npm パッケージとして公開する**: 公開範囲が広がり、サプライチェーン対策の対象も増える。Vault で `node_modules` を使わない方針（ルール 8）にも合わない
+- **CLI はバンドルにせず、プラグインのリポジトリを Vault の隣に clone して使う**: ビルド済みのコードは増えない。しかし、task-coach を使うたびにもう一つのリポジトリとビルドが要る
 - **Vault に依存する検査をなくす**: テンプレートや updated の規則の食い違いを見つけられなくなる
 
 ## 影響
 
-- 日々の開発が 2 つのリポジトリにまたがる。プラグインを変えたときは「プラグインのリポジトリで PR → マージ → Vault で取り込みの PR」と、PR が 2 回になる
+- 日々の開発が 2 つのリポジトリにまたがり、プラグインを変えるたびに PR が 2 回になる（意図どおり）
 - クラウドのセッションでプラグインを開発するときは、プラグインのリポジトリも追加する（`add_repo`）。`vault:install` を試すには、Vault も同じセッションに要る
-- `.claude/tools/vault-task/` に、ビルド済みの CLI（`yaml` などを束ねたもの）をコミットする。security-check の対象に加える
+- プラグインのリポジトリは公開なので、ソース・テスト・ADR・テストの資料に、個人のノートの内容や端末名、秘密情報を入れない。security-scan とレビューの観点に加える
+- `.vault-plugins/` に、ビルド済みの CLI をコミットする。security-check の対象に加える
 - 文書: CLAUDE.md、`harness.md`、`workflow.md`、`vault-conventions.md`、`plugin-development.md`、[ADR-0005](0005-checks-in-ci.md)（CI の分担）、関係するスキルを直す。ADR-0005 は、CI の分担の部分だけ置換する
 - `.plugin-src/docs/adr/` のプラグインの ADR は、番号を保ったままプラグインのリポジトリに移す。Vault の文書にある相対リンクは URL に書き換える
 - 新しい依存は追加しない（`git filter-repo` は移行の作業で一度だけ使う。リポジトリには入れない）
