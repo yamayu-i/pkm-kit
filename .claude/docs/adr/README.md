@@ -30,3 +30,4 @@
 
 | [0007](0007-note-format.md) | 承認（一部置換: 0008） | PKMの共通frontmatter・type別テンプレート・DailyNote本文の保護 |
 | [0008](0008-updated-on-create.md) | 承認 | updated は作成時にも入れる（作成時は created と同じ値） |
+| [0009](0009-split-plugin-repo.md) | 提案 | 自作プラグインを別リポジトリに切り出し、ビルド成果物だけを Vault に置く |
