@@ -1,7 +1,7 @@
 /**
  * 間違っていそうな worklog を挙げる CLI（worklog-review スキル。ADR-0009）。
  *
- * 使い方: node dist/worklog-review.mjs <Vault のルート> [--json] [--running-hours=4] [--long-hours=6] [--overlap-count=3]
+ * 使い方: node .kit/bin/worklog-review.mjs <Vault のルート> [--json] [--running-hours=4] [--long-hours=6] [--overlap-count=3]
  */
 import { formatMinutes } from "../src/core/format";
 import { TaskIndex } from "../src/core/index";

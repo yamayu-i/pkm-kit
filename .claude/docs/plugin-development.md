@@ -27,13 +27,13 @@
 1. fetch → リモートが先に進んでいたら（behind）モーダルを出して中断（コミットもしない）
 2. snapshot → push。fetch と push の間に他の端末が push して拒否された場合も同じモーダル
 
-### コードの構成（`.plugin-src/packages/vault-git/src`）
+### コードの構成（`.kit/src/packages/vault-git/src`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
 | `git/engine.ts` | pull / push / snapshot / clone | なし |
 | `merge/` | ツリーと行のマージ、パスの安全性検査 | なし |
-| `stamp/updated.ts` | コミット時の updated の付与の規則(ADR-0028)。PC の Git CLI 用の `.claude/scripts/lib/updated.mjs` と同じ規則で、`.claude/scripts/test/fixtures/updated-cases.json` を両方のテストが読んで揃える。規則を変えるときは両方を変える | なし |
+| `stamp/updated.ts` | コミット時の updated の付与の規則(ADR-0028)。規則の正本はここだけ（ADR-0009）。PC の Git CLI 用の `cli/stamp-updated.mjs`（ビルドして `.kit/bin/stamp-updated.mjs`）と、Vault の検査（`.claude/scripts/wiki-lint.mjs`）もこれを使う。入出力の表は `test/fixtures/updated-cases.json` | なし |
 | `fs/` | isomorphic-git 用の fs アダプタ | なし |
 | `git/http.ts` | `requestUrl` を isomorphic-git の HTTP クライアントにする | なし（関数を注入） |
 | `obsidian/` | Vault への読み書き、設定画面、モーダル | あり |
@@ -52,14 +52,14 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ### 処理時間の計測
 
-工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../.plugin-src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
+工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../.kit/src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
 
 ## vault-task（タスク管理）
 
-設計判断は ADR に残している: `.plugin-src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
+設計判断は ADR に残している: `.kit/src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
 ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint、issue 画面・一括登録、DailyTaskView・タイマー、dead / caution の整理、グループ管理・各 View）。
 
-### コードの構成（`.plugin-src/packages/vault-task`）
+### コードの構成（`.kit/src/packages/vault-task`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -69,7 +69,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
-| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0025）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない | なし |
+| `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0025）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない。ビルドして `.kit/bin/` に置き、Vault ではそれを直接使う | なし |
 
 ### 注意点
 
@@ -82,7 +82,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - 間違っていそうな worklog は [worklog-review スキル](../skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
-- **UI はデザインルール `.plugin-src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
+- **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
 - UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `vault-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter vault-task exec playwright install chromium` で入れる
 
@@ -97,7 +97,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
 - `test/templates-repo.test.ts` が、リポジトリの `template/` を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
 
-### コードの構成（`.plugin-src/packages/vault-template`）
+### コードの構成（`.kit/src/packages/vault-template`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -113,7 +113,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 ## design（デザイントークンと検査）
 
-`.plugin-src/packages/design`。プラグインではなく、デザインの値の正本と検査を置く（ADR-0016）。
+`.kit/src/packages/design`。プラグインではなく、デザインの値の正本と検査を置く（ADR-0016）。
 
 | パス | 役割 |
 |---|---|
@@ -134,4 +134,5 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
-- 新しいプラグインを作るときは `.plugin-src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（vault-task の `esbuild.config.mjs`）

@@ -13,7 +13,7 @@ description: 承認済みの計画に従って、テストを先に書いてか�
 ## 1. テストを先に書く
 
 1. 完了の条件を 1 つ選び、それを確かめるテストを書く
-   - プラグイン: `.plugin-src/packages/<id>/test/`。マージのケースは `engine.test.ts` か `tree-merge.test.ts`（[プラグインの設計と開発](../../docs/plugin-development.md)）
+   - プラグイン: `.kit/src/packages/<id>/test/`。マージのケースは `engine.test.ts` か `tree-merge.test.ts`（[プラグインの設計と開発](../../docs/plugin-development.md)）
    - ハーネスのスクリプト: `.claude/scripts/test/*.test.mjs`（`node --test`）
 2. 実行して失敗することを確かめる。最初から通るなら、テストが条件を確かめられていない
 

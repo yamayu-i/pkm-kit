@@ -1,6 +1,6 @@
 # デザイントークン一覧
 
-<!-- 生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す） -->
+<!-- 生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す） -->
 
 ルールは [design.md](design.md)。ここは値の一覧で、`tokens.json` から生成している。
 コントラスト比は、そのトークンに書いた面（`contrast.on`）の中で一番低いもの。半透明の面は下の面に重ねて測る（WCAG 2.2 の相対輝度）。

@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 /**
- * コミットする変更ノートに updated を付与する(ADR-0028、.plugin-src/docs/adr/0028-auto-updated.md)。
+ * コミットする変更ノートに updated を付与する(ADR-0028、.kit/src/docs/adr/0028-auto-updated.md)。
+ *
+ * 規則は ../src/stamp/updated.ts(vault-git と同じもの)。ビルドして .kit/bin/stamp-updated.mjs に置き、
+ * PC の Git CLI の pre-commit フック(.githooks/pre-commit)から呼ぶ。
  *
  * 使い方:
- *   node .claude/scripts/stamp-updated.mjs --staged    pre-commit フックから。ステージ済みの変更ノートに付与する
- *   node .claude/scripts/stamp-updated.mjs --migrate   空・欠けた updated に、最後に変えたコミットの日時を入れる(1 回だけ)
+ *   node .kit/bin/stamp-updated.mjs --staged    pre-commit フックから。ステージ済みの変更ノートに付与する
+ *   node .kit/bin/stamp-updated.mjs --migrate   空・欠けた updated に、最後に変えたコミットの日時を入れる(1 回だけ)
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatIso, isTargetPath, setUpdated, shouldStamp } from "./lib/updated.mjs";
+import { formatIso, isTargetPath, setUpdated, shouldStamp } from "../src/stamp/updated.ts";
 
 function git(repo, args, input) {
 	return execFileSync("git", args, { cwd: repo, encoding: "utf8", input, maxBuffer: 256 * 1024 * 1024 });

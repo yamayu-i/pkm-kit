@@ -4,15 +4,21 @@ name: plugin
 on:
   pull_request:
     paths:
-      - ".plugin-src/**"
+      - ".kit/src/**"
+      - ".kit/bin/**"
+      - ".kit/obsidian-required.json"
       - ".obsidian/plugins/**"
+      - ".obsidian/snippets/**"
       - "mise.toml"
       - ".github/workflows/plugin.yml"
   push:
     branches: [main]
     paths:
-      - ".plugin-src/**"
+      - ".kit/src/**"
+      - ".kit/bin/**"
+      - ".kit/obsidian-required.json"
       - ".obsidian/plugins/**"
+      - ".obsidian/snippets/**"
       - "mise.toml"
       - ".github/workflows/plugin.yml"
 
@@ -25,7 +31,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: .plugin-src
+        working-directory: .kit/src
     steps:
       - uses: actions/checkout@v6
       - name: Node と pnpm の版を mise.toml から読む
@@ -43,7 +49,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: 型チェック・ビルド・テスト
         run: pnpm check
-      - name: ビルドし直した main.js がコミットされたものと一致する
-        run: git diff --exit-code -- ../.obsidian/plugins
+      - name: ビルドし直した成果物（プラグイン、スニペット、CLI）がコミットされたものと一致する
+        run: git diff --exit-code -- ../../.obsidian/plugins ../../.obsidian/snippets ../bin
+      - name: ビルドで追跡されていないファイルができていない
+        run: test -z "$(git status --porcelain --untracked-files=all -- ../../.obsidian ../bin)"
       - name: セキュリティチェックの機械的な部分
         run: pnpm security:scan

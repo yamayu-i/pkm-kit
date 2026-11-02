@@ -1,0 +1,24 @@
+{
+  "$comment": "上流（pkm-kit）が持つパス（ADR-0009）。子の Vault はここに当たるファイルを変えない。上流には、ここに当たらないファイルを置かない。* は / をまたがない 1 階層、** は任意の階層",
+  "upstream": [
+    ".kit/**",
+    ".claude/CLAUDE.md",
+    ".claude/settings.json",
+    ".claude/docs/**",
+    ".claude/hooks/**",
+    ".claude/scripts/**",
+    ".claude/skills/**",
+    ".githooks/**",
+    ".github/workflows/plugin.yml",
+    ".github/workflows/vault.yml",
+    ".gitattributes",
+    ".gitignore",
+    "mise.toml",
+    "README.md",
+    ".obsidian/plugins/*/main.js",
+    ".obsidian/plugins/*/manifest.json",
+    ".obsidian/plugins/*/styles.css",
+    ".obsidian/snippets/vault-theme.css",
+    "template/**"
+  ]
+}

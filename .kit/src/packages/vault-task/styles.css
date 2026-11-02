@@ -1,6 +1,6 @@
 /*
  * vault-task（ADR-0006, 0012, 0013, 0016）
- * ルールは .plugin-src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
  * ビルドで tokens.css の後ろに連結して .obsidian/plugins/vault-task/styles.css にする。
  * 検査: pnpm check（packages/design の test）
  */

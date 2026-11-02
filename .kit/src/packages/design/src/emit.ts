@@ -3,7 +3,7 @@ import { formatRatio, toHex } from "./color.ts";
 import { checkContrast, worstContrast } from "./contrast.ts";
 import { aliasTarget, colorValue, cssVarOf, MODES, resolveColor, resolveValue, type Mode, type Token } from "./tokens.ts";
 
-const GENERATED = "生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す）";
+const GENERATED = "生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す）";
 
 function num(n: number): string {
 	return String(+n.toFixed(4));
@@ -62,7 +62,7 @@ export function pluginCss(tokens: readonly Token[]): string {
 export function obsidianSnippet(tokens: readonly Token[]): string {
 	const lines = [
 		`/* ${GENERATED} */`,
-		"/* Obsidian 本体の色をデザイントークンと同じ値に固定する（.plugin-src/docs/design.md「Obsidian 側の固定」） */",
+		"/* Obsidian 本体の色をデザイントークンと同じ値に固定する（.kit/src/docs/design.md「Obsidian 側の固定」） */",
 	];
 	for (const mode of MODES) {
 		lines.push("", `body.theme-${mode} {`);

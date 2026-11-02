@@ -24,7 +24,7 @@
 |---|---|
 | ハーネスの初期構成 | 導入済み（2026-10-31） |
 | vault-git | 実装済み |
-| vault-task | 段階 2（issue 画面のヘッダー・一括登録）まで実装済み（`.plugin-src/docs/adr/`） |
+| vault-task | 段階 2（issue 画面のヘッダー・一括登録）まで実装済み（`.kit/src/docs/adr/`） |
 | LLM wiki | 構成と手順を用意した。ページはまだない |
 
 ## ディレクトリ
@@ -40,7 +40,9 @@
 | `.claude/reviews/` | 評価のレポートと `last-review.json` |
 | `.claude/security/` | セキュリティチェックの記録 |
 | `.github/workflows/` | CI |
-| `.plugin-src/` | プラグインのソース。`docs/adr/` にプラグインの ADR |
+| `.kit/src/` | プラグインのソース。`docs/adr/` にプラグインの ADR |
+| `.kit/bin/` | Vault で使う CLI（ビルド済み。task-coach・worklog-review・pre-commit フックが使う） |
+| `.kit/owned-paths.json` / `.kit/obsidian-required.json` | 上流が持つパスと、Obsidian の設定に必要なキー（[ADR-0009](adr/0009-upstream-and-child-vaults.md)） |
 
 `notes/`、`reviews/`、`security/reports/` は作業の記録なので、目次から辿れなくてよい。それ以外の文書は `CLAUDE.md` から辿れなければならない（`check-docs.mjs` が検査する）。
 
@@ -59,7 +61,8 @@
 | wiki の lint | `wiki-lint.mjs` | 書式（Markdown リンク、ルートからのパス、asset/、タブ）、wiki のページの frontmatter、index への掲載 |
 | 追記だけか | `check-append-only.mjs` | `wiki(...)` のコミットが所有の区分を守っているか（[ADR-0004](adr/0004-human-notes-append-only.md)） |
 | Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` 直下の JSON に末尾改行がないか（Obsidian の保存形式に合わせ、開いたときの差分を防ぐ） |
-| プラグイン | `.plugin-src` の `pnpm check` | 型・ビルド・テスト（`--plugin` を付けたとき、CI ではプラグインを変えたとき） |
+| 所有の境界 | `check-kit-paths.mjs` | 上流には `.kit/owned-paths.json` に当たるファイルだけを置く（[ADR-0009](adr/0009-upstream-and-child-vaults.md)。子の Vault の検査は後続で足す） |
+| プラグイン | `.kit/src` の `pnpm check` | 型・ビルド・テスト（`--plugin` を付けたとき、CI ではプラグインを変えたとき） |
 
 規約を足す前に、検査で強制できないかを考える。検査を緩める変更は、大きい変更として扱う。
 

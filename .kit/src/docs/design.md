@@ -61,9 +61,9 @@ packages/design/tokens.json（正本）
 
 ## 3. Obsidian 側の固定
 
-プラグインの色は Obsidian の背景の上に載るので、背景が分からないとコントラストを保証できない。そこで Vault の設定（`.obsidian/` もコミットしている）で外観を固定する。
+プラグインの色は Obsidian の背景の上に載るので、背景が分からないとコントラストを保証できない。そこで各 Vault の設定で外観を固定する。
 
-- **必須**: `.obsidian/appearance.json` は次のとおり（`obsidian/*` の検査）
+- **必須**: `.obsidian/appearance.json` は次のとおり（`obsidian/*` の検査）。値の正本は `.kit/obsidian-required.json` の `appearance.json` で、上流のテストがこれを検査する。各 Vault の `.obsidian/appearance.json` は、セットアップと検査でこの値に合わせる（ハーネスの ADR-0009）
   - `cssTheme` は空（コミュニティテーマを使わない）
   - `enabledCssSnippets` は `["vault-theme"]` だけ
   - `accentColor` はトークンの primary（ライト）と同じ
@@ -307,7 +307,7 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 ## 13. 確認と変更のしかた
 
 ```sh
-cd .plugin-src
+cd .kit/src
 pnpm build                   # tokens.json から生成物を作り直す（プラグインのビルドも）
 pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
 cd packages/vault-task

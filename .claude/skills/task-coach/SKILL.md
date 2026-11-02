@@ -5,7 +5,7 @@ description: ユーザーのタスク状況（ボード、期限、Inbox、見�
 
 # タスクコーチ（task-coach）
 
-vault-task の MCP サーバー（`.plugin-src/packages/vault-task/cli/mcp.ts`。ADR-0025）を使い、ユーザーのタスク状況を把握した上でアドバイスとボード・issue の操作を行う。
+vault-task の MCP サーバー（`.kit/src/packages/vault-task/cli/mcp.ts`。ADR-0025）を使い、ユーザーのタスク状況を把握した上でアドバイスとボード・issue の操作を行う。
 
 ## 前提と基準値
 
@@ -17,7 +17,7 @@ vault-task の MCP サーバー（`.plugin-src/packages/vault-task/cli/mcp.ts`�
     "mcpServers": {
       "vault-task": {
         "command": "node",
-        "args": [".plugin-src/packages/vault-task/dist/mcp.mjs", ".", "--device=ai"]
+        "args": [".kit/bin/mcp.mjs", ".", "--device=ai"]
       }
     }
   }

@@ -6,7 +6,7 @@ import { parseTemplateConfig } from "../src/core/config";
 import { renderTemplate } from "../src/core/template";
 
 // リポジトリの template/ を実際に読んで、規約（vault-conventions.md）とプラグインの記法に合っているか確かめる
-const root = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const files = readdirSync(join(root, "template/file")).filter((f) => f.endsWith(".md"));
 const now = new Date(2026, 10, 1, 13, 20, 30);
 

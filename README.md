@@ -1,6 +1,26 @@
-# yamayu-pkm
+# pkm-kit
 
-Obsidian の Vault。同期は自作プラグイン **Vault Git**（`.obsidian/plugins/vault-git/`）、テンプレートからのノート作成は **Vault Template**（`.obsidian/plugins/vault-template/`、設定は `template/config.json`。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）で行う。コミュニティプラグインは使わない。
+Obsidian の Vault を、自作プラグインと Claude Code のハーネス（進め方・スキル・検査）で育てるための一式。
+このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
+
+- 同期は自作プラグイン **Vault Git**（モバイルでも動く git の pull / push）
+- タスク管理は **Vault Task**、テンプレートからのノート作成は **Vault Template**（設定は `template/config.json`。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
+- コミュニティプラグインは使わない
+
+> 移行中: 上流（このリポジトリ）と各 Vault の分け方は、設計（[ADR-0009](.claude/docs/adr/0009-upstream-and-child-vaults.md)〜[0011](.claude/docs/adr/0011-harness-parent-and-child.md)）に沿って作っている途中。新しい Vault を作る手順（`setup.mjs`）と、更新の取り込み（`vault-upgrade`）はまだない。
+
+## 仕組み
+
+| パス | 内容 |
+|---|---|
+| `.kit/src/` | プラグインのソース（pnpm workspace）と、プラグインの ADR・デザインルール |
+| `.kit/bin/` | Vault で使う CLI（タスク管理の lint・MCP サーバー・worklog の見直し、updated の付与）。ビルド済み |
+| `.kit/owned-paths.json` | このリポジトリが持つパス。各 Vault はここに当たるファイルを変えない |
+| `.kit/obsidian-required.json` | 各 Vault の Obsidian の設定に必要なキーと値 |
+| `.obsidian/plugins/` / `.obsidian/snippets/` | プラグインのビルド成果物と、外観を固定するスニペット（モバイルではビルドできないのでコミットする） |
+| `.claude/` | Claude Code 用のハーネス。入口は `.claude/CLAUDE.md` |
+| `.githooks/` | PC の Git CLI でコミットしたときに、ノートの `updated` を付与するフック |
 
 ## ノートの書式
 
@@ -42,9 +62,9 @@ Claude Code への頼み方の例: 「この記事を取り込んで: <URL>」�
 1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
 2. 「Vault Git」を有効にする
 3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
-4. アクセストークンを登録する（GitHub の fine-grained PAT。このリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
+4. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
 
-PC: このリポジトリを `git clone` して Vault として開く。
+PC: 自分の Vault のリポジトリを `git clone` して Vault として開く。コミット時に `updated` を付与するため、`git config core.hooksPath .githooks` を 1 回実行する。
 
 モバイル:
 
@@ -54,9 +74,10 @@ PC: このリポジトリを `git clone` して Vault として開く。
 
 ## 開発
 
-`.plugin-src/` にソースがある。Claude Code 用のハーネス（進め方・スキル・検査）は `.claude/` にあり、入口は `.claude/CLAUDE.md`。
+`.kit/src/` にソースがある。ビルドすると、`.obsidian/plugins/` の成果物と `.kit/bin/` の CLI が作り直される。どちらもコミットする（CI が、ソースから作り直したものと一致するかを確かめる）。
 
 ```sh
 mise install
-cd .plugin-src && pnpm install --frozen-lockfile && pnpm check
+cd .kit/src && pnpm install --frozen-lockfile && pnpm check
+node .claude/scripts/verify.mjs   # ハーネスの検査と、所有の境界の検査
 ```

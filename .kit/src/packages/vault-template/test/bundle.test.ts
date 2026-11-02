@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const bundlePath = fileURLToPath(new URL("../../../../.obsidian/plugins/vault-template/main.js", import.meta.url));
+const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/vault-template/main.js", import.meta.url));
 
 interface MockFile {
 	path: string;

@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { migrate, stampStaged } from "../stamp-updated.mjs";
+import { migrate, stampStaged } from "../../../.kit/bin/stamp-updated.mjs";
 import { commit, git, tempRepo, write } from "./helpers.mjs";
 
 const NOW = new Date("2026-11-01T04:30:00.000Z");
@@ -131,10 +131,9 @@ test("pre-commit hook: git commit で updated が付く", () => {
 	const root = tempRepo({ "x.txt": "x" });
 	const here = fileURLToPath(new URL("../../..", import.meta.url));
 	mkdirSync(join(root, ".githooks"), { recursive: true });
-	mkdirSync(join(root, ".claude/scripts/lib"), { recursive: true });
+	mkdirSync(join(root, ".kit/bin"), { recursive: true });
 	cpSync(join(here, ".githooks/pre-commit"), join(root, ".githooks/pre-commit"));
-	cpSync(join(here, ".claude/scripts/stamp-updated.mjs"), join(root, ".claude/scripts/stamp-updated.mjs"));
-	cpSync(join(here, ".claude/scripts/lib/updated.mjs"), join(root, ".claude/scripts/lib/updated.mjs"));
+	cpSync(join(here, ".kit/bin/stamp-updated.mjs"), join(root, ".kit/bin/stamp-updated.mjs"));
 	git(root, "config", "core.hooksPath", ".githooks");
 	write(root, { "memo.md": note("本文\n") });
 	git(root, "add", "memo.md");

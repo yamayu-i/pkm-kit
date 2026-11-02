@@ -11,9 +11,10 @@ worklog は `worklog/<端末名>/YYYY-MM.jsonl` に 1 行 1 件で入ってい�
 ## 1. 候補を出す
 
 ```sh
-cd .plugin-src
-TZ=Asia/Tokyo pnpm task:worklog-review -- --json   # 日またぎの判定はタイムゾーンに依存する。ユーザーのタイムゾーンを使う
+TZ=Asia/Tokyo node .kit/bin/worklog-review.mjs . --json   # 日またぎの判定はタイムゾーンに依存する。ユーザーのタイムゾーンを使う
 ```
+
+`.kit/bin/` のものはビルド済みなので、`pnpm install` もビルドも要らない。
 
 - 閾値を変えるとき: `--running-hours=4`（記録中のまま何時間で候補にするか）、`--long-hours=6`、`--overlap-count=3`
 - `findings` が候補。`code` の意味:
@@ -45,5 +46,5 @@ TZ=Asia/Tokyo pnpm task:worklog-review -- --json   # 日またぎの判定はタ
 ## 4. 注意
 
 - **他の端末で記録中のログ**（`to` が `null`）は、その端末で同期（vault-git の pull / push）してから直してもらう。同期前に直すと、その端末が止めたときに行の ID が合わず、プラグインが書き込みを止める
-- 直し終わったら `pnpm task:lint` を実行し、エラーがないことを確かめる
+- 直し終わったら `node .kit/bin/lint.mjs .` を実行し、エラーがないことを確かめる
 - 変更は worklog のファイルだけ。コミットするかはユーザーに確認する（ふだんは vault-git が同期するので、Claude Code からはコミットしなくてよいことが多い）

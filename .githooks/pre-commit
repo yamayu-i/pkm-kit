@@ -7,4 +7,4 @@ if ! command -v node >/dev/null 2>&1; then
 	echo "stamp-updated: node が見つからないので updated を付与しません" >&2
 	exit 0
 fi
-exec node "$root/.claude/scripts/stamp-updated.mjs" --staged
+exec node "$root/.kit/bin/stamp-updated.mjs" --staged

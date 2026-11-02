@@ -10,7 +10,7 @@
 
 ## 決定
 
-- 新しいプラグイン `vault-task` を `.plugin-src/packages/vault-task/` に作り、ビルド結果を `.obsidian/plugins/vault-task/` に出す（名前は仮）
+- 新しいプラグイン `vault-task` を `.kit/src/packages/vault-task/` に作り、ビルド結果を `.obsidian/plugins/vault-task/` に出す（名前は仮）
 - vault-git と同じく、Obsidian に依存しない層（スキーマ、索引、按分計算、整合性検査）と、Obsidian に依存する層（View、Modal、Vault への書き込み）を分ける
 - Obsidian に依存しない層は CLI からも呼べるようにし、Claude Code のスキル（lint、worklog の見直しなど）から使う
 - 作る順番:

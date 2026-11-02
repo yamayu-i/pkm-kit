@@ -2,7 +2,7 @@
  * vault-task の MCP サーバー（ADR-0025）。
  * 外部依存を追加せず、Node 標準機能のみで JSON-RPC 2.0 over stdio を実装する。
  *
- * 使い方: node dist/mcp.mjs [Vault のルート] [--device=ai]
+ * 使い方: node .kit/bin/mcp.mjs [Vault のルート] [--device=ai]
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";

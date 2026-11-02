@@ -12,7 +12,7 @@ import { lintCss } from "../src/css-lint.ts";
 import { lintDesignDoc } from "../src/doc-lint.ts";
 import { formatTokens } from "../src/format.ts";
 import { checkAppearance } from "../src/obsidian-config.ts";
-import { APPEARANCE_JSON, DESIGN_DOC, OUTPUTS, PLUGIN_CSS, SNIPPET_NAME, TOKENS_JSON, VAULT_ROOT } from "../node/paths.ts";
+import { DESIGN_DOC, OBSIDIAN_REQUIRED_JSON, OUTPUTS, PLUGIN_CSS, SNIPPET_NAME, TOKENS_JSON, VAULT_ROOT } from "../node/paths.ts";
 
 const tokens = readTokens();
 
@@ -46,7 +46,7 @@ describe("このリポジトリのデザイン", () => {
 	}
 
 	it("Obsidian の外観の設定が固定されている", () => {
-		const appearance = JSON.parse(readFileSync(APPEARANCE_JSON, "utf8"));
+		const appearance = JSON.parse(readFileSync(OBSIDIAN_REQUIRED_JSON, "utf8"))["appearance.json"];
 		expect(checkAppearance(appearance, tokens, SNIPPET_NAME).map((p) => p.message)).toEqual([]);
 		expect(OUTPUTS.obsidianSnippet.endsWith(`/.obsidian/snippets/${SNIPPET_NAME}.css`)).toBe(true);
 	});

@@ -9,7 +9,7 @@
 このリポジトリは Vault そのもので、次のものを一つの履歴で管理している。
 
 - ノート
-- 自作プラグインのソース（`.plugin-src/`）とビルド成果物
+- 自作プラグインのソース（`.kit/src/`）とビルド成果物
 - ハーネス（`.claude/`）
 - Obsidian の設定
 
@@ -70,7 +70,7 @@
 
 | パス | 置くもの |
 |---|---|
-| `.kit/src/` | プラグインのソース（今の `.plugin-src/`）。pnpm workspace |
+| `.kit/src/` | プラグインのソース（今の `.kit/src/`）。pnpm workspace |
 | `.kit/bin/` | CLI のバンドル（`lint.mjs`、`mcp.mjs`、`worklog-review.mjs`、`stamp-updated.mjs`）。ビルド済みのものをコミットする |
 | `.kit/templates/` | テンプレートの既定値 |
 | `.kit/migrations/` | 移行（[ADR-0010](0010-upstream-updates-and-migrations.md)） |
@@ -88,11 +88,11 @@
 
 1. この Vault の履歴を `git filter-repo` で書き換え、上流の最初の履歴を作る。消すものと、置き場所を移すものは次のとおり
    - 消すもの: 個人のノート（`daily/`、`issue/`、`routine/`、`member/`、`worklog/`、`board/`、`wiki/`、`sources/`、`note/`、`asset/`、`memo.md` など）と、個人の記録（`.claude/notes/`、`reviews/`、`security/`）
-   - 移すもの: `.plugin-src/` を `.kit/src/` に移す
+   - 移すもの: `.kit/src/` を `.kit/src/` に移す
 2. 公開する前に、履歴の全体に秘密情報、個人のノートの内容、端末名が残っていないことを確かめる
 3. 上流で、4 の構成に直す（パス、重ね合わせ、セットアップ、親子のハーネス）
 4. この Vault に `upstream` を設定し、最初の 1 回だけ `--allow-unrelated-histories` で merge する。filter-repo で履歴を書き換えるので、共通の祖先がないためである。上流のものは上流の版を、子のものはこの Vault の版を採る。以後は通常の merge で取り込める
-5. この Vault から `.plugin-src/` と、上流に移ったものの写しを消す
+5. この Vault から `.kit/src/` と、上流に移ったものの写しを消す
 
 ## 理由
 
