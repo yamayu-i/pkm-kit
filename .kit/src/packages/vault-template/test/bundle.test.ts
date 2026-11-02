@@ -30,10 +30,30 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 		};
 	};
 
+	// Obsidian と同じく、隠しパス（.kit/ など）は Vault の索引に載らず、アダプタからだけ見える
+	const hidden = (path: string) => path.split("/").some((part) => part.startsWith("."));
+	const indexed = () => [...files.keys()].filter((p) => !hidden(p));
+	const adapter = {
+		exists: async (path: string) => files.has(path) || [...files.keys()].some((p) => p.startsWith(`${path}/`)),
+		read: async (path: string) => {
+			const text = files.get(path);
+			if (text === undefined) throw new Error(`ENOENT: ${path}`);
+			return text;
+		},
+		list: async (dir: string) => {
+			const children = [...files.keys()].filter((p) => p.startsWith(`${dir}/`)).map((p) => p.slice(dir.length + 1));
+			return {
+				files: children.filter((c) => !c.includes("/")).map((c) => `${dir}/${c}`),
+				folders: [...new Set(children.filter((c) => c.includes("/")).map((c) => `${dir}/${c.split("/")[0]}`))],
+			};
+		},
+	};
+
 	const vault = {
-		getFiles: () => [...files.keys()].map(toTFile),
-		getMarkdownFiles: () => [...files.keys()].filter((p) => p.endsWith(".md")).map(toTFile),
-		getFileByPath: (path: string) => (files.has(path) ? toTFile(path) : null),
+		adapter,
+		getFiles: () => indexed().map(toTFile),
+		getMarkdownFiles: () => indexed().filter((p) => p.endsWith(".md")).map(toTFile),
+		getFileByPath: (path: string) => (files.has(path) && !hidden(path) ? toTFile(path) : null),
 		getFolderByPath: (path: string) => (folders.has(path) ? { path } : null),
 		createFolder: async (path: string) => {
 			folders.add(path);
@@ -242,6 +262,8 @@ type BundlePlugin = {
 			now: Date;
 		}): Promise<{ path: string }>;
 		openTodaysDaily(now: Date): Promise<{ path: string }>;
+		loadConfig(): Promise<{ entries: { file: string; enabled: boolean; folder: string; fileNamePattern: string }[]; problems: string[] }>;
+		saveConfig(entries: { file: string; enabled: boolean; folder: string; fileNamePattern: string }[]): Promise<void>;
 	};
 };
 
@@ -313,5 +335,69 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: ID 採番と�
 		// 日付が変われば別のノートを作る
 		const next = await plugin.manager.openTodaysDaily(new Date(2026, 10, 2, 0, 5, 0));
 		expect(next.path).toBe("daily/2026/11/2026-11-02.md");
+	});
+});
+
+describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: 上流の既定のテンプレート（.kit/templates/）との重ね合わせ", () => {
+	const upstream = {
+		".kit/templates/file/note.md": `---\ntype: note\n${FM_TIME}\n---\n\n上流の本文\n`,
+		".kit/templates/file/daily.md": `---\ntype: daily\n${FM_TIME}\n---\n`,
+		".kit/templates/config.json": JSON.stringify({
+			templates: [
+				{ file: "note.md", enabled: true, folder: "note", fileNamePattern: "{{title}}" },
+				{ file: "daily.md", enabled: false, folder: "daily/{{date:YYYY}}/{{date:MM}}", fileNamePattern: "{{date:YYYY-MM-DD}}" },
+			],
+		}),
+	};
+
+	it("その Vault にテンプレートがなくても、上流のテンプレートと設定でノートを作れる", async () => {
+		const mock = createObsidianMock(upstream);
+		const plugin = await loadBundle(mock);
+		const { entries, problems } = await plugin.manager.loadConfig();
+		expect(problems).toEqual([]);
+		expect(entries.map((e) => e.file)).toEqual(["note.md", "daily.md"]);
+
+		const [template] = await plugin.manager.loadEnabledTemplates();
+		const created = await plugin.manager.createNoteFromTemplate({ template, titleInput: "メモ", prompts: {}, now: new Date(2026, 10, 1, 9, 0, 0) });
+		expect(created.path).toBe("note/メモ.md");
+		expect(mock.files.get("note/メモ.md")).toContain("上流の本文");
+
+		const daily = await plugin.manager.openTodaysDaily(new Date(2026, 10, 1, 9, 0, 0));
+		expect(daily.path).toBe("daily/2026/11/2026-11-01.md");
+	});
+
+	it("同じ名前のテンプレートはその Vault のものを使い、設定は項目ごとに上書きする", async () => {
+		const mock = createObsidianMock({
+			...upstream,
+			"template/file/note.md": `---\ntype: note\n${FM_TIME}\n---\n\nこの Vault の本文\n`,
+			"template/config.json": JSON.stringify({ templates: [{ file: "note.md", folder: "memo" }] }),
+		});
+		const plugin = await loadBundle(mock);
+		const { entries } = await plugin.manager.loadConfig();
+		expect(entries[0]).toEqual({ file: "note.md", enabled: true, folder: "memo", fileNamePattern: "{{title}}" });
+
+		const [template] = await plugin.manager.loadEnabledTemplates();
+		const created = await plugin.manager.createNoteFromTemplate({ template, titleInput: "メモ", prompts: {}, now: new Date(2026, 10, 1, 9, 0, 0) });
+		expect(created.path).toBe("memo/メモ.md");
+		expect(mock.files.get("memo/メモ.md")).toContain("この Vault の本文");
+	});
+
+	it("設定の保存は、上流と違う項目だけをその Vault の template/config.json に書き、上流のファイルは変えない", async () => {
+		const mock = createObsidianMock(upstream);
+		const plugin = await loadBundle(mock);
+		const { entries } = await plugin.manager.loadConfig();
+		await plugin.manager.saveConfig(entries.map((e) => (e.file === "daily.md" ? { ...e, enabled: true } : e)));
+
+		expect(JSON.parse(mock.files.get("template/config.json")!)).toEqual({ templates: [{ file: "note.md" }, { file: "daily.md", enabled: true }] });
+		expect(mock.files.get(".kit/templates/config.json")).toBe(upstream[".kit/templates/config.json"]);
+
+		// 上流の既定が後から変わると、上書きしていない項目には新しい値が届く
+		mock.files.set(
+			".kit/templates/config.json",
+			JSON.stringify({ templates: [{ file: "note.md", enabled: true, folder: "notes", fileNamePattern: "{{title}}" }] }),
+		);
+		const after = await plugin.manager.loadConfig();
+		expect(after.entries.find((e) => e.file === "note.md")?.folder).toBe("notes");
+		expect(after.entries.find((e) => e.file === "daily.md")?.enabled).toBe(true);
 	});
 });

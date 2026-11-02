@@ -30,8 +30,8 @@ jobs:
         run: node .claude/scripts/check-docs.mjs
       - name: wiki の lint
         run: node .claude/scripts/wiki-lint.mjs
-      - name: 所有の境界（上流には仕組みのファイルだけを置く）
-        run: node .claude/scripts/check-kit-paths.mjs
+      - name: 所有の境界（上流には仕組みのファイルだけ。子では上流のものを変えていない）
+        run: node .claude/scripts/check-kit-paths.mjs --fetch
       - name: wiki の操作が追記だけか
         env:
           EVENT: ${{ github.event_name }}

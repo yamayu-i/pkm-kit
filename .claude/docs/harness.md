@@ -43,6 +43,9 @@
 | `.kit/src/` | プラグインのソース。`docs/adr/` にプラグインの ADR |
 | `.kit/bin/` | Vault で使う CLI（ビルド済み。task-coach・worklog-review・pre-commit フックが使う） |
 | `.kit/owned-paths.json` / `.kit/obsidian-required.json` | 上流が持つパスと、Obsidian の設定に必要なキー（[ADR-0009](adr/0009-upstream-and-child-vaults.md)） |
+| `.kit/setup.mjs` / `.kit/kit.json` / `.kit/lib/` | 子の Vault のセットアップと、上流の名前・場所 |
+| `.kit/templates/` | テンプレートの既定（子の `template/` で上書きする） |
+| `.kit-local/` | 子の Vault だけにある。エスカレーションの方法（`config.json`）と、取り込んだ上流のコミット・適用済みの移行（`upstream.json`） |
 
 `notes/`、`reviews/`、`security/reports/` は作業の記録なので、目次から辿れなくてよい。それ以外の文書は `CLAUDE.md` から辿れなければならない（`check-docs.mjs` が検査する）。
 
@@ -60,8 +63,8 @@
 | 文書の構造 | `check-docs.mjs` | CLAUDE.md の行数、リンク切れ、辿れない文書、スキルの frontmatter |
 | wiki の lint | `wiki-lint.mjs` | 書式（Markdown リンク、ルートからのパス、asset/、タブ）、wiki のページの frontmatter、index への掲載 |
 | 追記だけか | `check-append-only.mjs` | `wiki(...)` のコミットが所有の区分を守っているか（[ADR-0004](adr/0004-human-notes-append-only.md)） |
-| Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` 直下の JSON に末尾改行がないか（Obsidian の保存形式に合わせ、開いたときの差分を防ぐ） |
-| 所有の境界 | `check-kit-paths.mjs` | 上流には `.kit/owned-paths.json` に当たるファイルだけを置く（[ADR-0009](adr/0009-upstream-and-child-vaults.md)。子の Vault の検査は後続で足す） |
+| Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` 直下の JSON に末尾改行がないか（Obsidian の保存形式に合わせ、開いたときの差分を防ぐ）。子の Vault では、`.kit/obsidian-required.json` の必要なキーが入っているか |
+| 所有の境界 | `check-kit-paths.mjs` | 上流には `.kit/owned-paths.json` に当たるファイルだけを置く。子の Vault（`.kit-local/` がある）では、取り込んだ上流のコミットから上流のものが変わっていない（[ADR-0009](adr/0009-upstream-and-child-vaults.md)） |
 | プラグイン | `.kit/src` の `pnpm check` | 型・ビルド・テスト（`--plugin` を付けたとき、CI ではプラグインを変えたとき） |
 
 規約を足す前に、検査で強制できないかを考える。検査を緩める変更は、大きい変更として扱う。

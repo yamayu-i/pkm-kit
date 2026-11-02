@@ -52,12 +52,12 @@ Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugi
 - ノートを作る仕組み（テンプレート、プラグインのコード）を足すときは、作成時に created と updated の両方を入れる。
 - 記事の公開日時、dailyが表す日付、知識の確認日時は別項目。updated は内容の正確さや最新性を示さない。
 
-新しいtypeを使う前に template/file/<type>.md を作る。テンプレートは初期構造の実例であり、本文の空見出しをすべて埋める義務はない。通常のメモは note とする。追加は独自の項目・構造・処理が必要な場合に限る。
+新しいtypeを使う前にテンプレートを作る（上流で全 Vault に足すなら `.kit/templates/file/<type>.md`、その Vault だけなら `template/file/<type>.md`）。テンプレートは初期構造の実例であり、本文の空見出しをすべて埋める義務はない。通常のメモは note とする。追加は独自の項目・構造・処理が必要な場合に限る。
 
 現在のtype: note、daily、source、concept、entity、topic、answer、issue、routine、member、index、log、feedback。
 
 同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 
-template/file/ はファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template（設定は template/config.json）でテンプレート選択・変数展開・生成先フォルダの解決を行う。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
+テンプレートは、上流の既定（`.kit/templates/file/` と `.kit/templates/config.json`）に、その Vault のもの（`template/file/` と `template/config.json`）を重ねて使う。同じ名前のテンプレートはその Vault のものが優先し、`template/config.json` には上流と違う項目だけを書く（[ADR-0009](adr/0009-upstream-and-child-vaults.md)）。どちらもファイル全体のテンプレート専用。テンプレート変数は引用符で囲み、Source表示で編集する。自作プラグイン vault-template でテンプレート選択・変数展開・生成先フォルダの解決を行う。プラグインの生成コードも同じ規約に従わせ、テンプレートを置くだけで適用済みとは扱わない。
 
 issue / routine / member は vault-task 専用ではない。vault-task でも vault-template でも作れる Vault の通常のノートで、どちらで作っても同じ項目が揃う。テンプレートは vault-task が正常に動くのに必要な項目（schema、id、summary / name、status / repeat など）をすべて持つ。ID（`i-N` / `r-N` / `m-N`）は連番で、テンプレートでは `{{id:i}}` などで振る（[ADR-0023](../../.kit/src/docs/adr/0023-template-id-and-daily.md)）。連番の規則は vault-task と vault-template の両方が持つ。

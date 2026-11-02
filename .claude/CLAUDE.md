@@ -75,6 +75,7 @@ mise install                          # Node / pnpm
 node .claude/scripts/verify.mjs       # ハーネスと Vault の検査（--plugin でプラグインの pnpm check も）
 node .claude/scripts/wiki-lint.mjs    # ノートの書式
 node .kit/bin/lint.mjs .              # タスク管理データ（issue/ routine/ member/ worklog/ board/）の整合性検査（ビルド不要）
+node .kit/setup.mjs --dry-run         # 子の Vault のセットアップ（何をするかだけを表示）
 cd .kit/src
 pnpm install --frozen-lockfile
 pnpm check                            # 型チェック → ビルド → テスト

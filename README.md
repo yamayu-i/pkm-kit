@@ -4,17 +4,48 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
 
 - 同期は自作プラグイン **Vault Git**（モバイルでも動く git の pull / push）
-- タスク管理は **Vault Task**、テンプレートからのノート作成は **Vault Template**（設定は `template/config.json`。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- タスク管理は **Vault Task**、テンプレートからのノート作成は **Vault Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
-> 移行中: 上流（このリポジトリ）と各 Vault の分け方は、設計（[ADR-0009](.claude/docs/adr/0009-upstream-and-child-vaults.md)〜[0011](.claude/docs/adr/0011-harness-parent-and-child.md)）に沿って作っている途中。新しい Vault を作る手順（`setup.mjs`）と、更新の取り込み（`vault-upgrade`）はまだない。
+> 作っている途中: 上流（このリポジトリ）と各 Vault の分け方は、設計（[ADR-0009](.claude/docs/adr/0009-upstream-and-child-vaults.md)〜[0011](.claude/docs/adr/0011-harness-parent-and-child.md)）に沿って作っている。更新の取り込み（`vault-upgrade`）はまだない。
+
+## 新しい Vault を作る
+
+GitHub の fork は使わない（公開リポジトリの fork は非公開にできず、ノートが公開されてしまう）。git の remote で上流とつなぐ。
+
+```sh
+# 1. GitHub に空の非公開リポジトリ（例: you/my-vault）を作っておく
+git clone https://github.com/yamayu-i/pkm-kit.git my-vault
+cd my-vault
+git remote rename origin upstream
+git remote add origin https://github.com/you/my-vault.git
+git push -u origin main
+
+# 2. セットアップ（Node は mise.toml の版。mise install で入る。npm の依存は要らない）
+node .kit/setup.mjs            # エスカレーションの方法を尋ねる。--escalation=issue|file|none でも指定できる
+node .claude/scripts/verify.mjs
+git add -A && git commit -m "vault: セットアップ" && git push
+```
+
+`setup.mjs` が行うこと（何度実行しても同じ結果になる。`--dry-run` で予定だけを表示する）:
+
+- `.kit-local/config.json` に、上流を変えないと直らない問題を見つけたときの伝え方（エスカレーションの方法）を書く
+- `.kit-local/upstream.json` に、取り込んだ上流のコミットを書く
+- `.obsidian/*.json` に、使い心地に必要なキーだけを合わせる（ほかの設定は残す）
+- `issue/labels.json` と `issue/board-groups.json` の初期値を置く（なければ）
+- PC の Git CLI でも `updated` を付けるため、`git config core.hooksPath .githooks` を実行する
+
+その後、Obsidian でフォルダを開き、コミュニティプラグインを許可する。モバイルは下の「Vault Git の使い方」のとおり。
+
+自分の Vault では、上流のもの（`.kit/owned-paths.json` に当たるファイル）を変えない（`verify.mjs` が検査する）。テンプレートは `template/` に置けば、上流の既定を上書きできる。
 
 ## 仕組み
 
 | パス | 内容 |
 |---|---|
 | `.kit/src/` | プラグインのソース（pnpm workspace）と、プラグインの ADR・デザインルール |
+| `.kit/templates/` | テンプレートの既定（各 Vault の `template/` で、同じ名前のファイルと設定の項目を上書きできる） |
 | `.kit/bin/` | Vault で使う CLI（タスク管理の lint・MCP サーバー・worklog の見直し、updated の付与）。ビルド済み |
 | `.kit/owned-paths.json` | このリポジトリが持つパス。各 Vault はここに当たるファイルを変えない |
 | `.kit/obsidian-required.json` | 各 Vault の Obsidian の設定に必要なキーと値 |
