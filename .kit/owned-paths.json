@@ -18,7 +18,6 @@
     ".obsidian/plugins/*/main.js",
     ".obsidian/plugins/*/manifest.json",
     ".obsidian/plugins/*/styles.css",
-    ".obsidian/snippets/vault-theme.css",
-    "template/**"
+    ".obsidian/snippets/vault-theme.css"
   ]
 }

@@ -19,3 +19,9 @@ test("上流: 上流のパスに当たらないファイル（個人のノート
 		["daily/2026/11/2026-11-02.md", ".obsidian/plugins/vault-git/data.json"],
 	);
 });
+
+test("! で始まるパターンは除外。後に書いたものが勝つ", () => {
+	const patterns = [".claude/skills/**", "!.claude/skills/local-*/**"];
+	assert.ok(isUpstreamPath(".claude/skills/wiki-ingest/SKILL.md", patterns));
+	assert.ok(!isUpstreamPath(".claude/skills/local-mine/SKILL.md", patterns));
+});

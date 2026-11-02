@@ -1,5 +1,5 @@
 import { PluginSettingTab, Setting, type App, type Plugin } from "obsidian";
-import { moveTemplateEntry, TEMPLATE_CONFIG_PATH, TEMPLATE_DIR, type TemplateEntry } from "../core/config";
+import { moveTemplateEntry, TEMPLATE_CONFIG_PATH, TEMPLATE_DIR, UPSTREAM_TEMPLATE_DIR, type TemplateEntry } from "../core/config";
 import type { TemplateManager } from "./creator";
 
 export class TemplateSettingTab extends PluginSettingTab {
@@ -25,14 +25,14 @@ export class TemplateSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("テンプレート一覧と生成先")
 			.setDesc(
-				`${TEMPLATE_DIR}/ にあるテンプレートの表示順・モーダルへの表示有無・生成先フォルダ・初期ファイル名パターンを設定します（保存先: ${TEMPLATE_CONFIG_PATH}）。`,
+				`${UPSTREAM_TEMPLATE_DIR}/（上流の既定）と ${TEMPLATE_DIR}/（この Vault）にあるテンプレートの表示順・モーダルへの表示有無・生成先フォルダ・初期ファイル名パターンを設定します。同じ名前のテンプレートはこの Vault のものを使います。保存先は ${TEMPLATE_CONFIG_PATH} で、上流の既定と違う項目だけを書きます。`,
 			)
 			.setHeading();
 
 		if (problems.length > 0) {
 			const warn = containerEl.createEl("div", { cls: "vt-tpl-setting-error" });
 			warn.createEl("div", {
-				text: `${TEMPLATE_CONFIG_PATH} に書式エラーがあります: ${problems.join(" / ")}`,
+				text: `テンプレートの設定に書式エラーがあります: ${problems.join(" / ")}`,
 			});
 		}
 

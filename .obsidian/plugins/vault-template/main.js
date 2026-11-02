@@ -666,7 +666,7 @@ function CreateNoteForm(props) {
     titleRef.current?.focus();
   }, [selectedIdx]);
   if (templates.length === 0) {
-    return /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: "\u6709\u52B9\u306A\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u30D7\u30E9\u30B0\u30A4\u30F3\u8A2D\u5B9A\u307E\u305F\u306F template/file/ \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002" });
+    return /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: "\u6709\u52B9\u306A\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u30D7\u30E9\u30B0\u30A4\u30F3\u8A2D\u5B9A\u3001template/file/\u3001.kit/templates/file/ \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002" });
   }
   const current = templates[selectedIdx] ?? templates[0];
   const idFileName = usesIdFileName(current.entry.fileNamePattern);
@@ -822,6 +822,8 @@ var import_obsidian2 = require("obsidian");
 // src/core/config.ts
 var TEMPLATE_DIR = "template/file";
 var TEMPLATE_CONFIG_PATH = "template/config.json";
+var UPSTREAM_TEMPLATE_DIR = ".kit/templates/file";
+var UPSTREAM_TEMPLATE_CONFIG_PATH = ".kit/templates/config.json";
 function isValidTemplateFileName(file) {
   return Boolean(file) && file.endsWith(".md") && !file.includes("/") && !file.includes("\\") && !file.startsWith(".");
 }
@@ -860,36 +862,6 @@ function parseTemplateConfig(text2) {
   }
   return { templates, problems };
 }
-function serializeTemplateConfig(templates) {
-  const clean = templates.map((t3) => ({
-    file: t3.file,
-    enabled: t3.enabled,
-    folder: t3.folder.trim().replace(/^\/+|\/+$/g, ""),
-    fileNamePattern: t3.fileNamePattern.trim()
-  }));
-  return `${JSON.stringify({ templates: clean }, null, 2)}
-`;
-}
-function mergeTemplateEntries(configured, actualFiles) {
-  const actualSet = new Set(actualFiles.filter(isValidTemplateFileName));
-  const result = [];
-  const included = /* @__PURE__ */ new Set();
-  for (const entry of configured) {
-    if (!actualSet.has(entry.file) || included.has(entry.file)) continue;
-    included.add(entry.file);
-    result.push({ ...entry });
-  }
-  const remaining = [...actualSet].filter((f4) => !included.has(f4)).sort((a3, b2) => a3.localeCompare(b2));
-  for (const file of remaining) {
-    result.push({
-      file,
-      enabled: true,
-      folder: "",
-      fileNamePattern: ""
-    });
-  }
-  return result;
-}
 function moveTemplateEntry(entries, file, delta) {
   const idx = entries.findIndex((e3) => e3.file === file);
   const targetIdx = idx + delta;
@@ -900,6 +872,77 @@ function moveTemplateEntry(entries, file, delta) {
   next[targetIdx] = current;
   return next;
 }
+function parseTemplateOverrides(text2) {
+  const problems = [];
+  let data;
+  try {
+    data = JSON.parse(text2);
+  } catch {
+    return { overrides: [], problems: ["JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093"] };
+  }
+  const obj = typeof data === "object" && data !== null && !Array.isArray(data) ? data : null;
+  if (!obj || !Array.isArray(obj.templates)) return { overrides: [], problems: ["templates \u914D\u5217\u304C\u3042\u308A\u307E\u305B\u3093"] };
+  const overrides = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const raw of obj.templates) {
+    const item2 = typeof raw === "object" && raw !== null ? raw : {};
+    const file = typeof item2.file === "string" ? item2.file.trim() : "";
+    if (!isValidTemplateFileName(file)) {
+      problems.push(`\u4E0D\u6B63\u306A\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u30D5\u30A1\u30A4\u30EB\u540D\u3067\u3059: ${JSON.stringify(raw)}`);
+      continue;
+    }
+    if (seen.has(file)) {
+      problems.push(`\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u8A2D\u5B9A\u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${file}`);
+      continue;
+    }
+    seen.add(file);
+    const o3 = { file };
+    if ("enabled" in item2) {
+      if (typeof item2.enabled === "boolean") o3.enabled = item2.enabled;
+      else problems.push(`${file}: enabled \u306F true \u304B false \u306B\u3057\u307E\u3059`);
+    }
+    for (const key of ["folder", "fileNamePattern"]) {
+      if (!(key in item2)) continue;
+      const v3 = item2[key];
+      if (typeof v3 === "string") o3[key] = key === "folder" ? v3.trim().replace(/^\/+|\/+$/g, "") : v3.trim();
+      else problems.push(`${file}: ${key} \u306F\u6587\u5B57\u5217\u306B\u3057\u307E\u3059`);
+    }
+    overrides.push(o3);
+  }
+  return { overrides, problems };
+}
+function serializeTemplateOverrides(overrides) {
+  return `${JSON.stringify({ templates: overrides }, null, 2)}
+`;
+}
+var defaultEntry = (file) => ({ file, enabled: true, folder: "", fileNamePattern: "" });
+function layerTemplateEntries(params) {
+  const actual = new Set(params.files.filter(isValidTemplateFileName));
+  const base = new Map(params.upstream.map((e3) => [e3.file, e3]));
+  const over = new Map(params.overrides.map((o3) => [o3.file, o3]));
+  const order = [];
+  const push = (file) => {
+    if (actual.has(file) && !order.includes(file)) order.push(file);
+  };
+  for (const o3 of params.overrides) push(o3.file);
+  for (const e3 of params.upstream) push(e3.file);
+  for (const f4 of [...actual].sort((a3, b2) => a3.localeCompare(b2))) push(f4);
+  return order.map((file) => {
+    const { file: _f, ...fields } = over.get(file) ?? { file };
+    return { ...base.get(file) ?? defaultEntry(file), ...fields, file };
+  });
+}
+function diffTemplateEntries(entries, upstream) {
+  const base = new Map(upstream.map((e3) => [e3.file, e3]));
+  return entries.map((e3) => {
+    const b2 = base.get(e3.file) ?? defaultEntry(e3.file);
+    const o3 = { file: e3.file };
+    if (e3.enabled !== b2.enabled) o3.enabled = e3.enabled;
+    if (e3.folder !== b2.folder) o3.folder = e3.folder;
+    if (e3.fileNamePattern !== b2.fileNamePattern) o3.fileNamePattern = e3.fileNamePattern;
+    return o3;
+  });
+}
 
 // src/obsidian/creator.ts
 var TemplateManager = class {
@@ -907,8 +950,8 @@ var TemplateManager = class {
     this.app = app;
   }
   app;
-  /** `template/file/` 直下の `.md` ファイル名一覧を返す */
-  listTemplateFiles() {
+  /** その Vault の `template/file/` 直下の `.md` ファイル名一覧 */
+  listLocalTemplateFiles() {
     const prefix = `${TEMPLATE_DIR}/`;
     const names = [];
     for (const file of this.app.vault.getFiles()) {
@@ -920,40 +963,65 @@ var TemplateManager = class {
     }
     return names.sort((a3, b2) => a3.localeCompare(b2));
   }
-  /** `template/config.json` と `template/file/*.md` を突き合わせて設定一覧を返す */
+  /** 上流の `.kit/templates/file/` 直下の `.md` ファイル名一覧。隠しパスなのでアダプタで読む */
+  async listUpstreamTemplateFiles() {
+    const adapter = this.app.vault.adapter;
+    if (!await adapter.exists(UPSTREAM_TEMPLATE_DIR)) return [];
+    const prefix = `${UPSTREAM_TEMPLATE_DIR}/`;
+    return (await adapter.list(UPSTREAM_TEMPLATE_DIR)).files.map((p3) => p3.startsWith(prefix) ? p3.slice(prefix.length) : p3).filter((name) => !name.includes("/") && name.endsWith(".md")).sort((a3, b2) => a3.localeCompare(b2));
+  }
+  /** 使えるテンプレートのファイル名（上流と、その Vault の和） */
+  async listTemplateFiles() {
+    const names = /* @__PURE__ */ new Set([...await this.listUpstreamTemplateFiles(), ...this.listLocalTemplateFiles()]);
+    return [...names].sort((a3, b2) => a3.localeCompare(b2));
+  }
+  /** 上流の既定の設定（`.kit/templates/config.json`）。なければ空 */
+  async loadUpstreamConfig() {
+    const adapter = this.app.vault.adapter;
+    if (!await adapter.exists(UPSTREAM_TEMPLATE_CONFIG_PATH)) return { templates: [], problems: [] };
+    const { templates, problems } = parseTemplateConfig(await adapter.read(UPSTREAM_TEMPLATE_CONFIG_PATH));
+    return { templates, problems: problems.map((p3) => `${UPSTREAM_TEMPLATE_CONFIG_PATH}: ${p3}`) };
+  }
+  /**
+   * 上流の既定（`.kit/templates/`）に、その Vault の `template/config.json` を項目ごとに重ねた設定一覧を返す。
+   * テンプレートのファイルは、同じ名前ならその Vault の `template/file/` を優先する
+   */
   async loadConfig() {
-    const actualFiles = this.listTemplateFiles();
+    const files = await this.listTemplateFiles();
+    const upstream = await this.loadUpstreamConfig();
     const configFile = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-    if (!configFile) {
-      return { entries: mergeTemplateEntries([], actualFiles), problems: [] };
-    }
-    const text2 = await this.app.vault.read(configFile);
-    const { templates, problems } = parseTemplateConfig(text2);
+    const local = configFile ? parseTemplateOverrides(await this.app.vault.read(configFile)) : { overrides: [], problems: [] };
     return {
-      entries: mergeTemplateEntries(templates, actualFiles),
-      problems
+      entries: layerTemplateEntries({ upstream: upstream.templates, overrides: local.overrides, files }),
+      problems: [...upstream.problems, ...local.problems.map((p3) => `${TEMPLATE_CONFIG_PATH}: ${p3}`)]
     };
   }
-  /** `template/config.json` に設定を保存する */
+  /** その Vault の `template/config.json` に、上流と違う項目だけを保存する（上流の既定は変えない） */
   async saveConfig(entries) {
+    const upstream = await this.loadUpstreamConfig();
+    const text2 = serializeTemplateOverrides(diffTemplateEntries(entries, upstream.templates));
     const existing = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
     if (existing) {
-      const currentText = await this.app.vault.read(existing);
-      const { problems } = parseTemplateConfig(currentText);
+      const { problems } = parseTemplateOverrides(await this.app.vault.read(existing));
       if (problems.length > 0) {
         throw new Error(`${TEMPLATE_CONFIG_PATH} \u306B\u66F8\u5F0F\u30A8\u30E9\u30FC\u304C\u3042\u308B\u305F\u3081\u4E0A\u66F8\u304D\u3067\u304D\u307E\u305B\u3093: ${problems.join(", ")}`);
       }
-      await this.app.vault.modify(existing, serializeTemplateConfig(entries));
+      await this.app.vault.modify(existing, text2);
       return;
     }
     await this.ensureFolder(TEMPLATE_CONFIG_PATH);
-    await this.app.vault.create(TEMPLATE_CONFIG_PATH, serializeTemplateConfig(entries));
+    await this.app.vault.create(TEMPLATE_CONFIG_PATH, text2);
   }
-  /** テンプレート 1 件の中身とプロンプト定義を読み込む。ファイルがなければ null */
+  /** テンプレート 1 件の中身とプロンプト定義を読み込む。その Vault の `template/file/` を先に見る。どちらにもなければ null */
   async loadTemplate(entry) {
     const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
-    if (!file) return null;
-    const rawContent = await this.app.vault.cachedRead(file);
+    let rawContent;
+    if (file) rawContent = await this.app.vault.cachedRead(file);
+    else {
+      const upstreamPath = `${UPSTREAM_TEMPLATE_DIR}/${entry.file}`;
+      if (!await this.app.vault.adapter.exists(upstreamPath)) return null;
+      rawContent = await this.app.vault.adapter.read(upstreamPath);
+    }
     return { entry, rawContent, prompts: extractPrompts(rawContent) };
   }
   /** モーダルに表示する有効なテンプレートとその中身・プロンプト定義を読み込む */
@@ -971,7 +1039,7 @@ var TemplateManager = class {
     return this.app.vault.getMarkdownFiles().map((f4) => f4.basename);
   }
   /**
-   * 今日のデイリーノートを開く。なければ `template/file/daily.md` から作る。
+   * 今日のデイリーノートを開く。なければ daily.md のテンプレート（`template/file/` か `.kit/templates/file/`）から作る。
    * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
    */
   async openTodaysDaily(now = /* @__PURE__ */ new Date()) {
@@ -988,7 +1056,7 @@ var TemplateManager = class {
     const template = await this.loadTemplate(
       entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" }
     );
-    if (!template) throw new Error(`${TEMPLATE_DIR}/daily.md \u304C\u3042\u308A\u307E\u305B\u3093`);
+    if (!template) throw new Error(`daily.md \u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\uFF08${TEMPLATE_DIR}/ \u306B\u3082 ${UPSTREAM_TEMPLATE_DIR}/ \u306B\u3082\u306A\u3044\uFF09`);
     return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
   }
   fileExists(path) {
@@ -1324,12 +1392,12 @@ var TemplateSettingTab = class extends import_obsidian4.PluginSettingTab {
     const { entries, problems } = await this.manager.loadConfig();
     containerEl.empty();
     new import_obsidian4.Setting(containerEl).setName("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u4E00\u89A7\u3068\u751F\u6210\u5148").setDesc(
-      `${TEMPLATE_DIR}/ \u306B\u3042\u308B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8868\u793A\u9806\u30FB\u30E2\u30FC\u30C0\u30EB\u3078\u306E\u8868\u793A\u6709\u7121\u30FB\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\u30FB\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\u3092\u8A2D\u5B9A\u3057\u307E\u3059\uFF08\u4FDD\u5B58\u5148: ${TEMPLATE_CONFIG_PATH}\uFF09\u3002`
+      `${UPSTREAM_TEMPLATE_DIR}/\uFF08\u4E0A\u6D41\u306E\u65E2\u5B9A\uFF09\u3068 ${TEMPLATE_DIR}/\uFF08\u3053\u306E Vault\uFF09\u306B\u3042\u308B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8868\u793A\u9806\u30FB\u30E2\u30FC\u30C0\u30EB\u3078\u306E\u8868\u793A\u6709\u7121\u30FB\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\u30FB\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\u3092\u8A2D\u5B9A\u3057\u307E\u3059\u3002\u540C\u3058\u540D\u524D\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306F\u3053\u306E Vault \u306E\u3082\u306E\u3092\u4F7F\u3044\u307E\u3059\u3002\u4FDD\u5B58\u5148\u306F ${TEMPLATE_CONFIG_PATH} \u3067\u3001\u4E0A\u6D41\u306E\u65E2\u5B9A\u3068\u9055\u3046\u9805\u76EE\u3060\u3051\u3092\u66F8\u304D\u307E\u3059\u3002`
     ).setHeading();
     if (problems.length > 0) {
       const warn = containerEl.createEl("div", { cls: "vt-tpl-setting-error" });
       warn.createEl("div", {
-        text: `${TEMPLATE_CONFIG_PATH} \u306B\u66F8\u5F0F\u30A8\u30E9\u30FC\u304C\u3042\u308A\u307E\u3059: ${problems.join(" / ")}`
+        text: `\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8A2D\u5B9A\u306B\u66F8\u5F0F\u30A8\u30E9\u30FC\u304C\u3042\u308A\u307E\u3059: ${problems.join(" / ")}`
       });
     }
     const saveAndRefresh = async (next, rerender = false) => {

@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 import { parseTemplateConfig } from "../src/core/config";
 import { renderTemplate } from "../src/core/template";
 
-// リポジトリの template/ を実際に読んで、規約（vault-conventions.md）とプラグインの記法に合っているか確かめる
-const root = join(dirname(fileURLToPath(import.meta.url)), "../../../../..");
-const files = readdirSync(join(root, "template/file")).filter((f) => f.endsWith(".md"));
+// 上流の既定のテンプレート（.kit/templates/）を実際に読んで、規約（vault-conventions.md）とプラグインの記法に合っているか確かめる
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../../../templates");
+const files = readdirSync(join(root, "file")).filter((f) => f.endsWith(".md"));
 const now = new Date(2026, 10, 1, 13, 20, 30);
 
 function render(file: string): string {
-	return renderTemplate(readFileSync(join(root, "template/file", file), "utf8"), {
+	return renderTemplate(readFileSync(join(root, "file", file), "utf8"), {
 		now,
 		title: "題名",
 		path: "x.md",
@@ -32,7 +32,7 @@ function frontmatter(text: string): Record<string, string> {
 	return out;
 }
 
-describe("template/file/*.md", () => {
+describe(".kit/templates/file/*.md", () => {
 	it("テンプレートが 1 つ以上ある", () => {
 		expect(files.length).toBeGreaterThan(0);
 	});
@@ -61,10 +61,10 @@ describe("template/file/*.md", () => {
 	});
 });
 
-describe("template/config.json", () => {
-	const { templates, problems } = parseTemplateConfig(readFileSync(join(root, "template/config.json"), "utf8"));
+describe(".kit/templates/config.json", () => {
+	const { templates, problems } = parseTemplateConfig(readFileSync(join(root, "config.json"), "utf8"));
 
-	it("書式に問題がなく、template/file/ のすべてのテンプレートが載っている", () => {
+	it("書式に問題がなく、.kit/templates/file/ のすべてのテンプレートが載っている", () => {
 		expect(problems).toEqual([]);
 		expect(templates.map((t) => t.file).sort()).toEqual([...files].sort());
 	});

@@ -1,0 +1,7 @@
+{
+  "$comment": "上流（このリポジトリ）の名前と場所。子の Vault のセットアップとエスカレーションが使う（ADR-0009、ADR-0011）",
+  "name": "pkm-kit",
+  "repo": "yamayu-i/pkm-kit",
+  "url": "https://github.com/yamayu-i/pkm-kit.git",
+  "branch": "main"
+}

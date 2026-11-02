@@ -31,7 +31,7 @@ function CreateNoteForm(props: {
 	if (templates.length === 0) {
 		return (
 			<div class="vt-tpl-empty">
-				有効なテンプレートがありません。プラグイン設定または template/file/ を確認してください。
+				有効なテンプレートがありません。プラグイン設定、template/file/、.kit/templates/file/ を確認してください。
 			</div>
 		);
 	}

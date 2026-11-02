@@ -1,10 +1,14 @@
 import { MarkdownView, normalizePath, type App, type TFile } from "obsidian";
 import {
-	mergeTemplateEntries,
+	diffTemplateEntries,
+	layerTemplateEntries,
 	parseTemplateConfig,
-	serializeTemplateConfig,
+	parseTemplateOverrides,
+	serializeTemplateOverrides,
 	TEMPLATE_CONFIG_PATH,
 	TEMPLATE_DIR,
+	UPSTREAM_TEMPLATE_CONFIG_PATH,
+	UPSTREAM_TEMPLATE_DIR,
 	type TemplateEntry,
 } from "../core/config";
 import {
@@ -25,8 +29,8 @@ export interface LoadedTemplate {
 export class TemplateManager {
 	constructor(private readonly app: App) {}
 
-	/** `template/file/` 直下の `.md` ファイル名一覧を返す */
-	listTemplateFiles(): string[] {
+	/** その Vault の `template/file/` 直下の `.md` ファイル名一覧 */
+	listLocalTemplateFiles(): string[] {
 		const prefix = `${TEMPLATE_DIR}/`;
 		const names: string[] = [];
 		for (const file of this.app.vault.getFiles()) {
@@ -39,42 +43,73 @@ export class TemplateManager {
 		return names.sort((a, b) => a.localeCompare(b));
 	}
 
-	/** `template/config.json` と `template/file/*.md` を突き合わせて設定一覧を返す */
+	/** 上流の `.kit/templates/file/` 直下の `.md` ファイル名一覧。隠しパスなのでアダプタで読む */
+	async listUpstreamTemplateFiles(): Promise<string[]> {
+		const adapter = this.app.vault.adapter;
+		if (!(await adapter.exists(UPSTREAM_TEMPLATE_DIR))) return [];
+		const prefix = `${UPSTREAM_TEMPLATE_DIR}/`;
+		return (await adapter.list(UPSTREAM_TEMPLATE_DIR)).files
+			.map((p) => (p.startsWith(prefix) ? p.slice(prefix.length) : p))
+			.filter((name) => !name.includes("/") && name.endsWith(".md"))
+			.sort((a, b) => a.localeCompare(b));
+	}
+
+	/** 使えるテンプレートのファイル名（上流と、その Vault の和） */
+	async listTemplateFiles(): Promise<string[]> {
+		const names = new Set([...(await this.listUpstreamTemplateFiles()), ...this.listLocalTemplateFiles()]);
+		return [...names].sort((a, b) => a.localeCompare(b));
+	}
+
+	/** 上流の既定の設定（`.kit/templates/config.json`）。なければ空 */
+	private async loadUpstreamConfig(): Promise<{ templates: TemplateEntry[]; problems: string[] }> {
+		const adapter = this.app.vault.adapter;
+		if (!(await adapter.exists(UPSTREAM_TEMPLATE_CONFIG_PATH))) return { templates: [], problems: [] };
+		const { templates, problems } = parseTemplateConfig(await adapter.read(UPSTREAM_TEMPLATE_CONFIG_PATH));
+		return { templates, problems: problems.map((p) => `${UPSTREAM_TEMPLATE_CONFIG_PATH}: ${p}`) };
+	}
+
+	/**
+	 * 上流の既定（`.kit/templates/`）に、その Vault の `template/config.json` を項目ごとに重ねた設定一覧を返す。
+	 * テンプレートのファイルは、同じ名前ならその Vault の `template/file/` を優先する
+	 */
 	async loadConfig(): Promise<{ entries: TemplateEntry[]; problems: string[] }> {
-		const actualFiles = this.listTemplateFiles();
+		const files = await this.listTemplateFiles();
+		const upstream = await this.loadUpstreamConfig();
 		const configFile = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-		if (!configFile) {
-			return { entries: mergeTemplateEntries([], actualFiles), problems: [] };
-		}
-		const text = await this.app.vault.read(configFile);
-		const { templates, problems } = parseTemplateConfig(text);
+		const local = configFile ? parseTemplateOverrides(await this.app.vault.read(configFile)) : { overrides: [], problems: [] };
 		return {
-			entries: mergeTemplateEntries(templates, actualFiles),
-			problems,
+			entries: layerTemplateEntries({ upstream: upstream.templates, overrides: local.overrides, files }),
+			problems: [...upstream.problems, ...local.problems.map((p) => `${TEMPLATE_CONFIG_PATH}: ${p}`)],
 		};
 	}
 
-	/** `template/config.json` に設定を保存する */
+	/** その Vault の `template/config.json` に、上流と違う項目だけを保存する（上流の既定は変えない） */
 	async saveConfig(entries: readonly TemplateEntry[]): Promise<void> {
+		const upstream = await this.loadUpstreamConfig();
+		const text = serializeTemplateOverrides(diffTemplateEntries(entries, upstream.templates));
 		const existing = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
 		if (existing) {
-			const currentText = await this.app.vault.read(existing);
-			const { problems } = parseTemplateConfig(currentText);
+			const { problems } = parseTemplateOverrides(await this.app.vault.read(existing));
 			if (problems.length > 0) {
 				throw new Error(`${TEMPLATE_CONFIG_PATH} に書式エラーがあるため上書きできません: ${problems.join(", ")}`);
 			}
-			await this.app.vault.modify(existing, serializeTemplateConfig(entries));
+			await this.app.vault.modify(existing, text);
 			return;
 		}
 		await this.ensureFolder(TEMPLATE_CONFIG_PATH);
-		await this.app.vault.create(TEMPLATE_CONFIG_PATH, serializeTemplateConfig(entries));
+		await this.app.vault.create(TEMPLATE_CONFIG_PATH, text);
 	}
 
-	/** テンプレート 1 件の中身とプロンプト定義を読み込む。ファイルがなければ null */
+	/** テンプレート 1 件の中身とプロンプト定義を読み込む。その Vault の `template/file/` を先に見る。どちらにもなければ null */
 	private async loadTemplate(entry: TemplateEntry): Promise<LoadedTemplate | null> {
 		const file = this.app.vault.getFileByPath(`${TEMPLATE_DIR}/${entry.file}`);
-		if (!file) return null;
-		const rawContent = await this.app.vault.cachedRead(file);
+		let rawContent: string;
+		if (file) rawContent = await this.app.vault.cachedRead(file);
+		else {
+			const upstreamPath = `${UPSTREAM_TEMPLATE_DIR}/${entry.file}`;
+			if (!(await this.app.vault.adapter.exists(upstreamPath))) return null;
+			rawContent = await this.app.vault.adapter.read(upstreamPath);
+		}
 		return { entry, rawContent, prompts: extractPrompts(rawContent) };
 	}
 
@@ -95,7 +130,7 @@ export class TemplateManager {
 	}
 
 	/**
-	 * 今日のデイリーノートを開く。なければ `template/file/daily.md` から作る。
+	 * 今日のデイリーノートを開く。なければ daily.md のテンプレート（`template/file/` か `.kit/templates/file/`）から作る。
 	 * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
 	 */
 	async openTodaysDaily(now: Date = new Date()): Promise<TFile> {
@@ -114,7 +149,7 @@ export class TemplateManager {
 		const template = await this.loadTemplate(
 			entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" },
 		);
-		if (!template) throw new Error(`${TEMPLATE_DIR}/daily.md がありません`);
+		if (!template) throw new Error(`daily.md のテンプレートがありません（${TEMPLATE_DIR}/ にも ${UPSTREAM_TEMPLATE_DIR}/ にもない）`);
 		return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
 	}
 
