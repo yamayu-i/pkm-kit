@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * wiki-daily で次に処理するデイリーノートを列挙する。
- * 決定: .claude/docs/adr/0003-wiki-layout.md（daily/ はその場で元資料として扱う）
+ * 決定: .kit/harness/docs/adr/0003-wiki-layout.md（daily/ はその場で元資料として扱う）
  *
  * wiki/log.md の最後の daily の記録（`## YYYY-MM-DD daily | …` と `- コミット: <sha>`）を基準に、
  * 次のどちらかに当たる「今日より前」のデイリーノートを返す。

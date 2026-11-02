@@ -1,4 +1,4 @@
-// Markdown を検査するための小さな道具。依存パッケージを使わない（.claude/docs/adr/0005-checks-in-ci.md）。
+// Markdown を検査するための小さな道具。依存パッケージを使わない（.kit/harness/docs/adr/0005-checks-in-ci.md）。
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 

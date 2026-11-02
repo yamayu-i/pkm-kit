@@ -35,7 +35,7 @@ updated は内容の正確さや最新性を示さない（ADR-0007 のまま）
 
 ## 影響
 
-- [ノート規約](../vault-conventions.md)の共通 frontmatter を直す
+- [ノート規約](../../../../.claude/docs/vault-conventions.md)の共通 frontmatter を直す
 - テンプレート 13 個の `updated:` を `"{{date:YYYY-MM-DDTHH:mm:ssZ}}"` にする
 - vault-task の新規作成（issue / routine / member / daily）に updated を足す。既存のファイルの補完は範囲外
-- ID の連番のテンプレート記法は [ADR-0023（プラグイン）](../../../.kit/src/docs/adr/0023-template-id-and-daily.md)
+- ID の連番のテンプレート記法は [ADR-0023（プラグイン）](../../../src/docs/adr/0023-template-id-and-daily.md)

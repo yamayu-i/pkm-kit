@@ -20,7 +20,7 @@
 ### 端末名と所有の区分
 
 - AI からのボード操作ログ（`board/<端末名>/YYYY-MM.jsonl`）および worklog（`worklog/<端末名>/YYYY-MM.jsonl`）の書き込みには、AI 専用の端末名（既定値 `ai`、`--device=<名前>` で変更可）を使う。同じ PC 上で Obsidian と AI が同じ jsonl ファイルに同時追記して壊れるのを防ぐため
-- デイリーノート（`daily/YYYY/MM/YYYY-MM-DD.md`）に対する AI の書き込みは次の 2 つだけを許可する（ハーネス `.claude/docs/adr/0007-note-format.md` の DailyNote 本文保護との整合）:
+- デイリーノート（`daily/YYYY/MM/YYYY-MM-DD.md`）に対する AI の書き込みは次の 2 つだけを許可する（ハーネス `.kit/harness/docs/adr/0007-note-format.md` の DailyNote 本文保護との整合）:
   1. `close_board` 実行時、未完了が 0 であることを検査した上で、本文の `## Task board` 節の要約を生成・更新する（`closeBoardNote` / `upsertSummary`）。既存の他の節は変更しない
   2. AI のアドバイスや振り返りを残すときは、デイリーノート本文の末尾にセクションを追記（append-only）する。既存の本文は変更・削除しない
 

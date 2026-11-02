@@ -24,11 +24,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/security-check-status.mjs\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.kit/harness/hooks/security-check-status.mjs\""
           },
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/harness-status.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.kit/harness/hooks/kit-review-status.mjs\""
           }
         ]
       }

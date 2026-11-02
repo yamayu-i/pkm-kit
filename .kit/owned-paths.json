@@ -8,6 +8,7 @@
     ".claude/hooks/**",
     ".claude/scripts/**",
     ".claude/skills/**",
+    "!.claude/skills/local-*/**",
     ".githooks/**",
     ".github/workflows/plugin.yml",
     ".github/workflows/vault.yml",

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 利用実態を集計する（harness-review の入力）。
- * 決定: .claude/docs/adr/0006-self-improvement-loop.md
+ * 決定: .kit/harness/docs/adr/0006-self-improvement-loop.md
  *
  * 集計するもの: コミットの種類（端末ごとの snapshot、wiki の操作、開発）、よく編集されたノート、
  * wiki のページの状態（更新されていない、他のページから参照されていない）、log.md の操作、

@@ -8,7 +8,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
-> 作っている途中: 上流（このリポジトリ）と各 Vault の分け方は、設計（[ADR-0009](.claude/docs/adr/0009-upstream-and-child-vaults.md)〜[0011](.claude/docs/adr/0011-harness-parent-and-child.md)）に沿って作っている。更新の取り込み（`vault-upgrade`）はまだない。
+> 作っている途中: 上流（このリポジトリ）と各 Vault の分け方は、設計（`.kit/harness/docs/adr/` の ADR-0009〜0011）に沿って作っている。更新の取り込み（`vault-upgrade`）はまだない。
 
 ## 新しい Vault を作る
 
@@ -33,7 +33,7 @@ git add -A && git commit -m "vault: セットアップ" && git push
 - `.kit-local/config.json` に、上流を変えないと直らない問題を見つけたときの伝え方（エスカレーションの方法）を書く
 - `.kit-local/upstream.json` に、取り込んだ上流のコミットを書く
 - `.obsidian/*.json` に、使い心地に必要なキーだけを合わせる（ほかの設定は残す）
-- `issue/labels.json` と `issue/board-groups.json` の初期値を置く（なければ）
+- `issue/labels.json`、`issue/board-groups.json`、`.claude/local/CLAUDE.md`（この Vault だけの規約）の初期値を置く（なければ）
 - PC の Git CLI でも `updated` を付けるため、`git config core.hooksPath .githooks` を実行する
 
 その後、Obsidian でフォルダを開き、コミュニティプラグインを許可する。モバイルは下の「Vault Git の使い方」のとおり。
@@ -50,7 +50,8 @@ git add -A && git commit -m "vault: セットアップ" && git push
 | `.kit/owned-paths.json` | このリポジトリが持つパス。各 Vault はここに当たるファイルを変えない |
 | `.kit/obsidian-required.json` | 各 Vault の Obsidian の設定に必要なキーと値 |
 | `.obsidian/plugins/` / `.obsidian/snippets/` | プラグインのビルド成果物と、外観を固定するスニペット（モバイルではビルドできないのでコミットする） |
-| `.claude/` | Claude Code 用のハーネス。入口は `.claude/CLAUDE.md` |
+| `.claude/` | 子向けのハーネス（各 Vault で使う手順・規約・検査）。入口は `.claude/CLAUDE.md`。各 Vault だけの追加は `.claude/local/` と `.claude/skills/local-*` |
+| `.kit/harness/` | 上流（このリポジトリ）を開発するためのハーネス。入口は `.kit/harness/CLAUDE.md` |
 | `.githooks/` | PC の Git CLI でコミットしたときに、ノートの `updated` を付与するフック |
 
 ## ノートの書式

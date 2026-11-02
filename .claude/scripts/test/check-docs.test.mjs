@@ -28,3 +28,21 @@ test("リンク切れ、辿れない文書、行数、スキルの frontmatter �
 	assert.ok(errors.includes("skills/s/SKILL.md: frontmatter の name を s にする"));
 	assert.ok(errors.includes("skills/s/SKILL.md: frontmatter に description がない"));
 });
+
+test("CLAUDE.md の @local/… は子のもので、なくてもよい。あれば、そこから辿れるものも到達とみなす", () => {
+	const upstream = tempVault({ "CLAUDE.md": "@local/CLAUDE.md\n" });
+	assert.deepEqual(checkDocs(upstream).errors, []);
+	const child = tempVault({
+		"CLAUDE.md": "@local/CLAUDE.md\n",
+		"local/CLAUDE.md": "[自分のスキル](../skills/local-x/SKILL.md)\n",
+		"skills/local-x/SKILL.md": "---\nname: local-x\ndescription: 説明\n---\n",
+	});
+	assert.deepEqual(checkDocs(child).errors, []);
+	// local/ 以外の @import は、なければエラーのまま
+	assert.ok(checkDocs(tempVault({ "CLAUDE.md": "@docs/gone.md\n" })).errors.some((e) => e.includes("@import の参照先がない")));
+});
+
+test("--links-only はリンク切れだけを見る（目次から辿れるかは見ない）", () => {
+	const dir = tempVault({ "adr/0001-a.md": "[b](0002-b.md)\n[x](none.md)\n", "adr/0002-b.md": "" });
+	assert.deepEqual(checkDocs(dir, { linksOnly: true }).errors, ["adr/0001-a.md:2: リンク切れ: none.md"]);
+});

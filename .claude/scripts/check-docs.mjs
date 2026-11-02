@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * ハーネスの文書（.claude/ の md）の構造を検査する。
- * 決定: .claude/docs/adr/0001-harness-scope.md
+ * ハーネスの文書（子向けの .claude/ と、上流の .kit/harness/ の md）の構造を検査する。
+ * 決定: .kit/harness/docs/adr/0001-harness-scope.md
  *
  * - CLAUDE.md は 100 行以内（毎回全文が読み込まれるため）
  * - リンク（相対パス）と @import の参照先がある
@@ -9,7 +9,10 @@
  * - SKILL.md の frontmatter の name がディレクトリ名と同じで、description がある
  * - 300 行を超える文書は警告
  *
- * 使い方: node .claude/scripts/check-docs.mjs [.claude のパス]
+ * - CLAUDE.md の @local/… は子のもので、上流にはないのでなくてもよい（ADR-0011）
+ *
+ * 使い方: node .claude/scripts/check-docs.mjs [文書のディレクトリ（既定は .claude）] [--links-only]
+ *   --links-only  リンク切れだけを見る（目次のない文書。.kit/src/docs のプラグインの ADR など）
  */
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, normalize, relative, sep } from "node:path";
@@ -18,10 +21,13 @@ import { extractLinks, isExternal, parseFrontmatter, splitTarget, stripCode, wal
 
 const MAX_ENTRY_LINES = 100;
 const WARN_LINES = 300;
-// 作業の記録で、目次から辿る必要がないもの（.claude/docs/harness.md の「ディレクトリ」）
+// 作業の記録で、目次から辿る必要がないもの（ハーネスの設計の「ディレクトリ」）
 const UNREACHABLE_OK = [/^notes\//, /^reviews\//, /^security\/reports\//];
+// 子のもので、なくてもよい @import（上流には置かない。ADR-0011）
+const OPTIONAL_IMPORT = /^local\//;
 
-export function checkDocs(dir) {
+/** linksOnly: リンク切れだけを見る（目次のない文書の集まり。プラグインの ADR など） */
+export function checkDocs(dir, { linksOnly = false } = {}) {
 	const errors = [];
 	const warnings = [];
 	const files = walk(dir, (rel) => rel === "settings.local.json" || rel.startsWith("worktrees")).filter((f) =>
@@ -33,7 +39,9 @@ export function checkDocs(dir) {
 	for (const file of files) {
 		const text = readFileSync(join(dir, file), "utf8");
 		const lines = text.split("\n").length;
-		if (file === "CLAUDE.md" && lines > MAX_ENTRY_LINES)
+		if (linksOnly) {
+			// 行数・スキル・到達の検査はしない
+		} else if (file === "CLAUDE.md" && lines > MAX_ENTRY_LINES)
 			errors.push(`${file}: ${lines} 行。${MAX_ENTRY_LINES} 行以内にする（詳細は docs/ に分ける）`);
 		else if (lines > WARN_LINES) warnings.push(`${file}: ${lines} 行。分割を検討する`);
 
@@ -50,7 +58,9 @@ export function checkDocs(dir) {
 			.forEach((l, i) => {
 				for (const m of l.matchAll(/(?:^|\s)@([\w./-]+\.md)\b/g)) {
 					const abs = normalize(join(dir, dirname(file), m[1]));
-					if (!existsSync(abs)) errors.push(`${file}:${i + 1}: @import の参照先がない: ${m[1]}`);
+					if (!existsSync(abs)) {
+						if (!(file === "CLAUDE.md" && OPTIONAL_IMPORT.test(m[1]))) errors.push(`${file}:${i + 1}: @import の参照先がない: ${m[1]}`);
+					}
 					else targets.push(toRel(abs));
 				}
 			});
@@ -64,6 +74,7 @@ export function checkDocs(dir) {
 		}
 	}
 
+	if (linksOnly) return { errors, warnings };
 	const reached = new Set();
 	const queue = ["CLAUDE.md"];
 	while (queue.length) {
@@ -80,8 +91,9 @@ export function checkDocs(dir) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	const dir = process.argv[2] ?? fileURLToPath(new URL("..", import.meta.url));
-	const { errors, warnings } = checkDocs(dir);
+	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+	const dir = positional[0] ?? fileURLToPath(new URL("..", import.meta.url));
+	const { errors, warnings } = checkDocs(dir, { linksOnly: process.argv.includes("--links-only") });
 	for (const w of warnings) console.log(`警告: ${w}`);
 	for (const e of errors) console.log(`エラー: ${e}`);
 	if (errors.length) process.exit(1);

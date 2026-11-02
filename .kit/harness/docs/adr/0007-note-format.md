@@ -10,7 +10,7 @@
 
 ## 決定
 
-[ノート規約](../vault-conventions.md)の共通frontmatterを採用する。type、created、updatedを共通項目とし、typeごとに template/file/ 直下へテンプレートを置く。
+[ノート規約](../../../../.claude/docs/vault-conventions.md)の共通frontmatterを採用する。type、created、updatedを共通項目とし、typeごとに template/file/ 直下へテンプレートを置く。
 
 DailyNoteの既存本文は許可なく変更・削除しない。追記を許す。frontmatterは保護対象外。新規DailyNoteの作成を妨げない。ファイル削除・移動による保護の回避は許さない。許可された本文修正は通常のdocsコミットで記録する。その他のノートは依頼の範囲で編集できる。元資料の不変性と、タスクデータを専用処理で管理する規約は維持する。
 

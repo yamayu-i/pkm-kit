@@ -1,19 +1,19 @@
 ---
 name: security-check
-description: 自作 Obsidian プラグイン（.kit/src / .obsidian/plugins）のセキュリティチェックを実施し、レポートと実施記録を残す。週 1 回の定期チェック、SessionStart フックが期限切れと出したとき、依存・認証・通信・ファイル書き込み・ビルド設定を変えたとき、ユーザーがセキュリティチェックを頼んだときに使う。
+description: 上流 pkm-kit の自作 Obsidian プラグイン（.kit/src / .obsidian/plugins）と、子の Vault で動く CLI・セットアップ（.kit/bin / .kit/setup.mjs）のセキュリティチェックを実施し、レポートと実施記録を残す。週 1 回の定期チェック、SessionStart フックが期限切れと出したとき、依存・認証・通信・ファイル書き込み・ビルド設定を変えたとき、ユーザーがセキュリティチェックを頼んだときに使う。
 ---
 
 # 自作プラグインのセキュリティチェック
 
-実施ルールと頻度は `.claude/docs/security-check-schedule.md` を参照。ここでは手順を定める。
+実施ルールと頻度は [実施ルール](../../docs/security-check-schedule.md) を参照。上流（`.kit-local/` がない）で行う。ここでは手順を定める。
 すべて終わるまで `last-check.json` を更新しないこと。
 
 ## 1. 前回からの差分を把握する
 
 ```sh
-cat .claude/security/last-check.json        # 前回の commit を確認（ない場合は初回）
-git log --oneline <前回の commit>..HEAD -- .kit/src .obsidian/plugins
-git diff <前回の commit>..HEAD --stat -- .kit/src .obsidian/plugins
+cat .kit/harness/security/last-check.json        # 前回の commit を確認（ない場合は初回）
+git log --oneline <前回の commit>..HEAD -- .kit/src .kit/bin .kit/setup.mjs .kit/lib .obsidian/plugins
+git diff <前回の commit>..HEAD --stat -- .kit/src .kit/bin .kit/setup.mjs .kit/lib .obsidian/plugins
 ```
 
 初回は全体を対象にする。
@@ -71,7 +71,7 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 
 ## 5. 記録する
 
-`.claude/security/reports/YYYY-MM-DD.md` を次の形式で書く。
+`.kit/harness/security/reports/YYYY-MM-DD.md` を次の形式で書く。
 
 ```md
 # セキュリティチェック YYYY-MM-DD
@@ -92,7 +92,7 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 ## 対応したこと / 残課題
 ```
 
-`.claude/security/last-check.json` を更新する。
+`.kit/harness/security/last-check.json` を更新する。
 
 ```json
 {

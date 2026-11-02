@@ -1,4 +1,4 @@
-# 自作プラグインの検査。ソースか成果物を変えたときだけ動く。決定: .claude/docs/adr/0005-checks-in-ci.md
+# 自作プラグインの検査。ソースか成果物を変えたときだけ動く。決定: .kit/harness/docs/adr/0005-checks-in-ci.md
 name: plugin
 
 on:

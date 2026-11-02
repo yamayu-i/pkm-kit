@@ -1,4 +1,4 @@
-# ハーネスと Vault の検査。決定: .claude/docs/adr/0005-checks-in-ci.md
+# ハーネスと Vault の検査。決定: .kit/harness/docs/adr/0005-checks-in-ci.md
 # 各端末の Vault Git の push でも動く。人のノートの書式の問題は警告だけで、失敗にしない。
 name: vault
 
@@ -27,7 +27,10 @@ jobs:
       - name: スクリプトのテスト
         run: node --test .claude/scripts/test/*.test.mjs
       - name: 文書の構造
-        run: node .claude/scripts/check-docs.mjs
+        run: |
+          node .claude/scripts/check-docs.mjs
+          node .claude/scripts/check-docs.mjs .kit/harness
+          node .claude/scripts/check-docs.mjs .kit/src/docs --links-only
       - name: wiki の lint
         run: node .claude/scripts/wiki-lint.mjs
       - name: 所有の境界（上流には仕組みのファイルだけ。子では上流のものを変えていない）
