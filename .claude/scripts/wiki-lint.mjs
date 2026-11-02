@@ -11,7 +11,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractLinks, findWikiLinks, isExternal, parseFrontmatter, splitTarget, stripCode } from "./lib/markdown.mjs";
 import { classify, DAILY_RE, isWikiPage, vaultFiles, WIKI_INDEX } from "./lib/vault.mjs";
-import { isTargetPath } from "./lib/updated.mjs";
+// updated の規則の正本は vault-git にある（ADR-0009）。Node の型の除去で .ts をそのまま読む
+import { isTargetPath } from "../../.kit/src/packages/vault-git/src/stamp/updated.ts";
 
 export const PAGE_TYPES = ["concept", "entity", "topic", "answer"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,7 +84,7 @@ function lintUpdated(path, text, report) {
 	if (!data) return;
 	const value = data.updated;
 	if (value === undefined || value === "" || (Array.isArray(value) && value.length === 0))
-		return report(path, 1, "frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）");
+		return report(path, 1, "frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .kit/bin/stamp-updated.mjs --migrate）");
 	if (typeof value !== "string" || !DATETIME_RE.test(value)) report(path, 1, `updated は${DATETIME_HINT}: ${value}`);
 }
 

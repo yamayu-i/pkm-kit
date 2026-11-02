@@ -1,0 +1,33 @@
+{
+  "$comment": "子の .obsidian/*.json に必要なキーと値（ADR-0009）。ファイルごとではなく、ここにあるキーだけを合わせる。配列は、ここにある要素を含んでいればよい",
+  "app.json": {
+    "useMarkdownLinks": true,
+    "newLinkFormat": "absolute",
+    "alwaysUpdateLinks": true,
+    "attachmentFolderPath": "asset",
+    "newFileLocation": "root",
+    "strictLineBreaks": true,
+    "propertiesInDocument": "visible",
+    "useTab": false,
+    "tabSize": 2,
+    "showInlineTitle": false
+  },
+  "appearance.json": {
+    "cssTheme": "",
+    "accentColor": "#6750a4",
+    "translucency": false,
+    "enabledCssSnippets": ["vault-theme"]
+  },
+  "community-plugins.json": ["vault-git", "vault-task", "vault-template"],
+  "core-plugins.json": {
+    "daily-notes": true,
+    "properties": true,
+    "canvas": false,
+    "bases": false,
+    "templates": false
+  },
+  "daily-notes.json": {
+    "folder": "daily",
+    "format": "YYYY/MM/YYYY-MM-DD"
+  }
+}

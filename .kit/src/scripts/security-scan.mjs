@@ -13,7 +13,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const pluginSrc = fileURLToPath(new URL("..", import.meta.url));
-const repo = join(pluginSrc, "..");
+const repo = join(pluginSrc, "../..");
 const offline = process.argv.includes("--offline");
 const results = [];
 
@@ -120,11 +120,12 @@ check("lockfile と package.json が一致している", () => {
 
 /** ビルド成果物をコミットしているプラグイン。outdirEnv はビルド先を一時フォルダに変える環境変数 */
 const plugins = [
-	{ id: "vault-git", outdirEnv: "VAULT_GIT_OUTDIR", files: ["main.js", "manifest.json"], allowedRequires: ["obsidian"] },
+	{ id: "vault-git", outdirEnv: "VAULT_GIT_OUTDIR", files: ["main.js", "manifest.json"], bins: ["stamp-updated.mjs"], allowedRequires: ["obsidian"] },
 	{
 		id: "vault-task",
 		outdirEnv: "VAULT_TASK_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
+		bins: ["lint.mjs", "worklog-review.mjs", "mcp.mjs"],
 		// CodeMirror は Obsidian 本体が提供するもの（同梱しない）
 		allowedRequires: ["obsidian", "@codemirror/state", "@codemirror/view"],
 	},
@@ -132,20 +133,28 @@ const plugins = [
 		id: "vault-template",
 		outdirEnv: "VAULT_TEMPLATE_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
+		bins: [],
 		allowedRequires: ["obsidian"],
 	},
 ];
 
-check("コミット済みの main.js がソースから再現できる", () => {
+check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {
 	const problems = [];
 	for (const plugin of plugins) {
 		const out = mkdtempSync(join(tmpdir(), `${plugin.id}-build-`));
+		const bin = mkdtempSync(join(tmpdir(), `${plugin.id}-bin-`));
 		try {
 			execFileSync("pnpm", ["--filter", plugin.id, "build"], {
 				cwd: pluginSrc,
 				stdio: "pipe",
-				env: { ...process.env, [plugin.outdirEnv]: `${out}/` },
+				env: { ...process.env, [plugin.outdirEnv]: `${out}/`, KIT_BINDIR: `${bin}/` },
 			});
+			for (const name of plugin.bins) {
+				const committed = readFileSync(join(repo, ".kit/bin", name), "utf8");
+				if (readFileSync(join(bin, name), "utf8") !== committed) {
+					problems.push(`.kit/bin/${name} がソースからのビルド結果と一致しない（ビルド忘れ、または改ざん）`);
+				}
+			}
 			for (const name of plugin.files) {
 				const committed = readFileSync(join(repo, ".obsidian/plugins", plugin.id, name), "utf8");
 				if (readFileSync(join(out, name), "utf8") !== committed) {
@@ -154,6 +163,7 @@ check("コミット済みの main.js がソースから再現できる", () => {
 			}
 		} finally {
 			rmSync(out, { recursive: true, force: true });
+			rmSync(bin, { recursive: true, force: true });
 		}
 	}
 	return problems;

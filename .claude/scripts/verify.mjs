@@ -4,7 +4,7 @@
  * 途中で失敗しても最後まで実行し、結果をまとめて出す。
  *
  * 使い方: node .claude/scripts/verify.mjs [--plugin]
- *   --plugin  .plugin-src の pnpm check も実行する（プラグインを変えたとき）
+ *   --plugin  .kit/src の pnpm check も実行する（プラグインを変えたとき）
  */
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
@@ -25,11 +25,12 @@ const steps = [
 	["文書の構造", node, [join(scripts, "check-docs.mjs")]],
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
 	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
+	["所有の境界", node, [join(scripts, "check-kit-paths.mjs")]],
 	hasOriginMain
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), "origin/main..HEAD"]]
 		: ["wiki の操作が追記だけか（origin/main がないので省略）", null, []],
 ];
-if (process.argv.includes("--plugin")) steps.push(["プラグイン（pnpm check）", "pnpm", ["check"], join(root, ".plugin-src")]);
+if (process.argv.includes("--plugin")) steps.push(["プラグイン（pnpm check）", "pnpm", ["check"], join(root, ".kit/src")]);
 
 const results = [];
 for (const [name, cmd, args, cwd] of steps) {

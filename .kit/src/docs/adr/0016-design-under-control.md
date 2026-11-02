@@ -17,7 +17,7 @@ Vault の `.obsidian/` はリポジトリでコミットしているので、Obs
 ## 決定
 
 - **根拠の優先順位**: WCAG 2.2 AA > design.md とトークン > Material 3（material-web の tokens v0_192、material-color-utilities）> Obsidian。M3 と違うところは design.md に理由と一緒に書く
-- **正本を 1 つにする**: デザインの値は `.plugin-src/packages/design/tokens.json`（Design Tokens Format Module 2025.10）にだけ書く。プラグインの CSS 変数、Obsidian のスニペット、値の一覧の文書、TS の定数はそこから生成し、コミットする
+- **正本を 1 つにする**: デザインの値は `.kit/src/packages/design/tokens.json`（Design Tokens Format Module 2025.10）にだけ書く。プラグインの CSS 変数、Obsidian のスニペット、値の一覧の文書、TS の定数はそこから生成し、コミットする
 - **Obsidian 側を固定する**: `.obsidian/appearance.json` でコミュニティテーマ・半透明を使わず、アクセントカラーをトークンに合わせ、生成したスニペット `vault-theme.css` だけを有効にする。スニペットで Obsidian 本体の色の変数をトークンと同じ値に固定する。フォントは端末ごとに違うので固定しない
 - **プラグインの CSS は Obsidian の色の変数を使わない**: ADR-0013 の「文字・背景・アクセントは Obsidian の CSS 変数から作り、テーマに追従させる」を置き換える。ライト / ダークの切り替え（`body.theme-dark`）には引き続き追従する
 - **検査で守る**: ルールのうち機械で確かめられるものは検査にする。`pnpm check` で、トークンの書式とコントラスト（ライト / ダーク）、生成物の鮮度、CSS の書き方、Obsidian の設定、design.md の記述を確かめる。`pnpm preview:ui` で描画した画面のコントラスト・押せる大きさ・フォーカス・キーボード操作を確かめる。`pnpm task:lint` で labels.json の色を確かめる

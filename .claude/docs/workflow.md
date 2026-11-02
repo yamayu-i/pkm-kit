@@ -13,7 +13,7 @@
 | ハーネスの評価 | 月 1 回 | [harness-review](../skills/harness-review/SKILL.md) |
 
 - どちらか迷ったら大きい変更として扱う
-- ADR は計画より先に書き、合意してから計画に進む。プラグインの ADR は `.plugin-src/docs/adr/`、ハーネスと wiki の ADR は [adr/](adr/README.md)
+- ADR は計画より先に書き、合意してから計画に進む。プラグインの ADR は `.kit/src/docs/adr/`、ハーネスと wiki の ADR は [adr/](adr/README.md)
 - 途中で止めるときは [中断と再開](../skills/dev-handoff/SKILL.md)
 - 作業中に訂正された・文書にないことを質問した・文書と実際が違った、などが起きたら、その場で [気づきを記録する](../skills/harness-note/SKILL.md)
 
@@ -37,7 +37,7 @@
 
 ### updated の自動付与
 
-コミットする変更ノートの `updated` は、コミット時に自動で付く（[ADR-0028](../../.plugin-src/docs/adr/0028-auto-updated.md)）。PC の Git CLI では、リポジトリごとに 1 回 `git config core.hooksPath .githooks` を実行して pre-commit フックを有効にする（worktree 間で共有される）。手で書かない。コミット済みの `sources/` を変えようとするとフックが止める。
+コミットする変更ノートの `updated` は、コミット時に自動で付く（[ADR-0028](../../.kit/src/docs/adr/0028-auto-updated.md)）。PC の Git CLI では、リポジトリごとに 1 回 `git config core.hooksPath .githooks` を実行して pre-commit フックを有効にする（worktree 間で共有される）。手で書かない。コミット済みの `sources/` を変えようとするとフックが止める。
 
 ### コミットの形式
 

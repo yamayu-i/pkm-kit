@@ -1,4 +1,4 @@
-// 生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す）
+// 生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す）
 
 export const colors = {
 	light: {

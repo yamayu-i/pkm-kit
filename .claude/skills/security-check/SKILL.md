@@ -1,6 +1,6 @@
 ---
 name: security-check
-description: 自作 Obsidian プラグイン（.plugin-src / .obsidian/plugins）のセキュリティチェックを実施し、レポートと実施記録を残す。週 1 回の定期チェック、SessionStart フックが期限切れと出したとき、依存・認証・通信・ファイル書き込み・ビルド設定を変えたとき、ユーザーがセキュリティチェックを頼んだときに使う。
+description: 自作 Obsidian プラグイン（.kit/src / .obsidian/plugins）のセキュリティチェックを実施し、レポートと実施記録を残す。週 1 回の定期チェック、SessionStart フックが期限切れと出したとき、依存・認証・通信・ファイル書き込み・ビルド設定を変えたとき、ユーザーがセキュリティチェックを頼んだときに使う。
 ---
 
 # 自作プラグインのセキュリティチェック
@@ -12,8 +12,8 @@ description: 自作 Obsidian プラグイン（.plugin-src / .obsidian/plugins�
 
 ```sh
 cat .claude/security/last-check.json        # 前回の commit を確認（ない場合は初回）
-git log --oneline <前回の commit>..HEAD -- .plugin-src .obsidian/plugins
-git diff <前回の commit>..HEAD --stat -- .plugin-src .obsidian/plugins
+git log --oneline <前回の commit>..HEAD -- .kit/src .obsidian/plugins
+git diff <前回の commit>..HEAD --stat -- .kit/src .obsidian/plugins
 ```
 
 初回は全体を対象にする。
@@ -21,7 +21,7 @@ git diff <前回の commit>..HEAD --stat -- .plugin-src .obsidian/plugins
 ## 2. 機械的なチェック
 
 ```sh
-cd .plugin-src
+cd .kit/src
 pnpm install --frozen-lockfile
 pnpm security:scan      # 秘密情報・危険な API・依存の固定・lockfile・ビルド再現性・require・pnpm audit
 pnpm check              # 型チェック・ビルド・テスト

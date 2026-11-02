@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { formatIso, isTargetPath, markUpdated, mergeUpdatedLine, setUpdated, shouldStamp, unmarkUpdated, updatedLine } from "../src/stamp/updated";
 
-// PC の Git CLI 側(.claude/scripts/lib/updated.mjs)のテストと同じ表を読んで、規則を揃える
-const cases = JSON.parse(readFileSync(fileURLToPath(new URL("../../../../.claude/scripts/test/fixtures/updated-cases.json", import.meta.url)), "utf8")) as {
+// 規則の表。PC の Git CLI(cli/stamp-updated.mjs)も同じ src/stamp/updated.ts を使う
+const cases = JSON.parse(readFileSync(fileURLToPath(new URL("./fixtures/updated-cases.json", import.meta.url)), "utf8")) as {
 	isTargetPath: [string, boolean][];
 	setUpdated: { name: string; input: string; iso: string; output: string }[];
 	setUpdatedThrows: { name: string; input: string }[];
@@ -13,7 +13,14 @@ const cases = JSON.parse(readFileSync(fileURLToPath(new URL("../../../../.claude
 	formatIso: { utc: string; offsetMinutes: number; expected: string }[];
 };
 
-describe("updated の付与の規則(PC の Git CLI と同じ表)", () => {
+describe("updated の付与の規則", () => {
+	it("setUpdated は 2 回呼んでも同じ(冪等)", () => {
+		for (const c of cases.setUpdated) {
+			const once = setUpdated(c.input, c.iso);
+			expect(setUpdated(once, c.iso), c.name).toBe(once);
+		}
+	});
+
 	it("isTargetPath", () => {
 		for (const [path, expected] of cases.isTargetPath) expect(isTargetPath(path), path).toBe(expected);
 	});

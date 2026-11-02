@@ -1,5 +1,5 @@
-/* 生成物。手で編集しない。正本は .plugin-src/packages/design/tokens.json（pnpm --filter design build で作り直す） */
-/* Obsidian 本体の色をデザイントークンと同じ値に固定する（.plugin-src/docs/design.md「Obsidian 側の固定」） */
+/* 生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す） */
+/* Obsidian 本体の色をデザイントークンと同じ値に固定する（.kit/src/docs/design.md「Obsidian 側の固定」） */
 
 body.theme-light {
 	--background-primary: #f6f5f2;

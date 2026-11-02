@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const bundlePath = fileURLToPath(new URL("../../../../.obsidian/plugins/vault-task/main.js", import.meta.url));
+const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/vault-task/main.js", import.meta.url));
 const require = createRequire(import.meta.url);
 
 /** main.js の読み込みと onload に必要な分だけの Obsidian API */

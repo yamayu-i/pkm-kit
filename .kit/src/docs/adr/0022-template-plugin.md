@@ -14,7 +14,7 @@
 
 ### 1. プラグインの構成
 
-- 新しい自作プラグイン `vault-template` を `.plugin-src/packages/vault-template/` に作り、ビルド成果物（`main.js` / `manifest.json` / `styles.css`）を `.obsidian/plugins/vault-template/` に出力する
+- 新しい自作プラグイン `vault-template` を `.kit/src/packages/vault-template/` に作り、ビルド成果物（`main.js` / `manifest.json` / `styles.css`）を `.obsidian/plugins/vault-template/` に出力する
 - `vault-git`・`vault-task` と同様、Obsidian に依存しない `src/core/`（テンプレート構文解析、変数・日時展開、設定の読み書き、出力先パスの解決）と、Obsidian に依存する `src/obsidian/`（モーダル、設定タブ、ファイル生成、カーソル移動）に分離する
 - UI は Preact と `packages/design` のデザイントークン（`tokens.css` + `styles.css`）で組み、[デザインルール](../design.md) と検査（`PLUGIN_CSS`、`security-scan.mjs`）の対象に含める
 - 新規の外部パッケージは追加しない（既存の `preact` のみを使う）

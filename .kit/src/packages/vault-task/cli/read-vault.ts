@@ -7,7 +7,7 @@ import type { Problem } from "../src/core/problem";
 
 function walk(root: string, dir = root, out: string[] = []): string[] {
 	for (const name of readdirSync(dir)) {
-		// 隠しフォルダ（.git, .obsidian, .plugin-src など）は Vault のノートではない
+		// 隠しフォルダ（.git, .obsidian, .kit/src など）は Vault のノートではない
 		if (name.startsWith(".") || name === "node_modules") continue;
 		const p = join(dir, name);
 		if (statSync(p).isDirectory()) walk(root, p, out);

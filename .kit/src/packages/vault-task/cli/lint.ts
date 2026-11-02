@@ -2,7 +2,7 @@
  * Vault のタスク管理データを検査する CLI（ADR-0001）。Claude Code やスキルから使う。
  * プラグインには同梱しない（Node の API を使うため）。
  *
- * 使い方: node dist/lint.mjs <Vault のルート> [--json]
+ * 使い方: node .kit/bin/lint.mjs <Vault のルート> [--json]
  */
 import { lintVault } from "../src/core/lint";
 import type { Problem } from "../src/core/problem";

@@ -7,7 +7,7 @@ import { createDevice, type Device } from "./helpers/device";
 import { GitServer, TEST_TOKEN } from "./helpers/git-server";
 import { createObsidianMock } from "./helpers/obsidian-mock";
 
-const bundlePath = fileURLToPath(new URL("../../../../.obsidian/plugins/vault-git/main.js", import.meta.url));
+const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/vault-git/main.js", import.meta.url));
 
 interface PluginInstance {
 	data: unknown;

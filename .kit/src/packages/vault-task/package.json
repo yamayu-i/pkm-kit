@@ -7,10 +7,10 @@
     "dev": "node esbuild.config.mjs --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "lint:vault": "node esbuild.config.mjs && node dist/lint.mjs ../../..",
-    "mcp": "node dist/mcp.mjs ../../..",
+    "lint:vault": "node esbuild.config.mjs && node ../../../bin/lint.mjs ../../../..",
+    "mcp": "node ../../../bin/mcp.mjs ../../../..",
     "preview:ui": "node preview/preview.mjs",
-    "worklog:review": "node esbuild.config.mjs && node dist/worklog-review.mjs ../../.."
+    "worklog:review": "node esbuild.config.mjs && node ../../../bin/worklog-review.mjs ../../../.."
   },
   "devDependencies": {
     "@codemirror/state": "6.7.6",

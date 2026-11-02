@@ -10,7 +10,7 @@ description: プラグイン・ハーネス・wiki の仕組みを変える前�
 ## 1. 文脈を読む
 
 - 触れる範囲のコードと文書
-- 関連する ADR: プラグインは `.plugin-src/docs/adr/`、ハーネスと wiki は [adr/](../../docs/adr/README.md)
+- 関連する ADR: プラグインは `.kit/src/docs/adr/`、ハーネスと wiki は [adr/](../../docs/adr/README.md)
 - プラグインなら [プラグインの設計と開発](../../docs/plugin-development.md)、wiki なら [LLM wiki の仕組み](../../docs/llm-wiki.md)
 - 未マージの PR（`gh pr list` か GitHub の MCP ツール）。同じ箇所に触れるものがあればユーザーに伝える
 

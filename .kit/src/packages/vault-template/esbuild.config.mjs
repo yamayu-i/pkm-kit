@@ -4,7 +4,7 @@ import esbuild from "esbuild";
 
 /** ビルド結果は Vault 内のプラグインフォルダへ直接出す（モバイルはビルドできないのでコミットする） */
 // VAULT_TEMPLATE_OUTDIR はビルド再現性の検証（security-scan）用
-const outdir = process.env.VAULT_TEMPLATE_OUTDIR ?? fileURLToPath(new URL("../../../.obsidian/plugins/vault-template/", import.meta.url));
+const outdir = process.env.VAULT_TEMPLATE_OUTDIR ?? fileURLToPath(new URL("../../../../.obsidian/plugins/vault-template/", import.meta.url));
 const watch = process.argv.includes("--watch");
 
 const plugin = {

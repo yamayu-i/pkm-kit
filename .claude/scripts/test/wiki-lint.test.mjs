@@ -86,7 +86,7 @@ test("frontmatter のあるノートは updated が必須(秒までの ISO 8601�
 	});
 	assert.deepEqual(messages(lintVault(root).warnings), [
 		"date-only.md updated は秒までの ISO 8601（オフセット付き。例 2026-11-01T13:30:00+09:00）: 2026-11-01",
-		"empty.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）",
-		"missing.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .claude/scripts/stamp-updated.mjs --migrate）",
+		"empty.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .kit/bin/stamp-updated.mjs --migrate）",
+		"missing.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .kit/bin/stamp-updated.mjs --migrate）",
 	]);
 });
