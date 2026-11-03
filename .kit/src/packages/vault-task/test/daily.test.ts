@@ -25,8 +25,8 @@ function log(id: string, taskId: string, from: string, to: string | null): Workl
 
 describe("actions", () => {
 	it("Cancel / Inbox / Someday は期限を外す", () => {
-		expect(cancelPatch()).toMatchObject({ status: "canceled", mid_due: null, deadline: null });
-		expect(inboxPatch()).toMatchObject({ status: "open", scheduled: null, mid_due: null, deadline: null });
+		expect(cancelPatch()).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
+		expect(inboxPatch()).toMatchObject({ status: "open", scheduled: null, soft_deadline: null, deadline: null });
 		expect(somedayPatch("2026-12-01")).toMatchObject({ status: "someday", scheduled: null, deadline: null, revisit: "2026-12-01" });
 	});
 
@@ -47,23 +47,23 @@ describe("dead / caution / scheduled", () => {
 	const today = "2026-10-31";
 	const issues = [
 		issue("i-1", { deadline: "2026-10-30" }),
-		issue("i-2", { mid_due: "2026-10-29", deadline: "2026-11-02" }),
+		issue("i-2", { soft_deadline: "2026-10-29", deadline: "2026-11-02" }),
 		issue("i-3", { deadline: "2026-10-31", status: "closed" }),
-		issue("i-4", { mid_due: "2026-10-31", scheduled: [today] }),
+		issue("i-4", { soft_deadline: "2026-10-31", scheduled: [today] }),
 		issue("i-5", { deadline: "2026-11-04", scheduled: [today] }),
 		issue("i-6", { status: "someday", scheduled: [today] }),
 	];
 
-	it("期限を過ぎた閉じていない issue。deadline と mid_due は別", () => {
+	it("期限を過ぎた閉じていない issue。deadline と soft_deadline は別", () => {
 		const d = deadIssues(issues, today);
 		expect(ids(d.deadline)).toEqual(["i-1"]);
-		expect(ids(d.midDue)).toEqual(["i-2"]);
+		expect(ids(d.softDeadline)).toEqual(["i-2"]);
 	});
 
 	it("今日から 3 日以内", () => {
 		const c = cautionIssues(issues, today);
 		expect(ids(c.deadline)).toEqual(["i-2"]);
-		expect(ids(c.midDue)).toEqual(["i-4"]);
+		expect(ids(c.softDeadline)).toEqual(["i-4"]);
 	});
 
 	it("今日が実行日（ボードに載せたもの・閉じたものを除く）", () => {

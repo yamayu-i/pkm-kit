@@ -55,17 +55,17 @@ export async function scheduleToday(ctx: TaskContext, issues: Issue[]): Promise<
 	ctx.report(`${issues.length} 件を今日の予定に入れました`);
 }
 
-/** 選んだ日を実行日に足す（ADR-0018）。既存の実行日は残す */
+/** Add Do Date: 選んだ日を実行日に足す（ADR-0018、名前は ADR-0032）。既存の実行日は残す */
 export async function scheduleIssues(ctx: TaskContext, issues: Issue[]): Promise<void> {
 	const date = await askDate(ctx, "実行日を足す");
 	if (date === null) return;
 	await patchAll(ctx, issues, (i) => schedulePatch(i, [date]), "実行日を足すことが");
 }
 
-/** リスケ。実行日なら from（今日など）を外して選んだ日に移す */
+/** Move Do Date / Change Deadline / Change Soft Deadline（ADR-0032）。実行日なら from（今日など）を外して選んだ日に移す */
 export async function rescheduleIssues(ctx: TaskContext, issues: Issue[], target: RescheduleTarget, from: LocalDate | null = null): Promise<void> {
-	const title = target === "scheduled" ? "実行日を移す" : `${target} をリスケ`;
+	const title = target === "scheduled" ? "実行日を移す" : `${target} を変える`;
 	const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
 	if (date === null) return;
-	await patchAll(ctx, issues, (i) => reschedulePatch(i, target, date, from), "リスケ");
+	await patchAll(ctx, issues, (i) => reschedulePatch(i, target, date, from), "日付を変えることが");
 }

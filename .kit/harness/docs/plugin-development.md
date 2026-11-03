@@ -128,7 +128,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 | パス | 役割 |
 |---|---|
-| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0032）。vault-task と vault-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。vault-task と vault-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
 
 ## design（デザイントークンと検査）
 

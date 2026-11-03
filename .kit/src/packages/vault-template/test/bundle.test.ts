@@ -93,7 +93,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 				on: (name: string) => name,
 				onLayoutReady: () => {},
 				iterateAllLeaves: () => {},
-				// 一覧ペイン（ADR-0032）がない状態: ルートのタブは無い扱い
+				// 一覧ペイン（ADR-0033）がない状態: ルートのタブは無い扱い
 				iterateRootLeaves: () => {},
 				getMostRecentLeaf: () => null,
 			},

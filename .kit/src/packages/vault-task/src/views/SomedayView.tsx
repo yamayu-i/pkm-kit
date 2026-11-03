@@ -71,7 +71,7 @@ export function SomedayView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Inbox に戻す", icon: "inbox", tone: "primary", run: reopen },
-					{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e) => ctx.report("revisit を設定できませんでした", e)) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 				]}

@@ -1,0 +1,6 @@
+{
+  "types": {
+    "mid_due": "date",
+    "deadline": "date"
+  }
+}

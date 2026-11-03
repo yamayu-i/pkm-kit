@@ -54,7 +54,7 @@ const { data } = collectVault({
 			parent: "i-1",
 			estimated: 300,
 			scheduled: [t, addDays(t, 2), addDays(t, 20)],
-			mid_due: addDays(t, 1),
+			soft_deadline: addDays(t, 1),
 			deadline: addDays(t, 4),
 			created: "2026-10-30T10:00:00+09:00",
 		}),
@@ -69,7 +69,7 @@ const { data } = collectVault({
 		// 完了の欄（ADR-0031）
 		issue("i-12", { summary: "経費を精算する", status: "closed", scheduled: [t], priority: "chore" }),
 		issue("i-13", { summary: "先方の返事を待つ", status: "waiting", scheduled: [t], priority: "mid" }),
-		issue("i-11", { summary: "部屋の掃除", scheduled: [addDays(t, 3), addDays(t, 5)], priority: "chore", mid_due: addDays(t, -2) }),
+		issue("i-11", { summary: "部屋の掃除", scheduled: [addDays(t, 3), addDays(t, 5)], priority: "chore", soft_deadline: addDays(t, -2) }),
 		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), group: "午前", estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },

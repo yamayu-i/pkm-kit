@@ -62,7 +62,7 @@ export default class VaultTaskPlugin extends Plugin {
 			undo,
 			settings: this.taskSettings,
 			saveSettings: () => this.saveData(this.taskSettings),
-			// 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0032）
+			// 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
 			openPath: async (path, newTab = false) => {
 				const file = this.app.vault.getFileByPath(path);
 				if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: Platform.isPhone });

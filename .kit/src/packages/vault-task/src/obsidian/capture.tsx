@@ -43,7 +43,7 @@ function CaptureForm(props: { onSubmit: (summaries: string[]) => void }) {
 async function openAll(ctx: TaskContext, files: TFile[]): Promise<void> {
 	let first = null;
 	for (const file of files) {
-		// 一覧ペインがあれば、ノートペインにタブを足す（ADR-0032）
+		// 一覧ペインがあれば、ノートペインにタブを足す（ADR-0033）
 		const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: Platform.isPhone });
 		first ??= leaf;
 	}

@@ -107,10 +107,10 @@ export function statusMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): void 
 	m.showAtMouseEvent(e);
 }
 
-export function editDue(ctx: TaskContext, issue: Issue, key: "mid_due" | "deadline"): void {
+export function editDue(ctx: TaskContext, issue: Issue, key: "soft_deadline" | "deadline"): void {
 	new PreactModal(ctx.app, key, (close) => (
 		<DateForm
-			initial={key === "mid_due" ? issue.midDue : issue.deadline}
+			initial={key === "soft_deadline" ? issue.softDeadline : issue.deadline}
 			onSubmit={(v) => {
 				close();
 				saveIssue(ctx, issue)(duePatch(issue, key, v));
@@ -123,7 +123,7 @@ export function editScheduled(ctx: TaskContext, issue: Issue): void {
 	new PreactModal(ctx.app, "実行日", (close) => (
 		<CalendarForm
 			initial={issue.scheduled}
-			midDue={issue.midDue}
+			softDeadline={issue.softDeadline}
 			deadline={issue.deadline}
 			onSubmit={(dates) => {
 				close();
@@ -156,7 +156,7 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	m.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
 	m.addSeparator();
 	m.addItem((item) => item.setTitle("実行日").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-	m.addItem((item) => item.setTitle("mid_due").setIcon("calendar").onClick(() => editDue(ctx, issue, "mid_due")));
+	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
 	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));
 	m.showAtMouseEvent(e);

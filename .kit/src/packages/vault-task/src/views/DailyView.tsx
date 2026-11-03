@@ -22,11 +22,11 @@ const STEPS: { key: Step; label: string; icon: string }[] = [
 	{ key: "board", label: "ボード", icon: "layout-dashboard" },
 ];
 
-/** deadline / mid_due の 2 つの表と操作（dead と caution で共通） */
+/** deadline / soft_deadline の 2 つの表と操作（dead と caution で共通） */
 function DueStep(props: { ctx: TaskContext; lists: DueLists; empty: string; canScheduleToday?: boolean }) {
 	const sections: { key: RescheduleTarget; title: string; issues: Issue[] }[] = [
 		{ key: "deadline", title: "deadline", issues: props.lists.deadline },
-		{ key: "mid_due", title: "mid_due", issues: props.lists.midDue },
+		{ key: "soft_deadline", title: "soft_deadline", issues: props.lists.softDeadline },
 	];
 	return (
 		<>
@@ -48,14 +48,14 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 				<span class="vt-field-label">{props.title}</span>
 				<span class="vt-count">{issues.length}</span>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "mid_due", "deadline"]} empty={props.empty} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "soft_deadline", "deadline"]} empty={props.empty} />
 			{issues.length > 0 && (
 				<ActionBar
 					count={sel.length}
 					actions={[
 						...(props.canScheduleToday ? [{ label: "Do Today", icon: "calendar-check", tone: "primary" as const, run: () => void scheduleToday(ctx, sel).then(done) }] : []),
-						{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
-						{ label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
+						{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+						{ label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
 						{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 						{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
 					]}
@@ -99,7 +99,7 @@ function PreviousBoard(props: { ctx: TaskContext; board: DailyBoard; issues: Iss
 				actions={[
 					{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void carryIssues(ctx, board.date, sel, "reschedule", localToday()).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-					{ label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
+					{ label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, board.date, sel, "inbox").then(done) },
 				]}
@@ -123,12 +123,12 @@ function ScheduledStep(props: { ctx: TaskContext; issues: Issue[]; today: LocalD
 					すべてボードへ
 				</button>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "mid_due", "deadline", "estimated"]} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "soft_deadline", "deadline", "estimated"]} />
 			<ActionBar
 				count={sel.length}
 				actions={[
 					{ label: "Move to Task Board", icon: "layout-dashboard", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
-					{ label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
+					{ label: "Move Do Date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
 				]}
@@ -156,12 +156,12 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const todayLeft = unfinished(index, today, todayBoard);
 
 	const counts: Record<Step, number> = {
-		dead: dead.deadline.length + dead.midDue.length,
+		dead: dead.deadline.length + dead.softDeadline.length,
 		previous: pending.reduce((n, b) => {
 			const u = unfinished(index, b.date, b.board);
 			return n + u.issues.length + u.routines.length;
 		}, 0),
-		caution: caution.deadline.length + caution.midDue.length,
+		caution: caution.deadline.length + caution.softDeadline.length,
 		scheduled: scheduled.length,
 		board: todayLeft.issues.length + todayLeft.routines.length,
 	};

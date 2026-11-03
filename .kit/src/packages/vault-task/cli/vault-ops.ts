@@ -261,7 +261,7 @@ export interface CreateIssueInput {
 	priority?: Priority | null;
 	labels?: string[];
 	estimated?: number | null;
-	mid_due?: LocalDate | null;
+	soft_deadline?: LocalDate | null;
 	deadline?: LocalDate | null;
 	add_to_board_date?: LocalDate | null;
 }
@@ -296,8 +296,8 @@ export function createIssueOnDisk(
 	if (input.estimated !== undefined && input.estimated !== null && (typeof input.estimated !== "number" || input.estimated < 0)) {
 		throw new Error(`estimated は 0 以上の数（分）にしてください: ${String(input.estimated)}`);
 	}
-	if (input.mid_due !== undefined && input.mid_due !== null && !isLocalDate(input.mid_due)) {
-		throw new Error(`mid_due の日付が不正です: ${String(input.mid_due)}`);
+	if (input.soft_deadline !== undefined && input.soft_deadline !== null && !isLocalDate(input.soft_deadline)) {
+		throw new Error(`soft_deadline の日付が不正です: ${String(input.soft_deadline)}`);
 	}
 	if (input.deadline !== undefined && input.deadline !== null && !isLocalDate(input.deadline)) {
 		throw new Error(`deadline の日付が不正です: ${String(input.deadline)}`);
@@ -317,7 +317,7 @@ export function createIssueOnDisk(
 	if (input.priority !== undefined) extra.priority = input.priority;
 	if (input.labels !== undefined && input.labels.length > 0) extra.labels = input.labels;
 	if (input.estimated !== undefined) extra.estimated = input.estimated;
-	if (input.mid_due !== undefined) extra.mid_due = input.mid_due;
+	if (input.soft_deadline !== undefined) extra.soft_deadline = input.soft_deadline;
 	if (input.deadline !== undefined) extra.deadline = input.deadline;
 
 	const issue =
@@ -349,7 +349,7 @@ export interface UpdateIssueInput {
 	labels?: string[];
 	parent?: string | null;
 	scheduled?: LocalDate[];
-	mid_due?: LocalDate | null;
+	soft_deadline?: LocalDate | null;
 	deadline?: LocalDate | null;
 	revisit?: LocalDate | null;
 	reviewed?: LocalDate | null;
@@ -420,9 +420,9 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		}
 		patch.scheduled = [...new Set(input.scheduled)].sort();
 	}
-	if (input.mid_due !== undefined) {
-		if (input.mid_due !== null && !isLocalDate(input.mid_due)) throw new Error(`mid_due の日付が不正です: ${String(input.mid_due)}`);
-		patch.mid_due = input.mid_due;
+	if (input.soft_deadline !== undefined) {
+		if (input.soft_deadline !== null && !isLocalDate(input.soft_deadline)) throw new Error(`soft_deadline の日付が不正です: ${String(input.soft_deadline)}`);
+		patch.soft_deadline = input.soft_deadline;
 	}
 	if (input.deadline !== undefined) {
 		if (input.deadline !== null && !isLocalDate(input.deadline)) throw new Error(`deadline の日付が不正です: ${String(input.deadline)}`);
@@ -446,7 +446,7 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	// someday の issue に実行日や期限を入れたら open に戻す（ADR-0018）
 	const hasDatesAdded =
 		(Array.isArray(patch.scheduled) && patch.scheduled.length > 0) ||
-		(patch.mid_due !== undefined && patch.mid_due !== null) ||
+		(patch.soft_deadline !== undefined && patch.soft_deadline !== null) ||
 		(patch.deadline !== undefined && patch.deadline !== null);
 	if (current.status === "someday" && input.status === undefined && hasDatesAdded) {
 		patch.status = "open";

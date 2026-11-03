@@ -60,7 +60,7 @@ export default class VaultTemplatePlugin extends Plugin {
 		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}
 
-	/** 一覧 View は左の固定ペインに開く（ADR-0032） */
+	/** 一覧 View は左の固定ペインに開く（ADR-0033） */
 	private async openView(type: string): Promise<void> {
 		await openListView(this.app.workspace, type, { phone: Platform.isPhone });
 	}

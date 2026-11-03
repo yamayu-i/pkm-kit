@@ -6,6 +6,7 @@ import {
 	closedAtMap,
 	isDoneStatus,
 	nextStatuses,
+	boardMenuStatuses,
 	parseStatusLog,
 	statusBefore,
 	statusLogLine,
@@ -112,5 +113,14 @@ describe("取り消しのトースト（ADR-0031）", () => {
 		expect(batch.take()).toEqual(["waiting", "open"]);
 		expect(batch.size).toBe(0);
 		expect(undoMessage(3)).toBe("3件のステータスが変更されました。");
+	});
+});
+
+describe("ボードの status メニュー（ADR-0032）", () => {
+	it("issue は delegated も選べる。someday は出さない", () => {
+		expect(boardMenuStatuses("issue")).toEqual(["open", "in-progress", "waiting", "delegated", "closed", "canceled"]);
+	});
+	it("routine はその日の結果だけ（open / closed / canceled）", () => {
+		expect(boardMenuStatuses("routine")).toEqual(["open", "closed", "canceled"]);
 	});
 });

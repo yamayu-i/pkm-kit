@@ -1,7 +1,7 @@
 import type { PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent } from "obsidian";
 
 /**
- * 一覧の View を左の固定ペイン（一覧ペイン）に、そこから開くノートを右のノートペインに出す（ADR-0032）。
+ * 一覧の View を左の固定ペイン（一覧ペイン）に、そこから開くノートを右のノートペインに出す（ADR-0033）。
  * vault-task と vault-template が同じ規則で一覧ペインを見分けるため、ここに 1 つだけ置く。
  * Obsidian の値は import しない（型だけ）。スマホかどうかは呼ぶ側が Platform.isPhone を渡す
  */

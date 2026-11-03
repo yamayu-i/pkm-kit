@@ -1666,7 +1666,7 @@ var VaultTemplatePlugin = class extends import_obsidian8.Plugin {
     installNoteHeaders(this);
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
   }
-  /** 一覧 View は左の固定ペインに開く（ADR-0032） */
+  /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
     await openListView(this.app.workspace, type, { phone: import_obsidian8.Platform.isPhone });
   }

@@ -57,7 +57,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 									</th>
 									{days.map((d) => (
 										<td>
-											<DayCell date={d} scheduled={i.scheduled.includes(d)} midDue={i.midDue} deadline={i.deadline} today={today} onClick={() => toggle(i.path, i.scheduled, d)} />
+											<DayCell date={d} scheduled={i.scheduled.includes(d)} softDeadline={i.softDeadline} deadline={i.deadline} today={today} onClick={() => toggle(i.path, i.scheduled, d)} />
 										</td>
 									))}
 								</tr>

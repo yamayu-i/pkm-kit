@@ -21,7 +21,7 @@ const ESTIMATES = [15, 30, 60, 120, 300, 480];
 const FIELD_OF: Record<string, (i: Issue) => Patch[string]> = {
 	status: (i) => i.status,
 	scheduled: (i) => i.scheduled,
-	mid_due: (i) => i.midDue,
+	soft_deadline: (i) => i.softDeadline,
 	deadline: (i) => i.deadline,
 	revisit: (i) => i.revisit,
 	reviewed: (i) => i.reviewed,
@@ -47,7 +47,7 @@ export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; o
 	return (
 		<CalendarForm
 			initial={props.issue.scheduled}
-			midDue={props.issue.midDue}
+			softDeadline={props.issue.softDeadline}
 			deadline={props.issue.deadline}
 			submitLabel="決定"
 			canSubmit={(count) => canConfirmSchedule(count, needEstimate, estimated)}

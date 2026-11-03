@@ -48,7 +48,7 @@
 | `--vt-red-container` | 面 | `#f9dedc` | `#8c1d18` | — | — | red の面（priority の high、deadline の枠、期限切れ） |  |
 | `--vt-on-red-container` | 文字 | `#410e0b` | `#f9dedc` | 4.5:1 | 11.11 / 6.38 | red の面の上の文字 |  |
 | `--vt-red` | 印 | `#d93025` | `#f2b8b5` | 3:1 | 3.75 / 5.33 | red の印（点・アイコン・枠） |  |
-| `--vt-amber-container` | 面 | `#ffecb3` | `#5c4300` | — | — | amber の面（priority の mid、mid_due の枠） |  |
+| `--vt-amber-container` | 面 | `#ffecb3` | `#5c4300` | — | — | amber の面（priority の mid、soft_deadline の枠） |  |
 | `--vt-on-amber-container` | 文字 | `#3a2a00` | `#ffecb3` | 4.5:1 | 10.28 / 6.74 | amber の面の上の文字 |  |
 | `--vt-amber` | 印 | `#b06d00` | `#ffd54f` | 3:1 | 3.36 / 6.59 | amber の印（点・アイコン・枠） |  |
 | `--vt-scheduled` | 面 | `#188038` | `#2e7d32` | — | — | 実行日の面 |  |

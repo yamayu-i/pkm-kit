@@ -6,11 +6,18 @@
 
 ## 一覧の View を左の固定ペインに出す
 
-- vault-task の View（Daily、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups、Labels）と vault-template の一覧 View（Daily notes、Notes、Sources）は、メイン領域の左半分の「一覧ペイン」にタブで開き、固定するようにした。一覧ペインがなければ、最後に使ったタブを左右に分けて左に開く（ADR-0032）
+- vault-task の View（Daily、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups、Labels）と vault-template の一覧 View（Daily notes、Notes、Sources）は、メイン領域の左半分の「一覧ペイン」にタブで開き、固定するようにした。一覧ペインがなければ、最後に使ったタブを左右に分けて左に開く（ADR-0033）
 - 一覧ペインがあるとき、プラグインから開くノート（一覧の行、ボード、サイドバー、issue 画面のリンク、テンプレートから作ったノート、今日のデイリーノート）は、右の「ノートペイン」で開く。Ctrl/Cmd+クリックではノートペインに新しいタブを足す。ノートペインを閉じていたら、一覧ペインの右に作り直す
 - すでに開いている一覧の View は場所を変えない（固定だけする）。ノートと同じタブ列にあるものは、閉じて開き直すと一覧ペインに移る
 - スマホでは画面を分けず、一覧の View を固定したタブで開く。ノートは別のタブで開き、一覧のタブは置き換わらない
 - 子への影響: 移行はない。vault-task・vault-template の `main.js` が変わった。PC で、Daily を開いて左右に分かれるか、issue が右に開くか、ファイルエクスプローラーからノートを開いても一覧が置き換わらないかを確かめる。モバイルで、一覧のタブから issue を開いて、一覧のタブが残るかを確かめる
+
+## 日付のアクション名、mid_due の改名（soft_deadline）、ボードからの delegated
+
+- **移行 0003-soft-deadline**: issue の緩い締切のキーを `mid_due` から `soft_deadline` に改名した（`deadline` と対になる名前。ADR-0032）。移行は `issue/*.md` と `template/file/*.md` の frontmatter と、`.obsidian/types.json` を書き換える。`mid_due` が残っている issue は lint と vault-task が `legacy-mid-due` のエラーとして出す。MCP の引数と並べ替えのキーも `soft_deadline` になった
+- vault-task の操作バー: 「Schedule」を **Add Do Date**（実行日を足す）、実行日を移す「Reschedule」を **Move Do Date**、期限切れ・期限が近いの「Reschedule」を **Change Deadline** / **Change Soft Deadline** にした。動きは変わらない。Do Tomorrow のアイコンを `sunrise` にした
+- vault-task の task board: カードの status メニューで `delegated…` を選べるようにした。選ぶと委任先を選ぶ画面（名前で探し、いなければその場で作る）が開く。delegated のカードには委任先の名前を出し、押すと選び直せる。メニューから delegated 以外にすると `delegated_to` を外す（今までは残っていた）
+- 子への影響: 移行 0003 を実行する。子だけのスキルや `local/CLAUDE.md` が `mid_due` に触れていれば直す。vault-task の `main.js` と `styles.css`、`.kit/bin/` の CLI が変わった。モバイルで、カードの委任先のチップが狭いペインで折り返すか、委任先を選ぶ画面が開くかを確かめる
 
 ## task board の status を 1 クリックで変える
 
