@@ -4,6 +4,13 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## 日付のアクション名、mid_due の改名（soft_deadline）、ボードからの delegated
+
+- **移行 0003-soft-deadline**: issue の緩い締切のキーを `mid_due` から `soft_deadline` に改名した（`deadline` と対になる名前。ADR-0032）。移行は `issue/*.md` と `template/file/*.md` の frontmatter と、`.obsidian/types.json` を書き換える。`mid_due` が残っている issue は lint と vault-task が `legacy-mid-due` のエラーとして出す。MCP の引数と並べ替えのキーも `soft_deadline` になった
+- vault-task の操作バー: 「Schedule」を **Add Do Date**（実行日を足す）、実行日を移す「Reschedule」を **Move Do Date**、期限切れ・期限が近いの「Reschedule」を **Change Deadline** / **Change Soft Deadline** にした。動きは変わらない。Do Tomorrow のアイコンを `sunrise` にした
+- vault-task の task board: カードの status メニューで `delegated…` を選べるようにした。選ぶと委任先を選ぶ画面（名前で探し、いなければその場で作る）が開く。delegated のカードには委任先の名前を出し、押すと選び直せる。メニューから delegated 以外にすると `delegated_to` を外す（今までは残っていた）
+- 子への影響: 移行 0003 を実行する。子だけのスキルや `local/CLAUDE.md` が `mid_due` に触れていれば直す。vault-task の `main.js` と `styles.css`、`.kit/bin/` の CLI が変わった。モバイルで、カードの委任先のチップが狭いペインで折り返すか、委任先を選ぶ画面が開くかを確かめる
+
 ## task board の status を 1 クリックで変える
 
 - vault-task の task board: カードの status バッジの右に「次の status」のボタンを置いた。open / waiting → in-progress、in-progress → closed、delegated → in-progress か closed（ボタン 2 つ）。someday には出さない。アイコンは押した後の status（ADR-0031）
