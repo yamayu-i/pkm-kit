@@ -16,18 +16,21 @@
     "cssTheme": "",
     "accentColor": "#6750a4",
     "translucency": false,
-    "enabledCssSnippets": ["vault-theme"]
+    "enabledCssSnippets": [
+      "vault-theme"
+    ]
   },
-  "community-plugins.json": ["vault-git", "vault-task", "vault-template"],
+  "community-plugins.json": [
+    "vault-git",
+    "vault-task",
+    "vault-template",
+    "vault-ribbon"
+  ],
   "core-plugins.json": {
-    "daily-notes": true,
+    "daily-notes": false,
     "properties": true,
     "canvas": false,
     "bases": false,
     "templates": false
-  },
-  "daily-notes.json": {
-    "folder": "daily",
-    "format": "YYYY/MM/YYYY-MM-DD"
   }
 }

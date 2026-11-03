@@ -534,10 +534,34 @@ function expandInlineToken(token, ctx) {
   }
   return null;
 }
+function frontmatterEnd(template) {
+  if (!/^---\r?\n/.test(template)) return -1;
+  const close = /\r?\n---[ \t]*(?:\r?\n|$)/.exec(template.slice(3));
+  return close ? 3 + close.index : -1;
+}
+function quoteAt(template, position) {
+  const lineStart = template.lastIndexOf("\n", position - 1) + 1;
+  let quote = null;
+  for (let i3 = lineStart; i3 < position; i3++) {
+    const c3 = template[i3];
+    if (quote === '"') {
+      if (c3 === "\\") i3++;
+      else if (c3 === '"') quote = null;
+    } else if (quote === "'") {
+      if (c3 === "'" && template[i3 + 1] === "'") i3++;
+      else if (c3 === "'") quote = null;
+    } else if (c3 === '"' || c3 === "'") quote = c3;
+  }
+  return quote;
+}
+function escapeForQuote(value, quote) {
+  return quote === '"' ? JSON.stringify(value).slice(1, -1) : value.replace(/'/g, "''");
+}
 function renderTemplate(template, ctx) {
   let out = "";
   let cursorOffset = null;
   let lastIndex = 0;
+  const fmEnd = frontmatterEnd(template);
   for (const match of template.matchAll(PLACEHOLDER_RE)) {
     const index = match.index ?? 0;
     const full = match[0];
@@ -549,7 +573,12 @@ function renderTemplate(template, ctx) {
       continue;
     }
     const expanded = expandInlineToken(token, ctx);
-    out += expanded !== null ? expanded : full;
+    if (expanded === null) {
+      out += full;
+      continue;
+    }
+    const quote = index < fmEnd ? quoteAt(template, index) : null;
+    out += quote ? escapeForQuote(expanded, quote) : expanded;
   }
   out += template.slice(lastIndex);
   return { content: out, cursorOffset };
@@ -1561,7 +1590,6 @@ var VaultTemplatePlugin = class extends import_obsidian6.Plugin {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
       this.addCommand({ id: `open-${spec.type.replace("vault-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void this.openView(spec.type) });
     }
-    this.addRibbonIcon("calendar-check", "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F", () => void openToday());
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));

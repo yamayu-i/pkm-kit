@@ -664,6 +664,8 @@ button.vt-badge:disabled::after {
 
 .vt-day.is-weekend { border-width: 2px; }
 .vt-day.is-today { font-weight: var(--vt-weight-bold); }
+/* 選んでいない今日は、枠と文字を primary にして一目で分かるようにする（ADR-0030。M3 の日付の選択と同じ） */
+.vt-day.is-today:not(.is-scheduled) { border-color: var(--vt-primary); color: var(--vt-primary); }
 .vt-day.is-today::after {
 	content: "";
 	position: absolute;

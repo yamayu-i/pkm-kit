@@ -12,7 +12,7 @@ import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
 import { LabelManagerView } from "../src/views/LabelManagerView";
-import { OrganizeView } from "../src/views/OrganizeView";
+import { OrganizeView, ScheduleSheet } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
 import { ScheduledView } from "../src/views/ScheduledView";
 import { SidebarView } from "../src/views/SidebarView";
@@ -107,6 +107,9 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
 			<DateForm initial={t} onSubmit={() => {}} />
+			{/* Organize の予定入れ（ADR-0030）: Inbox で estimated がないとき / someday で実行日があるとき */}
+			<ScheduleSheet issue={store.index.issues.get("i-7")!} requireEstimate={true} onSubmit={() => {}} />
+			<ScheduleSheet issue={{ ...store.index.issues.get("i-10")!, scheduled: [t, addDays(t, 2)] }} requireEstimate={false} onSubmit={() => {}} />
 			<WorklogForm initial={{ fromMs: Date.now() - 3_600_000, toMs: Date.now(), description: "作業" }} onSubmit={() => {}} onDelete={() => {}} />
 		</div>
 	),

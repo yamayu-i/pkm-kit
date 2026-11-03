@@ -84,14 +84,45 @@ function expandInlineToken(token: string, ctx: RenderContext): string | null {
 	return null;
 }
 
+/** 先頭の frontmatter（`---` の行で囲まれた部分）の終わりの位置。なければ -1 */
+function frontmatterEnd(template: string): number {
+	if (!/^---\r?\n/.test(template)) return -1;
+	const close = /\r?\n---[ \t]*(?:\r?\n|$)/.exec(template.slice(3));
+	return close ? 3 + close.index : -1;
+}
+
+/** 行の中の position の位置が、YAML の引用符のスカラーの中か（`"` か `'`。外なら null） */
+function quoteAt(template: string, position: number): '"' | "'" | null {
+	const lineStart = template.lastIndexOf("\n", position - 1) + 1;
+	let quote: '"' | "'" | null = null;
+	for (let i = lineStart; i < position; i++) {
+		const c = template[i];
+		if (quote === '"') {
+			if (c === "\\") i++;
+			else if (c === '"') quote = null;
+		} else if (quote === "'") {
+			if (c === "'" && template[i + 1] === "'") i++;
+			else if (c === "'") quote = null;
+		} else if (c === '"' || c === "'") quote = c;
+	}
+	return quote;
+}
+
+/** YAML の引用符のスカラーの中に入れる値のエスケープ。二重引用符は JSON の文字列と同じ規則で読める */
+function escapeForQuote(value: string, quote: '"' | "'"): string {
+	return quote === '"' ? JSON.stringify(value).slice(1, -1) : value.replace(/'/g, "''");
+}
+
 /**
  * テンプレート文字列を展開し、最初の `{{cursor}}` の文字位置を返す。
  * `{{cursor}}` 自体は出力から取り除く。未知の `{{...}}` はそのまま残す。
+ * frontmatter の引用符（`"…"` / `'…'`）の中に展開する値は、YAML として正しくエスケープする（本文はしない）
  */
 export function renderTemplate(template: string, ctx: RenderContext): RenderResult {
 	let out = "";
 	let cursorOffset: number | null = null;
 	let lastIndex = 0;
+	const fmEnd = frontmatterEnd(template);
 
 	for (const match of template.matchAll(PLACEHOLDER_RE)) {
 		const index = match.index ?? 0;
@@ -105,7 +136,12 @@ export function renderTemplate(template: string, ctx: RenderContext): RenderResu
 			continue;
 		}
 		const expanded = expandInlineToken(token, ctx);
-		out += expanded !== null ? expanded : full;
+		if (expanded === null) {
+			out += full;
+			continue;
+		}
+		const quote = index < fmEnd ? quoteAt(template, index) : null;
+		out += quote ? escapeForQuote(expanded, quote) : expanded;
 	}
 	out += template.slice(lastIndex);
 	return { content: out, cursorOffset };

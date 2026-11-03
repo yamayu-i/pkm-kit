@@ -92,7 +92,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 - 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。vault-task と同じ規則）
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
-- コマンド「今日のデイリーノートを開く」（とリボン）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
+- コマンド「今日のデイリーノートを開く」（リボンのボタンは vault-ribbon が出す。ADR-0029）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
 - 連番の関数は vault-task（`core/ids.ts`）と vault-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
 - 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
 - `test/templates-repo.test.ts` が、上流の既定のテンプレート（`.kit/templates/`）を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
@@ -111,6 +111,15 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/obsidian/` | 新規ファイル作成モーダル（Preact）、設定タブ、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
 | `src/views/` | 一覧 View（Preact） | あり |
 | `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
+
+## vault-ribbon（リボンのボタン）
+
+「今日のデイリーノートを開く」（`calendar`）と「Daily を開く」（`calendar-check`）のボタンを、リボンに続けて並べるだけのプラグイン（ADR-0029）。リボンの並びはボタンを登録した順で決まるので、2 つを 1 つのプラグインが続けて登録する。
+
+- vault-template と vault-task には依存しない（import しない）。実行時に `app.commands.executeCommandById` で `vault-template:open-todays-daily` と `vault-task:open-daily` を呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える
+- `app.commands` は Obsidian の公開の型にないので、使う形だけを型に書いてある
+- vault-template と vault-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、vault-ribbon も変える
+- `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
 
 ## design（デザイントークンと検査）
 

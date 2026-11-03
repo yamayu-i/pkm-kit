@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -60,7 +60,7 @@ test("セットアップ: 新しい Vault に設定・記録・初期値を置�
 	const record = json(root, ".kit-local/upstream.json");
 	assert.equal(record.commit, git(root, "rev-parse", "HEAD").trim());
 	// 移行は実行して適用済みにする（新しい Vault では何も変えない）
-	assert.deepEqual(record.migrations, ["0001-template-overrides"]);
+	assert.deepEqual(record.migrations, readdirSync(join(root, ".kit/migrations")).sort());
 	assert.match(first.stdout, /移行 0001-template-overrides: 適用済みにする/);
 
 	// 必要なキーだけを合わせ、ユーザーの設定（vimMode）は残す。Obsidian と同じく末尾に改行を付けない
@@ -69,7 +69,7 @@ test("セットアップ: 新しい Vault に設定・記録・初期値を置�
 	assert.equal(app.showInlineTitle, false);
 	assert.equal(app.vimMode, true);
 	assert.ok(!readFileSync(join(root, ".obsidian/app.json"), "utf8").endsWith("\n"));
-	assert.deepEqual(json(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template"]);
+	assert.deepEqual(json(root, ".obsidian/community-plugins.json"), json(root, ".kit/obsidian-required.json")["community-plugins.json"]);
 	assert.ok(existsSync(join(root, "issue/labels.json")));
 	assert.ok(existsSync(join(root, ".claude/local/CLAUDE.md")));
 	assert.equal(git(root, "config", "--get", "core.hooksPath").trim(), ".githooks");

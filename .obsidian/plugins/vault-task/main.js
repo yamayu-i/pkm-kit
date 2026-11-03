@@ -1180,6 +1180,14 @@ function duePatch(issue, key, date) {
 function scheduledPatch(issue, dates) {
   return { scheduled: dates, ...issue.status === "someday" && dates.length > 0 ? reopenPatch() : {} };
 }
+function canConfirmSchedule(selectedCount, needEstimate, estimated) {
+  return selectedCount > 0 && (!needEstimate || estimated !== null);
+}
+function organizeSchedulePatch(issue, dates, estimated) {
+  const patch = scheduledPatch(issue, [...new Set(dates)].sort());
+  if (estimated !== null) patch.estimated = estimated;
+  return patch;
+}
 function reschedulePatch(issue, target, to, from = null) {
   if (target !== "scheduled") return { [target]: to };
   const dates = new Set(issue.scheduled);
@@ -1394,6 +1402,7 @@ function DateForm(props) {
 function CalendarForm(props) {
   const [selected, setSelected] = d2(new Set(props.initial));
   const [month, setMonth] = d2(localToday().slice(0, 7));
+  const enabled = props.canSubmit?.(selected.size) ?? true;
   const toggle2 = (d3) => {
     const next = new Set(selected);
     if (next.has(d3)) next.delete(d3);
@@ -1402,12 +1411,13 @@ function CalendarForm(props) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
     /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => selected.has(d3), onPick: toggle2, midDue: props.midDue, deadline: props.deadline }),
+    props.children,
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         selected.size,
         " \u65E5"
       ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", onClick: () => props.onSubmit([...selected].sort()), children: "\u4FDD\u5B58" })
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: !enabled, onClick: () => enabled && props.onSubmit([...selected].sort()), children: props.submitLabel ?? "\u4FDD\u5B58" })
     ] })
   ] });
 }
@@ -1421,8 +1431,8 @@ function DayCell(props) {
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  const dues = [props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
-  const label = dues ? `${props.date}\uFF08${dues}\uFF09` : props.date;
+  const marks = [props.date === props.today ? "\u4ECA\u65E5" : null, props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
+  const label = marks ? `${props.date}\uFF08${marks}\uFF09` : props.date;
   return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
 var pad2 = (n2) => String(n2).padStart(2, "0");
@@ -4702,41 +4712,24 @@ function snapshot(issue, patch) {
   for (const key of Object.keys(patch)) prev[key] = FIELD_OF[key]?.(issue) ?? null;
   return prev;
 }
-function thisWeek(today) {
-  const w3 = weekdayOf(today);
-  return w3 >= 5 || w3 === 0 ? today : addDays(today, 5 - w3);
-}
 function ScheduleSheet(props) {
-  const today = localToday();
-  const [date, setDate] = d2(today);
+  const needEstimate = props.requireEstimate && props.issue.estimated === null;
   const [estimated, setEstimated] = d2(props.issue.estimated);
-  const dates = [
-    ["\u4ECA\u65E5", today],
-    ["\u660E\u65E5", addDays(today, 1)],
-    ["\u4ECA\u9031\u4E2D", thisWeek(today)],
-    ["\u6765\u9031", addDays(today, 7)]
-  ];
-  const ok = !props.requireEstimate || estimated !== null;
-  return /* @__PURE__ */ u3("div", { class: "vt-sheet", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "\u3044\u3064\u3084\u308B" }),
-    /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
-      dates.map(([label, d3]) => /* @__PURE__ */ u3("button", { class: `vt-filter-chip${date === d3 ? " is-on" : ""}`, onClick: () => setDate(d3), children: [
-        label,
-        " ",
-        /* @__PURE__ */ u3("span", { class: "vt-muted", children: formatShortDate(d3) })
-      ] })),
-      /* @__PURE__ */ u3("button", { class: "vt-filter-chip", onClick: props.onPickDate, children: [
-        /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-        " \u65E5\u4ED8\u3092\u9078\u3076"
+  return /* @__PURE__ */ u3(
+    CalendarForm,
+    {
+      initial: props.issue.scheduled,
+      midDue: props.issue.midDue,
+      deadline: props.issue.deadline,
+      submitLabel: "\u6C7A\u5B9A",
+      canSubmit: (count) => canConfirmSchedule(count, needEstimate, estimated),
+      onSubmit: (dates) => props.onSubmit(dates, estimated),
+      children: needEstimate && /* @__PURE__ */ u3("div", { class: "vt-sheet", children: [
+        /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "estimated\uFF08\u5FC5\u9808\uFF09" }),
+        /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: ESTIMATES.map((m3) => /* @__PURE__ */ u3("button", { class: `vt-filter-chip${estimated === m3 ? " is-on" : ""}`, "aria-pressed": estimated === m3, onClick: () => setEstimated(m3), children: formatMinutes(m3) })) })
       ] })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-      "estimated",
-      props.requireEstimate ? "\uFF08\u5FC5\u9808\uFF09" : ""
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: ESTIMATES.map((m3) => /* @__PURE__ */ u3("button", { class: `vt-filter-chip${estimated === m3 ? " is-on" : ""}`, onClick: () => setEstimated(m3), children: formatMinutes(m3) })) }),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: !ok, onClick: () => props.onSubmit(date, estimated), children: "\u4E88\u5B9A\u306B\u5165\u308C\u308B" }) })
-  ] });
+    }
+  );
 }
 function useExcerpt(ctx, issue) {
   const [text, setText] = d2("");
@@ -4797,37 +4790,18 @@ function OrganizeView(props) {
   const schedule = () => {
     if (!issue) return;
     const target = issue;
-    const modal = new PreactModal(ctx.app, "\u4E88\u5B9A\u3092\u5165\u308C\u308B", (close2) => /* @__PURE__ */ u3(
+    new PreactModal(ctx.app, "\u4E88\u5B9A\u3092\u5165\u308C\u308B", (close2) => /* @__PURE__ */ u3(
       ScheduleSheet,
       {
         issue: target,
         requireEstimate: isInbox(target),
-        onSubmit: (date, est) => {
+        onSubmit: (dates, est) => {
           close2();
-          void apply2(schedulePatch(target, [date], est), `${formatShortDate(date)} \u306B\u4E88\u5B9A`);
-        },
-        onPickDate: () => {
-          close2();
-          void askDate(ctx, "\u5B9F\u884C\u65E5").then((d3) => {
-            if (d3 === null) return;
-            const needEstimate = isInbox(target) && target.estimated === null;
-            new PreactModal(ctx.app, "\u4E88\u5B9A\u3092\u5165\u308C\u308B", (c22) => /* @__PURE__ */ u3(
-              ScheduleSheet,
-              {
-                issue: target,
-                requireEstimate: needEstimate,
-                onSubmit: (_2, est) => {
-                  c22();
-                  void apply2(schedulePatch(target, [d3], est), `${formatShortDate(d3)} \u306B\u4E88\u5B9A`);
-                },
-                onPickDate: () => void 0
-              }
-            )).open();
-          });
+          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u306B\u4E88\u5B9A` : `${dates.length} \u65E5\u306B\u4E88\u5B9A`;
+          void apply2(organizeSchedulePatch(target, dates, est), label);
         }
       }
-    ));
-    modal.open();
+    )).open();
   };
   const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
   const later = () => void apply2({}, "\u3042\u3068\u3067");
@@ -5316,7 +5290,6 @@ var VaultTaskPlugin = class extends import_obsidian19.Plugin {
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
     this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));
-    this.addRibbonIcon("calendar-check", "Daily \u3092\u958B\u304F", () => void ctx.openView("vault-task-daily"));
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
