@@ -47,6 +47,18 @@ export function scheduledPatch(issue: Issue, dates: LocalDate[]): Patch {
 	return { scheduled: dates, ...(issue.status === "someday" && dates.length > 0 ? reopenPatch() : {}) };
 }
 
+/** Organize の予定入れ（ADR-0030）: 決定を押せるか。1 日以上選び、estimated が必須ならそれも選んでいる */
+export function canConfirmSchedule(selectedCount: number, needEstimate: boolean, estimated: number | null): boolean {
+	return selectedCount > 0 && (!needEstimate || estimated !== null);
+}
+
+/** Organize の予定入れ（ADR-0030）: カレンダーで選んだ日付で実行日を置き換え、選んだ estimated を入れる */
+export function organizeSchedulePatch(issue: Issue, dates: LocalDate[], estimated: number | null): Patch {
+	const patch = scheduledPatch(issue, [...new Set(dates)].sort());
+	if (estimated !== null) patch.estimated = estimated;
+	return patch;
+}
+
 export type RescheduleTarget = "scheduled" | "mid_due" | "deadline";
 
 /**

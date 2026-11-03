@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { parseDateInput, parseTimeInput } from "../core/date-input";
 import { addDays, formatShortDate, localToday, monthGridDays, type LocalDate, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
@@ -150,15 +151,21 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 	);
 }
 
-/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」） */
+/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の予定入れにも使う。ADR-0030） */
 export function CalendarForm(props: {
 	initial: LocalDate[];
 	midDue: LocalDate | null;
 	deadline: LocalDate | null;
 	onSubmit: (dates: LocalDate[]) => void;
+	/** 決定を押せるか（選んだ日付の数を受け取る）。省略時はいつでも押せる */
+	canSubmit?: (count: number) => boolean;
+	submitLabel?: string;
+	/** カレンダーと決定のボタンの間に出すもの（Organize の estimated など） */
+	children?: ComponentChildren;
 }) {
 	const [selected, setSelected] = useState(new Set(props.initial));
 	const [month, setMonth] = useState(localToday().slice(0, 7));
+	const enabled = props.canSubmit?.(selected.size) ?? true;
 	const toggle = (d: LocalDate) => {
 		const next = new Set(selected);
 		if (next.has(d)) next.delete(d);
@@ -168,10 +175,11 @@ export function CalendarForm(props: {
 	return (
 		<div class="vt-calendar">
 			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => selected.has(d)} onPick={toggle} midDue={props.midDue} deadline={props.deadline} />
+			{props.children}
 			<div class="vt-form">
 				<span class="vt-muted">{selected.size} 日</span>
-				<button class="mod-cta" onClick={() => props.onSubmit([...selected].sort())}>
-					保存
+				<button class="mod-cta" disabled={!enabled} onClick={() => enabled && props.onSubmit([...selected].sort())}>
+					{props.submitLabel ?? "保存"}
 				</button>
 			</div>
 		</div>
@@ -198,8 +206,11 @@ export function DayCell(props: {
 	if (props.date === props.today) cls.push("is-today");
 	if (props.dimmed) cls.push("is-dimmed");
 	// 色だけに頼らないよう、期限は読み上げと title でも伝える
-	const dues = [props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("・");
-	const label = dues ? `${props.date}（${dues}）` : props.date;
+	// 今日も、印（太字と点）だけでなく読み上げとツールチップで伝える（ADR-0030）
+	const marks = [props.date === props.today ? "今日" : null, props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null]
+		.filter(Boolean)
+		.join("・");
+	const label = marks ? `${props.date}（${marks}）` : props.date;
 	return (
 		<button type="button" class={cls.join(" ")} onClick={props.onClick} aria-pressed={props.scheduled} aria-label={label} title={label}>
 			{Number(props.date.slice(8, 10))}

@@ -1,16 +1,16 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { cancelPatch, closePatch, schedulePatch, somedayPatch, type Patch } from "../core/actions";
-import { addDays, formatShortDate, localToday, weekdayOf, type LocalDate } from "../core/dates";
+import { canConfirmSchedule, cancelPatch, closePatch, organizeSchedulePatch, somedayPatch, type Patch } from "../core/actions";
+import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isInbox, organizeQueue } from "../core/index";
 import { PRIORITIES, type Issue } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { askDate } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { IdBadge, LabelBadge, PriorityBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { LabelForm } from "../ui/LabelForm";
+import { CalendarForm } from "../ui/forms";
 import { useStoreVersion } from "../ui/hooks";
 
 const CHUNK = 5;
@@ -37,51 +37,35 @@ function snapshot(issue: Issue, patch: Patch): Patch {
 	return prev;
 }
 
-/** 今週中 = 次の金曜（金〜日なら今日） */
-function thisWeek(today: LocalDate): LocalDate {
-	const w = weekdayOf(today);
-	return w >= 5 || w === 0 ? today : addDays(today, 5 - w);
-}
-
-/** 予定を入れる（Inbox からなら estimated も。ADR-0009） */
-function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; onSubmit: (date: LocalDate, estimated: number | null) => void; onPickDate: () => void }) {
-	const today = localToday();
-	const [date, setDate] = useState<LocalDate>(today);
+/**
+ * 予定を入れる（ADR-0030）: カレンダーだけを出し、日付を複数選んで決定する。
+ * Inbox で estimated がまだないときだけ、estimated も選ぶ（ADR-0009 の必須は残す）
+ */
+export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; onSubmit: (dates: LocalDate[], estimated: number | null) => void }) {
+	const needEstimate = props.requireEstimate && props.issue.estimated === null;
 	const [estimated, setEstimated] = useState<number | null>(props.issue.estimated);
-	const dates: [string, LocalDate][] = [
-		["今日", today],
-		["明日", addDays(today, 1)],
-		["今週中", thisWeek(today)],
-		["来週", addDays(today, 7)],
-	];
-	const ok = !props.requireEstimate || estimated !== null;
 	return (
-		<div class="vt-sheet">
-			<div class="vt-field-label">いつやる</div>
-			<div class="vt-chip-row">
-				{dates.map(([label, d]) => (
-					<button class={`vt-filter-chip${date === d ? " is-on" : ""}`} onClick={() => setDate(d)}>
-						{label} <span class="vt-muted">{formatShortDate(d)}</span>
-					</button>
-				))}
-				<button class="vt-filter-chip" onClick={props.onPickDate}>
-					<Icon name="calendar" /> 日付を選ぶ
-				</button>
-			</div>
-			<div class="vt-field-label">estimated{props.requireEstimate ? "（必須）" : ""}</div>
-			<div class="vt-chip-row">
-				{ESTIMATES.map((m) => (
-					<button class={`vt-filter-chip${estimated === m ? " is-on" : ""}`} onClick={() => setEstimated(m)}>
-						{formatMinutes(m)}
-					</button>
-				))}
-			</div>
-			<div class="vt-form">
-				<button class="mod-cta" disabled={!ok} onClick={() => props.onSubmit(date, estimated)}>
-					予定に入れる
-				</button>
-			</div>
-		</div>
+		<CalendarForm
+			initial={props.issue.scheduled}
+			midDue={props.issue.midDue}
+			deadline={props.issue.deadline}
+			submitLabel="決定"
+			canSubmit={(count) => canConfirmSchedule(count, needEstimate, estimated)}
+			onSubmit={(dates) => props.onSubmit(dates, estimated)}
+		>
+			{needEstimate && (
+				<div class="vt-sheet">
+					<div class="vt-field-label">estimated（必須）</div>
+					<div class="vt-chip-row">
+						{ESTIMATES.map((m) => (
+							<button class={`vt-filter-chip${estimated === m ? " is-on" : ""}`} aria-pressed={estimated === m} onClick={() => setEstimated(m)}>
+								{formatMinutes(m)}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
+		</CalendarForm>
 	);
 }
 
@@ -154,35 +138,17 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	const schedule = () => {
 		if (!issue) return;
 		const target = issue;
-		const modal = new PreactModal(ctx.app, "予定を入れる", (close) => (
+		new PreactModal(ctx.app, "予定を入れる", (close) => (
 			<ScheduleSheet
 				issue={target}
 				requireEstimate={isInbox(target)}
-				onSubmit={(date, est) => {
+				onSubmit={(dates, est) => {
 					close();
-					void apply(schedulePatch(target, [date], est), `${formatShortDate(date)} に予定`);
-				}}
-				onPickDate={() => {
-					close();
-					void askDate(ctx, "実行日").then((d) => {
-						if (d === null) return;
-						const needEstimate = isInbox(target) && target.estimated === null;
-						new PreactModal(ctx.app, "予定を入れる", (c2) => (
-							<ScheduleSheet
-								issue={target}
-								requireEstimate={needEstimate}
-								onSubmit={(_, est) => {
-									c2();
-									void apply(schedulePatch(target, [d], est), `${formatShortDate(d)} に予定`);
-								}}
-								onPickDate={() => undefined}
-							/>
-						)).open();
-					});
+					const label = dates.length === 1 ? `${formatShortDate(dates[0]!)} に予定` : `${dates.length} 日に予定`;
+					void apply(organizeSchedulePatch(target, dates, est), label);
 				}}
 			/>
-		));
-		modal.open();
+		)).open();
 	};
 	const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "Someday へ");
 	const later = () => void apply({}, "あとで");
