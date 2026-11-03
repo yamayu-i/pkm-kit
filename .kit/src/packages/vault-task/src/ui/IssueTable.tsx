@@ -10,7 +10,7 @@ import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
 import { Icon } from "./Icon";
 import { linkProps } from "./a11y";
 
-export type Column = "status-detail" | "mid_due" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created" | "estimated";
+export type Column = "status-detail" | "soft_deadline" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created" | "estimated";
 
 /** 選択できる issue の一覧（ADR-0009 の行表示）。summary をクリックすると issue を開き、ほかのセルと「…」で編集する（ADR-0018） */
 export function IssueTable(props: {
@@ -24,7 +24,7 @@ export function IssueTable(props: {
 	empty?: string;
 }) {
 	const { ctx, issues, selected, onSelect } = props;
-	const columns = props.columns ?? ["status-detail", "mid_due", "deadline"];
+	const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
 	const today = localToday();
 	const toggle = (id: string) => {
 		if (!selected || !onSelect) return;
@@ -48,8 +48,8 @@ export function IssueTable(props: {
 		switch (c) {
 			case "status-detail":
 				return editable(issue, c, () => editStatusDetail(ctx, issue.statusDetail, save), text(issue.statusDetail));
-			case "mid_due":
-				return editable(issue, c, () => editDue(ctx, issue, "mid_due"), due(issue, issue.midDue));
+			case "soft_deadline":
+				return editable(issue, c, () => editDue(ctx, issue, "soft_deadline"), due(issue, issue.softDeadline));
 			case "deadline":
 				return editable(issue, c, () => editDue(ctx, issue, "deadline"), due(issue, issue.deadline));
 			case "labels":

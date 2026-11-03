@@ -19,7 +19,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 	{ key: "status", label: "status" },
 	{ key: "priority", label: "priority" },
 	{ key: "next_scheduled", label: "次の実行日" },
-	{ key: "mid_due", label: "mid_due" },
+	{ key: "soft_deadline", label: "soft_deadline" },
 	{ key: "deadline", label: "deadline" },
 	{ key: "created", label: "作成日" },
 ];
@@ -157,11 +157,11 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					</button>
 				</div>
 			</section>
-			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "mid_due", "deadline", "estimated"]} empty="条件に合う issue はありません" />
+			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"]} empty="条件に合う issue はありません" />
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },

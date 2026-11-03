@@ -45,7 +45,7 @@ export function InboxView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
-					{ label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },

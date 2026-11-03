@@ -6,7 +6,7 @@ export type Patch = Record<string, string | number | boolean | string[] | null>;
 
 /** Cancel: 期限は外す（ADR-0009） */
 export function cancelPatch(): Patch {
-	return { status: "canceled", mid_due: null, deadline: null, delegated_to: null, revisit: null };
+	return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 
 /** 終わっていた */
@@ -16,12 +16,12 @@ export function closePatch(): Patch {
 
 /** Inbox に戻す: 予定と期限をすべて外す（ADR-0006） */
 export function inboxPatch(): Patch {
-	return { status: "open", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit: null };
+	return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 
 /** Someday へ: 予定と期限を外す。revisit は任意（ADR-0006） */
 export function somedayPatch(revisit: LocalDate | null = null): Patch {
-	return { status: "someday", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit };
+	return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
 }
 
 /** someday から戻すときは open にして revisit を外す */
@@ -38,7 +38,7 @@ export function statusPatch(status: Status, delegatedTo: string | null = null): 
 }
 
 /** 期限を変える。someday は期限を持たないので、入れるときは open に戻す（ADR-0018） */
-export function duePatch(issue: Issue, key: "mid_due" | "deadline", date: LocalDate | null): Patch {
+export function duePatch(issue: Issue, key: "soft_deadline" | "deadline", date: LocalDate | null): Patch {
 	return { [key]: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };
 }
 
@@ -59,7 +59,7 @@ export function organizeSchedulePatch(issue: Issue, dates: LocalDate[], estimate
 	return patch;
 }
 
-export type RescheduleTarget = "scheduled" | "mid_due" | "deadline";
+export type RescheduleTarget = "scheduled" | "soft_deadline" | "deadline";
 
 /**
  * リスケ。期限はその日に置き換える。実行日は `from` を外して `to` を足す（from が null なら足すだけ）

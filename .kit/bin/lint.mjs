@@ -7856,6 +7856,7 @@ function parseIssue(path, fm) {
   if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
   const issue = {
     path,
     id: id ?? "",
@@ -7869,7 +7870,7 @@ function parseIssue(path, fm) {
     related: r.strings("related"),
     estimated: r.minutes("estimated"),
     scheduled: r.dates("scheduled"),
-    midDue: r.date("mid_due"),
+    softDeadline: r.date("soft_deadline"),
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),
@@ -8208,8 +8209,8 @@ function lintVault(data2, options = {}) {
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
     }
-    if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.midDue !== null || issue.deadline !== null)) {
-      add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / mid_due / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
+    if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.softDeadline !== null || issue.deadline !== null)) {
+      add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
     }
     if (issue.revisit !== null && issue.status !== "someday") {
       add("warning", path, "stale-revisit", "someday \u3067\u306F\u306A\u3044\u306E\u306B revisit \u304C\u3042\u308A\u307E\u3059");

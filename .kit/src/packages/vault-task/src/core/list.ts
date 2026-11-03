@@ -1,7 +1,7 @@
 import { isActive } from "./index";
 import { PRIORITIES, STATUSES, type Issue, type Priority, type Status } from "./schema";
 
-export type SortKey = "id" | "summary" | "status" | "priority" | "mid_due" | "deadline" | "created" | "next_scheduled";
+export type SortKey = "id" | "summary" | "status" | "priority" | "soft_deadline" | "deadline" | "created" | "next_scheduled";
 
 /** Issue List の条件（ADR-0009） */
 export interface IssueQuery {
@@ -34,8 +34,8 @@ function sortValue(issue: Issue, key: SortKey, today: string): string | number |
 			return STATUSES.indexOf(issue.status);
 		case "priority":
 			return issue.priority === null ? null : PRIORITIES.indexOf(issue.priority);
-		case "mid_due":
-			return issue.midDue;
+		case "soft_deadline":
+			return issue.softDeadline;
 		case "deadline":
 			return issue.deadline;
 		case "created":

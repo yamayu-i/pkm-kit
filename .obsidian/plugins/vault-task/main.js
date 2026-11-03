@@ -633,6 +633,7 @@ function parseIssue(path, fm) {
   if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const status = r3.oneOf("status", STATUSES);
   if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
   const issue = {
     path,
     id: id ?? "",
@@ -646,7 +647,7 @@ function parseIssue(path, fm) {
     related: r3.strings("related"),
     estimated: r3.minutes("estimated"),
     scheduled: r3.dates("scheduled"),
-    midDue: r3.date("mid_due"),
+    softDeadline: r3.date("soft_deadline"),
     deadline: r3.date("deadline"),
     revisit: r3.date("revisit"),
     reviewed: r3.date("reviewed"),
@@ -932,24 +933,24 @@ function placementOf(board, id, fallback, keys) {
 var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
 function deadIssues(issues, today) {
   const deadline = [];
-  const midDue = [];
+  const softDeadline = [];
   for (const i3 of issues) {
     if (!isActive(i3)) continue;
     if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
-    if (i3.midDue !== null && i3.midDue < today) midDue.push(i3);
+    if (i3.softDeadline !== null && i3.softDeadline < today) softDeadline.push(i3);
   }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
 }
 function cautionIssues(issues, today, days = 3) {
   const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
   const deadline = [];
-  const midDue = [];
+  const softDeadline = [];
   for (const i3 of issues) {
     if (!isActive(i3)) continue;
     if (within(i3.deadline)) deadline.push(i3);
-    if (within(i3.midDue)) midDue.push(i3);
+    if (within(i3.softDeadline)) softDeadline.push(i3);
   }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
 }
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
   return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
@@ -1155,6 +1156,9 @@ function nextStatuses(status) {
       return [];
   }
 }
+function boardMenuStatuses(kind) {
+  return kind === "issue" ? ["open", "in-progress", "waiting", "delegated", "closed", "canceled"] : ["open", "closed", "canceled"];
+}
 function isDoneStatus(status) {
   return status === "closed" || status === "canceled";
 }
@@ -1168,7 +1172,7 @@ function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
 function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
+  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -1300,7 +1304,7 @@ function sidebarCounts(index, today) {
     return n2 + u4.issues.length + u4.routines.length;
   }, 0);
   return {
-    daily: dead.deadline.length + dead.midDue.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+    daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
     inbox: issues.filter(isInbox).length,
     organize: organizeQueue(issues, today).length,
     scheduled: issues.filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).length,
@@ -1342,16 +1346,16 @@ var import_obsidian3 = require("obsidian");
 
 // src/core/actions.ts
 function cancelPatch() {
-  return { status: "canceled", mid_due: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null };
 }
 function inboxPatch() {
-  return { status: "open", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit };
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
 }
 function reopenPatch() {
   return { status: "open", revisit: null };
@@ -1524,7 +1528,7 @@ function MonthCalendar(props) {
           date: d3,
           dimmed: !d3.startsWith(month),
           scheduled: props.isSelected(d3),
-          midDue: props.midDue ?? null,
+          softDeadline: props.softDeadline ?? null,
           deadline: props.deadline ?? null,
           today,
           onClick: () => props.onPick(d3)
@@ -1598,7 +1602,7 @@ function CalendarForm(props) {
     setSelected(next);
   };
   return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
-    /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => selected.has(d3), onPick: toggle2, midDue: props.midDue, deadline: props.deadline }),
+    /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => selected.has(d3), onPick: toggle2, softDeadline: props.softDeadline, deadline: props.deadline }),
     props.children,
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
@@ -1613,13 +1617,13 @@ function DayCell(props) {
   const w3 = weekdayOf(props.date);
   const cls = ["vt-day"];
   if (w3 === 0 || w3 === 6) cls.push("is-weekend");
-  if (props.date === props.midDue) cls.push("is-mid-due");
+  if (props.date === props.softDeadline) cls.push("is-soft-deadline");
   if (props.date === props.deadline) cls.push("is-deadline");
   if (props.deadline !== null && props.date > props.deadline) cls.push("is-after-deadline");
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  const marks = [props.date === props.today ? "\u4ECA\u65E5" : null, props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
+  const marks = [props.date === props.today ? "\u4ECA\u65E5" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
   const label = marks ? `${props.date}\uFF08${marks}\uFF09` : props.date;
   return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
@@ -1923,7 +1927,7 @@ function editDue(ctx, issue, key) {
   new PreactModal(ctx.app, key, (close) => /* @__PURE__ */ u3(
     DateForm,
     {
-      initial: key === "mid_due" ? issue.midDue : issue.deadline,
+      initial: key === "soft_deadline" ? issue.softDeadline : issue.deadline,
       onSubmit: (v3) => {
         close();
         saveIssue(ctx, issue)(duePatch(issue, key, v3));
@@ -1936,7 +1940,7 @@ function editScheduled(ctx, issue) {
     CalendarForm,
     {
       initial: issue.scheduled,
-      midDue: issue.midDue,
+      softDeadline: issue.softDeadline,
       deadline: issue.deadline,
       onSubmit: (dates) => {
         close();
@@ -1967,7 +1971,7 @@ function issueRowMenu(ctx, e3, issue) {
   m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
   m3.addSeparator();
   m3.addItem((item) => item.setTitle("\u5B9F\u884C\u65E5").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-  m3.addItem((item) => item.setTitle("mid_due").setIcon("calendar").onClick(() => editDue(ctx, issue, "mid_due")));
+  m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
   m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
   m3.showAtMouseEvent(e3);
@@ -2166,7 +2170,7 @@ function StatusField(props) {
       return;
     }
     const fields = { status: next, delegated_to: null };
-    if (next === "someday") Object.assign(fields, { scheduled: null, mid_due: null, deadline: null });
+    if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null });
     else fields.revisit = null;
     save(fields);
   };
@@ -2232,7 +2236,7 @@ function ScheduleStrip(props) {
     CalendarForm,
     {
       initial: issue.scheduled,
-      midDue: issue.midDue,
+      softDeadline: issue.softDeadline,
       deadline: issue.deadline,
       onSubmit: (dates) => {
         close();
@@ -2244,7 +2248,7 @@ function ScheduleStrip(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-strip", children: [
     /* @__PURE__ */ u3("div", { class: "vt-strip-days", children: days.map((d3) => /* @__PURE__ */ u3("div", { class: "vt-strip-col", children: [
       /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
-      /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: scheduled.has(d3), midDue: issue.midDue, deadline: issue.deadline, today, onClick: () => toggle2(d3) })
+      /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: scheduled.has(d3), softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => toggle2(d3) })
     ] })) }),
     /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: openCalendar, children: [
       "calendar >",
@@ -2271,7 +2275,7 @@ function DueFields(props) {
     /* @__PURE__ */ u3(Icon, { name: "calendar", class: "vt-trailing" })
   ] });
   return /* @__PURE__ */ u3("div", { class: "vt-dues", children: [
-    row("mid_due", "mid_due", issue.midDue),
+    row("soft_deadline", "soft_deadline", issue.softDeadline),
     row("deadline", "deadline", issue.deadline)
   ] });
 }
@@ -3916,10 +3920,10 @@ async function scheduleIssues(ctx, issues) {
   await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
 }
 async function rescheduleIssues(ctx, issues, target, from = null) {
-  const title = target === "scheduled" ? "\u5B9F\u884C\u65E5\u3092\u79FB\u3059" : `${target} \u3092\u30EA\u30B9\u30B1`;
+  const title = target === "scheduled" ? "\u5B9F\u884C\u65E5\u3092\u79FB\u3059" : `${target} \u3092\u5909\u3048\u308B`;
   const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
   if (date === null) return;
-  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u30EA\u30B9\u30B1");
+  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
 }
 
 // src/obsidian/board-actions.ts
@@ -3996,7 +4000,7 @@ function stopTimer(ctx, ids) {
 var import_obsidian13 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
-  const columns = props.columns ?? ["status-detail", "mid_due", "deadline"];
+  const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
   const today = localToday();
   const toggle2 = (id) => {
     if (!selected || !onSelect) return;
@@ -4015,8 +4019,8 @@ function IssueTable(props) {
     switch (c3) {
       case "status-detail":
         return editable(issue, c3, () => editStatusDetail(ctx, issue.statusDetail, save), text(issue.statusDetail));
-      case "mid_due":
-        return editable(issue, c3, () => editDue(ctx, issue, "mid_due"), due(issue, issue.midDue));
+      case "soft_deadline":
+        return editable(issue, c3, () => editDue(ctx, issue, "soft_deadline"), due(issue, issue.softDeadline));
       case "deadline":
         return editable(issue, c3, () => editDue(ctx, issue, "deadline"), due(issue, issue.deadline));
       case "labels":
@@ -4069,7 +4073,6 @@ function ActionBar(props) {
 // src/views/Board.tsx
 var import_obsidian14 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
-var QUICK_STATUSES = ["open", "in-progress", "waiting", "closed", "canceled"];
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
 }
@@ -4081,6 +4084,25 @@ function changeIssueStatus(ctx, issue, to) {
   const save = (patch) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err));
   if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id)));
   else save(statusPatch(to));
+}
+function DelegateChip(props) {
+  const { ctx, issue } = props;
+  const member = issue.delegatedTo === null ? void 0 : ctx.store.index.members.get(issue.delegatedTo);
+  const name = member?.name ?? issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076";
+  const label = `\u59D4\u4EFB\u5148: ${name}\uFF08\u62BC\u3059\u3068\u9078\u3073\u76F4\u3059\uFF09`;
+  return /* @__PURE__ */ u3(
+    "button",
+    {
+      class: "vt-badge vt-status-delegated vt-delegate",
+      "aria-label": label,
+      title: label,
+      onClick: () => pickMember(ctx, (to) => void ctx.writer.update(issue.path, { delegated_to: to }).catch((err) => ctx.report("\u59D4\u4EFB\u5148\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err))),
+      children: [
+        /* @__PURE__ */ u3(Icon, { name: "user" }),
+        /* @__PURE__ */ u3("span", { class: "vt-delegate-name", children: name })
+      ]
+    }
+  );
 }
 function NextButtons(props) {
   const { ctx, date, item, status } = props;
@@ -4124,13 +4146,12 @@ function TaskCard(props) {
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
     const m3 = new import_obsidian14.Menu();
-    for (const s3 of QUICK_STATUSES) {
-      if (!issue && s3 !== "open" && s3 !== "closed" && s3 !== "canceled") continue;
+    for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
-        (mi) => mi.setTitle(s3).setChecked(s3 === status).onClick(() => {
+        (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
           if (!issue) return void setRoutineResult(ctx, date, id, s3 === "open" ? null : s3);
-          const patch = s3 === "closed" ? closePatch() : s3 === "canceled" ? cancelPatch() : { status: s3 };
-          void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err));
+          if (s3 === status && s3 !== "delegated") return;
+          changeIssueStatus(ctx, issue, s3);
         })
       );
     }
@@ -4174,6 +4195,7 @@ function TaskCard(props) {
         /* @__PURE__ */ u3("div", { class: "vt-task-bottom", children: [
           issue ? /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority }) : /* @__PURE__ */ u3("span", { class: "vt-badge vt-priority", children: "routine" }),
           /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
+          issue && issue.status === "delegated" && /* @__PURE__ */ u3(DelegateChip, { ctx, issue }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
           /* @__PURE__ */ u3(NextButtons, { ctx, date, item, status }),
           /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u30E1\u30CB\u30E5\u30FC", title: "\u30B0\u30EB\u30FC\u30D7\u306E\u79FB\u52D5\u306A\u3069", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
@@ -4313,9 +4335,9 @@ function Board(props) {
           {
             count: sel.length,
             actions: [
-              { label: "Do Tomorrow", icon: "calendar-plus", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(/* @__PURE__ */ new Set())) },
+              { label: "Do Tomorrow", icon: "sunrise", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
-              { label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(/* @__PURE__ */ new Set())) },
+              { label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
               { label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, date, sel, "inbox").then(() => setSelected(/* @__PURE__ */ new Set())) }
             ]
@@ -4349,7 +4371,7 @@ var STEPS = [
 function DueStep(props) {
   const sections = [
     { key: "deadline", title: "deadline", issues: props.lists.deadline },
-    { key: "mid_due", title: "mid_due", issues: props.lists.midDue }
+    { key: "soft_deadline", title: "soft_deadline", issues: props.lists.softDeadline }
   ];
   return /* @__PURE__ */ u3(S, { children: sections.map((s3) => /* @__PURE__ */ u3(DueSection, { ctx: props.ctx, target: s3.key, title: s3.title, issues: s3.issues, empty: props.empty, canScheduleToday: props.canScheduleToday })) });
 }
@@ -4363,15 +4385,15 @@ function DueSection(props) {
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: props.title }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "mid_due", "deadline"], empty: props.empty }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "soft_deadline", "deadline"], empty: props.empty }),
     issues.length > 0 && /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
           ...props.canScheduleToday ? [{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) }] : [],
-          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
-          { label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
+          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
         ]
@@ -4409,7 +4431,7 @@ function PreviousBoard(props) {
         actions: [
           { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void carryIssues(ctx, board.date, sel, "reschedule", localToday()).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-          { label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
+          { label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, board.date, sel, "inbox").then(done) }
         ]
@@ -4429,14 +4451,14 @@ function ScheduledStep(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-text", disabled: issues.length === 0, onClick: () => void addToBoard(ctx, today, issues.map((i3) => i3.id)), children: "\u3059\u3079\u3066\u30DC\u30FC\u30C9\u3078" })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "mid_due", "deadline", "estimated"] }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "soft_deadline", "deadline", "estimated"] }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
           { label: "Move to Task Board", icon: "layout-dashboard", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
-          { label: "Reschedule", icon: "calendar", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
+          { label: "Move Do Date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
         ]
@@ -4458,12 +4480,12 @@ function DailyView(props) {
   const scheduled = scheduledOn(issues, today, new Set(todayBoard.issues));
   const todayLeft = unfinished(index, today, todayBoard);
   const counts = {
-    dead: dead.deadline.length + dead.midDue.length,
+    dead: dead.deadline.length + dead.softDeadline.length,
     previous: pending.reduce((n2, b2) => {
       const u4 = unfinished(index, b2.date, b2.board);
       return n2 + u4.issues.length + u4.routines.length;
     }, 0),
-    caution: caution.deadline.length + caution.midDue.length,
+    caution: caution.deadline.length + caution.softDeadline.length,
     scheduled: scheduled.length,
     board: todayLeft.issues.length + todayLeft.routines.length
   };
@@ -4703,7 +4725,7 @@ function InboxView(props) {
         count: sel.length,
         actions: [
           { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
-          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
@@ -4861,8 +4883,8 @@ function sortValue(issue, key, today) {
       return STATUSES.indexOf(issue.status);
     case "priority":
       return issue.priority === null ? null : PRIORITIES.indexOf(issue.priority);
-    case "mid_due":
-      return issue.midDue;
+    case "soft_deadline":
+      return issue.softDeadline;
     case "deadline":
       return issue.deadline;
     case "created":
@@ -4902,7 +4924,7 @@ var SORTS = [
   { key: "status", label: "status" },
   { key: "priority", label: "priority" },
   { key: "next_scheduled", label: "\u6B21\u306E\u5B9F\u884C\u65E5" },
-  { key: "mid_due", label: "mid_due" },
+  { key: "soft_deadline", label: "soft_deadline" },
   { key: "deadline", label: "deadline" },
   { key: "created", label: "\u4F5C\u6210\u65E5" }
 ];
@@ -5006,13 +5028,13 @@ function IssueListView(props) {
         /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => set(defaultQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
       ] })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "mid_due", "deadline", "estimated"], empty: "\u6761\u4EF6\u306B\u5408\u3046 issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"], empty: "\u6761\u4EF6\u306B\u5408\u3046 issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
@@ -5032,7 +5054,7 @@ var ESTIMATES = [15, 30, 60, 120, 300, 480];
 var FIELD_OF = {
   status: (i3) => i3.status,
   scheduled: (i3) => i3.scheduled,
-  mid_due: (i3) => i3.midDue,
+  soft_deadline: (i3) => i3.softDeadline,
   deadline: (i3) => i3.deadline,
   revisit: (i3) => i3.revisit,
   reviewed: (i3) => i3.reviewed,
@@ -5053,7 +5075,7 @@ function ScheduleSheet(props) {
     CalendarForm,
     {
       initial: props.issue.scheduled,
-      midDue: props.issue.midDue,
+      softDeadline: props.issue.softDeadline,
       deadline: props.issue.deadline,
       submitLabel: "\u6C7A\u5B9A",
       canSubmit: (count) => canConfirmSchedule(count, needEstimate, estimated),
@@ -5430,7 +5452,7 @@ function ScheduledView(props) {
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
-        days.map((d3) => /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: i3.scheduled.includes(d3), midDue: i3.midDue, deadline: i3.deadline, today, onClick: () => toggle2(i3.path, i3.scheduled, d3) }) }))
+        days.map((d3) => /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: i3.scheduled.includes(d3), softDeadline: i3.softDeadline, deadline: i3.deadline, today, onClick: () => toggle2(i3.path, i3.scheduled, d3) }) }))
       ] }, i3.id)) })
     ] }) })
   ] });
@@ -5555,7 +5577,7 @@ function SomedayView(props) {
         count: sel.length,
         actions: [
           { label: "Inbox \u306B\u623B\u3059", icon: "inbox", tone: "primary", run: reopen },
-          { label: "Schedule", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
         ]

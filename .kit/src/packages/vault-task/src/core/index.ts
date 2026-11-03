@@ -34,9 +34,9 @@ export function isActive(issue: Issue): boolean {
 	return !INACTIVE_STATUSES.includes(issue.status);
 }
 
-/** open で、scheduled・mid_due・deadline がどれもない（ADR-0006） */
+/** open で、scheduled・soft_deadline・deadline がどれもない（ADR-0006） */
 export function isInbox(issue: Issue): boolean {
-	return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
+	return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
 }
 
 /** routine の interval を数える起点: start、なければ created の日付 */
@@ -200,7 +200,7 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 		return n + u.issues.length + u.routines.length;
 	}, 0);
 	return {
-		daily: dead.deadline.length + dead.midDue.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+		daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
 		inbox: issues.filter(isInbox).length,
 		organize: organizeQueue(issues, today).length,
 		scheduled: issues.filter((i) => isActive(i) && i.scheduled.some((d) => d >= today)).length,

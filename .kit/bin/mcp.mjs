@@ -7430,24 +7430,24 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
 var byDate = (key) => (a, b) => (a[key] ?? "").localeCompare(b[key] ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
 function deadIssues(issues, today) {
   const deadline = [];
-  const midDue = [];
+  const softDeadline = [];
   for (const i of issues) {
     if (!isActive(i)) continue;
     if (i.deadline !== null && i.deadline < today) deadline.push(i);
-    if (i.midDue !== null && i.midDue < today) midDue.push(i);
+    if (i.softDeadline !== null && i.softDeadline < today) softDeadline.push(i);
   }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
 }
 function cautionIssues(issues, today, days = 3) {
   const within = (d) => d !== null && diffDays(d, today) >= 0 && diffDays(d, today) <= days;
   const deadline = [];
-  const midDue = [];
+  const softDeadline = [];
   for (const i of issues) {
     if (!isActive(i)) continue;
     if (within(i.deadline)) deadline.push(i);
-    if (within(i.midDue)) midDue.push(i);
+    if (within(i.softDeadline)) softDeadline.push(i);
   }
-  return { deadline: deadline.sort(byDate("deadline")), midDue: midDue.sort(byDate("midDue")) };
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
 }
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
   return [...issues].filter((i) => isActive(i) && i.scheduled.includes(date) && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
@@ -7724,6 +7724,7 @@ function parseIssue(path, fm) {
   if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
   const issue = {
     path,
     id: id ?? "",
@@ -7737,7 +7738,7 @@ function parseIssue(path, fm) {
     related: r.strings("related"),
     estimated: r.minutes("estimated"),
     scheduled: r.dates("scheduled"),
-    midDue: r.date("mid_due"),
+    softDeadline: r.date("soft_deadline"),
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),
@@ -7943,7 +7944,7 @@ function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
 function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.midDue === null && issue.deadline === null;
+  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -8401,8 +8402,8 @@ function lintVault(data, options = {}) {
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
     }
-    if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.midDue !== null || issue.deadline !== null)) {
-      add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / mid_due / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
+    if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.softDeadline !== null || issue.deadline !== null)) {
+      add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
     }
     if (issue.revisit !== null && issue.status !== "someday") {
       add("warning", path, "stale-revisit", "someday \u3067\u306F\u306A\u3044\u306E\u306B revisit \u304C\u3042\u308A\u307E\u3059");
@@ -8449,8 +8450,8 @@ function sortValue(issue, key, today) {
       return STATUSES.indexOf(issue.status);
     case "priority":
       return issue.priority === null ? null : PRIORITIES.indexOf(issue.priority);
-    case "mid_due":
-      return issue.midDue;
+    case "soft_deadline":
+      return issue.softDeadline;
     case "deadline":
       return issue.deadline;
     case "created":
@@ -8925,16 +8926,16 @@ import { dirname, resolve, sep as sep2 } from "node:path";
 
 // src/core/actions.ts
 function cancelPatch() {
-  return { status: "canceled", mid_due: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null };
 }
 function inboxPatch() {
-  return { status: "open", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
 }
 function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, mid_due: null, deadline: null, delegated_to: null, revisit };
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
 }
 function reschedulePatch(issue, target, to, from = null) {
   if (target !== "scheduled") return { [target]: to };
@@ -9241,8 +9242,8 @@ function createIssueOnDisk(root, index, input, device, now) {
   if (input.estimated !== void 0 && input.estimated !== null && (typeof input.estimated !== "number" || input.estimated < 0)) {
     throw new Error(`estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(input.estimated)}`);
   }
-  if (input.mid_due !== void 0 && input.mid_due !== null && !isLocalDate(input.mid_due)) {
-    throw new Error(`mid_due \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.mid_due)}`);
+  if (input.soft_deadline !== void 0 && input.soft_deadline !== null && !isLocalDate(input.soft_deadline)) {
+    throw new Error(`soft_deadline \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.soft_deadline)}`);
   }
   if (input.deadline !== void 0 && input.deadline !== null && !isLocalDate(input.deadline)) {
     throw new Error(`deadline \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.deadline)}`);
@@ -9256,7 +9257,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   if (input.priority !== void 0) extra.priority = input.priority;
   if (input.labels !== void 0 && input.labels.length > 0) extra.labels = input.labels;
   if (input.estimated !== void 0) extra.estimated = input.estimated;
-  if (input.mid_due !== void 0) extra.mid_due = input.mid_due;
+  if (input.soft_deadline !== void 0) extra.soft_deadline = input.soft_deadline;
   if (input.deadline !== void 0) extra.deadline = input.deadline;
   const issue = Object.keys(extra).length > 0 ? updateIssueFrontmatter(root, relPath, extra) : parseIssue(relPath, {
     type: "issue",
@@ -9330,9 +9331,9 @@ function updateIssueOnDisk(root, index, input, log) {
     }
     patch.scheduled = [...new Set(input.scheduled)].sort();
   }
-  if (input.mid_due !== void 0) {
-    if (input.mid_due !== null && !isLocalDate(input.mid_due)) throw new Error(`mid_due \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.mid_due)}`);
-    patch.mid_due = input.mid_due;
+  if (input.soft_deadline !== void 0) {
+    if (input.soft_deadline !== null && !isLocalDate(input.soft_deadline)) throw new Error(`soft_deadline \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.soft_deadline)}`);
+    patch.soft_deadline = input.soft_deadline;
   }
   if (input.deadline !== void 0) {
     if (input.deadline !== null && !isLocalDate(input.deadline)) throw new Error(`deadline \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.deadline)}`);
@@ -9352,7 +9353,7 @@ function updateIssueOnDisk(root, index, input, log) {
     }
     patch.estimated = input.estimated;
   }
-  const hasDatesAdded = Array.isArray(patch.scheduled) && patch.scheduled.length > 0 || patch.mid_due !== void 0 && patch.mid_due !== null || patch.deadline !== void 0 && patch.deadline !== null;
+  const hasDatesAdded = Array.isArray(patch.scheduled) && patch.scheduled.length > 0 || patch.soft_deadline !== void 0 && patch.soft_deadline !== null || patch.deadline !== void 0 && patch.deadline !== null;
   if (current.status === "someday" && input.status === void 0 && hasDatesAdded) {
     patch.status = "open";
     patch.revisit = null;
@@ -9468,7 +9469,7 @@ var TOOLS = [
         scheduled: { type: "string", enum: ["any", "yes", "no"] },
         parent: { type: "string" },
         inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox \u306E issue \u306E\u307F\u8FD4\u3059" },
-        sort: { type: "string", enum: ["id", "summary", "status", "priority", "mid_due", "deadline", "created", "next_scheduled"] },
+        sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
         desc: { type: "boolean" },
         limit: { type: "number", description: "\u6700\u5927\u4EF6\u6570\uFF08\u65E2\u5B9A 100\uFF09" }
       }
@@ -9606,7 +9607,7 @@ var TOOLS = [
         priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
         labels: { type: "array", items: { type: "string" } },
         estimated: { type: ["number", "null"] },
-        mid_due: { type: ["string", "null"] },
+        soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
         add_to_board_date: { type: ["string", "null"], description: "\u6307\u5B9A\u3057\u305F\u65E5\u4ED8\uFF08YYYY-MM-DD\uFF09\u306E\u30DC\u30FC\u30C9\u306B\u3082\u8F09\u305B\u308B" }
       },
@@ -9628,7 +9629,7 @@ var TOOLS = [
         labels: { type: "array", items: { type: "string" } },
         parent: { type: ["string", "null"] },
         scheduled: { type: "array", items: { type: "string" } },
-        mid_due: { type: ["string", "null"] },
+        soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
         revisit: { type: ["string", "null"] },
         reviewed: { type: ["string", "null"] },
@@ -9882,7 +9883,7 @@ function callMcpTool(ctx, name, args = {}) {
           priority: args.priority,
           labels: Array.isArray(args.labels) ? args.labels.map(String) : void 0,
           estimated: args.estimated,
-          mid_due: args.mid_due,
+          soft_deadline: args.soft_deadline,
           deadline: args.deadline,
           add_to_board_date: args.add_to_board_date
         },
@@ -9901,7 +9902,7 @@ function callMcpTool(ctx, name, args = {}) {
         ...Array.isArray(args.labels) ? { labels: args.labels.map(String) } : {},
         ...args.parent !== void 0 ? { parent: args.parent } : {},
         ...Array.isArray(args.scheduled) ? { scheduled: args.scheduled.map(String) } : {},
-        ...args.mid_due !== void 0 ? { mid_due: args.mid_due } : {},
+        ...args.soft_deadline !== void 0 ? { soft_deadline: args.soft_deadline } : {},
         ...args.deadline !== void 0 ? { deadline: args.deadline } : {},
         ...args.revisit !== void 0 ? { revisit: args.revisit } : {},
         ...args.reviewed !== void 0 ? { reviewed: args.reviewed } : {},

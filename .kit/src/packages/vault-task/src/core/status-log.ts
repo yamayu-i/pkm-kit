@@ -122,6 +122,14 @@ export function nextStatuses(status: Status): Status[] {
 	}
 }
 
+/**
+ * task board のカードの status メニューに出す status（ADR-0032）。
+ * issue は delegated も選べる（委任先はその場で選ぶ）。someday はボードの上では選ばない。routine はその日の結果だけ
+ */
+export function boardMenuStatuses(kind: "issue" | "routine"): Status[] {
+	return kind === "issue" ? ["open", "in-progress", "waiting", "delegated", "closed", "canceled"] : ["open", "closed", "canceled"];
+}
+
 export function isDoneStatus(status: Status): boolean {
 	return status === "closed" || status === "canceled";
 }

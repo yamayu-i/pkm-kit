@@ -18,7 +18,7 @@ describe("parseIssue", () => {
 			related: ["i-5", "topics/foo.md"],
 			estimated: 120,
 			scheduled: ["2026-11-04", new Date("2026-11-02T00:00:00Z"), "2026-11-04"],
-			mid_due: "2026-11-05",
+			soft_deadline: "2026-11-05",
 			deadline: "2026-11-10",
 			created: "2026-10-31T10:00:00+09:00",
 		});
@@ -30,9 +30,15 @@ describe("parseIssue", () => {
 			delegatedTo: "m-3",
 			labels: ["仕事", "調査"],
 			scheduled: ["2026-11-02", "2026-11-04"],
-			midDue: "2026-11-05",
+			softDeadline: "2026-11-05",
 			revisit: null,
 		});
+	});
+
+	it("旧名の mid_due が残っていたら、移行を促す（ADR-0032）。値は読まない", () => {
+		const { value, problems } = parseIssue("issue/i-4.md", { type: "issue", id: "i-4", summary: "x", status: "open", mid_due: "2026-11-05" });
+		expect(value?.softDeadline).toBeNull();
+		expect(problems).toEqual([expect.objectContaining({ code: "legacy-mid-due", severity: "error" })]);
 	});
 
 	it("読めない欄は問題として報告し、ほかは読む", () => {

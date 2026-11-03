@@ -88,8 +88,8 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
 			add("warning", path, "long-status-detail", `status-detail が ${STATUS_DETAIL_MAX} 文字を超えています`);
 		}
-		if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.midDue !== null || issue.deadline !== null)) {
-			add("warning", path, "someday-with-dates", "someday なのに scheduled / mid_due / deadline が残っています");
+		if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.softDeadline !== null || issue.deadline !== null)) {
+			add("warning", path, "someday-with-dates", "someday なのに scheduled / soft_deadline / deadline が残っています");
 		}
 		if (issue.revisit !== null && issue.status !== "someday") {
 			add("warning", path, "stale-revisit", "someday ではないのに revisit があります");

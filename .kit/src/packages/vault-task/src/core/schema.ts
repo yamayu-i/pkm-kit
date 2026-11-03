@@ -31,7 +31,7 @@ export interface Issue {
 	estimated: number | null;
 	/** 昇順・重複なし */
 	scheduled: LocalDate[];
-	midDue: LocalDate | null;
+	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	revisit: LocalDate | null;
 	reviewed: LocalDate | null;
@@ -184,6 +184,8 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 	if (!summary) r.problem("missing-summary", "summary がありません", "warning");
 	const status = r.oneOf("status", STATUSES);
 	if (status === null && !r.has("status")) r.problem("missing-status", "status がありません");
+	// mid_due は soft_deadline に改名した（ADR-0032）。移行（0003-soft-deadline）で書き換える
+	if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due は soft_deadline に改名しました（ADR-0032）。キーを soft_deadline に直してください");
 	const issue: Issue = {
 		path,
 		id: id ?? "",
@@ -197,7 +199,7 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 		related: r.strings("related"),
 		estimated: r.minutes("estimated"),
 		scheduled: r.dates("scheduled"),
-		midDue: r.date("mid_due"),
+		softDeadline: r.date("soft_deadline"),
 		deadline: r.date("deadline"),
 		revisit: r.date("revisit"),
 		reviewed: r.date("reviewed"),

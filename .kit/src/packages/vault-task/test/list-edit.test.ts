@@ -13,8 +13,8 @@ function issue(fm: Record<string, unknown> = {}): Issue {
 describe("リストの編集（ADR-0018）", () => {
 	it("status: ボードのカードと同じ規則で欄を外す", () => {
 		expect(statusPatch("closed")).toMatchObject({ status: "closed", delegated_to: null, revisit: null });
-		expect(statusPatch("canceled")).toMatchObject({ status: "canceled", mid_due: null, deadline: null });
-		expect(statusPatch("someday")).toMatchObject({ status: "someday", scheduled: null, mid_due: null, deadline: null });
+		expect(statusPatch("canceled")).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
+		expect(statusPatch("someday")).toMatchObject({ status: "someday", scheduled: null, soft_deadline: null, deadline: null });
 		expect(statusPatch("waiting")).toEqual({ status: "waiting", delegated_to: null, revisit: null });
 		expect(statusPatch("delegated", "m-1")).toEqual({ status: "delegated", delegated_to: "m-1", revisit: null });
 	});
@@ -22,7 +22,7 @@ describe("リストの編集（ADR-0018）", () => {
 	it("someday に実行日や期限を入れると open に戻す。外すだけなら戻さない", () => {
 		const someday = issue({ status: "someday", revisit: "2026-12-01" });
 		expect(duePatch(someday, "deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10", status: "open", revisit: null });
-		expect(duePatch(someday, "mid_due", null)).toEqual({ mid_due: null });
+		expect(duePatch(someday, "soft_deadline", null)).toEqual({ soft_deadline: null });
 		expect(scheduledPatch(someday, ["2026-11-02"])).toEqual({ scheduled: ["2026-11-02"], status: "open", revisit: null });
 		expect(scheduledPatch(someday, [])).toEqual({ scheduled: [] });
 		expect(duePatch(issue(), "deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10" });
