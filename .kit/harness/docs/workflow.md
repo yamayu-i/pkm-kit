@@ -14,7 +14,7 @@
 
 - どちらか迷ったら大きい変更として扱う
 - ADR は計画より先に書き、合意してから計画に進む。プラグインの ADR は `.kit/src/docs/adr/`、ハーネスと wiki の ADR は [adr/](adr/README.md)
-- 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[ADR-0010](adr/0010-upstream-updates-and-migrations.md)）
+- 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](migrations.md)）。子から見える変更は `.kit/CHANGELOG.md` に書く
 - 途中で止めるときは [中断と再開](../skills/dev-handoff/SKILL.md)
 - 作業中に訂正された・文書にないことを質問した・文書と実際が違った、などが起きたら、その場で [気づきを記録する](../skills/kit-note/SKILL.md)
 

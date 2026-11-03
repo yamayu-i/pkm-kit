@@ -4,10 +4,11 @@
  * 何度実行しても同じ結果になる。子のもの（ノート、template/、.obsidian/*.json の残りのキーなど）は消さない。
  *
  * 1. .kit-local/config.json に、エスカレーションの方法を書く（なければ尋ねる）
- * 2. .kit-local/upstream.json に、取り込んだ上流のコミットと、適用済みの移行を書く（なければ）
+ * 2. .kit-local/upstream.json に、取り込んだ上流のコミットを書く（なければ）
  * 3. .obsidian/*.json に、.kit/obsidian-required.json の必要なキーだけを合わせる
  * 4. 子のものの初期値を置く（issue/labels.json、issue/board-groups.json、.claude/local/CLAUDE.md。なければ）
  * 5. git の作業ツリーなら、pre-commit フック（.githooks）を有効にする
+ * 6. 未適用の移行（.kit/migrations/）を実行する（.kit/migrate.mjs。新しい Vault では何も変えずに適用済みになる）
  *
  * 使い方:
  *   node .kit/setup.mjs [--escalation=issue|file|none] [--escalation-repo=<owner/name>] [--dry-run] [<Vault のルート>]
@@ -15,11 +16,12 @@
  * --escalation を付けず、すでに .kit-local/config.json もなければ、端末で尋ねる（端末でなければ失敗する）。
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import { applyObsidianRequired, readRequired } from "./lib/obsidian-required.mjs";
+import { runMigrations } from "./migrate.mjs";
 
 export const METHODS = ["issue", "file", "none"];
 
@@ -86,15 +88,8 @@ export function escalationConfig(method, repo) {
 /** 上流の取り込みの記録。上流の remote（upstream/<branch>）があればそのコミット、なければ HEAD */
 export function upstreamRecord(root, kit) {
 	const commit = tryGit(root, ["rev-parse", "--verify", "--quiet", `upstream/${kit.branch}`]) ?? tryGit(root, ["rev-parse", "--verify", "--quiet", "HEAD"]);
-	const dir = join(root, ".kit/migrations");
-	// 新しい Vault は最新の形で始まるので、今ある移行はすべて適用済みとして扱う（ADR-0010）
-	const migrations = existsSync(dir)
-		? readdirSync(dir, { withFileTypes: true })
-				.filter((d) => d.isDirectory() && /^\d{4}-/.test(d.name))
-				.map((d) => d.name)
-				.sort()
-		: [];
-	return { repo: kit.repo, url: kit.url, branch: kit.branch, commit, migrations };
+	// 移行は適用済みにしない。セットアップの最後に実行する（新しい Vault では何も変えずに終わる。ADR-0010）
+	return { repo: kit.repo, url: kit.url, branch: kit.branch, commit, migrations: [] };
 }
 
 /**
@@ -121,7 +116,7 @@ export function setup(root, { escalation = null, dryRun = false } = {}) {
 	if (!existsSync(upstreamPath)) {
 		const record = upstreamRecord(root, kit);
 		if (!dryRun) writeJson(upstreamPath, record);
-		say(`.kit-local/upstream.json: 上流のコミット ${record.commit ?? "（なし）"} と、適用済みの移行 ${record.migrations.length} 件を記録する`);
+		say(`.kit-local/upstream.json: 上流のコミット ${record.commit ?? "（なし）"} を記録する`);
 	}
 
 	for (const c of applyObsidianRequired(join(root, ".obsidian"), readRequired(root), { dryRun })) {
@@ -180,6 +175,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 			escalation = await ask(kit);
 		}
 		const done = setup(root, { escalation, dryRun });
+		if (!dryRun) {
+			const { done: migrated, failed } = await runMigrations(root);
+			for (const m of migrated) done.push(...(m.changes.length ? m.changes.map((c) => `移行 ${m.name}: ${c}`) : [`移行 ${m.name}: 適用済みにする（変えるものはない）`]));
+			if (failed) {
+				for (const d of done) console.log(`- ${d}`);
+				throw new Error(`移行 ${failed.name} が終わっていない（${failed.readme} に従って直し、node .kit/migrate.mjs を実行する）: ${failed.problems.join(" / ")}`);
+			}
+		}
 		for (const d of done) console.log(`- ${d}`);
 		console.log(done.length ? `セットアップ: ${done.length} 件${dryRun ? "（--dry-run なので書いていない）" : ""}` : "セットアップ: 変えるものはない");
 	} catch (e) {

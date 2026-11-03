@@ -36,6 +36,7 @@
 | 間違っていそうな worklog を一緒に直す | [worklog-review](skills/worklog-review/SKILL.md) |
 | 気づきを記録する（直す先が子か上流かも書く） | [harness-note](skills/harness-note/SKILL.md) |
 | 上流を変えないと直らないことを上流に伝える | [escalate](skills/escalate/SKILL.md) |
+| 上流の更新を取り込む（merge と移行） | [vault-upgrade](skills/vault-upgrade/SKILL.md) |
 | この Vault のハーネスと wiki の使い方を評価する（月 1 回） | [harness-review](skills/harness-review/SKILL.md) |
 
 ## 文書の地図
@@ -59,6 +60,7 @@ node .claude/scripts/verify.mjs       # 検査（ノートの書式、上流の�
 node .claude/scripts/wiki-lint.mjs    # ノートの書式
 node .kit/bin/lint.mjs .              # タスク管理データ（issue/ routine/ member/ worklog/ board/）の整合性検査
 node .kit/setup.mjs --dry-run         # セットアップ（エスカレーションの方法、Obsidian の設定）。何をするかだけを表示
+node .kit/migrate.mjs --status        # 未適用の移行（取り込みは vault-upgrade）
 ```
 
 ## このファイルを変えるとき

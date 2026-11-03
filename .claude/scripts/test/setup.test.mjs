@@ -15,6 +15,8 @@ const KIT_FILES = [
 	".kit/owned-paths.json",
 	".kit/obsidian-required.json",
 	".kit/setup.mjs",
+	".kit/migrate.mjs",
+	".kit/migrations",
 	".kit/lib/obsidian-required.mjs",
 	".claude/scripts/check-kit-paths.mjs",
 	".claude/scripts/check-obsidian-config.mjs",
@@ -25,7 +27,7 @@ function childVault(extra = {}) {
 	const root = tempRepo();
 	for (const f of KIT_FILES) {
 		mkdirSync(dirname(join(root, f)), { recursive: true });
-		cpSync(join(here, f), join(root, f));
+		cpSync(join(here, f), join(root, f), { recursive: true });
 	}
 	commit(root, "上流", extra);
 	return root;
@@ -57,7 +59,9 @@ test("セットアップ: 新しい Vault に設定・記録・初期値を置�
 	assert.deepEqual(json(root, ".kit-local/config.json"), { escalation: { method: "issue", repo: "yamayu-i/pkm-kit", label: "escalation" } });
 	const record = json(root, ".kit-local/upstream.json");
 	assert.equal(record.commit, git(root, "rev-parse", "HEAD").trim());
-	assert.deepEqual(record.migrations, []);
+	// 移行は実行して適用済みにする（新しい Vault では何も変えない）
+	assert.deepEqual(record.migrations, ["0001-template-overrides"]);
+	assert.match(first.stdout, /移行 0001-template-overrides: 適用済みにする/);
 
 	// 必要なキーだけを合わせ、ユーザーの設定（vimMode）は残す。Obsidian と同じく末尾に改行を付けない
 	const app = json(root, ".obsidian/app.json");

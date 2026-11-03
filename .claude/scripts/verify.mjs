@@ -28,6 +28,7 @@ const steps = [
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
 	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
 	["所有の境界", node, [join(scripts, "check-kit-paths.mjs")]],
+	["移行（子の Vault で未適用のものがないか）", node, [join(root, ".kit/migrate.mjs"), "--status"]],
 	hasOriginMain
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), "origin/main..HEAD"]]
 		: ["wiki の操作が追記だけか（origin/main がないので省略）", null, []],
