@@ -8,6 +8,7 @@
 
 - **移行 0002-ribbon-and-core-daily-notes**: 新しいプラグイン vault-ribbon が「今日のデイリーノートを開く」（カレンダー）と「Daily を開く」のボタンを、続けて並べる（デイリーノートが上）。vault-template と vault-task は、このボタンを出さない（コマンドは残る）。コアプラグイン「デイリーノート」は無効にする（使っていないのにボタンが残っていた）。移行は `core-plugins.json` の `daily-notes` を `false` にし、`vault-ribbon` を有効にし、既定のままの `daily-notes.json` を消す（ADR-0029）
 - vault-task の Organize: 「予定」はカレンダーだけを開き、日付を複数選んで「決定」する。1 日も選んでいないと決定は押せない。Inbox で estimated がないときだけ、カレンダーの下で estimated も選ぶ。カレンダーで選んだ後に何も編集できなくなる不具合も、これで直る（ADR-0030）
+- 所有の境界: 上流が持つプラグインの成果物を、上流のプラグインの ID ごとに書くようにした。子の Vault は、自分だけのプラグイン（`.obsidian/plugins/<自分の id>/`）を足せる（今までは上流のものと判定され、境界の検査で失敗した。yamayu-i/pkm-kit#19）。移行なし
 - カレンダーの今日: 選んでいないときは枠と文字を primary にして、一目で分かるようにした。読み上げとツールチップにも「今日」と出す
 
 - vault-template: frontmatter の引用符（`"…"` / `'…'`）の中に展開する値（`{{title}}`、`{{prompt:…}}` など）を、YAML として正しくエスケープするようにした。タイトルに `"` や `\` を含めても、frontmatter が壊れない（yamayu-i/pkm-kit#10）。本文の展開は変わらない
