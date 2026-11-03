@@ -7711,6 +7711,7 @@ function parseIssue(path, fm) {
   if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
   const issue = {
     path,
     id: id ?? "",
@@ -7724,7 +7725,7 @@ function parseIssue(path, fm) {
     related: r.strings("related"),
     estimated: r.minutes("estimated"),
     scheduled: r.dates("scheduled"),
-    midDue: r.date("mid_due"),
+    softDeadline: r.date("soft_deadline"),
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),

@@ -1,13 +1,13 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { closePatch, cancelPatch, statusPatch } from "../core/actions";
+import { statusPatch } from "../core/actions";
 import { boardItems, placementOf, unfinished, type BoardState } from "../core/board";
 import { addDays, formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
-import { isDoneStatus, nextStatuses } from "../core/status-log";
+import { boardMenuStatuses, isDoneStatus, nextStatuses } from "../core/status-log";
 import {
 	addToBoard,
 	carryIssues,
@@ -34,7 +34,6 @@ import { linkProps } from "../ui/a11y";
 type Item = { kind: "issue"; issue: Issue } | { kind: "routine"; routine: Routine };
 
 const itemId = (it: Item) => (it.kind === "issue" ? it.issue.id : it.routine.id);
-const QUICK_STATUSES: Status[] = ["open", "in-progress", "waiting", "closed", "canceled"];
 
 function routineStatus(board: BoardState, r: Routine): Status {
 	return board.routines[r.id] ?? "open";
@@ -48,11 +47,30 @@ function isDoneItem(board: BoardState, it: Item): boolean {
 /** 閉じた直後の動きを付ける時間 */
 const ENTER_MS = 3_000;
 
-/** issue の status を変える。delegated に戻すときは委任先を選ぶ */
+/** issue の status を変える。delegated にするときは委任先を選ぶ（ADR-0032）。ほかの status にすると delegated_to を外す */
 function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): void {
 	const save = (patch: Record<string, string | null>) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status を変えられませんでした", err));
 	if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id) as Record<string, string | null>));
 	else save(statusPatch(to) as Record<string, string | null>);
+}
+
+/** delegated のカードの委任先（ADR-0032）。押すと委任先を選び直す */
+function DelegateChip(props: { ctx: TaskContext; issue: Issue }) {
+	const { ctx, issue } = props;
+	const member = issue.delegatedTo === null ? undefined : ctx.store.index.members.get(issue.delegatedTo);
+	const name = member?.name ?? issue.delegatedTo ?? "委任先を選ぶ";
+	const label = `委任先: ${name}（押すと選び直す）`;
+	return (
+		<button
+			class="vt-badge vt-status-delegated vt-delegate"
+			aria-label={label}
+			title={label}
+			onClick={() => pickMember(ctx, (to) => void ctx.writer.update(issue.path, { delegated_to: to }).catch((err) => ctx.report("委任先を変えられませんでした", err)))}
+		>
+			<Icon name="user" />
+			<span class="vt-delegate-name">{name}</span>
+		</button>
+	);
 }
 
 /** 押すとすぐ次の status にするボタン（ADR-0031）。アイコンは押した後の status */
@@ -106,16 +124,16 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 
 	const statusMenu = (e: MouseEvent) => {
 		const m = new Menu();
-		for (const s of QUICK_STATUSES) {
-			if (!issue && s !== "open" && s !== "closed" && s !== "canceled") continue;
+		for (const s of boardMenuStatuses(issue ? "issue" : "routine")) {
 			m.addItem((mi) =>
 				mi
-					.setTitle(s)
+					.setTitle(s === "delegated" ? "delegated…" : s)
 					.setChecked(s === status)
 					.onClick(() => {
 						if (!issue) return void setRoutineResult(ctx, date, id, s === "open" ? null : (s as "closed" | "canceled"));
-						const patch = s === "closed" ? closePatch() : s === "canceled" ? cancelPatch() : { status: s };
-						void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status を変えられませんでした", err));
+						// delegated をもう一度選んだときは、委任先を選び直す
+						if (s === status && s !== "delegated") return;
+						changeIssueStatus(ctx, issue, s);
 					}),
 			);
 		}
@@ -159,6 +177,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			<div class="vt-task-bottom">
 				{issue ? <PriorityBadge priority={issue.priority} /> : <span class="vt-badge vt-priority">routine</span>}
 				<StatusBadge status={status} enter={enter} onClick={statusMenu} />
+				{issue && issue.status === "delegated" && <DelegateChip ctx={ctx} issue={issue} />}
 				<span class="vt-spacer" />
 				<NextButtons ctx={ctx} date={date} item={item} status={status} />
 				<button class="vt-icon-button" aria-label="メニュー" title="グループの移動など" onClick={moreMenu}>
@@ -342,9 +361,9 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 							<ActionBar
 								count={sel.length}
 								actions={[
-									{ label: "Do Tomorrow", icon: "calendar-plus", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(new Set())) },
+									{ label: "Do Tomorrow", icon: "sunrise", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(new Set())) },
 									{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(new Set())) },
-									{ label: "Reschedule", icon: "calendar", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(new Set())) },
+									{ label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(new Set())) },
 									{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(new Set())) },
 									{ label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, date, sel, "inbox").then(() => setSelected(new Set())) },
 								]}

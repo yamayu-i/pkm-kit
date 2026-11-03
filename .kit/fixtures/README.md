@@ -5,7 +5,7 @@
 | fixture | 模しているもの |
 |---|---|
 | `fresh/` | 今の上流でセットアップした直後の新しい Vault。`template/` がなく、`.obsidian/` は今の上流が求める設定どおり。どの移行も何も変えないこと（テストで確かめる） |
-| `legacy/` | 切り出す前から使っている Vault。上流と同じ中身の `template/` がそのまま残っている。`.obsidian/` は切り出した時点の設定（コアプラグインのデイリーノートが有効、既定の `daily-notes.json`） |
+| `legacy/` | 切り出す前から使っている Vault。上流と同じ中身の `template/` がそのまま残っている。`.obsidian/` は切り出した時点の設定（コアプラグインのデイリーノートが有効、既定の `daily-notes.json`、`mid_due` の型を持つ `types.json`）。`issue/` に旧名の `mid_due` を持つ issue がある |
 | `customized/` | テンプレートを変えた Vault。変えたもの・子だけのもの・変えていないものと、差分と並べ替えのある完全な形の `template/config.json`。`daily-notes.json` の値も変えている |
 
 移行を足したら、その移行が扱う古い形を、どれかの fixture に足す。

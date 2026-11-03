@@ -566,10 +566,10 @@ button.vt-badge:disabled::after {
 .vt-day.is-scheduled { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
 .vt-day.is-scheduled:hover { background: var(--vt-scheduled-hover); }
 /* 期限は面の外側に隙間を空けた枠で示す（実行日の面の色と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
-.vt-day.is-mid-due:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-amber); outline-offset: 2px; }
+.vt-day.is-soft-deadline:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-amber); outline-offset: 2px; }
 .vt-day.is-deadline:not(:focus-visible) { outline: var(--vt-border-width-thick) solid var(--vt-red); outline-offset: 2px; }
-/* mid_due と deadline が同じ日は、内側の輪を amber にして両方を示す */
-.vt-day.is-mid-due.is-deadline { box-shadow: 0 0 0 2px var(--vt-amber); }
+/* soft_deadline と deadline が同じ日は、内側の輪を amber にして両方を示す */
+.vt-day.is-soft-deadline.is-deadline { box-shadow: 0 0 0 2px var(--vt-amber); }
 
 .vt-text-button {
 	align-self: flex-start;
@@ -1713,6 +1713,18 @@ button.vt-badge:disabled::after {
 
 .vt-task .vt-play {
 	flex: none;
+}
+
+/* delegated のカードの委任先（ADR-0032）。名前が長いときは省略する */
+.vt-task .vt-delegate {
+	min-width: 0;
+	max-width: 12em;
+}
+
+.vt-delegate-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .vt-task-summary {

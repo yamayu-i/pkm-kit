@@ -43,7 +43,7 @@ function MonthCalendar(props: {
 	onMonth: (month: string) => void;
 	isSelected: (date: LocalDate) => boolean;
 	onPick: (date: LocalDate) => void;
-	midDue?: LocalDate | null;
+	softDeadline?: LocalDate | null;
 	deadline?: LocalDate | null;
 }) {
 	const today = localToday();
@@ -73,7 +73,7 @@ function MonthCalendar(props: {
 						date={d}
 						dimmed={!d.startsWith(month)}
 						scheduled={props.isSelected(d)}
-						midDue={props.midDue ?? null}
+						softDeadline={props.softDeadline ?? null}
 						deadline={props.deadline ?? null}
 						today={today}
 						onClick={() => props.onPick(d)}
@@ -154,7 +154,7 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 /** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の予定入れにも使う。ADR-0030） */
 export function CalendarForm(props: {
 	initial: LocalDate[];
-	midDue: LocalDate | null;
+	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	onSubmit: (dates: LocalDate[]) => void;
 	/** 決定を押せるか（選んだ日付の数を受け取る）。省略時はいつでも押せる */
@@ -174,7 +174,7 @@ export function CalendarForm(props: {
 	};
 	return (
 		<div class="vt-calendar">
-			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => selected.has(d)} onPick={toggle} midDue={props.midDue} deadline={props.deadline} />
+			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => selected.has(d)} onPick={toggle} softDeadline={props.softDeadline} deadline={props.deadline} />
 			{props.children}
 			<div class="vt-form">
 				<span class="vt-muted">{selected.size} 日</span>
@@ -190,7 +190,7 @@ export function CalendarForm(props: {
 export function DayCell(props: {
 	date: LocalDate;
 	scheduled: boolean;
-	midDue: LocalDate | null;
+	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	today: LocalDate;
 	dimmed?: boolean;
@@ -199,7 +199,7 @@ export function DayCell(props: {
 	const w = weekdayOf(props.date);
 	const cls = ["vt-day"];
 	if (w === 0 || w === 6) cls.push("is-weekend");
-	if (props.date === props.midDue) cls.push("is-mid-due");
+	if (props.date === props.softDeadline) cls.push("is-soft-deadline");
 	if (props.date === props.deadline) cls.push("is-deadline");
 	if (props.deadline !== null && props.date > props.deadline) cls.push("is-after-deadline");
 	if (props.scheduled) cls.push("is-scheduled");
@@ -207,7 +207,7 @@ export function DayCell(props: {
 	if (props.dimmed) cls.push("is-dimmed");
 	// 色だけに頼らないよう、期限は読み上げと title でも伝える
 	// 今日も、印（太字と点）だけでなく読み上げとツールチップで伝える（ADR-0030）
-	const marks = [props.date === props.today ? "今日" : null, props.date === props.midDue ? "mid_due" : null, props.date === props.deadline ? "deadline" : null]
+	const marks = [props.date === props.today ? "今日" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null]
 		.filter(Boolean)
 		.join("・");
 	const label = marks ? `${props.date}（${marks}）` : props.date;

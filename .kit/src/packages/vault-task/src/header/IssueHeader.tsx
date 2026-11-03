@@ -121,7 +121,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 		}
 		const fields: Record<string, FieldValue> = { status: next, delegated_to: null };
 		// someday にするときは予定と期限を外す。someday 以外では revisit は使わない（ADR-0006）
-		if (next === "someday") Object.assign(fields, { scheduled: null, mid_due: null, deadline: null });
+		if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null });
 		else fields.revisit = null;
 		save(fields);
 	};
@@ -198,7 +198,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 		new PreactModal(ctx.app, "実行日", (close) => (
 			<CalendarForm
 				initial={issue.scheduled}
-				midDue={issue.midDue}
+				softDeadline={issue.softDeadline}
 				deadline={issue.deadline}
 				onSubmit={(dates) => {
 					close();
@@ -213,7 +213,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 				{days.map((d) => (
 					<div class="vt-strip-col">
 						<span class="vt-weekday">{WEEKDAY_NAMES[weekdayOf(d)]}</span>
-						<DayCell date={d} scheduled={scheduled.has(d)} midDue={issue.midDue} deadline={issue.deadline} today={today} onClick={() => toggle(d)} />
+						<DayCell date={d} scheduled={scheduled.has(d)} softDeadline={issue.softDeadline} deadline={issue.deadline} today={today} onClick={() => toggle(d)} />
 					</div>
 				))}
 			</div>
@@ -227,7 +227,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	const { ctx, issue, save } = props;
 	const today = localToday();
-	const edit = (key: "mid_due" | "deadline", current: LocalDate | null) => () =>
+	const edit = (key: "soft_deadline" | "deadline", current: LocalDate | null) => () =>
 		new PreactModal(ctx.app, key, (close) => (
 			<DateForm
 				initial={current}
@@ -237,7 +237,7 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 				}}
 			/>
 		)).open();
-	const row = (label: string, key: "mid_due" | "deadline", value: LocalDate | null) => (
+	const row = (label: string, key: "soft_deadline" | "deadline", value: LocalDate | null) => (
 		<button class={`vt-due vt-due-${dueLevel(issue, value, today)}`} onClick={edit(key, value)}>
 			<span class="vt-due-label">{label}</span>
 			<span class="vt-due-value">{value ? formatShortDate(value) : "未設定"}</span>
@@ -246,7 +246,7 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	);
 	return (
 		<div class="vt-dues">
-			{row("mid_due", "mid_due", issue.midDue)}
+			{row("soft_deadline", "soft_deadline", issue.softDeadline)}
 			{row("deadline", "deadline", issue.deadline)}
 		</div>
 	);

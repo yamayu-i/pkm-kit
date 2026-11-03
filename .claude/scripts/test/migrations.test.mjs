@@ -188,3 +188,41 @@ test("0002: 読めない core-plugins.json は変えずに、check が失敗し�
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
 });
+
+test("0003: issue と template の frontmatter の mid_due を soft_deadline にする。値・本文・ほかの issue は変えない", async () => {
+	const root = childFrom("legacy");
+	write(root, { "template/file/task.md": "---\ntype: issue\nmid_due: \"{{date}}\"\n---\n\n本文\n" });
+	const other = readFileSync(join(root, "issue/i-2.md"), "utf8");
+	await runMigrations(root);
+	const text = readFileSync(join(root, "issue/i-1.md"), "utf8");
+	assert.match(text, /^soft_deadline: 2026-01-10$/m);
+	assert.doesNotMatch(text, /^mid_due:/m);
+	assert.match(text, /本文の mid_due: はキーではないので変えない。/);
+	assert.equal(readFileSync(join(root, "template/file/task.md"), "utf8"), '---\ntype: issue\nsoft_deadline: "{{date}}"\n---\n\n本文\n');
+	assert.equal(readFileSync(join(root, "issue/i-2.md"), "utf8"), other);
+	assert.deepEqual(readJsonFile(root, ".obsidian/types.json"), { types: { soft_deadline: "date", deadline: "date" } });
+});
+
+test("0003: CRLF の issue も、行末を変えずに書き換える", async () => {
+	const root = childFrom("legacy");
+	write(root, { "issue/i-3.md": "---\r\ntype: issue\r\nid: i-3\r\nmid_due: 2026-01-10\r\n---\r\n" });
+	await runMigrations(root);
+	assert.equal(readFileSync(join(root, "issue/i-3.md"), "utf8"), "---\r\ntype: issue\r\nid: i-3\r\nsoft_deadline: 2026-01-10\r\n---\r\n");
+});
+
+test("0003: mid_due と soft_deadline の両方を持つ issue は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	const both = "---\ntype: issue\nid: i-3\nmid_due: 2026-01-10\nsoft_deadline: 2026-01-12\n---\n";
+	write(root, { "issue/i-3.md": both });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0003-soft-deadline");
+	assert.match(failed.problems.join(), /issue\/i-3\.md: frontmatter に mid_due と soft_deadline の両方がある/);
+	assert.equal(readFileSync(join(root, "issue/i-3.md"), "utf8"), both);
+});
+
+test("0003: types.json に soft_deadline がすでにあれば、mid_due を消すだけ", async () => {
+	const root = childFrom("legacy");
+	write(root, { ".obsidian/types.json": JSON.stringify({ types: { mid_due: "text", soft_deadline: "date" } }, null, 2) });
+	await runMigrations(root);
+	assert.deepEqual(readJsonFile(root, ".obsidian/types.json"), { types: { soft_deadline: "date" } });
+});
