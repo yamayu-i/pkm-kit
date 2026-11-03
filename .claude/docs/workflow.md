@@ -9,6 +9,7 @@
 | wiki の操作 | 取り込み、回答の蓄積、lint、デイリーノートの整理 | 各スキル（[LLM wiki の仕組み](llm-wiki.md)）に従って main に直接コミット |
 | タスク管理 | 計画・振り返り、ボードの操作、worklog の修正 | [task-coach](../skills/task-coach/SKILL.md)・[worklog-review](../skills/worklog-review/SKILL.md)。データは MCP ツールか CLI を通して書く |
 | この Vault のものの仕組みを変える | `template/` のテンプレート、`local/CLAUDE.md`、`skills/local-*`、`.obsidian/*.json` | 何をどう変えるかをチャットで伝えて確認 → ブランチで変えて `verify.mjs` を通す → PR |
+| 上流の更新の取り込み | 新しい機能、上流の修正 | [vault-upgrade](../skills/vault-upgrade/SKILL.md)（ブランチで merge と移行 → 検査 → PR） |
 | 上流を変えないと直らないこと | 上流のスキルの誤り、プラグインの不具合、上書きの手段がない | 上流のものは変えずに [escalate](../skills/escalate/SKILL.md) |
 | 評価 | 月 1 回 | [harness-review](../skills/harness-review/SKILL.md) |
 

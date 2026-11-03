@@ -1,0 +1,98 @@
+{
+  "$comment": "上流を切り出した時点（pkm-kit 742278c）の .kit/templates/。子の template/ のうち、これと同じものを消す。上流のテンプレートが後で変わっても、この基準は変えない",
+  "files": {
+    "answer.md": "7ea3931d4ed9d3a5291357b907da3e6b4368bbbb277055e824aa990d67449736",
+    "concept.md": "98e1c51dc8dac8af015dd57bc7aed691e3c30093a945636cc36377412a9c8d4e",
+    "daily.md": "cba6b355069d7d4e28c2922d491433dd296b5625067f6a009a6253bf3857015d",
+    "entity.md": "e5a4e9d5a7568b422f9707434b65f96bda7231f4c01cb3a5b724d3e0e471138c",
+    "feedback.md": "d31f20d071ec6252a68dda5378684f07d06082b654477d998d24b5cc353eb016",
+    "index.md": "3b274fb40fd60cda8c1db882300de957aef58b845bedcbb5f91a225fca1dd34e",
+    "issue.md": "5f736d0c4af34d4f606cd5acffadc0024e22bfa00011b0afe96f0552fc1068da",
+    "log.md": "b271b4f94425b5eb89a69462283072648a908c5c980d0325435c6396c11439f4",
+    "member.md": "96fcd38b39dd4810724a31db7e37aea9f07533030c04dffcf4fbc32e68a6e9e1",
+    "note.md": "cd3680d6f8280b63ceabf2a59cd3e18ad23cbde14e541405f19fe78efc799487",
+    "routine.md": "68ab332e8c2ceb8869163aa1ed077d0675ee9e947d342820f4014b2a0a66377d",
+    "source.md": "511d955a4b99b1e8b3982be5cae7ba398bc873e31634ba9f8877718ee20658e4",
+    "topic.md": "8084544f1c4e46641eb6dee1a6604ea4cf737a1155ccb07cbb72be70fee07de1"
+  },
+  "config": [
+    {
+      "file": "note.md",
+      "enabled": true,
+      "folder": "note",
+      "fileNamePattern": "{{title}}"
+    },
+    {
+      "file": "member.md",
+      "enabled": true,
+      "folder": "member",
+      "fileNamePattern": "{{id:m}}"
+    },
+    {
+      "file": "source.md",
+      "enabled": true,
+      "folder": "sources",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "daily.md",
+      "enabled": false,
+      "folder": "daily/{{date:YYYY}}/{{date:MM}}",
+      "fileNamePattern": "{{date:YYYY-MM-DD}}"
+    },
+    {
+      "file": "concept.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "entity.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "topic.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "answer.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "feedback.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": ""
+    },
+    {
+      "file": "issue.md",
+      "enabled": false,
+      "folder": "issue",
+      "fileNamePattern": "{{id:i}}"
+    },
+    {
+      "file": "routine.md",
+      "enabled": false,
+      "folder": "routine",
+      "fileNamePattern": "{{id:r}}"
+    },
+    {
+      "file": "index.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": "index"
+    },
+    {
+      "file": "log.md",
+      "enabled": false,
+      "folder": "wiki",
+      "fileNamePattern": "log"
+    }
+  ]
+}

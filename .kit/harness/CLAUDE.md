@@ -25,7 +25,7 @@
 2. force push をしない。PR をマージしない。検査を迂回しない（`--no-verify`、フックを無効にする指定、テストの削除・スキップ）
 3. **上流は公開リポジトリ**。個人のノートの内容、端末名、秘密情報を、ソース・テスト・資料・文書・コミットに入れない
 4. 設計判断を含む変更は、実装の前に ADR を書いて合意する
-5. 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[ADR-0010](docs/adr/0010-upstream-updates-and-migrations.md)）
+5. 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](docs/migrations.md)）。子から見える変更は `.kit/CHANGELOG.md` に書く
 6. 秘密情報はプラグインでは Obsidian の SecretStorage に置く
 7. 依存はバージョン固定（`^` / `~` を使わない）。追加する前に必要性をユーザーに説明する
 8. ソースを変えたら必ず `pnpm build` して、成果物（`.obsidian/plugins/`、スニペット、`.kit/bin/`）も一緒にコミットする
@@ -55,6 +55,7 @@
 | ハーネスと wiki の設計判断 | [ADR](docs/adr/README.md) |
 | プラグインの設計と開発 | [プラグインの設計と開発](docs/plugin-development.md) |
 | セキュリティチェックの頻度と実施ルール | [実施ルール](docs/security-check-schedule.md) |
+| 子のものに手を入れる変更に付ける移行の書き方 | [移行の書き方](docs/migrations.md) |
 | 子向けのハーネス（子で使う手順と規約） | [子向けの目次](../../.claude/CLAUDE.md) |
 
 ## コマンド

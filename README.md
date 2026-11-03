@@ -8,7 +8,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
-> 作っている途中: 上流（このリポジトリ）と各 Vault の分け方は、設計（`.kit/harness/docs/adr/` の ADR-0009〜0011）に沿って作っている。更新の取り込み（`vault-upgrade`）はまだない。
+> 上流（このリポジトリ）と各 Vault の分け方の設計は、`.kit/harness/docs/adr/` の ADR-0009〜0011 にある。変更の記録は `.kit/CHANGELOG.md`。
 
 ## 新しい Vault を作る
 
@@ -39,6 +39,19 @@ git add -A && git commit -m "vault: セットアップ" && git push
 その後、Obsidian でフォルダを開き、コミュニティプラグインを許可する。モバイルは下の「Vault Git の使い方」のとおり。
 
 自分の Vault では、上流のもの（`.kit/owned-paths.json` に当たるファイル）を変えない（`verify.mjs` が検査する）。テンプレートは `template/` に置けば、上流の既定を上書きできる。
+
+## 上流の更新を取り込む
+
+自分の Vault で、ブランチを切って `upstream/main` を merge し、移行を実行して PR にする。Claude Code では `vault-upgrade` のスキルが手順を持っている（スクリプトで済まない移行の部分は、移行の README に従って直す）。
+
+```sh
+git fetch upstream && git checkout -b upgrade-YYYY-MM-DD origin/main
+git merge upstream/main
+node .kit/migrate.mjs --upstream=upstream/main   # 未適用の移行を実行し、取り込んだコミットを記録する
+node .claude/scripts/verify.mjs
+```
+
+取り込む変更と移行は `.kit/CHANGELOG.md` にある。PR をマージした後、モバイルは vault-git で pull するだけでよい。
 
 ## 仕組み
 

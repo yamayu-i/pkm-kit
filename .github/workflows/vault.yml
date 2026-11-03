@@ -35,6 +35,8 @@ jobs:
         run: node .claude/scripts/wiki-lint.mjs
       - name: 所有の境界（上流には仕組みのファイルだけ。子では上流のものを変えていない）
         run: node .claude/scripts/check-kit-paths.mjs --fetch
+      - name: 移行（子の Vault で未適用のものがないか。上流では対象外）
+        run: node .kit/migrate.mjs --status
       - name: wiki の操作が追記だけか
         env:
           EVENT: ${{ github.event_name }}
