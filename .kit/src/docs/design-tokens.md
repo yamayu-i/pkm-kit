@@ -162,6 +162,7 @@
 | `--vt-duration-short3` | `150ms` | ホバーの色・影・不透明度 | M3 duration-short3 |
 | `--vt-duration-short4` | `200ms` | 大きいものの移動（Organize のカードが戻る） | M3 duration-short4 |
 | `--vt-duration-pulse` | `1400ms` | 記録中の点の点滅の周期（飾り。動きを減らす設定では止める） |  |
+| `--vt-duration-spin` | `4200ms` | in-progress のアイコンの中の半円が 1 周する時間（飾り。目が疲れないようにゆっくり。動きを減らす設定では止める。ADR-0031） |  |
 
 ## easing
 

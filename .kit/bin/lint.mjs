@@ -7736,123 +7736,6 @@ function occursOn(rule, anchor, date) {
   }
 }
 
-// src/core/index.ts
-function routineAnchor(routine) {
-  return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
-}
-function routineOccursOn(routine, date) {
-  if (!routine.active || routine.repeat === null) return false;
-  const anchor = routineAnchor(routine);
-  if (anchor === null) return false;
-  if (routine.end !== null && diffDays(date, routine.end) > 0) return false;
-  return occursOn(routine.repeat, anchor, date);
-}
-var TaskIndex = class {
-  constructor(data2) {
-    this.data = data2;
-    for (const i of data2.issues) if (!this.issues.has(i.id)) this.issues.set(i.id, i);
-    for (const r of data2.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
-    for (const m of data2.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
-    for (const i of data2.issues) this.issuesByPath.set(i.path, i);
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
-    }
-  }
-  data;
-  issues = /* @__PURE__ */ new Map();
-  routines = /* @__PURE__ */ new Map();
-  members = /* @__PURE__ */ new Map();
-  issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
-  }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
-  }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a) => a.id === childId);
-  }
-  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
-  effortMinutes(now) {
-    const ms = prorateEffort(this.data.worklogs, now);
-    return new Map([...ms].map(([id, v]) => [id, v / 6e4]));
-  }
-  /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
-  routineEffort(taskId, now) {
-    const total = this.effortMinutes(now).get(taskId) ?? 0;
-    const dates = /* @__PURE__ */ new Set();
-    for (const l of this.data.worklogs) {
-      if (l.taskId !== taskId) continue;
-      const to = l.toMs ?? Math.max(now, l.fromMs);
-      if (to > l.fromMs) dates.add(localToday(new Date(l.fromMs)));
-    }
-    const days = dates.size;
-    return { total, days, average: days > 0 ? total / days : null };
-  }
-  board(date) {
-    return this.data.boards.find((b) => b.date === date);
-  }
-  /** 記録中（to が空）の worklog */
-  running(taskId) {
-    return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
-  }
-  routinesOn(date) {
-    return [...this.routines.values()].filter((r) => routineOccursOn(r, date));
-  }
-};
-
-// src/core/labels.ts
-var LABELS_PATH = "issue/labels.json";
-var DEFAULT_LABEL_COLOR = "#d0d0d0";
-function parseLabels(text) {
-  const problems2 = [];
-  const problem = (message) => problems2.push({ severity: "error", path: LABELS_PATH, code: "invalid-labels", message });
-  let data2;
-  try {
-    data2 = JSON.parse(text);
-  } catch {
-    problem("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-    return { labels: [], problems: problems2 };
-  }
-  if (!Array.isArray(data2)) {
-    problem("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    return { labels: [], problems: problems2 };
-  }
-  const labels = [];
-  for (const item of data2) {
-    const o = typeof item === "object" && item !== null ? item : {};
-    if (typeof o.name !== "string" || !o.name.trim()) {
-      problem(`name \u306E\u306A\u3044 label \u304C\u3042\u308A\u307E\u3059: ${JSON.stringify(item)}`);
-      continue;
-    }
-    const name = o.name.trim();
-    if (labels.some((l) => l.name === name)) {
-      problem(`label \u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${name}`);
-      continue;
-    }
-    const color = typeof o.color === "string" && /^#[0-9a-f]{3,8}$/i.test(o.color) ? o.color : DEFAULT_LABEL_COLOR;
-    labels.push({ name, color });
-  }
-  return { labels, problems: problems2 };
-}
-
 // src/core/ids.ts
 function idNumber(id, prefix) {
   const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
@@ -8027,6 +7910,238 @@ function parseMember(path, fm) {
   return { value: id === null ? null : { path, id, name }, problems: r.problems };
 }
 
+// src/core/worklog.ts
+var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function parseWorklog(path, text) {
+  const entries = [];
+  const problems2 = [];
+  const problem = (line, code, message) => problems2.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
+    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    let toMs = null;
+    if (o.to !== null && o.to !== void 0) {
+      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
+      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    }
+    entries.push({
+      path,
+      line,
+      id: o.id,
+      taskId: o.task_id,
+      from: o.from,
+      to: toMs === null ? null : o.to,
+      description: typeof o.description === "string" ? o.description : "",
+      fromMs,
+      toMs
+    });
+  });
+  return { entries, problems: problems2 };
+}
+
+// src/core/status-log.ts
+var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
+var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+var isStatus = (v) => typeof v === "string" && STATUSES.includes(v);
+function parseStatusLog(path, text) {
+  const entries = [];
+  const problems2 = [];
+  const problem = (line, code, message) => problems2.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-status-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.task !== "string" || !o.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (!isStatus(o.from) || !isStatus(o.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const via = STATUS_VIAS.includes(o.via) ? o.via : null;
+    if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o.id, at: o.at, atMs, task: o.task, from: o.from, to: o.to, via });
+  });
+  return { entries, problems: problems2 };
+}
+function compareStatusLog(a, b) {
+  if (a.atMs !== b.atMs) return a.atMs - b.atMs;
+  if (a.path !== b.path) return a.path < b.path ? -1 : 1;
+  return a.line - b.line;
+}
+function statusBefore(logs, task, current) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task) continue;
+    return e.to === current && e.from !== current ? e.from : null;
+  }
+  return null;
+}
+function closedAtMap(logs, closedIds) {
+  const ids = new Set(closedIds);
+  const out = /* @__PURE__ */ new Map();
+  for (const e of logs) if (ids.has(e.task) && e.to === "closed") out.set(e.task, e.atMs);
+  return out;
+}
+
+// src/core/index.ts
+function routineAnchor(routine) {
+  return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
+}
+function routineOccursOn(routine, date) {
+  if (!routine.active || routine.repeat === null) return false;
+  const anchor = routineAnchor(routine);
+  if (anchor === null) return false;
+  if (routine.end !== null && diffDays(date, routine.end) > 0) return false;
+  return occursOn(routine.repeat, anchor, date);
+}
+var TaskIndex = class {
+  constructor(data2) {
+    this.data = data2;
+    for (const i of data2.issues) if (!this.issues.has(i.id)) this.issues.set(i.id, i);
+    for (const r of data2.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
+    for (const m of data2.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
+    for (const i of data2.issues) this.issuesByPath.set(i.path, i);
+    for (const issue of this.issues.values()) {
+      if (issue.parent === null) continue;
+      const list = this.childrenOf.get(issue.parent) ?? [];
+      list.push(issue);
+      this.childrenOf.set(issue.parent, list);
+    }
+  }
+  data;
+  issues = /* @__PURE__ */ new Map();
+  routines = /* @__PURE__ */ new Map();
+  members = /* @__PURE__ */ new Map();
+  issuesByPath = /* @__PURE__ */ new Map();
+  childrenOf = /* @__PURE__ */ new Map();
+  children(id) {
+    return this.childrenOf.get(id) ?? [];
+  }
+  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
+  ancestors(id) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set([id]);
+    let parent = this.issues.get(id)?.parent ?? null;
+    while (parent !== null && !seen.has(parent)) {
+      seen.add(parent);
+      const issue = this.issues.get(parent);
+      if (!issue) break;
+      out.push(issue);
+      parent = issue.parent;
+    }
+    return out;
+  }
+  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
+  canSetParent(childId, parentId) {
+    if (childId === parentId || !this.issues.has(parentId)) return false;
+    return !this.ancestors(parentId).some((a) => a.id === childId);
+  }
+  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+  effortMinutes(now) {
+    const ms = prorateEffort(this.data.worklogs, now);
+    return new Map([...ms].map(([id, v]) => [id, v / 6e4]));
+  }
+  /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
+  routineEffort(taskId, now) {
+    const total = this.effortMinutes(now).get(taskId) ?? 0;
+    const dates = /* @__PURE__ */ new Set();
+    for (const l of this.data.worklogs) {
+      if (l.taskId !== taskId) continue;
+      const to = l.toMs ?? Math.max(now, l.fromMs);
+      if (to > l.fromMs) dates.add(localToday(new Date(l.fromMs)));
+    }
+    const days = dates.size;
+    return { total, days, average: days > 0 ? total / days : null };
+  }
+  board(date) {
+    return this.data.boards.find((b) => b.date === date);
+  }
+  /** 記録中（to が空）の worklog */
+  running(taskId) {
+    return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
+  }
+  /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
+  statusBefore(id) {
+    const issue = this.issues.get(id);
+    return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+  }
+  /** その issue の最後の status の記録 */
+  lastStatusLog(id) {
+    const logs = this.data.statusLogs;
+    for (let i = logs.length - 1; i >= 0; i--) if (logs[i].task === id) return logs[i];
+    return void 0;
+  }
+  /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
+  closedAt() {
+    const closed = [...this.issues.values()].filter((i) => i.status === "closed").map((i) => i.id);
+    return closedAtMap(this.data.statusLogs, closed);
+  }
+  routinesOn(date) {
+    return [...this.routines.values()].filter((r) => routineOccursOn(r, date));
+  }
+};
+
+// src/core/labels.ts
+var LABELS_PATH = "issue/labels.json";
+var DEFAULT_LABEL_COLOR = "#d0d0d0";
+function parseLabels(text) {
+  const problems2 = [];
+  const problem = (message) => problems2.push({ severity: "error", path: LABELS_PATH, code: "invalid-labels", message });
+  let data2;
+  try {
+    data2 = JSON.parse(text);
+  } catch {
+    problem("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+    return { labels: [], problems: problems2 };
+  }
+  if (!Array.isArray(data2)) {
+    problem("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    return { labels: [], problems: problems2 };
+  }
+  const labels = [];
+  for (const item of data2) {
+    const o = typeof item === "object" && item !== null ? item : {};
+    if (typeof o.name !== "string" || !o.name.trim()) {
+      problem(`name \u306E\u306A\u3044 label \u304C\u3042\u308A\u307E\u3059: ${JSON.stringify(item)}`);
+      continue;
+    }
+    const name = o.name.trim();
+    if (labels.some((l) => l.name === name)) {
+      problem(`label \u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${name}`);
+      continue;
+    }
+    const color = typeof o.color === "string" && /^#[0-9a-f]{3,8}$/i.test(o.color) ? o.color : DEFAULT_LABEL_COLOR;
+    labels.push({ name, color });
+  }
+  return { labels, problems: problems2 };
+}
+
 // src/core/lint.ts
 function safeDecode(path) {
   try {
@@ -8128,51 +8243,6 @@ function lintVault(data2, options = {}) {
 var import_yaml = __toESM(require_dist(), 1);
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-
-// src/core/worklog.ts
-var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function parseWorklog(path, text) {
-  const entries = [];
-  const problems2 = [];
-  const problem = (line, code, message) => problems2.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i) => {
-    const line = i + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o = obj;
-    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
-    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs = null;
-    if (o.to !== null && o.to !== void 0) {
-      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
-      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    }
-    entries.push({
-      path,
-      line,
-      id: o.id,
-      taskId: o.task_id,
-      from: o.from,
-      to: toMs === null ? null : o.to,
-      description: typeof o.description === "string" ? o.description : "",
-      fromMs,
-      toMs
-    });
-  });
-  return { entries, problems: problems2 };
-}
 
 // src/core/board-log.ts
 var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8316,11 +8386,12 @@ function fileKind(path) {
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
+  if (STATUS_LOG_PATH_RE.test(path)) return "statuslog";
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
   const problems2 = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8370,6 +8441,12 @@ function collectVault(input) {
       ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {}
     });
   }
+  for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
+    const r = parseStatusLog(path, text);
+    problems2.push(...r.problems);
+    data2.statusLogs.push(...r.entries);
+  }
+  data2.statusLogs.sort(compareStatusLog);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems2.push(...r.problems);
@@ -8406,13 +8483,14 @@ function readFrontmatter(text) {
 }
 function readVault(root2) {
   const paths2 = walk(root2);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
+  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
   for (const path of paths2) {
     const kind = fileKind(path);
     if (kind === null) continue;
     const text = readFileSync(join(root2, path), "utf8");
     if (kind === "worklog") input.worklogs.push({ path, text });
     else if (kind === "board") input.boardLogs.push({ path, text });
+    else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
     else if (kind === "groups") input.groups = text;
     else input.markdown.push({ path, frontmatter: readFrontmatter(text) });

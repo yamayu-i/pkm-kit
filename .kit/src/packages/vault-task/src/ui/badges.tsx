@@ -1,10 +1,12 @@
 import { Icon } from "./Icon";
 import type { Issue, Priority, Status } from "../core/schema";
+import { StatusIcon } from "./StatusIcon";
 
-export function StatusBadge(props: { status: Status; wide?: boolean; onClick?: (e: MouseEvent) => void }) {
+/** status のバッジ。先頭に status のアイコン（ADR-0031）。enter は閉じた直後の動きを付ける */
+export function StatusBadge(props: { status: Status; wide?: boolean; enter?: boolean; onClick?: (e: MouseEvent) => void }) {
 	return (
 		<button class={`vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`} onClick={props.onClick} disabled={!props.onClick}>
-			<span class="vt-dot" />
+			<StatusIcon status={props.status} class={props.enter ? "is-enter" : ""} />
 			{props.status}
 			{props.onClick && props.wide && <Icon name="chevron-down" class="vt-trailing" />}
 		</button>

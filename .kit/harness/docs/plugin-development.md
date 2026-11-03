@@ -77,7 +77,8 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - ボードの操作は端末別のログに追記し、状態は全端末のログの再生で作る（`src/core/board-log.ts`。ADR-0020）。デイリーノートの frontmatter の `board` は読み取り専用の初期状態で、もう書かない
 - ボードを締めるときは `closeBoardNote` が未完了を再検査して本文に要約を書き、それから `close` を追記する
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
-- データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、`board/<端末名>/YYYY-MM.jsonl`（ADR-0020）
+- データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、`board/<端末名>/YYYY-MM.jsonl`（ADR-0020）、`statuslog/<端末名>/YYYY-MM.jsonl`（ADR-0031）
+- status の変更は `TaskWriter.update` が見つけて、statuslog への追記、closed / canceled のときのタイマーの停止、取り消しのトースト（`onStatusChange` → `StatusUndo`）を行う。MCP は `updateIssueFrontmatter` に記録の情報を渡す。statuslog は分析用の履歴で、status の正本は frontmatter
 - 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
 - 間違っていそうな worklog は [worklog-review スキル](../../../.claude/skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない

@@ -27,9 +27,9 @@ function localDay(ms: number): string {
 }
 
 /**
- * 間違っていそうな worklog を挙げる。`closedAt` は issue を閉じた日時（分からなければ渡さない）
+ * 間違っていそうな worklog を挙げる。`closedAt` は issue を閉じた日時。渡さなければ status の記録から決める（ADR-0031）
  */
-export function reviewWorklogs(index: TaskIndex, now: number, options: Partial<ReviewOptions> = {}, closedAt: Map<string, number> = new Map()): WorklogFinding[] {
+export function reviewWorklogs(index: TaskIndex, now: number, options: Partial<ReviewOptions> = {}, closedAt: Map<string, number> = index.closedAt()): WorklogFinding[] {
 	const o = {
 		runningHours: options.runningHours ?? DEFAULT_REVIEW.runningHours,
 		longHours: options.longHours ?? DEFAULT_REVIEW.longHours,

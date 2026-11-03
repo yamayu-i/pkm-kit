@@ -114,6 +114,7 @@ body {
 	--vt-duration-short3: 150ms;
 	--vt-duration-short4: 200ms;
 	--vt-duration-pulse: 1400ms;
+	--vt-duration-spin: 4200ms;
 	--vt-easing-standard: cubic-bezier(0.2, 0, 0, 1);
 	--vt-elevation-1: 0 1px 2px 0 #0000000f;
 	--vt-elevation-2: 0 1px 3px 0 #0000001f;

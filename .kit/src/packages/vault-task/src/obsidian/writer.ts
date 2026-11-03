@@ -6,6 +6,9 @@ import { localDateTime, type LocalDate } from "../core/dates";
 import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
 import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
+import { fileKind } from "../core/load";
+import { STATUSES, type Status } from "../core/schema";
+import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
 import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, worklogPath, type WorklogEntry } from "../core/worklog";
@@ -14,6 +17,19 @@ import type { TaskStore } from "./store";
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
 export type FieldValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined;
 
+/** issue の status を変えたこと（取り消しのトースト用。ADR-0031） */
+export interface StatusChange {
+	path: string;
+	id: string;
+	from: Status;
+	to: Status;
+	/** 変える前の値（変えた欄だけ。なかった欄は undefined）。これで update すると元に戻る */
+	before: Record<string, FieldValue>;
+	via: StatusVia;
+}
+
+const isStatus = (v: unknown): v is Status => typeof v === "string" && (STATUSES as readonly string[]).includes(v);
+
 /**
  * Vault への書き込み。ノートは Vault API で書く（開いているエディタとキャッシュに反映させるため）。
  * frontmatter の更新は processFrontMatter に任せ、ほかの欄や書式を壊さない
@@ -21,10 +37,14 @@ export type FieldValue = string | number | boolean | string[] | Record<string, u
 export class TaskWriter {
 	/** この端末が最後に書いたボードの操作の時刻（索引に載る前の次の操作のため） */
 	private lastBoardAt = 0;
+	/** issue の status を変えたら呼ぶ（取り消しのトースト。ADR-0031） */
+	onStatusChange: ((change: StatusChange) => void) | null = null;
 
 	constructor(
 		private readonly app: App,
 		private readonly store: TaskStore,
+		/** status の記録（statuslog）に使う端末名 */
+		private readonly deviceName: () => string = () => "",
 	) {}
 
 	private file(path: string): TFile {
@@ -54,15 +74,47 @@ export class TaskWriter {
 		for (const path of paths) await this.update(path, typeof fields === "function" ? fields(path) : fields);
 	}
 
-	/** frontmatter の欄をまとめて更新する */
-	async update(path: string, fields: Record<string, FieldValue>): Promise<void> {
+	/**
+	 * frontmatter の欄をまとめて更新する。issue の status が変わったら、statuslog に書き、
+	 * closed / canceled なら記録中のタイマーを止め、onStatusChange を呼ぶ（ADR-0031）
+	 */
+	async update(path: string, fields: Record<string, FieldValue>, via: StatusVia = "ui"): Promise<void> {
+		const before: Record<string, FieldValue> = {};
+		let from: unknown;
+		let id: unknown;
 		await this.app.fileManager.processFrontMatter(this.file(path), (fm: Record<string, unknown>) => {
+			from = fm.status;
+			id = fm.id;
 			for (const [key, value] of Object.entries(fields)) {
+				before[key] = structuredClone(fm[key]) as FieldValue;
 				if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === "") delete fm[key];
 				else fm[key] = value;
 			}
 		});
 		this.store.refreshSoon();
+		const to = fields.status;
+		if (fileKind(path) !== "issue" || !isStatus(from) || !isStatus(to) || from === to || typeof id !== "string") return;
+		await this.recordStatus(id, from, to, via);
+		if (isDoneStatus(to)) {
+			const running = this.store.index.running(id);
+			if (running.length > 0) await this.stopTimer(running);
+		}
+		this.onStatusChange?.({ path, id, from, to, before, via });
+	}
+
+	/** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
+	private async recordStatus(task: string, from: Status, to: Status, via: StatusVia): Promise<void> {
+		const device = this.deviceName();
+		if (!device) return;
+		try {
+			const now = new Date();
+			const line = statusLogLine(task, from, to, via, now);
+			if (line === null) return;
+			const file = await this.getOrCreate(normalizePath(statusLogPath(device, now)), "");
+			await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
+		} catch (e) {
+			console.error("vault-task: status の記録を書けませんでした", e);
+		}
 	}
 
 	private takenIds(): string[] {
@@ -149,7 +201,10 @@ export class TaskWriter {
 		this.store.refreshSoon();
 	}
 
-	/** 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く */
+	/**
+	 * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
+	 * open の issue は in-progress にする（ADR-0031）
+	 */
 	async startTimer(taskIds: string[], device: string): Promise<void> {
 		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
 		const running = new Set(this.store.index.running().map((l) => l.taskId));
@@ -163,6 +218,10 @@ export class TaskWriter {
 			targets.reduce((t, taskId) => appendWorklogLine(t, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text),
 		);
 		this.store.refreshSoon();
+		for (const id of targets) {
+			const issue = this.store.index.issues.get(id);
+			if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
+		}
 	}
 
 	/** 記録を止める（to を今にする） */

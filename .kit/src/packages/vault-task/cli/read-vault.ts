@@ -33,13 +33,14 @@ function readFrontmatter(text: string): Record<string, unknown> | null {
 /** Vault のタスク管理データを読む（CLI 用。プラグインは metadataCache から読む） */
 export function readVault(root: string): { data: VaultData; problems: Problem[]; paths: string[] } {
 	const paths = walk(root);
-	const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
+	const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
 	for (const path of paths) {
 		const kind = fileKind(path);
 		if (kind === null) continue;
 		const text = readFileSync(join(root, path), "utf8");
 		if (kind === "worklog") input.worklogs.push({ path, text });
 		else if (kind === "board") input.boardLogs!.push({ path, text });
+		else if (kind === "statuslog") input.statusLogs!.push({ path, text });
 		else if (kind === "labels") input.labels = text;
 		else if (kind === "groups") input.groups = text;
 		else input.markdown.push({ path, frontmatter: readFrontmatter(text) });
