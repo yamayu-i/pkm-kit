@@ -144,5 +144,5 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
-- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す。成果物のパスを `.kit/owned-paths.json` に ID ごとに足す（`*` で書かない。子が足した自分のプラグインは子のもの。#19）。足し忘れると上流の境界の検査が失敗する
 - Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（vault-task の `esbuild.config.mjs`）
