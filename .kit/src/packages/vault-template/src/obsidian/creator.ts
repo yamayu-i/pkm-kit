@@ -1,4 +1,5 @@
-import { MarkdownView, normalizePath, type App, type TFile } from "obsidian";
+import { MarkdownView, normalizePath, Platform, type App, type TFile } from "obsidian";
+import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import {
 	diffTemplateEntries,
 	layerTemplateEntries,
@@ -142,7 +143,7 @@ export class TemplateManager {
 		const path = normalizePath(resolved.path);
 		const existing = this.app.vault.getFileByPath(path);
 		if (existing) {
-			await this.app.workspace.getLeaf(false).openFile(existing);
+			await openInNotePane(this.app.workspace, existing, { newTab: false, phone: Platform.isPhone });
 			return existing;
 		}
 
@@ -195,8 +196,7 @@ export class TemplateManager {
 		await this.ensureFolder(normalized);
 		const created = await this.app.vault.create(normalized, rendered.content);
 
-		const leaf = this.app.workspace.getLeaf(params.newTab ? "tab" : false);
-		await leaf.openFile(created);
+		const leaf = await openInNotePane(this.app.workspace, created, { newTab: params.newTab === true, phone: Platform.isPhone });
 
 		const view =
 			this.app.workspace.getActiveViewOfType(MarkdownView) ??

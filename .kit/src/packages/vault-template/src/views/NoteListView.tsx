@@ -1,4 +1,5 @@
-import type { App } from "obsidian";
+import { Platform, type App } from "obsidian";
+import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import type { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { shortDate, tagList } from "../core/note-format";
@@ -63,7 +64,7 @@ function NoteList({ app, spec }: { app: App; spec: ListSpec }) {
 	const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, order: s.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" }));
 	const open = (path: string) => {
 		const file = app.vault.getFileByPath(path);
-		if (file) void app.workspace.getLeaf(false).openFile(file);
+		if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: Platform.isPhone });
 	};
 
 	return (

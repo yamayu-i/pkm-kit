@@ -1,4 +1,5 @@
 import { Notice, Platform, type TFile } from "obsidian";
+import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { parseCaptureText } from "../core/capture";
 import type { TaskContext } from "./context";
@@ -42,8 +43,8 @@ function CaptureForm(props: { onSubmit: (summaries: string[]) => void }) {
 async function openAll(ctx: TaskContext, files: TFile[]): Promise<void> {
 	let first = null;
 	for (const file of files) {
-		const leaf = ctx.app.workspace.getLeaf("tab");
-		await leaf.openFile(file, { active: false });
+		// 一覧ペインがあれば、ノートペインにタブを足す（ADR-0032）
+		const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: Platform.isPhone });
 		first ??= leaf;
 	}
 	if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });

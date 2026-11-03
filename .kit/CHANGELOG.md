@@ -4,6 +4,14 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## 一覧の View を左の固定ペインに出す
+
+- vault-task の View（Daily、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups、Labels）と vault-template の一覧 View（Daily notes、Notes、Sources）は、メイン領域の左半分の「一覧ペイン」にタブで開き、固定するようにした。一覧ペインがなければ、最後に使ったタブを左右に分けて左に開く（ADR-0032）
+- 一覧ペインがあるとき、プラグインから開くノート（一覧の行、ボード、サイドバー、issue 画面のリンク、テンプレートから作ったノート、今日のデイリーノート）は、右の「ノートペイン」で開く。Ctrl/Cmd+クリックではノートペインに新しいタブを足す。ノートペインを閉じていたら、一覧ペインの右に作り直す
+- すでに開いている一覧の View は場所を変えない（固定だけする）。ノートと同じタブ列にあるものは、閉じて開き直すと一覧ペインに移る
+- スマホでは画面を分けず、一覧の View を固定したタブで開く。ノートは別のタブで開き、一覧のタブは置き換わらない
+- 子への影響: 移行はない。vault-task・vault-template の `main.js` が変わった。PC で、Daily を開いて左右に分かれるか、issue が右に開くか、ファイルエクスプローラーからノートを開いても一覧が置き換わらないかを確かめる。モバイルで、一覧のタブから issue を開いて、一覧のタブが残るかを確かめる
+
 ## task board の status を 1 クリックで変える
 
 - vault-task の task board: カードの status バッジの右に「次の status」のボタンを置いた。open / waiting → in-progress、in-progress → closed、delegated → in-progress か closed（ボタン 2 つ）。someday には出さない。アイコンは押した後の status（ADR-0031）

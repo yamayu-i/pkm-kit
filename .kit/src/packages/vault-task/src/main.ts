@@ -1,4 +1,5 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Platform, Plugin } from "obsidian";
+import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
 import { issueHeaderExtension } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
@@ -61,17 +62,12 @@ export default class VaultTaskPlugin extends Plugin {
 			undo,
 			settings: this.taskSettings,
 			saveSettings: () => this.saveData(this.taskSettings),
+			// 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0032）
 			openPath: async (path, newTab = false) => {
 				const file = this.app.vault.getFileByPath(path);
-				if (file) await this.app.workspace.getLeaf(newTab ? "tab" : false).openFile(file);
+				if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: Platform.isPhone });
 			},
-			openView: async (type) => {
-				const { workspace } = this.app;
-				const existing = workspace.getLeavesOfType(type)[0];
-				const leaf = existing ?? workspace.getLeaf("tab");
-				if (!existing) await leaf.setViewState({ type, active: true });
-				await workspace.revealLeaf(leaf);
-			},
+			openView: (type) => openListView(this.app.workspace, type, { phone: Platform.isPhone }),
 			report,
 		};
 

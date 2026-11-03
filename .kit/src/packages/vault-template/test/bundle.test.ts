@@ -93,6 +93,9 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 				on: (name: string) => name,
 				onLayoutReady: () => {},
 				iterateAllLeaves: () => {},
+				// 一覧ペイン（ADR-0032）がない状態: ルートのタブは無い扱い
+				iterateRootLeaves: () => {},
+				getMostRecentLeaf: () => null,
 			},
 			metadataCache: { on: (name: string) => name, getFileCache: () => null, resolvedLinks: {} },
 		};
@@ -131,7 +134,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 					notices.push(msg);
 				}
 			},
-			Platform: { isMobile: false },
+			Platform: { isMobile: false, isPhone: false },
 			TFile: class {},
 			normalizePath: (p: string) => p.replace(/^\/+|\/+$/g, ""),
 			setIcon: () => {},
