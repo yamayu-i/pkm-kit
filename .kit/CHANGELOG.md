@@ -4,6 +4,14 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## 一覧の View を左の固定ペインに出す
+
+- vault-task の View（Daily、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups、Labels）と vault-template の一覧 View（Daily notes、Notes、Sources）は、メイン領域の左半分の「一覧ペイン」にタブで開き、固定するようにした。一覧ペインがなければ、最後に使ったタブを左右に分けて左に開く（ADR-0033）
+- 一覧ペインがあるとき、プラグインから開くノート（一覧の行、ボード、サイドバー、issue 画面のリンク、テンプレートから作ったノート、今日のデイリーノート）は、右の「ノートペイン」で開く。Ctrl/Cmd+クリックではノートペインに新しいタブを足す。ノートペインを閉じていたら、一覧ペインの右に作り直す
+- すでに開いている一覧の View は場所を変えない（固定だけする）。ノートと同じタブ列にあるものは、閉じて開き直すと一覧ペインに移る
+- スマホでは画面を分けず、一覧の View を固定したタブで開く。ノートは別のタブで開き、一覧のタブは置き換わらない
+- 子への影響: 移行はない。vault-task・vault-template の `main.js` が変わった。PC で、Daily を開いて左右に分かれるか、issue が右に開くか、ファイルエクスプローラーからノートを開いても一覧が置き換わらないかを確かめる。モバイルで、一覧のタブから issue を開いて、一覧のタブが残るかを確かめる
+
 ## 日付のアクション名、mid_due の改名（soft_deadline）、ボードからの delegated
 
 - **移行 0003-soft-deadline**: issue の緩い締切のキーを `mid_due` から `soft_deadline` に改名した（`deadline` と対になる名前。ADR-0032）。移行は `issue/*.md` と `template/file/*.md` の frontmatter と、`.obsidian/types.json` を書き換える。`mid_due` が残っている issue は lint と vault-task が `legacy-mid-due` のエラーとして出す。MCP の引数と並べ替えのキーも `soft_deadline` になった

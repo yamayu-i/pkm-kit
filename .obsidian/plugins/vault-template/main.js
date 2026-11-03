@@ -23,7 +23,78 @@ __export(main_exports, {
   default: () => VaultTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
+
+// ../shared/src/list-pane.ts
+var LIST_VIEW_PREFIXES = ["vault-task-", "vault-template-"];
+var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["vault-task-sidebar"]);
+function isListViewType(type) {
+  return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
+}
+function leafType(leaf) {
+  return leaf.getViewState().type;
+}
+function rootLeaves(workspace) {
+  const leaves = [];
+  workspace.iterateRootLeaves((leaf) => {
+    leaves.push(leaf);
+  });
+  return leaves;
+}
+function findListLeaf(workspace, leaves) {
+  const lists = leaves.filter((l3) => isListViewType(leafType(l3)));
+  const recent = workspace.getMostRecentLeaf();
+  if (recent && lists.includes(recent)) return recent;
+  return lists[0] ?? null;
+}
+async function openListView(workspace, type, options) {
+  const existing = workspace.getLeavesOfType(type)[0];
+  if (existing) {
+    existing.setPinned(true);
+    await workspace.revealLeaf(existing);
+    return;
+  }
+  let leaf;
+  const listLeaf = options.phone ? null : findListLeaf(workspace, rootLeaves(workspace));
+  if (listLeaf) {
+    workspace.setActiveLeaf(listLeaf, { focus: false });
+    leaf = workspace.getLeaf("tab");
+  } else {
+    const base = options.phone ? null : workspace.getMostRecentLeaf();
+    leaf = base ? workspace.createLeafBySplit(base, "vertical", true) : workspace.getLeaf("tab");
+  }
+  await leaf.setViewState({ type, active: true });
+  leaf.setPinned(true);
+  await workspace.revealLeaf(leaf);
+}
+async function openInNotePane(workspace, file, options) {
+  const fallback = options.newTab ? "tab" : false;
+  const leaves = options.phone ? [] : rootLeaves(workspace);
+  const listLeaf = findListLeaf(workspace, leaves);
+  if (!listLeaf) {
+    const leaf = workspace.getLeaf(fallback);
+    await leaf.openFile(file, { active: true });
+    return leaf;
+  }
+  const container = listLeaf.getContainer();
+  const notes = leaves.filter((l3) => l3.parent !== listLeaf.parent && !isListViewType(leafType(l3)) && l3.getContainer() === container);
+  let target;
+  const first = notes[0];
+  if (!first) {
+    target = workspace.createLeafBySplit(listLeaf, "vertical", false);
+  } else {
+    const recent = workspace.getMostRecentLeaf();
+    const group = recent && notes.includes(recent) ? recent.parent : first.parent;
+    const inGroup = workspace.getMostRecentLeaf(group);
+    target = inGroup && notes.includes(inGroup) ? inGroup : first;
+    if (options.newTab) {
+      workspace.setActiveLeaf(target, { focus: false });
+      target = workspace.getLeaf("tab");
+    }
+  }
+  await target.openFile(file, { active: true });
+  return target;
+}
 
 // src/obsidian/CreateNoteModal.tsx
 var import_obsidian = require("obsidian");
@@ -1079,7 +1150,7 @@ var TemplateManager = class {
     const path = (0, import_obsidian2.normalizePath)(resolved.path);
     const existing = this.app.vault.getFileByPath(path);
     if (existing) {
-      await this.app.workspace.getLeaf(false).openFile(existing);
+      await openInNotePane(this.app.workspace, existing, { newTab: false, phone: import_obsidian2.Platform.isPhone });
       return existing;
     }
     const template = await this.loadTemplate(
@@ -1120,8 +1191,7 @@ var TemplateManager = class {
     });
     await this.ensureFolder(normalized);
     const created2 = await this.app.vault.create(normalized, rendered.content);
-    const leaf = this.app.workspace.getLeaf(params.newTab ? "tab" : false);
-    await leaf.openFile(created2);
+    const leaf = await openInNotePane(this.app.workspace, created2, { newTab: params.newTab === true, phone: import_obsidian2.Platform.isPhone });
     const view = this.app.workspace.getActiveViewOfType(import_obsidian2.MarkdownView) ?? leaf.view;
     const editor = view?.editor;
     if (editor) {
@@ -1143,7 +1213,7 @@ var TemplateManager = class {
 };
 
 // src/obsidian/header-mount.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/core/note-format.ts
 function shortDate(value) {
@@ -1275,6 +1345,7 @@ function buildHeader(note, ctx) {
 }
 
 // src/obsidian/NoteHeader.tsx
+var import_obsidian3 = require("obsidian");
 function Value({ app, v: v3 }) {
   if (v3.path !== void 0) {
     const path = v3.path;
@@ -1285,7 +1356,7 @@ function Value({ app, v: v3 }) {
         class: "vt-tpl-link",
         onClick: () => {
           const file = app.vault.getFileByPath(path);
-          if (file) void app.workspace.getLeaf(false).openFile(file);
+          if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian3.Platform.isPhone });
         },
         children: v3.text
       }
@@ -1379,7 +1450,7 @@ function installNoteHeaders(plugin) {
   };
   const refresh = () => {
     app.workspace.iterateAllLeaves((leaf) => {
-      if (leaf.view instanceof import_obsidian3.MarkdownView) mount(leaf.view);
+      if (leaf.view instanceof import_obsidian4.MarkdownView) mount(leaf.view);
     });
   };
   let timer;
@@ -1403,8 +1474,8 @@ function installNoteHeaders(plugin) {
 }
 
 // src/obsidian/SettingTab.ts
-var import_obsidian4 = require("obsidian");
-var TemplateSettingTab = class extends import_obsidian4.PluginSettingTab {
+var import_obsidian5 = require("obsidian");
+var TemplateSettingTab = class extends import_obsidian5.PluginSettingTab {
   constructor(app, plugin, manager, onReport) {
     super(app, plugin);
     this.manager = manager;
@@ -1420,7 +1491,7 @@ var TemplateSettingTab = class extends import_obsidian4.PluginSettingTab {
   async renderAsync(containerEl) {
     const { entries, problems } = await this.manager.loadConfig();
     containerEl.empty();
-    new import_obsidian4.Setting(containerEl).setName("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u4E00\u89A7\u3068\u751F\u6210\u5148").setDesc(
+    new import_obsidian5.Setting(containerEl).setName("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u4E00\u89A7\u3068\u751F\u6210\u5148").setDesc(
       `${UPSTREAM_TEMPLATE_DIR}/\uFF08\u4E0A\u6D41\u306E\u65E2\u5B9A\uFF09\u3068 ${TEMPLATE_DIR}/\uFF08\u3053\u306E Vault\uFF09\u306B\u3042\u308B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8868\u793A\u9806\u30FB\u30E2\u30FC\u30C0\u30EB\u3078\u306E\u8868\u793A\u6709\u7121\u30FB\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\u30FB\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\u3092\u8A2D\u5B9A\u3057\u307E\u3059\u3002\u540C\u3058\u540D\u524D\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306F\u3053\u306E Vault \u306E\u3082\u306E\u3092\u4F7F\u3044\u307E\u3059\u3002\u4FDD\u5B58\u5148\u306F ${TEMPLATE_CONFIG_PATH} \u3067\u3001\u4E0A\u6D41\u306E\u65E2\u5B9A\u3068\u9055\u3046\u9805\u76EE\u3060\u3051\u3092\u66F8\u304D\u307E\u3059\u3002`
     ).setHeading();
     if (problems.length > 0) {
@@ -1438,7 +1509,7 @@ var TemplateSettingTab = class extends import_obsidian4.PluginSettingTab {
       }
     };
     entries.forEach((entry, index) => {
-      const row = new import_obsidian4.Setting(containerEl).setName(entry.file).setDesc("\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\uFF08\u4F8B: wiki, daily/{{date:YYYY}}/{{date:MM}}\uFF09\u3068\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\uFF08\u4F8B: {{date:YYYY-MM-DD}}\uFF09");
+      const row = new import_obsidian5.Setting(containerEl).setName(entry.file).setDesc("\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\uFF08\u4F8B: wiki, daily/{{date:YYYY}}/{{date:MM}}\uFF09\u3068\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\uFF08\u4F8B: {{date:YYYY-MM-DD}}\uFF09");
       row.addText(
         (text2) => text2.setPlaceholder("\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\uFF08\u30EB\u30FC\u30C8\u306A\u3089\u7A7A\u6B04\uFF09").setValue(entry.folder).onChange((val) => {
           entry.folder = val.trim().replace(/^\/+|\/+$/g, "");
@@ -1472,9 +1543,9 @@ var TemplateSettingTab = class extends import_obsidian4.PluginSettingTab {
 };
 
 // src/obsidian/view.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian5.ItemView {
+  class PreactView extends import_obsidian6.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -1496,6 +1567,7 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
+var import_obsidian7 = require("obsidian");
 var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
 var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
@@ -1533,7 +1605,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void app.workspace.getLeaf(false).openFile(file);
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian7.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
     /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", "aria-label": "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
@@ -1557,7 +1629,7 @@ var LIST_VIEWS = [
   { type: "vault-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
   { type: "vault-template-source-list", title: "Sources", icon: "library", component: SourceListView }
 ];
-var VaultTemplatePlugin = class extends import_obsidian6.Plugin {
+var VaultTemplatePlugin = class extends import_obsidian8.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
@@ -1594,16 +1666,13 @@ var VaultTemplatePlugin = class extends import_obsidian6.Plugin {
     installNoteHeaders(this);
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
   }
+  /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    const { workspace } = this.app;
-    const existing = workspace.getLeavesOfType(type)[0];
-    const leaf = existing ?? workspace.getLeaf("tab");
-    if (!existing) await leaf.setViewState({ type, active: true });
-    await workspace.revealLeaf(leaf);
+    await openListView(this.app.workspace, type, { phone: import_obsidian8.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`vault-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian6.Notice(`${message}${detail}`);
+    new import_obsidian8.Notice(`${message}${detail}`);
   }
 };

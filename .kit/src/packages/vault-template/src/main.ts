@@ -1,4 +1,5 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Platform, Plugin } from "obsidian";
+import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
@@ -59,12 +60,9 @@ export default class VaultTemplatePlugin extends Plugin {
 		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}
 
+	/** 一覧 View は左の固定ペインに開く（ADR-0033） */
 	private async openView(type: string): Promise<void> {
-		const { workspace } = this.app;
-		const existing = workspace.getLeavesOfType(type)[0];
-		const leaf = existing ?? workspace.getLeaf("tab");
-		if (!existing) await leaf.setViewState({ type, active: true });
-		await workspace.revealLeaf(leaf);
+		await openListView(this.app.workspace, type, { phone: Platform.isPhone });
 	}
 
 	private report(message: string, error?: unknown): void {

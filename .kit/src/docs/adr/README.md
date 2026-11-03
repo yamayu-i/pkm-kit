@@ -19,7 +19,7 @@
 | [0006](0006-status-inbox-someday.md) | 承認（一部置換: 0032） | status の定義、Inbox と Someday |
 | [0007](0007-labels-and-members.md) | 承認（一部置換: 0024） | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認 | UI は Preact。issue 画面は CodeMirror の widget |
-| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032） | View の一覧と各 View の振る舞い |
+| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033） | View の一覧と各 View の振る舞い |
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認 | issue 画面の構成と、親子関係の編集 |
@@ -31,15 +31,16 @@
 | [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
-| [0021](0021-routine-effort-and-sidebar.md) | 承認（一部置換: 0024） | routine 画面の total / average と左サイドバーのナビゲーション View |
+| [0021](0021-routine-effort-and-sidebar.md) | 承認（一部置換: 0024, 0033） | routine 画面の total / average と左サイドバーのナビゲーション View |
 | [0022](0022-template-plugin.md) | 承認（一部補足: 0023） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
-| [0026](0026-note-views.md) | 承認（一部置換: 0027） | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |
+| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033） | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの 0009） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる（コアプラグインのデイリーノートは無効にする） |
 | [0030](0030-organize-schedule-calendar.md) | 承認 | Organize の予定入れを、複数日を選べるカレンダーにする |
 | [0031](0031-status-quick-change.md) | 承認（一部置換: 0032） | ボードからの status の 1 クリック変更、status のアイコン、取り消しのトースト、status の記録（statuslog） |
 | [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認 | 日付のアクション名の整理（Add / Move Do Date、Change Deadline）、mid_due を soft_deadline に改名、ボードからの delegated |
+| [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |

@@ -1,4 +1,5 @@
-import type { App } from "obsidian";
+import { Platform, type App } from "obsidian";
+import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import type { HeaderModel, HeaderValue } from "../core/note-header";
 import { WEEKDAYS } from "../core/note-title";
 
@@ -11,7 +12,7 @@ function Value({ app, v }: { app: App; v: HeaderValue }) {
 				class="vt-tpl-link"
 				onClick={() => {
 					const file = app.vault.getFileByPath(path);
-					if (file) void app.workspace.getLeaf(false).openFile(file);
+					if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: Platform.isPhone });
 				}}
 			>
 				{v.text}

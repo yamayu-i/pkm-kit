@@ -122,6 +122,14 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - vault-template と vault-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、vault-ribbon も変える
 - `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
 
+## shared（プラグインの共通の処理）
+
+`.kit/src/packages/shared`。プラグインではなく、複数のプラグインが同じ規則で動く必要がある処理を置く。各プラグインが `src/` を相対パスで読み、束ねる。Obsidian の値は import せず、型だけを使う（テストは偽の workspace で書く）。
+
+| パス | 役割 |
+|---|---|
+| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。vault-task と vault-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+
 ## design（デザイントークンと検査）
 
 `.kit/src/packages/design`。プラグインではなく、デザインの値の正本と検査を置く（ADR-0016）。

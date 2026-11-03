@@ -25,6 +25,77 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian20 = require("obsidian");
 
+// ../shared/src/list-pane.ts
+var LIST_VIEW_PREFIXES = ["vault-task-", "vault-template-"];
+var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["vault-task-sidebar"]);
+function isListViewType(type) {
+  return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
+}
+function leafType(leaf) {
+  return leaf.getViewState().type;
+}
+function rootLeaves(workspace) {
+  const leaves = [];
+  workspace.iterateRootLeaves((leaf) => {
+    leaves.push(leaf);
+  });
+  return leaves;
+}
+function findListLeaf(workspace, leaves) {
+  const lists = leaves.filter((l3) => isListViewType(leafType(l3)));
+  const recent = workspace.getMostRecentLeaf();
+  if (recent && lists.includes(recent)) return recent;
+  return lists[0] ?? null;
+}
+async function openListView(workspace, type, options) {
+  const existing = workspace.getLeavesOfType(type)[0];
+  if (existing) {
+    existing.setPinned(true);
+    await workspace.revealLeaf(existing);
+    return;
+  }
+  let leaf;
+  const listLeaf = options.phone ? null : findListLeaf(workspace, rootLeaves(workspace));
+  if (listLeaf) {
+    workspace.setActiveLeaf(listLeaf, { focus: false });
+    leaf = workspace.getLeaf("tab");
+  } else {
+    const base = options.phone ? null : workspace.getMostRecentLeaf();
+    leaf = base ? workspace.createLeafBySplit(base, "vertical", true) : workspace.getLeaf("tab");
+  }
+  await leaf.setViewState({ type, active: true });
+  leaf.setPinned(true);
+  await workspace.revealLeaf(leaf);
+}
+async function openInNotePane(workspace, file, options) {
+  const fallback = options.newTab ? "tab" : false;
+  const leaves = options.phone ? [] : rootLeaves(workspace);
+  const listLeaf = findListLeaf(workspace, leaves);
+  if (!listLeaf) {
+    const leaf = workspace.getLeaf(fallback);
+    await leaf.openFile(file, { active: true });
+    return leaf;
+  }
+  const container = listLeaf.getContainer();
+  const notes = leaves.filter((l3) => l3.parent !== listLeaf.parent && !isListViewType(leafType(l3)) && l3.getContainer() === container);
+  let target;
+  const first = notes[0];
+  if (!first) {
+    target = workspace.createLeafBySplit(listLeaf, "vertical", false);
+  } else {
+    const recent = workspace.getMostRecentLeaf();
+    const group = recent && notes.includes(recent) ? recent.parent : first.parent;
+    const inGroup2 = workspace.getMostRecentLeaf(group);
+    target = inGroup2 && notes.includes(inGroup2) ? inGroup2 : first;
+    if (options.newTab) {
+      workspace.setActiveLeaf(target, { focus: false });
+      target = workspace.getLeaf("tab");
+    }
+  }
+  await target.openFile(file, { active: true });
+  return target;
+}
+
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
@@ -2834,8 +2905,7 @@ function CaptureForm(props) {
 async function openAll(ctx, files) {
   let first = null;
   for (const file of files) {
-    const leaf = ctx.app.workspace.getLeaf("tab");
-    await leaf.openFile(file, { active: false });
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian7.Platform.isPhone });
     first ??= leaf;
   }
   if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
@@ -5625,17 +5695,12 @@ var VaultTaskPlugin = class extends import_obsidian20.Plugin {
       undo,
       settings: this.taskSettings,
       saveSettings: () => this.saveData(this.taskSettings),
+      // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await this.app.workspace.getLeaf(newTab ? "tab" : false).openFile(file);
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian20.Platform.isPhone });
       },
-      openView: async (type) => {
-        const { workspace } = this.app;
-        const existing = workspace.getLeavesOfType(type)[0];
-        const leaf = existing ?? workspace.getLeaf("tab");
-        if (!existing) await leaf.setViewState({ type, active: true });
-        await workspace.revealLeaf(leaf);
-      },
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian20.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
