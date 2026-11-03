@@ -9,10 +9,23 @@ description: 検査を通したブランチを自分でレビューし、PR を�
 
 [実装する](../dev-implement/SKILL.md) の検査がすべて通っている。
 
-## 1. 差分を自分で読む
+## 1. 最新の main を取り込む
+
+PR を出す前に、main とぶつからないかを確かめる。CHANGELOG の先頭と ADR の一覧の末尾は、どの PR も書き足すのでぶつかりやすい。
 
 ```sh
 git fetch origin main
+git merge origin/main      # rebase や force push はしない
+```
+
+- コンフリクトしたら解いてからマージコミットにする。両方の変更を残す（CHANGELOG は新しいものを上に）
+- ADR の番号が main のものと重なっていたら、こちらの番号を空いている番号に変え、参照（ソースのコメント、CHANGELOG、他の ADR の状態）も直す
+- ビルド成果物（`main.js` など）は、merge の結果を使わずに `pnpm build` で作り直す
+- 取り込んだら [実装する](../dev-implement/SKILL.md) の検査をもう一度通す
+
+## 2. 差分を自分で読む
+
+```sh
 git diff origin/main...HEAD
 ```
 
@@ -29,11 +42,11 @@ git diff origin/main...HEAD
 
 可能なら `code-review` スキルなどで、実装したときとは別の視点でもレビューする。正しい指摘は直し、直さないものは理由を控える。直したら検査をやり直す。
 
-## 2. 気づきを見直す
+## 3. 気づきを見直す
 
 この作業で、訂正されたこと、文書になくて質問したこと、文書と実際の食い違い、手戻りを思い返す。記録していないものがあれば [気づきを記録する](../kit-note/SKILL.md)。
 
-## 3. push して PR を作る
+## 4. push して PR を作る
 
 ```sh
 git push -u origin HEAD
@@ -57,6 +70,6 @@ PR は `gh pr create` か GitHub の MCP ツールで作る。タイトルはコ
 記録した件数（なければ「なし」）
 ```
 
-## 4. 伝える
+## 5. 伝える
 
 PR の URL と検証の結果をユーザーに伝える。PR はマージしない。
