@@ -3,6 +3,7 @@ import { issueHeaderExtension } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
+import { StatusUndo } from "./obsidian/status-undo";
 import { TaskStore } from "./obsidian/store";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { TaskWriter } from "./obsidian/writer";
@@ -34,16 +35,30 @@ const SIDEBAR_VIEW: ViewSpec = { type: "vault-task-sidebar", title: "Tasks", ico
 
 export default class VaultTaskPlugin extends Plugin {
 	private store: TaskStore | null = null;
+	private undo: StatusUndo | null = null;
 	taskSettings: TaskSettings = { ...DEFAULT_SETTINGS };
 
 	override async onload(): Promise<void> {
 		await this.loadSettings();
 		const store = new TaskStore(this.app);
 		this.store = store;
+		const report = (message: string, error?: unknown) => {
+			if (error !== undefined) console.error(`vault-task: ${message}`, error);
+			const detail = error instanceof Error ? `: ${error.message}` : "";
+			new Notice(`${message}${detail}`);
+		};
+		const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
+		const undo = new StatusUndo(report);
+		this.undo = undo;
+		// status を変えたら取り消しのトーストを出す。戻した変更（undo）には出さない（ADR-0031）
+		writer.onStatusChange = (c) => {
+			if (c.via !== "undo") undo.push(c.id, () => writer.update(c.path, c.before, "undo"));
+		};
 		const ctx: TaskContext = {
 			app: this.app,
 			store,
-			writer: new TaskWriter(this.app, store),
+			writer,
+			undo,
 			settings: this.taskSettings,
 			saveSettings: () => this.saveData(this.taskSettings),
 			openPath: async (path, newTab = false) => {
@@ -57,11 +72,7 @@ export default class VaultTaskPlugin extends Plugin {
 				if (!existing) await leaf.setViewState({ type, active: true });
 				await workspace.revealLeaf(leaf);
 			},
-			report: (message, error) => {
-				if (error !== undefined) console.error(`vault-task: ${message}`, error);
-				const detail = error instanceof Error ? `: ${error.message}` : "";
-				new Notice(`${message}${detail}`);
-			},
+			report,
 		};
 
 		const openSidebar = async (reveal = true) => {
@@ -92,6 +103,7 @@ export default class VaultTaskPlugin extends Plugin {
 
 	override onunload(): void {
 		this.store?.unload();
+		this.undo?.dismiss();
 	}
 
 	private async loadSettings(): Promise<void> {

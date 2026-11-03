@@ -168,7 +168,11 @@ packages/design/tokens.json（正本）
 | 部品 | クラス | 見た目 |
 |---|---|---|
 | カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
-| status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に色の点、末尾に ▾ |
+| status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に status のアイコン、末尾に ▾ |
+| status のアイコン | `.vt-status-icon` | ○ を土台にした自作の SVG（ADR-0031）。色は status の印の色（`--vt-dot`）、白抜きは下の面（`--vt-knock`）。in-progress は `--vt-duration-spin` でゆっくり回り、closed は閉じた直後（`.is-enter`）だけチェックを描く |
+| 次の status | `.vt-next` | ボードのカードの 28px の丸い tonal ボタン。押した後の status の色とアイコン。戻す（`.is-undo`）は枠線だけ |
+| 完了の欄 | `.vt-done` | ボードの下のカード。closed / canceled のカードを並べる。カードは落とせない |
+| 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
 | ID | `.vt-id` | 丸いバッジ、等幅フォント、status の色 |
 | priority | `.vt-priority` | 記号（▲ ■ ▼ ·）付きのチップ + ▾。記号は飾りなので `aria-hidden` |
@@ -198,7 +202,7 @@ packages/design/tokens.json（正本）
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
 
-アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。
+アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。status のアイコンは例外で、Lucide にない形なので自作の SVG（`StatusIcon` 部品、`src/ui/StatusIcon.tsx`）を使う（ADR-0031）。
 
 ## 9. 編集できるものの目印
 

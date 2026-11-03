@@ -4,6 +4,16 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## task board の status を 1 クリックで変える
+
+- vault-task の task board: カードの status バッジの右に「次の status」のボタンを置いた。open / waiting → in-progress、in-progress → closed、delegated → in-progress か closed（ボタン 2 つ）。someday には出さない。アイコンは押した後の status（ADR-0031）
+- status のバッジの色の点を、○ を土台にした status のアイコンに置き換えた（すべての画面）。in-progress はゆっくり回り、closed は閉じた直後にチェックを描く。動きを減らす設定では動かない
+- closed / canceled の issue と、結果を記録した routine は、ボードのグループから外して下の「完了」の欄に出す。↩ で閉じる前の status に戻せる
+- status を変えると、画面の右下に「N件のステータスが変更されました。 やり直す ›」を 5 秒出す。続けて変えると件数を足して数え直す。「やり直す」でまとめて元に戻す
+- closed / canceled にすると、その issue の記録中のタイマーを止める。open の issue のタイマーを始めると in-progress にする（MCP も同じ）
+- status の変化を `statuslog/<端末名>/YYYY-MM.jsonl` に 1 行ずつ記録する（分析用。正本は今までどおり frontmatter）。worklog-review は、これで「閉じた後のログ」を見つける
+- 子への影響: 移行はない。Vault に `statuslog/` フォルダが増える（タスク管理のデータ）。vault-task の `main.js` と `styles.css` が変わった。モバイルで、カードのボタンが押しやすいか、トーストが下のツールバーに重ならないかを確かめる
+
 ## frontmatter のエスケープ、CI の検査の一本化、リボン、Organize の予定入れ
 
 - **移行 0002-ribbon-and-core-daily-notes**: 新しいプラグイン vault-ribbon が「今日のデイリーノートを開く」（カレンダー）と「Daily を開く」のボタンを、続けて並べる（デイリーノートが上）。vault-template と vault-task は、このボタンを出さない（コマンドは残る）。コアプラグイン「デイリーノート」は無効にする（使っていないのにボタンが残っていた）。移行は `core-plugins.json` の `daily-notes` を `false` にし、`vault-ribbon` を有効にし、既定のままの `daily-notes.json` を消す（ADR-0029）

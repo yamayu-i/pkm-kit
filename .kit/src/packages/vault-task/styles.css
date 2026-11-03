@@ -320,9 +320,9 @@ button.vt-badge:disabled::after {
 	letter-spacing: var(--vt-type-title-medium-tracking);
 }
 
-.vt-badge.is-wide .vt-dot {
-	width: 12px;
-	height: 12px;
+.vt-badge.is-wide .vt-status-icon {
+	width: 20px;
+	height: 20px;
 }
 
 .vt-badge.is-wide .vt-trailing {
@@ -330,21 +330,84 @@ button.vt-badge:disabled::after {
 	right: 16px;
 }
 
-.vt-dot {
-	width: 8px;
-	height: 8px;
-	border-radius: var(--vt-radius-full);
-	background: var(--vt-dot);
+.vt-status-open { --vt-dot: var(--vt-green); --vt-knock: var(--vt-green-container); background: var(--vt-green-container); color: var(--vt-on-green-container); }
+.vt-status-in-progress { --vt-dot: var(--vt-blue); --vt-knock: var(--vt-blue-container); background: var(--vt-blue-container); color: var(--vt-on-blue-container); }
+.vt-status-closed { --vt-dot: var(--vt-purple); --vt-knock: var(--vt-purple-container); background: var(--vt-purple-container); color: var(--vt-on-purple-container); }
+.vt-status-canceled { --vt-dot: var(--vt-gray); --vt-knock: var(--vt-gray-container); background: var(--vt-gray-container); color: var(--vt-on-gray-container); }
+.vt-status-someday { --vt-dot: var(--vt-sky); --vt-knock: var(--vt-sky-container); background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
+.vt-status-waiting,
+.vt-status-delegated { --vt-dot: var(--vt-pink); --vt-knock: var(--vt-pink-container); background: var(--vt-pink-container); color: var(--vt-on-pink-container); }
+
+/* ---------- status のアイコン（ADR-0031） ---------- */
+
+/* ○ を土台にした自作の SVG。色は status の印の色（--vt-dot）。白抜きは下の面の色（--vt-knock） */
+.vt-status-icon {
+	width: 16px;
+	height: 16px;
 	flex: none;
+	overflow: visible;
+	color: var(--vt-dot);
 }
 
-.vt-status-open { --vt-dot: var(--vt-green); background: var(--vt-green-container); color: var(--vt-on-green-container); }
-.vt-status-in-progress { --vt-dot: var(--vt-blue); background: var(--vt-blue-container); color: var(--vt-on-blue-container); }
-.vt-status-closed { --vt-dot: var(--vt-purple); background: var(--vt-purple-container); color: var(--vt-on-purple-container); }
-.vt-status-canceled { --vt-dot: var(--vt-gray); background: var(--vt-gray-container); color: var(--vt-on-gray-container); }
-.vt-status-someday { --vt-dot: var(--vt-sky); background: var(--vt-sky-container); color: var(--vt-on-sky-container); }
-.vt-status-waiting,
-.vt-status-delegated { --vt-dot: var(--vt-pink); background: var(--vt-pink-container); color: var(--vt-on-pink-container); }
+.vt-si-ring {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.vt-si-fill {
+	fill: currentColor;
+}
+
+.vt-si-knock {
+	fill: none;
+	stroke: var(--vt-knock);
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* in-progress: 中の半円がゆっくり回る */
+.vt-si-spin {
+	transform-origin: 12px 12px;
+	animation: vt-spin var(--vt-duration-spin) linear infinite;
+}
+
+/* closed: 閉じた直後だけ、塗りが小さく弾み、チェックを描く */
+.vt-status-icon.is-enter .vt-si-pop {
+	transform-origin: 12px 12px;
+	animation: vt-pop var(--vt-duration-short4) var(--vt-easing-standard);
+}
+
+.vt-status-icon.is-enter .vt-si-draw {
+	stroke-dasharray: 14;
+	stroke-dashoffset: 14;
+	animation: vt-draw var(--vt-duration-short4) var(--vt-easing-standard) var(--vt-duration-short2) forwards;
+}
+
+@keyframes vt-spin {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes vt-pop {
+	from { transform: scale(0.6); }
+	to { transform: scale(1); }
+}
+
+@keyframes vt-draw {
+	to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vt-si-spin,
+	.vt-status-icon.is-enter .vt-si-pop,
+	.vt-status-icon.is-enter .vt-si-draw {
+		animation: none;
+		stroke-dashoffset: 0;
+	}
+}
 
 /* priority は M3 の assist chip 風（枠線） */
 .vt-priority {
@@ -1717,6 +1780,143 @@ button.vt-badge:disabled::after {
 
 .vt-unfinished {
 	gap: 12px;
+}
+
+/* ---------- 次の status のボタンと、完了の欄（ADR-0031） ---------- */
+
+/* 押した後の status の色の、小さい丸い tonal ボタン。アイコンは押した後の status */
+.vt-next {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	box-shadow: none;
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-next:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-next:active {
+	transform: scale(var(--vt-scale-press-small));
+}
+
+.vt-next:focus-visible {
+	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
+	outline-offset: var(--vt-space-2);
+}
+
+/* 戻す: 枠線だけ */
+.vt-next.is-undo {
+	background: transparent;
+	box-shadow: inset 0 0 0 1px var(--vt-outline-variant);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-next.is-undo:hover {
+	color: var(--vt-on-surface);
+}
+
+.vt-next .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-done {
+	gap: 12px;
+}
+
+.vt-done-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 8px;
+}
+
+/* ---------- 取り消しのトースト（ADR-0031） ---------- */
+
+/* 画面の右下に固定。Obsidian の Notice（右上）とは別 */
+.vt-toast {
+	position: fixed;
+	right: var(--vt-space-24);
+	bottom: var(--vt-space-24);
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	max-width: calc(100% - var(--vt-space-48));
+	padding: 8px 8px 8px 16px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface);
+	box-shadow: var(--vt-elevation-4);
+	font-family: var(--font-interface);
+	font-size: var(--vt-type-body-medium-size);
+	line-height: var(--vt-type-body-medium-line-height);
+	animation: vt-toast-in var(--vt-duration-short4) var(--vt-easing-standard);
+}
+
+/* モバイルは下のツールバーに重ならないように上げ、左右いっぱいにする */
+body.is-mobile .vt-toast {
+	left: var(--vt-space-16);
+	right: var(--vt-space-16);
+	bottom: var(--vt-space-96);
+	max-width: none;
+}
+
+.vt-toast-text {
+	min-width: 0;
+}
+
+.vt-toast-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	flex: none;
+	height: 32px;
+	padding: 0 8px 0 12px;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-primary);
+	font-family: inherit;
+	font-size: inherit;
+	font-weight: var(--vt-weight-semibold);
+	cursor: pointer;
+}
+
+.vt-toast-action:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-toast-action:focus-visible {
+	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
+	outline-offset: var(--vt-space-2);
+}
+
+.vt-toast-action .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+@keyframes vt-toast-in {
+	from { opacity: 0; transform: translateY(8px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vt-toast,
+	.vt-next {
+		animation: none;
+		transition: none;
+	}
 }
 
 .vt-routine-rows {

@@ -7592,6 +7592,351 @@ function occursOn(rule, anchor, date) {
   }
 }
 
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m ? Number(m[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+function nextIds(prefix, existing, count = 1) {
+  let max = 0;
+  for (const id of existing) {
+    const n = idNumber(id, prefix);
+    if (n !== null && n > max) max = n;
+  }
+  return Array.from({ length: count }, (_, i) => `${prefix}-${max + 1 + i}`);
+}
+function pathForId(id) {
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  return `${folder}/${id}.md`;
+}
+
+// src/core/schema.ts
+var SCHEMA_VERSION = 1;
+var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var PRIORITIES = ["high", "mid", "low", "chore"];
+var STATUS_DETAIL_MAX = 20;
+var Reader = class {
+  constructor(path, fm) {
+    this.path = path;
+    this.fm = fm;
+  }
+  path;
+  fm;
+  problems = [];
+  problem(code, message, severity = "error") {
+    this.problems.push({ severity, path: this.path, code, message });
+  }
+  has(key) {
+    const v = this.fm[key];
+    return v !== void 0 && v !== null && v !== "";
+  }
+  string(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (typeof v === "string") return v.trim();
+    if (typeof v === "number") return String(v);
+    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    return null;
+  }
+  oneOf(key, values) {
+    const v = this.string(key);
+    if (v === null) return null;
+    if (values.includes(v)) return v;
+    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v}`);
+    return null;
+  }
+  date(key) {
+    if (!this.has(key)) return null;
+    const d = normalizeDate(this.fm[key]);
+    if (d === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
+    return d;
+  }
+  datetime(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+    if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return v.trim();
+    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
+    return null;
+  }
+  minutes(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
+    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v)}`);
+    return null;
+  }
+  list(key) {
+    if (!this.has(key)) return [];
+    const v = this.fm[key];
+    return Array.isArray(v) ? v.filter((x) => x !== null && x !== "") : [v];
+  }
+  strings(key) {
+    const out = [];
+    for (const v of this.list(key)) {
+      if (typeof v === "string" || typeof v === "number") {
+        const s = String(v).trim();
+        if (s && !out.includes(s)) out.push(s);
+      } else {
+        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
+      }
+    }
+    return out;
+  }
+  dates(key) {
+    const out = /* @__PURE__ */ new Set();
+    for (const v of this.list(key)) {
+      const d = normalizeDate(v);
+      if (d === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v)}`);
+      else out.add(d);
+    }
+    return [...out].sort();
+  }
+  ref(key, prefix) {
+    const v = this.string(key);
+    if (v === null) return null;
+    if (isId(v, prefix)) return v;
+    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v}`);
+    return null;
+  }
+  common(type, prefix) {
+    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
+      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
+    }
+    const id = this.string("id");
+    if (id === null || !isId(id, prefix)) {
+      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
+      return null;
+    }
+    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
+    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
+    return id;
+  }
+};
+function parseIssue(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("issue", "i");
+  const summary = r.string("summary") ?? "";
+  if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const status = r.oneOf("status", STATUSES);
+  if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  const issue = {
+    path,
+    id: id ?? "",
+    summary,
+    status: status ?? "open",
+    statusDetail: r.string("status-detail") ?? "",
+    delegatedTo: r.ref("delegated_to", "m"),
+    priority: r.oneOf("priority", PRIORITIES),
+    labels: r.strings("label"),
+    parent: r.ref("parent", "i"),
+    related: r.strings("related"),
+    estimated: r.minutes("estimated"),
+    scheduled: r.dates("scheduled"),
+    midDue: r.date("mid_due"),
+    deadline: r.date("deadline"),
+    revisit: r.date("revisit"),
+    reviewed: r.date("reviewed"),
+    created: r.datetime("created")
+  };
+  return { value: id === null ? null : issue, problems: r.problems };
+}
+function parseRoutine(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("routine", "r");
+  let repeat = null;
+  const parsed = parseRepeat(fm.repeat);
+  if (parsed.ok) repeat = parsed.value;
+  else r.problem("invalid-repeat", parsed.error);
+  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
+  if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const routine = {
+    path,
+    id: id ?? "",
+    summary: r.string("summary") ?? "",
+    repeat,
+    start: r.date("start"),
+    end: r.date("end"),
+    active: active !== false,
+    group: r.string("group"),
+    priority: r.oneOf("priority", PRIORITIES),
+    labels: r.strings("label"),
+    estimated: r.minutes("estimated"),
+    created: r.datetime("created")
+  };
+  return { value: id === null ? null : routine, problems: r.problems };
+}
+function parseMember(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("member", "m");
+  const name = r.string("name") ?? "";
+  if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  return { value: id === null ? null : { path, id, name }, problems: r.problems };
+}
+
+// src/core/worklog.ts
+var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function sanitizeDeviceName(name) {
+  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+}
+function worklogPath(device, from) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
+  return `worklog/${safe}/${month}.jsonl`;
+}
+function parseWorklog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
+    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    let toMs = null;
+    if (o.to !== null && o.to !== void 0) {
+      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
+      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    }
+    entries.push({
+      path,
+      line,
+      id: o.id,
+      taskId: o.task_id,
+      from: o.from,
+      to: toMs === null ? null : o.to,
+      description: typeof o.description === "string" ? o.description : "",
+      fromMs,
+      toMs
+    });
+  });
+  return { entries, problems };
+}
+function serializeWorklogEntry(e) {
+  return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
+}
+function replaceWorklogLine(text, entry, next) {
+  const lines = text.split("\n");
+  const i = entry.line - 1;
+  let current;
+  try {
+    current = JSON.parse(lines[i] ?? "");
+  } catch {
+    current = null;
+  }
+  if (typeof current !== "object" || current === null || current.id !== entry.id) {
+    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
+  if (next === null) lines.splice(i, 1);
+  else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  return lines.join("\n");
+}
+var MIN_WORKLOG_MS = 6e4;
+function stopWorklogLines(text, entries, to, toMs) {
+  return [...entries].sort((a, b) => b.line - a.line).reduce((t, e) => replaceWorklogLine(t, e, toMs - e.fromMs < MIN_WORKLOG_MS ? null : { from: e.from, to, description: e.description }), text);
+}
+function newWorklogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function appendWorklogLine(text, line) {
+  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
+`;
+}
+
+// src/core/status-log.ts
+var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
+var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function statusLogPath(device, at) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  const month = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}`;
+  return `statuslog/${safe}/${month}.jsonl`;
+}
+function newStatusLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `st_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function serializeStatusLogEntry(e) {
+  return JSON.stringify({ id: e.id, at: e.at, task: e.task, from: e.from, to: e.to, via: e.via });
+}
+function statusLogLine(task, from, to, via, at, random = Math.random) {
+  if (from === to) return null;
+  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, from, to, via });
+}
+var isStatus = (v) => typeof v === "string" && STATUSES.includes(v);
+function parseStatusLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-status-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.task !== "string" || !o.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (!isStatus(o.from) || !isStatus(o.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const via = STATUS_VIAS.includes(o.via) ? o.via : null;
+    if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o.id, at: o.at, atMs, task: o.task, from: o.from, to: o.to, via });
+  });
+  return { entries, problems };
+}
+function compareStatusLog(a, b) {
+  if (a.atMs !== b.atMs) return a.atMs - b.atMs;
+  if (a.path !== b.path) return a.path < b.path ? -1 : 1;
+  return a.line - b.line;
+}
+function statusBefore(logs, task, current) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task) continue;
+    return e.to === current && e.from !== current ? e.from : null;
+  }
+  return null;
+}
+function closedAtMap(logs, closedIds) {
+  const ids = new Set(closedIds);
+  const out = /* @__PURE__ */ new Map();
+  for (const e of logs) if (ids.has(e.task) && e.to === "closed") out.set(e.task, e.atMs);
+  return out;
+}
+function isDoneStatus(status) {
+  return status === "closed" || status === "canceled";
+}
+
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -7675,6 +8020,22 @@ var TaskIndex = class {
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
+  }
+  /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
+  statusBefore(id) {
+    const issue = this.issues.get(id);
+    return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+  }
+  /** その issue の最後の status の記録 */
+  lastStatusLog(id) {
+    const logs = this.data.statusLogs;
+    for (let i = logs.length - 1; i >= 0; i--) if (logs[i].task === id) return logs[i];
+    return void 0;
+  }
+  /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
+  closedAt() {
+    const closed = [...this.issues.values()].filter((i) => i.status === "closed").map((i) => i.id);
+    return closedAtMap(this.data.statusLogs, closed);
   }
   routinesOn(date) {
     return [...this.routines.values()].filter((r) => routineOccursOn(r, date));
@@ -7972,192 +8333,6 @@ function parseLabels(text) {
     labels.push({ name, color });
   }
   return { labels, problems };
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m ? Number(m[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-function nextIds(prefix, existing, count = 1) {
-  let max = 0;
-  for (const id of existing) {
-    const n = idNumber(id, prefix);
-    if (n !== null && n > max) max = n;
-  }
-  return Array.from({ length: count }, (_, i) => `${prefix}-${max + 1 + i}`);
-}
-function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
-  return `${folder}/${id}.md`;
-}
-
-// src/core/schema.ts
-var SCHEMA_VERSION = 1;
-var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
-var PRIORITIES = ["high", "mid", "low", "chore"];
-var STATUS_DETAIL_MAX = 20;
-var Reader = class {
-  constructor(path, fm) {
-    this.path = path;
-    this.fm = fm;
-  }
-  path;
-  fm;
-  problems = [];
-  problem(code, message, severity = "error") {
-    this.problems.push({ severity, path: this.path, code, message });
-  }
-  has(key) {
-    const v = this.fm[key];
-    return v !== void 0 && v !== null && v !== "";
-  }
-  string(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (typeof v === "string") return v.trim();
-    if (typeof v === "number") return String(v);
-    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    return null;
-  }
-  oneOf(key, values) {
-    const v = this.string(key);
-    if (v === null) return null;
-    if (values.includes(v)) return v;
-    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v}`);
-    return null;
-  }
-  date(key) {
-    if (!this.has(key)) return null;
-    const d = normalizeDate(this.fm[key]);
-    if (d === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
-    return d;
-  }
-  datetime(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
-    if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return v.trim();
-    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
-    return null;
-  }
-  minutes(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
-    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v)}`);
-    return null;
-  }
-  list(key) {
-    if (!this.has(key)) return [];
-    const v = this.fm[key];
-    return Array.isArray(v) ? v.filter((x) => x !== null && x !== "") : [v];
-  }
-  strings(key) {
-    const out = [];
-    for (const v of this.list(key)) {
-      if (typeof v === "string" || typeof v === "number") {
-        const s = String(v).trim();
-        if (s && !out.includes(s)) out.push(s);
-      } else {
-        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
-      }
-    }
-    return out;
-  }
-  dates(key) {
-    const out = /* @__PURE__ */ new Set();
-    for (const v of this.list(key)) {
-      const d = normalizeDate(v);
-      if (d === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v)}`);
-      else out.add(d);
-    }
-    return [...out].sort();
-  }
-  ref(key, prefix) {
-    const v = this.string(key);
-    if (v === null) return null;
-    if (isId(v, prefix)) return v;
-    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v}`);
-    return null;
-  }
-  common(type, prefix) {
-    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
-      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
-    }
-    const id = this.string("id");
-    if (id === null || !isId(id, prefix)) {
-      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
-      return null;
-    }
-    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
-    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
-    return id;
-  }
-};
-function parseIssue(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("issue", "i");
-  const summary = r.string("summary") ?? "";
-  if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
-  const status = r.oneOf("status", STATUSES);
-  if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
-  const issue = {
-    path,
-    id: id ?? "",
-    summary,
-    status: status ?? "open",
-    statusDetail: r.string("status-detail") ?? "",
-    delegatedTo: r.ref("delegated_to", "m"),
-    priority: r.oneOf("priority", PRIORITIES),
-    labels: r.strings("label"),
-    parent: r.ref("parent", "i"),
-    related: r.strings("related"),
-    estimated: r.minutes("estimated"),
-    scheduled: r.dates("scheduled"),
-    midDue: r.date("mid_due"),
-    deadline: r.date("deadline"),
-    revisit: r.date("revisit"),
-    reviewed: r.date("reviewed"),
-    created: r.datetime("created")
-  };
-  return { value: id === null ? null : issue, problems: r.problems };
-}
-function parseRoutine(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("routine", "r");
-  let repeat = null;
-  const parsed = parseRepeat(fm.repeat);
-  if (parsed.ok) repeat = parsed.value;
-  else r.problem("invalid-repeat", parsed.error);
-  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
-  if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const routine = {
-    path,
-    id: id ?? "",
-    summary: r.string("summary") ?? "",
-    repeat,
-    start: r.date("start"),
-    end: r.date("end"),
-    active: active !== false,
-    group: r.string("group"),
-    priority: r.oneOf("priority", PRIORITIES),
-    labels: r.strings("label"),
-    estimated: r.minutes("estimated"),
-    created: r.datetime("created")
-  };
-  return { value: id === null ? null : routine, problems: r.problems };
-}
-function parseMember(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("member", "m");
-  const name = r.string("name") ?? "";
-  if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  return { value: id === null ? null : { path, id, name }, problems: r.problems };
 }
 
 // src/core/lint.ts
@@ -8458,7 +8633,7 @@ function localDay(ms) {
   const d = new Date(ms);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
-function reviewWorklogs(index, now, options = {}, closedAt = /* @__PURE__ */ new Map()) {
+function reviewWorklogs(index, now, options = {}, closedAt = index.closedAt()) {
   const o = {
     runningHours: options.runningHours ?? DEFAULT_REVIEW.runningHours,
     longHours: options.longHours ?? DEFAULT_REVIEW.longHours,
@@ -8511,91 +8686,6 @@ function rawEffortMinutes(logs, now) {
 var import_yaml = __toESM(require_dist(), 1);
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-
-// src/core/worklog.ts
-var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function sanitizeDeviceName(name) {
-  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
-}
-function worklogPath(device, from) {
-  const safe = sanitizeDeviceName(device);
-  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
-  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
-  return `worklog/${safe}/${month}.jsonl`;
-}
-function parseWorklog(path, text) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i) => {
-    const line = i + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o = obj;
-    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
-    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs = null;
-    if (o.to !== null && o.to !== void 0) {
-      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
-      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    }
-    entries.push({
-      path,
-      line,
-      id: o.id,
-      taskId: o.task_id,
-      from: o.from,
-      to: toMs === null ? null : o.to,
-      description: typeof o.description === "string" ? o.description : "",
-      fromMs,
-      toMs
-    });
-  });
-  return { entries, problems };
-}
-function serializeWorklogEntry(e) {
-  return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
-}
-function replaceWorklogLine(text, entry, next) {
-  const lines = text.split("\n");
-  const i = entry.line - 1;
-  let current;
-  try {
-    current = JSON.parse(lines[i] ?? "");
-  } catch {
-    current = null;
-  }
-  if (typeof current !== "object" || current === null || current.id !== entry.id) {
-    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
-  }
-  if (next === null) lines.splice(i, 1);
-  else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
-  return lines.join("\n");
-}
-var MIN_WORKLOG_MS = 6e4;
-function stopWorklogLines(text, entries, to, toMs) {
-  return [...entries].sort((a, b) => b.line - a.line).reduce((t, e) => replaceWorklogLine(t, e, toMs - e.fromMs < MIN_WORKLOG_MS ? null : { from: e.from, to, description: e.description }), text);
-}
-function newWorklogId(random = Math.random) {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
-}
-function appendWorklogLine(text, line) {
-  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
-`;
-}
 
 // src/core/board-log.ts
 var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8715,11 +8805,12 @@ function fileKind(path) {
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
+  if (STATUS_LOG_PATH_RE.test(path)) return "statuslog";
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8769,6 +8860,12 @@ function collectVault(input) {
       ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {}
     });
   }
+  for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
+    const r = parseStatusLog(path, text);
+    problems.push(...r.problems);
+    data.statusLogs.push(...r.entries);
+  }
+  data.statusLogs.sort(compareStatusLog);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems.push(...r.problems);
@@ -8805,13 +8902,14 @@ function readFrontmatter(text) {
 }
 function readVault(root) {
   const paths = walk(root);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
+  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
   for (const path of paths) {
     const kind = fileKind(path);
     if (kind === null) continue;
     const text = readFileSync(join(root, path), "utf8");
     if (kind === "worklog") input.worklogs.push({ path, text });
     else if (kind === "board") input.boardLogs.push({ path, text });
+    else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
     else if (kind === "groups") input.groups = text;
     else input.markdown.push({ path, frontmatter: readFrontmatter(text) });
@@ -8979,7 +9077,15 @@ function readMarkdownBody(root, relPath) {
   const range = frontmatterRange(text);
   return range ? text.slice(range.to) : text;
 }
-function updateIssueFrontmatter(root, relPath, fields) {
+function appendStatusLogOnDisk(root, task, from, to, log) {
+  const dev = sanitizeDeviceName(log.device);
+  if (!dev) return;
+  const line = statusLogLine(task, from, to, log.via, log.now);
+  if (line === null) return;
+  const relPath = statusLogPath(dev, log.now);
+  writeTextInVault(root, relPath, appendWorklogLine(readTextOrEmpty(root, relPath), line));
+}
+function updateIssueFrontmatter(root, relPath, fields, log) {
   const full = resolveInVault(root, relPath);
   if (!existsSync(full)) throw new Error(`\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093: ${relPath}`);
   const text = readFileSync2(full, "utf8");
@@ -8991,6 +9097,7 @@ function updateIssueFrontmatter(root, relPath, fields) {
     throw new Error(`frontmatter \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${relPath}`);
   }
   const fm = { ...parsed };
+  const fromStatus = fm.status;
   for (const [key, value] of Object.entries(fields)) {
     if (value === null || value === void 0 || value === "" || Array.isArray(value) && value.length === 0) {
       delete fm[key];
@@ -9009,6 +9116,9 @@ function updateIssueFrontmatter(root, relPath, fields) {
 ${nextYaml}
 ---
 ${body}`, "utf8");
+  if (log && typeof fromStatus === "string" && STATUSES.includes(fromStatus)) {
+    appendStatusLogOnDisk(root, check.value.id, fromStatus, check.value.status, log);
+  }
   return check.value;
 }
 function appendBoardOpsOnDisk(root, index, date, device, ops, now) {
@@ -9087,7 +9197,7 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, rescheduleTo, devi
   }
   for (const issue of issues) {
     const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo, date);
-    updateIssueFrontmatter(root, issue.path, patch);
+    updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
   }
   appendBoardOpsOnDisk(
     root,
@@ -9162,7 +9272,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   }
   return issue;
 }
-function updateIssueOnDisk(root, index, input) {
+function updateIssueOnDisk(root, index, input, log) {
   const current = index.issues.get(input.id);
   if (!current) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${input.id}`);
   const patch = {};
@@ -9247,7 +9357,9 @@ function updateIssueOnDisk(root, index, input) {
     patch.status = "open";
     patch.revisit = null;
   }
-  return updateIssueFrontmatter(root, current.path, patch);
+  const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : void 0);
+  if (isDoneStatus(updated.status) && !isDoneStatus(current.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? /* @__PURE__ */ new Date());
+  return updated;
 }
 function startTimerOnDisk(root, index, taskIds, device, now) {
   const dev = sanitizeDeviceName(device);
@@ -9269,6 +9381,10 @@ function startTimerOnDisk(root, index, taskIds, device, now) {
     current
   );
   writeTextInVault(root, relPath, next);
+  for (const id of targets) {
+    const issue = index.issues.get(id);
+    if (issue?.status === "open") updateIssueFrontmatter(root, issue.path, { status: "in-progress" }, { device: dev, now, via: "timer" });
+  }
   return targets;
 }
 function stopTimerOnDisk(root, index, taskIds, now) {
@@ -9790,7 +9906,7 @@ function callMcpTool(ctx, name, args = {}) {
         ...args.revisit !== void 0 ? { revisit: args.revisit } : {},
         ...args.reviewed !== void 0 ? { reviewed: args.reviewed } : {},
         ...args.estimated !== void 0 ? { estimated: args.estimated } : {}
-      });
+      }, { device: ctx.device, now });
     }
     case "start_timer": {
       const ids = Array.isArray(args.task_ids) ? args.task_ids.map(String) : [];

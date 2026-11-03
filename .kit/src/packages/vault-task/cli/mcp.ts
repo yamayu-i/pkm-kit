@@ -556,7 +556,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(args.revisit !== undefined ? { revisit: args.revisit as LocalDate | null } : {}),
 				...(args.reviewed !== undefined ? { reviewed: args.reviewed as LocalDate | null } : {}),
 				...(args.estimated !== undefined ? { estimated: args.estimated as number | null } : {}),
-			});
+			}, { device: ctx.device, now });
 		}
 		case "start_timer": {
 			const ids = Array.isArray(args.task_ids) ? args.task_ids.map(String) : [];

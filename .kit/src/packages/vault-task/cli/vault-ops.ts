@@ -11,6 +11,7 @@ import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
 import { frontmatterRange, newDailyContent, newIssueContent } from "../src/core/issue-file";
 import { PRIORITIES, STATUS_DETAIL_MAX, STATUSES, parseIssue, type Issue, type Priority, type Status } from "../src/core/schema";
+import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../src/core/status-log";
 import {
 	appendWorklogLine,
 	newWorklogId,
@@ -47,10 +48,28 @@ export function readMarkdownBody(root: string, relPath: string): string {
 	return range ? text.slice(range.to) : text;
 }
 
+/** status を変えたときに statuslog に書くための情報（ADR-0031） */
+export interface StatusLogContext {
+	device: string;
+	now: Date;
+	via: StatusVia;
+}
+
+/** status の変化を statuslog に 1 行追記する（ADR-0031）。端末名がなければ書かない */
+export function appendStatusLogOnDisk(root: string, task: string, from: Status, to: Status, log: StatusLogContext): void {
+	const dev = sanitizeDeviceName(log.device);
+	if (!dev) return;
+	const line = statusLogLine(task, from, to, log.via, log.now);
+	if (line === null) return;
+	const relPath = statusLogPath(dev, log.now);
+	writeTextInVault(root, relPath, appendWorklogLine(readTextOrEmpty(root, relPath), line));
+}
+
 export function updateIssueFrontmatter(
 	root: string,
 	relPath: string,
 	fields: Record<string, unknown>,
+	log?: StatusLogContext,
 ): Issue {
 	const full = resolveInVault(root, relPath);
 	if (!existsSync(full)) throw new Error(`ファイルがありません: ${relPath}`);
@@ -64,6 +83,7 @@ export function updateIssueFrontmatter(
 		throw new Error(`frontmatter がオブジェクトではありません: ${relPath}`);
 	}
 	const fm = { ...(parsed as Record<string, unknown>) };
+	const fromStatus = fm.status;
 	for (const [key, value] of Object.entries(fields)) {
 		if (value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
 			delete fm[key];
@@ -81,6 +101,9 @@ export function updateIssueFrontmatter(
 	const nextYaml = stringify(fm).trimEnd();
 	const body = text.slice(range.to);
 	writeFileSync(full, `---\n${nextYaml}\n---\n${body}`, "utf8");
+	if (log && typeof fromStatus === "string" && (STATUSES as readonly string[]).includes(fromStatus)) {
+		appendStatusLogOnDisk(root, check.value.id, fromStatus as Status, check.value.status, log);
+	}
 	return check.value;
 }
 
@@ -200,7 +223,7 @@ export function carryIssuesOnDisk(
 
 	for (const issue of issues) {
 		const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo!, date);
-		updateIssueFrontmatter(root, issue.path, patch);
+		updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
 	}
 	appendBoardOpsOnDisk(
 		root,
@@ -333,7 +356,11 @@ export interface UpdateIssueInput {
 	estimated?: number | null;
 }
 
-export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateIssueInput): Issue {
+/**
+ * issue を検査付きで更新する。log があれば status の変化を statuslog に書き、
+ * closed / canceled にしたら記録中のタイマーを止める（ADR-0031）
+ */
+export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateIssueInput, log?: Omit<StatusLogContext, "via">): Issue {
 	const current = index.issues.get(input.id);
 	if (!current) throw new Error(`issue がありません: ${input.id}`);
 
@@ -426,7 +453,9 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		patch.revisit = null;
 	}
 
-	return updateIssueFrontmatter(root, current.path, patch);
+	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
+	if (isDoneStatus(updated.status) && !isDoneStatus(current.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? new Date());
+	return updated;
 }
 
 export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string[], device: string, now: Date): string[] {
@@ -450,6 +479,11 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 		current,
 	);
 	writeTextInVault(root, relPath, next);
+	// open の issue は、記録を始めたら in-progress にする（ADR-0031）
+	for (const id of targets) {
+		const issue = index.issues.get(id);
+		if (issue?.status === "open") updateIssueFrontmatter(root, issue.path, { status: "in-progress" }, { device: dev, now, via: "timer" });
+	}
 	return targets;
 }
 

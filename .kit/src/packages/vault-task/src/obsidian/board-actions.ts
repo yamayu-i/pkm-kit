@@ -42,8 +42,17 @@ export const setPlacement = (ctx: TaskContext, date: LocalDate, id: string, grou
 		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }]),
 	);
 
-export const setRoutineResult = (ctx: TaskContext, date: LocalDate, id: string, result: RoutineResult | null) =>
-	guard(ctx, "routine を更新できませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]));
+/** routine のその日の結果を変える。変わったら取り消しのトーストを出す（record が false のときは出さない。ADR-0031） */
+export async function setRoutineResult(ctx: TaskContext, date: LocalDate, id: string, result: RoutineResult | null, record = true): Promise<void> {
+	const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
+	try {
+		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
+	} catch (e) {
+		ctx.report("routine を更新できませんでした", e);
+		return;
+	}
+	if (record && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
+}
 
 /**
  * ボードの issue をリスケ / Inbox で片付ける。ボードには残し、未完了に数えない（carried）。

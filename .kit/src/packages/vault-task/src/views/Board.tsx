@@ -1,12 +1,13 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { closePatch, cancelPatch } from "../core/actions";
+import { closePatch, cancelPatch, statusPatch } from "../core/actions";
 import { boardItems, placementOf, unfinished, type BoardState } from "../core/board";
 import { addDays, formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
+import { isDoneStatus, nextStatuses } from "../core/status-log";
 import {
 	addToBoard,
 	carryIssues,
@@ -21,8 +22,10 @@ import {
 } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues } from "../obsidian/issue-actions";
+import { pickMember } from "../obsidian/issue-editors";
 import { BoardIssueModal } from "../obsidian/modals";
 import { PriorityBadge, StatusBadge } from "../ui/badges";
+import { StatusIcon } from "../ui/StatusIcon";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow } from "../ui/hooks";
@@ -37,6 +40,55 @@ function routineStatus(board: BoardState, r: Routine): Status {
 	return board.routines[r.id] ?? "open";
 }
 
+/** 完了の欄に出すか（closed / canceled の issue と、結果のある routine。ADR-0031） */
+function isDoneItem(board: BoardState, it: Item): boolean {
+	return it.kind === "issue" ? isDoneStatus(it.issue.status) : board.routines[it.routine.id] !== undefined;
+}
+
+/** 閉じた直後の動きを付ける時間 */
+const ENTER_MS = 3_000;
+
+/** issue の status を変える。delegated に戻すときは委任先を選ぶ */
+function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): void {
+	const save = (patch: Record<string, string | null>) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status を変えられませんでした", err));
+	if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id) as Record<string, string | null>));
+	else save(statusPatch(to) as Record<string, string | null>);
+}
+
+/** 押すとすぐ次の status にするボタン（ADR-0031）。アイコンは押した後の status */
+function NextButtons(props: { ctx: TaskContext; date: LocalDate; item: Item; status: Status }) {
+	const { ctx, date, item, status } = props;
+	if (isDoneStatus(status)) {
+		const back: Status = item.kind === "issue" ? (ctx.store.index.statusBefore(item.issue.id) ?? "open") : "open";
+		const label = `${back} に戻す`;
+		return (
+			<button
+				class="vt-next is-undo"
+				aria-label={label}
+				title={label}
+				onClick={() => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, back) : setRoutineResult(ctx, date, item.routine.id, null))}
+			>
+				<Icon name="undo-2" />
+			</button>
+		);
+	}
+	const targets: Status[] = item.kind === "issue" ? nextStatuses(status) : ["closed"];
+	return (
+		<>
+			{targets.map((to) => (
+				<button
+					class={`vt-next vt-status-${to}`}
+					aria-label={`${to} にする`}
+					title={`${to} にする`}
+					onClick={() => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, to) : setRoutineResult(ctx, date, item.routine.id, to as "closed"))}
+				>
+					<StatusIcon status={to} />
+				</button>
+			))}
+		</>
+	);
+}
+
 /** カード 1 枚（ADR-0009）。summary・priority・status・再生ボタン */
 function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; item: Item; keys: string[]; now: number }) {
 	const { ctx, date, board, item, now } = props;
@@ -47,7 +99,10 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 	const status = issue ? issue.status : routineStatus(board, (item as { routine: Routine }).routine);
 	const summary = issue ? issue.summary : (item as { routine: Routine }).routine.summary;
 	const path = issue ? issue.path : (item as { routine: Routine }).routine.path;
-	const done = status === "closed" || status === "canceled";
+	const done = isDoneStatus(status);
+	// 閉じた直後だけアイコンを動かす（status の記録から。ADR-0031）
+	const last = issue ? ctx.store.index.lastStatusLog(issue.id) : undefined;
+	const enter = last !== undefined && last.to === status && Date.now() - last.atMs < ENTER_MS;
 
 	const statusMenu = (e: MouseEvent) => {
 		const m = new Menu();
@@ -103,8 +158,9 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			</div>
 			<div class="vt-task-bottom">
 				{issue ? <PriorityBadge priority={issue.priority} /> : <span class="vt-badge vt-priority">routine</span>}
-				<StatusBadge status={status} onClick={statusMenu} />
+				<StatusBadge status={status} enter={enter} onClick={statusMenu} />
 				<span class="vt-spacer" />
+				<NextButtons ctx={ctx} date={date} item={item} status={status} />
 				<button class="vt-icon-button" aria-label="メニュー" title="グループの移動など" onClick={moreMenu}>
 					<Icon name="more-horizontal" />
 				</button>
@@ -185,7 +241,10 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	const groups: GroupDef[] = index.data.groups;
 	const keys = groupKeys(groups);
 	const { issues, routines } = boardItems(index, date, board);
-	const items: Item[] = [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...routines.map((routine) => ({ kind: "routine" as const, routine }))];
+	const all: Item[] = [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...routines.map((routine) => ({ kind: "routine" as const, routine }))];
+	// 完了したものはグループから外し、下の「完了」の欄に出す（ADR-0031）
+	const items = all.filter((it) => !isDoneItem(board, it));
+	const doneItems = all.filter((it) => isDoneItem(board, it));
 	const placement = (it: Item) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
 	const left = unfinished(index, date, board);
 	const leftIssues = left.issues;
@@ -207,7 +266,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					<Icon name="layout-grid" /> グループを編集
 				</button>
 			</div>
-			{items.length === 0 && <div class="vt-empty">ボードは空です。「今日の予定」から載せるか、上のボタンで追加します</div>}
+			{all.length === 0 && <div class="vt-empty">ボードは空です。「今日の予定」から載せるか、上のボタンで追加します</div>}
 			{/* 未分類はグループと並べず上に置く。すべてグループに入ったら出さない */}
 			{ungrouped.length > 0 && (
 				<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} ungrouped />
@@ -235,6 +294,20 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				))}
 			</div>
 
+			{doneItems.length > 0 && (
+				<section class="vt-card vt-done">
+					<div class="vt-section-head">
+						<span class="vt-field-label">完了</span>
+						<span class="vt-count">{doneItems.length}</span>
+					</div>
+					<div class="vt-done-cards">
+						{doneItems.map((it) => (
+							<TaskCard ctx={ctx} date={date} board={board} item={it} keys={keys} now={now} key={itemId(it)} />
+						))}
+					</div>
+				</section>
+			)}
+
 			<section class="vt-card vt-unfinished">
 				<div class="vt-section-head">
 					<span class="vt-field-label">未完了</span>
@@ -252,7 +325,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					) : (
 						<button
 							class="vt-button is-primary"
-							disabled={leftIssues.length + left.routines.length > 0 || items.length === 0}
+							disabled={leftIssues.length + left.routines.length > 0 || all.length === 0}
 							title="未完了が 0 になると締められます"
 							onClick={() => void closeBoard(ctx, date)}
 						>
@@ -261,7 +334,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					)}
 				</div>
 				{leftIssues.length + left.routines.length === 0 ? (
-					<div class="vt-empty">{items.length === 0 ? "—" : "すべて片付きました"}</div>
+					<div class="vt-empty">{all.length === 0 ? "—" : "すべて片付きました"}</div>
 				) : (
 					<>
 						<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="issue はすべて片付きました" />

@@ -10,7 +10,7 @@ vault-task の MCP サーバー（`.kit/src/packages/vault-task/cli/mcp.ts`。AD
 ## 前提と基準値
 
 - **1 日の集中作業に使える時間（`available_minutes`）**: 既定 **240 分（4 時間）**。ユーザーが「今日は 2 時間しか取れない」などと言ったときは引数の `available_minutes` を上書きして負荷を計算する
-- **AI の端末名**: `ai`（`board/ai/YYYY-MM.jsonl`、`worklog/ai/YYYY-MM.jsonl` に記録され、Obsidian 側のログファイルと衝突しない）
+- **AI の端末名**: `ai`（`board/ai/YYYY-MM.jsonl`、`worklog/ai/YYYY-MM.jsonl`、`statuslog/ai/YYYY-MM.jsonl` に記録され、Obsidian 側のログファイルと衝突しない）
 - **MCP サーバーの起動設定（Claude Code / Cursor）**:
   ```json
   {
@@ -69,6 +69,6 @@ vault-task の MCP サーバー（`.kit/src/packages/vault-task/cli/mcp.ts`。AD
 
 ## 3. 守ること
 
-- ボード操作・issue 更新・デイリーノートへの追記は、必ず MCP ツール（または `vault-ops.ts`）を通して検査付きで行う。手で `board/` や `worklog/` の jsonl、issue の frontmatter を直接書き換えない
+- ボード操作・issue 更新・デイリーノートへの追記は、必ず MCP ツール（または `vault-ops.ts`）を通して検査付きで行う。手で `board/`・`worklog/`・`statuslog/` の jsonl、issue の frontmatter を直接書き換えない
 - デイリーノート本文の既存の行は変更・削除しない（`close_board` による `## Task board` 節の更新と、`append_daily_note` による末尾追記のみ）
 - 複数の issue をリスケ・ステータス変更するときやボードを締めるときは、対象をユーザーに示して確認してから実行する

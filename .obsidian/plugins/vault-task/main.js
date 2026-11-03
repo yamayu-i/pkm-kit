@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
@@ -987,9 +987,181 @@ function prorateEffort(intervals, now) {
   return result;
 }
 
+// src/core/worklog.ts
+var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function sanitizeDeviceName(name) {
+  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+}
+function worklogPath(device, from) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
+  return `worklog/${safe}/${month}.jsonl`;
+}
+function parseWorklog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
+    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    let toMs2 = null;
+    if (o3.to !== null && o3.to !== void 0) {
+      toMs2 = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
+      if (Number.isNaN(toMs2)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    }
+    entries.push({
+      path,
+      line,
+      id: o3.id,
+      taskId: o3.task_id,
+      from: o3.from,
+      to: toMs2 === null ? null : o3.to,
+      description: typeof o3.description === "string" ? o3.description : "",
+      fromMs,
+      toMs: toMs2
+    });
+  });
+  return { entries, problems };
+}
+function serializeWorklogEntry(e3) {
+  return JSON.stringify({ id: e3.id, task_id: e3.taskId, from: e3.from, to: e3.to, description: e3.description });
+}
+function replaceWorklogLine(text, entry, next) {
+  const lines = text.split("\n");
+  const i3 = entry.line - 1;
+  let current;
+  try {
+    current = JSON.parse(lines[i3] ?? "");
+  } catch {
+    current = null;
+  }
+  if (typeof current !== "object" || current === null || current.id !== entry.id) {
+    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
+  if (next === null) lines.splice(i3, 1);
+  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  return lines.join("\n");
+}
+var MIN_WORKLOG_MS = 6e4;
+function stopWorklogLines(text, entries, to, toMs2) {
+  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
+}
+function newWorklogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function appendWorklogLine(text, line) {
+  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
+`;
+}
+
+// src/core/status-log.ts
+var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
+var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function statusLogPath(device, at) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  const month = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}`;
+  return `statuslog/${safe}/${month}.jsonl`;
+}
+function newStatusLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `st_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function serializeStatusLogEntry(e3) {
+  return JSON.stringify({ id: e3.id, at: e3.at, task: e3.task, from: e3.from, to: e3.to, via: e3.via });
+}
+function statusLogLine(task, from, to, via, at, random = Math.random) {
+  if (from === to) return null;
+  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, from, to, via });
+}
+var isStatus = (v3) => typeof v3 === "string" && STATUSES.includes(v3);
+function parseStatusLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-status-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.task !== "string" || !o3.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (!isStatus(o3.from) || !isStatus(o3.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const via = STATUS_VIAS.includes(o3.via) ? o3.via : null;
+    if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, from: o3.from, to: o3.to, via });
+  });
+  return { entries, problems };
+}
+function compareStatusLog(a3, b2) {
+  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
+  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
+  return a3.line - b2.line;
+}
+function statusBefore(logs, task, current) {
+  for (let i3 = logs.length - 1; i3 >= 0; i3--) {
+    const e3 = logs[i3];
+    if (e3.task !== task) continue;
+    return e3.to === current && e3.from !== current ? e3.from : null;
+  }
+  return null;
+}
+function closedAtMap(logs, closedIds) {
+  const ids = new Set(closedIds);
+  const out = /* @__PURE__ */ new Map();
+  for (const e3 of logs) if (ids.has(e3.task) && e3.to === "closed") out.set(e3.task, e3.atMs);
+  return out;
+}
+function nextStatuses(status) {
+  switch (status) {
+    case "open":
+    case "waiting":
+      return ["in-progress"];
+    case "in-progress":
+      return ["closed"];
+    case "delegated":
+      return ["in-progress", "closed"];
+    default:
+      return [];
+  }
+}
+function isDoneStatus(status) {
+  return status === "closed" || status === "canceled";
+}
+
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -1095,6 +1267,22 @@ var TaskIndex = class {
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
+  }
+  /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
+  statusBefore(id) {
+    const issue = this.issues.get(id);
+    return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+  }
+  /** その issue の最後の status の記録 */
+  lastStatusLog(id) {
+    const logs = this.data.statusLogs;
+    for (let i3 = logs.length - 1; i3 >= 0; i3--) if (logs[i3].task === id) return logs[i3];
+    return void 0;
+  }
+  /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
+  closedAt() {
+    const closed = [...this.issues.values()].filter((i3) => i3.status === "closed").map((i3) => i3.id);
+    return closedAtMap(this.data.statusLogs, closed);
   }
   routinesOn(date) {
     return [...this.routines.values()].filter((r3) => routineOccursOn(r3, date));
@@ -1785,10 +1973,39 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
+// src/ui/StatusIcon.tsx
+var SHAPES = {
+  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+  "in-progress": /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
+  ] }),
+  waiting: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
+  ] }),
+  delegated: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
+  ] }),
+  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
+  closed: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
+  ] }),
+  canceled: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
+  ] })
+};
+function StatusIcon(props) {
+  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
+}
+
 // src/ui/badges.tsx
 function StatusBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-dot" }),
+    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
     props.status,
     props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
   ] });
@@ -2650,93 +2867,6 @@ function openCaptureModal(ctx) {
 
 // src/obsidian/settings.ts
 var import_obsidian8 = require("obsidian");
-
-// src/core/worklog.ts
-var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function sanitizeDeviceName(name) {
-  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
-}
-function worklogPath(device, from) {
-  const safe = sanitizeDeviceName(device);
-  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
-  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
-  return `worklog/${safe}/${month}.jsonl`;
-}
-function parseWorklog(path, text) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i3) => {
-    const line = i3 + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o3 = obj;
-    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
-    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs2 = null;
-    if (o3.to !== null && o3.to !== void 0) {
-      toMs2 = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
-      if (Number.isNaN(toMs2)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    }
-    entries.push({
-      path,
-      line,
-      id: o3.id,
-      taskId: o3.task_id,
-      from: o3.from,
-      to: toMs2 === null ? null : o3.to,
-      description: typeof o3.description === "string" ? o3.description : "",
-      fromMs,
-      toMs: toMs2
-    });
-  });
-  return { entries, problems };
-}
-function serializeWorklogEntry(e3) {
-  return JSON.stringify({ id: e3.id, task_id: e3.taskId, from: e3.from, to: e3.to, description: e3.description });
-}
-function replaceWorklogLine(text, entry, next) {
-  const lines = text.split("\n");
-  const i3 = entry.line - 1;
-  let current;
-  try {
-    current = JSON.parse(lines[i3] ?? "");
-  } catch {
-    current = null;
-  }
-  if (typeof current !== "object" || current === null || current.id !== entry.id) {
-    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
-  }
-  if (next === null) lines.splice(i3, 1);
-  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
-  return lines.join("\n");
-}
-var MIN_WORKLOG_MS = 6e4;
-function stopWorklogLines(text, entries, to, toMs2) {
-  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
-}
-function newWorklogId(random = Math.random) {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
-}
-function appendWorklogLine(text, line) {
-  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
-`;
-}
-
-// src/obsidian/settings.ts
 var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
 var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
   constructor(app, plugin, settings, save) {
@@ -2757,8 +2887,103 @@ var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
   }
 };
 
-// src/obsidian/store.ts
+// src/obsidian/status-undo.ts
 var import_obsidian9 = require("obsidian");
+
+// src/core/undo.ts
+var UndoBatch = class {
+  items = /* @__PURE__ */ new Map();
+  /** 足して、件数を返す。同じ key がすでにあれば、最初のものを残す */
+  add(key, item) {
+    if (!this.items.has(key)) this.items.set(key, item);
+    return this.items.size;
+  }
+  get size() {
+    return this.items.size;
+  }
+  /** すべて取り出して空にする（新しい順。戻すときは後の変更から戻す） */
+  take() {
+    const out = [...this.items.values()].reverse();
+    this.items.clear();
+    return out;
+  }
+  clear() {
+    this.items.clear();
+  }
+};
+function undoMessage(count) {
+  return `${count}\u4EF6\u306E\u30B9\u30C6\u30FC\u30BF\u30B9\u304C\u5909\u66F4\u3055\u308C\u307E\u3057\u305F\u3002`;
+}
+
+// src/obsidian/status-undo.ts
+var UNDO_TIMEOUT_MS = 5e3;
+var StatusUndo = class {
+  constructor(report, timeoutMs = UNDO_TIMEOUT_MS) {
+    this.report = report;
+    this.timeoutMs = timeoutMs;
+  }
+  report;
+  timeoutMs;
+  batch = new UndoBatch();
+  timer = null;
+  el = null;
+  text = null;
+  /** 変更を足す。key は issue / routine の ID（同じものは 1 件に数える） */
+  push(key, revert) {
+    const count = this.batch.add(key, revert);
+    this.show(count);
+    if (this.timer !== null) window.clearTimeout(this.timer);
+    this.timer = window.setTimeout(() => this.dismiss(), this.timeoutMs);
+  }
+  /** トーストに入っているすべての変更を、最初に変える前に戻す */
+  async undo() {
+    const reverts = this.batch.take();
+    this.dismiss();
+    for (const revert of reverts) {
+      try {
+        await revert();
+      } catch (e3) {
+        this.report("\u5143\u306B\u623B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+      }
+    }
+  }
+  dismiss() {
+    if (this.timer !== null) window.clearTimeout(this.timer);
+    this.timer = null;
+    this.batch.clear();
+    this.el?.remove();
+    this.el = null;
+    this.text = null;
+  }
+  show(count) {
+    if (!this.el) {
+      const el = document.createElement("div");
+      el.className = "vt-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      const text = document.createElement("span");
+      text.className = "vt-toast-text";
+      const button = document.createElement("button");
+      button.className = "vt-toast-action";
+      button.type = "button";
+      button.append("\u3084\u308A\u76F4\u3059");
+      const icon = document.createElement("span");
+      icon.className = "vt-icon";
+      icon.setAttribute("aria-hidden", "true");
+      (0, import_obsidian9.setIcon)(icon, "chevron-right");
+      button.append(icon);
+      button.addEventListener("click", () => void this.undo());
+      el.append(text, button);
+      document.body.append(el);
+      this.el = el;
+      this.text = text;
+    }
+    this.text.textContent = undoMessage(count);
+  }
+};
+
+// src/obsidian/store.ts
+var import_obsidian10 = require("obsidian");
 
 // src/core/board-log.ts
 var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -2917,11 +3142,12 @@ function fileKind(path) {
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
+  if (STATUS_LOG_PATH_RE.test(path)) return "statuslog";
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -2971,6 +3197,12 @@ function collectVault(input) {
       ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e3) => e3.atMs)) } : {}
     });
   }
+  for (const { path, text } of [...input.statusLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
+    const r3 = parseStatusLog(path, text);
+    problems.push(...r3.problems);
+    data.statusLogs.push(...r3.entries);
+  }
+  data.statusLogs.sort(compareStatusLog);
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
     problems.push(...r3.problems);
@@ -3002,15 +3234,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian9.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian9.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian10.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian10.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian9.TFile) this.touch(file);
+        if (file instanceof import_obsidian10.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian9.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian10.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3034,7 +3266,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "worklog" || kind === "board" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -3047,7 +3279,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [] };
+    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -3058,6 +3290,7 @@ var TaskStore = class {
       const kind = fileKind(path);
       if (kind === "worklog") input.worklogs.push({ path, text });
       else if (kind === "board") input.boardLogs.push({ path, text });
+      else if (kind === "statuslog") input.statusLogs.push({ path, text });
       else if (kind === "labels") input.labels = text;
       else if (kind === "groups") input.groups = text;
     }
@@ -3070,9 +3303,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian10.ItemView {
+  class PreactView extends import_obsidian11.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -3094,7 +3327,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -3395,15 +3628,20 @@ function assertUnused(removed, usage) {
 }
 
 // src/obsidian/writer.ts
+var isStatus2 = (v3) => typeof v3 === "string" && STATUSES.includes(v3);
 var TaskWriter = class {
-  constructor(app, store) {
+  constructor(app, store, deviceName = () => "") {
     this.app = app;
     this.store = store;
+    this.deviceName = deviceName;
   }
   app;
   store;
+  deviceName;
   /** この端末が最後に書いたボードの操作の時刻（索引に載る前の次の操作のため） */
   lastBoardAt = 0;
+  /** issue の status を変えたら呼ぶ（取り消しのトースト。ADR-0031） */
+  onStatusChange = null;
   file(path) {
     const file = this.app.vault.getFileByPath(path);
     if (!file) throw new Error(`\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093: ${path}`);
@@ -3427,15 +3665,46 @@ var TaskWriter = class {
   async updateMany(paths, fields) {
     for (const path of paths) await this.update(path, typeof fields === "function" ? fields(path) : fields);
   }
-  /** frontmatter の欄をまとめて更新する */
-  async update(path, fields) {
+  /**
+   * frontmatter の欄をまとめて更新する。issue の status が変わったら、statuslog に書き、
+   * closed / canceled なら記録中のタイマーを止め、onStatusChange を呼ぶ（ADR-0031）
+   */
+  async update(path, fields, via = "ui") {
+    const before = {};
+    let from;
+    let id;
     await this.app.fileManager.processFrontMatter(this.file(path), (fm) => {
+      from = fm.status;
+      id = fm.id;
       for (const [key, value] of Object.entries(fields)) {
+        before[key] = structuredClone(fm[key]);
         if (value === null || value === void 0 || Array.isArray(value) && value.length === 0 || value === "") delete fm[key];
         else fm[key] = value;
       }
     });
     this.store.refreshSoon();
+    const to = fields.status;
+    if (fileKind(path) !== "issue" || !isStatus2(from) || !isStatus2(to) || from === to || typeof id !== "string") return;
+    await this.recordStatus(id, from, to, via);
+    if (isDoneStatus(to)) {
+      const running = this.store.index.running(id);
+      if (running.length > 0) await this.stopTimer(running);
+    }
+    this.onStatusChange?.({ path, id, from, to, before, via });
+  }
+  /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
+  async recordStatus(task, from, to, via) {
+    const device = this.deviceName();
+    if (!device) return;
+    try {
+      const now = /* @__PURE__ */ new Date();
+      const line = statusLogLine(task, from, to, via, now);
+      if (line === null) return;
+      const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(statusLogPath(device, now)), "");
+      await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
+    } catch (e3) {
+      console.error("vault-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    }
   }
   takenIds() {
     const { index } = this.store;
@@ -3450,7 +3719,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian11.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian12.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
@@ -3464,7 +3733,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian11.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian12.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -3512,7 +3781,10 @@ var TaskWriter = class {
     await this.app.vault.process(this.file(entry.path), (text) => replaceWorklogLine(text, entry, next));
     this.store.refreshSoon();
   }
-  /** 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く */
+  /**
+   * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
+   * open の issue は in-progress にする（ADR-0031）
+   */
   async startTimer(taskIds, device) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     const running = new Set(this.store.index.running().map((l3) => l3.taskId));
@@ -3520,13 +3792,17 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian11.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian12.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
       (text) => targets.reduce((t3, taskId) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text)
     );
     this.store.refreshSoon();
+    for (const id of targets) {
+      const issue = this.store.index.issues.get(id);
+      if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
+    }
   }
   /** 記録を止める（to を今にする） */
   async stopTimer(entries) {
@@ -3542,14 +3818,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian11.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -3567,7 +3843,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian11.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian12.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -3581,7 +3857,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian11.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian12.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -3674,7 +3950,16 @@ var setPlacement = (ctx, date, id, group) => guard(
   "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
   ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
 );
-var setRoutineResult = (ctx, date, id, result) => guard(ctx, "routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]));
+async function setRoutineResult(ctx, date, id, result, record2 = true) {
+  const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
+  try {
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
+  } catch (e3) {
+    ctx.report("routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    return;
+  }
+  if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
+}
 async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
   let to = fixedTo;
   if (kind === "reschedule" && to === null) {
@@ -3708,7 +3993,7 @@ function stopTimer(ctx, ids) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "mid_due", "deadline"];
@@ -3761,7 +4046,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian12.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian13.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -3782,11 +4067,48 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 var QUICK_STATUSES = ["open", "in-progress", "waiting", "closed", "canceled"];
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
+}
+function isDoneItem(board, it) {
+  return it.kind === "issue" ? isDoneStatus(it.issue.status) : board.routines[it.routine.id] !== void 0;
+}
+var ENTER_MS = 3e3;
+function changeIssueStatus(ctx, issue, to) {
+  const save = (patch) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err));
+  if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id)));
+  else save(statusPatch(to));
+}
+function NextButtons(props) {
+  const { ctx, date, item, status } = props;
+  if (isDoneStatus(status)) {
+    const back = item.kind === "issue" ? ctx.store.index.statusBefore(item.issue.id) ?? "open" : "open";
+    const label = `${back} \u306B\u623B\u3059`;
+    return /* @__PURE__ */ u3(
+      "button",
+      {
+        class: "vt-next is-undo",
+        "aria-label": label,
+        title: label,
+        onClick: () => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, back) : setRoutineResult(ctx, date, item.routine.id, null)),
+        children: /* @__PURE__ */ u3(Icon, { name: "undo-2" })
+      }
+    );
+  }
+  const targets = item.kind === "issue" ? nextStatuses(status) : ["closed"];
+  return /* @__PURE__ */ u3(S, { children: targets.map((to) => /* @__PURE__ */ u3(
+    "button",
+    {
+      class: `vt-next vt-status-${to}`,
+      "aria-label": `${to} \u306B\u3059\u308B`,
+      title: `${to} \u306B\u3059\u308B`,
+      onClick: () => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, to) : setRoutineResult(ctx, date, item.routine.id, to)),
+      children: /* @__PURE__ */ u3(StatusIcon, { status: to })
+    }
+  )) });
 }
 function TaskCard(props) {
   const { ctx, date, board, item, now } = props;
@@ -3797,9 +4119,11 @@ function TaskCard(props) {
   const status = issue ? issue.status : routineStatus(board, item.routine);
   const summary = issue ? issue.summary : item.routine.summary;
   const path = issue ? issue.path : item.routine.path;
-  const done = status === "closed" || status === "canceled";
+  const done = isDoneStatus(status);
+  const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
+  const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian13.Menu();
+    const m3 = new import_obsidian14.Menu();
     for (const s3 of QUICK_STATUSES) {
       if (!issue && s3 !== "open" && s3 !== "closed" && s3 !== "canceled") continue;
       m3.addItem(
@@ -3813,7 +4137,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian13.Menu();
+    const m3 = new import_obsidian14.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked((board.groups[id] ?? "") === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -3832,7 +4156,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian13.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -3849,8 +4173,9 @@ function TaskCard(props) {
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-task-bottom", children: [
           issue ? /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority }) : /* @__PURE__ */ u3("span", { class: "vt-badge vt-priority", children: "routine" }),
-          /* @__PURE__ */ u3(StatusBadge, { status, onClick: statusMenu2 }),
+          /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+          /* @__PURE__ */ u3(NextButtons, { ctx, date, item, status }),
           /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u30E1\u30CB\u30E5\u30FC", title: "\u30B0\u30EB\u30FC\u30D7\u306E\u79FB\u52D5\u306A\u3069", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
         ] })
       ]
@@ -3904,7 +4229,9 @@ function Board(props) {
   const groups = index.data.groups;
   const keys = groupKeys(groups);
   const { issues, routines } = boardItems(index, date, board);
-  const items = [...issues.map((issue) => ({ kind: "issue", issue })), ...routines.map((routine) => ({ kind: "routine", routine }))];
+  const all = [...issues.map((issue) => ({ kind: "issue", issue })), ...routines.map((routine) => ({ kind: "routine", routine }))];
+  const items = all.filter((it) => !isDoneItem(board, it));
+  const doneItems = all.filter((it) => isDoneItem(board, it));
   const placement = (it) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
   const left = unfinished(index, date, board);
   const leftIssues = left.issues;
@@ -3930,7 +4257,7 @@ function Board(props) {
         " \u30B0\u30EB\u30FC\u30D7\u3092\u7DE8\u96C6"
       ] })
     ] }),
-    items.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u300C\u4ECA\u65E5\u306E\u4E88\u5B9A\u300D\u304B\u3089\u8F09\u305B\u308B\u304B\u3001\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u8FFD\u52A0\u3057\u307E\u3059" }),
+    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u300C\u4ECA\u65E5\u306E\u4E88\u5B9A\u300D\u304B\u3089\u8F09\u305B\u308B\u304B\u3001\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u8FFD\u52A0\u3057\u307E\u3059" }),
     ungrouped.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now, ungrouped: true }),
     /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
       GroupBox,
@@ -3947,6 +4274,13 @@ function Board(props) {
         sub: true
       }
     )) })) }),
+    doneItems.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card vt-done", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u5B8C\u4E86" }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: doneItems.length })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-done-cards", children: doneItems.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, item: it, keys, now }, itemId(it))) })
+    ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-unfinished", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u672A\u5B8C\u4E86" }),
@@ -3962,7 +4296,7 @@ function Board(props) {
           "button",
           {
             class: "vt-button is-primary",
-            disabled: leftIssues.length + left.routines.length > 0 || items.length === 0,
+            disabled: leftIssues.length + left.routines.length > 0 || all.length === 0,
             title: "\u672A\u5B8C\u4E86\u304C 0 \u306B\u306A\u308B\u3068\u7DE0\u3081\u3089\u308C\u307E\u3059",
             onClick: () => void closeBoard(ctx, date),
             children: [
@@ -3972,7 +4306,7 @@ function Board(props) {
           }
         )
       ] }),
-      leftIssues.length + left.routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: items.length === 0 ? "\u2014" : "\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }) : /* @__PURE__ */ u3(S, { children: [
+      leftIssues.length + left.routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: all.length === 0 ? "\u2014" : "\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }) : /* @__PURE__ */ u3(S, { children: [
         /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"], empty: "issue \u306F\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }),
         leftIssues.length > 0 && /* @__PURE__ */ u3(
           ActionBar,
@@ -4508,7 +4842,7 @@ function LabelManagerView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -4600,7 +4934,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian14.Menu();
+    const m3 = new import_obsidian15.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -4691,7 +5025,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -4837,7 +5171,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian16.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("\u306A\u3057").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -4980,7 +5314,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -5051,7 +5385,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
@@ -5066,7 +5400,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -5092,7 +5426,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -5103,7 +5437,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -5140,7 +5474,7 @@ function SidebarView(props) {
         const summary = issue?.summary || routine?.summary || taskId;
         const path = issue?.path ?? routine?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -5243,17 +5577,30 @@ var VIEWS = [
   { type: "vault-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var VaultTaskPlugin = class extends import_obsidian19.Plugin {
+var VaultTaskPlugin = class extends import_obsidian20.Plugin {
   store = null;
+  undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
   async onload() {
     await this.loadSettings();
     const store = new TaskStore(this.app);
     this.store = store;
+    const report = (message, error) => {
+      if (error !== void 0) console.error(`vault-task: ${message}`, error);
+      const detail = error instanceof Error ? `: ${error.message}` : "";
+      new import_obsidian20.Notice(`${message}${detail}`);
+    };
+    const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
+    const undo = new StatusUndo(report);
+    this.undo = undo;
+    writer.onStatusChange = (c3) => {
+      if (c3.via !== "undo") undo.push(c3.id, () => writer.update(c3.path, c3.before, "undo"));
+    };
     const ctx = {
       app: this.app,
       store,
-      writer: new TaskWriter(this.app, store),
+      writer,
+      undo,
       settings: this.taskSettings,
       saveSettings: () => this.saveData(this.taskSettings),
       openPath: async (path, newTab = false) => {
@@ -5267,11 +5614,7 @@ var VaultTaskPlugin = class extends import_obsidian19.Plugin {
         if (!existing) await leaf.setViewState({ type, active: true });
         await workspace.revealLeaf(leaf);
       },
-      report: (message, error) => {
-        if (error !== void 0) console.error(`vault-task: ${message}`, error);
-        const detail = error instanceof Error ? `: ${error.message}` : "";
-        new import_obsidian19.Notice(`${message}${detail}`);
-      }
+      report
     };
     const openSidebar = async (reveal = true) => {
       const { workspace } = this.app;
@@ -5298,6 +5641,7 @@ var VaultTaskPlugin = class extends import_obsidian19.Plugin {
   }
   onunload() {
     this.store?.unload();
+    this.undo?.dismiss();
   }
   async loadSettings() {
     const saved = await this.loadData() ?? {};

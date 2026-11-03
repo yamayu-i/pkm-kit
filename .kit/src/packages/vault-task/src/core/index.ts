@@ -6,6 +6,7 @@ import type { GroupDef } from "./groups";
 import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
+import { closedAtMap, statusBefore, type StatusLogEntry } from "./status-log";
 import type { WorklogEntry } from "./worklog";
 
 export interface VaultData {
@@ -18,10 +19,12 @@ export interface VaultData {
 	boards: DailyBoard[];
 	/** task board のグループ（issue/board-groups.json） */
 	groups: GroupDef[];
+	/** status の記録（古い順。ADR-0031） */
+	statusLogs: StatusLogEntry[];
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [] };
+	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -148,6 +151,25 @@ export class TaskIndex {
 	/** 記録中（to が空）の worklog */
 	running(taskId?: string): WorklogEntry[] {
 		return this.data.worklogs.filter((l) => l.toMs === null && (taskId === undefined || l.taskId === taskId));
+	}
+
+	/** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
+	statusBefore(id: string): Status | null {
+		const issue = this.issues.get(id);
+		return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+	}
+
+	/** その issue の最後の status の記録 */
+	lastStatusLog(id: string): StatusLogEntry | undefined {
+		const logs = this.data.statusLogs;
+		for (let i = logs.length - 1; i >= 0; i--) if (logs[i]!.task === id) return logs[i];
+		return undefined;
+	}
+
+	/** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
+	closedAt(): Map<string, number> {
+		const closed = [...this.issues.values()].filter((i) => i.status === "closed").map((i) => i.id);
+		return closedAtMap(this.data.statusLogs, closed);
 	}
 
 	routinesOn(date: LocalDate): Routine[] {

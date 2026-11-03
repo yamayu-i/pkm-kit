@@ -41,3 +41,4 @@
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの 0009） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる（コアプラグインのデイリーノートは無効にする） |
 | [0030](0030-organize-schedule-calendar.md) | 承認 | Organize の予定入れを、複数日を選べるカレンダーにする |
+| [0031](0031-status-quick-change.md) | 承認 | ボードからの status の 1 クリック変更、status のアイコン、取り消しのトースト、status の記録（statuslog） |

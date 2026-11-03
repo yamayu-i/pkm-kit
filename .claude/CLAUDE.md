@@ -58,7 +58,7 @@
 mise install                          # Node
 node .claude/scripts/verify.mjs       # 検査（ノートの書式、上流のものを変えていないか、Obsidian の設定）
 node .claude/scripts/wiki-lint.mjs    # ノートの書式
-node .kit/bin/lint.mjs .              # タスク管理データ（issue/ routine/ member/ worklog/ board/）の整合性検査
+node .kit/bin/lint.mjs .              # タスク管理データ（issue/ routine/ member/ worklog/ board/ statuslog/）の整合性検査
 node .kit/setup.mjs --dry-run         # セットアップ（エスカレーションの方法、Obsidian の設定）。何をするかだけを表示
 node .kit/migrate.mjs --status        # 未適用の移行（取り込みは vault-upgrade）
 ```

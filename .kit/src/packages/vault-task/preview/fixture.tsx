@@ -5,6 +5,7 @@ import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
+import { StatusUndo } from "../src/obsidian/status-undo";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
@@ -32,7 +33,8 @@ const logs = [
 const issue = (id: string, fm: Record<string, unknown>) => ({ path: `issue/${id}.md`, frontmatter: { type: "issue", id, status: "open", ...fm } });
 const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
 const boardLog = [
-	...["i-6", "i-1", "i-2"].map((task) => boardOp(t, { op: "add", task })),
+	...["i-6", "i-1", "i-2", "i-12", "i-13"].map((task) => boardOp(t, { op: "add", task })),
+	boardOp(t, { op: "place", task: "i-12", group: "午前" }),
 	boardOp(t, { op: "place", task: "i-6", group: "午前/集中" }),
 	boardOp(t, { op: "place", task: "i-2", group: "午後" }),
 	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
@@ -64,6 +66,9 @@ const { data } = collectVault({
 		issue("i-8", { summary: "本棚を整理する", created: "2026-10-29T09:00:00+09:00", label: ["私用"] }),
 		issue("i-9", { summary: "いつか: 写真を整理する", status: "someday", revisit: addDays(t, 10) }),
 		issue("i-10", { summary: "いつか: 英語の勉強を再開", status: "someday", reviewed: addDays(t, -30) }),
+		// 完了の欄（ADR-0031）
+		issue("i-12", { summary: "経費を精算する", status: "closed", scheduled: [t], priority: "chore" }),
+		issue("i-13", { summary: "先方の返事を待つ", status: "waiting", scheduled: [t], priority: "mid" }),
 		issue("i-11", { summary: "部屋の掃除", scheduled: [addDays(t, 3), addDays(t, 5)], priority: "chore", mid_due: addDays(t, -2) }),
 		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), group: "午前", estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
@@ -90,6 +95,7 @@ const ctx = {
 	openPath: noop,
 	openView: noop,
 	report: (m: string) => console.log("report", m),
+	undo: new StatusUndo((m: string) => console.log("report", m), 60_000),
 };
 
 const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
@@ -146,5 +152,10 @@ if (name === "header" || name === "routine") {
 		render(h(VIEWS[name]!, { ctx: ctx as never }), el);
 		// board は DailyView の最後の段階を開いた状態
 		if (name === "board") setTimeout(() => el.querySelector<HTMLButtonElement>(".vt-step:last-child")?.click(), 0);
+	}
+	// 取り消しのトースト（ADR-0031）。画面の右下に固定で出る
+	if (name === "board") {
+		ctx.undo.push("i-12", noop);
+		ctx.undo.push("i-6", noop);
 	}
 }

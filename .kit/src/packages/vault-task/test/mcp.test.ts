@@ -160,4 +160,23 @@ describe("MCP サーバーと検査付き操作", () => {
 		});
 		expect((callRes?.result as { isError?: boolean }).isError).toBeUndefined();
 	});
+	it("update_issue で status を変えると statuslog に書き、閉じたら記録中のタイマーを止める（ADR-0031）", () => {
+		callMcpTool(ctx, "start_timer", { task_ids: ["i-1"] });
+		let { data } = readVault(root);
+		expect(data.issues.find((i) => i.id === "i-1")!.status).toBe("in-progress");
+		callMcpTool(ctx, "update_issue", { id: "i-1", status: "closed" });
+		({ data } = readVault(root));
+		const index = new TaskIndex(data);
+		expect(index.issues.get("i-1")!.status).toBe("closed");
+		expect(index.running("i-1")).toEqual([]);
+		expect(data.statusLogs.map((e) => [e.task, e.from, e.to, e.via])).toEqual([
+			["i-1", "open", "in-progress", "timer"],
+			["i-1", "in-progress", "closed", "mcp"],
+		]);
+		expect(readFileSync(join(root, "statuslog/ai/2026-11.jsonl"), "utf8").trim().split("\n")).toHaveLength(2);
+		expect(index.statusBefore("i-1")).toBe("in-progress");
+		const { problems, paths } = readVault(root);
+		expect(problems).toEqual([]);
+		expect(lintVault(data, { paths: new Set(paths) })).toEqual([]);
+	});
 });
