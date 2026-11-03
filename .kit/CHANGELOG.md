@@ -4,6 +4,12 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## frontmatter のエスケープと、CI の検査の一本化
+
+- vault-template: frontmatter の引用符（`"…"` / `'…'`）の中に展開する値（`{{title}}`、`{{prompt:…}}` など）を、YAML として正しくエスケープするようにした。タイトルに `"` や `\` を含めても、frontmatter が壊れない（yamayu-i/pkm-kit#10）。本文の展開は変わらない
+- CI（`vault.yml`）は `verify.mjs` を呼ぶようにした。今まで CI で動いていなかった Obsidian の設定の検査（末尾改行、必要なキー）も動く（yamayu-i/pkm-kit#17）
+- 子への影響: 移行なし。vault-template の `main.js` が変わった。モバイルで、`"` を含むタイトルの issue をテンプレートから作り、開けるかを確かめる。子の CI で Obsidian の設定の検査が動くようになるので、`.obsidian/*.json` に末尾改行や足りないキーがあると失敗する（`node .kit/setup.mjs` で直る）
+
 ## 移行の仕組みと vault-upgrade
 
 - 上流の更新を取り込む `vault-upgrade` のスキルを足した。merge と、移行（`.kit/migrations/`）の実行で取り込む

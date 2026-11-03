@@ -24,29 +24,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ steps.versions.outputs.node }}
-      - name: スクリプトのテスト
-        run: node --test .claude/scripts/test/*.test.mjs
-      - name: 文書の構造
-        run: |
-          node .claude/scripts/check-docs.mjs
-          node .claude/scripts/check-docs.mjs .kit/harness
-          node .claude/scripts/check-docs.mjs .kit/src/docs --links-only
-      - name: wiki の lint
-        run: node .claude/scripts/wiki-lint.mjs
-      - name: 所有の境界（上流には仕組みのファイルだけ。子では上流のものを変えていない）
-        run: node .claude/scripts/check-kit-paths.mjs --fetch
-      - name: 移行（子の Vault で未適用のものがないか。上流では対象外）
-        run: node .kit/migrate.mjs --status
-      - name: wiki の操作が追記だけか
+      # 検査の一覧は verify.mjs にだけ書く（yamayu-i/pkm-kit#17）。CI だけで要るものは引数で渡す
+      - name: 検査（verify.mjs）
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then
-            node .claude/scripts/check-append-only.mjs "$BASE..HEAD"
+            RANGE="$BASE..HEAD"
           elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            node .claude/scripts/check-append-only.mjs -1 "$GITHUB_SHA"
+            RANGE="-1 $GITHUB_SHA"
           else
-            node .claude/scripts/check-append-only.mjs "$BEFORE..$GITHUB_SHA"
+            RANGE="$BEFORE..$GITHUB_SHA"
           fi
+          node .claude/scripts/verify.mjs --fetch "--append-only=$RANGE"
