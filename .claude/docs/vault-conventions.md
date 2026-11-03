@@ -1,7 +1,7 @@
 # ノートの書式と配置（LLM wiki として運用する）
 
 人も LLM も同じ規約で読み書きできるように、Obsidian 独自の書式を使わず素の Markdown（CommonMark / GFM）で書く。
-Obsidian 側の設定は `.obsidian/app.json` / `daily-notes.json` / `core-plugins.json` にある。
+Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（上流が求める値は `.kit/obsidian-required.json`）。デイリーノートの置き場所と作成は vault-template が行い、コアプラグインのデイリーノートは使わない（`.kit/src/docs/adr/0029-ribbon-plugin.md`）。
 
 ## 書式
 

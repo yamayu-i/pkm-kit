@@ -1,0 +1,12 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "absolute",
+  "alwaysUpdateLinks": true,
+  "attachmentFolderPath": "asset",
+  "newFileLocation": "root",
+  "strictLineBreaks": true,
+  "propertiesInDocument": "visible",
+  "useTab": false,
+  "tabSize": 2,
+  "showInlineTitle": false
+}

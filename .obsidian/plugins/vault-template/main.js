@@ -1590,7 +1590,6 @@ var VaultTemplatePlugin = class extends import_obsidian6.Plugin {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
       this.addCommand({ id: `open-${spec.type.replace("vault-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void this.openView(spec.type) });
     }
-    this.addRibbonIcon("calendar-check", "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F", () => void openToday());
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));

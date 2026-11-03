@@ -82,7 +82,7 @@ export default class VaultTaskPlugin extends Plugin {
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
 		this.addRibbonIcon("list-plus", "issue をまとめて作成", () => openCaptureModal(ctx));
-		this.addRibbonIcon("calendar-check", "Daily を開く", () => void ctx.openView("vault-task-daily"));
+		// 「Daily を開く」のリボンは vault-ribbon が、今日のデイリーノートと続けて並べる（ADR-0029）。コマンド open-daily は残す
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));

@@ -136,6 +136,8 @@ const plugins = [
 		bins: [],
 		allowedRequires: ["obsidian"],
 	},
+	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
+	{ id: "vault-ribbon", outdirEnv: "VAULT_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

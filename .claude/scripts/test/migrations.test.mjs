@@ -105,16 +105,16 @@ test("0001: 読めない template/config.json は変えずに、check が失敗�
 test("実行の仕組み: check が失敗した移行で止め、記録しない。後の移行も実行しない", async () => {
 	const root = childFrom("fresh");
 	write(root, {
-		".kit/migrations/0002-needs-ai/migrate.mjs": "export function migrate() { return []; }\n",
-		".kit/migrations/0002-needs-ai/check.mjs": 'import { existsSync } from "node:fs"; import { join } from "node:path";\nexport function check(root) { return existsSync(join(root, "done.txt")) ? [] : ["done.txt がない"]; }\n',
-		".kit/migrations/0003-later/migrate.mjs": 'import { writeFileSync } from "node:fs"; import { join } from "node:path";\nexport function migrate(root) { writeFileSync(join(root, "later.txt"), "x"); return ["later.txt を書く"]; }\n',
-		".kit/migrations/0003-later/check.mjs": "export function check() { return []; }\n",
+		".kit/migrations/9001-needs-ai/migrate.mjs": "export function migrate() { return []; }\n",
+		".kit/migrations/9001-needs-ai/check.mjs": 'import { existsSync } from "node:fs"; import { join } from "node:path";\nexport function check(root) { return existsSync(join(root, "done.txt")) ? [] : ["done.txt がない"]; }\n',
+		".kit/migrations/9002-later/migrate.mjs": 'import { writeFileSync } from "node:fs"; import { join } from "node:path";\nexport function migrate(root) { writeFileSync(join(root, "later.txt"), "x"); return ["later.txt を書く"]; }\n',
+		".kit/migrations/9002-later/check.mjs": "export function check() { return []; }\n",
 	});
 	const first = node(root);
 	assert.equal(first.status, 1);
-	assert.match(first.stderr, /0002-needs-ai が終わっていない/);
+	assert.match(first.stderr, /9001-needs-ai が終わっていない/);
 	assert.match(first.stderr, /README\.md に従って/);
-	assert.deepEqual(readRecord(root).migrations, ["0001-template-overrides"]);
+	assert.deepEqual(readRecord(root).migrations, listMigrations(root).filter((m) => m < "9001"));
 	assert.ok(!existsSync(join(root, "later.txt")));
 
 	const status = node(root, "--status");
@@ -125,7 +125,7 @@ test("実行の仕組み: check が失敗した移行で止め、記録しない
 	write(root, { "done.txt": "" });
 	const second = node(root, "--upstream=1111111111111111111111111111111111111111");
 	assert.equal(second.status, 0, second.stderr);
-	assert.deepEqual(readRecord(root).migrations, ["0001-template-overrides", "0002-needs-ai", "0003-later"]);
+	assert.deepEqual(readRecord(root).migrations, listMigrations(root));
 	assert.equal(readRecord(root).commit, "1111111111111111111111111111111111111111");
 	assert.equal(node(root, "--status").status, 0);
 });
@@ -143,4 +143,48 @@ test("実行の仕組み: --dry-run は書かない。上流（.kit-local/ が�
 	const r = node(upstream, "--status");
 	assert.equal(r.status, 0);
 	assert.match(r.stdout, /上流なので対象外/);
+});
+
+const readJsonFile = (root, p) => JSON.parse(readFileSync(join(root, p), "utf8"));
+
+test("新しい Vault（今の上流の設定）では、どの移行も何も変えない", async () => {
+	const root = childFrom("fresh");
+	// 適用済みの記録（.kit-local/upstream.json）だけは変わる
+	const withoutRecord = (s) => Object.fromEntries(Object.entries(s).filter(([p]) => p !== join(".kit-local", "upstream.json")));
+	const before = withoutRecord(snapshot(root));
+	const { done, failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.deepEqual(
+		done.flatMap((d) => d.changes),
+		[],
+	);
+	assert.deepEqual(withoutRecord(snapshot(root)), before);
+});
+
+test("0002: コアプラグインのデイリーノートを無効にし、vault-ribbon を有効にする。ほかの設定は残し、既定のままの daily-notes.json は消す", async () => {
+	const root = childFrom("legacy");
+	const core = readJsonFile(root, ".obsidian/core-plugins.json");
+	await runMigrations(root);
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon"]);
+	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
+	// Obsidian と同じく末尾に改行を付けない
+	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
+});
+
+test("0002: 子が値を変えた daily-notes.json は残す", async () => {
+	const root = childFrom("customized");
+	const daily = readFileSync(join(root, ".obsidian/daily-notes.json"), "utf8");
+	await runMigrations(root);
+	assert.equal(readFileSync(join(root, ".obsidian/daily-notes.json"), "utf8"), daily);
+	assert.equal(readJsonFile(root, ".obsidian/core-plugins.json")["daily-notes"], false);
+});
+
+test("0002: 読めない core-plugins.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	write(root, { ".obsidian/core-plugins.json": "{壊れている" });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0002-ribbon-and-core-daily-notes");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
 });

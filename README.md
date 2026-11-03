@@ -4,7 +4,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
 
 - 同期は自作プラグイン **Vault Git**（モバイルでも動く git の pull / push）
-- タスク管理は **Vault Task**、テンプレートからのノート作成は **Vault Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- タスク管理は **Vault Task**、今日のデイリーノートと Daily を開くリボンのボタンは **Vault Ribbon**、テンプレートからのノート作成は **Vault Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
