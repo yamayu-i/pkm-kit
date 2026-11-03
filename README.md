@@ -12,31 +12,69 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 
 ## 新しい Vault を作る
 
-GitHub の fork は使わない（公開リポジトリの fork は非公開にできず、ノートが公開されてしまう）。git の remote で上流とつなぐ。
+新しい Vault を作るときの手順は、ここにすべてまとめてある。上から順に行う。
+
+GitHub の fork は使わない（公開リポジトリの fork は非公開にできず、ノートが公開されてしまう）。テンプレートリポジトリからも作らない（履歴を共有しないので、上流の更新を merge できない）。git の remote で上流とつなぐ（ADR-0009）。
+
+### 1. リポジトリを作り、上流とつなぐ（PC で 1 回）
+
+GitHub に空の非公開リポジトリ（例: `you/my-vault`）を作っておく。README などは足さず、空のままにする。
 
 ```sh
-# 1. GitHub に空の非公開リポジトリ（例: you/my-vault）を作っておく
 git clone https://github.com/yamayu-i/pkm-kit.git my-vault
 cd my-vault
-git remote rename origin upstream
-git remote add origin https://github.com/you/my-vault.git
+git remote rename origin upstream                      # 上流は upstream
+git remote add origin https://github.com/you/my-vault.git   # 自分の Vault は origin。SSH ではなく https://
 git push -u origin main
+```
 
-# 2. セットアップ（Node は mise.toml の版。mise install で入る。npm の依存は要らない）
-node .kit/setup.mjs            # エスカレーションの方法を尋ねる。--escalation=issue|file|none でも指定できる
-node .claude/scripts/verify.mjs
+### 2. セットアップする（PC で 1 回）
+
+```sh
+mise install                       # Node（mise.toml の版）。npm の依存は要らない
+node .kit/setup.mjs --dry-run      # 何をするかだけを表示する（任意）
+node .kit/setup.mjs                # エスカレーションの方法を尋ねる。--escalation=issue|file|none でも指定できる
+node .claude/scripts/verify.mjs    # 検査
 git add -A && git commit -m "vault: セットアップ" && git push
 ```
 
-`setup.mjs` が行うこと（何度実行しても同じ結果になる。`--dry-run` で予定だけを表示する）:
+`setup.mjs` が行うこと（何度実行しても同じ結果になる。子のものは消さない）:
 
-- `.kit-local/config.json` に、上流を変えないと直らない問題を見つけたときの伝え方（エスカレーションの方法）を書く
-- `.kit-local/upstream.json` に、取り込んだ上流のコミットを書く
-- `.obsidian/*.json` に、使い心地に必要なキーだけを合わせる（ほかの設定は残す）
-- `issue/labels.json`、`issue/board-groups.json`、`.claude/local/CLAUDE.md`（この Vault だけの規約）の初期値を置く（なければ）
-- PC の Git CLI でも `updated` を付けるため、`git config core.hooksPath .githooks` を実行する
+1. `.kit-local/config.json` に、上流を変えないと直らない問題を見つけたときの伝え方（エスカレーションの方法）を書く。後から変えられる
+   - `issue`: 上流に GitHub の Issue を立てる（上流のリポジトリは `--escalation-repo=<owner/name>` で変えられる。既定は `yamayu-i/pkm-kit`）
+   - `file`: `.kit-local/escalations/` に書くだけ。上流に伝えるのは人が行う
+   - `none`: 評価のレポートに残すだけ
+2. `.kit-local/upstream.json` に、取り込んだ上流のコミットを書く（なければ）。上流のものを変えていないかの検査は、ここを基準にする
+3. `.obsidian/*.json` に、`.kit/obsidian-required.json` の必要なキーだけを合わせる（自作プラグインの有効化を含む。ほかの設定は残す）
+4. `issue/labels.json`、`issue/board-groups.json`、`.claude/local/CLAUDE.md`（この Vault だけの規約）の初期値を置く（なければ）
+5. git の作業ツリーなら、PC の Git CLI でも `updated` を付けるため、`git config core.hooksPath .githooks` を実行する
+6. 未適用の移行（`.kit/migrations/`）を実行する。新しい Vault では何も変えずに適用済みになる。`--dry-run` のときは実行しない
 
-その後、Obsidian でフォルダを開き、コミュニティプラグインを許可する。モバイルは下の「Vault Git の使い方」のとおり。
+### 3. PC の Obsidian で開く
+
+1. 1 の `my-vault` フォルダを Vault として開く
+2. 下の「各端末の Vault Git の設定」を行う
+
+ほかの PC でも使うときは、自分の Vault のリポジトリ（`https://` の URL）を `git clone` して Vault として開き、`git config core.hooksPath .githooks` を 1 回実行してから、同じ設定を行う。
+
+### 4. モバイルで使う（任意）
+
+1. 空の Vault を作り、`.obsidian/plugins/vault-git/` に `main.js` と `manifest.json` を（ファイルアプリなどで）コピーする
+2. 下の「各端末の Vault Git の設定」を行い、「初回 clone」にリモート URL（`https://github.com/…/….git`）とブランチを入れる
+3. コマンド「リモートをこの Vault に clone（初回のみ）」を実行する
+
+### 各端末の Vault Git の設定（端末ごとに 1 回）
+
+1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
+2. 「Vault Git」を有効にする（ほかの自作プラグインは、セットアップ済みの Vault なら有効になっている）
+3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
+4. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
+
+### 5. 使い始める
+
+- この Vault だけの目的・規約は `.claude/local/CLAUDE.md` に書く。テンプレートを変えたいときは `template/` に置く（上流の既定を上書きする）
+- Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` などを割り当てると便利
+- Claude Code で Vault を開き、「この記事を取り込んで: <URL>」などと頼む（下の「LLM wiki」）
 
 自分の Vault では、上流のもの（`.kit/owned-paths.json` に当たるファイル）を変えない（`verify.mjs` が検査する）。テンプレートは `template/` に置けば、上流の既定を上書きできる。
 
@@ -102,20 +140,9 @@ Claude Code への頼み方の例: 「この記事を取り込んで: <URL>」�
 - それ以外（`.obsidian` の JSON、画像など）: リモート版を採用し、ローカル版を `名前 (conflict 端末 日時).拡張子` で残す
 - 片方で削除・片方で編集: 編集した側を残す
 
-### セットアップ（各端末で 1 回）
+### セットアップ
 
-1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
-2. 「Vault Git」を有効にする
-3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
-4. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
-
-PC: 自分の Vault のリポジトリを `git clone` して Vault として開く。コミット時に `updated` を付与するため、`git config core.hooksPath .githooks` を 1 回実行する。
-
-モバイル:
-
-1. 空の Vault を作り、`.obsidian/plugins/vault-git/` に `main.js` と `manifest.json` を（ファイルアプリなどで）コピーする
-2. 上の 1〜4 を行い、「初回 clone」にリモート URL（`https://github.com/…/….git`）とブランチを入れる
-3. コマンド「リモートをこの Vault に clone（初回のみ）」を実行する
+端末ごとの設定（PC・モバイル）は「新しい Vault を作る」の [各端末の Vault Git の設定](#各端末の-vault-git-の設定端末ごとに-1-回) にある。既存の Vault に端末を足すときも同じ手順で行う。
 
 ## 開発
 
