@@ -4,6 +4,14 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶
+
+- vault-task の estimated: 「入力…」で `30m` / `2h` / `1d` / `1h30m` のように単位付きで入れられるようにした（今までは日数だけ）。単位のない数字は分。routine を作るフォームの estimated も同じ書き方になった（ADR-0034）
+- 表記の換算を 1d = 24h にした（今までは 8h）。データは分のままなので、変わるのは表示だけ。今まで `1d` と出ていた見積もりは `8h` と出る
+- Daily: 「今日の予定」の段階をなくした。Daily を開いているあいだ、今日が実行日の issue は自動で今日のボードに載る。その日にボードから外した issue は載せ直さない
+- task board: カードを移したグループを覚え、別の日のボードでも、前に置いたグループに初めから出す（issue も routine も。routine の `group` は一度も移していないときの置き場所）。MCP の `get_board` も同じ
+- 子への影響: 移行はない。vault-task の `main.js` と `.kit/bin/` の CLI が変わった。子だけのスキルや `local/CLAUDE.md` が「1d = 8h」や「今日の予定」の段階に触れていれば直す。モバイルで、Daily を開いて今日の予定がボードに載るか、カードを移した翌日に同じグループに出るかを確かめる
+
 ## 一覧の View を左の固定ペインに出す
 
 - vault-task の View（Daily、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups、Labels）と vault-template の一覧 View（Daily notes、Notes、Sources）は、メイン領域の左半分の「一覧ペイン」にタブで開き、固定するようにした。一覧ペインがなければ、最後に使ったタブを左右に分けて左に開く（ADR-0033）

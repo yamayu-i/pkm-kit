@@ -1,5 +1,5 @@
 import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type BoardState } from "./board";
-import { BOARD_LOG_PATH_RE, parseBoardLog, replayBoard, type BoardLogEntry } from "./board-log";
+import { BOARD_LOG_PATH_RE, parseBoardLog, placementHistory, removedTasks, replayBoard, type BoardLogEntry } from "./board-log";
 import { GROUPS_PATH, parseGroups } from "./groups";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
@@ -39,7 +39,7 @@ export interface VaultInput {
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
+	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -76,20 +76,25 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		data.worklogs.push(...r.entries);
 	}
 	const logsByDate = new Map<string, BoardLogEntry[]>();
+	const allLogs: BoardLogEntry[] = [];
 	for (const { path, text } of [...(input.boardLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
 		const r = parseBoardLog(path, text);
 		problems.push(...r.problems);
+		allLogs.push(...r.entries);
 		for (const e of r.entries) logsByDate.set(e.date, [...(logsByDate.get(e.date) ?? []), e]);
 	}
 	for (const date of [...new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
 		const logs = logsByDate.get(date) ?? [];
+		const removed = removedTasks(logs);
 		data.boards.push({
 			date,
 			path: dailyNotePath(date),
 			board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
 			...(logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {}),
+			...(removed.length > 0 ? { removed } : {}),
 		});
 	}
+	data.placements = placementHistory(initialBoards, allLogs);
 	for (const { path, text } of [...(input.statusLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
 		const r = parseStatusLog(path, text);
 		problems.push(...r.problems);

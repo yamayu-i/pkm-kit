@@ -154,3 +154,45 @@ export function replayBoard(initial: BoardState, entries: BoardLogEntry[]): Boar
 	if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
 	return board;
 }
+
+/** その日のボードから外したままの issue（最後の add / remove が remove のもの。ADR-0034: 自動では載せ直さない） */
+export function removedTasks(entries: BoardLogEntry[]): string[] {
+	const last = new Map<string, "add" | "remove">();
+	for (const e of [...entries].sort(compareEntries)) {
+		if (e.op.op === "add" || e.op.op === "remove") last.set(e.op.task, e.op.op);
+	}
+	return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
+}
+
+/** カードを置いた記録（ADR-0034）。group が null なら未分類に置いた */
+export interface PlacementRecord {
+	task: string;
+	date: LocalDate;
+	/** 操作の時刻。既存の frontmatter の board から読んだものはその日のいちばん前（-Infinity） */
+	atMs: number;
+	group: string | null;
+}
+
+/**
+ * 置いた記録をボードの日付 → 時刻の順に並べる。initial は既存の frontmatter の board（日付 → 状態）
+ */
+export function placementHistory(initial: ReadonlyMap<string, BoardState>, entries: BoardLogEntry[]): PlacementRecord[] {
+	const records: PlacementRecord[] = [];
+	for (const [date, board] of initial) {
+		for (const [task, group] of Object.entries(board.groups)) records.push({ task, date: date as LocalDate, atMs: Number.NEGATIVE_INFINITY, group });
+	}
+	for (const e of [...entries].sort(compareEntries)) {
+		if (e.op.op === "place") records.push({ task: e.op.task, date: e.date, atMs: e.atMs, group: e.op.group });
+	}
+	return records.sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs));
+}
+
+/** その日までで最後に置いたグループ。置いたことがなければ undefined、未分類に置いたなら null */
+export function lastPlacement(history: readonly PlacementRecord[], task: string, date: LocalDate): string | null | undefined {
+	let found: string | null | undefined;
+	for (const r of history) {
+		if (r.date > date) break;
+		if (r.task === task) found = r.group;
+	}
+	return found;
+}

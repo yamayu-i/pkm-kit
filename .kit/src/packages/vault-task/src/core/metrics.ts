@@ -1,5 +1,5 @@
 import { boardItems, emptyBoard, pendingBoards, unfinished, type DailyBoard, type RoutineResult } from "./board";
-import { cautionIssues, deadIssues, scheduledOn, type DueLists } from "./daily";
+import { cautionIssues, deadIssues, type DueLists } from "./daily";
 import { addDays, type LocalDate } from "./dates";
 import { isActive, isInbox, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
@@ -197,7 +197,7 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 	const items = boardItems(index, date, board);
 	const rem = unfinished(index, date, board);
 	const workload = boardWorkload(index, date, availableMinutes);
-	const scheduledNotOnBoard = scheduledOn(index.data.issues, date, new Set(board.issues));
+	const scheduledNotOnBoard = index.toAutoAdd(date);
 	const dead = deadIssues(index.data.issues, date);
 	const caution = cautionIssues(index.data.issues, date, cautionDays);
 

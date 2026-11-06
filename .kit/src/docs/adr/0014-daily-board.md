@@ -1,6 +1,6 @@
 # ADR-0014: DailyTaskView と task board の保存形式・細部
 
-- 状態: 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md) で置換）
+- 状態: 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換）
 - 日付: 2026-10-31
 
 ## 背景

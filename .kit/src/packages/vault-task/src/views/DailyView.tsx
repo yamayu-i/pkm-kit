@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
 import { emptyBoard, unfinished, pendingBoards, type DailyBoard } from "../core/board";
-import { cautionIssues, deadIssues, scheduledOn, type DueLists } from "../core/daily";
-import { formatShortDate, localToday, type LocalDate } from "../core/dates";
+import { cautionIssues, deadIssues, type DueLists } from "../core/daily";
+import { formatShortDate, localToday } from "../core/dates";
 import type { Issue } from "../core/schema";
 import { addToBoard, carryIssues } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
@@ -12,13 +12,12 @@ import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow, useStoreVersion } from "../ui/hooks";
 import { Board, RoutineRows } from "./Board";
 
-type Step = "dead" | "previous" | "caution" | "scheduled" | "board";
+type Step = "dead" | "previous" | "caution" | "board";
 
 const STEPS: { key: Step; label: string; icon: string }[] = [
 	{ key: "dead", label: "期限切れ", icon: "alarm-clock-off" },
 	{ key: "previous", label: "前回のボード", icon: "history" },
 	{ key: "caution", label: "期限が近い", icon: "alert-triangle" },
-	{ key: "scheduled", label: "今日の予定", icon: "calendar-check" },
 	{ key: "board", label: "ボード", icon: "layout-dashboard" },
 ];
 
@@ -108,38 +107,10 @@ function PreviousBoard(props: { ctx: TaskContext; board: DailyBoard; issues: Iss
 	);
 }
 
-function ScheduledStep(props: { ctx: TaskContext; issues: Issue[]; today: LocalDate }) {
-	const { ctx, issues, today } = props;
-	const [selected, setSelected] = useState<Set<string>>(new Set());
-	const sel = issues.filter((i) => selected.has(i.id));
-	const done = () => setSelected(new Set());
-	return (
-		<section class="vt-card">
-			<div class="vt-section-head">
-				<span class="vt-field-label">今日が実行日</span>
-				<span class="vt-count">{issues.length}</span>
-				<span class="vt-spacer" />
-				<button class="vt-button is-text" disabled={issues.length === 0} onClick={() => void addToBoard(ctx, today, issues.map((i) => i.id))}>
-					すべてボードへ
-				</button>
-			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "soft_deadline", "deadline", "estimated"]} />
-			<ActionBar
-				count={sel.length}
-				actions={[
-					{ label: "Move to Task Board", icon: "layout-dashboard", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
-					{ label: "Move Do Date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
-					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
-				]}
-			/>
-		</section>
-	);
-}
-
 /**
- * DailyTaskView（ADR-0009）。期限切れ → 前回のボード → 期限が近い → 今日の予定 → ボード の順に進む。
- * 片付くと次へ進む。上の段階表示からいつでも移れる（スキップできる）
+ * DailyTaskView（ADR-0009）。期限切れ → 前回のボード → 期限が近い → ボード の順に進む。
+ * 片付くと次へ進む。上の段階表示からいつでも移れる（スキップできる）。
+ * 今日が実行日の issue は、開いているあいだ自動でボードに載せる（ADR-0034）
  */
 export function DailyView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
@@ -152,7 +123,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const pending = pendingBoards(index, index.data.boards, today);
 	const caution = cautionIssues(issues, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
-	const scheduled = scheduledOn(issues, today, new Set(todayBoard.issues));
+	const toAdd = index.toAutoAdd(today);
 	const todayLeft = unfinished(index, today, todayBoard);
 
 	const counts: Record<Step, number> = {
@@ -162,19 +133,29 @@ export function DailyView(props: { ctx: TaskContext }) {
 			return n + u.issues.length + u.routines.length;
 		}, 0),
 		caution: caution.deadline.length + caution.softDeadline.length,
-		scheduled: scheduled.length,
 		board: todayLeft.issues.length + todayLeft.routines.length,
 	};
 
 	// 「次へ」で通り過ぎた段階（caution は片付けなくても進める）
 	const [passed, setPassed] = useState<Set<Step>>(new Set());
 	const [manual, setManual] = useState<Step | null>(null);
-	const auto: Step = (["dead", "previous", "caution", "scheduled"] as Step[]).find((s) => counts[s] > 0 && !passed.has(s)) ?? "board";
+	const auto: Step = (["dead", "previous", "caution"] as Step[]).find((s) => counts[s] > 0 && !passed.has(s)) ?? "board";
 	const step = manual ?? auto;
 
 	// 手で選んだ段階でも、片付いたら（caution 以外）自動で次へ
 	useEffect(() => {
 		if (manual !== null && manual !== "caution" && manual !== "board" && counts[manual] === 0) setManual(null);
+	});
+
+	// 今日が実行日で、まだ載っておらず、今日外してもいない issue をボードに載せる（ADR-0034）
+	const adding = useRef(new Set<string>());
+	useEffect(() => {
+		const ids = toAdd.map((i) => i.id).filter((id) => !adding.current.has(`${today}/${id}`));
+		if (ids.length === 0) return;
+		for (const id of ids) adding.current.add(`${today}/${id}`);
+		void addToBoard(ctx, today, ids).finally(() => {
+			for (const id of ids) adding.current.delete(`${today}/${id}`);
+		});
 	});
 
 	// 未完了がなくなった過去のボードは締めて要約を書く
@@ -218,7 +199,6 @@ export function DailyView(props: { ctx: TaskContext }) {
 			{step === "dead" && <DueStep ctx={ctx} lists={dead} empty="期限切れはありません" />}
 			{step === "previous" && (pending.length > 0 ? <PreviousStep ctx={ctx} boards={pending} /> : <div class="vt-empty">片付いていないボードはありません</div>)}
 			{step === "caution" && <DueStep ctx={ctx} lists={caution} empty="3 日以内の期限はありません" canScheduleToday />}
-			{step === "scheduled" && <ScheduledStep ctx={ctx} issues={scheduled} today={today} />}
 			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
 
 			{step !== "board" && (

@@ -6,7 +6,7 @@
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { boardItems, emptyBoard, pendingBoards, placementOf, routineResults, unfinished, type RoutineResult } from "../src/core/board";
+import { boardItems, emptyBoard, pendingBoards, routineResults, unfinished, type RoutineResult } from "../src/core/board";
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
 import { prorateEffort } from "../src/core/effort";
 import { groupKeys } from "../src/core/groups";
@@ -353,12 +353,12 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 			const rem = unfinished(index, date, board);
 			const issuesWithGroup = items.issues.map((i) => ({
 				...i,
-				group: placementOf(board, i.id, null, keys),
+				group: index.placement(date, board, i.id, null, keys),
 				carried: board.carried.includes(i.id),
 			}));
 			const routinesWithGroup = items.routines.map((r) => ({
 				...r,
-				group: placementOf(board, r.id, r.group, keys),
+				group: index.placement(date, board, r.id, r.group, keys),
 				result: board.routines[r.id] ?? null,
 			}));
 			const byGroup: Record<string, { issues: string[]; routines: string[] }> = { "": { issues: [], routines: [] } };

@@ -7426,6 +7426,227 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
   return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
 }
 
+// src/core/worklog.ts
+var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function sanitizeDeviceName(name) {
+  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+}
+function worklogPath(device, from) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
+  return `worklog/${safe}/${month}.jsonl`;
+}
+function parseWorklog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
+    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    let toMs = null;
+    if (o.to !== null && o.to !== void 0) {
+      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
+      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    }
+    entries.push({
+      path,
+      line,
+      id: o.id,
+      taskId: o.task_id,
+      from: o.from,
+      to: toMs === null ? null : o.to,
+      description: typeof o.description === "string" ? o.description : "",
+      fromMs,
+      toMs
+    });
+  });
+  return { entries, problems };
+}
+function serializeWorklogEntry(e) {
+  return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
+}
+function replaceWorklogLine(text, entry, next) {
+  const lines = text.split("\n");
+  const i = entry.line - 1;
+  let current;
+  try {
+    current = JSON.parse(lines[i] ?? "");
+  } catch {
+    current = null;
+  }
+  if (typeof current !== "object" || current === null || current.id !== entry.id) {
+    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
+  if (next === null) lines.splice(i, 1);
+  else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  return lines.join("\n");
+}
+var MIN_WORKLOG_MS = 6e4;
+function stopWorklogLines(text, entries, to, toMs) {
+  return [...entries].sort((a, b) => b.line - a.line).reduce((t, e) => replaceWorklogLine(t, e, toMs - e.fromMs < MIN_WORKLOG_MS ? null : { from: e.from, to, description: e.description }), text);
+}
+function newWorklogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function appendWorklogLine(text, line) {
+  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
+`;
+}
+
+// src/core/board-log.ts
+var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function boardLogPath(device, date) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
+}
+function nextBoardAt(nowMs, latestMs) {
+  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
+}
+function parseOp(o) {
+  const task = typeof o.task === "string" && o.task ? o.task : null;
+  switch (o.op) {
+    case "add":
+    case "remove":
+    case "carry":
+      return task ? { op: o.op, task } : null;
+    case "place":
+      return task && (o.group === null || typeof o.group === "string" && o.group) ? { op: "place", task, group: o.group } : null;
+    case "routine":
+      return task && (o.result === null || o.result === "closed" || o.result === "canceled") ? { op: "routine", task, result: o.result } : null;
+    case "close":
+      return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o.tasks } : null;
+    case "reopen":
+      return { op: "reopen" };
+    default:
+      return null;
+  }
+}
+function parseBoardLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i) => {
+    const line = i + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o = obj;
+    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o.date !== "string" || !isLocalDate(o.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const op = parseOp(o);
+    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o.id, at: o.at, atMs, date: o.date, op });
+  });
+  return { entries, problems };
+}
+function serializeBoardLogEntry(e) {
+  return JSON.stringify(e);
+}
+function newBoardLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function compareEntries(a, b) {
+  if (a.atMs !== b.atMs) return a.atMs - b.atMs;
+  if (a.path !== b.path) return a.path < b.path ? -1 : 1;
+  return a.line - b.line;
+}
+function apply(board, op) {
+  switch (op.op) {
+    case "add":
+      if (!board.issues.includes(op.task)) board.issues.push(op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      board.closed = false;
+      break;
+    case "remove":
+      board.issues = board.issues.filter((id) => id !== op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      delete board.groups[op.task];
+      break;
+    case "place":
+      if (op.group === null) delete board.groups[op.task];
+      else board.groups[op.task] = op.group;
+      break;
+    case "routine":
+      if (op.result === null) delete board.routines[op.task];
+      else board.routines[op.task] = op.result;
+      break;
+    case "carry":
+      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
+      break;
+    case "close":
+    case "reopen":
+      board.closed = op.op === "close";
+      break;
+  }
+}
+function replayBoard(initial, entries) {
+  const board = { ...emptyBoard(), ...structuredClone(initial) };
+  let lastClose = null;
+  for (const e of [...entries].sort(compareEntries)) {
+    apply(board, e.op);
+    if (e.op.op === "close") lastClose = e.op.tasks;
+  }
+  const seen = lastClose;
+  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
+  return board;
+}
+function removedTasks(entries) {
+  const last = /* @__PURE__ */ new Map();
+  for (const e of [...entries].sort(compareEntries)) {
+    if (e.op.op === "add" || e.op.op === "remove") last.set(e.op.task, e.op.op);
+  }
+  return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
+}
+function placementHistory(initial, entries) {
+  const records = [];
+  for (const [date, board] of initial) {
+    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
+  }
+  for (const e of [...entries].sort(compareEntries)) {
+    if (e.op.op === "place") records.push({ task: e.op.task, date: e.date, atMs: e.atMs, group: e.op.group });
+  }
+  return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
+}
+function lastPlacement(history, task, date) {
+  let found;
+  for (const r of history) {
+    if (r.date > date) break;
+    if (r.task === task) found = r.group;
+  }
+  return found;
+}
+
 // src/core/daily.ts
 var byDate = (key) => (a, b) => (a[key] ?? "").localeCompare(b[key] ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
 function deadIssues(issues, today) {
@@ -7779,91 +8000,6 @@ function parseMember(path, fm) {
   return { value: id === null ? null : { path, id, name }, problems: r.problems };
 }
 
-// src/core/worklog.ts
-var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function sanitizeDeviceName(name) {
-  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
-}
-function worklogPath(device, from) {
-  const safe = sanitizeDeviceName(device);
-  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
-  const month = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}`;
-  return `worklog/${safe}/${month}.jsonl`;
-}
-function parseWorklog(path, text) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i) => {
-    const line = i + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o = obj;
-    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
-    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs = null;
-    if (o.to !== null && o.to !== void 0) {
-      toMs = typeof o.to === "string" ? Date.parse(o.to) : Number.NaN;
-      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    }
-    entries.push({
-      path,
-      line,
-      id: o.id,
-      taskId: o.task_id,
-      from: o.from,
-      to: toMs === null ? null : o.to,
-      description: typeof o.description === "string" ? o.description : "",
-      fromMs,
-      toMs
-    });
-  });
-  return { entries, problems };
-}
-function serializeWorklogEntry(e) {
-  return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
-}
-function replaceWorklogLine(text, entry, next) {
-  const lines = text.split("\n");
-  const i = entry.line - 1;
-  let current;
-  try {
-    current = JSON.parse(lines[i] ?? "");
-  } catch {
-    current = null;
-  }
-  if (typeof current !== "object" || current === null || current.id !== entry.id) {
-    throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
-  }
-  if (next === null) lines.splice(i, 1);
-  else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
-  return lines.join("\n");
-}
-var MIN_WORKLOG_MS = 6e4;
-function stopWorklogLines(text, entries, to, toMs) {
-  return [...entries].sort((a, b) => b.line - a.line).reduce((t, e) => replaceWorklogLine(t, e, toMs - e.fromMs < MIN_WORKLOG_MS ? null : { from: e.from, to, description: e.description }), text);
-}
-function newWorklogId(random = Math.random) {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return `wl_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
-}
-function appendWorklogLine(text, line) {
-  return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
-`;
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8018,6 +8154,19 @@ var TaskIndex = class {
   board(date) {
     return this.data.boards.find((b) => b.date === date);
   }
+  /**
+   * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+   */
+  toAutoAdd(date) {
+    const daily = this.board(date);
+    return scheduledOn(this.issues.values(), date, /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]));
+  }
+  /**
+   * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
+   */
+  placement(date, board, id, fallback, keys) {
+    return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
+  }
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
@@ -8096,8 +8245,8 @@ function pendingBoards(index, boards, today) {
     return u.issues.length > 0 || u.routines.length > 0;
   }).sort((a, b) => a.date.localeCompare(b.date));
 }
-function placementOf(board, id, fallback, keys) {
-  const key = board.groups[id] ?? fallback ?? "";
+function placementOf(board, id, fallback, keys, remembered) {
+  const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
   return key !== "" && keys.includes(key) ? key : "";
 }
 
@@ -8579,7 +8728,7 @@ function buildOverview(index, date, now, options = {}) {
   const items = boardItems(index, date, board);
   const rem = unfinished(index, date, board);
   const workload = boardWorkload(index, date, availableMinutes);
-  const scheduledNotOnBoard = scheduledOn(index.data.issues, date, new Set(board.issues));
+  const scheduledNotOnBoard = index.toAutoAdd(date);
   const dead = deadIssues(index.data.issues, date);
   const caution = cautionIssues(index.data.issues, date, cautionDays);
   const inbox = index.data.issues.filter(isInbox);
@@ -8688,117 +8837,6 @@ var import_yaml = __toESM(require_dist(), 1);
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-// src/core/board-log.ts
-var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function boardLogPath(device, date) {
-  const safe = sanitizeDeviceName(device);
-  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
-  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
-}
-function nextBoardAt(nowMs, latestMs) {
-  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
-}
-function parseOp(o) {
-  const task = typeof o.task === "string" && o.task ? o.task : null;
-  switch (o.op) {
-    case "add":
-    case "remove":
-    case "carry":
-      return task ? { op: o.op, task } : null;
-    case "place":
-      return task && (o.group === null || typeof o.group === "string" && o.group) ? { op: "place", task, group: o.group } : null;
-    case "routine":
-      return task && (o.result === null || o.result === "closed" || o.result === "canceled") ? { op: "routine", task, result: o.result } : null;
-    case "close":
-      return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o.tasks } : null;
-    case "reopen":
-      return { op: "reopen" };
-    default:
-      return null;
-  }
-}
-function parseBoardLog(path, text) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i) => {
-    const line = i + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o = obj;
-    if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
-    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o.date !== "string" || !isLocalDate(o.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    const op = parseOp(o);
-    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o.id, at: o.at, atMs, date: o.date, op });
-  });
-  return { entries, problems };
-}
-function serializeBoardLogEntry(e) {
-  return JSON.stringify(e);
-}
-function newBoardLogId(random = Math.random) {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
-}
-function compareEntries(a, b) {
-  if (a.atMs !== b.atMs) return a.atMs - b.atMs;
-  if (a.path !== b.path) return a.path < b.path ? -1 : 1;
-  return a.line - b.line;
-}
-function apply(board, op) {
-  switch (op.op) {
-    case "add":
-      if (!board.issues.includes(op.task)) board.issues.push(op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      board.closed = false;
-      break;
-    case "remove":
-      board.issues = board.issues.filter((id) => id !== op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      delete board.groups[op.task];
-      break;
-    case "place":
-      if (op.group === null) delete board.groups[op.task];
-      else board.groups[op.task] = op.group;
-      break;
-    case "routine":
-      if (op.result === null) delete board.routines[op.task];
-      else board.routines[op.task] = op.result;
-      break;
-    case "carry":
-      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
-      break;
-    case "close":
-    case "reopen":
-      board.closed = op.op === "close";
-      break;
-  }
-}
-function replayBoard(initial, entries) {
-  const board = { ...emptyBoard(), ...structuredClone(initial) };
-  let lastClose = null;
-  for (const e of [...entries].sort(compareEntries)) {
-    apply(board, e.op);
-    if (e.op.op === "close") lastClose = e.op.tasks;
-  }
-  const seen = lastClose;
-  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
-  return board;
-}
-
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
@@ -8811,7 +8849,7 @@ function fileKind(path) {
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8847,20 +8885,25 @@ function collectVault(input) {
     data.worklogs.push(...r.entries);
   }
   const logsByDate = /* @__PURE__ */ new Map();
+  const allLogs = [];
   for (const { path, text } of [...input.boardLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseBoardLog(path, text);
     problems.push(...r.problems);
+    allLogs.push(...r.entries);
     for (const e of r.entries) logsByDate.set(e.date, [...logsByDate.get(e.date) ?? [], e]);
   }
   for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
     const logs = logsByDate.get(date) ?? [];
+    const removed = removedTasks(logs);
     data.boards.push({
       date,
       path: dailyNotePath(date),
       board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
-      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {}
+      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e) => e.atMs)) } : {},
+      ...removed.length > 0 ? { removed } : {}
     });
   }
+  data.placements = placementHistory(initialBoards, allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseStatusLog(path, text);
     problems.push(...r.problems);
@@ -8946,7 +8989,7 @@ function reschedulePatch(issue, target, to, from = null) {
 }
 
 // src/core/format.ts
-var MINUTES_PER_DAY = 8 * 60;
+var MINUTES_PER_DAY = 24 * 60;
 function formatMinutes(minutes) {
   const sign = minutes < 0 ? "-" : "";
   let rest = Math.round(Math.abs(minutes));
@@ -9708,12 +9751,12 @@ function callMcpTool(ctx, name, args = {}) {
       const rem = unfinished(index, date, board);
       const issuesWithGroup = items.issues.map((i) => ({
         ...i,
-        group: placementOf(board, i.id, null, keys),
+        group: index.placement(date, board, i.id, null, keys),
         carried: board.carried.includes(i.id)
       }));
       const routinesWithGroup = items.routines.map((r) => ({
         ...r,
-        group: placementOf(board, r.id, r.group, keys),
+        group: index.placement(date, board, r.id, r.group, keys),
         result: board.routines[r.id] ?? null
       }));
       const byGroup = { "": { issues: [], routines: [] } };
