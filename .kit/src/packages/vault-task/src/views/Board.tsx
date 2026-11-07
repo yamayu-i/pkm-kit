@@ -1,7 +1,7 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { statusPatch } from "../core/actions";
-import { boardItems, placementOf, unfinished, type BoardState } from "../core/board";
+import { boardItems, unfinished, type BoardState } from "../core/board";
 import { addDays, formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
@@ -108,7 +108,7 @@ function NextButtons(props: { ctx: TaskContext; date: LocalDate; item: Item; sta
 }
 
 /** カード 1 枚（ADR-0009）。summary・priority・status・再生ボタン */
-function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; item: Item; keys: string[]; now: number }) {
+function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; item: Item; keys: string[]; placed: string; now: number }) {
 	const { ctx, date, board, item, now } = props;
 	const id = itemId(item);
 	const running = ctx.store.index.running(id);
@@ -145,7 +145,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			m.addItem((mi) =>
 				mi
 					.setTitle(key === UNGROUPED ? "→ 未分類" : `→ ${key}`)
-					.setChecked((board.groups[id] ?? "") === key)
+					.setChecked(props.placed === key)
 					.onClick(() => void setPlacement(ctx, date, id, key)),
 			);
 		}
@@ -243,7 +243,7 @@ function GroupBox(props: {
 			</header>
 			<div class="vt-group-cards">
 				{own.map((it) => (
-					<TaskCard ctx={ctx} date={date} board={props.board} item={it} keys={props.keys} now={props.now} key={itemId(it)} />
+					<TaskCard ctx={ctx} date={date} board={props.board} item={it} keys={props.keys} placed={props.placement(it)} now={props.now} key={itemId(it)} />
 				))}
 				{own.length === 0 && !props.children && <div class="vt-drop-hint">ここにカードを移せます</div>}
 			</div>
@@ -264,7 +264,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	// 完了したものはグループから外し、下の「完了」の欄に出す（ADR-0031）
 	const items = all.filter((it) => !isDoneItem(board, it));
 	const doneItems = all.filter((it) => isDoneItem(board, it));
-	const placement = (it: Item) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
+	const placement = (it: Item) => index.placement(date, board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
 	const left = unfinished(index, date, board);
 	const leftIssues = left.issues;
 	const sel = leftIssues.filter((i) => selected.has(i.id));
@@ -285,7 +285,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					<Icon name="layout-grid" /> グループを編集
 				</button>
 			</div>
-			{all.length === 0 && <div class="vt-empty">ボードは空です。「今日の予定」から載せるか、上のボタンで追加します</div>}
+			{all.length === 0 && <div class="vt-empty">ボードは空です。今日が実行日の issue は自動で載ります。上のボタンでも追加できます</div>}
 			{/* 未分類はグループと並べず上に置く。すべてグループに入ったら出さない */}
 			{ungrouped.length > 0 && (
 				<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} ungrouped />
@@ -321,7 +321,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					</div>
 					<div class="vt-done-cards">
 						{doneItems.map((it) => (
-							<TaskCard ctx={ctx} date={date} board={board} item={it} keys={keys} now={now} key={itemId(it)} />
+							<TaskCard ctx={ctx} date={date} board={board} item={it} keys={keys} placed={placement(it)} now={now} key={itemId(it)} />
 						))}
 					</div>
 				</section>

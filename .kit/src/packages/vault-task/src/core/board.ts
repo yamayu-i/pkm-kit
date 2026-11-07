@@ -59,6 +59,8 @@ export interface DailyBoard {
 	board: BoardState;
 	/** このボードの最新の操作の時刻（ミリ秒）。操作がなければなし */
 	latestAt?: number;
+	/** その日に外したままの issue（自動では載せ直さない。ADR-0034）。なければなし */
+	removed?: string[];
 }
 
 /** ボードに載っているもの（その日に出てくる routine も含む） */
@@ -110,10 +112,10 @@ export function pendingBoards(index: TaskIndex, boards: DailyBoard[], today: Loc
 }
 
 /**
- * カードの置き場所（グループの鍵）。ボードで移したもの → 既定（routine の group）→ 未分類（""）の順。
- * 今はないグループを指していたら未分類
+ * カードの置き場所（グループの鍵）。その日に移したもの → 前に置いた場所（remembered。null は未分類に置いた）
+ * → 既定（routine の group）→ 未分類（""）の順（ADR-0034）。今はないグループを指していたら未分類
  */
-export function placementOf(board: BoardState, id: string, fallback: string | null, keys: readonly string[]): string {
-	const key = board.groups[id] ?? fallback ?? "";
+export function placementOf(board: BoardState, id: string, fallback: string | null, keys: readonly string[], remembered?: string | null): string {
+	const key = board.groups[id] ?? (remembered !== undefined ? (remembered ?? "") : (fallback ?? ""));
 	return key !== "" && keys.includes(key) ? key : "";
 }

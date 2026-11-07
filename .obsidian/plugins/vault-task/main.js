@@ -995,68 +995,9 @@ function pendingBoards(index, boards, today) {
     return u4.issues.length > 0 || u4.routines.length > 0;
   }).sort((a3, b2) => a3.date.localeCompare(b2.date));
 }
-function placementOf(board, id, fallback, keys) {
-  const key = board.groups[id] ?? fallback ?? "";
+function placementOf(board, id, fallback, keys, remembered) {
+  const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
   return key !== "" && keys.includes(key) ? key : "";
-}
-
-// src/core/daily.ts
-var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
-function deadIssues(issues, today) {
-  const deadline = [];
-  const softDeadline = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
-    if (i3.softDeadline !== null && i3.softDeadline < today) softDeadline.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
-}
-function cautionIssues(issues, today, days = 3) {
-  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
-  const deadline = [];
-  const softDeadline = [];
-  for (const i3 of issues) {
-    if (!isActive(i3)) continue;
-    if (within(i3.deadline)) deadline.push(i3);
-    if (within(i3.softDeadline)) softDeadline.push(i3);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
-}
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
-}
-
-// src/core/effort.ts
-function prorateEffort(intervals, now) {
-  const events = [];
-  for (const iv of intervals) {
-    const to = iv.toMs ?? Math.max(now, iv.fromMs);
-    if (!(to > iv.fromMs)) continue;
-    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
-  }
-  events.sort((a3, b2) => a3.t - b2.t);
-  const result = /* @__PURE__ */ new Map();
-  const active = /* @__PURE__ */ new Map();
-  let k3 = 0;
-  let prev = 0;
-  for (let i3 = 0; i3 < events.length; ) {
-    const t3 = events[i3].t;
-    if (k3 > 0 && t3 > prev) {
-      const share = (t3 - prev) / k3;
-      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
-    }
-    for (; i3 < events.length && events[i3].t === t3; i3++) {
-      const e3 = events[i3];
-      const count = (active.get(e3.taskId) ?? 0) + e3.delta;
-      if (count === 0) active.delete(e3.taskId);
-      else active.set(e3.taskId, count);
-      k3 += e3.delta;
-      if (!result.has(e3.taskId)) result.set(e3.taskId, 0);
-    }
-    prev = t3;
-  }
-  return result;
 }
 
 // src/core/worklog.ts
@@ -1142,6 +1083,201 @@ function newWorklogId(random = Math.random) {
 function appendWorklogLine(text, line) {
   return `${text}${text.length > 0 && !text.endsWith("\n") ? "\n" : ""}${line}
 `;
+}
+
+// src/core/board-log.ts
+var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function boardLogPath(device, date) {
+  const safe = sanitizeDeviceName(device);
+  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
+  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
+}
+function nextBoardAt(nowMs, latestMs) {
+  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
+}
+function parseOp(o3) {
+  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
+  switch (o3.op) {
+    case "add":
+    case "remove":
+    case "carry":
+      return task ? { op: o3.op, task } : null;
+    case "place":
+      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
+    case "routine":
+      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
+    case "close":
+      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
+    case "reopen":
+      return { op: "reopen" };
+    default:
+      return null;
+  }
+}
+function parseBoardLog(path, text) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const op = parseOp(o3);
+    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
+  });
+  return { entries, problems };
+}
+function serializeBoardLogEntry(e3) {
+  return JSON.stringify(e3);
+}
+function newBoardLogId(random = Math.random) {
+  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
+}
+function compareEntries(a3, b2) {
+  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
+  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
+  return a3.line - b2.line;
+}
+function apply(board, op) {
+  switch (op.op) {
+    case "add":
+      if (!board.issues.includes(op.task)) board.issues.push(op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      board.closed = false;
+      break;
+    case "remove":
+      board.issues = board.issues.filter((id) => id !== op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      delete board.groups[op.task];
+      break;
+    case "place":
+      if (op.group === null) delete board.groups[op.task];
+      else board.groups[op.task] = op.group;
+      break;
+    case "routine":
+      if (op.result === null) delete board.routines[op.task];
+      else board.routines[op.task] = op.result;
+      break;
+    case "carry":
+      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
+      break;
+    case "close":
+    case "reopen":
+      board.closed = op.op === "close";
+      break;
+  }
+}
+function replayBoard(initial, entries) {
+  const board = { ...emptyBoard(), ...structuredClone(initial) };
+  let lastClose = null;
+  for (const e3 of [...entries].sort(compareEntries)) {
+    apply(board, e3.op);
+    if (e3.op.op === "close") lastClose = e3.op.tasks;
+  }
+  const seen = lastClose;
+  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
+  return board;
+}
+function removedTasks(entries) {
+  const last = /* @__PURE__ */ new Map();
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "add" || e3.op.op === "remove") last.set(e3.op.task, e3.op.op);
+  }
+  return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
+}
+function placementHistory(initial, entries) {
+  const records = [];
+  for (const [date, board] of initial) {
+    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
+  }
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "place") records.push({ task: e3.op.task, date: e3.date, atMs: e3.atMs, group: e3.op.group });
+  }
+  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
+}
+function lastPlacement(history, task, date) {
+  let found;
+  for (const r3 of history) {
+    if (r3.date > date) break;
+    if (r3.task === task) found = r3.group;
+  }
+  return found;
+}
+
+// src/core/daily.ts
+var byDate = (key) => (a3, b2) => (a3[key] ?? "").localeCompare(b2[key] ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
+function deadIssues(issues, today) {
+  const deadline = [];
+  const softDeadline = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (i3.deadline !== null && i3.deadline < today) deadline.push(i3);
+    if (i3.softDeadline !== null && i3.softDeadline < today) softDeadline.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
+}
+function cautionIssues(issues, today, days = 3) {
+  const within = (d3) => d3 !== null && diffDays(d3, today) >= 0 && diffDays(d3, today) <= days;
+  const deadline = [];
+  const softDeadline = [];
+  for (const i3 of issues) {
+    if (!isActive(i3)) continue;
+    if (within(i3.deadline)) deadline.push(i3);
+    if (within(i3.softDeadline)) softDeadline.push(i3);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
+}
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+
+// src/core/effort.ts
+function prorateEffort(intervals, now) {
+  const events = [];
+  for (const iv of intervals) {
+    const to = iv.toMs ?? Math.max(now, iv.fromMs);
+    if (!(to > iv.fromMs)) continue;
+    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+  }
+  events.sort((a3, b2) => a3.t - b2.t);
+  const result = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Map();
+  let k3 = 0;
+  let prev = 0;
+  for (let i3 = 0; i3 < events.length; ) {
+    const t3 = events[i3].t;
+    if (k3 > 0 && t3 > prev) {
+      const share = (t3 - prev) / k3;
+      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
+    }
+    for (; i3 < events.length && events[i3].t === t3; i3++) {
+      const e3 = events[i3];
+      const count = (active.get(e3.taskId) ?? 0) + e3.delta;
+      if (count === 0) active.delete(e3.taskId);
+      else active.set(e3.taskId, count);
+      k3 += e3.delta;
+      if (!result.has(e3.taskId)) result.set(e3.taskId, 0);
+    }
+    prev = t3;
+  }
+  return result;
 }
 
 // src/core/status-log.ts
@@ -1236,7 +1372,7 @@ function isDoneStatus(status) {
 
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
+  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -1339,6 +1475,19 @@ var TaskIndex = class {
   board(date) {
     return this.data.boards.find((b2) => b2.date === date);
   }
+  /**
+   * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+   */
+  toAutoAdd(date) {
+    const daily = this.board(date);
+    return scheduledOn(this.issues.values(), date, /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]));
+  }
+  /**
+   * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
+   */
+  placement(date, board, id, fallback, keys) {
+    return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
+  }
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
@@ -1368,7 +1517,7 @@ function sidebarCounts(index, today) {
   const dead = deadIssues(issues, today);
   const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
-  const scheduledToday = scheduledOn(issues, today, new Set(todayBoard.issues));
+  const scheduledToday = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
   const previousCount = pending.reduce((n2, b2) => {
     const u4 = unfinished(index, b2.date, b2.board);
@@ -1395,7 +1544,8 @@ function dueLevel(issue, due, today) {
 }
 
 // src/core/format.ts
-var MINUTES_PER_DAY = 8 * 60;
+var MINUTES_PER_DAY = 24 * 60;
+var UNIT_MINUTES = { d: MINUTES_PER_DAY, h: 60, m: 1 };
 function formatMinutes(minutes) {
   const sign = minutes < 0 ? "-" : "";
   let rest = Math.round(Math.abs(minutes));
@@ -1406,10 +1556,23 @@ function formatMinutes(minutes) {
   const parts = [d3 ? `${d3}d` : "", h3 ? `${h3}h` : "", m3 ? `${m3}m` : ""].join("");
   return sign + (parts || "0m");
 }
-function parseDaysInput(input) {
-  const m3 = /^\s*(\d+(?:\.\d+)?)\s*d?\s*$/i.exec(input);
-  if (!m3) return null;
-  return Math.round(Number(m3[1]) * MINUTES_PER_DAY);
+function parseDurationInput(input) {
+  const text = input.trim().toLowerCase();
+  if (/^\d+(?:\.\d+)?$/.test(text)) {
+    const min2 = Math.round(Number(text));
+    return min2 > 0 ? min2 : null;
+  }
+  if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
+  const seen = /* @__PURE__ */ new Set();
+  let total = 0;
+  for (const m3 of text.matchAll(/(\d+(?:\.\d+)?)\s*([dhm])/g)) {
+    const unit = m3[2];
+    if (seen.has(unit)) return null;
+    seen.add(unit);
+    total += Number(m3[1]) * UNIT_MINUTES[unit];
+  }
+  const min = Math.round(total);
+  return min > 0 ? min : null;
 }
 
 // src/obsidian/issue-editors.tsx
@@ -1961,15 +2124,15 @@ function estimateMenu(ctx, e3, current, save) {
   const m3 = new import_obsidian3.Menu();
   for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
   m3.addItem(
-    (item) => item.setTitle("\u65E5\u6570\u3067\u5165\u529B\u2026").onClick(
-      () => new PreactModal(ctx.app, "estimated\uFF08\u65E5\u6570\u30021d = 8h\uFF09", (close) => /* @__PURE__ */ u3(
+    (item) => item.setTitle("\u5165\u529B\u2026").onClick(
+      () => new PreactModal(ctx.app, "estimated\uFF08m / h / d\u30021d = 24h\uFF09", (close) => /* @__PURE__ */ u3(
         TextForm,
         {
-          initial: current === null ? "" : String(current / 480),
-          placeholder: "\u4F8B: 0.5",
+          initial: current === null ? "" : formatMinutes(current),
+          placeholder: "\u4F8B: 30m / 2h / 1d / 1h30m",
           onSubmit: (v3) => {
-            const min = parseDaysInput(v3);
-            if (min === null) return ctx.report(`\u65E5\u6570\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
+            const min = parseDurationInput(v3);
+            if (min === null) return ctx.report(`\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
             close();
             save({ estimated: min });
           }
@@ -3059,117 +3222,6 @@ var StatusUndo = class {
 // src/obsidian/store.ts
 var import_obsidian10 = require("obsidian");
 
-// src/core/board-log.ts
-var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function boardLogPath(device, date) {
-  const safe = sanitizeDeviceName(device);
-  if (!safe) throw new Error("\u7AEF\u672B\u540D\u304C\u7A7A\u3067\u3059");
-  return `board/${safe}/${date.slice(0, 7)}.jsonl`;
-}
-function nextBoardAt(nowMs, latestMs) {
-  return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
-}
-function parseOp(o3) {
-  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
-  switch (o3.op) {
-    case "add":
-    case "remove":
-    case "carry":
-      return task ? { op: o3.op, task } : null;
-    case "place":
-      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
-    case "routine":
-      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
-    case "close":
-      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
-    case "reopen":
-      return { op: "reopen" };
-    default:
-      return null;
-  }
-}
-function parseBoardLog(path, text) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text.split("\n").forEach((raw, i3) => {
-    const line = i3 + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o3 = obj;
-    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
-    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    const op = parseOp(o3);
-    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
-  });
-  return { entries, problems };
-}
-function serializeBoardLogEntry(e3) {
-  return JSON.stringify(e3);
-}
-function newBoardLogId(random = Math.random) {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-  return `bo_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
-}
-function compareEntries(a3, b2) {
-  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
-  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
-  return a3.line - b2.line;
-}
-function apply(board, op) {
-  switch (op.op) {
-    case "add":
-      if (!board.issues.includes(op.task)) board.issues.push(op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      board.closed = false;
-      break;
-    case "remove":
-      board.issues = board.issues.filter((id) => id !== op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      delete board.groups[op.task];
-      break;
-    case "place":
-      if (op.group === null) delete board.groups[op.task];
-      else board.groups[op.task] = op.group;
-      break;
-    case "routine":
-      if (op.result === null) delete board.routines[op.task];
-      else board.routines[op.task] = op.result;
-      break;
-    case "carry":
-      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
-      break;
-    case "close":
-    case "reopen":
-      board.closed = op.op === "close";
-      break;
-  }
-}
-function replayBoard(initial, entries) {
-  const board = { ...emptyBoard(), ...structuredClone(initial) };
-  let lastClose = null;
-  for (const e3 of [...entries].sort(compareEntries)) {
-    apply(board, e3.op);
-    if (e3.op.op === "close") lastClose = e3.op.tasks;
-  }
-  const seen = lastClose;
-  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
-  return board;
-}
-
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
 var DEFAULT_LABEL_COLOR = "#d0d0d0";
@@ -3221,7 +3273,7 @@ function fileKind(path) {
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -3257,20 +3309,25 @@ function collectVault(input) {
     data.worklogs.push(...r3.entries);
   }
   const logsByDate = /* @__PURE__ */ new Map();
+  const allLogs = [];
   for (const { path, text } of [...input.boardLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
     const r3 = parseBoardLog(path, text);
     problems.push(...r3.problems);
+    allLogs.push(...r3.entries);
     for (const e3 of r3.entries) logsByDate.set(e3.date, [...logsByDate.get(e3.date) ?? [], e3]);
   }
   for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
     const logs = logsByDate.get(date) ?? [];
+    const removed = removedTasks(logs);
     data.boards.push({
       date,
       path: dailyNotePath(date),
       board: replayBoard(initialBoards.get(date) ?? emptyBoard(), logs),
-      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e3) => e3.atMs)) } : {}
+      ...logs.length > 0 ? { latestAt: Math.max(...logs.map((e3) => e3.atMs)) } : {},
+      ...removed.length > 0 ? { removed } : {}
     });
   }
+  data.placements = placementHistory(initialBoards, allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
     const r3 = parseStatusLog(path, text);
     problems.push(...r3.problems);
@@ -4231,7 +4288,7 @@ function TaskCard(props) {
     const m3 = new import_obsidian14.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
-        (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked((board.groups[id] ?? "") === key).onClick(() => void setPlacement(ctx, date, id, key))
+        (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
       );
     }
     m3.addSeparator();
@@ -4306,7 +4363,7 @@ function GroupBox(props) {
           runningIds.length > 0 ? /* @__PURE__ */ u3("button", { class: "vt-play is-running", title: "\u3053\u306E\u30B0\u30EB\u30FC\u30D7\u306E\u8A18\u9332\u3092\u3059\u3079\u3066\u6B62\u3081\u308B", onClick: () => void stopTimer(ctx, runningIds), children: /* @__PURE__ */ u3(Icon, { name: "square" }) }) : /* @__PURE__ */ u3("button", { class: "vt-play", title: "\u3053\u306E\u30B0\u30EB\u30FC\u30D7\u3092\u307E\u3068\u3081\u3066\u8A18\u9332\u3059\u308B", disabled: ids.length === 0, onClick: () => void startTimer(ctx, ids), children: /* @__PURE__ */ u3(Icon, { name: "play" }) })
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-group-cards", children: [
-          own.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board: props.board, item: it, keys: props.keys, now: props.now }, itemId(it))),
+          own.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board: props.board, item: it, keys: props.keys, placed: props.placement(it), now: props.now }, itemId(it))),
           own.length === 0 && !props.children && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: "\u3053\u3053\u306B\u30AB\u30FC\u30C9\u3092\u79FB\u305B\u307E\u3059" })
         ] }),
         props.children && /* @__PURE__ */ u3("div", { class: "vt-subgroups", children: props.children })
@@ -4324,7 +4381,7 @@ function Board(props) {
   const all = [...issues.map((issue) => ({ kind: "issue", issue })), ...routines.map((routine) => ({ kind: "routine", routine }))];
   const items = all.filter((it) => !isDoneItem(board, it));
   const doneItems = all.filter((it) => isDoneItem(board, it));
-  const placement = (it) => placementOf(board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
+  const placement = (it) => index.placement(date, board, itemId(it), it.kind === "routine" ? it.routine.group : null, keys);
   const left = unfinished(index, date, board);
   const leftIssues = left.issues;
   const sel = leftIssues.filter((i3) => selected.has(i3.id));
@@ -4349,7 +4406,7 @@ function Board(props) {
         " \u30B0\u30EB\u30FC\u30D7\u3092\u7DE8\u96C6"
       ] })
     ] }),
-    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u300C\u4ECA\u65E5\u306E\u4E88\u5B9A\u300D\u304B\u3089\u8F09\u305B\u308B\u304B\u3001\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u8FFD\u52A0\u3057\u307E\u3059" }),
+    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u4ECA\u65E5\u304C\u5B9F\u884C\u65E5\u306E issue \u306F\u81EA\u52D5\u3067\u8F09\u308A\u307E\u3059\u3002\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u3082\u8FFD\u52A0\u3067\u304D\u307E\u3059" }),
     ungrouped.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now, ungrouped: true }),
     /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
       GroupBox,
@@ -4371,7 +4428,7 @@ function Board(props) {
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u5B8C\u4E86" }),
         /* @__PURE__ */ u3("span", { class: "vt-count", children: doneItems.length })
       ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-done-cards", children: doneItems.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, item: it, keys, now }, itemId(it))) })
+      /* @__PURE__ */ u3("div", { class: "vt-done-cards", children: doneItems.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, item: it, keys, placed: placement(it), now }, itemId(it))) })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-unfinished", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
@@ -4435,7 +4492,6 @@ var STEPS = [
   { key: "dead", label: "\u671F\u9650\u5207\u308C", icon: "alarm-clock-off" },
   { key: "previous", label: "\u524D\u56DE\u306E\u30DC\u30FC\u30C9", icon: "history" },
   { key: "caution", label: "\u671F\u9650\u304C\u8FD1\u3044", icon: "alert-triangle" },
-  { key: "scheduled", label: "\u4ECA\u65E5\u306E\u4E88\u5B9A", icon: "calendar-check" },
   { key: "board", label: "\u30DC\u30FC\u30C9", icon: "layout-dashboard" }
 ];
 function DueStep(props) {
@@ -4509,33 +4565,6 @@ function PreviousBoard(props) {
     )
   ] });
 }
-function ScheduledStep(props) {
-  const { ctx, issues, today } = props;
-  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
-  const sel = issues.filter((i3) => selected.has(i3.id));
-  const done = () => setSelected(/* @__PURE__ */ new Set());
-  return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u4ECA\u65E5\u304C\u5B9F\u884C\u65E5" }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length }),
-      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      /* @__PURE__ */ u3("button", { class: "vt-button is-text", disabled: issues.length === 0, onClick: () => void addToBoard(ctx, today, issues.map((i3) => i3.id)), children: "\u3059\u3079\u3066\u30DC\u30FC\u30C9\u3078" })
-    ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "soft_deadline", "deadline", "estimated"] }),
-    /* @__PURE__ */ u3(
-      ActionBar,
-      {
-        count: sel.length,
-        actions: [
-          { label: "Move to Task Board", icon: "layout-dashboard", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
-          { label: "Move Do Date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled", today).then(done) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
-        ]
-      }
-    )
-  ] });
-}
 function DailyView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -4547,7 +4576,7 @@ function DailyView(props) {
   const pending = pendingBoards(index, index.data.boards, today);
   const caution = cautionIssues(issues, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
-  const scheduled = scheduledOn(issues, today, new Set(todayBoard.issues));
+  const toAdd = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
   const counts = {
     dead: dead.deadline.length + dead.softDeadline.length,
@@ -4556,15 +4585,23 @@ function DailyView(props) {
       return n2 + u4.issues.length + u4.routines.length;
     }, 0),
     caution: caution.deadline.length + caution.softDeadline.length,
-    scheduled: scheduled.length,
     board: todayLeft.issues.length + todayLeft.routines.length
   };
   const [passed, setPassed] = d2(/* @__PURE__ */ new Set());
   const [manual, setManual] = d2(null);
-  const auto = ["dead", "previous", "caution", "scheduled"].find((s3) => counts[s3] > 0 && !passed.has(s3)) ?? "board";
+  const auto = ["dead", "previous", "caution"].find((s3) => counts[s3] > 0 && !passed.has(s3)) ?? "board";
   const step = manual ?? auto;
   h2(() => {
     if (manual !== null && manual !== "caution" && manual !== "board" && counts[manual] === 0) setManual(null);
+  });
+  const adding = A2(/* @__PURE__ */ new Set());
+  h2(() => {
+    const ids = toAdd.map((i3) => i3.id).filter((id) => !adding.current.has(`${today}/${id}`));
+    if (ids.length === 0) return;
+    for (const id of ids) adding.current.add(`${today}/${id}`);
+    void addToBoard(ctx, today, ids).finally(() => {
+      for (const id of ids) adding.current.delete(`${today}/${id}`);
+    });
   });
   const closing = A2(/* @__PURE__ */ new Set());
   h2(() => {
@@ -4596,7 +4633,6 @@ function DailyView(props) {
     step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "\u671F\u9650\u5207\u308C\u306F\u3042\u308A\u307E\u305B\u3093" }),
     step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u7247\u4ED8\u3044\u3066\u3044\u306A\u3044\u30DC\u30FC\u30C9\u306F\u3042\u308A\u307E\u305B\u3093" })),
     step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "3 \u65E5\u4EE5\u5185\u306E\u671F\u9650\u306F\u3042\u308A\u307E\u305B\u3093", canScheduleToday: true }),
-    step === "scheduled" && /* @__PURE__ */ u3(ScheduledStep, { ctx, issues: scheduled, today }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
       step === "dead" || step === "previous" ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: next, children: "\u3042\u3068\u3067\uFF08\u30B9\u30AD\u30C3\u30D7\uFF09" }) : /* @__PURE__ */ u3("span", {}),
@@ -5413,14 +5449,15 @@ function RoutineForm(props) {
   const [group, setGroup] = d2("");
   const [estimated, setEstimated] = d2("");
   const read = readRepeatDraft(draft);
-  const error = !summary.trim() ? "summary \u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044" : read.error;
+  const minutes = estimated.trim() ? parseDurationInput(estimated) : null;
+  const error = !summary.trim() ? "summary \u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044" : minutes === null && estimated.trim() ? `estimated \u3092\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${estimated.trim()}` : read.error;
   return /* @__PURE__ */ u3(
     "form",
     {
       class: "vt-worklog-form",
       onSubmit: (e3) => {
         e3.preventDefault();
-        if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
+        if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: minutes });
       },
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
@@ -5437,8 +5474,8 @@ function RoutineForm(props) {
             ] })
           ] }),
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "estimated\uFF08\u5206\u30FB\u4EFB\u610F\uFF09" }),
-            /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "number", min: 0, value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
+            /* @__PURE__ */ u3("span", { children: "estimated\uFF08\u4EFB\u610F\uFF09" }),
+            /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "text", value: estimated, placeholder: "30m / 2h / 1d", onInput: (e3) => setEstimated(e3.currentTarget.value) })
           ] })
         ] }),
         error !== null && summary && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),

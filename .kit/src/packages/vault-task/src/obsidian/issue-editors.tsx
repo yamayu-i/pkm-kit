@@ -1,6 +1,6 @@
 import { Menu } from "obsidian";
 import { duePatch, scheduledPatch, statusPatch } from "../core/actions";
-import { formatMinutes, parseDaysInput } from "../core/format";
+import { formatMinutes, parseDurationInput } from "../core/format";
 import { PRIORITIES, STATUSES, STATUS_DETAIL_MAX, type Issue, type Priority } from "../core/schema";
 import { CalendarForm, DateForm, TextForm } from "../ui/forms";
 import { LabelForm } from "../ui/LabelForm";
@@ -69,14 +69,14 @@ export function estimateMenu(ctx: TaskContext, e: MouseEvent, current: number | 
 	const m = new Menu();
 	for (const min of ESTIMATE_PRESETS) m.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
 	m.addItem((item) =>
-		item.setTitle("日数で入力…").onClick(() =>
-			new PreactModal(ctx.app, "estimated（日数。1d = 8h）", (close) => (
+		item.setTitle("入力…").onClick(() =>
+			new PreactModal(ctx.app, "estimated（m / h / d。1d = 24h）", (close) => (
 				<TextForm
-					initial={current === null ? "" : String(current / 480)}
-					placeholder="例: 0.5"
+					initial={current === null ? "" : formatMinutes(current)}
+					placeholder="例: 30m / 2h / 1d / 1h30m"
 					onSubmit={(v) => {
-						const min = parseDaysInput(v);
-						if (min === null) return ctx.report(`日数として読めません: ${v}`);
+						const min = parseDurationInput(v);
+						if (min === null) return ctx.report(`時間として読めません: ${v}`);
 						close();
 						save({ estimated: min });
 					}}

@@ -1,5 +1,6 @@
 import { diffDays, localToday, type LocalDate } from "./dates";
-import { emptyBoard, pendingBoards, unfinished, type DailyBoard } from "./board";
+import { emptyBoard, pendingBoards, placementOf, unfinished, type BoardState, type DailyBoard } from "./board";
+import { lastPlacement, type PlacementRecord } from "./board-log";
 import { deadIssues, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { GroupDef } from "./groups";
@@ -21,10 +22,12 @@ export interface VaultData {
 	groups: GroupDef[];
 	/** status の記録（古い順。ADR-0031） */
 	statusLogs: StatusLogEntry[];
+	/** カードを置いた記録（ボードの日付 → 時刻の順。ADR-0034） */
+	placements: PlacementRecord[];
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [] };
+	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -148,6 +151,21 @@ export class TaskIndex {
 		return this.data.boards.find((b) => b.date === date);
 	}
 
+	/**
+	 * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+	 */
+	toAutoAdd(date: LocalDate): Issue[] {
+		const daily = this.board(date);
+		return scheduledOn(this.issues.values(), date, new Set([...(daily?.board.issues ?? []), ...(daily?.removed ?? [])]));
+	}
+
+	/**
+	 * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
+	 */
+	placement(date: LocalDate, board: BoardState, id: string, fallback: string | null, keys: readonly string[]): string {
+		return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
+	}
+
 	/** 記録中（to が空）の worklog */
 	running(taskId?: string): WorklogEntry[] {
 		return this.data.worklogs.filter((l) => l.toMs === null && (taskId === undefined || l.taskId === taskId));
@@ -193,7 +211,7 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 	const dead = deadIssues(issues, today);
 	const pending = pendingBoards(index, index.data.boards, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
-	const scheduledToday = scheduledOn(issues, today, new Set(todayBoard.issues));
+	const scheduledToday = index.toAutoAdd(today);
 	const todayLeft = unfinished(index, today, todayBoard);
 	const previousCount = pending.reduce((n, b) => {
 		const u = unfinished(index, b.date, b.board);

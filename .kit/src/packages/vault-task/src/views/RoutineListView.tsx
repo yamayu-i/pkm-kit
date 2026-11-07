@@ -1,7 +1,7 @@
 import { Keymap } from "obsidian";
 import { useState } from "preact/hooks";
 import { localToday } from "../core/dates";
-import { formatMinutes } from "../core/format";
+import { formatMinutes, parseDurationInput } from "../core/format";
 import { groupKeys } from "../core/groups";
 import { routineOccursOn } from "../core/index";
 import { describeRepeat } from "../core/repeat";
@@ -20,13 +20,14 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 	const [group, setGroup] = useState("");
 	const [estimated, setEstimated] = useState("");
 	const read = readRepeatDraft(draft);
-	const error = !summary.trim() ? "summary を入れてください" : read.error;
+	const minutes = estimated.trim() ? parseDurationInput(estimated) : null;
+	const error = !summary.trim() ? "summary を入れてください" : minutes === null && estimated.trim() ? `estimated を時間として読めません: ${estimated.trim()}` : read.error;
 	return (
 		<form
 			class="vt-worklog-form"
 			onSubmit={(e) => {
 				e.preventDefault();
-				if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: Number(estimated) > 0 ? Number(estimated) : null });
+				if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: minutes });
 			}}
 		>
 			<label class="vt-text-field">
@@ -45,8 +46,8 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 					</select>
 				</label>
 				<label class="vt-text-field">
-					<span>estimated（分・任意）</span>
-					<input class="vt-small-input" type="number" min={0} value={estimated} onInput={(e) => setEstimated(e.currentTarget.value)} />
+					<span>estimated（任意）</span>
+					<input class="vt-small-input" type="text" value={estimated} placeholder="30m / 2h / 1d" onInput={(e) => setEstimated(e.currentTarget.value)} />
 				</label>
 			</div>
 			{error !== null && summary && <div class="vt-error">{error}</div>}

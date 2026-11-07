@@ -1,5 +1,7 @@
-/** 1 日 = 8 時間で換算する（ADR-0012） */
-export const MINUTES_PER_DAY = 8 * 60;
+/** 1 日 = 24 時間で換算する（ADR-0034） */
+export const MINUTES_PER_DAY = 24 * 60;
+
+const UNIT_MINUTES: Record<string, number> = { d: MINUTES_PER_DAY, h: 60, m: 1 };
 
 /** 分を `2d3h33m` の形にする。0 は `0m` */
 export function formatMinutes(minutes: number): string {
@@ -13,9 +15,25 @@ export function formatMinutes(minutes: number): string {
 	return sign + (parts || "0m");
 }
 
-/** estimated の入力欄の値（日数。`0.5` / `0.5d`）を分にする。読めなければ null */
-export function parseDaysInput(input: string): number | null {
-	const m = /^\s*(\d+(?:\.\d+)?)\s*d?\s*$/i.exec(input);
-	if (!m) return null;
-	return Math.round(Number(m[1]) * MINUTES_PER_DAY);
+/**
+ * estimated の入力欄の値を分にする（ADR-0034）。`1m` / `2h` / `1d` / `0.5d` / `2d3h33m` / `1h 30m` を読む。
+ * 単位のない数字だけなら分。読めないもの、同じ単位が 2 回あるもの、0 以下は null
+ */
+export function parseDurationInput(input: string): number | null {
+	const text = input.trim().toLowerCase();
+	if (/^\d+(?:\.\d+)?$/.test(text)) {
+		const min = Math.round(Number(text));
+		return min > 0 ? min : null;
+	}
+	if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
+	const seen = new Set<string>();
+	let total = 0;
+	for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*([dhm])/g)) {
+		const unit = m[2]!;
+		if (seen.has(unit)) return null;
+		seen.add(unit);
+		total += Number(m[1]) * UNIT_MINUTES[unit]!;
+	}
+	const min = Math.round(total);
+	return min > 0 ? min : null;
 }
