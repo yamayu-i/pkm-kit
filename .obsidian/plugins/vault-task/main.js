@@ -759,7 +759,7 @@ function parseMember(path, fm) {
   const nickname = r3.string("nickname") || name;
   const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
   if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, created: r3.datetime("created") }, problems: r3.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
 }
 
 // src/core/issue-file.ts
@@ -2024,6 +2024,47 @@ function memberExactly(m3, query) {
 function sortMembers(members) {
   return [...members].sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
 }
+var MEMBER_SORTS = [
+  { key: "id", label: "ID" },
+  { key: "nickname", label: "nickname" },
+  { key: "name", label: "name" },
+  { key: "alias", label: "alias" },
+  { key: "delegated", label: "\u59D4\u4EFB\u4E2D\u306E\u6570" },
+  { key: "created", label: "created" }
+];
+function defaultMemberQuery() {
+  return { text: "", labels: [], sort: "id", desc: false };
+}
+function sortValue(m3, key, delegated) {
+  switch (key) {
+    case "id":
+      return Number(m3.id.slice(2));
+    case "nickname":
+      return m3.nickname;
+    case "name":
+      return m3.name;
+    case "alias":
+      return m3.alias;
+    case "delegated":
+      return delegated.get(m3.id) ?? 0;
+    case "created": {
+      const t3 = m3.created === null ? Number.NaN : Date.parse(m3.created);
+      return Number.isNaN(t3) ? null : t3;
+    }
+  }
+}
+function queryMembers(members, q2, delegated) {
+  const byId = (a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true });
+  return [...members].filter((m3) => memberMatches(m3, q2.text) && q2.labels.every((l3) => m3.labels.includes(l3))).sort((a3, b2) => {
+    const va = sortValue(a3, q2.sort, delegated);
+    const vb = sortValue(b2, q2.sort, delegated);
+    if (va === vb) return byId(a3, b2);
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    const c3 = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "ja");
+    return q2.desc ? -c3 : c3;
+  });
+}
 
 // src/obsidian/modals.ts
 var PreactModal = class extends import_obsidian2.Modal {
@@ -2804,7 +2845,11 @@ function MemberHeader(props) {
     /* @__PURE__ */ u3("section", { class: "vt-card vt-member-fields", children: [
       /* @__PURE__ */ u3(MemberField, { label: "nickname", field: "nickname", value: member.nickname, hint: "\u81EA\u5206\u304C\u547C\u3093\u3067\u3044\u308B\u547C\u3073\u540D\u3002\u7A7A\u306B\u3059\u308B\u3068 name \u3092\u4F7F\u3046", save }),
       /* @__PURE__ */ u3(MemberField, { label: "name", field: "name", value: member.name, hint: "\u672C\u540D\uFF08\u59D3\u30FB\u540D\uFF09", required: true, save }),
-      /* @__PURE__ */ u3(MemberField, { label: "alias", field: "alias", value: member.alias, hint: `\u59D4\u4EFB\u5148\u3092\u9078\u3076\u3068\u304D\u306B @${member.alias} \u3067\u63A2\u305B\u308B\u3002\u7A7A\u306B\u3059\u308B\u3068 ID \u3092\u4F7F\u3046`, save })
+      /* @__PURE__ */ u3(MemberField, { label: "alias", field: "alias", value: member.alias, hint: `\u59D4\u4EFB\u5148\u3092\u9078\u3076\u3068\u304D\u306B @${member.alias} \u3067\u63A2\u305B\u308B\u3002\u7A7A\u306B\u3059\u308B\u3068 ID \u3092\u4F7F\u3046`, save }),
+      /* @__PURE__ */ u3("div", { class: "vt-member-labels", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
+        /* @__PURE__ */ u3(LabelsField, { ctx, labels: member.labels, index, save })
+      ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(DelegatedIssues, { ctx, issues }) }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" })
@@ -3849,7 +3894,7 @@ function labelColorError(color) {
 }
 function labelUsage(index) {
   const usage = /* @__PURE__ */ new Map();
-  for (const item of [...index.issues.values(), ...index.routines.values()]) {
+  for (const item of [...index.issues.values(), ...index.routines.values(), ...index.members.values()]) {
     for (const l3 of item.labels) usage.set(l3, (usage.get(l3) ?? 0) + 1);
   }
   return usage;
@@ -4013,7 +4058,7 @@ var TaskWriter = class {
     await this.writeLabelsFile(labels);
   }
   /**
-   * Labels 画面の保存（ADR-0024）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+   * Labels 画面の保存（ADR-0024, 0036）。改名した label が付いた issue・routine・member を書き換えてから labels.json を書く。
    * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
    */
   async saveLabels(plan) {
@@ -4021,7 +4066,7 @@ var TaskWriter = class {
     const { index } = this.store;
     assertUnused(plan.removed, labelUsage(index));
     if (plan.renames.size > 0) {
-      const targets = [...index.issues.values(), ...index.routines.values()].filter((x2) => x2.labels.some((l3) => plan.renames.has(l3)));
+      const targets = [...index.issues.values(), ...index.routines.values(), ...index.members.values()].filter((x2) => x2.labels.some((l3) => plan.renames.has(l3)));
       for (const { path } of targets) {
         await this.app.fileManager.processFrontMatter(this.file(path), (fm) => {
           const next = renameLabelField(fm.label, plan.renames);
@@ -5095,7 +5140,7 @@ function LabelManagerView(props) {
                 count: drafts.length,
                 onMove: (n2) => update(move(drafts, i3, n2)),
                 onDelete: () => update(drafts.filter((x2) => x2.key !== d3.key)),
-                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
+                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine / member \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
               }
             )
           ] }),
@@ -5117,14 +5162,27 @@ function LabelManagerView(props) {
     ] }),
     dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
       "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
-      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
+      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine / member \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
     ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue \u3068 routine \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue\u30FBroutine\u30FBmember \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine / member \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
   ] });
 }
 
 // src/views/MemberListView.tsx
 var import_obsidian16 = require("obsidian");
+
+// src/ui/FilterChip.tsx
+function FilterChip(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
+    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
+    props.label
+  ] });
+}
+function toggle(list, v3) {
+  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+}
+
+// src/views/MemberListView.tsx
 function MemberForm(props) {
   const [name, setName] = d2("");
   return /* @__PURE__ */ u3(
@@ -5150,13 +5208,16 @@ function MemberListView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
   const index = ctx.store.index;
-  const [query, setQuery] = d2("");
-  const all = sortMembers(index.members.values());
-  const members = all.filter((m3) => memberMatches(m3, query));
+  const [q2, setQ] = d2(defaultMemberQuery);
+  const set = (patch) => setQ({ ...q2, ...patch });
   const delegated = /* @__PURE__ */ new Map();
   for (const issue of index.issues.values()) {
     if (issue.delegatedTo !== null && !isDoneStatus(issue.status)) delegated.set(issue.delegatedTo, (delegated.get(issue.delegatedTo) ?? 0) + 1);
   }
+  const total = index.members.size;
+  const members = queryMembers(index.members.values(), q2, delegated);
+  const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
+  const labels = index.data.labels.map((l3) => l3.name);
   const create = () => new PreactModal(ctx.app, "member \u3092\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
     MemberForm,
     {
@@ -5169,24 +5230,40 @@ function MemberListView(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Members" }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", children: all.length }),
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: total }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: create, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
         " member \u3092\u4F5C\u6210"
       ] })
     ] }),
-    /* @__PURE__ */ u3("label", { class: "vt-search", children: [
-      /* @__PURE__ */ u3(Icon, { name: "search" }),
-      /* @__PURE__ */ u3("input", { type: "search", placeholder: "@alias\u30FBnickname\u30FBname\u30FBID \u3067\u691C\u7D22", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) })
+    /* @__PURE__ */ u3("section", { class: "vt-card vt-filters", children: [
+      /* @__PURE__ */ u3("label", { class: "vt-search", children: [
+        /* @__PURE__ */ u3(Icon, { name: "search" }),
+        /* @__PURE__ */ u3("input", { type: "search", placeholder: "@alias\u30FBnickname\u30FBname\u30FBID \u3067\u691C\u7D22", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
+      ] }),
+      labels.length > 0 && /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
+        labels.map((l3) => /* @__PURE__ */ u3(FilterChip, { label: l3, on: q2.labels.includes(l3), onClick: () => set({ labels: toggle(q2.labels, l3) }) }))
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u4E26\u3073\u66FF\u3048" }),
+        /* @__PURE__ */ u3("select", { class: "dropdown", value: q2.sort, onChange: (e3) => set({ sort: e3.currentTarget.value }), children: MEMBER_SORTS.map((s3) => /* @__PURE__ */ u3("option", { value: s3.key, children: s3.label })) }),
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "\u964D\u9806" : "\u6607\u9806", "aria-label": q2.desc ? "\u964D\u9806" : "\u6607\u9806", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
+        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => setQ(defaultMemberQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
+      ] })
     ] }),
-    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "member \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002issue \u3092\u59D4\u4EFB\u3059\u308B\u76F8\u624B\u3092\u767B\u9332\u3067\u304D\u307E\u3059" }),
-    all.length > 0 && members.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u4E00\u81F4\u3059\u308B member \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    total === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "member \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002issue \u3092\u59D4\u4EFB\u3059\u308B\u76F8\u624B\u3092\u767B\u9332\u3067\u304D\u307E\u3059" }),
+    total > 0 && members.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u6761\u4EF6\u306B\u5408\u3046 member \u306F\u3042\u308A\u307E\u305B\u3093" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: members.map((m3) => {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }) }),
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
+          /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
+          m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
+        ] }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", title: "\u59D4\u4EFB\u4E2D\uFF08closed / canceled \u3067\u306A\u3044\uFF09\u306E issue \u306E\u6570", children: [
           "\u59D4\u4EFB\u4E2D ",
           count
@@ -5206,7 +5283,7 @@ function defaultQuery() {
 function nextScheduled(issue, today) {
   return issue.scheduled.find((d3) => d3 >= today) ?? null;
 }
-function sortValue(issue, key, today) {
+function sortValue2(issue, key, today) {
   switch (key) {
     case "id":
       return Number(issue.id.slice(2));
@@ -5239,8 +5316,8 @@ function queryIssues(issues, q2, today) {
     return words.every((w3) => hay.includes(w3));
   });
   return out.sort((a3, b2) => {
-    const va = sortValue(a3, q2.sort, today);
-    const vb = sortValue(b2, q2.sort, today);
+    const va = sortValue2(a3, q2.sort, today);
+    const vb = sortValue2(b2, q2.sort, today);
     if (va === vb) return a3.id.localeCompare(b2.id, "en", { numeric: true });
     if (va === null) return 1;
     if (vb === null) return -1;
@@ -5261,15 +5338,6 @@ var SORTS = [
   { key: "deadline", label: "deadline" },
   { key: "created", label: "\u4F5C\u6210\u65E5" }
 ];
-function toggle(list, v3) {
-  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
-}
-function FilterChip(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
-    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
-    props.label
-  ] });
-}
 function IssueListView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);

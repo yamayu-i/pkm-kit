@@ -8,7 +8,7 @@ import { linkProps } from "../ui/a11y";
 import { StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { useStoreVersion } from "../ui/hooks";
-import { formatDateTime } from "./IssueHeader";
+import { LabelsField, formatDateTime } from "./IssueHeader";
 
 /**
  * その場で編集する 1 行の欄。Enter か、欄を離れたときに保存する。Escape で元に戻す。
@@ -94,6 +94,10 @@ export function MemberHeader(props: { ctx: TaskContext; path: string }) {
 				<MemberField label="nickname" field="nickname" value={member.nickname} hint="自分が呼んでいる呼び名。空にすると name を使う" save={save} />
 				<MemberField label="name" field="name" value={member.name} hint="本名（姓・名）" required save={save} />
 				<MemberField label="alias" field="alias" value={member.alias} hint={`委任先を選ぶときに @${member.alias} で探せる。空にすると ID を使う`} save={save} />
+				<div class="vt-member-labels">
+					<span class="vt-field-label">label</span>
+					<LabelsField ctx={ctx} labels={member.labels} index={index} save={save} />
+				</div>
 			</section>
 			<section class="vt-card">
 				<DelegatedIssues ctx={ctx} issues={issues} />

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { newMemberContent } from "../src/core/issue-file";
-import { memberExactly, memberLabel, memberMatches, memberQuery } from "../src/core/member";
+import { defaultMemberQuery, memberExactly, memberLabel, memberMatches, memberQuery, queryMembers, type MemberQuery } from "../src/core/member";
 import { parseMember, type Member } from "../src/core/schema";
 
-const member = (over: Partial<Member> = {}): Member => ({ path: "member/m-3.md", id: "m-3", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", created: null, ...over });
+const member = (over: Partial<Member> = {}): Member => ({ path: "member/m-3.md", id: "m-3", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", labels: [], created: null, ...over });
 
 describe("parseMember（ADR-0035）", () => {
 	it("name / nickname / alias を読む", () => {
@@ -60,5 +60,48 @@ describe("newMemberContent（ADR-0035）", () => {
 		const created = "2026-11-07T09:00:00+09:00";
 		const fm = parse(/^---\n([\s\S]*?)\n---/.exec(newMemberContent("m-4", "山田", created))![1]!) as Record<string, unknown>;
 		expect(fm).toEqual({ schema: 1, type: "member", id: "m-4", name: "山田", nickname: "山田", alias: "m-4", created, updated: created });
+	});
+});
+
+describe("member の label（ADR-0036）", () => {
+	it("label を issue と同じ規則で読む（重複は 1 つ、なければ空）", () => {
+		expect(parseMember("member/m-1.md", { type: "member", id: "m-1", name: "a", label: ["仕事", "取引先", "仕事"] }).value?.labels).toEqual(["仕事", "取引先"]);
+		expect(parseMember("member/m-1.md", { type: "member", id: "m-1", name: "a", label: "仕事" }).value?.labels).toEqual(["仕事"]);
+		expect(parseMember("member/m-1.md", { type: "member", id: "m-1", name: "a" }).value?.labels).toEqual([]);
+	});
+});
+
+describe("Members の一覧の絞り込みと並べ替え（ADR-0036）", () => {
+	const ms = [
+		member({ id: "m-1", path: "member/m-1.md", name: "佐藤", nickname: "さとう", alias: "sato", labels: ["仕事"], created: "2026-03-01T09:00:00+09:00" }),
+		member({ id: "m-2", path: "member/m-2.md", name: "あべ", nickname: "あべちゃん", alias: "abe", labels: ["仕事", "取引先"], created: null }),
+		member({ id: "m-10", path: "member/m-10.md", name: "いとう", nickname: "いっちゃん", alias: "ito", labels: [], created: "2026-01-01T09:00:00+09:00" }),
+	];
+	const delegated = new Map([["m-10", 3], ["m-1", 1]]);
+	const ids = (q: Partial<MemberQuery>) => queryMembers(ms, { ...defaultMemberQuery(), ...q }, delegated).map((m) => m.id);
+
+	it("既定は ID の番号順（昇順）", () => {
+		expect(ids({})).toEqual(["m-1", "m-2", "m-10"]);
+	});
+
+	it("label はすべて持つものだけ（AND）", () => {
+		expect(ids({ labels: ["仕事"] })).toEqual(["m-1", "m-2"]);
+		expect(ids({ labels: ["仕事", "取引先"] })).toEqual(["m-2"]);
+	});
+
+	it("検索欄と label を同時に使える", () => {
+		expect(ids({ text: "sato", labels: ["仕事"] })).toEqual(["m-1"]);
+	});
+
+	it("nickname / name / alias / 委任中の数で並べ替え、降順にもできる", () => {
+		expect(ids({ sort: "nickname" })).toEqual(["m-2", "m-10", "m-1"]);
+		expect(ids({ sort: "alias" })).toEqual(["m-2", "m-10", "m-1"]);
+		expect(ids({ sort: "name", desc: true })).toEqual(["m-1", "m-10", "m-2"]);
+		expect(ids({ sort: "delegated", desc: true })).toEqual(["m-10", "m-1", "m-2"]);
+	});
+
+	it("created がないものは、並び順にかかわらず後ろ", () => {
+		expect(ids({ sort: "created" })).toEqual(["m-10", "m-1", "m-2"]);
+		expect(ids({ sort: "created", desc: true })).toEqual(["m-1", "m-10", "m-2"]);
 	});
 });

@@ -63,6 +63,8 @@ export interface Member {
 	nickname: string;
 	/** 検索と候補に出す短い呼び方。先頭の @ は付けない */
 	alias: string;
+	/** issue / routine と共用の label（ADR-0036） */
+	labels: string[];
 	created: string | null;
 }
 
@@ -249,5 +251,5 @@ export function parseMember(path: string, fm: Frontmatter): Parsed<Member> {
 	const nickname = r.string("nickname") || name;
 	const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
 	if (id === null) return { value: null, problems: r.problems };
-	return { value: { path, id, name, nickname, alias: alias || id, created: r.datetime("created") }, problems: r.problems };
+	return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
 }

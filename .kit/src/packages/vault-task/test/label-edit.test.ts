@@ -3,7 +3,7 @@ import type { App } from "obsidian";
 import { TaskIndex, emptyVaultData } from "../src/core/index";
 import { labelColorError, labelNameError, labelUsage, planLabelSave, renameLabelField, type LabelDraft } from "../src/core/label-edit";
 import { LABELS_PATH, parseLabels, serializeLabels, type LabelDef } from "../src/core/labels";
-import { parseIssue, parseRoutine } from "../src/core/schema";
+import { parseIssue, parseMember, parseRoutine } from "../src/core/schema";
 import type { Problem } from "../src/core/problem";
 import type { TaskStore } from "../src/obsidian/store";
 import { TaskWriter } from "../src/obsidian/writer";
@@ -11,6 +11,7 @@ import { TaskWriter } from "../src/obsidian/writer";
 vi.mock("obsidian", () => ({ TFile: class {}, normalizePath: (path: string) => path }));
 
 const issue = (id: string, label: unknown) => parseIssue(`issue/${id}.md`, { type: "issue", id, summary: id, status: "open", label }).value!;
+const member = (id: string, label: unknown) => parseMember(`member/${id}.md`, { type: "member", id, name: id, label }).value!;
 const routine = (id: string, label: unknown) => parseRoutine(`routine/${id}.md`, { type: "routine", id, summary: id, repeat: { every: "day" }, label }).value!;
 
 let key = 1;
@@ -47,6 +48,13 @@ describe("label の使用件数", () => {
 		expect(usage.get("仕事")).toBe(3);
 		expect(usage.get("急ぎ")).toBe(1);
 		expect(usage.get("私用")).toBeUndefined();
+	});
+
+	it("member も数える（ADR-0036）", () => {
+		const index = new TaskIndex({ ...emptyVaultData(), issues: [issue("i-1", "仕事")], members: [member("m-1", ["仕事", "取引先"])] });
+		const usage = labelUsage(index);
+		expect(usage.get("仕事")).toBe(2);
+		expect(usage.get("取引先")).toBe(1);
 	});
 });
 
@@ -117,12 +125,14 @@ describe("TaskWriter.saveLabels", () => {
 			["issue/i-1.md", { label: ["仕事", "急ぎ"] }],
 			["issue/i-2.md", { label: ["急ぎ"] }],
 			["routine/r-1.md", { label: "仕事" }],
+			["member/m-1.md", { label: ["仕事"] }],
 		]);
 		const index = new TaskIndex({
 			...emptyVaultData(),
 			labels,
 			issues: [issue("i-1", ["仕事", "急ぎ"]), issue("i-2", ["急ぎ"])],
 			routines: [routine("r-1", "仕事")],
+			members: [member("m-1", ["仕事"])],
 		});
 		const texts = new Map<string, string>([[LABELS_PATH, serializeLabels(labels)]]);
 		const order: string[] = [];
@@ -152,7 +162,8 @@ describe("TaskWriter.saveLabels", () => {
 		await f.writer.saveLabels({ labels: [{ name: "work", color: "#d0d0d0" }], renames: new Map([["仕事", "work"]]), removed: ["古い"] });
 		expect(f.frontmatters.get("issue/i-1.md")!.label).toEqual(["work", "急ぎ"]);
 		expect(f.frontmatters.get("routine/r-1.md")!.label).toBe("work");
-		expect(f.processFrontMatter).toHaveBeenCalledTimes(2);
+		expect(f.frontmatters.get("member/m-1.md")!.label).toEqual(["work"]);
+		expect(f.processFrontMatter).toHaveBeenCalledTimes(3);
 		expect(f.order.at(-1)).toBe(LABELS_PATH);
 		expect(parseLabels(f.texts.get(LABELS_PATH)!).labels).toEqual([{ name: "work", color: "#d0d0d0" }]);
 	});

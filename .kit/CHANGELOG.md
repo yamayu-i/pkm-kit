@@ -11,7 +11,8 @@
 - 委任先を選ぶ画面は、候補を `@alias - nickname (name)` の形で出し、alias・nickname・name・ID のどれでも探せる。ボードと issue 画面の委任先には nickname を出す
 - vault-task に Members の一覧（コマンド「Members を開く」、Tasks サイドバー）を足した。検索・作成と、委任中の issue の数を出す
 - member のノートを開くと、vault-task のヘッダーが出る（`[人のアイコン] nickname (name)`、nickname・name・alias の編集欄、委任中の issue）。Properties 欄は issue と同じく隠す。vault-template の簡素なヘッダーは member に出さない
-- 子への影響: 移行 0004 を実行する。子の `template/file/member.md` で上流のテンプレートを上書きしているなら、`nickname` と `alias` を足すか確かめる。vault-task・vault-template の `main.js` と vault-task の `styles.css`、`.kit/bin/` の CLI が変わった。モバイルで、member のヘッダーの入力欄が狭いペインで収まるか、委任先を選ぶ画面で `@alias` で探せるかを確かめる
+- member に issue / routine と共用の `label` を付けられるようにした（member の画面の label の欄。任意の項目で、作るときは書かない）。Labels 画面の使用件数・改名・削除の制限は member も対象にする。Members の一覧は label のチップで絞り込み（すべて持つもの）、ID・nickname・name・alias・委任中の数・created で並べ替えられる（ADR-0036）
+- 子への影響: 移行 0004 を実行する（label には移行は要らない）。子の `template/file/member.md` で上流のテンプレートを上書きしているなら、`nickname` と `alias` を足すか確かめる。vault-task・vault-template の `main.js` と vault-task の `styles.css`、`.kit/bin/` の CLI が変わった。モバイルで、member のヘッダーの入力欄が狭いペインで収まるか、委任先を選ぶ画面で `@alias` で探せるかを確かめる
 
 ## Daily の段階表示を縮める
 

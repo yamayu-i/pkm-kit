@@ -7941,7 +7941,7 @@ function parseMember(path, fm) {
   const nickname = r.string("nickname") || name;
   const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
   if (id === null) return { value: null, problems: r.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, created: r.datetime("created") }, problems: r.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
 }
 
 // src/core/status-log.ts

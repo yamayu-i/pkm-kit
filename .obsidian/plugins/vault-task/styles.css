@@ -3133,3 +3133,17 @@ body.is-mobile .vt-toast {
 .vt-member-issue-summary:hover {
 	color: var(--vt-primary);
 }
+
+/* member の label（ADR-0036） */
+.vt-member-labels {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.vt-member-row-labels {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}

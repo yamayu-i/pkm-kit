@@ -99,6 +99,13 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		}
 	}
 
+	// member の label も issue と同じ定義を使う（ADR-0036）
+	for (const member of data.members) {
+		for (const label of member.labels) {
+			if (!labelNames.has(label)) add("warning", member.path, "unknown-label", `label「${label}」が labels.json にありません`);
+		}
+	}
+
 	for (const b of data.boards) {
 		for (const id of b.board.issues) {
 			if (!index.issues.has(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);

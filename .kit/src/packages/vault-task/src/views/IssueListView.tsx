@@ -7,6 +7,7 @@ import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues, inboxIssues, scheduleIssues, somedayIssues } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { TextForm } from "../ui/forms";
+import { FilterChip, toggle } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { Pager } from "../ui/Pager";
@@ -23,20 +24,6 @@ const SORTS: { key: SortKey; label: string }[] = [
 	{ key: "deadline", label: "deadline" },
 	{ key: "created", label: "作成日" },
 ];
-
-function toggle<T>(list: T[], v: T): T[] {
-	return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-}
-
-/** 絞り込み用のチップ（M3 の filter chip） */
-function FilterChip(props: { label: string; on: boolean; onClick: () => void }) {
-	return (
-		<button class={`vt-filter-chip${props.on ? " is-on" : ""}`} aria-pressed={props.on} onClick={props.onClick}>
-			{props.on && <Icon name="check" />}
-			{props.label}
-		</button>
-	);
-}
 
 /** Issue List（ADR-0009）: 全 issue を検索・絞り込み・並び替え */
 export function IssueListView(props: { ctx: TaskContext }) {
