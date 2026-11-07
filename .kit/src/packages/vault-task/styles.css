@@ -1280,27 +1280,43 @@ button.vt-badge:disabled::after {
 
 /* ---------- 段階表示（DailyTaskView） ---------- */
 
+/* 今の段階だけ名前と件数を出し、ほかは番号の丸に縮める（名前はツールチップ）。狭いペインでも横スクロールにしない */
 .vt-stepper {
 	display: flex;
-	gap: 8px;
-	overflow-x: auto;
-	padding-bottom: 2px;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+}
+
+/* 段階をつなぐ線。幅が足りないときはここから縮む */
+.vt-step-line {
+	flex: 0 1 16px;
+	min-width: 4px;
+	border-top: 1px solid var(--vt-outline-variant);
 }
 
 .vt-step {
+	position: relative;
 	display: inline-flex;
+	flex: 0 0 auto;
 	align-items: center;
 	gap: 8px;
 	height: 40px;
-	padding: 0 16px 0 8px;
-	border: 1px solid var(--vt-outline);
+	padding: 0 16px 0 4px;
+	border: 1px solid transparent;
 	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface);
+	background: transparent;
 	box-shadow: none;
 	color: var(--vt-on-surface-variant);
 	font-size: var(--vt-type-body-small-size);
 	white-space: nowrap;
 	cursor: pointer;
+}
+
+.vt-step.is-compact {
+	justify-content: center;
+	width: 40px;
+	padding: 0;
 }
 
 .vt-step:hover {
@@ -1309,6 +1325,7 @@ button.vt-badge:disabled::after {
 
 .vt-step-icon {
 	display: inline-flex;
+	flex: 0 0 auto;
 	align-items: center;
 	justify-content: center;
 	width: 28px;
@@ -1326,7 +1343,8 @@ button.vt-badge:disabled::after {
 }
 
 .vt-step.is-current {
-	border-color: transparent;
+	flex: 0 1 auto;
+	min-width: 0;
 	background: var(--vt-secondary-container);
 	color: var(--vt-on-secondary-container);
 	font-weight: var(--vt-weight-semibold);
@@ -1335,6 +1353,24 @@ button.vt-badge:disabled::after {
 .vt-step.is-current .vt-step-icon {
 	background: var(--vt-primary);
 	color: var(--vt-on-primary);
+}
+
+.vt-step-label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* 縮めた段階に残っている件数（数は出さない。ツールチップで分かる） */
+.vt-step-dot {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 8px;
+	height: 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-red);
+	box-shadow: 0 0 0 2px var(--vt-surface);
 }
 
 .vt-step-count {

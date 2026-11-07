@@ -185,7 +185,7 @@ packages/design/tokens.json（正本）
 | アイコンボタン | `.vt-icon-button` | 24px の丸、ホバーで面が付く |
 | 空の状態 | `.vt-empty` | 点線の枠 + 弱い文字 |
 | ボタン | `.vt-button`（`.is-primary` / `.is-text`） | 丸い 36px。outlined が既定、主な操作は filled（primary）、補助は text |
-| 段階表示 | `.vt-stepper` / `.vt-step` | 丸い番号 + ラベル + 件数（赤い tonal）。今の段階は secondary-container の面、済みは緑のチェック |
+| 段階表示 | `.vt-stepper` / `.vt-step` | 今の段階だけ丸い番号 + ラベル + 件数（赤い tonal）を secondary-container の面で出す。ほかは 40px の番号の丸に縮め、細い線でつなぐ。済みは緑のチェック、残りがあれば右上に赤い点。名前と件数はツールチップ（`title` / `aria-label`）。狭いペインでも横スクロールにしない |
 | 一覧の行 | `.vt-table` / `.vt-tr` | 押せるカードの行（48px 以上）。選んだ行は primary の枠 + secondary-container の面。狭いペインでは補助の列を隠す |
 | 操作バー | `.vt-actionbar` | 選んだ行への操作。下に貼り付き、選ぶと浮き上がる（`--vt-elevation-4`） |
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |

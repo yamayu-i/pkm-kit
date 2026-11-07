@@ -3996,6 +3996,16 @@ var TaskWriter = class {
   }
 };
 
+// src/core/stepper.ts
+function stepperItems(steps, current, counts, passed) {
+  return steps.map((s3, i3) => {
+    const count = counts[s3.key];
+    const state = s3.key === current ? "current" : count === 0 || passed.has(s3.key) ? "done" : "todo";
+    const detail = state === "done" ? count > 0 ? `\u6E08\u307F\u30FB${count} \u4EF6` : "\u6E08\u307F" : `${count} \u4EF6`;
+    return { key: s3.key, number: i3 + 1, label: s3.label, state, compact: state !== "current", count, title: `${i3 + 1}. ${s3.label}\uFF08${detail}\uFF09` };
+  });
+}
+
 // src/obsidian/issue-actions.tsx
 function askDate(ctx, title, initial = null) {
   return new Promise((resolve) => {
@@ -4622,14 +4632,24 @@ function DailyView(props) {
       "Daily \xB7 ",
       formatShortDate(today)
     ] }) }),
-    /* @__PURE__ */ u3("nav", { class: "vt-stepper", children: STEPS.map((s3, i3) => {
-      const state = s3.key === step ? "is-current" : counts[s3.key] === 0 || passed.has(s3.key) ? "is-done" : "";
-      return /* @__PURE__ */ u3("button", { class: `vt-step ${state}`, onClick: () => setManual(s3.key), children: [
-        /* @__PURE__ */ u3("span", { class: "vt-step-icon", children: state === "is-done" && s3.key !== step ? /* @__PURE__ */ u3(Icon, { name: "check" }) : i3 + 1 }),
-        /* @__PURE__ */ u3("span", { class: "vt-step-label", children: s3.label }),
-        counts[s3.key] > 0 && /* @__PURE__ */ u3("span", { class: "vt-step-count", children: counts[s3.key] })
-      ] });
-    }) }),
+    /* @__PURE__ */ u3("nav", { class: "vt-stepper", "aria-label": "\u6BB5\u968E", children: stepperItems(STEPS, step, counts, passed).map((s3, i3) => /* @__PURE__ */ u3(S, { children: [
+      i3 > 0 && /* @__PURE__ */ u3("span", { class: "vt-step-line", "aria-hidden": "true" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: `vt-step is-${s3.state}${s3.compact ? " is-compact" : ""}`,
+          "aria-current": s3.state === "current" ? "step" : void 0,
+          "aria-label": s3.compact ? s3.title : void 0,
+          title: s3.compact ? s3.title : void 0,
+          onClick: () => setManual(s3.key),
+          children: [
+            /* @__PURE__ */ u3("span", { class: "vt-step-icon", children: s3.state === "done" ? /* @__PURE__ */ u3(Icon, { name: "check" }) : s3.number }),
+            !s3.compact && /* @__PURE__ */ u3("span", { class: "vt-step-label", children: s3.label }),
+            s3.count > 0 && (s3.compact ? /* @__PURE__ */ u3("span", { class: "vt-step-dot" }) : /* @__PURE__ */ u3("span", { class: "vt-step-count", children: s3.count }))
+          ]
+        }
+      )
+    ] }, s3.key)) }),
     step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "\u671F\u9650\u5207\u308C\u306F\u3042\u308A\u307E\u305B\u3093" }),
     step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u7247\u4ED8\u3044\u3066\u3044\u306A\u3044\u30DC\u30FC\u30C9\u306F\u3042\u308A\u307E\u305B\u3093" })),
     step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "3 \u65E5\u4EE5\u5185\u306E\u671F\u9650\u306F\u3042\u308A\u307E\u305B\u3093", canScheduleToday: true }),
