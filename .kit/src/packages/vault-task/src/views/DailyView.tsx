@@ -1,8 +1,10 @@
+import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
 import { emptyBoard, unfinished, pendingBoards, type DailyBoard } from "../core/board";
 import { cautionIssues, deadIssues, type DueLists } from "../core/daily";
 import { formatShortDate, localToday } from "../core/dates";
+import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
 import { addToBoard, carryIssues } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
@@ -183,17 +185,23 @@ export function DailyView(props: { ctx: TaskContext }) {
 			<header class="vt-page-head">
 				<h2 class="vt-page-title">Daily · {formatShortDate(today)}</h2>
 			</header>
-			<nav class="vt-stepper">
-				{STEPS.map((s, i) => {
-					const state = s.key === step ? "is-current" : counts[s.key] === 0 || passed.has(s.key) ? "is-done" : "";
-					return (
-						<button class={`vt-step ${state}`} onClick={() => setManual(s.key)}>
-							<span class="vt-step-icon">{state === "is-done" && s.key !== step ? <Icon name="check" /> : i + 1}</span>
-							<span class="vt-step-label">{s.label}</span>
-							{counts[s.key] > 0 && <span class="vt-step-count">{counts[s.key]}</span>}
+			<nav class="vt-stepper" aria-label="段階">
+				{stepperItems(STEPS, step, counts, passed).map((s, i) => (
+					<Fragment key={s.key}>
+						{i > 0 && <span class="vt-step-line" aria-hidden="true" />}
+						<button
+							class={`vt-step is-${s.state}${s.compact ? " is-compact" : ""}`}
+							aria-current={s.state === "current" ? "step" : undefined}
+							aria-label={s.compact ? s.title : undefined}
+							title={s.compact ? s.title : undefined}
+							onClick={() => setManual(s.key)}
+						>
+							<span class="vt-step-icon">{s.state === "done" ? <Icon name="check" /> : s.number}</span>
+							{!s.compact && <span class="vt-step-label">{s.label}</span>}
+							{s.count > 0 && (s.compact ? <span class="vt-step-dot" /> : <span class="vt-step-count">{s.count}</span>)}
 						</button>
-					);
-				})}
+					</Fragment>
+				))}
 			</nav>
 
 			{step === "dead" && <DueStep ctx={ctx} lists={dead} empty="期限切れはありません" />}
