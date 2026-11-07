@@ -23,7 +23,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `asset/` | 添付ファイル（サブフォルダを作らない） |
 | `issue/i-N.md` | タスク管理の issue（frontmatter が正本。`.kit/src/docs/adr/` 参照）。vault-task でも vault-template でも作れる |
 | `routine/r-N.md` | くり返しのタスク（同上） |
-| `member/m-N.md` | 委任先の人（同上） |
+| `member/m-N.md` | 委任先の人（同上）。`name`（本名）、`nickname`（呼び名）、`alias`（検索と候補に出す短い呼び方。単数の文字列）を持つ（`.kit/src/docs/adr/0035-member-view-and-fields.md`） |
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
 | `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `statuslog/<端末名>/YYYY-MM.jsonl` | issue の status の変化の記録（1 行 1 件。追記だけ。分析用で、status の正本は frontmatter） |

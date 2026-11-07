@@ -17,7 +17,7 @@
 | [0004](0004-worklog-storage.md) | 承認 | worklog は端末別・月別の jsonl |
 | [0005](0005-effort-proration.md) | 承認 | 実績工数は重複を按分して都度計算する |
 | [0006](0006-status-inbox-someday.md) | 承認（一部置換: 0032） | status の定義、Inbox と Someday |
-| [0007](0007-labels-and-members.md) | 承認（一部置換: 0024） | label の定義ファイルと、委任先（member） |
+| [0007](0007-labels-and-members.md) | 承認（一部置換: 0024, 0035） | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認 | UI は Preact。issue 画面は CodeMirror の widget |
 | [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033, 0034） | View の一覧と各 View の振る舞い |
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
@@ -36,7 +36,7 @@
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
-| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033） | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |
+| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035） | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの 0009） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる（コアプラグインのデイリーノートは無効にする） |

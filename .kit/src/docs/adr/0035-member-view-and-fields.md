@@ -19,7 +19,7 @@
 | `alias` | 文字列 | 検索と委任先の候補に出す短い呼び方（例: `yamada-san`、`tanapon`） | ID（例: `m-3`） |
 
 - 検索用の項目は単数の `alias`（文字列）にする。Obsidian 標準の `aliases`（リスト）は使わない。Obsidian の挙動に依存せず、表示と検索の規則を vault-task の側で決めるため
-- 作る仕組みはどちらも同じ値を入れる: vault-task の「新しく作る」（`MemberSuggestModal`、MCP）と、vault-template のテンプレート `.kit/templates/file/member.md`（`nickname: "{{title}}"`、`alias: "{{id:m}}"`。`{{id:m}}` は 1 回の展開の中で同じ値になる）
+- 作る仕組みはどちらも同じ値を入れる: vault-task の「新しく作る」（`MemberSuggestModal`）と Members の「member を作成」と、vault-template のテンプレート `.kit/templates/file/member.md`（`nickname: "{{title}}"`、`alias: "{{id:m}}"`。`{{id:m}}` は 1 回の展開の中で同じ値になる）
 - 読むとき: `nickname` が空・ないときは `name` を使う。`alias` が空・ないときは ID を使う。`alias` が文字列でないときは問題（`invalid-field`）として lint と vault-task に出す
 - 作った後は、どの項目も自動では書き換えない（`name` を変えても `nickname` は変えない）
 
@@ -70,7 +70,7 @@
 
 ## 影響
 
-- `Member` 型に `nickname`・`alias` を足し、`parseMember`・`newMemberContent`・`MemberSuggestModal`・ボードと issue 画面の委任先の表示・MCP（member の一覧と作成）・lint を変える
+- `Member` 型に `nickname`・`alias` を足し、`parseMember`・`newMemberContent`・`MemberSuggestModal`・ボードと issue 画面の委任先の表示を変える。lint と MCP は `parseMember` を通して新しい項目を読む（MCP には member を作る操作がないので、変えない）
 - `.kit/templates/file/member.md` に `nickname` と `alias` を足す。`.claude/docs/vault-conventions.md` の配置の表の member に項目を書き足す
 - 子には移行 `0004` が届く。`.kit/CHANGELOG.md` に書く
 - ビルド成果物（vault-task と vault-template の `main.js` ほか、`.kit/bin/`）をコミットする

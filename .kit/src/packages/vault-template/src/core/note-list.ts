@@ -16,7 +16,7 @@ export type SortOrder = "asc" | "desc";
 export const WIKI_TYPES: readonly string[] = ["concept", "entity", "topic", "answer"];
 
 /** vault-task が自分のヘッダーを出す type */
-const TASK_TYPES: readonly string[] = ["issue", "routine"];
+const TASK_TYPES: readonly string[] = ["issue", "routine", "member"];
 
 export function notesOfType(notes: readonly NoteInfo[], type: string): NoteInfo[] {
 	return notes.filter((n) => n.frontmatter.type === type);
@@ -65,9 +65,9 @@ export function importedSourcePaths(notes: readonly NoteInfo[]): Set<string> {
 	return out;
 }
 
-/** vault-template のヘッダーを出すか。issue と routine は vault-task のヘッダーがあるので出さない */
+/** vault-template のヘッダーを出すか。issue・routine・member は vault-task のヘッダーがあるので出さない（ADR-0035） */
 export function hasNoteHeader(path: string, frontmatter: Frontmatter | undefined): boolean {
 	const type = frontmatter?.type;
 	if (typeof type === "string" && TASK_TYPES.includes(type)) return false;
-	return !/^(issue|routine)\/[^/]+\.md$/.test(path);
+	return !/^(issue|routine|member)\/[^/]+\.md$/.test(path);
 }

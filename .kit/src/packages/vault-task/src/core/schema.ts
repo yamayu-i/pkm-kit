@@ -53,10 +53,17 @@ export interface Routine {
 	created: string | null;
 }
 
+/** 委任先の人（ADR-0007, 0035）。nickname と alias は、なければ name と ID で埋めた値 */
 export interface Member {
 	path: string;
 	id: string;
+	/** 本名（姓・名） */
 	name: string;
+	/** 自分が呼んでいる呼び名 */
+	nickname: string;
+	/** 検索と候補に出す短い呼び方。先頭の @ は付けない */
+	alias: string;
+	created: string | null;
 }
 
 export interface Parsed<T> {
@@ -239,5 +246,8 @@ export function parseMember(path: string, fm: Frontmatter): Parsed<Member> {
 	const id = r.common("member", "m");
 	const name = r.string("name") ?? "";
 	if (!name) r.problem("missing-name", "name がありません");
-	return { value: id === null ? null : { path, id, name }, problems: r.problems };
+	const nickname = r.string("nickname") || name;
+	const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
+	if (id === null) return { value: null, problems: r.problems };
+	return { value: { path, id, name, nickname, alias: alias || id, created: r.datetime("created") }, problems: r.problems };
 }
