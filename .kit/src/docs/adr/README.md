@@ -46,3 +46,4 @@
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
 | [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認 | estimated の単位入力（m / h / d）と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
 | [0035](0035-member-view-and-fields.md) | 承認 | member の項目（name / nickname / alias）と、member の専用 View |
+| [0036](0036-member-labels-and-list-sort.md) | 提案 | member の label と、Members の一覧の絞り込み・並べ替え |
