@@ -1,6 +1,6 @@
 # ADR-0022: テンプレートからのノート作成を自作プラグイン vault-template として作る
 
-- 状態: 承認
+- 状態: 承認（§3 の設定タブと子の `template/config.json` は [ADR-0039](0039-fixed-template-config.md) で置換）
 - 日付: 2026-11-01
 
 ## 背景

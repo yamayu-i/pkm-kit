@@ -32,7 +32,7 @@
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
 | [0021](0021-routine-effort-and-sidebar.md) | 承認（一部置換: 0024, 0033） | routine 画面の total / average と左サイドバーのナビゲーション View |
-| [0022](0022-template-plugin.md) | 承認（一部補足: 0023） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
+| [0022](0022-template-plugin.md) | 承認（一部補足: 0023、一部置換: 0039） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番（`{{id:…}}`）と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
@@ -49,4 +49,4 @@
 | [0036](0036-member-labels-and-list-sort.md) | 承認 | member の label と、Members の一覧の絞り込み・並べ替え |
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する（iframe の srcdoc + sandbox + CSP） |
 | [0038](0038-tmp-folder.md) | 承認 | git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない |
-| [0039](0039-fixed-template-config.md) | 提案 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
+| [0039](0039-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |

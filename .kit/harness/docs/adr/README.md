@@ -29,7 +29,7 @@
 | [0006](0006-self-improvement-loop.md) | 承認（一部置換: 0011） | 自己改善は 4 つの観測から月 1 回評価し、提案までにする |
 | [0007](0007-note-format.md) | 承認（一部置換: 0008） | PKMの共通frontmatter・type別テンプレート・DailyNote本文の保護 |
 | [0008](0008-updated-on-create.md) | 承認 | updated は作成時にも入れる（作成時は created と同じ値） |
-| [0009](0009-upstream-and-child-vaults.md) | 承認 | 仕組みを上流のリポジトリに分け、各 Vault はその子として更新を取り込む（2 層） |
+| [0009](0009-upstream-and-child-vaults.md) | 承認（一部置換: プラグインの 0039） | 仕組みを上流のリポジトリに分け、各 Vault はその子として更新を取り込む（2 層） |
 | [0010](0010-upstream-updates-and-migrations.md) | 承認 | 上流の更新は merge と移行で取り込み、Breaking Change は AI が移行する |
 | [0011](0011-harness-parent-and-child.md) | 承認 | ハーネスを親と子に分け、子で見つけた上流の改善はエスカレーションする |
 | [0012](0012-product-responsibility.md) | 承認 | ユーザー体験に責任を持つ責務（プロダクト）を置き、機会は Claude が自分で見つける |
