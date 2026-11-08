@@ -8,7 +8,15 @@ import {
 	UPSTREAM_TEMPLATE_DIR,
 	type TemplateEntry,
 } from "../core/config";
-import { layerSnippets, parseSnippet, SNIPPET_DIR, UPSTREAM_SNIPPET_DIR, type Snippet } from "../core/snippet";
+import {
+	INLINE_DIR,
+	layerSnippets,
+	parseSnippet,
+	SNIPPET_DIR,
+	UPSTREAM_INLINE_DIR,
+	UPSTREAM_SNIPPET_DIR,
+	type Snippet,
+} from "../core/snippet";
 import {
 	extractDatePrompts,
 	extractPrompts,
@@ -107,7 +115,19 @@ export class TemplateManager {
 	 * スニペット（ADR-0060）。上流の `.kit/templates/snippet/` に、その Vault の `template/snippet/` を重ねる
 	 * （同じファイル名ならその Vault のもの）。どちらも直下の `.md` だけ
 	 */
-	async loadSnippets(): Promise<{ snippets: Snippet[]; problems: string[] }> {
+	loadSnippets(): Promise<{ snippets: Snippet[]; problems: string[] }> {
+		return this.loadSnippetDirs(UPSTREAM_SNIPPET_DIR, SNIPPET_DIR);
+	}
+
+	/**
+	 * インラインテンプレート（ADR-0067）。スニペットと同じ書式と重ね方で、上流の `.kit/templates/inline/` に
+	 * その Vault の `template/inline/` を重ねる
+	 */
+	loadInlineTemplates(): Promise<{ snippets: Snippet[]; problems: string[] }> {
+		return this.loadSnippetDirs(UPSTREAM_INLINE_DIR, INLINE_DIR);
+	}
+
+	private async loadSnippetDirs(upstreamDir: string, localDir: string): Promise<{ snippets: Snippet[]; problems: string[] }> {
 		const problems: string[] = [];
 		const parseAll = (items: { file: string; text: string }[], dir: string) =>
 			items.flatMap(({ file, text }) => {
@@ -118,9 +138,9 @@ export class TemplateManager {
 
 		const upstream: { file: string; text: string }[] = [];
 		const adapter = this.app.vault.adapter;
-		if (await adapter.exists(UPSTREAM_SNIPPET_DIR)) {
-			const prefix = `${UPSTREAM_SNIPPET_DIR}/`;
-			for (const p of (await adapter.list(UPSTREAM_SNIPPET_DIR)).files) {
+		if (await adapter.exists(upstreamDir)) {
+			const prefix = `${upstreamDir}/`;
+			for (const p of (await adapter.list(upstreamDir)).files) {
 				const name = p.startsWith(prefix) ? p.slice(prefix.length) : p;
 				if (name.includes("/") || !name.endsWith(".md")) continue;
 				upstream.push({ file: name, text: await adapter.read(`${prefix}${name}`) });
@@ -128,7 +148,7 @@ export class TemplateManager {
 		}
 
 		const local: { file: string; text: string }[] = [];
-		const localPrefix = `${SNIPPET_DIR}/`;
+		const localPrefix = `${localDir}/`;
 		for (const f of this.app.vault.getFiles()) {
 			if (!f.path.startsWith(localPrefix)) continue;
 			const name = f.path.slice(localPrefix.length);
@@ -136,7 +156,7 @@ export class TemplateManager {
 			local.push({ file: name, text: await this.app.vault.cachedRead(f) });
 		}
 
-		const snippets = layerSnippets(parseAll(upstream, UPSTREAM_SNIPPET_DIR), parseAll(local, SNIPPET_DIR));
+		const snippets = layerSnippets(parseAll(upstream, upstreamDir), parseAll(local, localDir));
 		return { snippets, problems };
 	}
 

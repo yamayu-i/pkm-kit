@@ -1237,6 +1237,8 @@ function resolveTemplateEntries(params) {
 // src/core/snippet.ts
 var SNIPPET_DIR = "template/snippet";
 var UPSTREAM_SNIPPET_DIR = ".kit/templates/snippet";
+var INLINE_DIR = "template/inline";
+var UPSTREAM_INLINE_DIR = ".kit/templates/inline";
 var KEBAB_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 function unquote(value) {
   const v3 = value.trim();
@@ -1276,18 +1278,30 @@ function filterSnippets(snippets, query) {
   const q2 = query.toLowerCase();
   return snippets.filter((s3) => s3.name.startsWith(q2) || s3.alias.startsWith(q2)).sort((a3, b2) => a3.alias.localeCompare(b2.alias) || a3.name.localeCompare(b2.name));
 }
-var QUERY_RE = /^\/[A-Za-z0-9-]*$/;
-function nextSlashSession(prev, update, doc, newId2) {
+function inlineBody(body) {
+  return body.replace(/(?:\r?\n)+$/, "");
+}
+var SLASH_TRIGGER = {
+  char: "/",
+  canStartAt: (pos, doc) => doc.lineStartAt(pos) === pos
+};
+var AT_TRIGGER = {
+  char: "@",
+  canStartAt: (pos, doc) => doc.lineStartAt(pos) === pos || doc.slice(pos - 1, pos) === " "
+};
+var QUERY_TAIL_RE = /^[A-Za-z0-9-]*$/;
+function nextTriggerSession(trigger, prev, update, doc, newId2) {
   let candidate = null;
-  const typed = update.typedSlashAt;
-  if (typed !== null && doc.lineStartAt(typed) === typed) candidate = { id: newId2(), from: typed };
+  const typed = update.typedAt;
+  if (typed !== null && trigger.canStartAt(typed, doc)) candidate = { id: newId2(), from: typed };
   else if (prev) candidate = { id: prev.id, from: update.mapPos(prev.from) };
   if (!candidate) return null;
   const { from } = candidate;
   const { head } = update;
   if (!update.empty || head <= from) return null;
-  if (doc.lineStartAt(from) !== from || doc.lineStartAt(head) !== from) return null;
-  if (!QUERY_RE.test(doc.slice(from, head))) return null;
+  if (!trigger.canStartAt(from, doc) || doc.lineStartAt(head) !== doc.lineStartAt(from)) return null;
+  const typedText = doc.slice(from, head);
+  if (!typedText.startsWith(trigger.char) || !QUERY_TAIL_RE.test(typedText.slice(trigger.char.length))) return null;
   return candidate;
 }
 
@@ -1364,7 +1378,17 @@ var TemplateManager = class {
    * スニペット（ADR-0060）。上流の `.kit/templates/snippet/` に、その Vault の `template/snippet/` を重ねる
    * （同じファイル名ならその Vault のもの）。どちらも直下の `.md` だけ
    */
-  async loadSnippets() {
+  loadSnippets() {
+    return this.loadSnippetDirs(UPSTREAM_SNIPPET_DIR, SNIPPET_DIR);
+  }
+  /**
+   * インラインテンプレート（ADR-0067）。スニペットと同じ書式と重ね方で、上流の `.kit/templates/inline/` に
+   * その Vault の `template/inline/` を重ねる
+   */
+  loadInlineTemplates() {
+    return this.loadSnippetDirs(UPSTREAM_INLINE_DIR, INLINE_DIR);
+  }
+  async loadSnippetDirs(upstreamDir, localDir) {
     const problems = [];
     const parseAll = (items, dir) => items.flatMap(({ file, text: text2 }) => {
       const { snippet, problem } = parseSnippet(file, text2);
@@ -1373,23 +1397,23 @@ var TemplateManager = class {
     });
     const upstream = [];
     const adapter = this.app.vault.adapter;
-    if (await adapter.exists(UPSTREAM_SNIPPET_DIR)) {
-      const prefix = `${UPSTREAM_SNIPPET_DIR}/`;
-      for (const p3 of (await adapter.list(UPSTREAM_SNIPPET_DIR)).files) {
+    if (await adapter.exists(upstreamDir)) {
+      const prefix = `${upstreamDir}/`;
+      for (const p3 of (await adapter.list(upstreamDir)).files) {
         const name = p3.startsWith(prefix) ? p3.slice(prefix.length) : p3;
         if (name.includes("/") || !name.endsWith(".md")) continue;
         upstream.push({ file: name, text: await adapter.read(`${prefix}${name}`) });
       }
     }
     const local = [];
-    const localPrefix = `${SNIPPET_DIR}/`;
+    const localPrefix = `${localDir}/`;
     for (const f4 of this.app.vault.getFiles()) {
       if (!f4.path.startsWith(localPrefix)) continue;
       const name = f4.path.slice(localPrefix.length);
       if (name.includes("/") || !name.endsWith(".md")) continue;
       local.push({ file: name, text: await this.app.vault.cachedRead(f4) });
     }
-    const snippets = layerSnippets(parseAll(upstream, UPSTREAM_SNIPPET_DIR), parseAll(local, SNIPPET_DIR));
+    const snippets = layerSnippets(parseAll(upstream, upstreamDir), parseAll(local, localDir));
     return { snippets, problems };
   }
   /** `{{id:…}}` の連番を決めるための、Vault 内のすべてのノートの basename（pkm-task と同じ見方） */
@@ -1736,39 +1760,58 @@ function installNoteHeaders(plugin) {
 var import_state = require("@codemirror/state");
 var lastId = 0;
 var newId = () => ++lastId;
-function typedSlashAt(tr) {
+function typedCharAt(tr, char) {
   if (!tr.docChanged || !tr.isUserEvent("input.type")) return null;
   let at = null;
   let count = 0;
   tr.changes.iterChanges((fromA, toA, fromB, _toB, inserted) => {
     count++;
-    if (fromA === toA && inserted.toString() === "/") at = fromB;
+    if (fromA === toA && inserted.toString() === char) at = fromB;
   });
   return count === 1 ? at : null;
 }
-var slashSessionField = import_state.StateField.define({
-  create: () => null,
-  update(prev, tr) {
-    if (!tr.docChanged && !tr.selection) return prev;
-    const doc = tr.state.doc;
-    const sel = tr.state.selection.main;
-    return nextSlashSession(
-      prev,
-      { typedSlashAt: typedSlashAt(tr), mapPos: (p3) => tr.changes.mapPos(p3, 1), head: sel.head, empty: sel.empty },
-      { lineStartAt: (pos) => doc.lineAt(pos).from, slice: (from, to) => doc.sliceString(from, to) },
-      newId
-    );
-  }
-});
+function sessionField(trigger) {
+  return import_state.StateField.define({
+    create: () => null,
+    update(prev, tr) {
+      if (!tr.docChanged && !tr.selection) return prev;
+      const doc = tr.state.doc;
+      const sel = tr.state.selection.main;
+      return nextTriggerSession(
+        trigger,
+        prev,
+        { typedAt: typedCharAt(tr, trigger.char), mapPos: (p3) => tr.changes.mapPos(p3, 1), head: sel.head, empty: sel.empty },
+        { lineStartAt: (pos) => doc.lineAt(pos).from, slice: (from, to) => doc.sliceString(Math.max(0, from), to) },
+        newId
+      );
+    }
+  });
+}
+var slashSessionField = sessionField(SLASH_TRIGGER);
+var atSessionField = sessionField(AT_TRIGGER);
 
 // src/obsidian/SnippetSuggest.ts
 var import_obsidian6 = require("obsidian");
+var SNIPPET_KIND = {
+  label: "\u30B9\u30CB\u30DA\u30C3\u30C8",
+  field: slashSessionField,
+  load: (m3) => m3.loadSnippets(),
+  bodyOf: (s3) => s3.body
+};
+var INLINE_KIND = {
+  label: "\u30A4\u30F3\u30E9\u30A4\u30F3\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8",
+  field: atSessionField,
+  load: (m3) => m3.loadInlineTemplates(),
+  bodyOf: (s3) => inlineBody(s3.body)
+};
 var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
-  constructor(app, manager) {
+  constructor(app, manager, kind = SNIPPET_KIND) {
     super(app);
     this.manager = manager;
+    this.kind = kind;
   }
   manager;
+  kind;
   /** いま候補を出しているセッション */
   sessionId = null;
   /** Escape で閉じたか、候補を選んで終えたセッション。同じセッションでは開き直さない */
@@ -1786,7 +1829,7 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
   }
   onTrigger(cursor, editor, _file) {
     const view = editor.cm;
-    const session = view?.state.field(slashSessionField, false) ?? null;
+    const session = view?.state.field(this.kind.field, false) ?? null;
     if (!session || session.id === this.dismissedId) {
       this.sessionId = null;
       return null;
@@ -1800,8 +1843,8 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
     if (!this.cache || this.cache.sessionId !== id) {
       this.cache = {
         sessionId: id,
-        snippets: this.manager.loadSnippets().then(({ snippets, problems }) => {
-          for (const p3 of problems) console.warn(`pkm-template: \u30B9\u30CB\u30DA\u30C3\u30C8\u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F: ${p3}`);
+        snippets: this.kind.load(this.manager).then(({ snippets, problems }) => {
+          for (const p3 of problems) console.warn(`pkm-template: ${this.kind.label}\u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F: ${p3}`);
           return snippets;
         })
       };
@@ -1818,12 +1861,13 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
     if (!ctx) return;
     const { editor, file, start, end } = ctx;
     this.close();
-    void askDates(this.app, extractDatePrompts(snippet.body)).then((dates) => {
+    const body = this.kind.bodyOf(snippet);
+    void askDates(this.app, extractDatePrompts(body)).then((dates) => {
       if (dates === null) {
         editor.focus();
         return;
       }
-      const rendered = renderTemplate(snippet.body, {
+      const rendered = renderTemplate(body, {
         now: /* @__PURE__ */ new Date(),
         title: file?.basename ?? "",
         path: file?.path ?? "",
@@ -1964,6 +2008,8 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
     installNoteHeaders(this);
     this.registerEditorExtension(slashSessionField);
     this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
+    this.registerEditorExtension(atSessionField);
+    this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager, INLINE_KIND));
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
