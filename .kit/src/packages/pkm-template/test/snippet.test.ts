@@ -8,6 +8,7 @@ import {
 	nextSlashSession,
 	nextTriggerSession,
 	parseSnippet,
+	withoutCommands,
 	type SessionDoc,
 	type Snippet,
 } from "../src/core/snippet";
@@ -39,6 +40,30 @@ describe("parseSnippet", () => {
 		expect(parseSnippet("a.md", "---\nname: Today_H1\nalias: t1\n---\nx").problem).toMatch(/name/);
 		expect(parseSnippet("a.md", "---\nname: a\nalias: t 1\n---\nx").problem).toMatch(/alias/);
 		expect(parseSnippet("a.md", "frontmatter なし").snippet).toBeNull();
+	});
+
+	it("command があれば読む（ADR-0094）。なければ command の項目を持たない", () => {
+		const text = "---\nname: new-drawio\nalias: drawio\ncommand: pkm-drawio:create-diagram\n---\n";
+		expect(parseSnippet("new-drawio.md", text)).toEqual({
+			snippet: { file: "new-drawio.md", name: "new-drawio", alias: "drawio", body: "", command: "pkm-drawio:create-diagram" },
+			problem: null,
+		});
+		expect(parseSnippet("a.md", "---\nname: a\nalias: a\n---\nx").snippet).not.toHaveProperty("command");
+	});
+
+	it("command がコマンドの ID の形（<プラグイン>:<コマンド>）でなければ問題として返す", () => {
+		for (const bad of ["create-diagram", "pkm drawio:x", "pkm-drawio:", ":x", ""]) {
+			const r = parseSnippet("a.md", `---\nname: a\nalias: a\ncommand: ${bad}\n---\n`);
+			expect(r.snippet).toBeNull();
+			expect(r.problem).toMatch(/command/);
+		}
+	});
+});
+
+describe("withoutCommands（インラインテンプレートでは command を使わない。ADR-0094）", () => {
+	it("command のあるものを除く", () => {
+		const list = [sn("a.md", "a", "a"), { ...sn("b.md", "b", "b"), command: "x:y" }];
+		expect(withoutCommands(list).map((s) => s.name)).toEqual(["a"]);
 	});
 });
 

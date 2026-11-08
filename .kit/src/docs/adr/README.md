@@ -54,7 +54,7 @@
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する |
 | [0038](0038-tmp-folder.md) | 承認 | git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない |
 | [0058](0058-pkm-plugin-names.md) | 承認 | 自作プラグインの名前を vault-* から pkm-* にする |
-| [0060](0060-snippet-slash-insert.md) | 承認 | 行頭の / でスニペットを挿入する |
+| [0060](0060-snippet-slash-insert.md) | 承認（一部置換: 0094） | 行頭の / でスニペットを挿入する |
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
 | [0064](0064-drawio-diagrams.md) | 承認 | Draw.io の図を、編集用 XML を内包した SVG（asset/*.drawio.svg）として持ち、pkm-drawio で表示・コピー・編集・書き出しする |
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
@@ -65,5 +65,5 @@
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
 | [0077](0077-task-header-dom-mount.md) | 承認 | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
 | [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
-| [0094](0094-snippet-command.md) | 提案 | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
+| [0094](0094-snippet-command.md) | 承認 | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
 <!-- adr-index:end -->

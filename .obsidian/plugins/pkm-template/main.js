@@ -1262,6 +1262,7 @@ var UPSTREAM_SNIPPET_DIR = ".kit/templates/snippet";
 var INLINE_DIR = "template/inline";
 var UPSTREAM_INLINE_DIR = ".kit/templates/inline";
 var KEBAB_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+var COMMAND_RE = /^[a-z0-9-]+:[A-Za-z0-9_-]+$/;
 function unquote(value) {
   const v3 = value.trim();
   if (v3.length >= 2 && v3.startsWith('"') && v3.endsWith('"')) return v3.slice(1, -1);
@@ -1288,7 +1289,16 @@ function parseSnippet(file, text2) {
     if (v3 === void 0 || v3 === "") return fail(`${key} \u304C\u3042\u308A\u307E\u305B\u3093`);
     if (!KEBAB_RE.test(v3)) return fail(`${key} \u306F\u30B1\u30D0\u30D6\u30B1\u30FC\u30B9\u306B\u3057\u307E\u3059\uFF08${v3}\uFF09`);
   }
-  return { snippet: { file, name: fields.name, alias: fields.alias, body }, problem: null };
+  const command = fields.command;
+  if (command !== void 0 && !COMMAND_RE.test(command)) {
+    return fail(`command \u306F <\u30D7\u30E9\u30B0\u30A4\u30F3 ID>:<\u30B3\u30DE\u30F3\u30C9> \u306E\u5F62\u306B\u3057\u307E\u3059\uFF08${command}\uFF09`);
+  }
+  const snippet = { file, name: fields.name, alias: fields.alias, body };
+  if (command !== void 0) snippet.command = command;
+  return { snippet, problem: null };
+}
+function withoutCommands(snippets) {
+  return snippets.filter((s3) => s3.command === void 0);
 }
 function layerSnippets(upstream, local) {
   const byFile = /* @__PURE__ */ new Map();
@@ -1887,7 +1897,7 @@ var SNIPPET_KIND = {
 var INLINE_KIND = {
   label: "Inline template",
   field: atSessionField,
-  load: (m3) => m3.loadInlineTemplates(),
+  load: (m3) => m3.loadInlineTemplates().then(({ snippets, problems }) => ({ snippets: withoutCommands(snippets), problems })),
   bodyOf: (s3) => inlineBody(s3.body)
 };
 var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
@@ -1947,6 +1957,10 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
     if (!ctx) return;
     const { editor, file, start, end } = ctx;
     this.close();
+    if (snippet.command !== void 0) {
+      this.runCommand(snippet.command, editor, start, end);
+      return;
+    }
     const body = this.kind.bodyOf(snippet);
     void askDates(this.app, extractDatePrompts(body)).then((dates) => {
       if (dates === null) {
@@ -1967,6 +1981,21 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
       editor.setCursor(editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
       editor.focus();
     });
+  }
+  /**
+   * command のあるスニペット（ADR-0094）。打った `/…` を消してカーソルをそこに置き、コマンドを実行する。
+   * 実行できなければ打った文字を戻して知らせる
+   */
+  runCommand(command, editor, start, end) {
+    const typed = editor.getRange(start, end);
+    editor.replaceRange("", start, end);
+    editor.setCursor(start);
+    editor.focus();
+    const commands = this.app.commands;
+    if (commands.executeCommandById(command)) return;
+    editor.replaceRange(typed, start);
+    editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + typed.length));
+    new import_obsidian6.Notice(`${command} \u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093\uFF08${command.split(":")[0]} \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09`);
   }
 };
 
