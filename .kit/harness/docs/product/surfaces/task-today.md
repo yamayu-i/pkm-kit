@@ -1,7 +1,7 @@
-# Daily
+# Today
 
 - 種類: View
-- 開き方: リボンの「Daily を開く」、[Tasks サイドバー](task-sidebar.md)、コマンド。[一覧ペイン](layout-panes.md)に開く
+- 開き方: リボンの「今日のタスクを開く」、[Tasks サイドバー](task-sidebar.md)、コマンド。[一覧ペイン](layout-panes.md)に開く
 - 場面: [朝の計画](../jobs/task-plan-day.md)、[一日の締め](../jobs/task-close-day.md)
 
 ## 今の振る舞い

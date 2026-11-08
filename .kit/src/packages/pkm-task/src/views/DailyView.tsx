@@ -183,7 +183,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	return (
 		<div class="vt-page">
 			<header class="vt-page-head">
-				<h2 class="vt-page-title">Daily · {formatShortDate(today)}</h2>
+				<h2 class="vt-page-title">Today · {formatShortDate(today)}</h2>
 			</header>
 			<nav class="vt-stepper" aria-label="段階">
 				{stepperItems(STEPS, step, counts, passed).map((s, i) => (

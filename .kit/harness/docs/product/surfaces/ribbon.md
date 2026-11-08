@@ -10,7 +10,7 @@
 | 順 | ボタン | 動き |
 |---|---|---|
 | 1 | 今日のデイリーノートを開く（`calendar`） | なければテンプレートから作って開く |
-| 2 | Daily を開く（`calendar-check`） | [Daily](task-daily.md) を開く |
+| 2 | 今日のタスクを開く（`sun`） | [Today](task-today.md) を開く |
 | 3 | PKM Updates を開く（`bell`） | [PKM Updates](updates.md) を開く。前回の確認から変わったノートの数のバッジが付く（100 件以上は 99+、0 件は出ない） |
 | 4 | issue をまとめて作成（`list-plus`） | [issue をまとめて作成](task-capture.md) |
 | 5 | Git: pull（`arrow-down-to-line`） | [PKM Git](git-sync.md) |

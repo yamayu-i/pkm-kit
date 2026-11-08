@@ -23,7 +23,7 @@ import { SomedayView } from "./views/SomedayView";
 
 /** View の一覧（ADR-0009, 0010, 0021, 0035） */
 const VIEWS: ViewSpec[] = [
-	{ type: "pkm-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
+	{ type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
 	{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
 	{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", component: InboxView },
 	{ type: "pkm-task-organize", title: "Organize", icon: "layers", component: OrganizeView },
@@ -91,7 +91,7 @@ export default class PkmTaskPlugin extends Plugin {
 		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", callback: () => void openSidebar(true) });
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
-		// リボンのボタン（Daily を開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		// リボンのボタン（今日のタスクを開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));

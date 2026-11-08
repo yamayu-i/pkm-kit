@@ -24,4 +24,4 @@
 
 ## 知られている困りごと
 
-- [#38](https://github.com/yamayu-i/pkm-kit/issues/38) 「Daily」と「デイリーノート」の名前と入口が隣り合っている
+まだない。

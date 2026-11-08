@@ -33,7 +33,7 @@ export function SidebarView(props: { ctx: TaskContext }) {
 	}
 
 	const items: NavItem[] = [
-		{ type: "pkm-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+		{ type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
 		{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
 		{ type: "pkm-task-organize", title: "Organize", icon: "layers", count: counts.organize },
 		{ type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },

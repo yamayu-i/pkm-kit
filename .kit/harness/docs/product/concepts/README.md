@@ -82,8 +82,8 @@ ADR へのリンク。
 | estimated | estimated（`2h`、`1d` = 24h） | `estimated`（分） | 見積もり |
 | 実績 | issue 画面の実績、routine 画面の total / average | 保存しない（worklog から按分） | 実績工数 |
 | worklog | worklog、再生 / 停止 | `worklog/<端末名>/YYYY-MM.jsonl` | worklog、作業の記録 |
-| task board | Daily の段階「ボード」、ボードを締める、完了、未完了、未分類 | `board/<端末名>/YYYY-MM.jsonl`、デイリーノートの `## Task board` 節 | task board、ボード |
-| Daily | Daily（View の名前）、段階「期限切れ」「前回のボード」「期限が近い」「ボード」 | — | DailyTaskView、Daily |
+| task board | Today の段階「ボード」、ボードを締める、完了、未完了、未分類 | `board/<端末名>/YYYY-MM.jsonl`、デイリーノートの `## Task board` 節 | task board、ボード |
+| Today | Today（View の名前。2026-11-08 まで Daily）、段階「期限切れ」「前回のボード」「期限が近い」「ボード」 | — | DailyTaskView、Daily、Today |
 | ボードのグループ | Board groups | `issue/board-groups.json`、routine の `group` | グループ、サブグループ |
 | label | Labels、label | `issue/labels.json`、`label` | label |
 | デイリーノート | Daily notes、今日のデイリーノートを開く | `daily/YYYY/MM/YYYY-MM-DD.md`（`type: daily`） | デイリーノート、DailyNote |

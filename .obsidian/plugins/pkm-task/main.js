@@ -4844,7 +4844,7 @@ function DailyView(props) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: [
-      "Daily \xB7 ",
+      "Today \xB7 ",
       formatShortDate(today)
     ] }) }),
     /* @__PURE__ */ u3("nav", { class: "vt-stepper", "aria-label": "\u6BB5\u968E", children: stepperItems(STEPS, step, counts, passed).map((s3, i3) => /* @__PURE__ */ u3(S, { children: [
@@ -5911,7 +5911,7 @@ function SidebarView(props) {
     runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
   }
   const items = [
-    { type: "pkm-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+    { type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
     { type: "pkm-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
     { type: "pkm-task-organize", title: "Organize", icon: "layers", count: counts.organize },
     { type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
@@ -6027,7 +6027,7 @@ function SomedayView(props) {
 
 // src/main.ts
 var VIEWS = [
-  { type: "pkm-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
+  { type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
   { type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
   { type: "pkm-task-inbox", title: "Inbox", icon: "inbox", component: InboxView },
   { type: "pkm-task-organize", title: "Organize", icon: "layers", component: OrganizeView },

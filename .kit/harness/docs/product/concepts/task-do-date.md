@@ -14,7 +14,7 @@ Add Do Date（足す）、Move Do Date（その日を外して移す）、Do Tod
 
 ## 使い方の筋道
 
-今日が Do Date の issue は、Daily を開くと自動で今日のボードに載る。その日にボードから外したものは載せ直さない。片付かなければ、Do Tomorrow や Move Do Date で移すと、その日のボードでは「持ち越し」になる。
+今日が Do Date の issue は、Today を開くと自動で今日のボードに載る。その日にボードから外したものは載せ直さない。片付かなければ、Do Tomorrow や Move Do Date で移すと、その日のボードでは「持ち越し」になる。
 
 ## 根拠
 

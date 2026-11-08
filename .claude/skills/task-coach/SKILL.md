@@ -30,7 +30,7 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 - `board`: 今日のボードに載っている issue / routine、未完了、グループ配置（置いたことのあるカードは、前に置いたグループに初めから出る）
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
-- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue（Obsidian で Daily を開くと自動で載る。その日にボードから外したものは含まない）
+- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
 - `pendingBoards`: 今日より前で締めていないボード
 - `frequentlyCarried`: 2 回以上持ち越されている issue（分割・見直し候補）
 - `stalled`: `in-progress` なのに直近 3 日以上 worklog がない issue、`revisit` が来た someday、`waiting` / `delegated`

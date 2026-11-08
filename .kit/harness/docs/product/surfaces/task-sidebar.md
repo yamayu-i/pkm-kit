@@ -10,7 +10,7 @@
 
 1. 「issue をまとめて作成」のボタン
 2. 記録中のタイマー（表題・経過時間・停止）
-3. 各 View への移動と件数: Daily（期限切れ + 前回のボードの未完了 + 今日のボードの未完了。その日に外したものは数えない）、Inbox、Organize、Scheduled、Issues、Someday、Routines、Board groups、Labels
+3. 各 View への移動と件数: Today（期限切れ + 前回のボードの未完了 + 今日のボードの未完了。その日に外したものは数えない）、Inbox、Organize、Scheduled、Issues、Someday、Routines、Board groups、Labels
 
 押した View は [一覧ペイン](layout-panes.md) に開く。
 

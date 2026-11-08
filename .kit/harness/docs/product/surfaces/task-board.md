@@ -1,7 +1,7 @@
 # task board
 
-- 種類: View（[Daily](task-daily.md) の最後の段階）
-- 開き方: Daily の段階「ボード」
+- 種類: View（[Today](task-today.md) の最後の段階）
+- 開き方: Today の段階「ボード」
 - 場面: [朝の計画](../jobs/task-plan-day.md)、[作業しながら残す](../jobs/task-work.md)、[一日の締め](../jobs/task-close-day.md)
 
 ## 今の振る舞い

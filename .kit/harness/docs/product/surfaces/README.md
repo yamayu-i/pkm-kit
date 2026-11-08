@@ -28,8 +28,8 @@ ADR へのリンク。
 
 | 面 | 種類 |
 |---|---|
-| [Daily](task-daily.md) | View |
-| [task board](task-board.md) | View（Daily の段階） |
+| [Today](task-today.md) | View |
+| [task board](task-board.md) | View（Today の段階） |
 | [issue 画面](task-issue-screen.md) | 画面 |
 | [routine 画面](task-routine-screen.md) | 画面 |
 | [Issues](task-issues.md) | View |

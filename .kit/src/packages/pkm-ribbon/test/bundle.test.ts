@@ -101,7 +101,7 @@ function load({ commands = new Set(), plugins = {} }: Options = {}) {
 
 const ORDER = [
 	["calendar", "今日のデイリーノートを開く", "pkm-template:open-todays-daily"],
-	["calendar-check", "Daily を開く", "pkm-task:open-daily"],
+	["sun", "今日のタスクを開く", "pkm-task:open-daily"],
 	["bell", "PKM Updates を開く", "pkm-updates:open-view"],
 	["list-plus", "issue をまとめて作成", "pkm-task:capture-issues"],
 	["arrow-down-to-line", "Git: pull", "pkm-git:pull"],
