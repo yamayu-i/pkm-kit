@@ -120,6 +120,8 @@ export const CSS_RULES = {
 	"a11y/focus-visible": ":focus-visible で --vt-focus-ring の outline を付ける",
 	"a11y/no-outline-none": "outline: none / 0 で枠を消さない",
 	"a11y/reduced-motion": "transition / animation を使うなら @media (prefers-reduced-motion: reduce) で止める",
+	"input/outlined":
+		"入力欄（input / textarea / select）を使うなら、class で範囲を決めたルールで面・枠・文字をトークンにし、Obsidian の影を消し（box-shadow: none）、:focus で primary の枠にする",
 } as const;
 
 export type CssRuleId = keyof typeof CSS_RULES;
@@ -315,9 +317,51 @@ export function lintCss(source: string, { tokens }: LintContext): LintProblem[] 
 	if (!focus.some((d) => d.prop.startsWith("outline") && d.value.includes("var(--vt-focus-ring)"))) {
 		add("a11y/focus-visible", 1, ":focus-visible のルールがありません");
 	}
+	lintFields(decls, (line, message) => add("input/outlined", line, message));
+
 	const moves = decls.some((d) => /^(transition|animation)$/.test(d.prop) && d.value !== "none");
 	const reduced = blocks.some((b) => /^@media\b.*prefers-reduced-motion:\s*reduce/.test(b.prelude));
 	if (moves && !reduced) add("a11y/reduced-motion", 1, "@media (prefers-reduced-motion: reduce) がありません");
 
 	return problems.sort((a, b) => a.line - b.line);
+}
+
+/** 入力欄の要素を指すセレクタ（checkbox などの種類を問わず、input / textarea / select を使っているか） */
+const FIELD_RE = /(^|[\s,>+~(])(input|textarea|select)(?=$|[\s,.:[)>+~])/;
+/** 共通のルールで、少なくともこれらを指している必要がある */
+const FIELD_KINDS = [/\binput\[type="text"\]/, /\btextarea\b/, /\bselect\b/];
+
+/**
+ * input/outlined（#32）。Obsidian は input に影（--input-shadow）と、自分の面・枠の色を付ける。
+ * 入力欄を使う CSS には、class で範囲を決めた（Obsidian の input[type=text] などより詳細度の高い）共通のルールで、
+ * 面・枠・文字をトークンにして影を消すものと、:focus で primary の枠にするものが要る
+ */
+function lintFields(decls: readonly CssDecl[], add: (line: number, message: string) => void): void {
+	const used = decls.find((d) => d.context.some((c) => FIELD_RE.test(c)));
+	if (!used) return;
+	const byRule = new Map<string, CssDecl[]>();
+	for (const d of decls) {
+		const rule = d.context.at(-1);
+		if (rule === undefined) continue;
+		byRule.set(rule, [...(byRule.get(rule) ?? []), d]);
+	}
+	const scoped = (prelude: string) => prelude.split(",").every((sel) => /^\s*[^\s]*\.[\w-]+[^\s]*\s+\S/.test(sel));
+	const coversAll = (prelude: string) => FIELD_KINDS.every((re) => re.test(prelude));
+	const has = (ds: CssDecl[], prop: RegExp, value: RegExp) => ds.some((d) => prop.test(d.prop) && value.test(d.value));
+	const rules = [...byRule.entries()].filter(([p]) => coversAll(p));
+	const base = rules.find(
+		([p, ds]) =>
+			!/:(focus|hover|active)/.test(p) &&
+			scoped(p) &&
+			has(ds, /^box-shadow$/, /^none$/) &&
+			has(ds, /^background(-color)?$/, /var\(--vt-surface[\w-]*\)/) &&
+			has(ds, /^color$/, /var\(--vt-on-surface\)/) &&
+			has(ds, /^border(-color)?$/, /var\(--vt-outline\)/),
+	);
+	if (!base) {
+		add(used.line, "面・枠・文字をトークンにして box-shadow: none にする、class で範囲を決めた共通のルールがありません");
+		return;
+	}
+	const focus = rules.some(([p, ds]) => /:focus\b/.test(p) && scoped(p) && has(ds, /^border(-color)?$/, /var\(--vt-primary\)/));
+	if (!focus) add(used.line, ":focus で枠を primary（var(--vt-primary)）にするルールがありません");
 }

@@ -32,7 +32,7 @@ class HeaderWidget extends WidgetType {
 
 	toDOM(): HTMLElement {
 		const el = document.createElement("div");
-		el.className = "vt-header";
+		el.className = "vt-header vt-ui";
 		render(h(headerFor(this.path), { ctx: this.ctx, path: this.path }), el);
 		return el;
 	}

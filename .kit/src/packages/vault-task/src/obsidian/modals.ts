@@ -15,6 +15,8 @@ export class PreactModal extends Modal {
 
 	override onOpen(): void {
 		this.setTitle(this.title);
+		// vt-ui: 入力欄などの共通の見た目の範囲（#32）
+		this.modalEl.addClass("vt-ui");
 		render(h(() => this.view(() => this.close()) as never, {}), this.contentEl);
 	}
 

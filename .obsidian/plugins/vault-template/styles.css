@@ -530,3 +530,45 @@ body.theme-dark {
 .view-content:has(.vt-tpl-note-header-body[data-hide-properties="true"]) .metadata-container:not(.mod-error) {
 	display: none;
 }
+
+/* ---------- 入力欄（M3 の outlined text field。vault-task と同じ。#32） ----------
+ * Obsidian は input に影（--input-shadow）と自分の面・枠の色を付ける。一覧 View とモーダルの根の中では、
+ * Obsidian の input[type=text] などより詳細度の高いこのルールで、面・枠・文字をトークンにして影を消す */
+.vt-tpl-view input[type="text"],
+.vt-tpl-view input[type="search"],
+.vt-tpl-view textarea,
+.vt-tpl-view select,
+.vt-tpl-modal input[type="text"],
+.vt-tpl-modal input[type="search"],
+.vt-tpl-modal textarea,
+.vt-tpl-modal select {
+	border: 1px solid var(--vt-outline);
+	background-color: var(--vt-surface);
+	color: var(--vt-on-surface);
+	box-shadow: none;
+}
+
+.vt-tpl-view input[type="text"]:hover,
+.vt-tpl-view input[type="search"]:hover,
+.vt-tpl-view textarea:hover,
+.vt-tpl-view select:hover,
+.vt-tpl-modal input[type="text"]:hover,
+.vt-tpl-modal input[type="search"]:hover,
+.vt-tpl-modal textarea:hover,
+.vt-tpl-modal select:hover {
+	border-color: var(--vt-on-surface);
+	box-shadow: none;
+}
+
+/* M3: フォーカスで primary の 2px の枠（1px の枠 + 内側の 1px の輪） */
+.vt-tpl-view input[type="text"]:focus,
+.vt-tpl-view input[type="search"]:focus,
+.vt-tpl-view textarea:focus,
+.vt-tpl-view select:focus,
+.vt-tpl-modal input[type="text"]:focus,
+.vt-tpl-modal input[type="search"]:focus,
+.vt-tpl-modal textarea:focus,
+.vt-tpl-modal select:focus {
+	border-color: var(--vt-primary);
+	box-shadow: inset 0 0 0 1px var(--vt-primary);
+}

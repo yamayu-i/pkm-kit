@@ -133,7 +133,7 @@ if (name === "header" || name === "routine" || name === "member") {
 		["narrow", 360],
 	] as const) {
 		const el = document.createElement("div");
-		el.className = "vt-header";
+		el.className = "vt-header vt-ui";
 		el.id = id;
 		el.style.width = `${width}px`;
 		el.style.margin = "8px";
@@ -152,7 +152,7 @@ if (name === "header" || name === "routine" || name === "member") {
 		["narrow", 380],
 	] as const) {
 		const el = document.createElement("div");
-		el.className = "vt-view";
+		el.className = "vt-view vt-ui";
 		// Obsidian の .view-content.vt-view と同じ（幅に応じた表示を確かめる）
 		el.style.containerType = "inline-size";
 		el.id = id;
