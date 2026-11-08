@@ -5,12 +5,12 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { COMMUNITY, HTML, readJson } from "./common.mjs";
+import { COMMUNITY, hasHtml, HTML, readJson } from "./common.mjs";
 
 export function migrate(root, { dryRun = false } = {}) {
 	const changes = [];
 	const community = readJson(root, COMMUNITY);
-	if (!community.error && !(Array.isArray(community.value) && community.value.includes(HTML))) {
+	if (!community.error && !hasHtml(community.value)) {
 		if (!dryRun) {
 			mkdirSync(dirname(join(root, COMMUNITY)), { recursive: true });
 			// Obsidian と同じく 2 つの空白で字下げし、末尾に改行を付けない

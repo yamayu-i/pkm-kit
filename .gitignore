@@ -4,6 +4,12 @@
 .trash/
 
 # 自作プラグインの端末設定（端末名・保存した条件など。トークンは SecretStorage にあり、ここには入らない）
+.obsidian/plugins/pkm-git/data.json
+.obsidian/plugins/pkm-task/data.json
+.obsidian/plugins/pkm-template/data.json
+.obsidian/plugins/pkm-ribbon/data.json
+.obsidian/plugins/pkm-html/data.json
+# 改名前の名前（ADR-0058）。移行が届かない端末に古い data.json が残っても、コミットしない
 .obsidian/plugins/vault-git/data.json
 .obsidian/plugins/vault-task/data.json
 .obsidian/plugins/vault-template/data.json

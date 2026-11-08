@@ -6,7 +6,7 @@ import { commit, page, tempRepo } from "./helpers.mjs";
 test("コミットの件名を種類に分ける", () => {
 	assert.equal(commitKind("vault: snapshot (iphone)"), "snapshot（iphone）");
 	assert.equal(commitKind("wiki(ingest): 記事を取り込む"), "wiki(ingest)");
-	assert.equal(commitKind("feat(vault-task): 一覧を追加する"), "feat");
+	assert.equal(commitKind("feat(pkm-task): 一覧を追加する"), "feat");
 	assert.equal(commitKind("Merge pull request #3 from x"), "マージ");
 	assert.equal(commitKind("適当なメッセージ"), "その他");
 });

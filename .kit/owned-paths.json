@@ -19,6 +19,6 @@
     ".obsidian/plugins/*/main.js",
     ".obsidian/plugins/*/manifest.json",
     ".obsidian/plugins/*/styles.css",
-    ".obsidian/snippets/vault-theme.css"
+    ".obsidian/snippets/pkm-theme.css"
   ]
 }

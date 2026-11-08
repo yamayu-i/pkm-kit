@@ -57,7 +57,7 @@
 | `security` | セキュリティチェックの記録 |
 | `wip` | 中断するときの途中のコミット |
 
-- scope はプラグイン名（`vault-git`、`vault-task`）、`kit`、`harness` など
+- scope はプラグイン名（`pkm-git`、`pkm-task`）、`kit`、`harness` など
 - マージコミットは、この形式の対象外
 
 ### PR

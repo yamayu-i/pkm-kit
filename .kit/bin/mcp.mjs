@@ -9992,7 +9992,7 @@ function handleMcpRequest(ctx, req) {
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "vault-task-mcp", version: "1.0.0" }
+        serverInfo: { name: "pkm-task-mcp", version: "1.0.0" }
       }
     };
   }
@@ -10034,7 +10034,7 @@ function handleMcpRequest(ctx, req) {
   };
 }
 function parseMcpArgs(argv) {
-  let device = process.env.VAULT_TASK_DEVICE ?? "ai";
+  let device = process.env.PKM_TASK_DEVICE ?? process.env.VAULT_TASK_DEVICE ?? "ai";
   let root = process.cwd();
   for (const a of argv) {
     if (a.startsWith("--device=")) {

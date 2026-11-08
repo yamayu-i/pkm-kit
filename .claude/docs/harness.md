@@ -6,7 +6,7 @@
 
 - 開発者は 1 人。使うツールは Claude Code（クラウドとローカルの両方）
 - この Vault は非公開のリポジトリ。上流（公開）を git の remote `upstream` でつなぎ、merge で更新を取り込む
-- 各端末（PC・モバイル）の Vault Git が main に snapshot を直接 push する
+- 各端末（PC・モバイル）の PKM Git が main に snapshot を直接 push する
 - 開発用のファイルは隠しフォルダに置く（Obsidian に索引させない）
 - 文書・コミット・Issue・PR は日本語。識別子は英語
 - ユーザーへの返事と質問（質問のツールの問い・選択肢・説明を含む）も日本語
@@ -15,7 +15,7 @@
 
 | 区分 | 例 | 変えてよいか |
 |---|---|---|
-| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/*/` の成果物、`.obsidian/snippets/vault-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
+| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/*/` の成果物、`.obsidian/snippets/pkm-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
 | 子のもの | ノート全般、`template/`、`.obsidian/*.json`、`.claude/local/`、`.claude/skills/local-*/`、`.claude/notes/`・`reviews/`・`output-log/`、`.kit-local/` | 変えてよい |
 
 両方が書きたくなるものは、重ね合わせで境界をまたがないようにしている。

@@ -9,19 +9,19 @@ export const VAULT_ROOT = at("../../../../../");
 
 /** 生成物（どれもコミットする。テストで正本と食い違っていないかを見る） */
 export const OUTPUTS = {
-	pluginCss: at("../../vault-task/tokens.css"),
-	templatePluginCss: at("../../vault-template/tokens.css"),
-	htmlPluginCss: at("../../vault-html/tokens.css"),
-	obsidianSnippet: at("../../../../../.obsidian/snippets/vault-theme.css"),
+	pluginCss: at("../../pkm-task/tokens.css"),
+	templatePluginCss: at("../../pkm-template/tokens.css"),
+	htmlPluginCss: at("../../pkm-html/tokens.css"),
+	obsidianSnippet: at("../../../../../.obsidian/snippets/pkm-theme.css"),
 	doc: at("../../../docs/design-tokens.md"),
 	ts: at("../generated/tokens.ts"),
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../vault-task/styles.css"), at("../../vault-template/styles.css"), at("../../vault-html/styles.css")];
+export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 /** 子の Obsidian の設定に必要なキーと値（ADR-0009）。ここの "appearance.json" をデザインルールと照らす */
 export const OBSIDIAN_REQUIRED_JSON = at("../../../../obsidian-required.json");
 /** スニペットの名前（appearance.json の enabledCssSnippets に入れる） */
-export const SNIPPET_NAME = "vault-theme";
+export const SNIPPET_NAME = "pkm-theme";

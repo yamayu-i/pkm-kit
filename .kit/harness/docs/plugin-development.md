@@ -1,6 +1,6 @@
 # 自作プラグインの設計と開発
 
-## vault-git（git 同期）
+## pkm-git（git 同期）
 
 コミュニティプラグインの Obsidian Git を使わずに、pull / push だけを自作したもの。モバイル（iOS / Android）でも動く。
 
@@ -27,7 +27,7 @@
 1. fetch → リモートが先に進んでいたら（behind）モーダルを出して中断（コミットもしない）
 2. snapshot → push。fetch と push の間に他の端末が push して拒否された場合も同じモーダル
 
-### コードの構成（`.kit/src/packages/vault-git/src`）
+### コードの構成（`.kit/src/packages/pkm-git/src`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -52,14 +52,14 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ### 処理時間の計測
 
-工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../src/packages/vault-git/PERFORMANCE-HANDOFF.md) を参照。
+工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../src/packages/pkm-git/PERFORMANCE-HANDOFF.md) を参照。
 
-## vault-task（タスク管理）
+## pkm-task（タスク管理）
 
 設計判断は ADR に残している: `.kit/src/docs/adr/README.md`（ハーネスと wiki の ADR は [別の場所](adr/README.md)）。実装するときは承認済みの ADR に従い、決定を変えるときは新しい ADR を作る。
 ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint、issue 画面・一括登録、DailyTaskView・タイマー、dead / caution の整理、グループ管理・各 View）。
 
-### コードの構成（`.kit/src/packages/vault-task`）
+### コードの構成（`.kit/src/packages/pkm-task`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -79,33 +79,33 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - `children` / `actual_effort` / `updated` は保存しない（ADR-0002）。索引で計算する
 - データの置き場所: issue / routine / member の md、`worklog/<端末名>/YYYY-MM.jsonl`、`issue/labels.json`、`issue/board-groups.json`、`board/<端末名>/YYYY-MM.jsonl`（ADR-0020）、`statuslog/<端末名>/YYYY-MM.jsonl`（ADR-0031）
 - status の変更は `TaskWriter.update` が見つけて、statuslog への追記、closed / canceled のときのタイマーの停止、取り消しのトースト（`onStatusChange` → `StatusUndo`）を行う。MCP は `updateIssueFrontmatter` に記録の情報を渡す。statuslog は分析用の履歴で、status の正本は frontmatter
-- 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/vault-task/data.json`。git に入れない
+- 端末ごとの設定（端末名・Issue List の保存した条件）は `.obsidian/plugins/pkm-task/data.json`。git に入れない
 - 間違っていそうな worklog は [worklog-review スキル](../../../.claude/skills/worklog-review/SKILL.md) でユーザーと一緒に直す（止め忘れの警告や自動停止はしない。ADR-0009）
 - worklog の編集・削除は `vault.process` で 1 行だけ書き換える（`replaceWorklogLine`）。行の ID が合わなければ書かない。開始日時を別の月に変えても、ファイルは移さない
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/vault-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `vault-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter vault-task exec playwright install chromium` で入れる
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる
 
-## vault-template（テンプレートからのノート作成）
+## pkm-template（テンプレートからのノート作成）
 
 上流の既定（`.kit/templates/`）にその Vault の `template/` を重ねたテンプレートを選び、日時・タイトル・プロンプト入力・ID・カーソル位置を展開してノートを作成するプラグイン（ADR-0022、ADR-0023）。
 
-- 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。vault-task と同じ規則）
+- 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。pkm-task と同じ規則）
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
-- コマンド「今日のデイリーノートを開く」（リボンのボタンは vault-ribbon が出す。ADR-0029）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
-- 連番の関数は vault-task（`core/ids.ts`）と vault-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
-- 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（vault-task のヘッダーがある）
-- `test/templates-repo.test.ts` が、上流の既定のテンプレート（`.kit/templates/`）を読んで、created と updated が同じ値で入ること、vault-task が必要とする項目があることを検査する
+- コマンド「今日のデイリーノートを開く」（リボンのボタンは pkm-ribbon が出す。ADR-0029）: `config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
+- 連番の関数は pkm-task（`core/ids.ts`）と pkm-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
+- 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（pkm-task のヘッダーがある）
+- `test/templates-repo.test.ts` が、上流の既定のテンプレート（`.kit/templates/`）を読んで、created と updated が同じ値で入ること、pkm-task が必要とする項目があることを検査する
 - 上流のテンプレートは隠しパスにあり、Vault の索引（`vault.getFiles()` など）に載らない。`vault.adapter` の `exists` / `list` / `read` で読む（モバイルでも使える）。その Vault の `template/` は今までどおり Vault の API で読み書きする
 
-### コードの構成（`.kit/src/packages/vault-template`）
+### コードの構成（`.kit/src/packages/pkm-template`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
 | `src/core/date-format.ts` | `{{date:FORMAT}}` / `{{time:FORMAT}}` の日時フォーマット展開 | なし |
 | `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証、今日のデイリーノートのパス | なし |
-| `src/core/ids.ts` | `{{id:…}}` の連番（vault-task の `core/ids.ts` と同じ規則） | なし |
+| `src/core/ids.ts` | `{{id:…}}` の連番（pkm-task の `core/ids.ts` と同じ規則） | なし |
 | `src/core/config.ts` | 上流の既定の設定（`.kit/templates/config.json`）と、その Vault の上書き（`template/config.json`。書いた項目だけ）の読み書き・重ね合わせ・差分・並び替え | なし |
 | `src/core/note-title.ts` | タイトルの決め方（`title` → `name` → ファイル名）、daily の日付と曜日 | なし |
 | `src/core/note-list.ts` / `note-format.ts` / `note-header.ts` | 一覧の絞り込み・並べ替え・取り込み状態の導出、値の整形、ヘッダーに出す内容の組み立て | なし |
@@ -113,16 +113,16 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/views/` | 一覧 View（Preact） | あり |
 | `src/main.ts` | コマンド・リボン・設定タブの登録 | あり |
 
-## vault-ribbon（リボンのボタン）
+## pkm-ribbon（リボンのボタン）
 
 「今日のデイリーノートを開く」（`calendar`）と「Daily を開く」（`calendar-check`）のボタンを、リボンに続けて並べるだけのプラグイン（ADR-0029）。リボンの並びはボタンを登録した順で決まるので、2 つを 1 つのプラグインが続けて登録する。
 
-- vault-template と vault-task には依存しない（import しない）。実行時に `app.commands.executeCommandById` で `vault-template:open-todays-daily` と `vault-task:open-daily` を呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える
+- pkm-template と pkm-task には依存しない（import しない）。実行時に `app.commands.executeCommandById` で `pkm-template:open-todays-daily` と `pkm-task:open-daily` を呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える
 - `app.commands` は Obsidian の公開の型にないので、使う形だけを型に書いてある
-- vault-template と vault-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、vault-ribbon も変える
+- pkm-template と pkm-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、pkm-ribbon も変える
 - `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
 
-## vault-html（HTML の読み取り専用の表示）
+## pkm-html（HTML の読み取り専用の表示）
 
 Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0037）。ほかのプラグインには依存しない。
 
@@ -133,7 +133,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - テーマ: `tokens.css` を文字列として束ね（esbuild の `loader`）、iframe に差し込む。`css-change` で `<body>` のクラスと `color-scheme` を付け直す
 - 外部に共有する HTML（`tmp/` への書き出し）は Issue #44。そのため、除去と画像の置き換えは Obsidian に依存しない `src/core/` に置く
 
-### コードの構成（`.kit/src/packages/vault-html`）
+### コードの構成（`.kit/src/packages/pkm-html`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -141,7 +141,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `src/core/sanitize.ts` | 除去、画像の置き換え、CSP・トークン・テーマの差し込み、`srcdoc` の文字列 | なし（`DOMParser` を使う） |
 | `src/ui/frame.ts` | iframe を作り、リンクのクリックとテーマの付け直しを扱う | なし |
 | `src/obsidian/html-view.ts`・`src/main.ts` | View、拡張子の登録、Vault からの読み込み、リンクを開く | あり |
-| `preview/` | `pnpm --filter vault-html preview:ui`。悪い HTML でスクリプトが動かないこと・外部への要求がないこと、リンク、画像、見本の描画と検査を Chromium で確かめる。CI では動かない | なし |
+| `preview/` | `pnpm --filter pkm-html preview:ui`。悪い HTML でスクリプトが動かないこと・外部への要求がないこと、リンク、画像、見本の描画と検査を Chromium で確かめる。CI では動かない | なし |
 
 - `test/` は policy の単体テストと、ビルド済み `main.js` のテスト（`allow-scripts` を含まないこと、登録する拡張子）。DOM を使う部分は preview で確かめる
 - Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
@@ -152,7 +152,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 | パス | 役割 |
 |---|---|
-| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。vault-task と vault-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task と pkm-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
 
 ## design（デザイントークンと検査）
 
@@ -167,9 +167,9 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `node/` | ファイルの読み書きとパス。Node の API を使うので `src/` の外に置く（security-scan は `src/` で Node の API を禁止している） |
 | `src/css-lint.ts` / `src/obsidian-config.ts` / `src/doc-lint.ts` | CSS・Obsidian の設定・design.md の検査（`pnpm check` の test で走る） |
 | `src/audit.ts` | 描画した画面の検査（`pnpm preview:ui` から使う） |
-| `generated/tokens.ts` | TS から使う色（vault-task の label の検査）。生成物 |
+| `generated/tokens.ts` | TS から使う色（pkm-task の label の検査）。生成物 |
 
-- vault-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
+- pkm-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
 - スクリプトは Node の型の除去で `.ts` をそのまま動かす（ビルドしない）
 
 ## 進め方
@@ -178,4 +178,4 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
 - 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
-- Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（vault-task の `esbuild.config.mjs`）
+- Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（pkm-task の `esbuild.config.mjs`）

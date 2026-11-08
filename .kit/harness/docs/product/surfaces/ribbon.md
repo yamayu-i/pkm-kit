@@ -7,11 +7,11 @@
 
 | ボタン | 出すプラグイン | 動き |
 |---|---|---|
-| 今日のデイリーノートを開く（`calendar`） | vault-ribbon | なければテンプレートから作って開く |
-| Daily を開く（`calendar-check`） | vault-ribbon | [Daily](task-daily.md) を開く |
-| テンプレートから新規ファイルを作成 | vault-template | [テンプレートから作成](template-create.md) |
-| issue をまとめて作成 | vault-task | [issue をまとめて作成](task-capture.md) |
-| Git: pull / Git: push | vault-git | [Vault Git](git-sync.md) |
+| 今日のデイリーノートを開く（`calendar`） | pkm-ribbon | なければテンプレートから作って開く |
+| Daily を開く（`calendar-check`） | pkm-ribbon | [Daily](task-daily.md) を開く |
+| テンプレートから新規ファイルを作成 | pkm-template | [テンプレートから作成](template-create.md) |
+| issue をまとめて作成 | pkm-task | [issue をまとめて作成](task-capture.md) |
+| Git: pull / Git: push | pkm-git | [PKM Git](git-sync.md) |
 
 - 最初の 2 つは続けて並ぶ。呼ぶ先のプラグインが無効なら、そう知らせる
 - コアプラグインのデイリーノートは無効にしている
