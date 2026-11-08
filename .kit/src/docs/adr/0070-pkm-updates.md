@@ -1,6 +1,6 @@
 # ADR-0070: 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる
 
-- 状態: 承認
+- 状態: 承認（一部置換: [ADR-0089](0089-git-auto-sync.md)。Git の pull と push のボタンを「Git: Sync」の 1 つにした）
 - 日付: 2026-11-08
 
 ## 背景

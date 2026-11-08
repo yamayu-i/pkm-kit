@@ -104,8 +104,7 @@ const ORDER = [
 	["sun", "Open Today", "pkm-task:open-daily"],
 	["bell", "Open PKM Updates", "pkm-updates:open-view"],
 	["list-plus", "Capture issues", "pkm-task:capture-issues"],
-	["arrow-down-to-line", "Git: pull", "pkm-git:pull"],
-	["arrow-up-from-line", "Git: push", "pkm-git:push"],
+	["refresh-cw", "Git: Sync", "pkm-git:sync"],
 ];
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、ADR-0070）", () => {
@@ -193,7 +192,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、A
 				},
 			});
 			layoutReady();
-			trigger("pkm-ribbon:badge-changed", "pkm-git:pull");
+			trigger("pkm-ribbon:badge-changed", "pkm-git:sync");
 			trigger("pkm-ribbon:badge-changed", "other:command");
 			trigger("pkm-ribbon:badge-changed", 42);
 			expect(ribbon.filter((r) => r.el.badge() !== null)).toHaveLength(0);

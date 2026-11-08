@@ -1,36 +1,5 @@
-import { Modal, Setting, type App } from "obsidian";
-
-/** push しようとしたがリモートが先に進んでいたとき */
-export class BehindModal extends Modal {
-	constructor(
-		app: App,
-		private readonly onPull: () => void,
-	) {
-		super(app);
-	}
-
-	override onOpen(): void {
-		this.setTitle("リモートに新しい変更があります");
-		this.contentEl.createEl("p", {
-			text: "push は実行していません（コミットもしていません）。先に pull で取り込んでから、もう一度 push してください。",
-		});
-		new Setting(this.contentEl)
-			.addButton((b) =>
-				b
-					.setButtonText("Pull now")
-					.setCta()
-					.onClick(() => {
-						this.close();
-						this.onPull();
-					}),
-			)
-			.addButton((b) => b.setButtonText("Close").onClick(() => this.close()));
-	}
-
-	override onClose(): void {
-		this.contentEl.empty();
-	}
-}
+import { Modal, Notice, Setting, type App } from "obsidian";
+import type { SyncLogEntry } from "../git/sync-log";
 
 export interface ConflictItem {
 	path: string;
@@ -98,6 +67,85 @@ export class ConfirmModal extends Modal {
 					}),
 			)
 			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+	}
+
+	override onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
+/** 「この版を残す」の名前を入れる（空でよい） */
+export class KeepVersionModal extends Modal {
+	private name = "";
+
+	constructor(
+		app: App,
+		private readonly onKeep: (name: string) => void,
+	) {
+		super(app);
+	}
+
+	override onOpen(): void {
+		this.setTitle("Keep this version");
+		this.contentEl.createEl("p", {
+			text: "今の内容をコミットして残します。オフラインでも残り、次につながったときに送ります。名前は空でもかまいません。",
+		});
+		new Setting(this.contentEl).setName("Name").addText((t) =>
+			t.setPlaceholder("Optional").onChange((v) => { this.name = v; }),
+		);
+		new Setting(this.contentEl)
+			.addButton((b) =>
+				b
+					.setButtonText("Keep")
+					.setCta()
+					.onClick(() => {
+						this.close();
+						this.onKeep(this.name);
+					}),
+			)
+			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+	}
+
+	override onClose(): void {
+		this.contentEl.empty();
+	}
+}
+
+/** 同期の記録（ADR-0089 の 8）。新しい順に出し、クリップボードにコピーできる */
+export class SyncLogModal extends Modal {
+	constructor(
+		app: App,
+		private readonly entries: SyncLogEntry[],
+	) {
+		super(app);
+	}
+
+	override onOpen(): void {
+		this.setTitle("Sync log");
+		if (this.entries.length === 0) {
+			this.contentEl.createEl("p", { text: "No entries" });
+			return;
+		}
+		this.contentEl.createEl("p", {
+			text: "同期の失敗と、自動で回復したことの記録です（この端末だけ）。Issue などに貼る前に、ノートのパスが入っていないか確かめてください。",
+		});
+		new Setting(this.contentEl).addButton((b) =>
+			b.setButtonText("Copy").onClick(() => {
+				const text = this.entries.map((e) => JSON.stringify(e)).join("\n");
+				void navigator.clipboard.writeText(text).then(
+					() => new Notice("Git: 同期の記録をコピーしました"),
+					() => new Notice("Git: コピーできませんでした"),
+				);
+			}),
+		);
+		const list = this.contentEl.createEl("ul");
+		for (const e of this.entries.slice(0, 200)) {
+			const li = list.createEl("li");
+			const what = [e.event, e.phase, e.kind, e.message ?? e.detail].filter((x) => x).join(" · ");
+			li.createEl("div", { text: `${e.time} ${e.level === "error" ? "Error" : "Warning"}（${e.trigger ?? "-"}）` });
+			li.createEl("div", { text: what });
+			if (e.paths && e.paths.length > 0) li.createEl("div", { text: e.paths.join(", ") });
+		}
 	}
 
 	override onClose(): void {

@@ -21595,6 +21595,42 @@ async function writeTreeMap(ctx, entries) {
 }
 
 // src/git/engine.ts
+var BranchMovedError = class extends Error {
+  constructor(expected, actual) {
+    super("\u540C\u671F\u306E\u9593\u306B\u3001\u307B\u304B\u306E\u4ED5\u7D44\u307F\u304C\u30D6\u30E9\u30F3\u30C1\u3092\u5909\u3048\u307E\u3057\u305F");
+    this.expected = expected;
+    this.actual = actual;
+    this.name = "BranchMovedError";
+  }
+  expected;
+  actual;
+};
+var ApplyJournalError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ApplyJournalError";
+  }
+};
+var NetworkError = class extends Error {
+  constructor(cause) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.cause = cause;
+    this.name = "NetworkError";
+  }
+  cause;
+};
+var APPLY_JOURNAL = ".git/pkm-git/apply.json";
+var MAX_PUSH_ATTEMPTS = 3;
+function classifyNetworkError(e) {
+  if (e instanceof AuthTargetError || e instanceof Errors.UserCanceledError) return "auth";
+  if (e instanceof Errors.HttpError) {
+    const status2 = e.data?.statusCode ?? 0;
+    if (status2 === 401 || status2 === 403 || status2 === 404) return "auth";
+    return "offline";
+  }
+  if (e instanceof NetworkError) return "offline";
+  return null;
+}
 var WorktreeChangedError = class extends Error {
   constructor(paths) {
     super(`\u51E6\u7406\u4E2D\u306B\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u3055\u308C\u307E\u3057\u305F: ${paths.join(", ")}`);
@@ -21622,7 +21658,13 @@ function countingHttp(inner, traffic) {
   return {
     async request(req) {
       traffic.requests++;
-      const res = await inner.request(req.body ? { ...req, body: count(req.body, "sentBytes") } : req);
+      let res;
+      try {
+        res = await inner.request(req.body ? { ...req, body: count(req.body, "sentBytes") } : req);
+      } catch (e) {
+        if (e instanceof AuthTargetError) throw e;
+        throw new NetworkError(e);
+      }
       return res.body ? { ...res, body: count(res.body, "receivedBytes") } : res;
     }
   };
@@ -21646,7 +21688,10 @@ var PkmGit = class {
   http;
   /** これまでの通信の累計。工程ごとの差分を onTransfer に渡す */
   traffic = { requests: 0, sentBytes: 0, receivedBytes: 0 };
+  /** 最後に始めた工程の名前（失敗の記録に使う） */
+  lastPhase = "";
   async measure(phase, run) {
+    this.lastPhase = phase;
     const start = performance.now();
     try {
       return await this.countTransfer(phase, run);
@@ -21720,7 +21765,7 @@ var PkmGit = class {
    * jj の「作業コピーもコミット」の考え方。未コミットの変更を全部コミットする。
    * @returns コミットしたら true
    */
-  async snapshot() {
+  async snapshot(message) {
     const indexStat = await this.store.stat(".git/index");
     const matrix = await isomorphic_git_default.statusMatrix({ ...this.ctx });
     const racy = await this.racyChanges(matrix, indexStat?.mtime ?? 0);
@@ -21744,7 +21789,7 @@ var PkmGit = class {
     if (!changed) return false;
     await isomorphic_git_default.commit({
       ...this.ctx,
-      message: `vault: snapshot (${this.device})
+      message: message ?? `vault: snapshot (${this.device})
 `,
       author: this.signature()
     });
@@ -21756,27 +21801,27 @@ var PkmGit = class {
    * コミット済みの元資料(sources/)は変更されていても付与しない。
    */
   async stampUpdated(paths, inHead, iso) {
-    const decoder = new TextDecoder("utf-8", { fatal: true });
-    const encoder = new TextEncoder();
+    const decoder2 = new TextDecoder("utf-8", { fatal: true });
+    const encoder2 = new TextEncoder();
     let headOid = null;
     for (const path of paths) {
       try {
         const stat = await this.store.stat(path);
         if (!stat || stat.type !== "file") continue;
         const bytes = await this.store.read(path);
-        const text = decoder.decode(bytes);
+        const text = decoder2.decode(bytes);
         let old = null;
         if (inHead.get(path)) {
           if (path.startsWith("sources/")) continue;
           headOid ??= await isomorphic_git_default.resolveRef({ ...this.ctx, ref: "HEAD" });
-          old = decoder.decode((await isomorphic_git_default.readBlob({ ...this.ctx, oid: headOid, filepath: path })).blob);
+          old = decoder2.decode((await isomorphic_git_default.readBlob({ ...this.ctx, oid: headOid, filepath: path })).blob);
         }
         if (!shouldStamp(old, text)) continue;
         const next = setUpdated(text, iso);
         if (next === text) continue;
         const current = await this.store.read(path);
         if (current.length !== bytes.length || current.some((b, i) => b !== bytes[i])) continue;
-        await this.store.write(path, encoder.encode(next));
+        await this.store.write(path, encoder2.encode(next));
       } catch {
       }
     }
@@ -21840,12 +21885,25 @@ var PkmGit = class {
     const snapshot = await this.measure("snapshot", () => this.snapshot());
     const remote = await this.measure("fetch", () => this.fetch(branch2));
     const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
-    if (!remote || remote === local) return { kind: "up-to-date", snapshot };
+    const res = await this.integrate(branch2, local, remote);
+    switch (res.kind) {
+      case "up-to-date":
+      case "ahead":
+        return { kind: res.kind, snapshot };
+      case "fast-forward":
+        return { kind: res.kind, snapshot, changed: res.changed };
+      case "merged":
+        return { kind: res.kind, snapshot, changed: res.changed, conflicts: res.conflicts };
+    }
+  }
+  /** fetch した remote を local に取り込む（作業ツリーとブランチを進める） */
+  async integrate(branch2, local, remote) {
+    if (!remote || remote === local) return { kind: "up-to-date" };
     const base = await this.measure("merge-base", () => this.mergeBase(local, remote));
-    if (base === remote) return { kind: "ahead", snapshot };
+    if (base === remote) return { kind: "ahead" };
     if (base === local) {
       const changed2 = await this.measure("moveTo", () => this.moveTo(branch2, local, remote));
-      return { kind: "fast-forward", snapshot, changed: changed2 };
+      return { kind: "fast-forward", changed: changed2 };
     }
     const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
       base ? readTreeMap(this.ctx, base) : Promise.resolve(/* @__PURE__ */ new Map()),
@@ -21870,7 +21928,7 @@ var PkmGit = class {
       noUpdateBranch: true
     });
     const changed = await this.measure("moveTo", () => this.moveTo(branch2, local, merged, oursMap));
-    return { kind: "merged", snapshot, changed, conflicts };
+    return { kind: "merged", changed, conflicts };
   }
   mergeMessage(branch2, conflicts) {
     let msg = `vault: merge ${this.remote}/${branch2} (${this.device})
@@ -21906,18 +21964,100 @@ var PkmGit = class {
       if (actual !== expected) touched.push(path);
     }
     if (touched.length > 0) throw new WorktreeChangedError(touched);
+    await this.assertBranchAt(branch2, from);
+    await this.writeJournal({ schemaVersion: 1, branch: branch2, from, to });
+    await this.applyPaths(toMap, writes, deletes);
+    await this.assertBranchAt(branch2, from);
+    await isomorphic_git_default.writeRef({ ...this.ctx, ref: `refs/heads/${branch2}`, value: to, force: true });
+    await this.removeJournal();
+    return [...writes, ...deletes].sort();
+  }
+  /** 作業ファイルとインデックスを toMap に合わせる（ブランチは変えない） */
+  async applyPaths(toMap, writes, deletes) {
     for (const path of writes) {
       const { blob } = await isomorphic_git_default.readBlob({ ...this.ctx, oid: toMap.get(path).oid });
       await this.store.write(path, blob);
     }
     for (const path of deletes) {
-      await this.store.remove(path);
-      await this.removeEmptyParents(path);
+      if (await this.store.stat(path)) {
+        await this.store.remove(path);
+        await this.removeEmptyParents(path);
+      }
     }
     if (writes.length > 0) await isomorphic_git_default.add({ ...this.ctx, filepath: writes, force: true });
     for (const path of deletes) await isomorphic_git_default.remove({ ...this.ctx, filepath: path });
-    await isomorphic_git_default.writeRef({ ...this.ctx, ref: `refs/heads/${branch2}`, value: to, force: true });
-    return [...writes, ...deletes].sort();
+  }
+  async assertBranchAt(branch2, expected) {
+    let actual = null;
+    try {
+      actual = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: `refs/heads/${branch2}` });
+    } catch {
+    }
+    if (actual !== expected) throw new BranchMovedError(expected, actual);
+  }
+  async writeJournal(journal) {
+    await this.store.write(APPLY_JOURNAL, new TextEncoder().encode(`${JSON.stringify(journal)}
+`));
+  }
+  async removeJournal() {
+    if (await this.store.stat(APPLY_JOURNAL)) await this.store.remove(APPLY_JOURNAL);
+  }
+  /**
+   * 前回の取り込みが途中で終わっていたら、続きを判断する（ADR-0089 の 5）。
+   * 判断できないときは、今の振る舞い（snapshot とマージ）に任せて、内容を失わない。
+   */
+  async recover(branch2) {
+    if (!await this.store.stat(APPLY_JOURNAL)) return null;
+    let journal;
+    try {
+      journal = JSON.parse(new TextDecoder().decode(await this.store.read(APPLY_JOURNAL)));
+    } catch {
+      throw new ApplyJournalError(`\u53D6\u308A\u8FBC\u307F\u306E\u8A18\u9332\uFF08${APPLY_JOURNAL}\uFF09\u304C\u8AAD\u3081\u307E\u305B\u3093`);
+    }
+    if (journal?.schemaVersion !== 1 || typeof journal.branch !== "string" || typeof journal.from !== "string" || typeof journal.to !== "string") {
+      throw new ApplyJournalError(`\u53D6\u308A\u8FBC\u307F\u306E\u8A18\u9332\uFF08${APPLY_JOURNAL}\uFF09\u304C\u77E5\u3089\u306A\u3044\u5F62\u3067\u3059\u3002PKM Git \u3092\u66F4\u65B0\u3057\u3066\u304F\u3060\u3055\u3044`);
+    }
+    let head = null;
+    try {
+      head = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: `refs/heads/${journal.branch}` });
+    } catch {
+    }
+    if (journal.branch !== branch2 || head !== journal.from) {
+      await this.removeJournal();
+      return head === journal.to && journal.branch === branch2 ? { action: "finished" } : { action: "discarded" };
+    }
+    let fromMap;
+    let toMap;
+    try {
+      [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, journal.from), readTreeMap(this.ctx, journal.to)]);
+    } catch {
+      await this.removeJournal();
+      return { action: "discarded" };
+    }
+    const paths = /* @__PURE__ */ new Set();
+    for (const [path, e] of toMap) if (fromMap.get(path)?.oid !== e.oid) paths.add(path);
+    for (const path of fromMap.keys()) if (!toMap.has(path)) paths.add(path);
+    const writes = [];
+    const deletes = [];
+    const ambiguous = [];
+    for (const path of paths) {
+      assertSafeWorktreePath(path);
+      const actual = await this.worktreeOid(path);
+      const want = toMap.get(path)?.oid ?? null;
+      const before = fromMap.get(path)?.oid ?? null;
+      if (actual !== want && actual !== before) ambiguous.push(path);
+      else if (want === null) deletes.push(path);
+      else writes.push(path);
+    }
+    if (ambiguous.length > 0) {
+      await this.removeJournal();
+      return { action: "fallback", paths: ambiguous.sort() };
+    }
+    await this.applyPaths(toMap, writes, deletes);
+    await this.assertBranchAt(branch2, journal.from);
+    await isomorphic_git_default.writeRef({ ...this.ctx, ref: `refs/heads/${branch2}`, value: journal.to, force: true });
+    await this.removeJournal();
+    return { action: "completed", paths: [...paths].sort() };
   }
   async worktreeOid(path) {
     const stat = await this.store.stat(path);
@@ -21930,6 +22070,92 @@ var PkmGit = class {
       const stat = await this.store.stat(dir);
       if (!stat || (await this.store.list(dir)).length > 0) return;
       await this.store.rmdir(dir);
+    }
+  }
+  /**
+   * 1 回の同期（ADR-0089 の 3）。復旧 → fetch → snapshot → 取り込み → push。
+   * push が拒否されたら fetch からやり直す（MAX_PUSH_ATTEMPTS 回まで）。
+   * つながらない・認証の失敗・同期中の編集・外からのコミットは、例外ではなく状態で返す。
+   * keep を渡すと、fetch の前に（オフラインでも）その名前で snapshot する（「この版を残す」）。
+   */
+  async sync(opts = {}) {
+    const branch2 = await this.currentBranch();
+    const recovery = await this.measure("recover", () => this.recover(branch2));
+    const result = { status: "shared", snapshot: false, changed: [], conflicts: [], attempts: 0, recovery };
+    const changed = /* @__PURE__ */ new Set();
+    const finish = (patch) => ({ ...result, ...patch, changed: [...changed].sort() });
+    if (opts.keep !== void 0) {
+      result.snapshot = await this.measure("snapshot", () => this.snapshot(this.keepMessage(opts.keep ?? "")));
+    }
+    try {
+      for (let attempt = 1; attempt <= MAX_PUSH_ATTEMPTS; attempt++) {
+        let remote;
+        try {
+          remote = await this.measure("fetch", () => this.fetch(branch2));
+        } catch (e) {
+          const status2 = classifyNetworkError(e);
+          if (status2) return finish({ status: status2, error: e });
+          throw e;
+        }
+        if (await this.measure("snapshot", () => this.snapshot())) result.snapshot = true;
+        const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
+        const res = await this.integrate(branch2, local, remote);
+        if (res.kind === "fast-forward" || res.kind === "merged") for (const p of res.changed) changed.add(p);
+        if (res.kind === "merged") result.conflicts.push(...res.conflicts);
+        const head = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
+        if (head === remote) return finish({ status: "shared" });
+        result.attempts = attempt;
+        try {
+          const pushed = await this.measure("push", () => isomorphic_git_default.push({ ...this.ctx, ...this.net, remote: this.remote, ref: branch2 }));
+          if (pushed.ok) return finish({ status: "shared" });
+        } catch (e) {
+          if (e instanceof Errors.PushRejectedError) continue;
+          const status2 = classifyNetworkError(e);
+          if (status2) return finish({ status: status2, error: e });
+          throw e;
+        }
+      }
+      return finish({ status: "pending", reason: "rejected" });
+    } catch (e) {
+      if (e instanceof WorktreeChangedError) return finish({ status: "pending", reason: "worktree-changed", paths: e.paths });
+      if (e instanceof BranchMovedError) return finish({ status: "pending", reason: "branch-moved" });
+      throw e;
+    }
+  }
+  keepMessage(name) {
+    const clean = name.replace(/\s+/g, " ").trim().slice(0, 100);
+    return `vault: keep${clean ? ` ${clean}` : ""} (${this.device})
+`;
+  }
+  /**
+   * 共有の状態（ADR-0089 の 6）。paths を渡すと、そのパスだけを HEAD と比べる。
+   * 渡さないと作業ツリー全体を調べる（起動時などに 1 回）。
+   */
+  async shareState(paths) {
+    const branch2 = await this.currentBranch();
+    const head = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
+    const unpushed = head !== await this.remoteHead(branch2);
+    if (paths && paths.length === 0) return { unpushed, changed: [] };
+    const indexStat = await this.store.stat(".git/index");
+    const matrix = await isomorphic_git_default.statusMatrix({ ...this.ctx, ...paths ? { filepaths: paths } : {} });
+    const racy = await this.racyChanges(matrix, indexStat?.mtime ?? 0);
+    const changed = [];
+    for (const row of matrix) {
+      const [path, headStatus] = row;
+      const workdir = racy.has(path) ? 2 : row[2];
+      if (headStatus === 1 && workdir === 1 || headStatus === 0 && workdir === 0) continue;
+      changed.push(path);
+    }
+    return { unpushed, changed: changed.sort() };
+  }
+  /** 失敗の記録用。読めなければ null */
+  async refsState() {
+    try {
+      const branch2 = await this.currentBranch();
+      const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 }).catch(() => null);
+      return { branch: branch2, local, remote: await this.remoteHead(branch2).catch(() => null) };
+    } catch {
+      return { local: null, remote: null };
     }
   }
   async push() {
@@ -22002,31 +22228,107 @@ function redactSecrets(text, secrets) {
   return out;
 }
 
+// src/git/sync-log.ts
+init_buffer();
+var SYNC_LOG = ".git/pkm-git/log.jsonl";
+var SYNC_LOG_OLD = ".git/pkm-git/log.1.jsonl";
+var SYNC_LOG_MAX_BYTES = 256 * 1024;
+var MAX_PATHS = 20;
+var MAX_STACK_LINES = 8;
+var MAX_MESSAGE = 2e3;
+var encoder = new TextEncoder();
+var decoder = new TextDecoder();
+function describeError(error, secrets) {
+  if (error === void 0) return {};
+  const redact = (s) => redactSecrets(s, secrets);
+  if (error instanceof Error) {
+    const code = error.code;
+    return {
+      kind: error.name,
+      code: typeof code === "string" ? code : void 0,
+      message: redact(error.message).slice(0, MAX_MESSAGE),
+      stack: error.stack ? redact(error.stack.split("\n").slice(0, MAX_STACK_LINES).join("\n")) : void 0
+    };
+  }
+  return { kind: typeof error, message: redact(String(error)).slice(0, MAX_MESSAGE) };
+}
+var SyncLog = class {
+  constructor(opts) {
+    this.opts = opts;
+    this.now = opts.now ?? (() => /* @__PURE__ */ new Date());
+    this.maxBytes = opts.maxBytes ?? SYNC_LOG_MAX_BYTES;
+  }
+  opts;
+  queue = Promise.resolve();
+  now;
+  maxBytes;
+  /** 項目を作る（テストと表示で使う）。トークンはここで伏せる */
+  entry(input) {
+    const secrets = this.opts.secrets();
+    const redact = (s) => redactSecrets(s, secrets);
+    const entry = {
+      schemaVersion: 1,
+      time: formatIso(this.now()),
+      level: input.level,
+      event: input.event,
+      ...input.trigger ? { trigger: input.trigger } : {},
+      ...input.phase ? { phase: input.phase } : {},
+      ...describeError(input.error, secrets),
+      ...input.detail ? { detail: redact(input.detail).slice(0, MAX_MESSAGE) } : {},
+      ...input.state ? { state: input.state } : {},
+      ...input.paths && input.paths.length > 0 ? { paths: input.paths.slice(0, MAX_PATHS).map(redact) } : {},
+      pluginVersion: this.opts.pluginVersion,
+      platform: this.opts.platform
+    };
+    for (const key of Object.keys(entry)) {
+      if (entry[key] === void 0) delete entry[key];
+    }
+    return entry;
+  }
+  write(input) {
+    this.queue = this.queue.then(async () => {
+      try {
+        const line = encoder.encode(`${JSON.stringify(this.entry(input))}
+`);
+        const current = await this.opts.store.stat(SYNC_LOG) ? await this.opts.store.read(SYNC_LOG) : new Uint8Array();
+        if (current.length > 0 && current.length + line.length > this.maxBytes) {
+          await this.opts.store.write(SYNC_LOG_OLD, current);
+          await this.opts.store.write(SYNC_LOG, line);
+          return;
+        }
+        const next = new Uint8Array(current.length + line.length);
+        next.set(current);
+        next.set(line, current.length);
+        await this.opts.store.write(SYNC_LOG, next);
+      } catch {
+      }
+    });
+    return this.queue;
+  }
+  /** 新しい順。読めない行は飛ばす */
+  async read() {
+    await this.queue;
+    const out = [];
+    for (const path of [SYNC_LOG_OLD, SYNC_LOG]) {
+      try {
+        if (!await this.opts.store.stat(path)) continue;
+        for (const line of decoder.decode(await this.opts.store.read(path)).split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            out.push(JSON.parse(line));
+          } catch {
+          }
+        }
+      } catch {
+      }
+    }
+    return out.reverse();
+  }
+};
+
 // src/obsidian/modals.ts
 init_buffer();
 var import_obsidian = require("obsidian");
-var BehindModal = class extends import_obsidian.Modal {
-  constructor(app, onPull) {
-    super(app);
-    this.onPull = onPull;
-  }
-  onPull;
-  onOpen() {
-    this.setTitle("\u30EA\u30E2\u30FC\u30C8\u306B\u65B0\u3057\u3044\u5909\u66F4\u304C\u3042\u308A\u307E\u3059");
-    this.contentEl.createEl("p", {
-      text: "push \u306F\u5B9F\u884C\u3057\u3066\u3044\u307E\u305B\u3093\uFF08\u30B3\u30DF\u30C3\u30C8\u3082\u3057\u3066\u3044\u307E\u305B\u3093\uFF09\u3002\u5148\u306B pull \u3067\u53D6\u308A\u8FBC\u3093\u3067\u304B\u3089\u3001\u3082\u3046\u4E00\u5EA6 push \u3057\u3066\u304F\u3060\u3055\u3044\u3002"
-    });
-    new import_obsidian.Setting(this.contentEl).addButton(
-      (b) => b.setButtonText("Pull now").setCta().onClick(() => {
-        this.close();
-        this.onPull();
-      })
-    ).addButton((b) => b.setButtonText("Close").onClick(() => this.close()));
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
 var ConflictsModal = class extends import_obsidian.Modal {
   constructor(app, title, items) {
     super(app);
@@ -22084,6 +22386,71 @@ var ConfirmModal = class extends import_obsidian.Modal {
     this.contentEl.empty();
   }
 };
+var KeepVersionModal = class extends import_obsidian.Modal {
+  constructor(app, onKeep) {
+    super(app);
+    this.onKeep = onKeep;
+  }
+  onKeep;
+  name = "";
+  onOpen() {
+    this.setTitle("Keep this version");
+    this.contentEl.createEl("p", {
+      text: "\u4ECA\u306E\u5185\u5BB9\u3092\u30B3\u30DF\u30C3\u30C8\u3057\u3066\u6B8B\u3057\u307E\u3059\u3002\u30AA\u30D5\u30E9\u30A4\u30F3\u3067\u3082\u6B8B\u308A\u3001\u6B21\u306B\u3064\u306A\u304C\u3063\u305F\u3068\u304D\u306B\u9001\u308A\u307E\u3059\u3002\u540D\u524D\u306F\u7A7A\u3067\u3082\u304B\u307E\u3044\u307E\u305B\u3093\u3002"
+    });
+    new import_obsidian.Setting(this.contentEl).setName("Name").addText(
+      (t) => t.setPlaceholder("Optional").onChange((v) => {
+        this.name = v;
+      })
+    );
+    new import_obsidian.Setting(this.contentEl).addButton(
+      (b) => b.setButtonText("Keep").setCta().onClick(() => {
+        this.close();
+        this.onKeep(this.name);
+      })
+    ).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var SyncLogModal = class extends import_obsidian.Modal {
+  constructor(app, entries) {
+    super(app);
+    this.entries = entries;
+  }
+  entries;
+  onOpen() {
+    this.setTitle("Sync log");
+    if (this.entries.length === 0) {
+      this.contentEl.createEl("p", { text: "No entries" });
+      return;
+    }
+    this.contentEl.createEl("p", {
+      text: "\u540C\u671F\u306E\u5931\u6557\u3068\u3001\u81EA\u52D5\u3067\u56DE\u5FA9\u3057\u305F\u3053\u3068\u306E\u8A18\u9332\u3067\u3059\uFF08\u3053\u306E\u7AEF\u672B\u3060\u3051\uFF09\u3002Issue \u306A\u3069\u306B\u8CBC\u308B\u524D\u306B\u3001\u30CE\u30FC\u30C8\u306E\u30D1\u30B9\u304C\u5165\u3063\u3066\u3044\u306A\u3044\u304B\u78BA\u304B\u3081\u3066\u304F\u3060\u3055\u3044\u3002"
+    });
+    new import_obsidian.Setting(this.contentEl).addButton(
+      (b) => b.setButtonText("Copy").onClick(() => {
+        const text = this.entries.map((e) => JSON.stringify(e)).join("\n");
+        void navigator.clipboard.writeText(text).then(
+          () => new import_obsidian.Notice("Git: \u540C\u671F\u306E\u8A18\u9332\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F"),
+          () => new import_obsidian.Notice("Git: \u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F")
+        );
+      })
+    );
+    const list = this.contentEl.createEl("ul");
+    for (const e of this.entries.slice(0, 200)) {
+      const li = list.createEl("li");
+      const what = [e.event, e.phase, e.kind, e.message ?? e.detail].filter((x) => x).join(" \xB7 ");
+      li.createEl("div", { text: `${e.time} ${e.level === "error" ? "Error" : "Warning"}\uFF08${e.trigger ?? "-"}\uFF09` });
+      li.createEl("div", { text: what });
+      if (e.paths && e.paths.length > 0) li.createEl("div", { text: e.paths.join(", ") });
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
 
 // src/obsidian/settings.ts
 init_buffer();
@@ -22103,8 +22470,14 @@ var DEFAULT_SETTINGS = {
   tokenSecretId: "",
   authHost: "github.com",
   cloneUrl: "",
-  cloneBranch: "main"
+  cloneBranch: "main",
+  autoSyncMinutes: 5
 };
+function normalizeMinutes(value) {
+  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_SETTINGS.autoSyncMinutes;
+  return Math.min(Math.floor(n), 24 * 60);
+}
 var PkmGitSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -22131,6 +22504,12 @@ var PkmGitSettingTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(containerEl).setName("\u30B3\u30DF\u30C3\u30C8\u306E\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9").addText(
       (t) => t.setValue(s.authorEmail).onChange(async (v) => {
         s.authorEmail = v.trim();
+        await save();
+      })
+    );
+    new import_obsidian2.Setting(containerEl).setName("\u81EA\u52D5\u306E\u540C\u671F\u306E\u9593\u9694\uFF08\u5206\uFF09").setDesc("\u753B\u9762\u3092\u8868\u793A\u3057\u3066\u3044\u308B\u9593\u3001\u3053\u306E\u9593\u9694\u3067\u540C\u671F\u3057\u307E\u3059\u3002\u623B\u3063\u3066\u304D\u305F\u3068\u304D\u30FB\u8D77\u52D5\u3057\u305F\u3068\u304D\u3082\u540C\u671F\u3057\u307E\u3059\u30020 \u3067\u81EA\u52D5\u306E\u540C\u671F\u3092\u6B62\u3081\u307E\u3059\uFF08\u624B\u3067\u306E\u540C\u671F\u306F\u3067\u304D\u307E\u3059\uFF09").addText(
+      (t) => t.setValue(String(s.autoSyncMinutes)).onChange(async (v) => {
+        s.autoSyncMinutes = normalizeMinutes(v.trim() === "" ? DEFAULT_SETTINGS.autoSyncMinutes : v);
         await save();
       })
     );
@@ -22166,6 +22545,215 @@ var PkmGitSettingTab = class extends import_obsidian2.PluginSettingTab {
         await save();
       })
     );
+  }
+};
+
+// src/sync/controller.ts
+init_buffer();
+var AUTO = /* @__PURE__ */ new Set(["interval", "focus", "startup"]);
+var FOCUS_MIN_GAP_MS = 6e4;
+var MAX_BACKOFF_MS = 30 * 6e4;
+var SyncController = class {
+  constructor(deps) {
+    this.deps = deps;
+  }
+  deps;
+  waiting = [];
+  loop = null;
+  /** drain の中にいる間 true。drain が終わるのと同じ同期の区間で false にする（後から来た依頼を取りこぼさない） */
+  active = false;
+  view = "checking";
+  seq = 0;
+  /** 共有していないかもしれない編集（パス → 最後のイベントの番号） */
+  dirty = /* @__PURE__ */ new Map();
+  lastStart = Number.NEGATIVE_INFINITY;
+  lastEnd = Number.NEGATIVE_INFINITY;
+  failures = 0;
+  lastFailure = Number.NEGATIVE_INFINITY;
+  paused = false;
+  get current() {
+    return this.view;
+  }
+  get running() {
+    return this.active;
+  }
+  /** clone の間など、同期を止める */
+  setPaused(paused) {
+    this.paused = paused;
+  }
+  /** 起動時。自動の同期が有効なら同期し、無効なら作業ツリーを調べて状態を出す */
+  async start() {
+    if (this.deps.intervalMinutes() > 0) return this.request("startup");
+    try {
+      const engine = this.deps.engine();
+      if (!await engine.isRepo()) {
+        this.setView("not-repo");
+        return null;
+      }
+      const state = await engine.shareState();
+      for (const path of state.changed) this.dirty.set(path, this.seq);
+      this.setView(state.unpushed || state.changed.length > 0 ? "pending" : "shared");
+    } catch (error) {
+      await this.safeLog({ level: "error", event: "unexpected-error", trigger: "startup", phase: "share-state", error });
+      this.setView("error");
+    }
+    return null;
+  }
+  /** Vault のファイルが作られた・変わった・消えた・改名された */
+  noteChange(path) {
+    if (path === ".git" || path.startsWith(".git/")) return;
+    this.seq++;
+    this.dirty.set(path, this.seq);
+    if (this.view === "shared") this.setView("pending");
+  }
+  /** 定期の確認（画面が表示されているときだけ呼ぶ） */
+  tick() {
+    const minutes = this.deps.intervalMinutes();
+    if (minutes <= 0 || this.running) return null;
+    if (this.deps.now() - this.lastStart < minutes * 6e4) return null;
+    return this.request("interval");
+  }
+  /** 再フォーカス・画面が表示に戻った */
+  focus() {
+    if (this.deps.intervalMinutes() <= 0 || this.running) return null;
+    if (this.deps.now() - this.lastEnd < FOCUS_MIN_GAP_MS) return null;
+    return this.request("focus");
+  }
+  request(trigger, opts = {}) {
+    if (AUTO.has(trigger) && !this.autoAllowed()) {
+      return Promise.resolve({ trigger, skipped: true, previous: this.view, view: this.view });
+    }
+    return new Promise((resolve) => {
+      this.waiting.push({ trigger, keep: opts.keep, resolve });
+      if (!this.active) {
+        this.active = true;
+        this.loop = this.drain();
+      }
+    });
+  }
+  /** 終わるのを待つ（テストと終了時に使う） */
+  async idle() {
+    while (this.active && this.loop) await this.loop;
+  }
+  autoAllowed() {
+    if (this.paused || this.deps.intervalMinutes() <= 0) return false;
+    if (this.failures === 0) return true;
+    const wait = Math.min(this.deps.intervalMinutes() * 6e4 * 2 ** (this.failures - 1), MAX_BACKOFF_MS);
+    return this.deps.now() - this.lastFailure >= wait;
+  }
+  async drain() {
+    for (; ; ) {
+      if (this.waiting.length === 0) {
+        this.active = false;
+        return;
+      }
+      const batch = this.waiting.splice(0);
+      const lead = batch.find((w) => !AUTO.has(w.trigger)) ?? batch[0];
+      const keeps = batch.filter((w) => w.keep !== void 0).map((w) => (w.keep ?? "").trim());
+      const keep = keeps.length > 0 ? keeps.filter((k) => k).join(" / ") : void 0;
+      let outcome;
+      try {
+        outcome = await this.runOnce(lead.trigger, keep);
+      } catch (error) {
+        outcome = { trigger: lead.trigger, error, previous: this.view, view: this.view };
+      }
+      for (const w of batch) w.resolve({ ...outcome, trigger: w.trigger });
+    }
+  }
+  async runOnce(trigger, keep) {
+    const previous = this.view;
+    if (this.paused) return { trigger, skipped: true, previous, view: previous };
+    this.lastStart = this.deps.now();
+    const startSeq = this.seq;
+    let engine = null;
+    try {
+      engine = this.deps.engine();
+      if (!await engine.isRepo()) {
+        this.setView("not-repo");
+        return { trigger, notRepo: true, previous, view: "not-repo" };
+      }
+      this.setView("syncing");
+      await this.deps.saveEditors();
+      const result = await engine.sync(keep !== void 0 ? { keep } : {});
+      const view = await this.afterSync(engine, result, startSeq);
+      await this.logResult(trigger, previous, view, result, engine);
+      this.setView(view);
+      return { trigger, result, previous, view };
+    } catch (error) {
+      this.recordFailure();
+      const journal = error instanceof ApplyJournalError;
+      await this.safeLog({
+        level: "error",
+        event: journal ? "apply-journal-unreadable" : "unexpected-error",
+        trigger,
+        phase: engine?.lastPhase,
+        error,
+        state: engine ? await engine.refsState().catch(() => void 0) : void 0
+      });
+      this.setView("error");
+      return { trigger, error, previous, view: "error" };
+    } finally {
+      this.lastEnd = this.deps.now();
+    }
+  }
+  async afterSync(engine, result, startSeq) {
+    if (result.status === "offline" || result.status === "auth") {
+      this.recordFailure();
+      return result.status;
+    }
+    this.failures = 0;
+    if (result.status === "shared") {
+      for (const [path, seq] of this.dirty) if (seq <= startSeq) this.dirty.delete(path);
+    }
+    const state = await engine.shareState([...this.dirty.keys()]);
+    const changed = new Set(state.changed);
+    for (const path of [...this.dirty.keys()]) if (!changed.has(path)) this.dirty.delete(path);
+    if (result.status === "pending") return "pending";
+    return state.unpushed || this.dirty.size > 0 ? "pending" : "shared";
+  }
+  recordFailure() {
+    this.failures++;
+    this.lastFailure = this.deps.now();
+  }
+  async logResult(trigger, previous, view, result, engine) {
+    const base = { trigger, state: { attempt: result.attempts } };
+    const r = result.recovery;
+    if (r && r.action !== "finished") {
+      await this.safeLog({
+        ...base,
+        level: "warn",
+        event: `recovered-apply-${r.action}`,
+        phase: "recover",
+        paths: "paths" in r ? r.paths : void 0
+      });
+    }
+    if (result.status === "pending") {
+      const event = result.reason === "rejected" ? "push-rejected" : result.reason ?? "pending";
+      await this.safeLog({
+        ...base,
+        level: "warn",
+        event,
+        phase: result.reason === "rejected" ? "push" : "moveTo",
+        paths: result.paths,
+        state: { ...await engine.refsState().catch(() => ({})), attempt: result.attempts }
+      });
+    }
+    if ((view === "offline" || view === "auth") && previous !== view) {
+      await this.safeLog({ ...base, level: "warn", event: view, phase: engine.lastPhase, error: result.error });
+    }
+  }
+  async safeLog(input) {
+    try {
+      await this.deps.log(input);
+    } catch {
+    }
+  }
+  setView(view) {
+    this.view = view;
+    try {
+      this.deps.onView(view);
+    } catch {
+    }
   }
 };
 
@@ -22275,16 +22863,50 @@ var CONFLICT_NOTES = {
   copy: "\u30EA\u30E2\u30FC\u30C8\u7248\u3092\u63A1\u7528\u3001\u30ED\u30FC\u30AB\u30EB\u7248\u306F\u5225\u540D\u3067\u4FDD\u5B58",
   "kept-modified": "\u524A\u9664\u3068\u7DE8\u96C6\u304C\u885D\u7A81\u3057\u305F\u306E\u3067\u7DE8\u96C6\u5074\u3092\u6B8B\u3057\u305F"
 };
+var VIEW_TEXT = {
+  checking: "Git: Checking\u2026",
+  syncing: "Git: Syncing\u2026",
+  shared: "Git: Synced",
+  pending: "Git: Not synced",
+  offline: "Git: Offline",
+  auth: "Git: Check connection",
+  error: "Git: Sync failed",
+  "not-repo": "Git: Not cloned"
+};
+var TICK_MS = 3e4;
+var MANUAL = /* @__PURE__ */ new Set(["manual", "keep", "pull", "push"]);
 var PkmGitPlugin = class extends import_obsidian3.Plugin {
   settings = { ...DEFAULT_SETTINGS };
-  busy = false;
+  cloning = false;
   statusEl;
+  view = "checking";
+  unresolved = 0;
+  authNoticeShown = false;
+  controller;
+  log;
   async onload() {
     await this.loadSettings();
     this.addSettingTab(new PkmGitSettingTab(this.app, this));
     this.statusEl = this.addStatusBarItem();
     this.statusEl.addClass("mod-clickable");
     this.statusEl.addEventListener("click", () => void this.showUnresolved());
+    this.log = new SyncLog({
+      store: new VaultFileStore(this.app),
+      pluginVersion: this.manifest?.version ?? "unknown",
+      platform: import_obsidian3.Platform.isMobile ? "mobile" : "desktop",
+      secrets: () => [this.token()]
+    });
+    this.controller = new SyncController({
+      engine: () => this.engine(),
+      log: (entry) => this.log.write(entry),
+      now: () => Date.now(),
+      intervalMinutes: () => normalizeMinutes(this.settings.autoSyncMinutes),
+      saveEditors: () => this.saveOpenEditors(),
+      onView: (view) => this.setView(view)
+    });
+    this.addCommand({ id: "sync", name: "Sync now", callback: () => void this.sync() });
+    this.addCommand({ id: "keep-version", name: "Keep this version", callback: () => this.keepVersion() });
+    this.addCommand({ id: "show-sync-log", name: "Show sync log", callback: () => void this.showSyncLog() });
     this.addCommand({ id: "pull", name: "Pull", callback: () => void this.pull() });
     this.addCommand({ id: "push", name: "Push (commit and send)", callback: () => void this.push() });
     this.addCommand({
@@ -22293,10 +22915,18 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       callback: () => void this.showUnresolved()
     });
     this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
-    this.app.workspace.onLayoutReady(() => void this.refreshStatus());
+    this.registerTriggers();
+    this.app.workspace.onLayoutReady(() => {
+      this.registerVaultEvents();
+      void this.startup();
+    });
+  }
+  onunload() {
+    this.controller?.setPaused(true);
   }
   async loadSettings() {
     this.settings = { ...DEFAULT_SETTINGS, ...await loadPluginDataOrLegacy(this, "vault-git") };
+    this.settings.autoSyncMinutes = normalizeMinutes(this.settings.autoSyncMinutes);
   }
   async saveSettings() {
     await this.saveData(this.settings);
@@ -22334,69 +22964,102 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       }
     });
   }
-  /** 多重実行を防ぎ、エラーはトークンを伏せて表示する */
-  async run(label, fn) {
-    if (this.busy) {
-      new import_obsidian3.Notice("Git: \u5225\u306E\u51E6\u7406\u3092\u5B9F\u884C\u4E2D\u3067\u3059");
-      return;
+  /** 編集を「共有待ち」に数えるためのイベント（ADR-0089 の 6） */
+  registerVaultEvents() {
+    const vault = this.app.vault;
+    if (typeof vault.on !== "function") return;
+    for (const name of ["create", "modify", "delete"]) {
+      this.registerEvent(vault.on(name, (file) => this.controller.noteChange(file.path)));
     }
-    this.busy = true;
-    this.statusEl.setText(`Git: ${label}\u2026`);
-    try {
-      const git = this.engine();
-      if (!await git.isRepo()) {
-        new import_obsidian3.Notice("Git: \u3053\u306E Vault \u306F\u307E\u3060 git \u30EA\u30DD\u30B8\u30C8\u30EA\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u300Cclone\u300D\u30B3\u30DE\u30F3\u30C9\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044");
-        return;
-      }
-      await this.saveOpenEditors();
-      await fn(git);
-    } catch (e) {
-      if (e instanceof WorktreeChangedError) {
-        new import_obsidian3.Notice("Git: \u51E6\u7406\u4E2D\u306B\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u3055\u308C\u305F\u306E\u3067\u4E2D\u65AD\u3057\u307E\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044");
-      } else if (e instanceof AuthTargetError) {
-        new import_obsidian3.Notice(`Git: ${e.message}
-\u63A5\u7D9A\u5148\uFF08.git/config \u306E origin\uFF09\u304B\u3001\u8A2D\u5B9A\u306E\u300C\u30C8\u30FC\u30AF\u30F3\u3092\u9001\u308B\u30DB\u30B9\u30C8\u300D\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044`, 1e4);
-      } else if (e instanceof Errors.UserCanceledError) {
-        new import_obsidian3.Notice("Git: \u8A8D\u8A3C\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u8A2D\u5B9A\u306E\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044", 1e4);
-      } else {
-        const message = redactSecrets(e instanceof Error ? e.message : String(e), [this.token()]);
-        new import_obsidian3.Notice(`Git: ${label} \u306B\u5931\u6557\u3057\u307E\u3057\u305F
-${message}`, 1e4);
-        console.error(`[pkm-git] ${label} failed: ${message}`);
-      }
-    } finally {
-      this.busy = false;
-      await this.refreshStatus();
+    this.registerEvent(vault.on("rename", (file, oldPath) => {
+      this.controller.noteChange(file.path);
+      if (oldPath) this.controller.noteChange(oldPath);
+    }));
+  }
+  /** 前景での一定の間隔と、再フォーカス（ADR-0089 の 3）。バックグラウンドの実行は前提にしない */
+  registerTriggers() {
+    const doc = typeof document === "undefined" ? null : document;
+    const win = typeof window === "undefined" ? null : window;
+    const visible = () => !doc || doc.visibilityState !== "hidden";
+    if (win) {
+      this.registerInterval(win.setInterval(() => {
+        if (visible()) void this.handle(this.controller.tick());
+      }, TICK_MS));
+      this.registerDomEvent(win, "focus", () => void this.handle(this.controller.focus()));
+    }
+    if (doc) {
+      this.registerDomEvent(doc, "visibilitychange", () => {
+        if (visible()) void this.handle(this.controller.focus());
+      });
     }
   }
-  /** 未保存のエディタ内容を先にディスクへ書く */
+  async startup() {
+    const started = this.controller.start();
+    await this.refreshUnresolved();
+    await this.handle(started);
+  }
+  /** 開いているエディタの未保存の内容を先にディスクへ書く */
   async saveOpenEditors() {
     for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
       if (leaf.view instanceof import_obsidian3.MarkdownView) await leaf.view.save();
     }
   }
-  async pull() {
-    await this.run("pull", async (git) => {
-      this.reportPull(await git.pull());
-    });
+  async sync() {
+    await this.request("manual");
   }
-  reportPull(res) {
-    switch (res.kind) {
-      case "up-to-date":
-        new import_obsidian3.Notice("Git: \u6700\u65B0\u3067\u3059");
-        return;
-      case "ahead":
-        new import_obsidian3.Notice("Git: \u53D6\u308A\u8FBC\u3080\u5909\u66F4\u306F\u3042\u308A\u307E\u305B\u3093\uFF08\u30ED\u30FC\u30AB\u30EB\u306E\u65B9\u304C\u65B0\u3057\u3044\u306E\u3067 push \u3067\u304D\u307E\u3059\uFF09");
-        return;
-      case "fast-forward":
-        new import_obsidian3.Notice(`Git: ${res.changed.length} \u4EF6\u306E\u30D5\u30A1\u30A4\u30EB\u3092\u53D6\u308A\u8FBC\u307F\u307E\u3057\u305F`);
-        return;
-      case "merged":
-        if (res.conflicts.length === 0) {
-          new import_obsidian3.Notice(`Git: \u30DE\u30FC\u30B8\u3057\u307E\u3057\u305F\uFF08${res.changed.length} \u4EF6\uFF09`);
-          return;
-        }
-        new import_obsidian3.Notice(`Git: \u30DE\u30FC\u30B8\u3057\u307E\u3057\u305F\u3002\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8 ${res.conflicts.length} \u4EF6\u306F\u305D\u306E\u307E\u307E\u6B8B\u3057\u3066\u3044\u307E\u3059`, 8e3);
+  async pull() {
+    await this.request("pull");
+  }
+  async push() {
+    await this.request("push");
+  }
+  keepVersion() {
+    new KeepVersionModal(this.app, (name) => void this.request("keep", { keep: name })).open();
+  }
+  async request(trigger, opts = {}) {
+    if (this.cloning) {
+      new import_obsidian3.Notice("Git: clone \u306E\u9014\u4E2D\u3067\u3059\u3002\u7D42\u308F\u3063\u3066\u304B\u3089\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044");
+      return;
+    }
+    if (this.controller.running) new import_obsidian3.Notice("Git: \u540C\u671F\u306E\u9014\u4E2D\u3067\u3059\u3002\u7D42\u308F\u3063\u305F\u3089\u7D9A\u3051\u3066\u5B9F\u884C\u3057\u307E\u3059");
+    await this.handle(this.controller.request(trigger, opts));
+  }
+  /** 同期の結果を通知する。自動の同期では、使う人が知るべきことだけを出す（ADR-0089 の 6） */
+  async handle(pending) {
+    if (!pending) return;
+    let outcome;
+    try {
+      outcome = await pending;
+    } catch (e) {
+      const message = redactSecrets(String(e), [this.token()]);
+      console.error(`[pkm-git] sync failed: ${message}`);
+      return;
+    }
+    if (!outcome || outcome.skipped) return;
+    const manual = MANUAL.has(outcome.trigger);
+    try {
+      if (outcome.result && (outcome.result.changed.length > 0 || outcome.result.conflicts.length > 0)) {
+        await this.refreshUnresolved();
+      }
+      this.report(outcome, manual);
+    } catch (e) {
+      const message = redactSecrets(String(e), [this.token()]);
+      console.error(`[pkm-git] report failed: ${message}`);
+    }
+  }
+  report(outcome, manual) {
+    if (outcome.notRepo) {
+      if (manual) new import_obsidian3.Notice("Git: \u3053\u306E Vault \u306F\u307E\u3060 git \u30EA\u30DD\u30B8\u30C8\u30EA\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u300Cclone\u300D\u30B3\u30DE\u30F3\u30C9\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044");
+      return;
+    }
+    if (outcome.error !== void 0) {
+      if (manual || outcome.previous !== "error") this.reportError(outcome.error, outcome.trigger);
+      return;
+    }
+    const res = outcome.result;
+    if (res.conflicts.length > 0) {
+      new import_obsidian3.Notice(`Git: \u30DE\u30FC\u30B8\u3057\u307E\u3057\u305F\u3002\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8 ${res.conflicts.length} \u4EF6\u306F\u305D\u306E\u307E\u307E\u6B8B\u3057\u3066\u3044\u307E\u3059`, 8e3);
+      if (manual) {
         new ConflictsModal(
           this.app,
           "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u304C\u3042\u308A\u307E\u3057\u305F",
@@ -22405,23 +23068,55 @@ ${message}`, 1e4);
             note: c.copyPath ? `${c.path} \u306E${CONFLICT_NOTES[c.kind]}` : CONFLICT_NOTES[c.kind]
           }))
         ).open();
+      }
+    }
+    if (outcome.trigger === "keep" && res.status !== "auth") {
+      if (!res.snapshot) new import_obsidian3.Notice("Git: \u5909\u66F4\u304C\u306A\u3044\u306E\u3067\u3001\u4ECA\u306E\u7248\u304C\u305D\u306E\u307E\u307E\u6B8B\u3063\u3066\u3044\u307E\u3059");
+      else if (res.status === "shared") new import_obsidian3.Notice("Git: \u3053\u306E\u7248\u3092\u6B8B\u3057\u3066\u9001\u308A\u307E\u3057\u305F");
+      else new import_obsidian3.Notice("Git: \u3053\u306E\u7248\u3092\u6B8B\u3057\u307E\u3057\u305F\u3002\u6B21\u306E\u540C\u671F\u3067\u9001\u308A\u307E\u3059");
+      return;
+    }
+    switch (res.status) {
+      case "auth":
+        if (manual || !this.authNoticeShown) this.reportAuth(res.error);
+        return;
+      case "offline":
+        if (manual) new import_obsidian3.Notice("Git: \u30EA\u30E2\u30FC\u30C8\u306B\u3064\u306A\u304C\u308A\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u7DE8\u96C6\u306F\u3053\u306E\u7AEF\u672B\u306B\u6B8B\u3063\u3066\u3044\u3066\u3001\u6B21\u306B\u3064\u306A\u304C\u3063\u305F\u3068\u304D\u306B\u9001\u308A\u307E\u3059");
+        return;
+      case "pending":
+        if (!manual) return;
+        if (res.reason === "worktree-changed") new import_obsidian3.Notice("Git: \u540C\u671F\u306E\u9593\u306B\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u3055\u308C\u305F\u306E\u3067\u3001\u53D6\u308A\u8FBC\u307F\u3092\u6B62\u3081\u307E\u3057\u305F\u3002\u6B21\u306E\u540C\u671F\u3067\u7D9A\u3051\u307E\u3059");
+        else if (res.reason === "branch-moved") new import_obsidian3.Notice("Git: \u540C\u671F\u306E\u9593\u306B\u307B\u304B\u306E\u4ED5\u7D44\u307F\uFF08Git \u306E CLI \u306A\u3069\uFF09\u304C\u30B3\u30DF\u30C3\u30C8\u3057\u305F\u306E\u3067\u3001\u6B21\u306E\u540C\u671F\u3067\u7D9A\u3051\u307E\u3059");
+        else new import_obsidian3.Notice("Git: \u307B\u304B\u306E\u7AEF\u672B\u3068\u9001\u308B\u306E\u304C\u91CD\u306A\u308A\u7D9A\u3051\u305F\u306E\u3067\u3001\u6B21\u306E\u540C\u671F\u3067\u3082\u3046\u4E00\u5EA6\u9001\u308A\u307E\u3059");
+        return;
+      case "shared":
+        if (manual && res.conflicts.length === 0) {
+          new import_obsidian3.Notice(res.changed.length > 0 ? `Git: \u540C\u671F\u3057\u307E\u3057\u305F\uFF08\u53D6\u308A\u8FBC\u307F ${res.changed.length} \u4EF6\uFF09` : "Git: \u540C\u671F\u3057\u307E\u3057\u305F");
+        }
     }
   }
-  async push() {
-    await this.run("push", async (git) => {
-      const res = await git.push();
-      switch (res.kind) {
-        case "behind":
-        case "rejected":
-          new BehindModal(this.app, () => void this.pull()).open();
-          return;
-        case "nothing":
-          new import_obsidian3.Notice("Git: push \u3059\u308B\u3082\u306E\u306F\u3042\u308A\u307E\u305B\u3093");
-          return;
-        case "pushed":
-          new import_obsidian3.Notice("Git: push \u3057\u307E\u3057\u305F");
-      }
-    });
+  reportAuth(error) {
+    this.authNoticeShown = true;
+    if (error instanceof AuthTargetError) {
+      new import_obsidian3.Notice(`Git: ${error.message}
+\u63A5\u7D9A\u5148\uFF08.git/config \u306E origin\uFF09\u304B\u3001\u8A2D\u5B9A\u306E\u300C\u30C8\u30FC\u30AF\u30F3\u3092\u9001\u308B\u30DB\u30B9\u30C8\u300D\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044`, 1e4);
+    } else if (error instanceof Errors.UserCanceledError) {
+      new import_obsidian3.Notice("Git: \u8A8D\u8A3C\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u8A2D\u5B9A\u306E\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044", 1e4);
+    } else {
+      const message = redactSecrets(error instanceof Error ? error.message : String(error), [this.token()]);
+      new import_obsidian3.Notice(`Git: \u30EA\u30E2\u30FC\u30C8\u306B\u5165\u308C\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u63A5\u7D9A\u5148\u3068\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044
+${message}`, 1e4);
+    }
+  }
+  reportError(error, trigger) {
+    const message = redactSecrets(error instanceof Error ? error.message : String(error), [this.token()]);
+    const hint = error instanceof ApplyJournalError ? "" : "\n\u5185\u5BB9\u306F\u5931\u308F\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u30B3\u30DE\u30F3\u30C9\u300CShow sync log\u300D\u3067\u8A18\u9332\u3092\u898B\u3089\u308C\u307E\u3059";
+    new import_obsidian3.Notice(`Git: \u540C\u671F\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F
+${message}${hint}`, 1e4);
+    console.error(`[pkm-git] ${trigger} failed: ${message}`);
+  }
+  async showSyncLog() {
+    new SyncLogModal(this.app, await this.log.read()).open();
   }
   async clone() {
     const git = this.engine();
@@ -22442,9 +23137,11 @@ ${message}`, 1e4);
     ).open();
   }
   async doClone(url, branch2) {
-    if (this.busy) return;
-    this.busy = true;
-    this.statusEl.setText("Git: clone\u2026");
+    if (this.cloning) return;
+    this.cloning = true;
+    this.controller.setPaused(true);
+    await this.controller.idle();
+    this.statusEl.setText("Git: Cloning\u2026");
     try {
       await this.engine().clone(url, branch2);
       new import_obsidian3.Notice("Git: clone \u3057\u307E\u3057\u305F");
@@ -22452,9 +23149,12 @@ ${message}`, 1e4);
       const message = redactSecrets(e instanceof Error ? e.message : String(e), [this.token()]);
       new import_obsidian3.Notice(`Git: clone \u306B\u5931\u6557\u3057\u307E\u3057\u305F
 ${message}`, 1e4);
+      await this.log.write({ level: "error", event: "clone-failed", trigger: "manual", phase: "clone", error: e });
     } finally {
-      this.busy = false;
-      await this.refreshStatus();
+      this.cloning = false;
+      this.controller.setPaused(false);
+      await this.refreshUnresolved();
+      await this.handle(this.controller.start());
     }
   }
   /** マーカー入りのノートと、コンフリクト版ファイルを探す */
@@ -22471,18 +23171,30 @@ ${message}`, 1e4);
     }
     return items;
   }
-  async refreshStatus() {
-    if (this.busy) return;
+  /** 未解決の件数を数え直す（全ノートを読むので、起動時と取り込んだときだけ。ADR-0089 の 6） */
+  async refreshUnresolved() {
     const start = performance.now();
     try {
-      const n = (await this.findUnresolved()).length;
-      this.statusEl.setText(n > 0 ? `Git: \u26A0 ${n} unresolved` : "Git: \u2713");
+      this.unresolved = (await this.findUnresolved()).length;
+      this.renderStatus();
+    } catch (e) {
+      console.error("[pkm-git] refreshStatus failed", e);
     } finally {
       reportTiming("refreshStatus", performance.now() - start);
     }
   }
+  setView(view) {
+    this.view = view;
+    this.renderStatus();
+  }
+  renderStatus() {
+    this.statusEl?.setText(`${VIEW_TEXT[this.view]}${this.unresolved > 0 ? ` \xB7 \u26A0 ${this.unresolved}` : ""}`);
+  }
   async showUnresolved() {
-    new ConflictsModal(this.app, "Unresolved conflicts", await this.findUnresolved()).open();
+    const items = await this.findUnresolved();
+    this.unresolved = items.length;
+    this.renderStatus();
+    new ConflictsModal(this.app, "\u672A\u89E3\u6C7A\u306E\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8", items).open();
   }
 };
 /*! Bundled license information:

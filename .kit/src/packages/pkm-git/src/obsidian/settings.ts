@@ -18,6 +18,8 @@ export interface PkmGitSettings {
 	/** モバイルでの初回 clone にだけ使う */
 	cloneUrl: string;
 	cloneBranch: string;
+	/** 自動の同期の間隔（分）。0 なら自動の同期をしない（ADR-0089） */
+	autoSyncMinutes: number;
 }
 
 function defaultDeviceName(): string {
@@ -37,7 +39,15 @@ export const DEFAULT_SETTINGS: PkmGitSettings = {
 	authHost: "github.com",
 	cloneUrl: "",
 	cloneBranch: "main",
+	autoSyncMinutes: 5,
 };
+
+/** 設定の値を、自動の同期の間隔（0 以上の整数の分）にする。読めなければ既定 */
+export function normalizeMinutes(value: unknown): number {
+	const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+	if (!Number.isFinite(n) || n < 0) return DEFAULT_SETTINGS.autoSyncMinutes;
+	return Math.min(Math.floor(n), 24 * 60);
+}
 
 export class PkmGitSettingTab extends PluginSettingTab {
 	constructor(
@@ -74,6 +84,16 @@ export class PkmGitSettingTab extends PluginSettingTab {
 				await save();
 			}),
 		);
+
+		new Setting(containerEl)
+			.setName("自動の同期の間隔（分）")
+			.setDesc("画面を表示している間、この間隔で同期します。戻ってきたとき・起動したときも同期します。0 で自動の同期を止めます（手での同期はできます）")
+			.addText((t) =>
+				t.setValue(String(s.autoSyncMinutes)).onChange(async (v) => {
+					s.autoSyncMinutes = normalizeMinutes(v.trim() === "" ? DEFAULT_SETTINGS.autoSyncMinutes : v);
+					await save();
+				}),
+			);
 
 		new Setting(containerEl).setName("認証").setHeading();
 		new Setting(containerEl)

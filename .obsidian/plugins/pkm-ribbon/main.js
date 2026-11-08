@@ -31,8 +31,8 @@ var BUTTONS = [
   { icon: "sun", title: "Open Today", command: "pkm-task:open-daily" },
   { icon: "bell", title: "Open PKM Updates", command: "pkm-updates:open-view" },
   { icon: "list-plus", title: "Capture issues", command: "pkm-task:capture-issues" },
-  { icon: "arrow-down-to-line", title: "Git: pull", command: "pkm-git:pull" },
-  { icon: "arrow-up-from-line", title: "Git: push", command: "pkm-git:push" }
+  // pull と push を 1 つの同期にした（ADR-0089 の 3）
+  { icon: "refresh-cw", title: "Git: Sync", command: "pkm-git:sync" }
 ];
 var BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 function pluginIdOf(command) {

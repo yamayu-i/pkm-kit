@@ -7,6 +7,8 @@ import { join } from "node:path";
  */
 export function createObsidianMock(root: string, secrets: Record<string, string>) {
 	const notices: string[] = [];
+	const statusTexts: string[] = [];
+	const vaultHandlers: Record<string, Array<(file: { path: string }, oldPath?: string) => void>> = {};
 	const modals: string[] = [];
 	const vaultWrites: string[] = [];
 	const adapterWrites: string[] = [];
@@ -113,6 +115,14 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		async cachedRead(f: TFile) {
 			return fsp.readFile(abs(f.path), "utf8");
 		},
+		on(name: string, cb: (file: { path: string }, oldPath?: string) => void) {
+			(vaultHandlers[name] ??= []).push(cb);
+			return { name };
+		},
+	};
+	/** Vault のイベントを起こす（本物の Vault は、ノートを書くとこれを呼ぶ） */
+	const emit = (name: string, path: string, oldPath?: string) => {
+		for (const cb of vaultHandlers[name] ?? []) cb(new TFile(path), oldPath);
 	};
 
 	const app = {
@@ -126,6 +136,7 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 	};
 
 	const el = () => ({ setText() {}, addClass() {}, addEventListener() {}, empty() {}, createEl: () => el(), appendText() {} });
+	const statusEl = () => ({ ...el(), setText(t: string) { statusTexts.push(t); } });
 
 	class Plugin {
 		app = app;
@@ -139,8 +150,14 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		}
 		addSettingTab() {}
 		addStatusBarItem() {
-			return el();
+			return statusEl();
 		}
+		manifest = { version: "0.0.0-test" };
+		registerEvent() {}
+		registerInterval(id: number) {
+			return id;
+		}
+		registerDomEvent() {}
 		addRibbonIcon() {}
 		addCommand(c: { id: string; callback: () => void }) {
 			this.commands[c.id] = c.callback;
@@ -205,5 +222,5 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		},
 	};
 
-	return { obsidian, app, vault, notices, modals, vaultWrites, adapterWrites };
+	return { obsidian, app, vault, notices, modals, vaultWrites, adapterWrites, statusTexts, emit };
 }
