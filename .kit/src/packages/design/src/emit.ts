@@ -58,6 +58,30 @@ export function pluginCss(tokens: readonly Token[]): string {
 	return lines.join("\n");
 }
 
+/** 書き出した HTML（ADR-0044）でフォントの変数に入れる、OS のフォント。Obsidian の外にはその変数がない */
+export const STANDALONE_FONTS: Readonly<Record<string, string>> = {
+	"--font-interface": 'system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif',
+	"--font-text": 'system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif',
+	"--font-monospace": 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+};
+
+/**
+ * Vault の外で開く HTML に埋め込むトークン（ADR-0044）。テーマのクラスがないので、
+ * ライトを :root に置き、ダークは prefers-color-scheme で切り替える
+ */
+export function standaloneCss(tokens: readonly Token[]): string {
+	const own = tokens.filter((t) => t.plugin);
+	const lines = [`/* ${GENERATED} */`, ":root {", "\tcolor-scheme: light dark;"];
+	for (const [name, value] of Object.entries(STANDALONE_FONTS)) lines.push(`\t${name}: ${value};`);
+	for (const t of own) lines.push(`\t${t.cssVar}: ${cssValue(t, t.raw.light)};`);
+	lines.push("}", "", "@media (prefers-color-scheme: dark) {", "\t:root {");
+	for (const t of own) {
+		if (JSON.stringify(t.raw.dark) !== JSON.stringify(t.raw.light)) lines.push(`\t\t${t.cssVar}: ${cssValue(t, t.raw.dark)};`);
+	}
+	lines.push("\t}", "}", "");
+	return lines.join("\n");
+}
+
 /** Obsidian 本体の CSS 変数を同じ値に固定するスニペット（.obsidian/snippets/pkm-theme.css） */
 export function obsidianSnippet(tokens: readonly Token[]): string {
 	const lines = [

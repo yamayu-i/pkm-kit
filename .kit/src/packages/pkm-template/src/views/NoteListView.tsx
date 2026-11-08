@@ -3,7 +3,7 @@ import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import type { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { shortDate, tagList } from "../core/note-format";
-import { filterByQuery, importedSourcePaths, notesOfType, sortNotes, type NoteInfo, type SortKey, type SortOrder } from "../core/note-list";
+import { filterByQuery, importedSourcePaths, notesOfType, sortNotes, withoutTmp, type NoteInfo, type SortKey, type SortOrder } from "../core/note-list";
 import { dailyDate, noteTitle } from "../core/note-title";
 import { collectNotes, useVaultChanges } from "../obsidian/note-index";
 
@@ -57,7 +57,7 @@ function NoteList({ app, spec }: { app: App; spec: ListSpec }) {
 	const [query, setQuery] = useState("");
 	const [sort, setSort] = useState<{ key: SortKey; order: SortOrder }>({ key: spec.sort, order: "desc" });
 
-	const all = useMemo(() => collectNotes(app), [app, tick]);
+	const all = useMemo(() => withoutTmp(collectNotes(app)), [app, tick]);
 	const imported = useMemo(() => importedSourcePaths(all), [all]);
 	const rows = useMemo(() => sortNotes(filterByQuery(notesOfType(all, spec.type), query), sort.key, sort.order), [all, spec, query, sort]);
 

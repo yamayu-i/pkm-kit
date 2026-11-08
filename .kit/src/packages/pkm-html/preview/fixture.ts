@@ -4,8 +4,10 @@
  */
 import { CSP, MAX_IMAGE_BYTES } from "../src/core/policy.ts";
 import { buildSrcdoc, type Theme } from "../src/core/sanitize.ts";
+import { buildStandalone } from "../src/core/standalone.ts";
 import { type MountedFrame, mountFrame } from "../src/ui/frame.ts";
 import tokensCss from "../tokens.css";
+import standaloneCss from "../tokens-standalone.css";
 import evil from "./fixtures/evil.html";
 import images from "./fixtures/images.html";
 import links from "./fixtures/links.html";
@@ -37,12 +39,18 @@ declare global {
 			mount(name: string, theme: Theme, root: string): Promise<void>;
 			mountRaw(name: string, root: string): void;
 			setTheme(theme: Theme): void;
+			standalone(name: string): Promise<string>;
 		};
 	}
 }
 
 window.__opened = [];
 window.__frame = null;
+
+const readImage = async (candidates: string[]) => {
+	for (const c of candidates) if (VAULT[c]) return VAULT[c] as Uint8Array;
+	return null;
+};
 
 function handlers(from: string) {
 	return {
@@ -68,10 +76,7 @@ window.vh = {
 			theme,
 			tokensCss,
 			fontVars: { "--font-text": "sans-serif", "--font-interface": "sans-serif", "--font-monospace": "monospace" },
-			readImage: async (candidates) => {
-				for (const c of candidates) if (VAULT[c]) return VAULT[c] as Uint8Array;
-				return null;
-			},
+			readImage,
 		});
 		window.__srcdoc = srcdoc;
 		window.__frame = mountFrame(container(root), srcdoc, handlers(from));
@@ -84,5 +89,14 @@ window.vh = {
 	},
 	setTheme(theme) {
 		window.__frame?.setTheme(theme);
+	},
+	/** tmp/ への書き出し（ADR-0044）と同じ変換。Obsidian と同じくブラウザの DOMParser で解析する */
+	standalone(name) {
+		return buildStandalone(FIXTURES[name] as string, {
+			path: `docs/${name}.html`,
+			standaloneCss,
+			parse: (html) => new DOMParser().parseFromString(html, "text/html"),
+			readImage,
+		});
 	},
 };
