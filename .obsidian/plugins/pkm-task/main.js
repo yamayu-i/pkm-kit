@@ -6122,10 +6122,10 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
     };
     for (const spec of VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, ctx));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `Open ${spec.title}`, callback: () => void ctx.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
     }
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-    this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", callback: () => void openSidebar(true) });
+    this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
     registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });

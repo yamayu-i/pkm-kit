@@ -52,7 +52,7 @@ export default class PkmTemplatePlugin extends Plugin {
 
 		for (const spec of LIST_VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, this.app));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, callback: () => void this.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void this.openView(spec.type) });
 		}
 
 		// リボンのボタンは pkm-ribbon が並びの表で出す（ADR-0029、ADR-0070）。テンプレートからの作成はコマンドだけにした

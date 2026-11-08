@@ -2002,7 +2002,7 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
     });
     for (const spec of LIST_VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, callback: () => void this.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void this.openView(spec.type) });
     }
     installNoteHeaders(this);
     this.registerEditorExtension(slashSessionField);

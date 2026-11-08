@@ -1,0 +1,9 @@
+{
+	"id": "pkm-view-selector",
+	"name": "PKM View Selector",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイアログから探して開く自作プラグイン（Mod+K）。どちらのプラグインにも依存せず、コマンドを呼ぶだけ。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}

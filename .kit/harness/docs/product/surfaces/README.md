@@ -76,6 +76,7 @@ ADR へのリンク。
 | 面 | 種類 |
 |---|---|
 | [リボン](ribbon.md) | リボン |
+| [Find and open a View](view-selector.md) | コマンド |
 | [一覧ペインとノートペイン](layout-panes.md) | 画面の配置 |
 | [PKM Git](git-sync.md) | コマンド・リボン |
 | [上流の更新の取り込み](kit-upgrade.md) | 手順 |
