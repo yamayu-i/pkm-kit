@@ -58,5 +58,5 @@
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
 | [0067](0067-inline-template.md) | 承認 | 行頭か空白の後の @ で、インラインテンプレートを行の中に挿入する |
-| [0070](0070-pkm-updates.md) | 提案 | 一覧 View の前回からの変更を、新しいプラグイン pkm-updates の 1 ページで見る |
+| [0070](0070-pkm-updates.md) | 承認 | 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる |
 <!-- adr-index:end -->
