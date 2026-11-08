@@ -66,7 +66,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 |---|---|---|
 | `src/core/` | スキーマ、repeat、按分、索引、lint、ファイルの中身の生成 | なし |
 | `src/obsidian/` | 索引の保持（metadataCache から）、Vault への書き込み、モーダル、一括登録 | あり |
-| `src/header/` | issue 画面のヘッダー（CodeMirror の block widget + preact） | あり |
+| `src/header/` | issue・routine・member の画面のヘッダー（preact）。ページの一番上への差し込みは shared の `header-mount.ts`（ADR-0077） | あり |
 | `src/views/` | 各 View（Today（DailyView）と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
@@ -211,6 +211,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | パス | 役割 |
 |---|---|
 | `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task・pkm-template・pkm-updates がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+| `src/header-mount.ts` | ノートの一番上（`.cm-sizer` と `.markdown-preview-sizer` の先頭）にヘッダーを差し込む（ADR-0026、ADR-0077）。pkm-task と pkm-template が使う。Obsidian が描き直して外れたら戻す。Obsidian を更新したら、両方のプラグインのヘッダーを実機で確かめる |
 
 ## design（デザイントークンと検査）
 

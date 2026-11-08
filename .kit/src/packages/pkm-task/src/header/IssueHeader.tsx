@@ -33,7 +33,7 @@ function sortCandidates(issues: Issue[]): Issue[] {
 	return [...issues].sort((a, b) => Number(!isActive(a)) - Number(!isActive(b)) || a.id.localeCompare(b.id, "en", { numeric: true }));
 }
 
-/** issue 画面のヘッダー（ADR-0012）。md の先頭に CodeMirror の widget として差し込む */
+/** issue 画面のヘッダー（ADR-0012）。ページの一番上に差し込む（ADR-0077） */
 export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 	const { ctx, path } = props;
 	useStoreVersion(ctx.store);

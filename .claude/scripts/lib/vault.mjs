@@ -34,3 +34,6 @@ export const DAILY_RE = /^daily\/(\d{4})\/(\d{2})\/(\d{4})-(\d{2})-(\d{2})\.md$/
 export function vaultFiles(root) {
 	return walk(root, (rel) => rel.split("/").some((s) => s.startsWith(".") || s === "node_modules"));
 }
+
+/** 改名後のファイル名の形式（英語のケバブケース。ADR-0015） */
+export const KEBAB_MD_RE = /^[a-z0-9]+(-[a-z0-9]+)*\.md$/;

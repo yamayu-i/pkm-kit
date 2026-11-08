@@ -1,7 +1,7 @@
 import { Notice, Platform, Plugin } from "obsidian";
 import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data.ts";
 import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
-import { issueHeaderExtension } from "./header/extension";
+import { installTaskHeaders } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
@@ -90,7 +90,7 @@ export default class PkmTaskPlugin extends Plugin {
 		}
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
 		this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
-		this.registerEditorExtension(issueHeaderExtension(ctx));
+		installTaskHeaders(ctx, this);
 		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
 		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）

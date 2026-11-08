@@ -1,6 +1,6 @@
 # ADR-0008: UI は Preact。issue 画面は CodeMirror の widget
 
-- 状態: 承認
+- 状態: 承認（一部置換: 0077）
 - 日付: 2026-10-31
 
 ## 決定

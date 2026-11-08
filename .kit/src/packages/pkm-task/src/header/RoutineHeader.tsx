@@ -64,7 +64,7 @@ function Results(props: { results: RoutineDayResult[] }) {
 	);
 }
 
-/** routine 画面のヘッダー（ADR-0018）。issue と同じく md の先頭に CodeMirror の widget として差し込む */
+/** routine 画面のヘッダー（ADR-0018）。issue と同じく、ページの一番上に差し込む（ADR-0077） */
 export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 	const { ctx, path } = props;
 	useStoreVersion(ctx.store);

@@ -15,10 +15,10 @@
 
 ## 絶対に守るルール
 
-1. DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外
+1. DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter と、ノートの改名にともなうリンク先のパスの書き換え（note-rename）はこの保護の対象外
 2. force push をしない。PR をマージしない。検査を迂回しない（`--no-verify`、フックを無効にする指定、テストの削除・スキップ）
 3. 上流のものを変えない。直したいことは escalate で伝える
-4. この Vault のものの仕組み（`template/`、`local/`、`skills/local-*`、設定）を変えるときはブランチで行い PR にする。main に直接コミットしてよいのは wiki の操作と気づきの記録だけ
+4. この Vault のものの仕組み（`template/`、`local/`、`skills/local-*`、設定）を変えるときはブランチで行い PR にする。main に直接コミットしてよいのは wiki の操作、ノートの改名、気づきの記録だけ
 5. 秘密情報（トークンなど）はノート・設定ファイル・コミットに入れない
 6. `node_modules` などの開発用ファイルを、Vault の見えるフォルダに置かない
 7. 訂正された、文書にないことを質問した、文書と実際が違った、などが起きたら、その場で記録する（`harness-note`）
@@ -34,6 +34,7 @@
 | wiki を根拠に答え、回答を蓄積する | [wiki-query](skills/wiki-query/SKILL.md) |
 | wiki を保守する | [wiki-lint](skills/wiki-lint/SKILL.md) |
 | デイリーノートを wiki に反映する | [wiki-daily](skills/wiki-daily/SKILL.md) |
+| ノートのファイル名を英語のケバブケースにする（title は残す） | [note-rename](skills/note-rename/SKILL.md) |
 | タスク状況を把握し、計画・助言・振り返りを行う | [task-coach](skills/task-coach/SKILL.md) |
 | 間違っていそうな worklog を一緒に直す | [worklog-review](skills/worklog-review/SKILL.md) |
 | 調査報告・回答・計画などの成果物を、読み手と段階に合わせて書き、記録する | [write-for-reader](skills/write-for-reader/SKILL.md) |

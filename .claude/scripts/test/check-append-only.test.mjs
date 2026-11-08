@@ -88,3 +88,50 @@ test("updated 以外の frontmatter や本文を変えるのは、これまで�
 	commit(root, "wiki(daily): x", { "memo.md": '---\ntype: memo\nupdated: "b"\n---\n本文\n' });
 	assert.equal(check(root, from).length, 1);
 });
+
+test("note(rename): は、改名と title の追加と、リンク先のパスの書き換えだけを通す", () => {
+	const root = tempRepo({
+		...base,
+		"note/会議メモ.md": "---\ntype: note\nupdated: a\n---\n本文\n",
+		"daily/2026/10/2026-10-31.md": "- [会議メモ](note/会議メモ.md) を見た\n",
+	});
+	const from = commit(root, "init2");
+	commit(
+		root,
+		"note(rename): 会議メモを meeting-notes にする",
+		{
+			"note/meeting-notes.md": '---\ntitle: "会議メモ"\ntype: note\nupdated: b\n---\n本文\n',
+			"daily/2026/10/2026-10-31.md": "- [会議メモ](note/meeting-notes.md) を見た\n",
+		},
+		["note/会議メモ.md"],
+	);
+	assert.deepEqual(check(root, from), []);
+});
+
+test("note(rename): で本文を変える、フォルダを変える、ほかのファイルを足す・消すと違反になる", () => {
+	const root = tempRepo({
+		...base,
+		"note/会議メモ.md": "---\ntype: note\n---\n本文\n",
+		"note/ほか.md": "x\n",
+		"daily/2026/10/2026-10-31.md": "- [会議メモ](note/会議メモ.md) を見た\n",
+	});
+	const from = commit(root, "init2");
+	commit(
+		root,
+		"note(rename): いろいろ変える",
+		{
+			"note/meeting-notes.md": '---\ntitle: "会議メモ"\ntype: note\n---\n本文を変えた\n',
+			"other/hoka.md": '---\ntitle: "ほか"\n---\nx\n',
+			"daily/2026/10/2026-10-31.md": "- [会議](note/meeting-notes.md) を見た\n",
+			"new.md": "新規\n",
+		},
+		["note/会議メモ.md", "note/ほか.md", "memo.md"],
+	);
+	assert.deepEqual(check(root, from).sort(), [
+		"daily/2026/10/2026-10-31.md: 改名の操作で変えてよいのは、リンク先のパスだけ",
+		"memo.md: 改名の操作でファイルを足したり消したりしない",
+		"new.md: 改名の操作でファイルを足したり消したりしない",
+		"note/ほか.md → other/hoka.md: フォルダは変えず、名前をケバブケースにする改名だけ",
+		"note/会議メモ.md → note/meeting-notes.md: 改名したノートで変えてよいのは、title の追加とリンク先のパスだけ",
+	]);
+});

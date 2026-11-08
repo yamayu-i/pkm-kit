@@ -50,6 +50,10 @@ describe(".kit/templates/file/*.md", () => {
 		});
 	}
 
+	it("note は入力した文字を title に入れる（改名してもタイトルが残る。ハーネスの ADR-0015）", () => {
+		expect(frontmatter(render("note.md")).title).toBe("題名");
+	});
+
 	it("issue / routine / member は pkm-task が必要とする項目を持つ", () => {
 		const issue = frontmatter(render("issue.md"));
 		expect(issue).toMatchObject({ schema: "1", id: "i-5", summary: "題名", status: "open" });

@@ -1498,6 +1498,100 @@ var TemplateManager = class {
 // src/obsidian/header-mount.ts
 var import_obsidian5 = require("obsidian");
 
+// ../shared/src/header-mount.ts
+var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
+function findHost(sizer, className) {
+  for (const child of Array.from(sizer.children)) if (child.className === className) return child;
+  return null;
+}
+function keepFirst(sizer, host) {
+  if (sizer.firstElementChild === host) return false;
+  sizer.prepend(host);
+  return true;
+}
+function placeHeaders(sizers, className, show, create) {
+  const hosts = [];
+  const removed = [];
+  for (const sizer of sizers) {
+    let host = findHost(sizer, className);
+    if (!show) {
+      if (host) {
+        host.remove();
+        removed.push(host);
+      }
+      continue;
+    }
+    if (!host) host = create();
+    keepFirst(sizer, host);
+    hosts.push(host);
+  }
+  return { hosts, removed };
+}
+function installHeaderMount(options) {
+  const { plugin, className } = options;
+  const { app } = plugin;
+  const observers = /* @__PURE__ */ new Map();
+  const watch = (sizer, host) => {
+    observers.get(sizer)?.disconnect();
+    const observer = new MutationObserver(() => {
+      keepFirst(sizer, host);
+    });
+    observer.observe(sizer, { childList: true });
+    observers.set(sizer, observer);
+  };
+  const unwatch = (sizer) => {
+    observers.get(sizer)?.disconnect();
+    observers.delete(sizer);
+  };
+  const mount = (view) => {
+    const sizers = Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+    const model = options.model(view);
+    const { hosts, removed } = placeHeaders(sizers, className, model !== null, () => {
+      const el = document.createElement("div");
+      el.className = className;
+      return el;
+    });
+    for (const host of removed) options.clear(host);
+    for (const sizer of sizers) {
+      const host = findHost(sizer, className);
+      if (host) watch(sizer, host);
+      else unwatch(sizer);
+    }
+    if (model !== null) for (const host of hosts) options.draw(host, model, view);
+  };
+  const refresh = () => {
+    for (const view of options.views()) mount(view);
+    for (const sizer of Array.from(observers.keys())) if (!sizer.isConnected) unwatch(sizer);
+  };
+  let timer;
+  const schedule = () => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(refresh, 100);
+  };
+  const now = () => {
+    const view = options.activeView();
+    if (view) mount(view);
+    schedule();
+  };
+  const on = (ref) => plugin.registerEvent(ref);
+  on(app.workspace.on("file-open", now));
+  on(app.workspace.on("active-leaf-change", now));
+  on(app.workspace.on("layout-change", schedule));
+  on(app.metadataCache.on("changed", schedule));
+  on(app.metadataCache.on("resolved", schedule));
+  app.workspace.onLayoutReady(refresh);
+  plugin.register(() => {
+    window.clearTimeout(timer);
+    for (const observer of observers.values()) observer.disconnect();
+    observers.clear();
+    const selector = className.split(" ").map((c3) => `.${c3}`).join("");
+    for (const host of Array.from(document.querySelectorAll(selector))) {
+      options.clear(host);
+      host.remove();
+    }
+  });
+}
+
 // src/core/note-format.ts
 function shortDate(value) {
   if (typeof value !== "string") return "";
@@ -1699,60 +1793,30 @@ function useVaultChanges(app) {
 
 // src/obsidian/header-mount.ts
 var HEADER_CLASS = "vt-tpl-note-header";
-var SIZERS = ".cm-sizer, .markdown-preview-sizer";
 function installNoteHeaders(plugin) {
   const { app } = plugin;
-  const mount = (view) => {
+  const model = (view) => {
     const file = view.file;
     const info = file ? noteInfo(app, file) : null;
-    const show = info !== null && hasNoteHeader(info.path, info.frontmatter);
-    let model = null;
-    if (info && show) {
-      const type = info.frontmatter.type;
-      const needsVault = type === "source" || typeof type === "string" && WIKI_TYPES.includes(type);
-      model = buildHeader(info, { notes: needsVault ? collectNotes(app) : [], backlinks: needsVault ? backlinkCount(app, info.path) : 0 });
-    }
-    for (const sizer of Array.from(view.contentEl.querySelectorAll(SIZERS))) {
-      let host = sizer.querySelector(`:scope > .${HEADER_CLASS}`);
-      if (!model) {
-        if (host) {
-          R(null, host);
-          host.remove();
-        }
-        continue;
-      }
-      if (!host) {
-        host = document.createElement("div");
-        host.className = HEADER_CLASS;
-        sizer.prepend(host);
-      } else if (sizer.firstElementChild !== host) {
-        sizer.prepend(host);
-      }
-      R(k(NoteHeader, { app, model }), host);
-    }
+    if (!info || !hasNoteHeader(info.path, info.frontmatter)) return null;
+    const type = info.frontmatter.type;
+    const needsVault = type === "source" || typeof type === "string" && WIKI_TYPES.includes(type);
+    return buildHeader(info, { notes: needsVault ? collectNotes(app) : [], backlinks: needsVault ? backlinkCount(app, info.path) : 0 });
   };
-  const refresh = () => {
-    app.workspace.iterateAllLeaves((leaf) => {
-      if (leaf.view instanceof import_obsidian5.MarkdownView) mount(leaf.view);
-    });
-  };
-  let timer;
-  const schedule = () => {
-    window.clearTimeout(timer);
-    timer = window.setTimeout(refresh, 100);
-  };
-  plugin.registerEvent(app.workspace.on("file-open", schedule));
-  plugin.registerEvent(app.workspace.on("layout-change", schedule));
-  plugin.registerEvent(app.workspace.on("active-leaf-change", schedule));
-  plugin.registerEvent(app.metadataCache.on("changed", schedule));
-  plugin.registerEvent(app.metadataCache.on("resolved", schedule));
-  app.workspace.onLayoutReady(refresh);
-  plugin.register(() => {
-    window.clearTimeout(timer);
-    for (const host of Array.from(document.querySelectorAll(`.${HEADER_CLASS}`))) {
-      R(null, host);
-      host.remove();
-    }
+  installHeaderMount({
+    plugin,
+    className: HEADER_CLASS,
+    views: () => {
+      const views = [];
+      app.workspace.iterateAllLeaves((leaf) => {
+        if (leaf.view instanceof import_obsidian5.MarkdownView) views.push(leaf.view);
+      });
+      return views;
+    },
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView),
+    model,
+    draw: (host, m3) => R(k(NoteHeader, { app, model: m3 }), host),
+    clear: (host) => R(null, host)
   });
 }
 

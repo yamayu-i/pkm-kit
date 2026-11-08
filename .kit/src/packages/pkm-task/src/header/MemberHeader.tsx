@@ -65,7 +65,7 @@ function DelegatedIssues(props: { ctx: TaskContext; issues: Issue[] }) {
 	);
 }
 
-/** member 画面のヘッダー（ADR-0035）。issue / routine と同じく md の先頭に CodeMirror の widget として差し込む */
+/** member 画面のヘッダー（ADR-0035）。issue / routine と同じく、ページの一番上に差し込む（ADR-0077） */
 export function MemberHeader(props: { ctx: TaskContext; path: string }) {
 	const { ctx, path } = props;
 	useStoreVersion(ctx.store);
