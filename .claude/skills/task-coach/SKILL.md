@@ -72,3 +72,12 @@ vault-task の MCP サーバー（`.kit/src/packages/vault-task/cli/mcp.ts`。AD
 - ボード操作・issue 更新・デイリーノートへの追記は、必ず MCP ツール（または `vault-ops.ts`）を通して検査付きで行う。手で `board/`・`worklog/`・`statuslog/` の jsonl、issue の frontmatter を直接書き換えない
 - デイリーノート本文の既存の行は変更・削除しない（`close_board` による `## Task board` 節の更新と、`append_daily_note` による末尾追記のみ）
 - 複数の issue をリスケ・ステータス変更するときやボードを締めるときは、対象をユーザーに示して確認してから実行する
+
+## 出力の段階
+
+出力は [write-for-reader](../write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 朝・週次の計画と仕分けの提案 | 人 | 3 |
+| 日中の相談への答え、夕方の振り返り | 人 | 2 |

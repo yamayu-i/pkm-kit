@@ -5,7 +5,7 @@
  *
  * 集計するもの: コミットの種類（端末ごとの snapshot、wiki の操作、開発）、よく編集されたノート、
  * wiki のページの状態（更新されていない、他のページから参照されていない）、log.md の操作、
- * feedback.md への追記、未処理の気づき、未処理のデイリーノート
+ * feedback.md への追記、未処理の気づき、未処理のデイリーノート、出力の記録（output-log.mjs の集計）
  *
  * 使い方: node .claude/scripts/usage-report.mjs [--since YYYY-MM-DD]（既定は 30 日前）
  */
@@ -14,6 +14,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pendingDaily } from "./daily-pending.mjs";
+import { summary as outputSummary } from "./output-log.mjs";
 import { extractLinks, isExternal, parseFrontmatter, splitTarget } from "./lib/markdown.mjs";
 import { classify, isWikiPage, vaultFiles, WIKI_FEEDBACK, WIKI_INDEX, WIKI_LOG } from "./lib/vault.mjs";
 
@@ -108,6 +109,10 @@ export function usageReport(root, since = daysAgo(30), today = new Date().toISOS
 	out.push("", "## その他", "");
 	out.push(`- 未処理の気づき（.claude/notes/）: ${notes.length} 件`);
 	out.push(`- 未処理のデイリーノート: ${pendingDaily(root, today).pending.length} 件`);
+
+	// 出力の記録（write-for-reader の段階ごと）
+	const outputs = outputSummary(root, since, today).split("\n").slice(1);
+	out.push("", "## 出力の記録（output-log）", ...outputs.map((l) => l.replace(/^## /, "### ")));
 	return out.join("\n");
 }
 

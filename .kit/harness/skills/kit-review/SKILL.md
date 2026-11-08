@@ -24,10 +24,12 @@ description: 上流 pkm-kit の仕組み（子向けのハーネス、上流の�
 
 ```sh
 git log --oneline <前回の commit>..HEAD
+node .claude/scripts/output-log.mjs summary --since <前回の date>
 ```
 
 - 子からのエスカレーション: 上流の Issue のうち、ラベル `escalation`（または本文の先頭が `escalation`）で、まだ振り分けていないもの
 - `.kit/harness/notes/` のファイルをすべて読む
+- 出力の記録の集計（上の `summary`）と、子からの段階についてのエスカレーション（見方は [write-for-reader の記録](../../../../.claude/skills/write-for-reader/recording.md#評価で使う)）
 - [product-review](../product-review/SKILL.md) で見つけた機会（ラベル `ux` の Issue）と、その状態
 - CI の失敗と、移行の fixture のテストの結果（前回から）
 - 前回のレポート（`.kit/harness/reviews/`）の改善案がどうなったか（Issue の状態）
@@ -60,7 +62,7 @@ git log --oneline <前回の commit>..HEAD
 |---|---|
 | プラグイン | 開発のコミットと PR の流れ、検査で止まった問題、子からの不具合の報告 |
 | LLM wiki の仕組み | 子からのエスカレーション、wiki のスキルへの訂正 |
-| ハーネス | 繰り返し出た気づき・エスカレーション、使われていない手順や文書、文書と実際の食い違い、CLAUDE.md の大きさ |
+| ハーネス | 繰り返し出た気づき・エスカレーション、使われていない手順や文書、文書と実際の食い違い、CLAUDE.md の大きさ、出力の記録（段階ごとの回数・時間・モデル・問題の種類、既定からの上げ下げの向き。[ADR-0013](../../docs/adr/0013-output-by-reader-and-stage.md)） |
 | 更新の取り込み | 移行の失敗、取り込みで起きた衝突（境界の違反） |
 
 同じ内容が複数の子・気づきから出ているものを優先する。
@@ -84,3 +86,13 @@ git log --oneline <前回の commit>..HEAD
 
 - [上流のハーネスの設計](../../docs/harness.md) の「評価の記録」の表に 1 行足す。「現在地」と「未決事項」が変わっていたら直す
 - 処理した `.kit/harness/notes/` のファイルを消す
+
+## 出力の段階
+
+出力は [write-for-reader](../../../../.claude/skills/write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 評価のレポート | 両方 | 3 |
+| エスカレーションへの返答 | 両方 | 3 |
+| 改善案の Issue | 両方 | 3 |
