@@ -364,7 +364,8 @@ body.theme-dark {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
-.vt-summary-input.vt-summary-input {
+/* 共通の入力欄のルール（.vt-ui input[type=text]）より詳細度を高くする */
+.vt-ui .vt-summary-input.vt-summary-input {
 	flex: 1;
 	height: auto;
 	padding: 2px 8px;
@@ -2202,14 +2203,55 @@ body.is-mobile .vt-toast {
 	color: var(--vt-on-surface-variant);
 }
 
-/* 中の入力欄は枠と面を持たない（Obsidian の input の見た目を、同じ詳細度で後から上書きする） */
-.vt-search input,
-.vt-search input:hover,
-.vt-search input:focus,
-.vt-quick-add input,
-.vt-quick-add input:hover,
-.vt-quick-add input:focus {
+/* ---------- 入力欄（M3 の outlined text field。#32） ----------
+ * Obsidian は input に影（--input-shadow）と自分の面・枠の色を付ける。.vt-ui（View・ヘッダー・モーダルの根）の中では、
+ * Obsidian の input[type=text] などより詳細度の高いこのルールで、面・枠・文字をトークンにして影を消す */
+.vt-ui input[type="text"],
+.vt-ui input[type="search"],
+.vt-ui input[type="number"],
+.vt-ui textarea,
+.vt-ui select {
+	border: 1px solid var(--vt-outline);
+	background-color: var(--vt-surface);
+	color: var(--vt-on-surface);
+	box-shadow: none;
+}
+
+.vt-ui input[type="text"]:hover,
+.vt-ui input[type="search"]:hover,
+.vt-ui input[type="number"]:hover,
+.vt-ui textarea:hover,
+.vt-ui select:hover {
+	border-color: var(--vt-on-surface);
+	box-shadow: none;
+}
+
+/* 文字の前後の余白も Obsidian 任せにしない（select は ▾ の場所を Obsidian が取るので除く） */
+.vt-ui input[type="text"],
+.vt-ui input[type="search"],
+.vt-ui input[type="number"] {
+	padding-inline: 12px;
+}
+
+/* M3: フォーカスで primary の 2px の枠（1px の枠 + 内側の 1px の輪） */
+.vt-ui input[type="text"]:focus,
+.vt-ui input[type="search"]:focus,
+.vt-ui input[type="number"]:focus,
+.vt-ui textarea:focus,
+.vt-ui select:focus {
+	border-color: var(--vt-primary);
+	box-shadow: inset 0 0 0 1px var(--vt-primary);
+}
+
+/* 中の入力欄は枠と面を持たない（上の共通のルールより詳細度を高くし、後に置く） */
+.vt-ui .vt-search input,
+.vt-ui .vt-search input:hover,
+.vt-ui .vt-search input:focus,
+.vt-ui .vt-quick-add input,
+.vt-ui .vt-quick-add input:hover,
+.vt-ui .vt-quick-add input:focus {
 	flex: 1;
+	padding: 0;
 	height: 100%;
 	border: none;
 	background: transparent;
@@ -2889,7 +2931,8 @@ body.is-mobile .vt-toast {
 	line-height: 1;
 }
 
-.vt-name-field input {
+/* 共通の入力欄のルール（.vt-ui input[type=text]）より詳細度を高くする */
+.vt-ui .vt-name-field input {
 	height: 44px;
 	padding: 0 16px;
 	border: 1px solid var(--vt-outline);
@@ -2899,12 +2942,7 @@ body.is-mobile .vt-toast {
 	font-size: var(--vt-type-body-medium-size);
 }
 
-.vt-name-field input:focus {
-	border-color: var(--vt-primary);
-	box-shadow: 0 0 0 1px var(--vt-primary);
-}
-
-.vt-name-field.is-error input {
+.vt-name-field.vt-name-field.is-error input {
 	border-color: var(--vt-error);
 }
 

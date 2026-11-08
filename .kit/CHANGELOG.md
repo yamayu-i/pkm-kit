@@ -4,6 +4,12 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## 入力欄を M3 の outlined text field にそろえる
+
+- vault-task と vault-template の入力欄（`input` / `textarea` / `select`）から、Obsidian が付ける浮いて見える影をなくした。面・枠・文字をトークンで決め（ダークモードでは暗い面）、ホバーで枠が濃くなり、フォーカスで primary の 2px の枠になる（M3 の outlined text field。#32）
+- vault-task の View・ヘッダー・モーダルの根に `.vt-ui` を付け、その中の入力欄に共通のルールを当てる。デザインの検査に `input/outlined` を足した
+- 子への影響: 移行はない。vault-task・vault-template の `main.js` と `styles.css` が変わった。PC とモバイルの両方で、ライト / ダークの入力欄（issue の題名の編集、日付、routine の作成、テンプレートからの新規作成、Notes の絞り込み）に影がなく、フォーカスで紫の枠になることを確かめる
+
 ## member の項目（name / nickname / alias）と Members の View
 
 - **移行 0004-member-nickname-alias**: member に `nickname`（自分が呼んでいる呼び名）と `alias`（検索と委任先の候補に出す短い呼び方。単数の文字列）を足した。`name` は本名（姓・名）。移行は `member/*.md` に、`nickname` がなければ `name` と同じ値を、`alias` がなければ ID を足す。`nickname` / `alias` が空・ないときは、vault-task が `name` / ID を使う（ADR-0035）

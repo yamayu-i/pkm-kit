@@ -2077,6 +2077,7 @@ var PreactModal = class extends import_obsidian2.Modal {
   view;
   onOpen() {
     this.setTitle(this.title);
+    this.modalEl.addClass("vt-ui");
     R(k(() => this.view(() => this.close()), {}), this.contentEl);
   }
   onClose() {
@@ -3159,7 +3160,7 @@ var HeaderWidget = class extends import_view.WidgetType {
   }
   toDOM() {
     const el = document.createElement("div");
-    el.className = "vt-header";
+    el.className = "vt-header vt-ui";
     R(k(headerFor(this.path), { ctx: this.ctx, path: this.path }), el);
     return el;
   }
@@ -3626,7 +3627,7 @@ function preactViewCreator(spec, ctx) {
       return spec.icon;
     }
     async onOpen() {
-      this.contentEl.addClass("vt-view");
+      this.contentEl.addClass("vt-view", "vt-ui");
       R(k(spec.component, { ctx }), this.contentEl);
     }
     async onClose() {
