@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { indexDir } from "../adr-index.mjs";
+import { crossDirProblems, indexDir } from "../adr-index.mjs";
 import { tempVault } from "./helpers.mjs";
 
 const README = "# ADR\n\n## 一覧\n\n<!-- adr-index:start -->\n<!-- adr-index:end -->\n";
@@ -73,4 +73,18 @@ test("リポジトリの ADR の一覧は ADR と合っている", () => {
 	for (const d of [".kit/harness/docs/adr", ".kit/src/docs/adr"]) {
 		assert.deepEqual(indexDir(new URL(`../../../${d}`, import.meta.url).pathname), []);
 	}
+});
+
+test("2 つのディレクトリで、ADR-0056 より後の番号（Issue の番号）が重なると失敗する。それより前の番号は重なってよい（#51）", () => {
+	const harness = tempVault({ "README.md": README, "0001-a.md": adr("0001", "A"), "0051-b.md": adr("0051", "B") });
+	const plugin = tempVault({ "README.md": README, "0001-c.md": adr("0001", "C"), "0051-d.md": adr("0051", "D"), "0052-e.md": adr("0052", "E") });
+	const errors = crossDirProblems([harness, plugin]);
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /0051-d\.md: 番号 0051 が .*0051-b\.md と重なっている/);
+	assert.deepEqual(crossDirProblems([harness]), []);
+});
+
+test("リポジトリの 2 つの ADR のディレクトリで、Issue の番号は重なっていない", () => {
+	const dirs = [".kit/harness/docs/adr", ".kit/src/docs/adr"].map((d) => new URL(`../../../${d}`, import.meta.url).pathname);
+	assert.deepEqual(crossDirProblems(dirs), []);
 });
