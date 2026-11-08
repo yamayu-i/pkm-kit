@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { stepperItems } from "../src/core/stepper";
 
 const STEPS = [
-	{ key: "a", label: "期限切れ" },
-	{ key: "b", label: "前回のボード" },
-	{ key: "c", label: "期限が近い" },
+	{ key: "a", label: "Overdue" },
+	{ key: "b", label: "Previous boards" },
+	{ key: "c", label: "Due soon" },
 ] as const;
 
 describe("段階表示（DailyTaskView）", () => {
@@ -22,13 +22,13 @@ describe("段階表示（DailyTaskView）", () => {
 
 	it("縮めた段階は、件数を点で示し、名前と件数はツールチップで分かる", () => {
 		const [dead, , caution] = stepperItems(STEPS, "b", { a: 2, b: 1, c: 0 }, new Set());
-		expect(dead).toMatchObject({ state: "todo", count: 2, title: "1. 期限切れ（2 件）" });
-		expect(caution).toMatchObject({ state: "done", count: 0, title: "3. 期限が近い（済み）" });
+		expect(dead).toMatchObject({ state: "todo", count: 2, title: "1. Overdue (2)" });
+		expect(caution).toMatchObject({ state: "done", count: 0, title: "3. Due soon (Done)" });
 	});
 
 	it("通り過ぎた段階は件数が残っていても済みにする", () => {
 		const [dead] = stepperItems(STEPS, "c", { a: 2, b: 0, c: 0 }, new Set(["a"]));
-		expect(dead).toMatchObject({ state: "done", title: "1. 期限切れ（済み・2 件）" });
+		expect(dead).toMatchObject({ state: "done", title: "1. Overdue (Done · 2)" });
 	});
 });
 

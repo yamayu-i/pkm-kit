@@ -34,11 +34,11 @@ export function IssueTable(props: {
 		onSelect(next);
 	};
 	const all = selected !== undefined && issues.length > 0 && issues.every((i) => selected.has(i.id));
-	if (issues.length === 0) return <div class="vt-empty">{props.empty ?? "ありません"}</div>;
+	if (issues.length === 0) return <div class="vt-empty">{props.empty ?? "Nothing here"}</div>;
 	const due = (issue: Issue, value: string | null) =>
 		value ? <span class={`vt-due-chip vt-due-${dueLevel(issue, value, today)}`}>{formatShortDate(value)}</span> : <span class="vt-muted">—</span>;
 	const editable = (issue: Issue, c: Column, open: (e: MouseEvent) => void, content: ComponentChild) => (
-		<button class="vt-cell-edit" aria-label={`${issue.id} の ${c} を編集`} title={`${c} を編集`} onClick={open}>
+		<button class="vt-cell-edit" aria-label={`Edit ${c} of ${issue.id}`} title={`Edit ${c}`} onClick={open}>
 			{content}
 		</button>
 	);
@@ -63,7 +63,7 @@ export function IssueTable(props: {
 			case "revisit":
 				return issue.revisit ? <span class="vt-num">{formatShortDate(issue.revisit)}</span> : <span class="vt-muted">—</span>;
 			case "reviewed":
-				return issue.reviewed ? <span class="vt-num">{formatShortDate(issue.reviewed)}</span> : <span class="vt-muted">未</span>;
+				return issue.reviewed ? <span class="vt-num">{formatShortDate(issue.reviewed)}</span> : <span class="vt-muted">Never</span>;
 			case "created":
 				return issue.created ? <span class="vt-num">{issue.created.slice(0, 10)}</span> : <span class="vt-muted">—</span>;
 		}
@@ -72,7 +72,7 @@ export function IssueTable(props: {
 		<div class="vt-table" role="table" style={{ "--vt-cols": String(columns.length) }}>
 			<div class="vt-tr vt-thead" role="row">
 				{onSelect && (
-					<input type="checkbox" aria-label="すべて選択" checked={all} onChange={() => onSelect(all ? new Set() : new Set(issues.map((i) => i.id)))} />
+					<input type="checkbox" aria-label="Select all" checked={all} onChange={() => onSelect(all ? new Set() : new Set(issues.map((i) => i.id)))} />
 				)}
 				<span class="vt-th vt-col-main">issue</span>
 				<span class="vt-th vt-col-priority">priority</span>
@@ -84,7 +84,7 @@ export function IssueTable(props: {
 			</div>
 			{issues.map((issue) => (
 				<div class={`vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`} role="row" key={issue.id}>
-					{onSelect && <input type="checkbox" checked={selected?.has(issue.id) ?? false} onChange={() => toggle(issue.id)} aria-label={`${issue.id} を選択`} />}
+					{onSelect && <input type="checkbox" checked={selected?.has(issue.id) ?? false} onChange={() => toggle(issue.id)} aria-label={`Select ${issue.id}`} />}
 					<span class="vt-col-main" {...linkProps((e) => void ctx.openPath(issue.path, Keymap.isModEvent(e) !== false))}>
 						{props.lead?.(issue)}
 						<IdBadge issue={issue} />
@@ -102,7 +102,7 @@ export function IssueTable(props: {
 						<span class={`vt-col-${c}`}>{cell(issue, c)}</span>
 					))}
 					<span class="vt-col-menu">
-						<button class="vt-icon-button" aria-label={`${issue.id} を編集`} title="編集" onClick={(e) => issueRowMenu(ctx, e, issue)}>
+						<button class="vt-icon-button" aria-label={`Edit ${issue.id}`} title="Edit" onClick={(e) => issueRowMenu(ctx, e, issue)}>
 							<Icon name="more-horizontal" />
 						</button>
 					</span>
@@ -123,7 +123,7 @@ export interface Action {
 export function ActionBar(props: { count: number; actions: Action[] }) {
 	return (
 		<div class={`vt-actionbar${props.count > 0 ? " is-active" : ""}`}>
-			<span class="vt-actionbar-count">{props.count > 0 ? `${props.count} 件を選択中` : "行を選ぶと操作できます"}</span>
+			<span class="vt-actionbar-count">{props.count > 0 ? `${props.count} selected` : "Select rows to act on them"}</span>
 			<span class="vt-spacer" />
 			{props.actions.map((a) => (
 				<button class={`vt-button${a.tone ? ` is-${a.tone}` : ""}`} disabled={props.count === 0} onClick={a.run}>

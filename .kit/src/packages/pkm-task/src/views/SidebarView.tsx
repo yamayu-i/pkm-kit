@@ -48,11 +48,11 @@ export function SidebarView(props: { ctx: TaskContext }) {
 	return (
 		<div class="vt-sidebar">
 			<button class="vt-button is-primary vt-sidebar-capture" onClick={() => openCaptureModal(ctx)}>
-				<Icon name="plus" /> issue をまとめて作成
+				<Icon name="plus" /> Capture issues
 			</button>
 			{runningByTask.size > 0 && (
 				<section class="vt-sidebar-section">
-					<div class="vt-field-label">記録中</div>
+					<div class="vt-field-label">Running</div>
 					<div class="vt-sidebar-running">
 						{[...runningByTask.entries()].map(([taskId, elapsed]) => {
 							const issue = index.issues.get(taskId);
@@ -71,8 +71,8 @@ export function SidebarView(props: { ctx: TaskContext }) {
 										)}
 										<button
 											class="vt-play is-running"
-											aria-label="記録を止める"
-											title="記録を止める"
+											aria-label="Stop timer"
+											title="Stop timer"
 											onClick={() => void stopTimer(ctx, [taskId])}
 										>
 											<Icon name="square" />

@@ -252,10 +252,10 @@ describe("小物", () => {
 			if (!r.ok) throw new Error(r.error);
 			return describeRepeat(r.value);
 		};
-		expect(d({ every: "day" })).toBe("毎日");
-		expect(d({ every: "week", interval: 2, on: ["mon", "thu"] })).toBe("隔週 mon, thu");
-		expect(d({ every: "month", on: ["2th-tue", "last", 15] })).toBe("毎月 第 2 tue, 月末, 15 日");
-		expect(d({ every: "day", interval: 3 })).toBe("3 日ごと");
+		expect(d({ every: "day" })).toBe("Daily");
+		expect(d({ every: "week", interval: 2, on: ["mon", "thu"] })).toBe("Every 2 weeks mon, thu");
+		expect(d({ every: "month", on: ["2th-tue", "last", 15] })).toBe("Monthly 2nd tue, last day, day 15");
+		expect(d({ every: "day", interval: 3 })).toBe("Every 3 days");
 	});
 
 	it("worklog の ID と追記", () => {

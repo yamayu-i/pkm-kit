@@ -32,7 +32,7 @@ export function pickMember(ctx: TaskContext, onPick: (id: string) => void): void
 export function priorityMenu(e: MouseEvent, current: Priority | null, save: Save): void {
 	const m = new Menu();
 	for (const p of PRIORITIES) m.addItem((item) => item.setTitle(p).setChecked(p === current).onClick(() => save({ priority: p })));
-	m.addItem((item) => item.setTitle("なし").onClick(() => save({ priority: null })));
+	m.addItem((item) => item.setTitle("None").onClick(() => save({ priority: null })));
 	m.showAtMouseEvent(e);
 }
 
@@ -56,7 +56,7 @@ export function editStatusDetail(ctx: TaskContext, current: string, save: Save):
 		<TextForm
 			initial={current}
 			maxLength={STATUS_DETAIL_MAX}
-			placeholder="例: 返事待ち"
+			placeholder="e.g. Waiting for reply"
 			onSubmit={(v) => {
 				close();
 				save({ "status-detail": v });
@@ -69,11 +69,11 @@ export function estimateMenu(ctx: TaskContext, e: MouseEvent, current: number | 
 	const m = new Menu();
 	for (const min of ESTIMATE_PRESETS) m.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
 	m.addItem((item) =>
-		item.setTitle("入力…").onClick(() =>
+		item.setTitle("Enter…").onClick(() =>
 			new PreactModal(ctx.app, "estimated（m / h / d。1d = 24h）", (close) => (
 				<TextForm
 					initial={current === null ? "" : formatMinutes(current)}
-					placeholder="例: 30m / 2h / 1d / 1h30m"
+					placeholder="e.g. 30m / 2h / 1d / 1h30m"
 					onSubmit={(v) => {
 						const min = parseDurationInput(v);
 						if (min === null) return ctx.report(`時間として読めません: ${v}`);
@@ -84,7 +84,7 @@ export function estimateMenu(ctx: TaskContext, e: MouseEvent, current: number | 
 			)).open(),
 		),
 	);
-	m.addItem((item) => item.setTitle("クリア").onClick(() => save({ estimated: null })));
+	m.addItem((item) => item.setTitle("Clear").onClick(() => save({ estimated: null })));
 	m.showAtMouseEvent(e);
 }
 
@@ -120,7 +120,7 @@ export function editDue(ctx: TaskContext, issue: Issue, key: "soft_deadline" | "
 }
 
 export function editScheduled(ctx: TaskContext, issue: Issue): void {
-	new PreactModal(ctx.app, "実行日", (close) => (
+	new PreactModal(ctx.app, "Do Date", (close) => (
 		<CalendarForm
 			initial={issue.scheduled}
 			softDeadline={issue.softDeadline}
@@ -155,7 +155,7 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	m.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e, issue.priority, save)));
 	m.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
 	m.addSeparator();
-	m.addItem((item) => item.setTitle("実行日").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+	m.addItem((item) => item.setTitle("Do Date").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
 	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
 	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));

@@ -18,7 +18,7 @@ import { LabelsField, SummaryField, Worklog, formatDateTime } from "./IssueHeade
 
 const RESULT_DAYS = 14;
 const RESULT_MARK: Record<RoutineDayResult["state"], string> = { closed: "✓", canceled: "×", none: "・", off: "" };
-const RESULT_LABEL: Record<RoutineDayResult["state"], string> = { closed: "closed", canceled: "canceled", none: "未記録", off: "予定なし" };
+const RESULT_LABEL: Record<RoutineDayResult["state"], string> = { closed: "closed", canceled: "canceled", none: "not recorded", off: "not scheduled" };
 
 function RepeatForm(props: { rule: RepeatRule | null; onSubmit: (repeat: Record<string, unknown>) => void }) {
 	const [draft, setDraft] = useState(repeatDraftOf(props.rule));
@@ -35,7 +35,7 @@ function RepeatForm(props: { rule: RepeatRule | null; onSubmit: (repeat: Record<
 			{read.error !== null && <div class="vt-error">{read.error}</div>}
 			<div class="vt-form">
 				<button type="submit" class="mod-cta" disabled={read.error !== null}>
-					保存
+					Save
 				</button>
 			</div>
 		</form>
@@ -46,7 +46,7 @@ function RepeatForm(props: { rule: RepeatRule | null; onSubmit: (repeat: Record<
 function Results(props: { results: RoutineDayResult[] }) {
 	return (
 		<div class="vt-routine-results">
-			<div class="vt-field-label">直近 {RESULT_DAYS} 日</div>
+			<div class="vt-field-label">Last {RESULT_DAYS} days</div>
 			<div class="vt-results">
 				{props.results.map((r) => {
 					const label = `${r.date} ${RESULT_LABEL[r.state]}`;
@@ -59,7 +59,7 @@ function Results(props: { results: RoutineDayResult[] }) {
 					);
 				})}
 			</div>
-			<div class="vt-muted">✓ closed　× canceled　・ 未記録　空欄 予定なし</div>
+			<div class="vt-muted">✓ closed　× canceled　・ not recorded　blank not scheduled</div>
 		</div>
 	);
 }
@@ -75,7 +75,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 	}
 	const save: Save = (fields) => void ctx.writer.update(path, fields).catch((e) => ctx.report("保存できませんでした", e));
 	const editRepeat = () =>
-		new PreactModal(ctx.app, "くり返し", (close) => (
+		new PreactModal(ctx.app, "Repeat", (close) => (
 			<RepeatForm
 				rule={routine.repeat}
 				onSubmit={(repeat) => {
@@ -99,7 +99,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 		for (const key of ["", ...groupKeys(index.data.groups)]) {
 			m.addItem((item) =>
 				item
-					.setTitle(key || "未分類")
+					.setTitle(key || "Unsorted")
 					.setChecked((routine.group ?? "") === key)
 					.onClick(() => save({ group: key || null })),
 			);
@@ -119,8 +119,8 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					class={`vt-switch${routine.active ? " is-on" : ""}`}
 					role="switch"
 					aria-checked={routine.active}
-					aria-label={routine.active ? "一時停止する" : "再開する"}
-					title={routine.active ? "一時停止する" : "再開する"}
+					aria-label={routine.active ? "Pause" : "Resume"}
+					title={routine.active ? "Pause" : "Resume"}
 					onClick={() => save({ active: !routine.active })}
 				>
 					<span class="vt-switch-thumb" />
@@ -130,7 +130,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 				<div class="vt-row vt-chips">
 					<button class="vt-field-chip" onClick={editRepeat}>
 						<Icon name="repeat" />
-						{routine.repeat ? describeRepeat(routine.repeat) : "repeat が読めません"}
+						{routine.repeat ? describeRepeat(routine.repeat) : "Invalid repeat"}
 					</button>
 					<button class="vt-field-chip" onClick={editDate("start", routine.start)}>
 						<Icon name="calendar" />
@@ -144,7 +144,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 				<div class="vt-row vt-chips">
 					<button class="vt-field-chip" onClick={groupMenu}>
 						<Icon name="layout-grid" />
-						{routine.group ?? "未分類"}
+						{routine.group ?? "Unsorted"}
 					</button>
 					<PriorityBadge priority={routine.priority} onClick={(e) => priorityMenu(e, routine.priority, save)} />
 					<LabelsField ctx={ctx} labels={routine.labels} index={index} save={save} />
@@ -161,11 +161,11 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					</span>
 					<span class="vt-effort-value">{routine.estimated === null ? "—" : formatMinutes(routine.estimated)}</span>
 				</button>
-				<div class="vt-effort-cell is-readonly" title="worklog から自動で計算">
+				<div class="vt-effort-cell is-readonly" title="Calculated from the worklog">
 					<span class="vt-field-label">total</span>
 					<span class="vt-effort-value">{formatMinutes(effort.total)}</span>
 				</div>
-				<div class="vt-effort-cell is-readonly" title={effort.days > 0 ? `記録のある ${effort.days} 日分の 1 日あたり平均` : "worklog から自動で計算"}>
+				<div class="vt-effort-cell is-readonly" title={effort.days > 0 ? `Daily average over ${effort.days} recorded days` : "Calculated from the worklog"}>
 					<span class="vt-field-label">average</span>
 					<span class="vt-effort-value">{effort.average === null ? "—" : formatMinutes(effort.average)}</span>
 				</div>

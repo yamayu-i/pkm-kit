@@ -31,7 +31,7 @@ export class IssueSuggestModal extends FuzzySuggestModal<Issue> {
 		app: App,
 		private readonly items: Issue[],
 		private readonly onChoose: (issue: Issue) => void,
-		placeholder = "issue を検索（ID / summary）",
+		placeholder = "Search issues (ID / summary)",
 	) {
 		super(app);
 		this.setPlaceholder(placeholder);
@@ -60,7 +60,7 @@ export class BoardIssueModal extends SuggestModal<BoardChoice> {
 		private readonly onChoose: (choice: BoardChoice) => void,
 	) {
 		super(app);
-		this.setPlaceholder("issue を検索。なければ summary を入力して新規作成");
+		this.setPlaceholder("Search issues, or type a summary to create one");
 	}
 
 	getSuggestions(query: string): BoardChoice[] {
@@ -78,7 +78,7 @@ export class BoardIssueModal extends SuggestModal<BoardChoice> {
 
 	renderSuggestion(choice: BoardChoice, el: HTMLElement): void {
 		if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
-		else el.createEl("div", { text: `＋「${choice.summary}」を作成してボードに載せる` });
+		else el.createEl("div", { text: `+ Create "${choice.summary}" and add it to the board` });
 	}
 
 	onChooseSuggestion(choice: BoardChoice): void {
@@ -96,7 +96,7 @@ export class MemberSuggestModal extends SuggestModal<MemberChoice> {
 		private readonly onChoose: (choice: MemberChoice) => void,
 	) {
 		super(app);
-		this.setPlaceholder("委任先を @alias・呼び名・名前で検索。なければ名前を入力して新規作成");
+		this.setPlaceholder("Search delegates by @alias, nickname or name, or type a name to create one");
 	}
 
 	getSuggestions(query: string): MemberChoice[] {
@@ -110,7 +110,7 @@ export class MemberSuggestModal extends SuggestModal<MemberChoice> {
 
 	renderSuggestion(choice: MemberChoice, el: HTMLElement): void {
 		if (choice.kind === "member") el.createEl("div", { text: memberLabel(choice.member) });
-		else el.createEl("div", { text: `＋「${choice.name}」を新しく作る` });
+		else el.createEl("div", { text: `+ Create "${choice.name}"` });
 	}
 
 	onChooseSuggestion(choice: MemberChoice): void {

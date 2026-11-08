@@ -58,8 +58,8 @@ function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): void {
 function DelegateChip(props: { ctx: TaskContext; issue: Issue }) {
 	const { ctx, issue } = props;
 	const member = issue.delegatedTo === null ? undefined : ctx.store.index.members.get(issue.delegatedTo);
-	const name = member?.nickname ?? issue.delegatedTo ?? "委任先を選ぶ";
-	const label = `委任先: ${name}（押すと選び直す）`;
+	const name = member?.nickname ?? issue.delegatedTo ?? "Choose delegate";
+	const label = `Delegated to: ${name} (click to change)`;
 	return (
 		<button
 			class="vt-badge vt-status-delegated vt-delegate"
@@ -78,7 +78,7 @@ function NextButtons(props: { ctx: TaskContext; date: LocalDate; item: Item; sta
 	const { ctx, date, item, status } = props;
 	if (isDoneStatus(status)) {
 		const back: Status = item.kind === "issue" ? (ctx.store.index.statusBefore(item.issue.id) ?? "open") : "open";
-		const label = `${back} に戻す`;
+		const label = `Back to ${back}`;
 		return (
 			<button
 				class="vt-next is-undo"
@@ -96,8 +96,8 @@ function NextButtons(props: { ctx: TaskContext; date: LocalDate; item: Item; sta
 			{targets.map((to) => (
 				<button
 					class={`vt-next vt-status-${to}`}
-					aria-label={`${to} にする`}
-					title={`${to} にする`}
+					aria-label={`Set to ${to}`}
+					title={`Set to ${to}`}
 					onClick={() => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, to) : setRoutineResult(ctx, date, item.routine.id, to as "closed"))}
 				>
 					<StatusIcon status={to} />
@@ -144,14 +144,14 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 		for (const key of [UNGROUPED, ...props.keys]) {
 			m.addItem((mi) =>
 				mi
-					.setTitle(key === UNGROUPED ? "→ 未分類" : `→ ${key}`)
+					.setTitle(key === UNGROUPED ? "→ Unsorted" : `→ ${key}`)
 					.setChecked(props.placed === key)
 					.onClick(() => void setPlacement(ctx, date, id, key)),
 			);
 		}
 		m.addSeparator();
-		m.addItem((mi) => mi.setTitle("開く").setIcon("file-text").onClick(() => void ctx.openPath(path)));
-		if (issue) m.addItem((mi) => mi.setTitle("ボードから外す").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
+		m.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
+		if (issue) m.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
 		m.showAtMouseEvent(e);
 	};
 	return (
@@ -166,8 +166,8 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				</span>
 				<button
 					class={`vt-play${running.length > 0 ? " is-running" : ""}`}
-					aria-label={running.length > 0 ? "記録を止める" : "記録を始める"}
-					title={running.length > 0 ? "記録を止める" : "記録を始める"}
+					aria-label={running.length > 0 ? "Stop timer" : "Start timer"}
+					title={running.length > 0 ? "Stop timer" : "Start timer"}
 					onClick={() => void (running.length > 0 ? stopTimer(ctx, [id]) : startTimer(ctx, [id]))}
 				>
 					<Icon name={running.length > 0 ? "square" : "play"} />
@@ -180,7 +180,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				{issue && issue.status === "delegated" && <DelegateChip ctx={ctx} issue={issue} />}
 				<span class="vt-spacer" />
 				<NextButtons ctx={ctx} date={date} item={item} status={status} />
-				<button class="vt-icon-button" aria-label="メニュー" title="グループの移動など" onClick={moreMenu}>
+				<button class="vt-icon-button" aria-label="Menu" title="Move to group and more" onClick={moreMenu}>
 					<Icon name="more-horizontal" />
 				</button>
 			</div>
@@ -232,11 +232,11 @@ function GroupBox(props: {
 				<span class="vt-count">{all.length}</span>
 				<span class="vt-spacer" />
 				{runningIds.length > 0 ? (
-					<button class="vt-play is-running" title="このグループの記録をすべて止める" onClick={() => void stopTimer(ctx, runningIds)}>
+					<button class="vt-play is-running" title="Stop all timers in this group" onClick={() => void stopTimer(ctx, runningIds)}>
 						<Icon name="square" />
 					</button>
 				) : (
-					<button class="vt-play" title="このグループをまとめて記録する" disabled={ids.length === 0} onClick={() => void startTimer(ctx, ids)}>
+					<button class="vt-play" title="Start timers for this group" disabled={ids.length === 0} onClick={() => void startTimer(ctx, ids)}>
 						<Icon name="play" />
 					</button>
 				)}
@@ -245,7 +245,7 @@ function GroupBox(props: {
 				{own.map((it) => (
 					<TaskCard ctx={ctx} date={date} board={props.board} item={it} keys={props.keys} placed={props.placement(it)} now={props.now} key={itemId(it)} />
 				))}
-				{own.length === 0 && !props.children && <div class="vt-drop-hint">ここにカードを移せます</div>}
+				{own.length === 0 && !props.children && <div class="vt-drop-hint">Drop cards here</div>}
 			</div>
 			{props.children && <div class="vt-subgroups">{props.children}</div>}
 		</section>
@@ -279,16 +279,16 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				<h3 class="vt-h">Task board · {formatShortDate(date)}</h3>
 				<span class="vt-spacer" />
 				<button class="vt-button" onClick={addIssue}>
-					<Icon name="plus" /> issue を載せる
+					<Icon name="plus" /> Add issue
 				</button>
 				<button class="vt-button is-text" onClick={() => void ctx.openView("pkm-task-groups")}>
-					<Icon name="layout-grid" /> グループを編集
+					<Icon name="layout-grid" /> Edit groups
 				</button>
 			</div>
-			{all.length === 0 && <div class="vt-empty">ボードは空です。今日が実行日の issue は自動で載ります。上のボタンでも追加できます</div>}
+			{all.length === 0 && <div class="vt-empty">The board is empty. Issues with today's Do Date are added automatically. You can also add them with the button above.</div>}
 			{/* 未分類はグループと並べず上に置く。すべてグループに入ったら出さない */}
 			{ungrouped.length > 0 && (
-				<GroupBox ctx={ctx} date={date} board={board} name="未分類" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} ungrouped />
+				<GroupBox ctx={ctx} date={date} board={board} name="Unsorted" groupKey={UNGROUPED} items={items} placement={placement} keys={keys} now={now} ungrouped />
 			)}
 			{/* 1 階層目は横に並べ、2 階層目はグループの中に縦に並べる（ADR-0015） */}
 			<div class="vt-board-columns">
@@ -316,7 +316,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 			{doneItems.length > 0 && (
 				<section class="vt-card vt-done">
 					<div class="vt-section-head">
-						<span class="vt-field-label">完了</span>
+						<span class="vt-field-label">Done</span>
 						<span class="vt-count">{doneItems.length}</span>
 					</div>
 					<div class="vt-done-cards">
@@ -329,34 +329,34 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 
 			<section class="vt-card vt-unfinished">
 				<div class="vt-section-head">
-					<span class="vt-field-label">未完了</span>
+					<span class="vt-field-label">Not done</span>
 					<span class="vt-count">{leftIssues.length + left.routines.length}</span>
 					<span class="vt-spacer" />
 					{board.closed ? (
 						<>
 							<span class="vt-done-label">
-								<Icon name="check-circle-2" /> 締めました
+								<Icon name="check-circle-2" /> Closed
 							</span>
 							<button class="vt-button is-text" onClick={() => void reopenBoard(ctx, date)}>
-								開き直す
+								Reopen
 							</button>
 						</>
 					) : (
 						<button
 							class="vt-button is-primary"
 							disabled={leftIssues.length + left.routines.length > 0 || all.length === 0}
-							title="未完了が 0 になると締められます"
+							title="You can close the board when nothing is left"
 							onClick={() => void closeBoard(ctx, date)}
 						>
-							<Icon name="check" /> ボードを締める
+							<Icon name="check" /> Close board
 						</button>
 					)}
 				</div>
 				{leftIssues.length + left.routines.length === 0 ? (
-					<div class="vt-empty">{all.length === 0 ? "—" : "すべて片付きました"}</div>
+					<div class="vt-empty">{all.length === 0 ? "—" : "All done"}</div>
 				) : (
 					<>
-						<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="issue はすべて片付きました" />
+						<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="All issues are done" />
 						{leftIssues.length > 0 && (
 							<ActionBar
 								count={sel.length}

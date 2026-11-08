@@ -86,13 +86,13 @@ export default class PkmTaskPlugin extends Plugin {
 
 		for (const spec of VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, ctx));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} を開く`, callback: () => void ctx.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `Open ${spec.title}`, callback: () => void ctx.openView(spec.type) });
 		}
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", callback: () => void openSidebar(true) });
+		this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", callback: () => void openSidebar(true) });
 		this.registerEditorExtension(issueHeaderExtension(ctx));
-		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
-		// リボンのボタン（今日のタスクを開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
+		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）
 		registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
