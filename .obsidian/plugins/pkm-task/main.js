@@ -1759,6 +1759,7 @@ function parseDateInput(input, today) {
   const unit = m3[3];
   const n2 = digits === "" ? 1 : Number(digits);
   if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
+  if (unit === "d") return addDays(today, sign * n2);
   if (unit === "w") return addDays(today, sign * n2 * 7);
   if (unit === "m") return addMonths(today, sign * n2);
   const weekday = WEEKDAY_NAMES.indexOf(unit);
@@ -1771,9 +1772,6 @@ function parseTimeInput(input) {
   return `${m3[1]}:${m3[2]}`;
 }
 
-// src/ui/Icon.tsx
-var import_obsidian = require("obsidian");
-
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
 function u3(e3, t3, n2, o3, i3, u4) {
@@ -1785,7 +1783,56 @@ function u3(e3, t3, n2, o3, i3, u4) {
   return l.vnode && l.vnode(l3), l3;
 }
 
+// ../shared/src/month-calendar.tsx
+var MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+var WEEKDAY_INITIALS = WEEKDAY_NAMES.map((w3) => w3.charAt(0).toUpperCase());
+function formatMonthTitle(month) {
+  const [y3, m3] = month.split("-").map(Number);
+  return `${MONTH_NAMES[m3 - 1] ?? ""} ${y3}`;
+}
+function shiftMonth(month, n2) {
+  const [y3, m3] = month.split("-").map(Number);
+  return new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7);
+}
+function monthWeeks(month) {
+  const days = monthGridDays(month).map((d3) => d3.startsWith(month) ? d3 : null);
+  const weeks = [];
+  for (let i3 = 0; i3 < days.length; i3 += 7) {
+    const week = days.slice(i3, i3 + 7);
+    if (week.some((d3) => d3 !== null)) weeks.push(week);
+  }
+  return weeks;
+}
+function Chevron(props) {
+  return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "20", height: "20", "aria-hidden": "true", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", children: /* @__PURE__ */ u3("path", { d: props.dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6" }) });
+}
+function MonthCalendar(props) {
+  const { month, today } = props;
+  return /* @__PURE__ */ u3("div", { class: "vt-cal", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-cal-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: formatMonthTitle(month) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
+      WEEKDAY_INITIALS.map((w3, i3) => /* @__PURE__ */ u3("span", { class: "vt-cal-weekday", "aria-hidden": "true", title: WEEKDAY_NAMES[i3], children: w3 })),
+      monthWeeks(month).flat().map((d3, i3) => {
+        if (d3 === null) return /* @__PURE__ */ u3("span", { class: "vt-cal-blank" }, `b${i3}`);
+        const selected = props.isSelected(d3);
+        const mark = props.mark?.(d3) ?? null;
+        const cls = ["vt-cal-day", ...mark?.classes ?? []];
+        if (d3 === today) cls.push("is-today");
+        if (selected) cls.push("is-selected");
+        const notes = [d3 === today ? "Today" : null, ...mark?.notes ?? []].filter(Boolean);
+        const label = notes.length > 0 ? `${d3} (${notes.join(" \xB7 ")})` : d3;
+        return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), "aria-pressed": selected, "aria-label": label, title: label, onClick: () => props.onPick(d3), children: Number(d3.slice(8, 10)) }, d3);
+      })
+    ] })
+  ] });
+}
+
 // src/ui/Icon.tsx
+var import_obsidian = require("obsidian");
 function Icon(props) {
   const ref = A2(null);
   h2(() => {
@@ -1831,41 +1878,24 @@ function TextForm(props) {
     }
   );
 }
-function MonthCalendar(props) {
-  const today = localToday();
-  const { month } = props;
-  const days = monthGridDays(month);
-  const shift = (n2) => {
-    const [y3, m3] = month.split("-").map(Number);
-    props.onMonth(new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7));
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-calendar-nav", children: [
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Previous month", onClick: () => shift(-1), children: "\u2039" }),
-      /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Next month", onClick: () => shift(1), children: "\u203A" })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-calendar-grid", children: [
-      [0, 1, 2, 3, 4, 5, 6].map((w3) => /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[w3] })),
-      days.map((d3) => /* @__PURE__ */ u3(
-        DayCell,
-        {
-          date: d3,
-          dimmed: !d3.startsWith(month),
-          scheduled: props.isSelected(d3),
-          softDeadline: props.softDeadline ?? null,
-          deadline: props.deadline ?? null,
-          today,
-          onClick: () => props.onPick(d3)
-        }
-      ))
-    ] })
-  ] });
+function dueMark(date, softDeadline, deadline) {
+  const classes = [];
+  const notes = [];
+  if (date === softDeadline) classes.push("is-soft-deadline"), notes.push("soft_deadline");
+  if (date === deadline) classes.push("is-deadline"), notes.push("deadline");
+  if (deadline !== null && date > deadline) classes.push("is-after-deadline");
+  return classes.length > 0 ? { classes, notes } : null;
 }
 function DateHint(props) {
-  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "e.g. 15 / 1224 / +3 / mon / +2w / +m" });
+  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "e.g. 15 / 1224 / +1d / mon / +2w / +m" });
   if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
   return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: `${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}` });
+}
+function DateTextField(props) {
+  return /* @__PURE__ */ u3("div", { class: "vt-date-field", children: [
+    /* @__PURE__ */ u3("input", { ref: props.inputRef, type: "text", "aria-label": "Date", placeholder: props.placeholder, value: props.text, onInput: (e3) => props.onText(e3.currentTarget.value) }),
+    /* @__PURE__ */ u3(DateHint, { text: props.text, parsed: props.parsed })
+  ] });
 }
 function DateForm(props) {
   const today = localToday();
@@ -1884,30 +1914,25 @@ function DateForm(props) {
         if (!invalid) props.onSubmit(parsed);
       },
       children: [
-        /* @__PURE__ */ u3("div", { class: "vt-date-field", children: [
-          /* @__PURE__ */ u3(
-            "input",
-            {
-              ref,
-              type: "text",
-              "aria-label": "Date",
-              value: text,
-              onInput: (e3) => {
-                const value = e3.currentTarget.value;
-                setText(value);
-                const next = parseDateInput(value, today);
-                if (next !== null) setMonth(next.slice(0, 7));
-              }
+        /* @__PURE__ */ u3(
+          DateTextField,
+          {
+            inputRef: ref,
+            text,
+            parsed,
+            onText: (value) => {
+              setText(value);
+              const next = parseDateInput(value, today);
+              if (next !== null) setMonth(next.slice(0, 7));
             }
-          ),
-          /* @__PURE__ */ u3(DateHint, { text, parsed })
-        ] }),
+          }
+        ),
         props.presets !== false && /* @__PURE__ */ u3("div", { class: "vt-date-presets", children: [
           ["Today", 0],
           ["Tomorrow", 1],
           ["Next week", 7]
         ].map(([label, n2]) => /* @__PURE__ */ u3("button", { type: "button", class: "vt-field-chip", onClick: () => props.onSubmit(addDays(today, n2)), children: label })) }),
-        /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => d3 === parsed, onPick: (d3) => props.onSubmit(d3) }),
+        /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, today, isSelected: (d3) => d3 === parsed, onPick: (d3) => props.onSubmit(d3) }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
           props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "Clear" }),
           /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
@@ -1917,8 +1942,11 @@ function DateForm(props) {
   );
 }
 function CalendarForm(props) {
+  const today = localToday();
   const [selected, setSelected] = d2(new Set(props.initial));
-  const [month, setMonth] = d2(localToday().slice(0, 7));
+  const [month, setMonth] = d2(today.slice(0, 7));
+  const [text, setText] = d2("");
+  const parsed = parseDateInput(text, today);
   const enabled = props.canSubmit?.(selected.size) ?? true;
   const toggle2 = (d3) => {
     const next = new Set(selected);
@@ -1927,7 +1955,46 @@ function CalendarForm(props) {
     setSelected(next);
   };
   return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
-    /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => selected.has(d3), onPick: toggle2, softDeadline: props.softDeadline, deadline: props.deadline }),
+    /* @__PURE__ */ u3(
+      "form",
+      {
+        class: "vt-date-add",
+        onSubmit: (e3) => {
+          e3.preventDefault();
+          if (parsed === null) return;
+          setSelected(new Set(selected).add(parsed));
+          setMonth(parsed.slice(0, 7));
+          setText("");
+        },
+        children: [
+          /* @__PURE__ */ u3(
+            DateTextField,
+            {
+              text,
+              parsed,
+              placeholder: "Type a date and press Enter",
+              onText: (value) => {
+                setText(value);
+                const next = parseDateInput(value, today);
+                if (next !== null) setMonth(next.slice(0, 7));
+              }
+            }
+          ),
+          /* @__PURE__ */ u3("button", { type: "submit", disabled: parsed === null, children: "Add" })
+        ]
+      }
+    ),
+    /* @__PURE__ */ u3(
+      MonthCalendar,
+      {
+        month,
+        onMonth: setMonth,
+        today,
+        isSelected: (d3) => selected.has(d3),
+        onPick: toggle2,
+        mark: (d3) => dueMark(d3, props.softDeadline, props.deadline)
+      }
+    ),
     props.children,
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
@@ -1994,6 +2061,7 @@ function DateTimeField(props) {
       {
         month,
         onMonth: setMonth,
+        today,
         isSelected: (d3) => d3 === parsed,
         onPick: (d3) => {
           props.onDate(d3);

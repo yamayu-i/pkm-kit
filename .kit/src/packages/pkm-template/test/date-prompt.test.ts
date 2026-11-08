@@ -19,6 +19,7 @@ describe("parseDatePromptInput（ADR-0065）", () => {
 		["", { date: TODAY, weekday: false }],
 		["   ", { date: TODAY, weekday: false }],
 		["-d", { date: TODAY, weekday: true }],
+		["+1d -d", { date: "2026-11-09", weekday: true }],
 	])("%s", (input, expected) => {
 		expect(parseDatePromptInput(input, TODAY)).toEqual(expected);
 	});

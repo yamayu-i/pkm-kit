@@ -598,38 +598,6 @@ button.vt-badge:disabled::after {
 	gap: 12px;
 }
 
-.vt-calendar-nav {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	font-weight: var(--vt-weight-semibold);
-}
-
-.vt-calendar-nav button {
-	width: 36px;
-	height: 36px;
-	padding: 0;
-	border-radius: var(--vt-radius-full);
-	background: transparent;
-	box-shadow: none;
-}
-
-.vt-calendar-nav button:hover {
-	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
-}
-
-.vt-calendar-grid {
-	display: grid;
-	grid-template-columns: repeat(7, 40px);
-	gap: 8px;
-	justify-content: center;
-}
-
-.vt-calendar-grid .vt-day {
-	width: 40px;
-	height: 40px;
-}
-
 /* ---------- 期限（ADR-0006: 3 日前から 薄い黄色 → 黄色 → オレンジ → 赤、過ぎたら赤い枠） ---------- */
 
 .vt-dues {
@@ -2149,6 +2117,22 @@ body.is-mobile .vt-toast {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+/* 複数日のカレンダーの入力欄（ADR-0078）。Enter か Add で選んだ日に足す */
+.vt-date-add {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-date-add .vt-date-field {
+	flex: 1;
+	min-width: 0;
+}
+
+.vt-date-add button {
+	height: 40px;
 }
 
 .vt-date-form .vt-form {
