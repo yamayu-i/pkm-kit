@@ -71,7 +71,7 @@ packages/design/tokens.json（正本）
   - `accentColor` はトークンの primary（ライト）と同じ
   - `translucency` は `false`
   - `theme` は自由（ライト / ダークの両方を定義しているので `system` にしている）
-- **必須**: Obsidian 本体の色の変数（`--background-primary`、`--background-secondary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
+- **必須**: Obsidian 本体の色の変数（`--background-primary`、`--background-secondary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`、`--code-background`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
 - Obsidian の標準の `--text-faint` は 4.5:1 に届かないので、スニペットで上げている
 - **必須**: 入力欄（`input` / `textarea` / `select`）の面・枠・文字・影は Obsidian の既定に任せない。Obsidian は入力欄に浮いて見える影（`--input-shadow`）と自分の色を付けるので、プラグインの根（pkm-task は `.vt-ui`、pkm-template は `.vt-tpl-view` / `.vt-tpl-modal`）で範囲を決めた共通のルールで、面 `--vt-surface`・枠 `--vt-outline`・文字 `--vt-on-surface`・`box-shadow: none` にし、ホバーで枠を `--vt-on-surface`、フォーカスで `--vt-primary` の 2px の枠にする（M3 の outlined text field。`input/outlined` の検査）。プレビュー（`preview:ui`）はブラウザの既定で描くので、Obsidian 任せの見た目はプレビューと実機で食い違う
 - フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
@@ -88,7 +88,7 @@ packages/design/tokens.json（正本）
 |---|---|---|
 | `--vt-surface` | 面 | 基本の面（Obsidian のエディタの背景）。編集できるものの面 |
 | `--vt-surface-container` | 面 | カードの面 |
-| `--vt-surface-container-high` | 面 | 一段強い面（日付ブロック、関係のチップ、件数） |
+| `--vt-surface-container-high` | 面 | 一段強い面（日付ブロック、関係のチップ、件数、ノートのコード） |
 | `--vt-secondary-container` / `--vt-on-secondary-container` | 面 / 文字 | 選んでいるもの（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） |
 | `--vt-on-surface` | 文字（7:1） | 本文 |
 | `--vt-on-surface-variant` | 文字（4.5:1） | 補助の文字、ラベル、アイコン、未入力の表示 |
