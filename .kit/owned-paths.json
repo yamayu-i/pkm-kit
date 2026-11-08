@@ -1,5 +1,5 @@
 {
-  "$comment": "上流（pkm-kit）が持つパス（ADR-0009）。子の Vault はここに当たるファイルを変えない。上流には、ここに当たらないファイルを置かない。* は / をまたがない 1 階層、** は任意の階層",
+  "$comment": "上流（pkm-kit）が持つパス（ADR-0009）。プラグインの成果物は上流のプラグインの ID ごとに書く（子が足した自分のプラグインは子のもの。#19）。子の Vault はここに当たるファイルを変えない。上流には、ここに当たらないファイルを置かない。* は / をまたがない 1 階層、** は任意の階層",
   "upstream": [
     ".kit/**",
     ".claude/CLAUDE.md",
@@ -16,9 +16,27 @@
     ".gitignore",
     "mise.toml",
     "README.md",
-    ".obsidian/plugins/*/main.js",
-    ".obsidian/plugins/*/manifest.json",
-    ".obsidian/plugins/*/styles.css",
+    ".obsidian/plugins/pkm-drawio/main.js",
+    ".obsidian/plugins/pkm-drawio/manifest.json",
+    ".obsidian/plugins/pkm-drawio/styles.css",
+    ".obsidian/plugins/pkm-git/main.js",
+    ".obsidian/plugins/pkm-git/manifest.json",
+    ".obsidian/plugins/pkm-git/styles.css",
+    ".obsidian/plugins/pkm-html/main.js",
+    ".obsidian/plugins/pkm-html/manifest.json",
+    ".obsidian/plugins/pkm-html/styles.css",
+    ".obsidian/plugins/pkm-ribbon/main.js",
+    ".obsidian/plugins/pkm-ribbon/manifest.json",
+    ".obsidian/plugins/pkm-ribbon/styles.css",
+    ".obsidian/plugins/pkm-task/main.js",
+    ".obsidian/plugins/pkm-task/manifest.json",
+    ".obsidian/plugins/pkm-task/styles.css",
+    ".obsidian/plugins/pkm-template/main.js",
+    ".obsidian/plugins/pkm-template/manifest.json",
+    ".obsidian/plugins/pkm-template/styles.css",
+    ".obsidian/plugins/pkm-updates/main.js",
+    ".obsidian/plugins/pkm-updates/manifest.json",
+    ".obsidian/plugins/pkm-updates/styles.css",
     ".obsidian/snippets/pkm-theme.css"
   ]
 }

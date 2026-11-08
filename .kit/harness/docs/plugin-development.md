@@ -226,5 +226,5 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
-- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す。`.kit/owned-paths.json` に、その ID の `main.js`・`manifest.json`・`styles.css` を足す（足し忘れると、上流の所有の境界の検査が失敗する。子が足すプラグインは子のもの）
 - Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（pkm-task の `esbuild.config.mjs`）

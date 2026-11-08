@@ -15,7 +15,7 @@
 
 | 区分 | 例 | 変えてよいか |
 |---|---|---|
-| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/*/` の成果物、`.obsidian/snippets/pkm-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
+| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/` の上流のプラグインの成果物（ID ごとに書く。子が足した自分のプラグインは子のもの）、`.obsidian/snippets/pkm-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
 | 子のもの | ノート全般、`template/`、`.obsidian/*.json`、`.claude/local/`、`.claude/skills/local-*/`、`.claude/notes/`・`reviews/`・`output-log/`、`.kit-local/` | 変えてよい |
 
 両方が書きたくなるものは、重ね合わせで境界をまたがないようにしている。
