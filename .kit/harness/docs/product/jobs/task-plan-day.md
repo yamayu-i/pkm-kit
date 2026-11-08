@@ -26,5 +26,4 @@
 
 ## 知られている困りごと
 
-- [#34](https://github.com/yamayu-i/pkm-kit/issues/34) 見積もりの 1d（24h）が、一日に使える時間とかみ合わない
 - [#36](https://github.com/yamayu-i/pkm-kit/issues/36) 1 つの画面の中で、英語と日本語の文言が混ざっている
