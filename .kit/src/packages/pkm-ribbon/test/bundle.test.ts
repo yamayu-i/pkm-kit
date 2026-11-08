@@ -100,10 +100,10 @@ function load({ commands = new Set(), plugins = {} }: Options = {}) {
 }
 
 const ORDER = [
-	["calendar", "今日のデイリーノートを開く", "pkm-template:open-todays-daily"],
-	["sun", "今日のタスクを開く", "pkm-task:open-daily"],
-	["bell", "PKM Updates を開く", "pkm-updates:open-view"],
-	["list-plus", "issue をまとめて作成", "pkm-task:capture-issues"],
+	["calendar", "Open today's daily note", "pkm-template:open-todays-daily"],
+	["sun", "Open Today", "pkm-task:open-daily"],
+	["bell", "Open PKM Updates", "pkm-updates:open-view"],
+	["list-plus", "Capture issues", "pkm-task:capture-issues"],
 	["arrow-down-to-line", "Git: pull", "pkm-git:pull"],
 	["arrow-up-from-line", "Git: push", "pkm-git:push"],
 ];
@@ -160,7 +160,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、A
 			layoutReady();
 			expect(asked).toEqual(["pkm-updates:open-view"]);
 			expect(el.badge()).toBe("3");
-			expect(el.attrs.get("aria-label")).toBe("PKM Updates を開く（3 件）");
+			expect(el.attrs.get("aria-label")).toBe("Open PKM Updates (3)");
 			expect(el.classes.has("vt-ribbon-badge-host")).toBe(true);
 
 			count = 99;
@@ -173,7 +173,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、A
 			count = 0;
 			trigger("pkm-ribbon:badge-changed", "pkm-updates:open-view");
 			expect(el.badge()).toBeNull();
-			expect(el.attrs.get("aria-label")).toBe("PKM Updates を開く");
+			expect(el.attrs.get("aria-label")).toBe("Open PKM Updates");
 			count = null;
 			trigger("pkm-ribbon:badge-changed", "pkm-updates:open-view");
 			expect(el.badge()).toBeNull();

@@ -32,7 +32,7 @@ export default class PkmTemplatePlugin extends Plugin {
 
 		this.addCommand({
 			id: "create-from-template",
-			name: "テンプレートから新規ファイルを作成",
+			name: "Create new file from template",
 			callback: () => void openCreateModal(),
 		});
 
@@ -46,13 +46,13 @@ export default class PkmTemplatePlugin extends Plugin {
 
 		this.addCommand({
 			id: "open-todays-daily",
-			name: "今日のデイリーノートを開く",
+			name: "Open today's daily note",
 			callback: () => void openToday(),
 		});
 
 		for (const spec of LIST_VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, this.app));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} を開く`, callback: () => void this.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, callback: () => void this.openView(spec.type) });
 		}
 
 		// リボンのボタンは pkm-ribbon が並びの表で出す（ADR-0029、ADR-0070）。テンプレートからの作成はコマンドだけにした

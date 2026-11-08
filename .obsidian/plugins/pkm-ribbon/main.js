@@ -27,10 +27,10 @@ var import_obsidian = require("obsidian");
 
 // src/core/buttons.ts
 var BUTTONS = [
-  { icon: "calendar", title: "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F", command: "pkm-template:open-todays-daily" },
-  { icon: "sun", title: "\u4ECA\u65E5\u306E\u30BF\u30B9\u30AF\u3092\u958B\u304F", command: "pkm-task:open-daily" },
-  { icon: "bell", title: "PKM Updates \u3092\u958B\u304F", command: "pkm-updates:open-view" },
-  { icon: "list-plus", title: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", command: "pkm-task:capture-issues" },
+  { icon: "calendar", title: "Open today's daily note", command: "pkm-template:open-todays-daily" },
+  { icon: "sun", title: "Open Today", command: "pkm-task:open-daily" },
+  { icon: "bell", title: "Open PKM Updates", command: "pkm-updates:open-view" },
+  { icon: "list-plus", title: "Capture issues", command: "pkm-task:capture-issues" },
   { icon: "arrow-down-to-line", title: "Git: pull", command: "pkm-git:pull" },
   { icon: "arrow-up-from-line", title: "Git: push", command: "pkm-git:push" }
 ];
@@ -92,5 +92,5 @@ function setBadge(el, title, text) {
   }
   el.addClass?.("vt-ribbon-badge-host");
   badge.textContent = text;
-  el.setAttribute("aria-label", `${title}\uFF08${text} \u4EF6\uFF09`);
+  el.setAttribute("aria-label", `${title} (${text})`);
 }

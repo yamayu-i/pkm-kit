@@ -20,7 +20,7 @@ export default class PkmUpdatesPlugin extends Plugin {
 		const model = new UpdatesModel(this.app);
 		this.model = model;
 		this.registerView(VIEW_TYPE, preactViewCreator({ type: VIEW_TYPE, title: "PKM Updates", icon: "bell" }, UpdatesView, { app: this.app, model, deviceName: () => this.deviceName() }));
-		this.addCommand({ id: "open-view", name: "PKM Updates を開く", callback: () => void openListView(this.app.workspace, VIEW_TYPE, { phone: Platform.isPhone }) });
+		this.addCommand({ id: "open-view", name: "Open PKM Updates", callback: () => void openListView(this.app.workspace, VIEW_TYPE, { phone: Platform.isPhone }) });
 
 		// リボンのバッジの数が変わったら、間引いて pkm-ribbon に知らせる
 		let lastCount: number | null = null;

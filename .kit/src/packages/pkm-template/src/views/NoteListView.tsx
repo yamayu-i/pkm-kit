@@ -29,19 +29,19 @@ const titleColumn: Column = { label: "Title", sort: "title", cell: (n) => noteTi
 const SPECS = {
 	daily: {
 		type: "daily",
-		empty: "デイリーノートがありません",
+		empty: "No daily notes",
 		sort: "name",
 		columns: [{ label: "Date", sort: "name", cell: (n) => dailyDate(n.basename)?.label ?? n.basename }, created],
 	},
 	note: {
 		type: "note",
-		empty: "ノートがありません",
+		empty: "No notes",
 		sort: "created",
 		columns: [titleColumn, { label: "Tags", cell: (n) => tagList(n.frontmatter.tags).join(" ") }, created],
 	},
 	source: {
 		type: "source",
-		empty: "元資料がありません",
+		empty: "No sources",
 		sort: "created",
 		columns: [
 			titleColumn,
@@ -69,9 +69,9 @@ function NoteList({ app, spec }: { app: App; spec: ListSpec }) {
 
 	return (
 		<div class="vt-tpl-list">
-			<input class="vt-tpl-search" type="search" placeholder="タイトルで絞り込む" aria-label="タイトルで絞り込む" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
+			<input class="vt-tpl-search" type="search" placeholder="Filter by title" aria-label="Filter by title" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
 			{rows.length === 0 ? (
-				<div class="vt-tpl-empty">{query.trim() === "" ? spec.empty : "一致するノートがありません"}</div>
+				<div class="vt-tpl-empty">{query.trim() === "" ? spec.empty : "No matching notes"}</div>
 			) : (
 				<table class="vt-tpl-table">
 					<thead>

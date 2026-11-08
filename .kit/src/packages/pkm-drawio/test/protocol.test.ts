@@ -58,7 +58,7 @@ describe("EditSession", () => {
 		expect(write).toEqual([{ type: "write", svg: DIAGRAM, xml: XML, generation: 1 }]);
 		expect(s.dirty).toBe(true);
 		const done = s.writeDone(1, true);
-		expect(posts(done)).toContainEqual({ action: "status", message: "保存しました", modified: false });
+		expect(posts(done)).toContainEqual({ action: "status", message: "Saved", modified: false });
 		expect(s.dirty).toBe(false);
 	});
 
@@ -78,7 +78,7 @@ describe("EditSession", () => {
 		const w1 = s.handle({ event: "export", format: "xmlsvg", data: svgDataUri(DIAGRAM) });
 		expect(w1[0]).toMatchObject({ type: "write", generation: 1 });
 		const next = s.writeDone(1, true);
-		expect(posts(next)).toContainEqual({ action: "status", message: "保存しました", modified: true });
+		expect(posts(next)).toContainEqual({ action: "status", message: "Saved", modified: true });
 		expect(posts(next)).toContainEqual({ action: "export", format: "xmlsvg", xml: ONE_PAGE, spinKey: "saving" });
 		expect(s.dirty).toBe(true);
 	});

@@ -73,5 +73,5 @@ function setBadge(el: HTMLElement, title: string, text: string | null): void {
 	}
 	el.addClass?.("vt-ribbon-badge-host");
 	badge.textContent = text;
-	el.setAttribute("aria-label", `${title}（${text} 件）`);
+	el.setAttribute("aria-label", `${title} (${text})`);
 }

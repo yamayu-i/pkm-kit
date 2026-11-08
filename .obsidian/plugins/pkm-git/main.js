@@ -21969,11 +21969,11 @@ var BehindModal = class extends import_obsidian.Modal {
       text: "push \u306F\u5B9F\u884C\u3057\u3066\u3044\u307E\u305B\u3093\uFF08\u30B3\u30DF\u30C3\u30C8\u3082\u3057\u3066\u3044\u307E\u305B\u3093\uFF09\u3002\u5148\u306B pull \u3067\u53D6\u308A\u8FBC\u3093\u3067\u304B\u3089\u3001\u3082\u3046\u4E00\u5EA6 push \u3057\u3066\u304F\u3060\u3055\u3044\u3002"
     });
     new import_obsidian.Setting(this.contentEl).addButton(
-      (b) => b.setButtonText("\u4ECA\u3059\u3050 pull").setCta().onClick(() => {
+      (b) => b.setButtonText("Pull now").setCta().onClick(() => {
         this.close();
         this.onPull();
       })
-    ).addButton((b) => b.setButtonText("\u9589\u3058\u308B").onClick(() => this.close()));
+    ).addButton((b) => b.setButtonText("Close").onClick(() => this.close()));
   }
   onClose() {
     this.contentEl.empty();
@@ -22026,11 +22026,11 @@ var ConfirmModal = class extends import_obsidian.Modal {
     this.setTitle(this.title);
     this.contentEl.createEl("p", { text: this.message });
     new import_obsidian.Setting(this.contentEl).addButton(
-      (b) => b.setButtonText("\u5B9F\u884C").setCta().onClick(() => {
+      (b) => b.setButtonText("Run").setCta().onClick(() => {
         this.close();
         this.onConfirm();
       })
-    ).addButton((b) => b.setButtonText("\u30AD\u30E3\u30F3\u30BB\u30EB").onClick(() => this.close()));
+    ).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
   }
   onClose() {
     this.contentEl.empty();
@@ -22231,14 +22231,14 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
     this.statusEl = this.addStatusBarItem();
     this.statusEl.addClass("mod-clickable");
     this.statusEl.addEventListener("click", () => void this.showUnresolved());
-    this.addCommand({ id: "pull", name: "pull\uFF08\u53D6\u308A\u8FBC\u307F\uFF09", callback: () => void this.pull() });
-    this.addCommand({ id: "push", name: "push\uFF08\u30B3\u30DF\u30C3\u30C8\u3057\u3066\u9001\u4FE1\uFF09", callback: () => void this.push() });
+    this.addCommand({ id: "pull", name: "Pull", callback: () => void this.pull() });
+    this.addCommand({ id: "push", name: "Push (commit and send)", callback: () => void this.push() });
     this.addCommand({
       id: "show-conflicts",
-      name: "\u672A\u89E3\u6C7A\u306E\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u3092\u4E00\u89A7",
+      name: "List unresolved conflicts",
       callback: () => void this.showUnresolved()
     });
-    this.addCommand({ id: "clone", name: "\u30EA\u30E2\u30FC\u30C8\u3092\u3053\u306E Vault \u306B clone\uFF08\u521D\u56DE\u306E\u307F\uFF09", callback: () => void this.clone() });
+    this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
     this.app.workspace.onLayoutReady(() => void this.refreshStatus());
   }
   async loadSettings() {
@@ -22286,7 +22286,7 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       return;
     }
     this.busy = true;
-    this.statusEl.setText(`Git: ${label}\u4E2D\u2026`);
+    this.statusEl.setText(`Git: ${label}\u2026`);
     try {
       const git = this.engine();
       if (!await git.isRepo()) {
@@ -22389,7 +22389,7 @@ ${message}`, 1e4);
   async doClone(url, branch2) {
     if (this.busy) return;
     this.busy = true;
-    this.statusEl.setText("Git: clone\u4E2D\u2026");
+    this.statusEl.setText("Git: clone\u2026");
     try {
       await this.engine().clone(url, branch2);
       new import_obsidian3.Notice("Git: clone \u3057\u307E\u3057\u305F");
@@ -22421,13 +22421,13 @@ ${message}`, 1e4);
     const start = performance.now();
     try {
       const n = (await this.findUnresolved()).length;
-      this.statusEl.setText(n > 0 ? `Git: \u26A0 \u672A\u89E3\u6C7A ${n}` : "Git: \u2713");
+      this.statusEl.setText(n > 0 ? `Git: \u26A0 ${n} unresolved` : "Git: \u2713");
     } finally {
       reportTiming("refreshStatus", performance.now() - start);
     }
   }
   async showUnresolved() {
-    new ConflictsModal(this.app, "\u672A\u89E3\u6C7A\u306E\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8", await this.findUnresolved()).open();
+    new ConflictsModal(this.app, "Unresolved conflicts", await this.findUnresolved()).open();
   }
 };
 /*! Bundled license information:

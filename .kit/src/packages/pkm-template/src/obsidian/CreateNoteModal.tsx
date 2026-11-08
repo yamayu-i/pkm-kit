@@ -101,7 +101,7 @@ function CreateNoteForm(props: {
 		<div class="vt-tpl-modal" onKeyDown={handleKeyDown}>
 			<div class="vt-tpl-section">
 				<div class="vt-tpl-label">TEMPLATE</div>
-				<div class="vt-tpl-chips" role="listbox" aria-label="テンプレート選択">
+				<div class="vt-tpl-chips" role="listbox" aria-label="Templates">
 					{templates.map((tpl, i) => {
 						const active = i === selectedIdx;
 						return (
@@ -122,7 +122,7 @@ function CreateNoteForm(props: {
 
 			<div class="vt-tpl-section">
 				<label class="vt-tpl-label" for="vt-tpl-title-input">
-					{idFileName ? "タイトル" : "ファイル名 / タイトル"}
+					{idFileName ? "Title" : "File name / Title"}
 				</label>
 				<input
 					id="vt-tpl-title-input"
@@ -131,10 +131,10 @@ function CreateNoteForm(props: {
 					class="vt-tpl-input"
 					placeholder={
 						idFileName
-							? "タイトルを入力（ファイル名は ID で決まります）"
+							? "Title (the file name comes from the ID)"
 							: defaultFileNameHint
-								? `空欄なら ${defaultFileNameHint}`
-								: "タイトルを入力（例: my-note）"
+								? `Empty: ${defaultFileNameHint}`
+								: "Title (e.g. my-note)"
 					}
 					value={titleInput}
 					onInput={(e) => setTitleInput(e.currentTarget.value)}
@@ -159,7 +159,7 @@ function CreateNoteForm(props: {
 							id={inputId}
 							type="text"
 							class="vt-tpl-input"
-							placeholder={prompt.defaultValue ? `既定値: ${prompt.defaultValue}` : `${prompt.label}を入力`}
+							placeholder={prompt.defaultValue ? `Default: ${prompt.defaultValue}` : prompt.label}
 							value={promptValues[prompt.label] ?? ""}
 							onInput={(e) =>
 								setPromptValues((prev) => ({
@@ -180,15 +180,15 @@ function CreateNoteForm(props: {
 
 			<div class="vt-tpl-footer">
 				<div class={`vt-tpl-preview${errorMessage ? " is-error" : ""}`}>
-					{errorMessage ? errorMessage : `作成先: ${resolved.path}`}
+					{errorMessage ? errorMessage : `Creates: ${resolved.path}`}
 				</div>
 				<div class="vt-tpl-actions">
-					{!Platform.isMobile && <span class="vt-tpl-hint">Enter / Mod+Enter で作成</span>}
+					{!Platform.isMobile && <span class="vt-tpl-hint">Enter / Mod+Enter to create</span>}
 					<button type="button" class="vt-tpl-button" disabled={!canSubmit} onClick={() => submit(true)}>
-						新タブで開く
+						Open in new tab
 					</button>
 					<button type="button" class="vt-tpl-button is-primary" disabled={!canSubmit} onClick={() => submit(false)}>
-						作成
+						Create
 					</button>
 				</div>
 			</div>
@@ -207,7 +207,7 @@ export class CreateNoteModal extends Modal {
 	}
 
 	override onOpen(): void {
-		this.setTitle("テンプレートから新規ファイルを作成");
+		this.setTitle("Create new file from template");
 		render(
 			<CreateNoteForm
 				app={this.app}

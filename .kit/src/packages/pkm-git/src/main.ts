@@ -39,14 +39,14 @@ export default class PkmGitPlugin extends Plugin {
 		this.statusEl.addEventListener("click", () => void this.showUnresolved());
 
 		// リボンのボタンは pkm-ribbon が並びの表で出し、このコマンドを呼ぶ（ADR-0070）
-		this.addCommand({ id: "pull", name: "pull（取り込み）", callback: () => void this.pull() });
-		this.addCommand({ id: "push", name: "push（コミットして送信）", callback: () => void this.push() });
+		this.addCommand({ id: "pull", name: "Pull", callback: () => void this.pull() });
+		this.addCommand({ id: "push", name: "Push (commit and send)", callback: () => void this.push() });
 		this.addCommand({
 			id: "show-conflicts",
-			name: "未解決のコンフリクトを一覧",
+			name: "List unresolved conflicts",
 			callback: () => void this.showUnresolved(),
 		});
-		this.addCommand({ id: "clone", name: "リモートをこの Vault に clone（初回のみ）", callback: () => void this.clone() });
+		this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
 
 		this.app.workspace.onLayoutReady(() => void this.refreshStatus());
 	}
@@ -100,7 +100,7 @@ export default class PkmGitPlugin extends Plugin {
 			return;
 		}
 		this.busy = true;
-		this.statusEl.setText(`Git: ${label}中…`);
+		this.statusEl.setText(`Git: ${label}…`);
 		try {
 			const git = this.engine();
 			if (!(await git.isRepo())) {
@@ -207,7 +207,7 @@ export default class PkmGitPlugin extends Plugin {
 	private async doClone(url: string, branch: string): Promise<void> {
 		if (this.busy) return;
 		this.busy = true;
-		this.statusEl.setText("Git: clone中…");
+		this.statusEl.setText("Git: clone…");
 		try {
 			await this.engine().clone(url, branch);
 			new Notice("Git: clone しました");
@@ -240,13 +240,13 @@ export default class PkmGitPlugin extends Plugin {
 		const start = performance.now();
 		try {
 			const n = (await this.findUnresolved()).length;
-			this.statusEl.setText(n > 0 ? `Git: ⚠ 未解決 ${n}` : "Git: ✓");
+			this.statusEl.setText(n > 0 ? `Git: ⚠ ${n} unresolved` : "Git: ✓");
 		} finally {
 			reportTiming("refreshStatus", performance.now() - start);
 		}
 	}
 
 	private async showUnresolved(): Promise<void> {
-		new ConflictsModal(this.app, "未解決のコンフリクト", await this.findUnresolved()).open();
+		new ConflictsModal(this.app, "Unresolved conflicts", await this.findUnresolved()).open();
 	}
 }

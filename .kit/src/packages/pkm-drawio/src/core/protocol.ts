@@ -150,7 +150,7 @@ export class EditSession {
 		this.failed = false;
 		const effects: Effect[] = [
 			{ type: "post", message: { action: "spinner", show: false } },
-			{ type: "post", message: { action: "status", message: "保存しました", modified: this.dirty } },
+			{ type: "post", message: { action: "status", message: "Saved", modified: this.dirty } },
 		];
 		if (this.queued) {
 			const next = this.queued;

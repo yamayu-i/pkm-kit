@@ -36,7 +36,7 @@ export function NoteHeader({ app, model }: { app: App; model: HeaderModel }) {
 			<div class="vt-tpl-note-header-top">
 				<div class="vt-tpl-note-title">{model.title}</div>
 				{model.weekday !== null && (
-					<ol class="vt-tpl-week" aria-label="曜日">
+					<ol class="vt-tpl-week" aria-label="Weekdays">
 						{WEEKDAYS.map((w, i) => (
 							<li key={w} class={i === model.weekday ? "vt-tpl-week-day is-current" : "vt-tpl-week-day"} aria-current={i === model.weekday ? "date" : undefined}>
 								{w}

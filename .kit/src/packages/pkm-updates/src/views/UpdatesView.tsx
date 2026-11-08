@@ -68,9 +68,9 @@ export function UpdatesView({ app, model, deviceName }: UpdatesProps) {
 
 	return (
 		<div class="vt-upd-page">
-			<p class="vt-upd-since">{model.since === null ? "まだ確認していません。すべてのノートを出しています" : `前回の確認: ${formatDateTime(model.since)}`}</p>
+			<p class="vt-upd-since">{model.since === null ? "Not viewed yet. Showing all notes" : `Last viewed: ${formatDateTime(model.since)}`}</p>
 			{shown.length === 0 ? (
-				<div class="vt-upd-empty">前回の確認から変わったノートはありません</div>
+				<div class="vt-upd-empty">No notes changed since you last viewed</div>
 			) : (
 				shown.map((s) => (
 					<section key={s.id} class="vt-upd-section" aria-labelledby={`vt-upd-${s.id}`}>
@@ -95,7 +95,7 @@ export function UpdatesView({ app, model, deviceName }: UpdatesProps) {
 			)}
 			{more && <div ref={sentinel} class="vt-upd-sentinel" aria-hidden="true" />}
 			<div class="vt-upd-footer">
-				{!device && <span class="vt-upd-note">pkm-task か pkm-git の設定で端末名を入れると、Viewed を記録できます</span>}
+				{!device && <span class="vt-upd-note">Set a device name in pkm-task or pkm-git settings to record Viewed</span>}
 				<button type="button" class="vt-upd-viewed" disabled={!device || saving} onClick={() => void viewed()}>
 					Viewed
 				</button>

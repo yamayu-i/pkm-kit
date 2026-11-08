@@ -68,7 +68,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0070）"
 		const { views, commands, ribbon, required } = await load([]);
 		expect([...required]).toEqual(["obsidian"]);
 		expect(views).toEqual(["pkm-updates-view"]);
-		expect(commands.map((c) => [c.id, c.name])).toEqual([["open-view", "PKM Updates を開く"]]);
+		expect(commands.map((c) => [c.id, c.name])).toEqual([["open-view", "Open PKM Updates"]]);
 		expect(ribbon).toEqual([]);
 	});
 

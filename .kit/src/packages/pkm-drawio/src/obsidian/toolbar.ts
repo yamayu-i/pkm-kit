@@ -33,7 +33,7 @@ class DocToolbar {
 		private readonly doc: Document,
 		private readonly host: ToolbarHost,
 	) {
-		this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "図の操作" } });
+		this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
 		this.el.hidden = true;
 		const button = (icon: string, label: string, onClick: (file: TFile, anchor: HTMLElement) => void) => {
 			const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
@@ -47,8 +47,8 @@ class DocToolbar {
 				if (this.current) onClick(this.current.file, b);
 			});
 		};
-		button("copy", "コピー", (file, anchor) => this.host.copy(file, anchor));
-		button("pencil", "編集", (file) => {
+		button("copy", "Copy", (file, anchor) => this.host.copy(file, anchor));
+		button("pencil", "Edit", (file) => {
 			this.hide();
 			this.host.edit(file);
 		});

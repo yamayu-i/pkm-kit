@@ -9,9 +9,9 @@ import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../core/svg.
 export type CopyFormat = "png" | "svg" | "xml";
 
 export const COPY_FORMATS: ReadonlyArray<{ format: CopyFormat; label: string; icon: string }> = [
-	{ format: "png", label: "PNG としてコピー", icon: "image" },
-	{ format: "svg", label: "SVG としてコピー（編集用 XML なし）", icon: "file-image" },
-	{ format: "xml", label: "XML としてコピー（Draw.io で編集できる形）", icon: "file-code" },
+	{ format: "png", label: "Copy as PNG", icon: "image" },
+	{ format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
+	{ format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" },
 ];
 
 /** PNG の倍率（貼り付け先で粗く見えないように） */
