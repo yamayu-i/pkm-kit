@@ -1,6 +1,6 @@
 # デザインルール
 
-自作プラグインの UI（vault-task の issue 画面・モーダル・今後の View）と、Vault の Obsidian の外観についてのルール。
+自作プラグインの UI（pkm-task の issue 画面・モーダル・今後の View）と、Vault の Obsidian の外観についてのルール。
 決めた経緯は [ADR-0013](adr/0013-design-system.md)（Material 3 を参考にする）と [ADR-0016](adr/0016-design-under-control.md)（デザインを管理下に置く）。
 
 - **必須**: 守らなければならない。ほとんどは検査で機械的に確かめている（下の「検査の一覧」）
@@ -26,10 +26,10 @@
 ```
 packages/design/tokens.json（正本）
   ├─ pnpm --filter design build（pnpm build に含まれる）
-  │    ├─ packages/vault-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
-  │    ├─ packages/vault-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
-  │    ├─ packages/vault-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
-  │    ├─ .obsidian/snippets/vault-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
+  │    ├─ packages/pkm-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
+  │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
+  │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
+  │    ├─ .obsidian/snippets/pkm-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
   │    ├─ docs/design-tokens.md                 … 値とコントラスト比の一覧
   │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）
   └─ 検査
@@ -66,13 +66,13 @@ packages/design/tokens.json（正本）
 
 - **必須**: `.obsidian/appearance.json` は次のとおり（`obsidian/*` の検査）。値の正本は `.kit/obsidian-required.json` の `appearance.json` で、上流のテストがこれを検査する。各 Vault の `.obsidian/appearance.json` は、セットアップと検査でこの値に合わせる（ハーネスの ADR-0009）
   - `cssTheme` は空（コミュニティテーマを使わない）
-  - `enabledCssSnippets` は `["vault-theme"]` だけ
+  - `enabledCssSnippets` は `["pkm-theme"]` だけ
   - `accentColor` はトークンの primary（ライト）と同じ
   - `translucency` は `false`
   - `theme` は自由（ライト / ダークの両方を定義しているので `system` にしている）
 - **必須**: Obsidian 本体の色の変数（`--background-primary`、`--background-secondary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
 - Obsidian の標準の `--text-faint` は 4.5:1 に届かないので、スニペットで上げている
-- **必須**: 入力欄（`input` / `textarea` / `select`）の面・枠・文字・影は Obsidian の既定に任せない。Obsidian は入力欄に浮いて見える影（`--input-shadow`）と自分の色を付けるので、プラグインの根（vault-task は `.vt-ui`、vault-template は `.vt-tpl-view` / `.vt-tpl-modal`）で範囲を決めた共通のルールで、面 `--vt-surface`・枠 `--vt-outline`・文字 `--vt-on-surface`・`box-shadow: none` にし、ホバーで枠を `--vt-on-surface`、フォーカスで `--vt-primary` の 2px の枠にする（M3 の outlined text field。`input/outlined` の検査）。プレビュー（`preview:ui`）はブラウザの既定で描くので、Obsidian 任せの見た目はプレビューと実機で食い違う
+- **必須**: 入力欄（`input` / `textarea` / `select`）の面・枠・文字・影は Obsidian の既定に任せない。Obsidian は入力欄に浮いて見える影（`--input-shadow`）と自分の色を付けるので、プラグインの根（pkm-task は `.vt-ui`、pkm-template は `.vt-tpl-view` / `.vt-tpl-modal`）で範囲を決めた共通のルールで、面 `--vt-surface`・枠 `--vt-outline`・文字 `--vt-on-surface`・`box-shadow: none` にし、ホバーで枠を `--vt-on-surface`、フォーカスで `--vt-primary` の 2px の枠にする（M3 の outlined text field。`input/outlined` の検査）。プレビュー（`preview:ui`）はブラウザの既定で描くので、Obsidian 任せの見た目はプレビューと実機で食い違う
 - フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
 
 ## 4. 色
@@ -234,15 +234,15 @@ packages/design/tokens.json（正本）
 - 縦並びにしたとき、`flex: 1 1 0` の子は高さが潰れるので `flex: none` に戻す
 - 長い文字は省略（`text-overflow: ellipsis`）し、`min-width: 0` を忘れない。グリッドは `minmax(0, 1fr)`
 
-### HTML のページ（vault-html で表示するもの）
+### HTML のページ（pkm-html で表示するもの）
 
-vault-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し込み、`<body>` に `theme-light` / `theme-dark` を付ける。上流が作る HTML は、次に従えばテーマとこのルールに合う。
+pkm-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し込み、`<body>` に `theme-light` / `theme-dark` を付ける。上流が作る HTML は、次に従えばテーマとこのルールに合う。
 
-- **必須**: 値は `var(--vt-…)` だけで書く（プラグインの CSS と同じ）。文字は `var(--font-text)` / `var(--font-interface)` / `var(--font-monospace)`（vault-html が Obsidian の値を写す）
+- **必須**: 値は `var(--vt-…)` だけで書く（プラグインの CSS と同じ）。文字は `var(--font-text)` / `var(--font-interface)` / `var(--font-monospace)`（pkm-html が Obsidian の値を写す）
 - **必須**: スクリプトと外部の読み込み（画像・CSS・フォント）を使わない。動かず、読み込まれない。画像は Vault の中のもの（開くときに `data:` に置き換わる）か `data:`
 - `<body>` に背景（`--vt-surface`）と文字の色（`--vt-on-surface`）を置く。置かないと、色はテーマの既定（`color-scheme`）になる
 - 幅は View の幅で変わる（スマホでは狭い）。本文は最大幅を決めて中央に置き、表は横に溢れないようにする
-- 見本: `packages/vault-html/preview/fixtures/sample.html`。`pnpm --filter vault-html preview:ui` で描画して検査する
+- 見本: `packages/pkm-html/preview/fixtures/sample.html`。`pnpm --filter pkm-html preview:ui` で描画して検査する
 - Vault の外に共有するときは、トークンの値と画像を埋め込んで `tmp/` に書き出す（Issue #44）。Vault の中の HTML には埋め込まない
 
 ## 11. M3 との違い
@@ -303,7 +303,7 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 | ID | 内容 |
 |---|---|
 | `obsidian/no-css-theme` | コミュニティテーマを使わない |
-| `obsidian/snippets` | 有効なスニペットは vault-theme だけ |
+| `obsidian/snippets` | 有効なスニペットは pkm-theme だけ |
 | `obsidian/accent` | accentColor はトークンの primary |
 | `obsidian/no-translucency` | 半透明のウィンドウを使わない |
 
@@ -329,13 +329,13 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 cd .kit/src
 pnpm build                   # tokens.json から生成物を作り直す（プラグインのビルドも）
 pnpm check                   # 型チェック → ビルド → テスト（上の静的な検査を含む）
-cd packages/vault-task
+cd packages/pkm-task
 pnpm preview:ui              # 画面 × light / dark × 広い / 狭いペインの PNG を出し、描画した画面を検査する
 pnpm preview:ui board inbox  # 画面を絞る（header / routine / daily / board / issues / inbox / organize / scheduled / someday / routines / groups / forms）
 ```
 
-- `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`vault-theme.css`）をそのまま読む
+- `preview/fixture.tsx` のデータで issue 画面のヘッダーと各 View を描き、Chromium（Playwright）でスクリーンショットを撮る。`obsidian` は `preview/obsidian-mock.ts` に差し替え、Obsidian 側の色は Vault のスニペット（`pkm-theme.css`）をそのまま読む
 - **必須**: UI を変えたら `pnpm preview:ui` を通し、変えた画面のライト / ダークと狭いペインを見てからコミットする
 - 新しい View を作ったら、fixture に足して同じように確認・検査できるようにする
-- vault-html は `pnpm --filter vault-html preview:ui`。見本の HTML の描画の検査に加えて、悪い HTML でスクリプトが動かず外部に通信しないこと、リンクと画像の扱いを確かめる
+- pkm-html は `pnpm --filter pkm-html preview:ui`。見本の HTML の描画の検査に加えて、悪い HTML でスクリプトが動かず外部に通信しないこと、リンクと画像の扱いを確かめる
 - 値を変えるときは `tokens.json` を編集して `pnpm build`。ルールを変えるときはこのファイルと検査を一緒に変え、決定が変わるなら ADR を足す

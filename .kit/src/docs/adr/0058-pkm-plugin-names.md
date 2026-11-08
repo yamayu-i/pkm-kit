@@ -1,6 +1,6 @@
 # ADR-0058: 自作プラグインの名前を vault-* から pkm-* にする
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-08
 
 ## 背景
@@ -28,6 +28,7 @@
 ### 改名しないもの
 
 - 承認済みの ADR、`CHANGELOG.md`、`.kit/changes/` の既存のファイル、移行、レビューやセキュリティチェックの記録: 書いた時点の名前のまま残す（承認済みの ADR は書き換えない）
+  - ただし、既存の移行 0002（`vault-ribbon` を足す）と 0005（`vault-html` を足す）は、新しい ID もすでに入っているものとして扱うようにする。そうしないと、新しい Vault や、記録を消して実行し直した Vault に古い ID を足し直してしまう
 - スキル `vault-upgrade`、文書 `vault-conventions.md` など、プラグインでないもの
 
 ### 子の Vault の移行（`.kit/migrations/0058-pkm-plugin-names/`）
@@ -45,6 +46,7 @@
 
 - 上流の merge で `.obsidian/plugins/vault-*/` の `main.js` などは消え、`pkm-*/` が届く。古いフォルダに残るのは git に入らない `data.json` だけ
 - Obsidian は `community-plugins.json` にない ID を読み込まないので、古い `data.json` が残っても動きに影響しない
+- `.gitignore` には旧名の `data.json` の行も残す。移行が届かない端末に古い `data.json` が残っても、同期のコミットに入れない
 
 ## 理由
 

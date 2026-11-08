@@ -2,13 +2,13 @@ import type { PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent } from 
 
 /**
  * 一覧の View を左の固定ペイン（一覧ペイン）に、そこから開くノートを右のノートペインに出す（ADR-0033）。
- * vault-task と vault-template が同じ規則で一覧ペインを見分けるため、ここに 1 つだけ置く。
+ * pkm-task と pkm-template が同じ規則で一覧ペインを見分けるため、ここに 1 つだけ置く。
  * Obsidian の値は import しない（型だけ）。スマホかどうかは呼ぶ側が Platform.isPhone を渡す
  */
 
-const LIST_VIEW_PREFIXES = ["vault-task-", "vault-template-"];
+const LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
 /** 一覧の接頭辞を持つが、左サイドバーに常駐するもの（ADR-0021） */
-const NOT_LIST_VIEWS = new Set(["vault-task-sidebar"]);
+const NOT_LIST_VIEWS = new Set(["pkm-task-sidebar"]);
 
 export interface PaneOptions {
 	/** スマホ（画面を分割できない） */

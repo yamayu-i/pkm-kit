@@ -17,15 +17,15 @@
     "accentColor": "#6750a4",
     "translucency": false,
     "enabledCssSnippets": [
-      "vault-theme"
+      "pkm-theme"
     ]
   },
   "community-plugins.json": [
-    "vault-git",
-    "vault-task",
-    "vault-template",
-    "vault-ribbon",
-    "vault-html"
+    "pkm-git",
+    "pkm-task",
+    "pkm-template",
+    "pkm-ribbon",
+    "pkm-html"
   ],
   "core-plugins.json": {
     "daily-notes": false,

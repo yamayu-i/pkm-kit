@@ -12,8 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "check": "pnpm typecheck && pnpm build && pnpm test",
     "security:scan": "node scripts/security-scan.mjs",
-    "task:lint": "pnpm --filter vault-task lint:vault",
-    "task:mcp": "pnpm --filter vault-task mcp",
-    "task:worklog-review": "pnpm --filter vault-task worklog:review"
+    "task:lint": "pnpm --filter pkm-task lint:vault",
+    "task:mcp": "pnpm --filter pkm-task mcp",
+    "task:worklog-review": "pnpm --filter pkm-task worklog:review"
   }
 }

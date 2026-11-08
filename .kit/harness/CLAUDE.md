@@ -13,7 +13,7 @@
 ## 構成
 
 - `.kit/src/` : プラグインのソース（pnpm workspace）と、プラグインの ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）。デザインの値の正本は `packages/design/tokens.json`
-- `.obsidian/plugins/<id>/`、`.obsidian/snippets/vault-theme.css`、`.kit/bin/` : ビルド成果物（モバイルではビルドできないのでコミットする）
+- `.obsidian/plugins/<id>/`、`.obsidian/snippets/pkm-theme.css`、`.kit/bin/` : ビルド成果物（モバイルではビルドできないのでコミットする）
 - `.kit/templates/` : テンプレートの既定。`.kit/setup.mjs`・`.kit/kit.json`・`.kit/lib/` : 子のセットアップ
 - `.kit/owned-paths.json` : 上流が持つパス。`.kit/obsidian-required.json` : 子の Obsidian の設定に必要なキー
 - `.claude/` : 子向けのハーネス（子の Vault で使う）。`.kit/harness/` : この上流のハーネス
@@ -69,7 +69,7 @@ cd .kit/src
 pnpm install --frozen-lockfile
 pnpm check                            # 型チェック → ビルド → テスト
 pnpm security:scan                    # セキュリティチェックの機械的な部分
-pnpm --filter vault-task preview:ui   # UI のスクリーンショットと、描画した画面の検査
+pnpm --filter pkm-task preview:ui   # UI のスクリーンショットと、描画した画面の検査
 ```
 
 ## このファイルを変えるとき

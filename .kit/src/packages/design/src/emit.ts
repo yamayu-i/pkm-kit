@@ -45,7 +45,7 @@ export function cssValue(token: Token, raw: unknown): string {
 	}
 }
 
-/** プラグイン（vault-task）の styles.css の先頭に付けるトークン */
+/** プラグイン（pkm-task）の styles.css の先頭に付けるトークン */
 export function pluginCss(tokens: readonly Token[]): string {
 	const own = tokens.filter((t) => t.plugin);
 	const lines = [`/* ${GENERATED} */`, "", "/* モーダルでも使うので body に置く */", "body {"];
@@ -58,7 +58,7 @@ export function pluginCss(tokens: readonly Token[]): string {
 	return lines.join("\n");
 }
 
-/** Obsidian 本体の CSS 変数を同じ値に固定するスニペット（.obsidian/snippets/vault-theme.css） */
+/** Obsidian 本体の CSS 変数を同じ値に固定するスニペット（.obsidian/snippets/pkm-theme.css） */
 export function obsidianSnippet(tokens: readonly Token[]): string {
 	const lines = [
 		`/* ${GENERATED} */`,

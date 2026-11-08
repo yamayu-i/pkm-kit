@@ -6,6 +6,13 @@ export const CORE = ".obsidian/core-plugins.json";
 export const COMMUNITY = ".obsidian/community-plugins.json";
 export const DAILY = ".obsidian/daily-notes.json";
 export const RIBBON = "vault-ribbon";
+/** 0058 で改名した後の ID。入っていれば、有効になっているものとして扱う（ADR-0058） */
+const RIBBON_IDS = [RIBBON, "pkm-ribbon"];
+
+/** community-plugins.json の値に、リボンのプラグインが入っているか */
+export function hasRibbon(value) {
+	return Array.isArray(value) && value.some((id) => RIBBON_IDS.includes(id));
+}
 /** 上流が以前求めていた daily-notes.json の値と、Obsidian の既定の値。これ以外の値があれば、子が変えたものとして残す */
 const DAILY_DEFAULTS = { folder: "daily", format: "YYYY/MM/YYYY-MM-DD", template: "", autorun: false };
 

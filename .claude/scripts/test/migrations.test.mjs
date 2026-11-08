@@ -166,8 +166,8 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	// 0005 が後ろに vault-html を足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon", "vault-html"]);
+	// 0005 が後ろに vault-html を足し、0058 がすべてを pkm-* に改名する
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "pkm-task", "pkm-template", "pkm-ribbon", "pkm-html"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
 	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
@@ -195,8 +195,8 @@ test("0005: community-plugins.json に vault-html を足す。ほかの要素と
 	const before = readJsonFile(root, ".obsidian/community-plugins.json");
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before, "vault-ribbon", "vault-html"]);
+	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足し、0058 が pkm-* に改名する
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before.map((id) => id.replace(/^vault-/, "pkm-")), "pkm-ribbon", "pkm-html"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 });
 
@@ -300,4 +300,60 @@ test("0006: 追跡中の tmp/ のファイルは変えずに、check が一覧�
 	assert.deepEqual(check(root), []);
 	assert.deepEqual(migrate(root), []);
 	assert.ok(existsSync(join(root, "tmp/a.md")));
+});
+
+test("0058: community-plugins.json・appearance.json・hotkeys.json の vault-* を pkm-* にする。子が足したものと順は残す", async () => {
+	const root = childFrom("customized");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	const community = readJsonFile(root, ".obsidian/community-plugins.json");
+	assert.ok(community.every((id) => !id.startsWith("vault-")), JSON.stringify(community));
+	assert.deepEqual(readJsonFile(root, ".obsidian/appearance.json"), { accentColor: "#6750a4", enabledCssSnippets: ["pkm-theme", "my-snippet"] });
+	const hotkeys = readJsonFile(root, ".obsidian/hotkeys.json");
+	assert.deepEqual(Object.keys(hotkeys), ["pkm-template:new-from-template", "editor:toggle-bold"]);
+	assert.deepEqual(hotkeys["pkm-template:new-from-template"], [{ modifiers: ["Mod"], key: "N" }]);
+	// Obsidian と同じく末尾に改行を付けない
+	assert.ok(!readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8").endsWith("\n"));
+});
+
+test("0058: 新旧の両方があれば、新しい方を残して古い方を除く", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		".obsidian/community-plugins.json": JSON.stringify(["vault-git", "pkm-git", "other"]),
+		".obsidian/hotkeys.json": JSON.stringify({ "vault-task:open-daily": [{ modifiers: ["Mod"], key: "D" }], "pkm-task:open-daily": [] }),
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html"]);
+	assert.deepEqual(readJsonFile(root, ".obsidian/hotkeys.json"), { "pkm-task:open-daily": [] });
+});
+
+test("0058: この端末の旧 ID の data.json を新しい ID へ写し、data.json だけが残る古いフォルダを消す", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		".obsidian/plugins/vault-git/data.json": '{"deviceName":"pc"}',
+		".obsidian/plugins/vault-task/data.json": '{"deviceName":"old"}',
+		".obsidian/plugins/pkm-task/data.json": '{"deviceName":"new"}',
+		".obsidian/plugins/vault-html/data.json": "{}",
+		".obsidian/plugins/vault-html/memo.txt": "子のファイル",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-git/data.json"), "utf8"), '{"deviceName":"pc"}');
+	assert.ok(!existsSync(join(root, ".obsidian/plugins/vault-git")));
+	// 新しい方がすでにあれば、上書きせず、古い方も消さない
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-task/data.json"), "utf8"), '{"deviceName":"new"}');
+	assert.ok(existsSync(join(root, ".obsidian/plugins/vault-task/data.json")));
+	// data.json 以外のファイルがあるフォルダは消さない
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-html/data.json"), "utf8"), "{}");
+	assert.ok(existsSync(join(root, ".obsidian/plugins/vault-html/memo.txt")));
+});
+
+test("0058: 読めない hotkeys.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	write(root, { ".obsidian/hotkeys.json": "{壊れている" });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0058-pkm-plugin-names");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8"), "{壊れている");
 });

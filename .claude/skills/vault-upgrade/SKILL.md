@@ -7,7 +7,7 @@ description: 上流（pkm-kit）の更新を子の Vault に取り込む手順�
 
 上流の更新は、merge と移行で取り込む（[ADR-0010](../../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。上流のもののファイルは merge だけで新しくなる。上流の変更が子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要を生むときは、上流が移行（`.kit/migrations/`）を付けている。
 
-マージはユーザーが行う。モバイルは、マージされた後に vault-git で pull するだけでよい。
+マージはユーザーが行う。モバイルは、マージされた後に pkm-git で pull するだけでよい。
 
 ## 0. 前提を確かめる
 

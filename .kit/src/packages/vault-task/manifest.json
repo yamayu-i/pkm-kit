@@ -1,9 +1,0 @@
-{
-	"id": "vault-task",
-	"name": "Vault Task",
-	"version": "0.1.0",
-	"minAppVersion": "1.11.4",
-	"description": "この Vault 専用の自作タスク管理（issue・繰り返しタスク・worklog）。モバイル対応。",
-	"author": "yamayu-i",
-	"isDesktopOnly": false
-}

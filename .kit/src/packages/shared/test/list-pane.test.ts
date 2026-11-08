@@ -101,11 +101,11 @@ const file = (path: string) => ({ path }) as unknown as TFile;
 const index = (ws: FakeWorkspace, l: FakeLeaf) => ws.groups.indexOf(l.parent);
 
 describe("isListViewType", () => {
-	it("vault-task と vault-template の View は一覧。サイドバーとノートは違う", () => {
-		expect(isListViewType("vault-task-daily")).toBe(true);
-		expect(isListViewType("vault-task-issues")).toBe(true);
-		expect(isListViewType("vault-template-note-list")).toBe(true);
-		expect(isListViewType("vault-task-sidebar")).toBe(false);
+	it("pkm-task と pkm-template の View は一覧。サイドバーとノートは違う", () => {
+		expect(isListViewType("pkm-task-daily")).toBe(true);
+		expect(isListViewType("pkm-task-issues")).toBe(true);
+		expect(isListViewType("pkm-template-note-list")).toBe(true);
+		expect(isListViewType("pkm-task-sidebar")).toBe(false);
 		expect(isListViewType("markdown")).toBe(false);
 		expect(isListViewType("empty")).toBe(false);
 	});
@@ -116,8 +116,8 @@ describe("openListView", () => {
 		const ws = new FakeWorkspace();
 		const note = ws.leaf(ws.group(), "markdown");
 		ws.setActiveLeaf(note);
-		await openListView(asWs(ws), "vault-task-daily", { phone: false });
-		const [daily] = ws.getLeavesOfType("vault-task-daily");
+		await openListView(asWs(ws), "pkm-task-daily", { phone: false });
+		const [daily] = ws.getLeavesOfType("pkm-task-daily");
 		expect(daily).toBeDefined();
 		expect(daily!.pinned).toBe(true);
 		expect(index(ws, daily!)).toBe(0);
@@ -127,11 +127,11 @@ describe("openListView", () => {
 
 	it("一覧ペインがあれば、そこに新しいタブで開く", async () => {
 		const ws = new FakeWorkspace();
-		const daily = ws.leaf(ws.group(), "vault-task-daily");
+		const daily = ws.leaf(ws.group(), "pkm-task-daily");
 		const note = ws.leaf(ws.group(), "markdown");
 		ws.setActiveLeaf(note);
-		await openListView(asWs(ws), "vault-template-note-list", { phone: false });
-		const [list] = ws.getLeavesOfType("vault-template-note-list");
+		await openListView(asWs(ws), "pkm-template-note-list", { phone: false });
+		const [list] = ws.getLeavesOfType("pkm-template-note-list");
 		expect(list!.parent).toBe(daily.parent);
 		expect(list!.pinned).toBe(true);
 		expect(ws.groups).toHaveLength(2);
@@ -140,10 +140,10 @@ describe("openListView", () => {
 	it("すでに開いていれば、場所を変えずに固定して表示する", async () => {
 		const ws = new FakeWorkspace();
 		const g = ws.group();
-		const inbox = ws.leaf(g, "vault-task-inbox");
+		const inbox = ws.leaf(g, "pkm-task-inbox");
 		ws.leaf(g, "markdown");
-		await openListView(asWs(ws), "vault-task-inbox", { phone: false });
-		expect(ws.getLeavesOfType("vault-task-inbox")).toEqual([inbox]);
+		await openListView(asWs(ws), "pkm-task-inbox", { phone: false });
+		expect(ws.getLeavesOfType("pkm-task-inbox")).toEqual([inbox]);
 		expect(inbox.pinned).toBe(true);
 		expect(ws.active).toBe(inbox);
 		expect(ws.groups).toHaveLength(1);
@@ -151,16 +151,16 @@ describe("openListView", () => {
 
 	it("タブが 1 つもなければ、新しいタブで開く", async () => {
 		const ws = new FakeWorkspace();
-		await openListView(asWs(ws), "vault-task-daily", { phone: false });
-		expect(ws.getLeavesOfType("vault-task-daily")[0]!.pinned).toBe(true);
+		await openListView(asWs(ws), "pkm-task-daily", { phone: false });
+		expect(ws.getLeavesOfType("pkm-task-daily")[0]!.pinned).toBe(true);
 	});
 
 	it("スマホでは分けずに、タブで開いて固定する", async () => {
 		const ws = new FakeWorkspace();
 		const g = ws.group();
 		ws.setActiveLeaf(ws.leaf(g, "markdown"));
-		await openListView(asWs(ws), "vault-task-daily", { phone: true });
-		const [daily] = ws.getLeavesOfType("vault-task-daily");
+		await openListView(asWs(ws), "pkm-task-daily", { phone: true });
+		const [daily] = ws.getLeavesOfType("pkm-task-daily");
 		expect(daily!.parent).toBe(g);
 		expect(daily!.pinned).toBe(true);
 		expect(ws.groups).toHaveLength(1);
@@ -170,7 +170,7 @@ describe("openListView", () => {
 describe("openInNotePane", () => {
 	it("一覧ペインがあれば、右のノートペインの最後に使ったタブで開く", async () => {
 		const ws = new FakeWorkspace();
-		const daily = ws.leaf(ws.group(), "vault-task-daily");
+		const daily = ws.leaf(ws.group(), "pkm-task-daily");
 		const right = ws.group();
 		const a = ws.leaf(right, "markdown");
 		const b = ws.leaf(right, "markdown");
@@ -184,7 +184,7 @@ describe("openInNotePane", () => {
 
 	it("新しいタブのときは、ノートペインにタブを足す", async () => {
 		const ws = new FakeWorkspace();
-		const daily = ws.leaf(ws.group(), "vault-task-daily");
+		const daily = ws.leaf(ws.group(), "pkm-task-daily");
 		const right = ws.group();
 		ws.leaf(right, "markdown");
 		ws.setActiveLeaf(daily);
@@ -196,17 +196,17 @@ describe("openInNotePane", () => {
 
 	it("ノートペインがなければ、一覧ペインの右に分けて作る", async () => {
 		const ws = new FakeWorkspace();
-		const daily = ws.leaf(ws.group(), "vault-task-daily");
+		const daily = ws.leaf(ws.group(), "pkm-task-daily");
 		ws.setActiveLeaf(daily);
 		await openInNotePane(asWs(ws), file("issue/i-3.md"), { newTab: false, phone: false });
 		expect(ws.groups).toHaveLength(2);
 		expect(ws.groups[1]!.leaves[0]!.file).toBe("issue/i-3.md");
-		expect(daily.type).toBe("vault-task-daily");
+		expect(daily.type).toBe("pkm-task-daily");
 	});
 
 	it("別のウィンドウのタブはノートペインにしない", async () => {
 		const ws = new FakeWorkspace();
-		const daily = ws.leaf(ws.group(), "vault-task-daily");
+		const daily = ws.leaf(ws.group(), "pkm-task-daily");
 		const popout = ws.leaf(ws.group("popout"), "markdown");
 		ws.setActiveLeaf(daily);
 		await openInNotePane(asWs(ws), file("issue/i-4.md"), { newTab: false, phone: false });
@@ -227,11 +227,11 @@ describe("openInNotePane", () => {
 	it("スマホでは getLeaf で開く（固定した一覧のタブは使われない）", async () => {
 		const ws = new FakeWorkspace();
 		const g = ws.group();
-		const daily = ws.leaf(g, "vault-task-daily");
+		const daily = ws.leaf(g, "pkm-task-daily");
 		daily.pinned = true;
 		ws.setActiveLeaf(daily);
 		await openInNotePane(asWs(ws), file("issue/i-5.md"), { newTab: false, phone: true });
-		expect(daily.type).toBe("vault-task-daily");
+		expect(daily.type).toBe("pkm-task-daily");
 		expect(ws.groups).toHaveLength(1);
 		expect(g.leaves.some((l) => l.file === "issue/i-5.md")).toBe(true);
 	});

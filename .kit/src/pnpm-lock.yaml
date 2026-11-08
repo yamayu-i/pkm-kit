@@ -193,7 +193,7 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(yaml@2.9.1))
 
-  packages/vault-git:
+  packages/pkm-git:
     dependencies:
       buffer:
         specifier: 6.0.3
@@ -221,7 +221,7 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(yaml@2.9.1))
 
-  packages/vault-html:
+  packages/pkm-html:
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -242,7 +242,7 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(yaml@2.9.1))
 
-  packages/vault-ribbon:
+  packages/pkm-ribbon:
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -260,7 +260,7 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(yaml@2.9.1))
 
-  packages/vault-task:
+  packages/pkm-task:
     dependencies:
       preact:
         specifier: 10.29.8
@@ -294,7 +294,7 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
 
-  packages/vault-template:
+  packages/pkm-template:
     dependencies:
       preact:
         specifier: 10.29.8

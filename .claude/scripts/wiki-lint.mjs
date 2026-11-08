@@ -11,8 +11,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractLinks, findWikiLinks, isExternal, parseFrontmatter, splitTarget, stripCode } from "./lib/markdown.mjs";
 import { classify, DAILY_RE, isWikiPage, vaultFiles, WIKI_INDEX } from "./lib/vault.mjs";
-// updated の規則の正本は vault-git にある（ADR-0009）。Node の型の除去で .ts をそのまま読む
-import { isTargetPath } from "../../.kit/src/packages/vault-git/src/stamp/updated.ts";
+// updated の規則の正本は pkm-git にある（ADR-0009）。Node の型の除去で .ts をそのまま読む
+import { isTargetPath } from "../../.kit/src/packages/pkm-git/src/stamp/updated.ts";
 
 export const PAGE_TYPES = ["concept", "entity", "topic", "answer"];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

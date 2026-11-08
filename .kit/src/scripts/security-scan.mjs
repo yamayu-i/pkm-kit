@@ -87,8 +87,8 @@ check("危険な API を使っていない", () => {
 		[/localStorage|sessionStorage/, "Web Storage（秘密情報は SecretStorage に置く）"],
 		[/console\.(log|info|debug|warn|error)\([^)]*(token|password|secret)/i, "認証情報をログに出している可能性"],
 	];
-	// ADR-0037: srcdoc に入れてよいのは、sandbox と CSP を付ける vault-html の 1 ファイルだけ
-	const allowed = { "srcdoc への HTML 文字列の挿入": [".kit/src/packages/vault-html/src/ui/frame.ts"] };
+	// ADR-0037: srcdoc に入れてよいのは、sandbox と CSP を付ける pkm-html の 1 ファイルだけ
+	const allowed = { "srcdoc への HTML 文字列の挿入": [".kit/src/packages/pkm-html/src/ui/frame.ts"] };
 	const problems = [];
 	for (const pkg of packages) {
 		for (const file of walk(join(pkg, "src"))) {
@@ -124,26 +124,26 @@ check("lockfile と package.json が一致している", () => {
 
 /** ビルド成果物をコミットしているプラグイン。outdirEnv はビルド先を一時フォルダに変える環境変数 */
 const plugins = [
-	{ id: "vault-git", outdirEnv: "VAULT_GIT_OUTDIR", files: ["main.js", "manifest.json"], bins: ["stamp-updated.mjs"], allowedRequires: ["obsidian"] },
+	{ id: "pkm-git", outdirEnv: "PKM_GIT_OUTDIR", files: ["main.js", "manifest.json"], bins: ["stamp-updated.mjs"], allowedRequires: ["obsidian"] },
 	{
-		id: "vault-task",
-		outdirEnv: "VAULT_TASK_OUTDIR",
+		id: "pkm-task",
+		outdirEnv: "PKM_TASK_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
 		bins: ["lint.mjs", "worklog-review.mjs", "mcp.mjs"],
 		// CodeMirror は Obsidian 本体が提供するもの（同梱しない）
 		allowedRequires: ["obsidian", "@codemirror/state", "@codemirror/view"],
 	},
 	{
-		id: "vault-template",
-		outdirEnv: "VAULT_TEMPLATE_OUTDIR",
+		id: "pkm-template",
+		outdirEnv: "PKM_TEMPLATE_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
 		bins: [],
 		allowedRequires: ["obsidian"],
 	},
 	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
-	{ id: "vault-ribbon", outdirEnv: "VAULT_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
+	{ id: "pkm-ribbon", outdirEnv: "PKM_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0037: HTML を sandbox の iframe に出す
-	{ id: "vault-html", outdirEnv: "VAULT_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
+	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

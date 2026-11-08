@@ -25,7 +25,7 @@ node .claude/scripts/daily-pending.mjs
 |---|---|
 | 学んだこと、調べたこと、考えたこと | wiki のページを作成・更新する。`sources` にデイリーノートのパスを書く |
 | 読んだ記事・本の URL やメモ | [wiki-ingest](../wiki-ingest/SKILL.md) の手順で元資料として取り込む |
-| タスク、予定 | wiki にしない（タスク管理は vault-task の対象） |
+| タスク、予定 | wiki にしない（タスク管理は pkm-task の対象） |
 | 個人的な日記、感情 | wiki にしない |
 
 判断に迷うものは、まとめてユーザーに聞く。

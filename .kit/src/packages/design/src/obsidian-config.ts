@@ -4,7 +4,7 @@ import { resolveColor, type Token } from "./tokens.ts";
 
 export const OBSIDIAN_RULES = {
 	"obsidian/no-css-theme": "コミュニティテーマを使わない（cssTheme は空）。色を決めるのはトークンとスニペットだけにする",
-	"obsidian/snippets": "有効な CSS スニペットは生成した vault-theme だけ",
+	"obsidian/snippets": "有効な CSS スニペットは生成した pkm-theme だけ",
 	"obsidian/accent": "accentColor はトークンの primary（ライト）と同じ",
 	"obsidian/no-translucency": "translucency（半透明のウィンドウ）を使わない。背景が決まらずコントラストを保証できない",
 } as const;
