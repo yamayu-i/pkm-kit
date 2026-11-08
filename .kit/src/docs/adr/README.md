@@ -45,3 +45,4 @@
 | [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認 | 日付のアクション名の整理（Add / Move Do Date、Change Deadline）、mid_due を soft_deadline に改名、ボードからの delegated |
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
 | [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認 | estimated の単位入力（m / h / d）と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
+| [0035](0035-html-viewer.md) | 提案 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する（iframe の srcdoc + sandbox + CSP） |
