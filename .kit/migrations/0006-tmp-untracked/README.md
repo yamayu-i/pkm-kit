@@ -1,8 +1,8 @@
-# 0005: tmp/ を git で管理しない
+# 0006: tmp/ を git で管理しない
 
 ## 何が変わったか
 
-`.kit/src/docs/adr/0037-tmp-folder.md`。
+`.kit/src/docs/adr/0038-tmp-folder.md`。
 
 - 一時ファイルの置き場を `tmp/` にそろえた（`temporary/` は使わない）。用途は、外部共有用の書き出し先と、自分が一時的に見るだけで端末間で同期しなくてよいファイル
 - 上流の `.gitignore` に `tmp/` を入れた。merge で届き、これから `tmp/` に置くファイルはコミットされない

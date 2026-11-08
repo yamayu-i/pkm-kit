@@ -1,4 +1,4 @@
-/** 0005 の migrate.mjs と check.mjs が共有するもの。依存なしの Node */
+/** 0006 の migrate.mjs と check.mjs が共有するもの。依存なしの Node */
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";

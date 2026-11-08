@@ -24,7 +24,8 @@
     "vault-git",
     "vault-task",
     "vault-template",
-    "vault-ribbon"
+    "vault-ribbon",
+    "vault-html"
   ],
   "core-plugins.json": {
     "daily-notes": false,

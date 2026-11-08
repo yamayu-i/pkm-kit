@@ -1,5 +1,5 @@
 /**
- * 0005: tmp/ を git で管理しない（.kit/src/docs/adr/0037-tmp-folder.md）。
+ * 0006: tmp/ を git で管理しない（.kit/src/docs/adr/0038-tmp-folder.md）。
  * 追跡を外すと、次に同期したほかの端末からファイルが消えるので、スクリプトは何も変えない。
  * 追跡中の tmp/ のファイルがあれば、check が一覧を出して止まる（README の「スクリプトで扱えない場合」）
  */

@@ -166,7 +166,8 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon"]);
+	// 0005 が後ろに vault-html を足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon", "vault-html"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
 	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
@@ -187,6 +188,30 @@ test("0002: 読めない core-plugins.json は変えずに、check が失敗し�
 	assert.equal(failed?.name, "0002-ribbon-and-core-daily-notes");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
+});
+
+test("0005: community-plugins.json に vault-html を足す。ほかの要素と順は残す", async () => {
+	const root = childFrom("customized");
+	const before = readJsonFile(root, ".obsidian/community-plugins.json");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before, "vault-ribbon", "vault-html"]);
+	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
+});
+
+test("0005: 読めない community-plugins.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	// 0002 も同じファイルを読むので、0004 までを適用済みにして 0005 だけを実行する
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, {
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline", "0004-member-nickname-alias"] }),
+		".obsidian/community-plugins.json": "[壊れている",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0005-html-viewer");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8"), "[壊れている");
 });
 
 test("0003: issue と template の frontmatter の mid_due を soft_deadline にする。値・本文・ほかの issue は変えない", async () => {
@@ -259,10 +284,10 @@ test("0004: name か id が 1 行の値で読めない member は変えずに、
 	assert.equal(readFileSync(join(root, "member/m-5.md"), "utf8"), block);
 });
 
-test("0005: 追跡中の tmp/ のファイルは変えずに、check が一覧を出して止まる。追跡を外せば通る", async () => {
+test("0006: 追跡中の tmp/ のファイルは変えずに、check が一覧を出して止まる。追跡を外せば通る", async () => {
 	const root = tempRepo({ "tmp/a.md": "a\n", "tmp/sub/b.html": "<p>b</p>\n", "note.md": "n\n" });
-	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0005-tmp-untracked/migrate.mjs")).href);
-	const { check } = await import(pathToFileURL(join(here, ".kit/migrations/0005-tmp-untracked/check.mjs")).href);
+	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0006-tmp-untracked/migrate.mjs")).href);
+	const { check } = await import(pathToFileURL(join(here, ".kit/migrations/0006-tmp-untracked/check.mjs")).href);
 	assert.equal(migrate(root).length, 1);
 	assert.deepEqual(git(root, "ls-files").trim().split("\n").sort(), ["note.md", "tmp/a.md", "tmp/sub/b.html"]);
 	assert.deepEqual(

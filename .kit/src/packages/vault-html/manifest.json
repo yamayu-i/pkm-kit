@@ -1,0 +1,9 @@
+{
+	"id": "vault-html",
+	"name": "Vault HTML",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "Vault の中の HTML を読み取り専用で表示する自作プラグイン。スクリプトを動かさず、外部に通信しない（sandbox と CSP）。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}

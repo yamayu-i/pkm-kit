@@ -40,7 +40,7 @@ describe("VaultGit (本物の git smart HTTP サーバーで検証)", () => {
 		expect(await pc.git.push()).toEqual({ kind: "nothing" });
 	});
 
-	it("push: .gitignore に当たるファイル（tmp/）はコミットしない（ADR-0037）", async () => {
+	it("push: .gitignore に当たるファイル（tmp/）はコミットしない（ADR-0038）", async () => {
 		await pc.write(".gitignore", "tmp/\n");
 		await pc.write("tmp/share.html", "<p>share</p>\n");
 		await pc.write("tmp/sub/a.md", "a\n");
