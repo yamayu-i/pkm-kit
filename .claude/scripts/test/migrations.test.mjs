@@ -439,8 +439,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を足す
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector"]);
+	// 0072 も後ろに pkm-view-selector を足す。0089 は core-plugins.json だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -493,4 +493,27 @@ test("0072: 読めない hotkeys.json は変えずに、check が失敗して止
 	assert.equal(failed?.name, "0072-pkm-view-selector");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8"), "{壊れている");
+});
+
+test("0089: コアプラグインのファイル回復を有効にする。ほかの設定は残す", async () => {
+	const root = childFrom("legacy");
+	const core = { ...readJsonFile(root, ".obsidian/core-plugins.json"), "file-recovery": false };
+	write(root, { ".obsidian/core-plugins.json": JSON.stringify(core, null, 2) });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false, "file-recovery": true });
+});
+
+test("0089: 読めない core-plugins.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	// 0002 も同じファイルを読むので、0072 までを適用済みにして 0089 だけを実行する
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	const before = listMigrations(root).filter((n) => n < "0089");
+	write(root, {
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before }),
+		".obsidian/core-plugins.json": "{壊れている",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0089-file-recovery");
+	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
 });

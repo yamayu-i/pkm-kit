@@ -35,7 +35,8 @@
     "properties": true,
     "canvas": false,
     "bases": false,
-    "templates": false
+    "templates": false,
+    "file-recovery": true
   },
   "hotkeys.json": {
     "editor:insert-link": []
