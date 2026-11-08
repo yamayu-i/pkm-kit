@@ -86,9 +86,15 @@ check("危険な API を使っていない", () => {
 		[/(?<![.\w])(?<!async )fetch\s*\(|XMLHttpRequest|WebSocket/, "requestUrl 以外の通信"],
 		[/localStorage|sessionStorage/, "Web Storage（秘密情報は SecretStorage に置く）"],
 		[/console\.(log|info|debug|warn|error)\([^)]*(token|password|secret)/i, "認証情報をログに出している可能性"],
+		[/["'`][^"'`\n]*\ballow-scripts\b/, "iframe の sandbox の allow-scripts"],
+		[/postMessage\([^)]*["'`]\*["'`]/, "送り先を * にした postMessage"],
 	];
 	// ADR-0037: srcdoc に入れてよいのは、sandbox と CSP を付ける pkm-html の 1 ファイルだけ
-	const allowed = { "srcdoc への HTML 文字列の挿入": [".kit/src/packages/pkm-html/src/ui/frame.ts"] };
+	const allowed = {
+		"srcdoc への HTML 文字列の挿入": [".kit/src/packages/pkm-html/src/ui/frame.ts"],
+		// ADR-0064: スクリプトを動かす iframe は、固定の外部 origin（Draw.io）を読む pkm-drawio の編集画面だけ
+		"iframe の sandbox の allow-scripts": [".kit/src/packages/pkm-drawio/src/obsidian/frame.ts"],
+	};
 	const problems = [];
 	for (const pkg of packages) {
 		for (const file of walk(join(pkg, "src"))) {
@@ -145,6 +151,8 @@ const plugins = [
 	{ id: "pkm-ribbon", outdirEnv: "PKM_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0037: HTML を sandbox の iframe に出す
 	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0064: Draw.io の図。編集画面は embed.diagrams.net の iframe
+	{ id: "pkm-drawio", outdirEnv: "PKM_DRAWIO_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["drawio.mjs"], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

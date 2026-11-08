@@ -14,6 +14,7 @@ export function buildOutputs(tokens: readonly Token[]): Record<keyof typeof OUTP
 		pluginCss: css,
 		templatePluginCss: css,
 		htmlPluginCss: css,
+		drawioPluginCss: css,
 		obsidianSnippet: obsidianSnippet(tokens),
 		doc: tokensDoc(tokens),
 		ts: tsModule(tokens),
