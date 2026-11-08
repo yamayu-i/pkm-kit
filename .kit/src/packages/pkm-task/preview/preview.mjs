@@ -4,7 +4,7 @@
  * 撮ったあと、描画した画面を検査する（run/contrast・run/target-size・run/focus-visible・run/keyboard）。違反があれば失敗する。
  *
  * 使い方: pnpm preview:ui [画面名...]  → preview/out/<画面>-<light|dark>(-narrow).png
- * 初回だけ Chromium を入れる: pnpm --filter pkm-task exec playwright install chromium
+ * 初回だけ Chromium を入れる: pnpm --filter pkm-task exec playwright install chromium（入れられない環境では CHROMIUM_PATH）
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -55,7 +55,8 @@ const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
 const screens = wanted.length > 0 ? wanted : SCREENS;
 
 const { chromium } = createRequire(import.meta.url)("playwright");
-const browser = await chromium.launch();
+// Playwright の版と違う Chromium しかない環境では、CHROMIUM_PATH でその実行ファイルを渡す
+const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const problems = [];
 for (const theme of ["light", "dark"]) {
 	for (const screen of screens) {

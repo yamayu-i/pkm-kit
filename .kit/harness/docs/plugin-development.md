@@ -86,7 +86,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる（入れられない環境では `CHROMIUM_PATH`。[クラウドのセッションでの準備](#クラウドのセッションでの準備)）
 
 ## pkm-template（テンプレートからのノート作成）
 
@@ -220,6 +220,19 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 - pkm-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
 - スクリプトは Node の型の除去で `.ts` をそのまま動かす（ビルドしない）
+
+## 開発環境の準備
+
+- Node と pnpm は `mise.toml` の版を使う（`mise install`）。`node .claude/scripts/verify.mjs` は最初に版を比べ、違えば警告する（止めない。結果が CI と揃わないことがある）
+- 新しい clone・worktree では、最初に `.kit/src` で `pnpm install --frozen-lockfile` を実行する。単一パッケージのテスト（`pnpm --filter <id> test`）を先に実行すると、ほかのパッケージの依存が入らないことがある。`verify.mjs --plugin` は、依存が一部のパッケージにしかなければ `pnpm check` の前で止める
+
+### クラウドのセッションでの準備
+
+mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Code のクラウドのセッションなど）では、次のようにする。
+
+- Node: 公式の配布物（`https://nodejs.org/dist/v<版>/`）の tar と `SHASUMS256.txt` を取り、`sha256sum -c` で照合してから、Vault の外の作業用のフォルダに展開し、`PATH` の先頭に足す
+- pnpm: その Node で `npm install -g pnpm@<mise.toml の版>`
+- Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-drawio` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
 
 ## 進め方
 
