@@ -25,12 +25,12 @@ function MemberForm(props: { onSubmit: (name: string) => void }) {
 		>
 			<label class="vt-text-field">
 				<span>name</span>
-				<input type="text" value={name} placeholder="例: 田中 太郎" ref={(el) => el?.focus()} onInput={(e) => setName(e.currentTarget.value)} />
+				<input type="text" value={name} placeholder="e.g. Taro Tanaka" ref={(el) => el?.focus()} onInput={(e) => setName(e.currentTarget.value)} />
 			</label>
-			<div class="vt-muted">nickname にも同じ名前が、alias には ID が入ります。作った後に member の画面で直せます</div>
+			<div class="vt-muted">The same name goes into nickname, and the ID into alias. You can change them on the member screen later.</div>
 			<div class="vt-form">
 				<button type="submit" class="mod-cta" disabled={!name.trim()}>
-					作成
+					Create
 				</button>
 			</div>
 		</form>
@@ -54,7 +54,7 @@ export function MemberListView(props: { ctx: TaskContext }) {
 	const colors = new Map(index.data.labels.map((l) => [l.name, l.color]));
 	const labels = index.data.labels.map((l) => l.name);
 	const create = () =>
-		new PreactModal(ctx.app, "member を作成", (close) => (
+		new PreactModal(ctx.app, "Create member", (close) => (
 			<MemberForm
 				onSubmit={(name) => {
 					close();
@@ -72,13 +72,13 @@ export function MemberListView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{total}</span>
 				<span class="vt-spacer" />
 				<button class="vt-button is-primary" onClick={create}>
-					<Icon name="plus" /> member を作成
+					<Icon name="plus" /> Create member
 				</button>
 			</header>
 			<section class="vt-card vt-filters">
 				<label class="vt-search">
 					<Icon name="search" />
-					<input type="search" placeholder="@alias・nickname・name・ID で検索" value={q.text} onInput={(e) => set({ text: e.currentTarget.value })} />
+					<input type="search" placeholder="Search by @alias, nickname, name or ID" value={q.text} onInput={(e) => set({ text: e.currentTarget.value })} />
 				</label>
 				{labels.length > 0 && (
 					<div class="vt-filter-row">
@@ -90,22 +90,22 @@ export function MemberListView(props: { ctx: TaskContext }) {
 				)}
 				<div class="vt-filter-row">
 					<span class="vt-spacer" />
-					<span class="vt-field-label">並び替え</span>
+					<span class="vt-field-label">Sort</span>
 					<select class="dropdown" value={q.sort} onChange={(e) => set({ sort: e.currentTarget.value as MemberSortKey })}>
 						{MEMBER_SORTS.map((s) => (
 							<option value={s.key}>{s.label}</option>
 						))}
 					</select>
-					<button class="vt-icon-button" title={q.desc ? "降順" : "昇順"} aria-label={q.desc ? "降順" : "昇順"} onClick={() => set({ desc: !q.desc })}>
+					<button class="vt-icon-button" title={q.desc ? "Descending" : "Ascending"} aria-label={q.desc ? "Descending" : "Ascending"} onClick={() => set({ desc: !q.desc })}>
 						<Icon name={q.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide"} />
 					</button>
 					<button class="vt-button is-text" onClick={() => setQ(defaultMemberQuery())}>
-						リセット
+						Reset
 					</button>
 				</div>
 			</section>
-			{total === 0 && <div class="vt-empty">member はまだありません。issue を委任する相手を登録できます</div>}
-			{total > 0 && members.length === 0 && <div class="vt-empty">条件に合う member はありません</div>}
+			{total === 0 && <div class="vt-empty">No members yet. Add the people you delegate issues to.</div>}
+			{total > 0 && members.length === 0 && <div class="vt-empty">No members match</div>}
 			<div class="vt-routine-list">
 				{members.map((m) => {
 					const count = delegated.get(m.id) ?? 0;
@@ -122,8 +122,8 @@ export function MemberListView(props: { ctx: TaskContext }) {
 									</span>
 								)}
 							</div>
-							<span class="vt-muted" title="委任中（closed / canceled でない）の issue の数">
-								委任中 {count}
+							<span class="vt-muted" title="Number of delegated issues (not closed / canceled)">
+								Delegated {count}
 							</span>
 						</div>
 					);

@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // ../shared/src/legacy-data.ts
 function legacyDataPath(configDir, legacyId) {
@@ -1152,28 +1152,28 @@ function occursOn(rule, anchor, date) {
     }
   }
 }
-var ORDINAL = ["", "\u7B2C 1", "\u7B2C 2", "\u7B2C 3", "\u7B2C 4", "\u7B2C 5"];
+var ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
 function describeRepeat(rule) {
-  const every = (unit, each) => rule.interval === 1 ? each : `${rule.interval} ${unit}\u3054\u3068`;
+  const every = (unit, each) => rule.interval === 1 ? each : `Every ${rule.interval} ${unit}s`;
   switch (rule.every) {
     case "day":
-      return every("\u65E5", "\u6BCE\u65E5");
+      return every("day", "Daily");
     case "week":
-      return `${rule.interval === 2 ? "\u9694\u9031" : every("\u9031", "\u6BCE\u9031")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
+      return `${every("week", "Weekly")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
     case "month": {
       const days = rule.days.map((d3) => {
         switch (d3.kind) {
           case "day":
-            return `${d3.day} \u65E5`;
+            return `day ${d3.day}`;
           case "last":
-            return "\u6708\u672B";
+            return "last day";
           case "nth":
             return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
           case "lastWeekday":
-            return `\u6700\u7D42 ${WEEKDAY_NAMES[d3.weekday]}`;
+            return `last ${WEEKDAY_NAMES[d3.weekday]}`;
         }
       });
-      return `${rule.interval === 2 ? "\u9694\u6708" : every("\u304B\u6708", "\u6BCE\u6708")} ${days.join(", ")}`;
+      return `${every("month", "Monthly")} ${days.join(", ")}`;
     }
   }
 }
@@ -1826,7 +1826,7 @@ function TextForm(props) {
           " / ",
           props.maxLength
         ] }),
-        /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", children: "\u4FDD\u5B58" })
+        /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", children: "Save" })
       ]
     }
   );
@@ -1841,9 +1841,9 @@ function MonthCalendar(props) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
     /* @__PURE__ */ u3("div", { class: "vt-calendar-nav", children: [
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u524D\u306E\u6708", onClick: () => shift(-1), children: "\u2039" }),
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Previous month", onClick: () => shift(-1), children: "\u2039" }),
       /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u6B21\u306E\u6708", onClick: () => shift(1), children: "\u203A" })
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Next month", onClick: () => shift(1), children: "\u203A" })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-calendar-grid", children: [
       [0, 1, 2, 3, 4, 5, 6].map((w3) => /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[w3] })),
@@ -1863,7 +1863,7 @@ function MonthCalendar(props) {
   ] });
 }
 function DateHint(props) {
-  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "\u4F8B: 15 / 1224 / +3 / mon / +2w / +m" });
+  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "e.g. 15 / 1224 / +3 / mon / +2w / +m" });
   if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
   return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: `${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}` });
 }
@@ -1890,7 +1890,7 @@ function DateForm(props) {
             {
               ref,
               type: "text",
-              "aria-label": "\u65E5\u4ED8",
+              "aria-label": "Date",
               value: text,
               onInput: (e3) => {
                 const value = e3.currentTarget.value;
@@ -1903,14 +1903,14 @@ function DateForm(props) {
           /* @__PURE__ */ u3(DateHint, { text, parsed })
         ] }),
         props.presets !== false && /* @__PURE__ */ u3("div", { class: "vt-date-presets", children: [
-          ["\u4ECA\u65E5", 0],
-          ["\u660E\u65E5", 1],
-          ["\u6765\u9031", 7]
+          ["Today", 0],
+          ["Tomorrow", 1],
+          ["Next week", 7]
         ].map(([label, n2]) => /* @__PURE__ */ u3("button", { type: "button", class: "vt-field-chip", onClick: () => props.onSubmit(addDays(today, n2)), children: label })) }),
         /* @__PURE__ */ u3(MonthCalendar, { month, onMonth: setMonth, isSelected: (d3) => d3 === parsed, onPick: (d3) => props.onSubmit(d3) }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-          props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "\u30AF\u30EA\u30A2" }),
-          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "\u4FDD\u5B58" })
+          props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "Clear" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
         ] })
       ]
     }
@@ -1932,9 +1932,9 @@ function CalendarForm(props) {
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         selected.size,
-        " \u65E5"
+        " days"
       ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: !enabled, onClick: () => enabled && props.onSubmit([...selected].sort()), children: props.submitLabel ?? "\u4FDD\u5B58" })
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: !enabled, onClick: () => enabled && props.onSubmit([...selected].sort()), children: props.submitLabel ?? "Save" })
     ] })
   ] });
 }
@@ -1948,7 +1948,7 @@ function DayCell(props) {
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  const marks = [props.date === props.today ? "\u4ECA\u65E5" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join("\u30FB");
+  const marks = [props.date === props.today ? "Today" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join(" \xB7 ");
   const label = marks ? `${props.date}\uFF08${marks}\uFF09` : props.date;
   return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
@@ -1975,8 +1975,8 @@ function DateTimeField(props) {
         "input",
         {
           type: "text",
-          "aria-label": `${props.label}\u306E\u65E5\u4ED8`,
-          placeholder: "\u65E5\u4ED8",
+          "aria-label": `${props.label} date`,
+          placeholder: "Date",
           value: props.date,
           onInput: (e3) => {
             props.onDate(e3.currentTarget.value);
@@ -1985,8 +1985,8 @@ function DateTimeField(props) {
           }
         }
       ),
-      /* @__PURE__ */ u3("input", { class: "vt-time-input", type: "text", "aria-label": `${props.label}\u306E\u6642\u523B`, placeholder: "hhmm", value: props.time, onInput: (e3) => props.onTime(e3.currentTarget.value) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-calendar-toggle", "aria-label": `${props.label}\u306E\u30AB\u30EC\u30F3\u30C0\u30FC`, "aria-expanded": open, onClick: () => setOpen(!open), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) })
+      /* @__PURE__ */ u3("input", { class: "vt-time-input", type: "text", "aria-label": `${props.label} time`, placeholder: "hhmm", value: props.time, onInput: (e3) => props.onTime(e3.currentTarget.value) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-calendar-toggle", "aria-label": `${props.label} calendar`, "aria-expanded": open, onClick: () => setOpen(!open), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) })
     ] }),
     props.date.trim() !== "" && /* @__PURE__ */ u3(DateHint, { text: props.date, parsed }),
     open && /* @__PURE__ */ u3(
@@ -2028,17 +2028,17 @@ function WorklogForm(props) {
         if (error === null) props.onSubmit({ fromMs, toMs: endMs, description: description.trim() });
       },
       children: [
-        /* @__PURE__ */ u3(DateTimeField, { label: "\u958B\u59CB", date: fromDate, time: fromTime, onDate: setFromDate, onTime: setFromTime }),
-        /* @__PURE__ */ u3(DateTimeField, { label: "\u7D42\u4E86\uFF08\u7A7A\u306A\u3089\u8A18\u9332\u4E2D\uFF09", date: toDate, time: toTime, onDate: setToDate, onTime: setToTime }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "Start", date: fromDate, time: fromTime, onDate: setFromDate, onTime: setFromTime }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "End (empty while running)", date: toDate, time: toTime, onDate: setToDate, onTime: setToTime }),
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "\u5185\u5BB9" }),
+          /* @__PURE__ */ u3("span", { children: "Description" }),
           /* @__PURE__ */ u3("input", { type: "text", value: description, onInput: (e3) => setDescription(e3.currentTarget.value) })
         ] }),
         error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-          props.onDelete && /* @__PURE__ */ u3("button", { type: "button", class: confirming ? "mod-warning" : "vt-danger-text", onClick: () => confirming ? props.onDelete() : setConfirming(true), children: confirming ? "\u3082\u3046\u4E00\u5EA6\u62BC\u3059\u3068\u524A\u9664" : "\u524A\u9664" }),
+          props.onDelete && /* @__PURE__ */ u3("button", { type: "button", class: confirming ? "mod-warning" : "vt-danger-text", onClick: () => confirming ? props.onDelete() : setConfirming(true), children: confirming ? "Click again to delete" : "Delete" }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "\u4FDD\u5B58" })
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "Save" })
         ] })
       ]
     }
@@ -2074,10 +2074,10 @@ function LabelForm(props) {
       name
     ] })) }),
     /* @__PURE__ */ u3("form", { class: "vt-form", onSubmit: create, children: [
-      /* @__PURE__ */ u3("input", { type: "text", placeholder: "\u65B0\u3057\u3044 label", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
-      /* @__PURE__ */ u3("button", { type: "submit", children: "\u8FFD\u52A0" })
+      /* @__PURE__ */ u3("input", { type: "text", placeholder: "New label", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
+      /* @__PURE__ */ u3("button", { type: "submit", children: "Add" })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { class: "mod-cta", onClick: () => props.onSubmit(names.filter((n2) => selected.has(n2))), children: "\u4FDD\u5B58" }) })
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { class: "mod-cta", onClick: () => props.onSubmit(names.filter((n2) => selected.has(n2))), children: "Save" }) })
   ] });
 }
 
@@ -2107,7 +2107,7 @@ var MEMBER_SORTS = [
   { key: "nickname", label: "nickname" },
   { key: "name", label: "name" },
   { key: "alias", label: "alias" },
-  { key: "delegated", label: "\u59D4\u4EFB\u4E2D\u306E\u6570" },
+  { key: "delegated", label: "Delegated" },
   { key: "created", label: "created" }
 ];
 function defaultMemberQuery() {
@@ -2163,7 +2163,7 @@ var PreactModal = class extends import_obsidian2.Modal {
   }
 };
 var IssueSuggestModal = class extends import_obsidian2.FuzzySuggestModal {
-  constructor(app, items, onChoose, placeholder = "issue \u3092\u691C\u7D22\uFF08ID / summary\uFF09") {
+  constructor(app, items, onChoose, placeholder = "Search issues (ID / summary)") {
     super(app);
     this.items = items;
     this.onChoose = onChoose;
@@ -2186,7 +2186,7 @@ var BoardIssueModal = class extends import_obsidian2.SuggestModal {
     super(app);
     this.items = items;
     this.onChoose = onChoose;
-    this.setPlaceholder("issue \u3092\u691C\u7D22\u3002\u306A\u3051\u308C\u3070 summary \u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+    this.setPlaceholder("Search issues, or type a summary to create one");
   }
   items;
   onChoose;
@@ -2199,7 +2199,7 @@ var BoardIssueModal = class extends import_obsidian2.SuggestModal {
   }
   renderSuggestion(choice, el) {
     if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
-    else el.createEl("div", { text: `\uFF0B\u300C${choice.summary}\u300D\u3092\u4F5C\u6210\u3057\u3066\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B` });
+    else el.createEl("div", { text: `+ Create "${choice.summary}" and add it to the board` });
   }
   onChooseSuggestion(choice) {
     this.onChoose(choice);
@@ -2210,7 +2210,7 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
     super(app);
     this.members = members;
     this.onChoose = onChoose;
-    this.setPlaceholder("\u59D4\u4EFB\u5148\u3092 @alias\u30FB\u547C\u3073\u540D\u30FB\u540D\u524D\u3067\u691C\u7D22\u3002\u306A\u3051\u308C\u3070\u540D\u524D\u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+    this.setPlaceholder("Search delegates by @alias, nickname or name, or type a name to create one");
   }
   members;
   onChoose;
@@ -2222,7 +2222,7 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
   }
   renderSuggestion(choice, el) {
     if (choice.kind === "member") el.createEl("div", { text: memberLabel(choice.member) });
-    else el.createEl("div", { text: `\uFF0B\u300C${choice.name}\u300D\u3092\u65B0\u3057\u304F\u4F5C\u308B` });
+    else el.createEl("div", { text: `+ Create "${choice.name}"` });
   }
   onChooseSuggestion(choice) {
     this.onChoose(choice);
@@ -2242,7 +2242,7 @@ function pickMember(ctx, onPick) {
 function priorityMenu(e3, current, save) {
   const m3 = new import_obsidian3.Menu();
   for (const p3 of PRIORITIES) m3.addItem((item) => item.setTitle(p3).setChecked(p3 === current).onClick(() => save({ priority: p3 })));
-  m3.addItem((item) => item.setTitle("\u306A\u3057").onClick(() => save({ priority: null })));
+  m3.addItem((item) => item.setTitle("None").onClick(() => save({ priority: null })));
   m3.showAtMouseEvent(e3);
 }
 function editLabels(ctx, current, save) {
@@ -2266,7 +2266,7 @@ function editStatusDetail(ctx, current, save) {
     {
       initial: current,
       maxLength: STATUS_DETAIL_MAX,
-      placeholder: "\u4F8B: \u8FD4\u4E8B\u5F85\u3061",
+      placeholder: "e.g. Waiting for reply",
       onSubmit: (v3) => {
         close();
         save({ "status-detail": v3 });
@@ -2278,12 +2278,12 @@ function estimateMenu(ctx, e3, current, save) {
   const m3 = new import_obsidian3.Menu();
   for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
   m3.addItem(
-    (item) => item.setTitle("\u5165\u529B\u2026").onClick(
+    (item) => item.setTitle("Enter\u2026").onClick(
       () => new PreactModal(ctx.app, "estimated\uFF08m / h / d\u30021d = 24h\uFF09", (close) => /* @__PURE__ */ u3(
         TextForm,
         {
           initial: current === null ? "" : formatMinutes(current),
-          placeholder: "\u4F8B: 30m / 2h / 1d / 1h30m",
+          placeholder: "e.g. 30m / 2h / 1d / 1h30m",
           onSubmit: (v3) => {
             const min = parseDurationInput(v3);
             if (min === null) return ctx.report(`\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
@@ -2294,7 +2294,7 @@ function estimateMenu(ctx, e3, current, save) {
       )).open()
     )
   );
-  m3.addItem((item) => item.setTitle("\u30AF\u30EA\u30A2").onClick(() => save({ estimated: null })));
+  m3.addItem((item) => item.setTitle("Clear").onClick(() => save({ estimated: null })));
   m3.showAtMouseEvent(e3);
 }
 function statusMenu(ctx, e3, issue) {
@@ -2324,7 +2324,7 @@ function editDue(ctx, issue, key) {
   )).open();
 }
 function editScheduled(ctx, issue) {
-  new PreactModal(ctx.app, "\u5B9F\u884C\u65E5", (close) => /* @__PURE__ */ u3(
+  new PreactModal(ctx.app, "Do Date", (close) => /* @__PURE__ */ u3(
     CalendarForm,
     {
       initial: issue.scheduled,
@@ -2358,7 +2358,7 @@ function issueRowMenu(ctx, e3, issue) {
   m3.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e3, issue.priority, save)));
   m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
   m3.addSeparator();
-  m3.addItem((item) => item.setTitle("\u5B9F\u884C\u65E5").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+  m3.addItem((item) => item.setTitle("Do Date").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
   m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
   m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
@@ -2447,12 +2447,12 @@ function pageItems(current, pages) {
 }
 function Pager(props) {
   const { current, pages, onChange } = props;
-  return /* @__PURE__ */ u3("nav", { class: "vt-pager", "aria-label": "\u30DA\u30FC\u30B8", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current === 0, onClick: () => onChange(current - 1), "aria-label": "\u65B0\u3057\u3044\u65B9\u3078", children: /* @__PURE__ */ u3(Icon, { name: "chevron-left" }) }),
+  return /* @__PURE__ */ u3("nav", { class: "vt-pager", "aria-label": "Pages", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current === 0, onClick: () => onChange(current - 1), "aria-label": "Newer", children: /* @__PURE__ */ u3(Icon, { name: "chevron-left" }) }),
     pageItems(current, pages).map(
       (i3) => i3 === null ? /* @__PURE__ */ u3("span", { class: "vt-pager-gap", children: "\u2026" }) : /* @__PURE__ */ u3("button", { class: `vt-pager-page${i3 === current ? " is-current" : ""}`, "aria-current": i3 === current ? "page" : void 0, onClick: () => onChange(i3), children: i3 + 1 })
     ),
-    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current >= pages - 1, onClick: () => onChange(current + 1), "aria-label": "\u53E4\u3044\u65B9\u3078", children: /* @__PURE__ */ u3(Icon, { name: "chevron-right" }) })
+    /* @__PURE__ */ u3("button", { class: "vt-pager-step", disabled: current >= pages - 1, onClick: () => onChange(current + 1), "aria-label": "Older", children: /* @__PURE__ */ u3(Icon, { name: "chevron-right" }) })
   ] });
 }
 
@@ -2543,8 +2543,8 @@ function SummaryField(props) {
           if (e3.key === "Escape") setEditing(false);
         }
       }
-    ) : /* @__PURE__ */ u3("span", { class: "vt-summary", onClick: () => setEditing(true), title: "\u30AF\u30EA\u30C3\u30AF\u3067\u7DE8\u96C6", children: [
-      summary || "\uFF08summary \u306A\u3057\uFF09",
+    ) : /* @__PURE__ */ u3("span", { class: "vt-summary", onClick: () => setEditing(true), title: "Click to edit", children: [
+      summary || "(no summary)",
       /* @__PURE__ */ u3(Icon, { name: "pencil", class: "vt-hover-icon" })
     ] })
   ] });
@@ -2568,7 +2568,7 @@ function StatusField(props) {
     m3.showAtMouseEvent(e3);
   };
   const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
-  const editRevisit = () => new PreactModal(ctx.app, "revisit\uFF08\u3053\u306E\u65E5\u3092\u904E\u304E\u305F\u3089 Organize \u306B\u51FA\u3059\uFF09", (close) => /* @__PURE__ */ u3(
+  const editRevisit = () => new PreactModal(ctx.app, "revisit (shows up in Organize after this date)", (close) => /* @__PURE__ */ u3(
     DateForm,
     {
       initial: issue.revisit,
@@ -2584,7 +2584,7 @@ function StatusField(props) {
     /* @__PURE__ */ u3("div", { class: "vt-status-detail", children: [
       issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, (id) => save({ delegated_to: id })), children: [
         /* @__PURE__ */ u3(Icon, { name: "user" }),
-        member ? member.nickname : issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076"
+        member ? member.nickname : issue.delegatedTo ?? "Choose delegate"
       ] }),
       issue.status === "someday" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRevisit, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-clock" }),
@@ -2593,7 +2593,7 @@ function StatusField(props) {
       ] }),
       /* @__PURE__ */ u3("button", { class: `vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`, onClick: editDetail, children: [
         /* @__PURE__ */ u3(Icon, { name: "pencil" }),
-        issue.statusDetail || "\u8A73\u7D30\u3092\u8FFD\u52A0"
+        issue.statusDetail || "Add detail"
       ] })
     ] })
   ] });
@@ -2601,7 +2601,7 @@ function StatusField(props) {
 function LabelsField(props) {
   const { ctx, labels, index, save } = props;
   const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
-  return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: () => editLabels(ctx, labels, save), title: "label \u3092\u7DE8\u96C6", children: [
+  return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: () => editLabels(ctx, labels, save), title: "Edit labels", children: [
     labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors2.get(name) ?? "var(--background-modifier-border)" })),
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: [
       /* @__PURE__ */ u3(Icon, { name: labels.length === 0 ? "tag" : "pencil" }),
@@ -2620,7 +2620,7 @@ function ScheduleStrip(props) {
     else next.add(d3);
     save({ scheduled: [...next].sort() });
   };
-  const openCalendar = () => new PreactModal(ctx.app, "\u5B9F\u884C\u65E5", (close) => /* @__PURE__ */ u3(
+  const openCalendar = () => new PreactModal(ctx.app, "Do Date", (close) => /* @__PURE__ */ u3(
     CalendarForm,
     {
       initial: issue.scheduled,
@@ -2640,7 +2640,7 @@ function ScheduleStrip(props) {
     ] })) }),
     /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: openCalendar, children: [
       "calendar >",
-      later > 0 ? `\uFF08\u307B\u304B ${later} \u65E5\uFF09` : ""
+      later > 0 ? ` (+${later} days)` : ""
     ] })
   ] });
 }
@@ -2659,7 +2659,7 @@ function DueFields(props) {
   )).open();
   const row = (label, key, value) => /* @__PURE__ */ u3("button", { class: `vt-due vt-due-${dueLevel(issue, value, today)}`, onClick: edit(key, value), children: [
     /* @__PURE__ */ u3("span", { class: "vt-due-label", children: label }),
-    /* @__PURE__ */ u3("span", { class: "vt-due-value", children: value ? formatShortDate(value) : "\u672A\u8A2D\u5B9A" }),
+    /* @__PURE__ */ u3("span", { class: "vt-due-value", children: value ? formatShortDate(value) : "Not set" }),
     /* @__PURE__ */ u3(Icon, { name: "calendar", class: "vt-trailing" })
   ] });
   return /* @__PURE__ */ u3("div", { class: "vt-dues", children: [
@@ -2671,7 +2671,7 @@ function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
     /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian4.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
-    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5916\u3059", title: "\u5916\u3059", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
+    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Remove", title: "Remove", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }
 function Relations(props) {
@@ -2680,19 +2680,19 @@ function Relations(props) {
   const children = index.children(issue.id);
   const pickParent = () => {
     const candidates = sortCandidates([...index.issues.values()].filter((c3) => index.canSetParent(issue.id, c3.id)));
-    new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "\u89AA\u306B\u3059\u308B issue \u3092\u691C\u7D22").open();
+    new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "Search for a parent issue").open();
   };
   const addChild = (e3) => {
     const m3 = new import_obsidian4.Menu();
     m3.addItem(
-      (item) => item.setTitle("\u65E2\u5B58\u306E issue \u3092\u5B50\u306B\u3059\u308B").onClick(() => {
+      (item) => item.setTitle("Make an existing issue a child").onClick(() => {
         const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
-        new IssueSuggestModal(ctx.app, candidates, (c3) => save({ parent: issue.id }, c3.path), "\u5B50\u306B\u3059\u308B issue \u3092\u691C\u7D22").open();
+        new IssueSuggestModal(ctx.app, candidates, (c3) => save({ parent: issue.id }, c3.path), "Search for a child issue").open();
       })
     );
     m3.addItem(
-      (item) => item.setTitle("\u65B0\u3057\u304F\u4F5C\u308B").onClick(
-        () => new PreactModal(ctx.app, "\u5B50 issue \u306E summary", (close) => /* @__PURE__ */ u3(
+      (item) => item.setTitle("Create new").onClick(
+        () => new PreactModal(ctx.app, "Child issue summary", (close) => /* @__PURE__ */ u3(
           TextForm,
           {
             initial: "",
@@ -2711,17 +2711,17 @@ function Relations(props) {
     /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Parent",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u89AA\u3092\u9078\u3076", title: "\u89AA\u3092\u9078\u3076", onClick: pickParent, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Choose parent", title: "Choose parent", onClick: pickParent, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) })
       ] }),
       parent ? /* @__PURE__ */ u3(IssueLink, { ctx, issue: parent, onRemove: () => save({ parent: null }) }) : issue.parent !== null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         issue.parent,
-        "\uFF08\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF09"
+        " (not found)"
       ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
         "Children",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u5B50\u3092\u8FFD\u52A0", title: "\u5B50\u3092\u8FFD\u52A0", onClick: addChild, children: /* @__PURE__ */ u3(Icon, { name: "plus" }) })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Add child", title: "Add child", onClick: addChild, children: /* @__PURE__ */ u3(Icon, { name: "plus" }) })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-wrap", children: [
         children.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }),
@@ -2742,7 +2742,7 @@ function Effort(props) {
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated) })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "Calculated from the worklog", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
     ] }),
@@ -2759,7 +2759,7 @@ function WorklogItem(props) {
   const { ctx, log } = props;
   const date = formatDateTime(log.fromMs).slice(0, 10);
   const running = log.toMs === null;
-  const edit = () => new PreactModal(ctx.app, "worklog \u3092\u7DE8\u96C6", (close) => /* @__PURE__ */ u3(
+  const edit = () => new PreactModal(ctx.app, "Edit worklog", (close) => /* @__PURE__ */ u3(
     WorklogForm,
     {
       initial: { fromMs: log.fromMs, toMs: log.toMs, description: log.description },
@@ -2777,7 +2777,7 @@ function WorklogItem(props) {
       }
     }
   )).open();
-  return /* @__PURE__ */ u3("button", { class: `vt-log${running ? " is-running" : ""}`, onClick: edit, title: "\u30AF\u30EA\u30C3\u30AF\u3067\u7DE8\u96C6", children: [
+  return /* @__PURE__ */ u3("button", { class: `vt-log${running ? " is-running" : ""}`, onClick: edit, title: "Click to edit", children: [
     /* @__PURE__ */ u3("span", { class: "vt-log-date", children: [
       /* @__PURE__ */ u3("span", { class: "vt-log-day", children: date.slice(5).replace("-", "/") }),
       /* @__PURE__ */ u3("span", { class: "vt-log-weekday", children: WEEKDAY_NAMES[weekdayOf(date)] })
@@ -2786,9 +2786,9 @@ function WorklogItem(props) {
       /* @__PURE__ */ u3("span", { class: "vt-log-time vt-num", children: [
         formatTime(log.fromMs),
         " \u2013 ",
-        running ? "\u8A18\u9332\u4E2D" : formatTime(log.toMs)
+        running ? "running" : formatTime(log.toMs)
       ] }),
-      /* @__PURE__ */ u3("span", { class: `vt-log-desc${log.description ? "" : " is-placeholder"}`, children: log.description || "\u5185\u5BB9\u306A\u3057" })
+      /* @__PURE__ */ u3("span", { class: `vt-log-desc${log.description ? "" : " is-placeholder"}`, children: log.description || "No description" })
     ] }),
     /* @__PURE__ */ u3("span", { class: "vt-log-duration vt-num", children: [
       running && /* @__PURE__ */ u3("span", { class: "vt-live-dot" }),
@@ -2802,7 +2802,7 @@ function Worklog(props) {
   const [page, setPage] = d2(0);
   const add = () => {
     const now = Date.now();
-    new PreactModal(ctx.app, "worklog \u3092\u8FFD\u52A0", (close) => /* @__PURE__ */ u3(
+    new PreactModal(ctx.app, "Add worklog", (close) => /* @__PURE__ */ u3(
       WorklogForm,
       {
         initial: { fromMs: now - 36e5, toMs: now, description: "" },
@@ -2821,17 +2821,14 @@ function Worklog(props) {
   return /* @__PURE__ */ u3("section", { class: "vt-worklog", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "worklog" }),
-      logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: [
-        logs.length,
-        " \u4EF6"
-      ] }),
+      logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: logs.length }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: add, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " \u8FFD\u52A0"
+        " Add"
       ] })
     ] }),
-    logs.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u307E\u3060\u8A18\u9332\u304C\u3042\u308A\u307E\u305B\u3093" }),
+    logs.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No worklog yet" }),
     /* @__PURE__ */ u3("div", { class: "vt-log-list", children: shown.map((l3) => /* @__PURE__ */ u3(WorklogItem, { ctx: props.ctx, log: l3 }, l3.id)) }),
     pages > 1 && /* @__PURE__ */ u3(Pager, { current, pages, onChange: setPage })
   ] });
@@ -2874,19 +2871,18 @@ function DelegatedIssues(props) {
   const done = props.issues.length - active.length;
   return /* @__PURE__ */ u3("div", { class: "vt-member-issues", children: [
     /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-      "\u59D4\u4EFB\u4E2D\u306E issue ",
+      "Delegated issues ",
       active.length
     ] }),
-    active.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: "\u59D4\u4EFB\u4E2D\u306E issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    active.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: "No delegated issues" }),
     active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
       /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
-      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "\uFF08summary \u306A\u3057\uFF09" })
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
     ] }, issue.id)),
     done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
-      "\u7D42\u308F\u3063\u305F\u3082\u306E\uFF08closed / canceled\uFF09",
-      done,
-      " \u4EF6"
+      "Finished (closed / canceled) ",
+      done
     ] })
   ] });
 }
@@ -2922,9 +2918,9 @@ function MemberHeader(props) {
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: member.id })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-member-fields", children: [
-      /* @__PURE__ */ u3(MemberField, { label: "nickname", field: "nickname", value: member.nickname, hint: "\u81EA\u5206\u304C\u547C\u3093\u3067\u3044\u308B\u547C\u3073\u540D\u3002\u7A7A\u306B\u3059\u308B\u3068 name \u3092\u4F7F\u3046", save }),
-      /* @__PURE__ */ u3(MemberField, { label: "name", field: "name", value: member.name, hint: "\u672C\u540D\uFF08\u59D3\u30FB\u540D\uFF09", required: true, save }),
-      /* @__PURE__ */ u3(MemberField, { label: "alias", field: "alias", value: member.alias, hint: `\u59D4\u4EFB\u5148\u3092\u9078\u3076\u3068\u304D\u306B @${member.alias} \u3067\u63A2\u305B\u308B\u3002\u7A7A\u306B\u3059\u308B\u3068 ID \u3092\u4F7F\u3046`, save }),
+      /* @__PURE__ */ u3(MemberField, { label: "nickname", field: "nickname", value: member.nickname, hint: "What you call them. Empty uses name", save }),
+      /* @__PURE__ */ u3(MemberField, { label: "name", field: "name", value: member.name, hint: "Full name", required: true, save }),
+      /* @__PURE__ */ u3(MemberField, { label: "alias", field: "alias", value: member.alias, hint: `Find them with @${member.alias} when choosing a delegate. Empty uses the ID`, save }),
       /* @__PURE__ */ u3("div", { class: "vt-member-labels", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
         /* @__PURE__ */ u3(LabelsField, { ctx, labels: member.labels, index, save })
@@ -3028,14 +3024,14 @@ function RepeatFields(props) {
   const set = (patch) => onChange({ ...draft, ...patch });
   return /* @__PURE__ */ u3(S, { children: [
     /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-      /* @__PURE__ */ u3("span", { children: "\u304F\u308A\u8FD4\u3057" }),
+      /* @__PURE__ */ u3("span", { children: "Repeat" }),
       /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
         [
-          ["day", "\u6BCE\u65E5"],
-          ["week", "\u6BCE\u9031"],
-          ["month", "\u6BCE\u6708"]
+          ["day", "Daily"],
+          ["week", "Weekly"],
+          ["month", "Monthly"]
         ].map(([v3, label]) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-filter-chip${draft.every === v3 ? " is-on" : ""}`, onClick: () => set({ every: v3 }), children: label })),
-        /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u9593\u9694" }),
+        /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Every" }),
         /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "number", min: 1, value: draft.interval, onInput: (e3) => set({ interval: Math.max(1, Number(e3.currentTarget.value) || 1) }) })
       ] })
     ] }),
@@ -3053,7 +3049,7 @@ function RepeatFields(props) {
       );
     }) }),
     draft.every === "month" && /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-      /* @__PURE__ */ u3("span", { children: "\u65E5\u4ED8\uFF08\u30AB\u30F3\u30DE\u533A\u5207\u308A\u300215 / last = \u6708\u672B / 2th-tue = \u7B2C 2 \u706B\u66DC / last-fri = \u6700\u7D42\u91D1\u66DC\uFF09" }),
+      /* @__PURE__ */ u3("span", { children: "Days (comma-separated. 15 / last = last day / 2th-tue = 2nd Tuesday / last-fri = last Friday)" }),
       /* @__PURE__ */ u3("input", { type: "text", value: draft.monthText, onInput: (e3) => set({ monthText: e3.currentTarget.value }) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-muted", children: readRepeatDraft(draft).description })
@@ -3063,7 +3059,7 @@ function RepeatFields(props) {
 // src/header/RoutineHeader.tsx
 var RESULT_DAYS = 14;
 var RESULT_MARK = { closed: "\u2713", canceled: "\xD7", none: "\u30FB", off: "" };
-var RESULT_LABEL = { closed: "closed", canceled: "canceled", none: "\u672A\u8A18\u9332", off: "\u4E88\u5B9A\u306A\u3057" };
+var RESULT_LABEL = { closed: "closed", canceled: "canceled", none: "not recorded", off: "not scheduled" };
 function RepeatForm(props) {
   const [draft, setDraft] = d2(repeatDraftOf(props.rule));
   const read = readRepeatDraft(draft);
@@ -3078,7 +3074,7 @@ function RepeatForm(props) {
       children: [
         /* @__PURE__ */ u3(RepeatFields, { draft, onChange: setDraft }),
         read.error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: read.error }),
-        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: read.error !== null, children: "\u4FDD\u5B58" }) })
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: read.error !== null, children: "Save" }) })
       ]
     }
   );
@@ -3086,9 +3082,9 @@ function RepeatForm(props) {
 function Results(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-routine-results", children: [
     /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-      "\u76F4\u8FD1 ",
+      "Last ",
       RESULT_DAYS,
-      " \u65E5"
+      " days"
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-results", children: props.results.map((r3) => {
       const label = `${r3.date} ${RESULT_LABEL[r3.state]}`;
@@ -3098,7 +3094,7 @@ function Results(props) {
         /* @__PURE__ */ u3("span", { class: "vt-result-mark", children: RESULT_MARK[r3.state] })
       ] });
     }) }),
-    /* @__PURE__ */ u3("div", { class: "vt-muted", children: "\u2713 closed\u3000\xD7 canceled\u3000\u30FB \u672A\u8A18\u9332\u3000\u7A7A\u6B04 \u4E88\u5B9A\u306A\u3057" })
+    /* @__PURE__ */ u3("div", { class: "vt-muted", children: "\u2713 closed\u3000\xD7 canceled\u3000\u30FB not recorded\u3000blank not scheduled" })
   ] });
 }
 function RoutineHeader(props) {
@@ -3110,7 +3106,7 @@ function RoutineHeader(props) {
     return /* @__PURE__ */ u3("div", { class: "vt-header-missing", children: "routine \u306E frontmatter \u3092\u8AAD\u3081\u307E\u305B\u3093\uFF08type / id \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF09" });
   }
   const save = (fields) => void ctx.writer.update(path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-  const editRepeat = () => new PreactModal(ctx.app, "\u304F\u308A\u8FD4\u3057", (close) => /* @__PURE__ */ u3(
+  const editRepeat = () => new PreactModal(ctx.app, "Repeat", (close) => /* @__PURE__ */ u3(
     RepeatForm,
     {
       rule: routine.repeat,
@@ -3134,7 +3130,7 @@ function RoutineHeader(props) {
     const m3 = new import_obsidian6.Menu();
     for (const key of ["", ...groupKeys(index.data.groups)]) {
       m3.addItem(
-        (item) => item.setTitle(key || "\u672A\u5206\u985E").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
+        (item) => item.setTitle(key || "Unsorted").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
       );
     }
     m3.showAtMouseEvent(e3);
@@ -3159,8 +3155,8 @@ function RoutineHeader(props) {
           class: `vt-switch${routine.active ? " is-on" : ""}`,
           role: "switch",
           "aria-checked": routine.active,
-          "aria-label": routine.active ? "\u4E00\u6642\u505C\u6B62\u3059\u308B" : "\u518D\u958B\u3059\u308B",
-          title: routine.active ? "\u4E00\u6642\u505C\u6B62\u3059\u308B" : "\u518D\u958B\u3059\u308B",
+          "aria-label": routine.active ? "Pause" : "Resume",
+          title: routine.active ? "Pause" : "Resume",
           onClick: () => save({ active: !routine.active }),
           children: /* @__PURE__ */ u3("span", { class: "vt-switch-thumb" })
         }
@@ -3170,7 +3166,7 @@ function RoutineHeader(props) {
       /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
         /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRepeat, children: [
           /* @__PURE__ */ u3(Icon, { name: "repeat" }),
-          routine.repeat ? describeRepeat(routine.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093"
+          routine.repeat ? describeRepeat(routine.repeat) : "Invalid repeat"
         ] }),
         /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editDate("start", routine.start), children: [
           /* @__PURE__ */ u3(Icon, { name: "calendar" }),
@@ -3186,7 +3182,7 @@ function RoutineHeader(props) {
       /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
         /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: groupMenu, children: [
           /* @__PURE__ */ u3(Icon, { name: "layout-grid" }),
-          routine.group ?? "\u672A\u5206\u985E"
+          routine.group ?? "Unsorted"
         ] }),
         /* @__PURE__ */ u3(PriorityBadge, { priority: routine.priority, onClick: (e3) => priorityMenu(e3, routine.priority, save) }),
         /* @__PURE__ */ u3(LabelsField, { ctx, labels: routine.labels, index, save })
@@ -3201,11 +3197,11 @@ function RoutineHeader(props) {
         ] }),
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: routine.estimated === null ? "\u2014" : formatMinutes(routine.estimated) })
       ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "Calculated from the worklog", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "total" }),
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(effort.total) })
       ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: effort.days > 0 ? `\u8A18\u9332\u306E\u3042\u308B ${effort.days} \u65E5\u5206\u306E 1 \u65E5\u3042\u305F\u308A\u5E73\u5747` : "worklog \u304B\u3089\u81EA\u52D5\u3067\u8A08\u7B97", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: effort.days > 0 ? `Daily average over ${effort.days} recorded days` : "Calculated from the worklog", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "average" }),
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: effort.average === null ? "\u2014" : formatMinutes(effort.average) })
       ] })
@@ -3275,7 +3271,7 @@ function CaptureForm(props) {
       {
         ref,
         rows: 6,
-        placeholder: "1 \u884C\u306B 1 \u4EF6\u3001summary \u3092\u66F8\u304F\n- \u7B87\u6761\u66F8\u304D\u3092\u8CBC\u308A\u4ED8\u3051\u3066\u3082\u3088\u3044",
+        placeholder: "One summary per line\n- You can paste a bulleted list",
         value: text,
         onInput: (e3) => setText(e3.currentTarget.value),
         onKeyDown: (e3) => {
@@ -3288,11 +3284,11 @@ function CaptureForm(props) {
     ),
     /* @__PURE__ */ u3("div", { class: "vt-form", children: [
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        "Create ",
         summaries.length,
-        " \u4EF6\u4F5C\u6210\u3057\u307E\u3059",
-        import_obsidian8.Platform.isMobile ? "" : "\uFF08Mod+Enter\uFF09"
+        import_obsidian8.Platform.isMobile ? "" : " (Mod+Enter)"
       ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "\u4F5C\u6210" })
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
     ] })
   ] });
 }
@@ -3312,7 +3308,7 @@ function showCreatedNotice(ctx, created, failed) {
   fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
   let notice = null;
   if (created.length > 0) {
-    const button = fragment.createEl("button", { text: "\u3059\u3079\u3066\u30BF\u30D6\u3067\u958B\u304F", cls: "vt-notice-button" });
+    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
     button.addEventListener("click", (e3) => {
       e3.stopPropagation();
       notice?.hide();
@@ -3322,7 +3318,7 @@ function showCreatedNotice(ctx, created, failed) {
   notice = new import_obsidian8.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
-  new PreactModal(ctx.app, "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
+  new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
     CaptureForm,
     {
       onSubmit: (summaries) => {
@@ -3355,8 +3351,50 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
   }
 };
 
-// src/obsidian/status-undo.ts
+// src/obsidian/status-bar.ts
 var import_obsidian10 = require("obsidian");
+
+// src/core/running.ts
+var SUMMARY_MAX = 24;
+function runningStatus(index, now) {
+  const elapsedByTask = /* @__PURE__ */ new Map();
+  for (const l3 of index.running()) {
+    const elapsed = Math.max(0, now - l3.fromMs);
+    elapsedByTask.set(l3.taskId, Math.max(elapsedByTask.get(l3.taskId) ?? 0, elapsed));
+  }
+  if (elapsedByTask.size === 0) return null;
+  const rows = [...elapsedByTask.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([taskId, elapsed]) => {
+    const task = index.issues.get(taskId) ?? index.routines.get(taskId);
+    return { taskId, summary: task?.summary ?? "", path: task?.path ?? null, time: formatMinutes(Math.floor(elapsed / 6e4)) };
+  });
+  const tooltip = rows.map((r4) => [r4.taskId, r4.summary, r4.time].filter(Boolean).join(" ")).join("\n");
+  if (rows.length > 1) return { text: `\u25CF ${rows.length} running ${rows[0].time}`, tooltip, path: null };
+  const r3 = rows[0];
+  const summary = r3.summary.length > SUMMARY_MAX ? `${r3.summary.slice(0, SUMMARY_MAX)}\u2026` : r3.summary;
+  return { text: ["\u25CF", r3.taskId, summary, r3.time].filter(Boolean).join(" "), tooltip, path: r3.path };
+}
+
+// src/obsidian/status-bar.ts
+var REFRESH_MS = 3e4;
+function registerRunningStatusBar(host, store, open) {
+  const el = host.addStatusBarItem();
+  el.addClass("mod-clickable", "pkm-task-running-status");
+  let path = null;
+  const render = () => {
+    const s3 = runningStatus(store.index, Date.now());
+    path = s3?.path ?? null;
+    el.toggle(s3 !== null);
+    el.setText(s3?.text ?? "");
+    (0, import_obsidian10.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+  };
+  el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
+  host.register(store.subscribe(render));
+  host.registerInterval(window.setInterval(render, REFRESH_MS));
+  render();
+}
+
+// src/obsidian/status-undo.ts
+var import_obsidian11 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -3434,11 +3472,11 @@ var StatusUndo = class {
       const button = document.createElement("button");
       button.className = "vt-toast-action";
       button.type = "button";
-      button.append("\u5143\u306B\u623B\u3059");
+      button.append("Undo");
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian10.setIcon)(icon, "chevron-right");
+      (0, import_obsidian11.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -3451,7 +3489,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -3596,15 +3634,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian11.TFile) this.touch(file);
+        if (file instanceof import_obsidian12.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian11.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian12.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3665,9 +3703,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian12.ItemView {
+  class PreactView extends import_obsidian13.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -3689,7 +3727,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -4107,7 +4145,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -4126,7 +4164,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian13.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian14.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
@@ -4140,7 +4178,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -4199,7 +4237,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian13.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian14.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -4225,14 +4263,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -4250,7 +4288,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian13.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian14.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -4264,7 +4302,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -4277,8 +4315,8 @@ function stepperItems(steps, current, counts, passed) {
   return steps.map((s3, i3) => {
     const count = counts[s3.key];
     const state = s3.key === current ? "current" : count === 0 || passed.has(s3.key) ? "done" : "todo";
-    const detail = state === "done" ? count > 0 ? `\u6E08\u307F\u30FB${count} \u4EF6` : "\u6E08\u307F" : `${count} \u4EF6`;
-    return { key: s3.key, number: i3 + 1, label: s3.label, state, compact: state !== "current", count, title: `${i3 + 1}. ${s3.label}\uFF08${detail}\uFF09` };
+    const detail = state === "done" ? count > 0 ? `Done \xB7 ${count}` : "Done" : `${count}`;
+    return { key: s3.key, number: i3 + 1, label: s3.label, state, compact: state !== "current", count, title: `${i3 + 1}. ${s3.label} (${detail})` };
   });
 }
 
@@ -4328,12 +4366,12 @@ async function scheduleToday(ctx, issues) {
   ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
 }
 async function scheduleIssues(ctx, issues) {
-  const date = await askDate(ctx, "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059");
+  const date = await askDate(ctx, "Add Do Date");
   if (date === null) return;
   await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
 }
 async function rescheduleIssues(ctx, issues, target, from = null) {
-  const title = target === "scheduled" ? "\u5B9F\u884C\u65E5\u3092\u79FB\u3059" : `${target} \u3092\u5909\u3048\u308B`;
+  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
   const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
   if (date === null) return;
   await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
@@ -4380,7 +4418,7 @@ async function setRoutineResult(ctx, date, id, result, record2 = true) {
 async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
   let to = fixedTo;
   if (kind === "reschedule" && to === null) {
-    to = await askDate(ctx, "\u5B9F\u884C\u65E5\u3092\u79FB\u3059");
+    to = await askDate(ctx, "Move Do Date");
     if (to === null) return;
   }
   try {
@@ -4410,7 +4448,7 @@ function stopTimer(ctx, ids) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -4423,9 +4461,9 @@ function IssueTable(props) {
     onSelect(next);
   };
   const all = selected !== void 0 && issues.length > 0 && issues.every((i3) => selected.has(i3.id));
-  if (issues.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: props.empty ?? "\u3042\u308A\u307E\u305B\u3093" });
+  if (issues.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: props.empty ?? "Nothing here" });
   const due = (issue, value) => value ? /* @__PURE__ */ u3("span", { class: `vt-due-chip vt-due-${dueLevel(issue, value, today)}`, children: formatShortDate(value) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
-  const editable = (issue, c3, open, content) => /* @__PURE__ */ u3("button", { class: "vt-cell-edit", "aria-label": `${issue.id} \u306E ${c3} \u3092\u7DE8\u96C6`, title: `${c3} \u3092\u7DE8\u96C6`, onClick: open, children: content });
+  const editable = (issue, c3, open, content) => /* @__PURE__ */ u3("button", { class: "vt-cell-edit", "aria-label": `Edit ${c3} of ${issue.id}`, title: `Edit ${c3}`, onClick: open, children: content });
   const text = (value) => value ? /* @__PURE__ */ u3("span", { class: "vt-cell-detail", children: value }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
   const cell = (issue, c3) => {
     const save = saveIssue(ctx, issue);
@@ -4447,14 +4485,14 @@ function IssueTable(props) {
       case "revisit":
         return issue.revisit ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(issue.revisit) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
       case "reviewed":
-        return issue.reviewed ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(issue.reviewed) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u672A" });
+        return issue.reviewed ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(issue.reviewed) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Never" });
       case "created":
         return issue.created ? /* @__PURE__ */ u3("span", { class: "vt-num", children: issue.created.slice(0, 10) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
     }
   };
   return /* @__PURE__ */ u3("div", { class: "vt-table", role: "table", style: { "--vt-cols": String(columns.length) }, children: [
     /* @__PURE__ */ u3("div", { class: "vt-tr vt-thead", role: "row", children: [
-      onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", "aria-label": "\u3059\u3079\u3066\u9078\u629E", checked: all, onChange: () => onSelect(all ? /* @__PURE__ */ new Set() : new Set(issues.map((i3) => i3.id))) }),
+      onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", "aria-label": "Select all", checked: all, onChange: () => onSelect(all ? /* @__PURE__ */ new Set() : new Set(issues.map((i3) => i3.id))) }),
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-main", children: "issue" }),
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-priority", children: "priority" }),
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-status", children: "status" }),
@@ -4462,8 +4500,8 @@ function IssueTable(props) {
       /* @__PURE__ */ u3("span", { class: "vt-th vt-col-menu" })
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
-      onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: [
+      onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `Select ${issue.id}` }),
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -4471,20 +4509,20 @@ function IssueTable(props) {
       /* @__PURE__ */ u3("span", { class: "vt-col-priority", children: /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: (e3) => priorityMenu(e3, issue.priority, saveIssue(ctx, issue)) }) }),
       /* @__PURE__ */ u3("span", { class: "vt-col-status", children: /* @__PURE__ */ u3(StatusBadge, { status: issue.status, onClick: (e3) => statusMenu(ctx, e3, issue) }) }),
       columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-col-${c3}`, children: cell(issue, c3) })),
-      /* @__PURE__ */ u3("span", { class: "vt-col-menu", children: /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": `${issue.id} \u3092\u7DE8\u96C6`, title: "\u7DE8\u96C6", onClick: (e3) => issueRowMenu(ctx, e3, issue), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) }) })
+      /* @__PURE__ */ u3("span", { class: "vt-col-menu", children: /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": `Edit ${issue.id}`, title: "Edit", onClick: (e3) => issueRowMenu(ctx, e3, issue), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) }) })
     ] }, issue.id))
   ] });
 }
 function ActionBar(props) {
   return /* @__PURE__ */ u3("div", { class: `vt-actionbar${props.count > 0 ? " is-active" : ""}`, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-actionbar-count", children: props.count > 0 ? `${props.count} \u4EF6\u3092\u9078\u629E\u4E2D` : "\u884C\u3092\u9078\u3076\u3068\u64CD\u4F5C\u3067\u304D\u307E\u3059" }),
+    /* @__PURE__ */ u3("span", { class: "vt-actionbar-count", children: props.count > 0 ? `${props.count} selected` : "Select rows to act on them" }),
     /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
     props.actions.map((a3) => /* @__PURE__ */ u3("button", { class: `vt-button${a3.tone ? ` is-${a3.tone}` : ""}`, disabled: props.count === 0, onClick: a3.run, children: a3.label }))
   ] });
 }
 
 // src/views/Board.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
@@ -4501,8 +4539,8 @@ function changeIssueStatus(ctx, issue, to) {
 function DelegateChip(props) {
   const { ctx, issue } = props;
   const member = issue.delegatedTo === null ? void 0 : ctx.store.index.members.get(issue.delegatedTo);
-  const name = member?.nickname ?? issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076";
-  const label = `\u59D4\u4EFB\u5148: ${name}\uFF08\u62BC\u3059\u3068\u9078\u3073\u76F4\u3059\uFF09`;
+  const name = member?.nickname ?? issue.delegatedTo ?? "Choose delegate";
+  const label = `Delegated to: ${name} (click to change)`;
   return /* @__PURE__ */ u3(
     "button",
     {
@@ -4521,7 +4559,7 @@ function NextButtons(props) {
   const { ctx, date, item, status } = props;
   if (isDoneStatus(status)) {
     const back = item.kind === "issue" ? ctx.store.index.statusBefore(item.issue.id) ?? "open" : "open";
-    const label = `${back} \u306B\u623B\u3059`;
+    const label = `Back to ${back}`;
     return /* @__PURE__ */ u3(
       "button",
       {
@@ -4538,8 +4576,8 @@ function NextButtons(props) {
     "button",
     {
       class: `vt-next vt-status-${to}`,
-      "aria-label": `${to} \u306B\u3059\u308B`,
-      title: `${to} \u306B\u3059\u308B`,
+      "aria-label": `Set to ${to}`,
+      title: `Set to ${to}`,
       onClick: () => void (item.kind === "issue" ? changeIssueStatus(ctx, item.issue, to) : setRoutineResult(ctx, date, item.routine.id, to)),
       children: /* @__PURE__ */ u3(StatusIcon, { status: to })
     }
@@ -4558,7 +4596,7 @@ function TaskCard(props) {
   const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian16.Menu();
     for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -4571,15 +4609,15 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian16.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
-        (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
+        (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 Unsorted" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
       );
     }
     m3.addSeparator();
-    m3.addItem((mi) => mi.setTitle("\u958B\u304F").setIcon("file-text").onClick(() => void ctx.openPath(path)));
-    if (issue) m3.addItem((mi) => mi.setTitle("\u30DC\u30FC\u30C9\u304B\u3089\u5916\u3059").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
+    m3.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
+    if (issue) m3.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
     m3.showAtMouseEvent(e3);
   };
   return /* @__PURE__ */ u3(
@@ -4590,13 +4628,13 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
               class: `vt-play${running.length > 0 ? " is-running" : ""}`,
-              "aria-label": running.length > 0 ? "\u8A18\u9332\u3092\u6B62\u3081\u308B" : "\u8A18\u9332\u3092\u59CB\u3081\u308B",
-              title: running.length > 0 ? "\u8A18\u9332\u3092\u6B62\u3081\u308B" : "\u8A18\u9332\u3092\u59CB\u3081\u308B",
+              "aria-label": running.length > 0 ? "Stop timer" : "Start timer",
+              title: running.length > 0 ? "Stop timer" : "Start timer",
               onClick: () => void (running.length > 0 ? stopTimer(ctx, [id]) : startTimer(ctx, [id])),
               children: [
                 /* @__PURE__ */ u3(Icon, { name: running.length > 0 ? "square" : "play" }),
@@ -4611,7 +4649,7 @@ function TaskCard(props) {
           issue && issue.status === "delegated" && /* @__PURE__ */ u3(DelegateChip, { ctx, issue }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
           /* @__PURE__ */ u3(NextButtons, { ctx, date, item, status }),
-          /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "\u30E1\u30CB\u30E5\u30FC", title: "\u30B0\u30EB\u30FC\u30D7\u306E\u79FB\u52D5\u306A\u3069", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+          /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Menu", title: "Move to group and more", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
         ] })
       ]
     }
@@ -4646,11 +4684,11 @@ function GroupBox(props) {
           /* @__PURE__ */ u3("span", { class: "vt-group-name", children: props.name }),
           /* @__PURE__ */ u3("span", { class: "vt-count", children: all.length }),
           /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-          runningIds.length > 0 ? /* @__PURE__ */ u3("button", { class: "vt-play is-running", title: "\u3053\u306E\u30B0\u30EB\u30FC\u30D7\u306E\u8A18\u9332\u3092\u3059\u3079\u3066\u6B62\u3081\u308B", onClick: () => void stopTimer(ctx, runningIds), children: /* @__PURE__ */ u3(Icon, { name: "square" }) }) : /* @__PURE__ */ u3("button", { class: "vt-play", title: "\u3053\u306E\u30B0\u30EB\u30FC\u30D7\u3092\u307E\u3068\u3081\u3066\u8A18\u9332\u3059\u308B", disabled: ids.length === 0, onClick: () => void startTimer(ctx, ids), children: /* @__PURE__ */ u3(Icon, { name: "play" }) })
+          runningIds.length > 0 ? /* @__PURE__ */ u3("button", { class: "vt-play is-running", title: "Stop all timers in this group", onClick: () => void stopTimer(ctx, runningIds), children: /* @__PURE__ */ u3(Icon, { name: "square" }) }) : /* @__PURE__ */ u3("button", { class: "vt-play", title: "Start timers for this group", disabled: ids.length === 0, onClick: () => void startTimer(ctx, ids), children: /* @__PURE__ */ u3(Icon, { name: "play" }) })
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-group-cards", children: [
           own.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board: props.board, item: it, keys: props.keys, placed: props.placement(it), now: props.now }, itemId(it))),
-          own.length === 0 && !props.children && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: "\u3053\u3053\u306B\u30AB\u30FC\u30C9\u3092\u79FB\u305B\u307E\u3059" })
+          own.length === 0 && !props.children && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: "Drop cards here" })
         ] }),
         props.children && /* @__PURE__ */ u3("div", { class: "vt-subgroups", children: props.children })
       ]
@@ -4685,15 +4723,15 @@ function Board(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button", onClick: addIssue, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " issue \u3092\u8F09\u305B\u308B"
+        " Add issue"
       ] }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openView("pkm-task-groups"), children: [
         /* @__PURE__ */ u3(Icon, { name: "layout-grid" }),
-        " \u30B0\u30EB\u30FC\u30D7\u3092\u7DE8\u96C6"
+        " Edit groups"
       ] })
     ] }),
-    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u30DC\u30FC\u30C9\u306F\u7A7A\u3067\u3059\u3002\u4ECA\u65E5\u304C\u5B9F\u884C\u65E5\u306E issue \u306F\u81EA\u52D5\u3067\u8F09\u308A\u307E\u3059\u3002\u4E0A\u306E\u30DC\u30BF\u30F3\u3067\u3082\u8FFD\u52A0\u3067\u304D\u307E\u3059" }),
-    ungrouped.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "\u672A\u5206\u985E", groupKey: UNGROUPED, items, placement, keys, now, ungrouped: true }),
+    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "The board is empty. Issues with today's Do Date are added automatically. You can also add them with the button above." }),
+    ungrouped.length > 0 && /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: "Unsorted", groupKey: UNGROUPED, items, placement, keys, now, ungrouped: true }),
     /* @__PURE__ */ u3("div", { class: "vt-board-columns", children: groups.map((g2) => /* @__PURE__ */ u3(GroupBox, { ctx, date, board, name: g2.name, groupKey: g2.name, items, placement, keys, now, children: g2.children.length > 0 && g2.children.map((c3) => /* @__PURE__ */ u3(
       GroupBox,
       {
@@ -4711,38 +4749,38 @@ function Board(props) {
     )) })) }),
     doneItems.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card vt-done", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u5B8C\u4E86" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Done" }),
         /* @__PURE__ */ u3("span", { class: "vt-count", children: doneItems.length })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-done-cards", children: doneItems.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, item: it, keys, placed: placement(it), now }, itemId(it))) })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-unfinished", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u672A\u5B8C\u4E86" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Not done" }),
         /* @__PURE__ */ u3("span", { class: "vt-count", children: leftIssues.length + left.routines.length }),
         /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
         board.closed ? /* @__PURE__ */ u3(S, { children: [
           /* @__PURE__ */ u3("span", { class: "vt-done-label", children: [
             /* @__PURE__ */ u3(Icon, { name: "check-circle-2" }),
-            " \u7DE0\u3081\u307E\u3057\u305F"
+            " Closed"
           ] }),
-          /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void reopenBoard(ctx, date), children: "\u958B\u304D\u76F4\u3059" })
+          /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void reopenBoard(ctx, date), children: "Reopen" })
         ] }) : /* @__PURE__ */ u3(
           "button",
           {
             class: "vt-button is-primary",
             disabled: leftIssues.length + left.routines.length > 0 || all.length === 0,
-            title: "\u672A\u5B8C\u4E86\u304C 0 \u306B\u306A\u308B\u3068\u7DE0\u3081\u3089\u308C\u307E\u3059",
+            title: "You can close the board when nothing is left",
             onClick: () => void closeBoard(ctx, date),
             children: [
               /* @__PURE__ */ u3(Icon, { name: "check" }),
-              " \u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u308B"
+              " Close board"
             ]
           }
         )
       ] }),
-      leftIssues.length + left.routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: all.length === 0 ? "\u2014" : "\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }) : /* @__PURE__ */ u3(S, { children: [
-        /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"], empty: "issue \u306F\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F" }),
+      leftIssues.length + left.routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: all.length === 0 ? "\u2014" : "All done" }) : /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"], empty: "All issues are done" }),
         leftIssues.length > 0 && /* @__PURE__ */ u3(
           ActionBar,
           {
@@ -4775,10 +4813,10 @@ function RoutineRows(props) {
 
 // src/views/DailyView.tsx
 var STEPS = [
-  { key: "dead", label: "\u671F\u9650\u5207\u308C", icon: "alarm-clock-off" },
-  { key: "previous", label: "\u524D\u56DE\u306E\u30DC\u30FC\u30C9", icon: "history" },
-  { key: "caution", label: "\u671F\u9650\u304C\u8FD1\u3044", icon: "alert-triangle" },
-  { key: "board", label: "\u30DC\u30FC\u30C9", icon: "layout-dashboard" }
+  { key: "dead", label: "Overdue", icon: "alarm-clock-off" },
+  { key: "previous", label: "Previous boards", icon: "history" },
+  { key: "caution", label: "Due soon", icon: "alert-triangle" },
+  { key: "board", label: "Board", icon: "layout-dashboard" }
 ];
 function DueStep(props) {
   const sections = [
@@ -4830,8 +4868,8 @@ function PreviousBoard(props) {
   return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-        formatShortDate(board.date),
-        " \u306E\u30DC\u30FC\u30C9"
+        "Board of ",
+        formatShortDate(board.date)
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
@@ -4905,10 +4943,10 @@ function DailyView(props) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: [
-      "Daily \xB7 ",
+      "Today \xB7 ",
       formatShortDate(today)
     ] }) }),
-    /* @__PURE__ */ u3("nav", { class: "vt-stepper", "aria-label": "\u6BB5\u968E", children: stepperItems(STEPS, step, counts, passed).map((s3, i3) => /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("nav", { class: "vt-stepper", "aria-label": "Steps", children: stepperItems(STEPS, step, counts, passed).map((s3, i3) => /* @__PURE__ */ u3(S, { children: [
       i3 > 0 && /* @__PURE__ */ u3("span", { class: "vt-step-line", "aria-hidden": "true" }),
       /* @__PURE__ */ u3(
         "button",
@@ -4926,14 +4964,14 @@ function DailyView(props) {
         }
       )
     ] }, s3.key)) }),
-    step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "\u671F\u9650\u5207\u308C\u306F\u3042\u308A\u307E\u305B\u3093" }),
-    step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u7247\u4ED8\u3044\u3066\u3044\u306A\u3044\u30DC\u30FC\u30C9\u306F\u3042\u308A\u307E\u305B\u3093" })),
-    step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "3 \u65E5\u4EE5\u5185\u306E\u671F\u9650\u306F\u3042\u308A\u307E\u305B\u3093", canScheduleToday: true }),
+    step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "Nothing is overdue" }),
+    step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No boards left open" })),
+    step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "No deadlines in the next 3 days", canScheduleToday: true }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
-      step === "dead" || step === "previous" ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: next, children: "\u3042\u3068\u3067\uFF08\u30B9\u30AD\u30C3\u30D7\uFF09" }) : /* @__PURE__ */ u3("span", {}),
+      step === "dead" || step === "previous" ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: next, children: "Later (skip)" }) : /* @__PURE__ */ u3("span", {}),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: next, children: [
-        "\u6B21\u3078 ",
+        "Next ",
         /* @__PURE__ */ u3(Icon, { name: "arrow-right" })
       ] })
     ] })
@@ -4955,15 +4993,15 @@ function NameField(props) {
   }, []);
   return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
     /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
-    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "\u540D\u524D", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
+    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "Name", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
     props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
   ] });
 }
 function RowTools(props) {
-  const deleteTitle = props.deleteDisabled ?? `${props.what}\u3092\u524A\u9664`;
+  const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
   return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0A\u3078", "aria-label": "\u4E0A\u3078", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "\u4E0B\u3078", "aria-label": "\u4E0B\u3078", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move up", "aria-label": "Move up", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move down", "aria-label": "Move down", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
     /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
   ] });
 }
@@ -5014,22 +5052,22 @@ function GroupManagerView(props) {
       dirty ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => {
         setDrafts(ctx.store.index.data.groups.map(toDraft));
         setDirty(false);
-      }, children: "\u5143\u306B\u623B\u3059" }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u4FDD\u5B58\u6E08\u307F" }),
+      }, children: "Revert" }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Saved" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty || hasError, onClick: save, children: [
         /* @__PURE__ */ u3(Icon, { name: "save" }),
-        " \u4FDD\u5B58"
+        " Save"
       ] })
     ] }),
-    /* @__PURE__ */ u3("section", { class: "vt-card vt-layout-preview", "aria-label": "\u30DC\u30FC\u30C9\u3067\u306E\u4E26\u3073\u65B9", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u30DC\u30FC\u30C9\u3067\u306E\u4E26\u3073\u65B9" }),
+    /* @__PURE__ */ u3("section", { class: "vt-card vt-layout-preview", "aria-label": "Layout on the board", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Layout on the board" }),
       /* @__PURE__ */ u3("div", { class: "vt-preview-columns", children: [
-        /* @__PURE__ */ u3("div", { class: "vt-preview-col is-ungrouped", children: /* @__PURE__ */ u3("span", { children: "\u672A\u5206\u985E" }) }),
+        /* @__PURE__ */ u3("div", { class: "vt-preview-col is-ungrouped", children: /* @__PURE__ */ u3("span", { children: "Unsorted" }) }),
         drafts.map((g2) => /* @__PURE__ */ u3("div", { class: "vt-preview-col", children: [
-          /* @__PURE__ */ u3("span", { children: g2.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09" }),
-          g2.children.map((c3) => /* @__PURE__ */ u3("span", { class: "vt-preview-sub", children: c3.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09" }))
+          /* @__PURE__ */ u3("span", { children: g2.name || "(no name)" }),
+          g2.children.map((c3) => /* @__PURE__ */ u3("span", { class: "vt-preview-sub", children: c3.name || "(no name)" }))
         ] }))
       ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u30B0\u30EB\u30FC\u30D7\u306F\u30DC\u30FC\u30C9\u306B\u6A2A\u306B\u4E26\u3073\u307E\u3059\uFF08\u72ED\u3044\u753B\u9762\u3067\u306F\u7E26\uFF09\u3002\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u306F\u30B0\u30EB\u30FC\u30D7\u306E\u4E2D\u306B\u7E26\u306B\u4E26\u3073\u307E\u3059\u3002" })
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Groups are laid out side by side on the board (stacked on narrow screens). Subgroups stack inside their group." })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-group-editor", children: [
       drafts.map((g2, i3) => /* @__PURE__ */ u3("section", { class: "vt-card vt-group-edit", children: [
@@ -5037,14 +5075,14 @@ function GroupManagerView(props) {
           /* @__PURE__ */ u3(
             NameField,
             {
-              label: "\u30B0\u30EB\u30FC\u30D7\u540D",
+              label: "Group name",
               value: g2.name,
               error: errorOf(g2, drafts),
               autoFocus: focusKey === g2.key,
               onInput: (v3) => setGroup(g2.key, (x2) => ({ ...x2, name: v3 }))
             }
           ),
-          /* @__PURE__ */ u3(RowTools, { what: "\u30B0\u30EB\u30FC\u30D7", index: i3, count: drafts.length, onMove: (d3) => update(move(drafts, i3, d3)), onDelete: () => update(drafts.filter((x2) => x2.key !== g2.key)) })
+          /* @__PURE__ */ u3(RowTools, { what: "group", index: i3, count: drafts.length, onMove: (d3) => update(move(drafts, i3, d3)), onDelete: () => update(drafts.filter((x2) => x2.key !== g2.key)) })
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-sub-list", children: [
           g2.children.map((c3, j3) => /* @__PURE__ */ u3("div", { class: "vt-sub-edit", children: [
@@ -5052,7 +5090,7 @@ function GroupManagerView(props) {
             /* @__PURE__ */ u3(
               NameField,
               {
-                label: "\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u540D",
+                label: "Subgroup name",
                 value: c3.name,
                 error: errorOf(c3, g2.children),
                 autoFocus: focusKey === c3.key,
@@ -5062,7 +5100,7 @@ function GroupManagerView(props) {
             /* @__PURE__ */ u3(
               RowTools,
               {
-                what: "\u30B5\u30D6\u30B0\u30EB\u30FC\u30D7",
+                what: "subgroup",
                 index: j3,
                 count: g2.children.length,
                 onMove: (d3) => setGroup(g2.key, (x2) => ({ ...x2, children: move(x2.children, j3, d3) })),
@@ -5072,20 +5110,20 @@ function GroupManagerView(props) {
           ] }, c3.key)),
           /* @__PURE__ */ u3("button", { class: "vt-button is-text vt-add-sub", onClick: () => addSub(g2.key), children: [
             /* @__PURE__ */ u3(Icon, { name: "plus" }),
-            " \u30B5\u30D6\u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0"
+            " Add subgroup"
           ] })
         ] })
       ] }, g2.key)),
       /* @__PURE__ */ u3("button", { class: "vt-add-group", onClick: addGroup, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " \u30B0\u30EB\u30FC\u30D7\u3092\u8FFD\u52A0"
+        " Add group"
       ] })
     ] }),
     dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
-      "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
-      hasError ? "\uFF08\u540D\u524D\u306E\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : ""
+      "Unsaved changes",
+      hasError ? " (fix the name errors to save)" : ""
     ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u30B0\u30EB\u30FC\u30D7\u306E\u540D\u524D\u3092\u5909\u3048\u3066\u3082\u3001\u904E\u53BB\u306E\u30DC\u30FC\u30C9\u3067\u305D\u306E\u30B0\u30EB\u30FC\u30D7\u306B\u7F6E\u3044\u305F\u30AB\u30FC\u30C9\u306F\u79FB\u308A\u307E\u305B\u3093\uFF08\u672A\u5206\u985E\u306B\u51FA\u307E\u3059\uFF09\u3002" })
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "Renaming a group does not move cards placed in it on past boards (they show up in Unsorted)." })
   ] });
 }
 
@@ -5112,15 +5150,15 @@ function InboxView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: issues.length === 0, onClick: () => void ctx.openView("pkm-task-organize"), children: [
         /* @__PURE__ */ u3(Icon, { name: "layers" }),
-        " Organize \u3067\u6574\u7406"
+        " Organize"
       ] })
     ] }),
     /* @__PURE__ */ u3("form", { class: "vt-quick-add", onSubmit: create, children: [
       /* @__PURE__ */ u3(Icon, { name: "plus" }),
-      /* @__PURE__ */ u3("input", { type: "text", placeholder: "summary \u3092\u5165\u529B\u3057\u3066 Enter\uFF08Inbox \u306B\u5165\u308A\u307E\u3059\uFF09", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openCaptureModal(ctx), children: "\u307E\u3068\u3081\u3066\u4F5C\u6210" })
+      /* @__PURE__ */ u3("input", { type: "text", placeholder: "Type a summary and press Enter (goes to Inbox)", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openCaptureModal(ctx), children: "Capture" })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "estimated", "created"], empty: "Inbox \u306F\u7A7A\u3067\u3059" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "estimated", "created"], empty: "Inbox is empty" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
@@ -5191,19 +5229,19 @@ function LabelManagerView(props) {
             setDrafts(ctx.store.index.data.labels.map(toDraft2));
             setDirty(false);
           },
-          children: "\u5143\u306B\u623B\u3059"
+          children: "Revert"
         }
-      ) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u4FDD\u5B58\u6E08\u307F" }),
+      ) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Saved" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty || hasError || saving, onClick: save, children: [
         /* @__PURE__ */ u3(Icon, { name: "save" }),
-        " \u4FDD\u5B58"
+        " Save"
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-label-editor", children: [
       drafts.map((d3, i3) => {
         const used = d3.from === null ? 0 : usage.get(d3.from) ?? 0;
         const colorError = labelColorError(d3.color);
-        return /* @__PURE__ */ u3("section", { class: "vt-card vt-label-edit", "aria-label": `label ${d3.name || "\uFF08\u540D\u524D\u306A\u3057\uFF09"}`, children: [
+        return /* @__PURE__ */ u3("section", { class: "vt-card vt-label-edit", "aria-label": `label ${d3.name || "(no name)"}`, children: [
           /* @__PURE__ */ u3("div", { class: "vt-label-edit-fields", children: [
             /* @__PURE__ */ u3(
               "input",
@@ -5211,16 +5249,16 @@ function LabelManagerView(props) {
                 type: "color",
                 class: "vt-color-swatch",
                 value: pickerValue(d3.color),
-                title: "\u8272\u3092\u9078\u3076",
-                "aria-label": "\u8272\u3092\u9078\u3076",
+                title: "Choose color",
+                "aria-label": "Choose color",
                 onInput: (e3) => setLabel(d3.key, { color: e3.currentTarget.value })
               }
             ),
-            /* @__PURE__ */ u3(NameField, { label: "\u540D\u524D", value: d3.name, error: nameError(d3), autoFocus: focusKey === d3.key, onInput: (v3) => setLabel(d3.key, { name: v3 }) }),
+            /* @__PURE__ */ u3(NameField, { label: "Name", value: d3.name, error: nameError(d3), autoFocus: focusKey === d3.key, onInput: (v3) => setLabel(d3.key, { name: v3 }) }),
             /* @__PURE__ */ u3(
               NameField,
               {
-                label: "\u8272",
+                label: "Color",
                 class: "vt-color-field",
                 placeholder: "#rrggbb",
                 value: d3.color,
@@ -5237,36 +5275,36 @@ function LabelManagerView(props) {
                 count: drafts.length,
                 onMove: (n2) => update(move(drafts, i3, n2)),
                 onDelete: () => update(drafts.filter((x2) => x2.key !== d3.key)),
-                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine / member \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
+                deleteDisabled: used > 0 ? `Used by ${used} issues / routines / members, so it cannot be deleted` : void 0
               }
             )
           ] }),
           /* @__PURE__ */ u3("div", { class: "vt-label-edit-meta", children: [
-            /* @__PURE__ */ u3(LabelBadge, { name: d3.name.trim() || "\uFF08\u540D\u524D\u306A\u3057\uFF09", color: HEX2.test(d3.color) ? d3.color : DEFAULT_LABEL_COLOR }),
-            /* @__PURE__ */ u3("span", { class: "vt-muted", children: used > 0 ? `${used} \u4EF6\u3067\u4F7F\u7528\u4E2D` : "\u672A\u4F7F\u7528" }),
+            /* @__PURE__ */ u3(LabelBadge, { name: d3.name.trim() || "(no name)", color: HEX2.test(d3.color) ? d3.color : DEFAULT_LABEL_COLOR }),
+            /* @__PURE__ */ u3("span", { class: "vt-muted", children: used > 0 ? `Used by ${used}` : "Unused" }),
             d3.from !== null && d3.from !== d3.name.trim() && /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-              "\uFF08\u5143\u306E\u540D\u524D: ",
+              "(was: ",
               d3.from,
-              "\uFF09"
+              ")"
             ] })
           ] })
         ] }, d3.key);
       }),
       /* @__PURE__ */ u3("button", { class: "vt-add-group", onClick: add, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " label \u3092\u8FFD\u52A0"
+        " Add label"
       ] })
     ] }),
     dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
-      "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
-      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine / member \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
+      "Unsaved changes",
+      hasError ? " (fix the errors to save)" : renamed > 0 ? ` (saving rewrites the label on ${renamed} issues / routines / members)` : ""
     ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue\u30FBroutine\u30FBmember \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine / member \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "Renaming a label also rewrites it on the issues, routines and members that use it. To delete a label in use, remove it from those issues, routines and members first." })
   ] });
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -5293,10 +5331,10 @@ function MemberForm(props) {
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "name" }),
-          /* @__PURE__ */ u3("input", { type: "text", value: name, placeholder: "\u4F8B: \u7530\u4E2D \u592A\u90CE", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
+          /* @__PURE__ */ u3("input", { type: "text", value: name, placeholder: "e.g. Taro Tanaka", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-muted", children: "nickname \u306B\u3082\u540C\u3058\u540D\u524D\u304C\u3001alias \u306B\u306F ID \u304C\u5165\u308A\u307E\u3059\u3002\u4F5C\u3063\u305F\u5F8C\u306B member \u306E\u753B\u9762\u3067\u76F4\u305B\u307E\u3059" }),
-        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name.trim(), children: "\u4F5C\u6210" }) })
+        /* @__PURE__ */ u3("div", { class: "vt-muted", children: "The same name goes into nickname, and the ID into alias. You can change them on the member screen later." }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name.trim(), children: "Create" }) })
       ]
     }
   );
@@ -5315,7 +5353,7 @@ function MemberListView(props) {
   const members = queryMembers(index.members.values(), q2, delegated);
   const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
   const labels = index.data.labels.map((l3) => l3.name);
-  const create = () => new PreactModal(ctx.app, "member \u3092\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
+  const create = () => new PreactModal(ctx.app, "Create member", (close) => /* @__PURE__ */ u3(
     MemberForm,
     {
       onSubmit: (name) => {
@@ -5331,13 +5369,13 @@ function MemberListView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: create, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " member \u3092\u4F5C\u6210"
+        " Create member"
       ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-filters", children: [
       /* @__PURE__ */ u3("label", { class: "vt-search", children: [
         /* @__PURE__ */ u3(Icon, { name: "search" }),
-        /* @__PURE__ */ u3("input", { type: "search", placeholder: "@alias\u30FBnickname\u30FBname\u30FBID \u3067\u691C\u7D22", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
+        /* @__PURE__ */ u3("input", { type: "search", placeholder: "Search by @alias, nickname, name or ID", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
       ] }),
       labels.length > 0 && /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
@@ -5345,24 +5383,24 @@ function MemberListView(props) {
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
         /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u4E26\u3073\u66FF\u3048" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sort" }),
         /* @__PURE__ */ u3("select", { class: "dropdown", value: q2.sort, onChange: (e3) => set({ sort: e3.currentTarget.value }), children: MEMBER_SORTS.map((s3) => /* @__PURE__ */ u3("option", { value: s3.key, children: s3.label })) }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "\u964D\u9806" : "\u6607\u9806", "aria-label": q2.desc ? "\u964D\u9806" : "\u6607\u9806", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
-        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => setQ(defaultMemberQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "Descending" : "Ascending", "aria-label": q2.desc ? "Descending" : "Ascending", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
+        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => setQ(defaultMemberQuery()), children: "Reset" })
       ] })
     ] }),
-    total === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "member \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002issue \u3092\u59D4\u4EFB\u3059\u308B\u76F8\u624B\u3092\u767B\u9332\u3067\u304D\u307E\u3059" }),
-    total > 0 && members.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u6761\u4EF6\u306B\u5408\u3046 member \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    total === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No members yet. Add the people you delegate issues to." }),
+    total > 0 && members.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No members match" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: members.map((m3) => {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
-        /* @__PURE__ */ u3("span", { class: "vt-muted", title: "\u59D4\u4EFB\u4E2D\uFF08closed / canceled \u3067\u306A\u3044\uFF09\u306E issue \u306E\u6570", children: [
-          "\u59D4\u4EFB\u4E2D ",
+        /* @__PURE__ */ u3("span", { class: "vt-muted", title: "Number of delegated issues (not closed / canceled)", children: [
+          "Delegated ",
           count
         ] })
       ] }, m3.id);
@@ -5371,7 +5409,7 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -5430,10 +5468,10 @@ var SORTS = [
   { key: "summary", label: "summary" },
   { key: "status", label: "status" },
   { key: "priority", label: "priority" },
-  { key: "next_scheduled", label: "\u6B21\u306E\u5B9F\u884C\u65E5" },
+  { key: "next_scheduled", label: "Next Do Date" },
   { key: "soft_deadline", label: "soft_deadline" },
   { key: "deadline", label: "deadline" },
-  { key: "created", label: "\u4F5C\u6210\u65E5" }
+  { key: "created", label: "Created" }
 ];
 function IssueListView(props) {
   const { ctx } = props;
@@ -5454,14 +5492,14 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian17.Menu();
+    const m3 = new import_obsidian18.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
     if (ctx.settings.presets.length > 0) m3.addSeparator();
     m3.addItem(
-      (mi) => mi.setTitle("\u4ECA\u306E\u6761\u4EF6\u3092\u4FDD\u5B58\u2026").setIcon("save").onClick(
-        () => new PreactModal(ctx.app, "\u6761\u4EF6\u306E\u540D\u524D", (close) => /* @__PURE__ */ u3(
+      (mi) => mi.setTitle("Save current filter\u2026").setIcon("save").onClick(
+        () => new PreactModal(ctx.app, "Filter name", (close) => /* @__PURE__ */ u3(
           TextForm,
           {
             initial: "",
@@ -5477,7 +5515,7 @@ function IssueListView(props) {
     );
     for (const p3 of ctx.settings.presets) {
       m3.addItem(
-        (mi) => mi.setTitle(`\u300C${p3.name}\u300D\u3092\u524A\u9664`).setIcon("trash").onClick(() => {
+        (mi) => mi.setTitle(`Delete "${p3.name}"`).setIcon("trash").onClick(() => {
           ctx.settings.presets = ctx.settings.presets.filter((x2) => x2 !== p3);
           void ctx.saveSettings();
         })
@@ -5492,13 +5530,13 @@ function IssueListView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: presetMenu, children: [
         /* @__PURE__ */ u3(Icon, { name: "bookmark" }),
-        " \u4FDD\u5B58\u3057\u305F\u6761\u4EF6"
+        " Saved filters"
       ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-filters", children: [
       /* @__PURE__ */ u3("label", { class: "vt-search", children: [
         /* @__PURE__ */ u3(Icon, { name: "search" }),
-        /* @__PURE__ */ u3("input", { type: "search", placeholder: "ID\u30FBsummary \u3067\u691C\u7D22", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
+        /* @__PURE__ */ u3("input", { type: "search", placeholder: "Search by ID or summary", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "status" }),
@@ -5513,20 +5551,20 @@ function IssueListView(props) {
         labels.map((l3) => /* @__PURE__ */ u3(FilterChip, { label: l3, on: q2.labels.includes(l3), onClick: () => set({ labels: toggle(q2.labels, l3) }) }))
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u5B9F\u884C\u65E5" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Do Date" }),
         [
-          ["any", "\u3059\u3079\u3066"],
-          ["yes", "\u3042\u308A"],
-          ["no", "\u306A\u3057"]
+          ["any", "Any"],
+          ["yes", "Set"],
+          ["no", "Not set"]
         ].map(([v3, label]) => /* @__PURE__ */ u3(FilterChip, { label, on: q2.scheduled === v3, onClick: () => set({ scheduled: v3 }) })),
         /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u4E26\u3073\u66FF\u3048" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sort" }),
         /* @__PURE__ */ u3("select", { class: "dropdown", value: q2.sort, onChange: (e3) => set({ sort: e3.currentTarget.value }), children: SORTS.map((s3) => /* @__PURE__ */ u3("option", { value: s3.key, children: s3.label })) }),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "\u964D\u9806" : "\u6607\u9806", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
-        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => set(defaultQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "Descending" : "Ascending", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
+        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => set(defaultQuery()), children: "Reset" })
       ] })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"], empty: "\u6761\u4EF6\u306B\u5408\u3046 issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"], empty: "No issues match" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
@@ -5545,7 +5583,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -5575,11 +5613,11 @@ function ScheduleSheet(props) {
       initial: props.issue.scheduled,
       softDeadline: props.issue.softDeadline,
       deadline: props.issue.deadline,
-      submitLabel: "\u6C7A\u5B9A",
+      submitLabel: "Done",
       canSubmit: (count) => canConfirmSchedule(count, needEstimate, estimated),
       onSubmit: (dates) => props.onSubmit(dates, estimated),
       children: needEstimate && /* @__PURE__ */ u3("div", { class: "vt-sheet", children: [
-        /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "estimated\uFF08\u5FC5\u9808\uFF09" }),
+        /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "estimated (required)" }),
         /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: ESTIMATES.map((m3) => /* @__PURE__ */ u3("button", { class: `vt-filter-chip${estimated === m3 ? " is-on" : ""}`, "aria-pressed": estimated === m3, onClick: () => setEstimated(m3), children: formatMinutes(m3) })) })
       ] })
     }
@@ -5644,21 +5682,21 @@ function OrganizeView(props) {
   const schedule = () => {
     if (!issue) return;
     const target = issue;
-    new PreactModal(ctx.app, "Do Date \u3092\u9078\u3076", (close2) => /* @__PURE__ */ u3(
+    new PreactModal(ctx.app, "Choose Do Date", (close2) => /* @__PURE__ */ u3(
       ScheduleSheet,
       {
         issue: target,
         requireEstimate: isInbox(target),
         onSubmit: (dates, est) => {
           close2();
-          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u3092 Do Date \u306B` : `${dates.length} \u65E5\u3092 Do Date \u306B`;
+          const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0])}` : `Do Date: ${dates.length} days`;
           void apply2(organizeSchedulePatch(target, dates, est), label);
         }
       }
     )).open();
   };
-  const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "Someday \u3078");
-  const later = () => void apply2({}, "\u3042\u3068\u3067");
+  const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
+  const later = () => void apply2({}, "Later");
   const cancel = () => void apply2(cancelPatch(), "Cancel");
   const close = () => void apply2(closePatch(), "Closed");
   h2(() => {
@@ -5691,9 +5729,9 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian19.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
-    m3.addItem((mi) => mi.setTitle("\u306A\u3057").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
+    m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
   };
   const editLabels2 = () => {
@@ -5718,15 +5756,16 @@ function OrganizeView(props) {
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Organize" }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: [
-        "\u6B8B\u308A ",
-        queue.length
+        queue.length,
+        " left"
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      /* @__PURE__ */ u3("div", { class: "vt-chunk", title: `${CHUNK} \u4EF6\u3067\u4E00\u533A\u5207\u308A`, children: Array.from({ length: CHUNK }, (_2, i3) => /* @__PURE__ */ u3("span", { class: `vt-chunk-dot${i3 < inChunk || count > 0 && inChunk === 0 ? " is-on" : ""}` })) })
+      /* @__PURE__ */ u3("div", { class: "vt-chunk", title: `A break every ${CHUNK}`, children: Array.from({ length: CHUNK }, (_2, i3) => /* @__PURE__ */ u3("span", { class: `vt-chunk-dot${i3 < inChunk || count > 0 && inChunk === 0 ? " is-on" : ""}` })) })
     ] }),
     count > 0 && inChunk === 0 && issue && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
+      "Organized ",
       count,
-      " \u4EF6\u6574\u7406\u3057\u307E\u3057\u305F\u3002\u3053\u3053\u3067\u4E00\u533A\u5207\u308A\u3002\u7D9A\u3051\u308B\u306A\u3089\u305D\u306E\u307E\u307E\u6B21\u306E\u30AB\u30FC\u30C9\u3078"
+      ". Good place for a break. To keep going, move on to the next card."
     ] }),
     issue ? /* @__PURE__ */ u3("div", { class: "vt-swipe-area", children: [
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-left${hint === "left" ? " is-active" : ""}`, children: [
@@ -5739,7 +5778,7 @@ function OrganizeView(props) {
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        " \u3042\u3068\u3067"
+        " Later"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
@@ -5790,28 +5829,28 @@ function OrganizeView(props) {
     ] }) : /* @__PURE__ */ u3("div", { class: "vt-empty vt-organize-done", children: [
       /* @__PURE__ */ u3(Icon, { name: "party-popper" }),
       /* @__PURE__ */ u3("div", { children: [
-        "\u6574\u7406\u3059\u308B\u3082\u306E\u306F\u3042\u308A\u307E\u305B\u3093",
-        count > 0 ? `\uFF08${count} \u4EF6\u6574\u7406\u3057\u307E\u3057\u305F\uFF09` : ""
+        "Nothing to organize",
+        count > 0 ? ` (organized ${count})` : ""
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-actions", children: [
-      /* @__PURE__ */ u3("button", { class: "vt-round is-someday", disabled: !issue, onClick: someday, title: "Someday \u3078\uFF08\u2190\uFF09", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round is-someday", disabled: !issue, onClick: someday, title: "To Someday (\u2190)", children: [
         /* @__PURE__ */ u3(Icon, { name: "cloud" }),
         /* @__PURE__ */ u3("span", { children: "Someday" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: later, title: "\u3042\u3068\u3067\uFF08\u2191\uFF09", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: later, title: "Later (\u2191)", children: [
         /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        /* @__PURE__ */ u3("span", { children: "\u3042\u3068\u3067" })
+        /* @__PURE__ */ u3("span", { children: "Later" })
       ] }),
       /* @__PURE__ */ u3("button", { class: "vt-round is-cancel", disabled: !issue, onClick: cancel, title: "Cancel\uFF08\u2193\uFF09", children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
         /* @__PURE__ */ u3("span", { children: "Cancel" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: close, title: "\u3082\u3046\u7D42\u308F\u3063\u3066\u3044\u305F", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: close, title: "Already done", children: [
         /* @__PURE__ */ u3(Icon, { name: "check" }),
         /* @__PURE__ */ u3("span", { children: "Closed" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Do Date \u3092\u9078\u3076\uFF08\u2192\uFF09", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Choose Do Date (\u2192)", children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
         /* @__PURE__ */ u3("span", { children: "Do Date" })
       ] })
@@ -5819,22 +5858,22 @@ function OrganizeView(props) {
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
       undo ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void undoLast(), children: [
         /* @__PURE__ */ u3(Icon, { name: "undo-2" }),
-        " \u53D6\u308A\u6D88\u3059\uFF08",
+        " Undo (",
         undo.id,
         ": ",
         undo.label,
-        "\uFF09"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday \uFF0F \u2192 Do Date \uFF0F \u2191 \u3042\u3068\u3067 \uFF0F \u2193 Cancel\uFF08\u30B9\u30EF\u30A4\u30D7\u304B\u77E2\u5370\u30AD\u30FC\uFF09" }),
+        ")"
+      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Do Date / \u2191 Later / \u2193 Cancel (swipe or arrow keys)" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
         /* @__PURE__ */ u3(Icon, { name: "external-link" }),
-        " \u958B\u304F"
+        " Open"
       ] })
     ] })
   ] });
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -5854,24 +5893,24 @@ function RoutineForm(props) {
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "summary" }),
-          /* @__PURE__ */ u3("input", { type: "text", value: summary, placeholder: "\u4F8B: \u9031\u6B21\u30EC\u30D3\u30E5\u30FC", onInput: (e3) => setSummary(e3.currentTarget.value) })
+          /* @__PURE__ */ u3("input", { type: "text", value: summary, placeholder: "e.g. Weekly review", onInput: (e3) => setSummary(e3.currentTarget.value) })
         ] }),
         /* @__PURE__ */ u3(RepeatFields, { draft, onChange: setDraft }),
         /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "\u30B0\u30EB\u30FC\u30D7\uFF08\u4EFB\u610F\uFF09" }),
+            /* @__PURE__ */ u3("span", { children: "Group (optional)" }),
             /* @__PURE__ */ u3("select", { class: "dropdown", value: group, onChange: (e3) => setGroup(e3.currentTarget.value), children: [
-              /* @__PURE__ */ u3("option", { value: "", children: "\u672A\u5206\u985E" }),
+              /* @__PURE__ */ u3("option", { value: "", children: "Unsorted" }),
               props.groups.map((g2) => /* @__PURE__ */ u3("option", { value: g2, children: g2 }))
             ] })
           ] }),
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "estimated\uFF08\u4EFB\u610F\uFF09" }),
+            /* @__PURE__ */ u3("span", { children: "estimated (optional)" }),
             /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "text", value: estimated, placeholder: "30m / 2h / 1d", onInput: (e3) => setEstimated(e3.currentTarget.value) })
           ] })
         ] }),
         error !== null && summary && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
-        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "\u4F5C\u6210" }) })
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "Create" }) })
       ]
     }
   );
@@ -5882,7 +5921,7 @@ function RoutineListView(props) {
   const index = ctx.store.index;
   const today = localToday();
   const routines = [...index.routines.values()].sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
-  const create = () => new PreactModal(ctx.app, "routine \u3092\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
+  const create = () => new PreactModal(ctx.app, "Create routine", (close) => /* @__PURE__ */ u3(
     RoutineForm,
     {
       groups: groupKeys(index.data.groups),
@@ -5900,28 +5939,28 @@ function RoutineListView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: create, children: [
         /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " routine \u3092\u4F5C\u6210"
+        " Create routine"
       ] })
     ] }),
-    routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
+    routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
-        /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-          r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
+          r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
           r3.group ? ` \xB7 ${r3.group}` : "",
           r3.estimated ? ` \xB7 ${formatMinutes(r3.estimated)}` : ""
         ] })
       ] }),
-      routineOccursOn(r3, today) && /* @__PURE__ */ u3("span", { class: "vt-chip-mini is-today", children: "\u4ECA\u65E5" }),
-      /* @__PURE__ */ u3("button", { class: `vt-switch${r3.active ? " is-on" : ""}`, role: "switch", "aria-checked": r3.active, title: r3.active ? "\u4E00\u6642\u505C\u6B62\u3059\u308B" : "\u518D\u958B\u3059\u308B", onClick: () => toggle2(r3), children: /* @__PURE__ */ u3("span", { class: "vt-switch-thumb" }) })
+      routineOccursOn(r3, today) && /* @__PURE__ */ u3("span", { class: "vt-chip-mini is-today", children: "Today" }),
+      /* @__PURE__ */ u3("button", { class: `vt-switch${r3.active ? " is-on" : ""}`, role: "switch", "aria-checked": r3.active, title: r3.active ? "Pause" : "Resume", onClick: () => toggle2(r3), children: /* @__PURE__ */ u3("span", { class: "vt-switch-thumb" }) })
     ] }, r3.id)) })
   ] });
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -5938,16 +5977,16 @@ function ScheduledView(props) {
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Scheduled" }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    issues.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u4ECA\u65E5\u4EE5\u964D\u306B\u5B9F\u884C\u65E5\u304C\u3042\u308B issue \u306F\u3042\u308A\u307E\u305B\u3093" }) : /* @__PURE__ */ u3("div", { class: "vt-sched-scroll", children: /* @__PURE__ */ u3("table", { class: "vt-sched", children: [
+    issues.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No issues with a Do Date from today on" }) : /* @__PURE__ */ u3("div", { class: "vt-sched-scroll", children: /* @__PURE__ */ u3("table", { class: "vt-sched", children: [
       /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: [
         /* @__PURE__ */ u3("th", { class: "vt-sched-sticky" }),
         days.map((d3) => /* @__PURE__ */ u3("th", { class: weekdayOf(d3) % 6 === 0 ? "is-weekend" : "", children: [
           /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
-          /* @__PURE__ */ u3("span", { class: "vt-sched-date", children: d3 === today ? "\u4ECA\u65E5" : `${Number(d3.slice(5, 7))}/${Number(d3.slice(8))}` })
+          /* @__PURE__ */ u3("span", { class: "vt-sched-date", children: d3 === today ? "Today" : `${Number(d3.slice(5, 7))}/${Number(d3.slice(8))}` })
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -5958,7 +5997,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -5972,7 +6011,7 @@ function SidebarView(props) {
     runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
   }
   const items = [
-    { type: "pkm-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+    { type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
     { type: "pkm-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
     { type: "pkm-task-organize", title: "Organize", icon: "layers", count: counts.organize },
     { type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
@@ -5986,23 +6025,23 @@ function SidebarView(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
     /* @__PURE__ */ u3("button", { class: "vt-button is-primary vt-sidebar-capture", onClick: () => openCaptureModal(ctx), children: [
       /* @__PURE__ */ u3(Icon, { name: "plus" }),
-      " issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210"
+      " Capture issues"
     ] }),
     runningByTask.size > 0 && /* @__PURE__ */ u3("section", { class: "vt-sidebar-section", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "\u8A18\u9332\u4E2D" }),
+      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "Running" }),
       /* @__PURE__ */ u3("div", { class: "vt-sidebar-running", children: [...runningByTask.entries()].map(([taskId, elapsed]) => {
         const issue = index.issues.get(taskId);
         const routine = index.routines.get(taskId);
         const summary = issue?.summary || routine?.summary || taskId;
         const path = issue?.path ?? routine?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
               class: "vt-play is-running",
-              "aria-label": "\u8A18\u9332\u3092\u6B62\u3081\u308B",
-              title: "\u8A18\u9332\u3092\u6B62\u3081\u308B",
+              "aria-label": "Stop timer",
+              title: "Stop timer",
               onClick: () => void stopTimer(ctx, [taskId]),
               children: [
                 /* @__PURE__ */ u3(Icon, { name: "square" }),
@@ -6024,9 +6063,9 @@ function SidebarView(props) {
 
 // src/views/SomedayView.tsx
 var ORDERS = [
-  { key: "reviewed", label: "\u898B\u76F4\u3057\u305F\u65E5\u304C\u53E4\u3044\u9806" },
-  { key: "revisit", label: "revisit \u304C\u8FD1\u3044\u9806" },
-  { key: "created", label: "\u4F5C\u6210\u65E5\u304C\u65B0\u3057\u3044\u9806" }
+  { key: "reviewed", label: "Oldest review first" },
+  { key: "revisit", label: "Nearest revisit first" },
+  { key: "created", label: "Newest first" }
 ];
 function sortSomeday(issues, order) {
   const nullsFirst = (a3, b2) => a3 === b2 ? 0 : a3 === null ? -1 : b2 === null ? 1 : a3.localeCompare(b2);
@@ -6051,7 +6090,7 @@ function SomedayView(props) {
     reopenPatch()
   ).then(done, (e3) => ctx.report("Inbox \u306B\u623B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   const setRevisit = async () => {
-    const date = await askDate(ctx, "revisit\uFF08\u3053\u306E\u65E5\u3092\u904E\u304E\u305F\u3089 Organize \u306B\u51FA\u3059\uFF09");
+    const date = await askDate(ctx, "revisit (shows up in Organize after this date)");
     if (date === null) return;
     await ctx.writer.updateMany(
       sel.map((i3) => i3.path),
@@ -6067,16 +6106,16 @@ function SomedayView(props) {
       /* @__PURE__ */ u3("select", { class: "dropdown", value: order, onChange: (e3) => setOrder(e3.currentTarget.value), children: ORDERS.map((o3) => /* @__PURE__ */ u3("option", { value: o3.key, children: o3.label })) }),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: issues.length === 0, onClick: () => void ctx.openView("pkm-task-organize"), children: [
         /* @__PURE__ */ u3(Icon, { name: "layers" }),
-        " Organize \u3067\u898B\u76F4\u3059"
+        " Review in Organize"
       ] })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "revisit", "reviewed"], empty: "Someday \u306F\u7A7A\u3067\u3059" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "revisit", "reviewed"], empty: "Someday is empty" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          { label: "Inbox \u306B\u623B\u3059", icon: "inbox", tone: "primary", run: reopen },
+          { label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
           { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
@@ -6088,7 +6127,7 @@ function SomedayView(props) {
 
 // src/main.ts
 var VIEWS = [
-  { type: "pkm-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
+  { type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
   { type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
   { type: "pkm-task-inbox", title: "Inbox", icon: "inbox", component: InboxView },
   { type: "pkm-task-organize", title: "Organize", icon: "layers", component: OrganizeView },
@@ -6100,7 +6139,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian22.Plugin {
+var PkmTaskPlugin = class extends import_obsidian23.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -6111,7 +6150,7 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian22.Notice(`${message}${detail}`);
+      new import_obsidian23.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -6129,9 +6168,9 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian22.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian23.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian22.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian23.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -6144,12 +6183,13 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     };
     for (const spec of VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, ctx));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
     }
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-    this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
+    this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     installTaskHeaders(ctx, this);
-    this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
+    this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
+    registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));

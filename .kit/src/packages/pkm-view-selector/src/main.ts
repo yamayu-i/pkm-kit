@@ -19,12 +19,12 @@ class ViewSelectorModal extends SuggestModal<ViewEntry> {
 		private readonly run: (entry: ViewEntry) => void,
 	) {
 		super(app);
-		this.setPlaceholder("View を探す（Issues, Inbox, Notes …）");
-		this.emptyStateText = entries.length ? "当てはまる View がありません" : "View がありません（pkm-task か pkm-template が有効になっていません）";
+		this.setPlaceholder("Find a View (Issues, Inbox, Notes …)");
+		this.emptyStateText = entries.length ? "No matching Views" : "View がありません（pkm-task か pkm-template が有効になっていません）";
 		this.setInstructions([
-			{ command: "↑↓", purpose: "選ぶ" },
-			{ command: "↵", purpose: "開く" },
-			{ command: "esc", purpose: "閉じる" },
+			{ command: "↑↓", purpose: "to navigate" },
+			{ command: "↵", purpose: "to open" },
+			{ command: "esc", purpose: "to dismiss" },
 		]);
 	}
 
@@ -39,7 +39,7 @@ class ViewSelectorModal extends SuggestModal<ViewEntry> {
 		const content = el.createDiv({ cls: "suggestion-content" });
 		content.createDiv({ cls: "suggestion-title", text: entry.name });
 		content.createDiv({ cls: "suggestion-note", text: entry.plugin });
-		if (entry.open) el.createDiv({ cls: "suggestion-aux" }).createSpan({ cls: "suggestion-hotkey", text: "開いている" });
+		if (entry.open) el.createDiv({ cls: "suggestion-aux" }).createSpan({ cls: "suggestion-hotkey", text: "open" });
 	}
 
 	override onChooseSuggestion(entry: ViewEntry): void {
@@ -51,7 +51,7 @@ export default class PkmViewSelectorPlugin extends Plugin {
 	override onload(): void {
 		this.addCommand({
 			id: "open",
-			name: "View を探して開く",
+			name: "Find and open a View",
 			icon: "layout-list",
 			hotkeys: [{ modifiers: ["Mod"], key: "k" }],
 			callback: () => this.openSelector(),

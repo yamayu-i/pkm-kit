@@ -29,7 +29,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{issues.length}</span>
 			</header>
 			{issues.length === 0 ? (
-				<div class="vt-empty">今日以降に実行日がある issue はありません</div>
+				<div class="vt-empty">No issues with a Do Date from today on</div>
 			) : (
 				<div class="vt-sched-scroll">
 					<table class="vt-sched">
@@ -39,7 +39,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 								{days.map((d) => (
 									<th class={weekdayOf(d) % 6 === 0 ? "is-weekend" : ""}>
 										<span class="vt-weekday">{WEEKDAY_NAMES[weekdayOf(d)]}</span>
-										<span class="vt-sched-date">{d === today ? "今日" : `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`}</span>
+										<span class="vt-sched-date">{d === today ? "Today" : `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`}</span>
 									</th>
 								))}
 							</tr>

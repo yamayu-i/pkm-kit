@@ -9,7 +9,7 @@
 
 ## 今の流れ
 
-1. リボンの「issue をまとめて作成」か、[Tasks サイドバー](../surfaces/task-sidebar.md) のボタン、またはコマンドで [まとめて作成](../surfaces/task-capture.md) を開く
+1. リボンの「Capture issues」か、[Tasks サイドバー](../surfaces/task-sidebar.md) のボタン、またはコマンドで [Capture issues](../surfaces/task-capture.md) を開く
 2. 1 行 1 件で書く。箇条書きを貼ってもよい。Mod+Enter（スマホはボタン）で作る
 3. 作った issue は Inbox に入る。priority や日付はここでは決めない
 4. 1 件だけなら [Inbox](../surfaces/task-inbox.md) の上の入力欄からも作れる

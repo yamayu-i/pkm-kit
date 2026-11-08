@@ -15,11 +15,11 @@ function MonthCalendar(props: { month: string; onMonth: (month: string) => void;
 	return (
 		<div class="vt-tpl-calendar">
 			<div class="vt-tpl-calendar-nav">
-				<button type="button" aria-label="前の月" onClick={() => shift(-1)}>
+				<button type="button" aria-label="Previous month" onClick={() => shift(-1)}>
 					‹
 				</button>
 				<span>{month.replace("-", " / ")}</span>
-				<button type="button" aria-label="次の月" onClick={() => shift(1)}>
+				<button type="button" aria-label="Next month" onClick={() => shift(1)}>
 					›
 				</button>
 			</div>
@@ -34,7 +34,7 @@ function MonthCalendar(props: { month: string; onMonth: (month: string) => void;
 					if (!d.startsWith(month)) cls.push("is-dimmed");
 					if (d === today) cls.push("is-today");
 					if (d === props.selected) cls.push("is-selected");
-					const label = d === today ? `${d}（今日）` : d;
+					const label = d === today ? `${d} (today)` : d;
 					return (
 						<button type="button" class={cls.join(" ")} aria-pressed={d === props.selected} aria-label={label} title={label} onClick={() => props.onPick(d)}>
 							{Number(d.slice(8, 10))}
@@ -72,8 +72,8 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 					ref={ref}
 					type="text"
 					class="vt-tpl-input"
-					aria-label="日付"
-					placeholder="例: 15 / 1224 / +3 / mon / +2w / +2 -d"
+					aria-label="Date"
+					placeholder="e.g. 15 / 1224 / +3 / mon / +2w / +2 -d"
 					value={text}
 					onInput={(e) => {
 						const value = e.currentTarget.value;
@@ -83,11 +83,11 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 					}}
 				/>
 				<div class={`vt-tpl-preview${output === null ? " is-error" : ""}`} aria-live="polite">
-					{output === null ? "日付として読めません" : `入る値: ${output}`}
+					{output === null ? "日付として読めません" : `Inserts: ${output}`}
 				</div>
 				<label class="vt-tpl-check">
 					<input type="checkbox" checked={weekday} disabled={parsed?.weekday === true} onChange={(e) => setWeekdayChecked(e.currentTarget.checked)} />
-					曜日を付ける（-d）
+					Add weekday (-d)
 				</label>
 			</div>
 			<MonthCalendar
@@ -97,9 +97,9 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 				onPick={(d) => props.onSubmit(formatPromptDate(d, weekday))}
 			/>
 			<div class="vt-tpl-actions">
-				{!Platform.isMobile && <span class="vt-tpl-hint">Enter で挿入</span>}
+				{!Platform.isMobile && <span class="vt-tpl-hint">Enter to insert</span>}
 				<button type="submit" class="vt-tpl-button is-primary" disabled={output === null}>
-					挿入
+					Insert
 				</button>
 			</div>
 		</form>

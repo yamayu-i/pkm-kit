@@ -1535,8 +1535,8 @@ function UpdatesView({ app, model, deviceName }) {
     }
   };
   return /* @__PURE__ */ u3("div", { class: "vt-upd-page", children: [
-    /* @__PURE__ */ u3("p", { class: "vt-upd-since", children: model.since === null ? "\u307E\u3060\u78BA\u8A8D\u3057\u3066\u3044\u307E\u305B\u3093\u3002\u3059\u3079\u3066\u306E\u30CE\u30FC\u30C8\u3092\u51FA\u3057\u3066\u3044\u307E\u3059" : `\u524D\u56DE\u306E\u78BA\u8A8D: ${formatDateTime(model.since)}` }),
-    shown.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-upd-empty", children: "\u524D\u56DE\u306E\u78BA\u8A8D\u304B\u3089\u5909\u308F\u3063\u305F\u30CE\u30FC\u30C8\u306F\u3042\u308A\u307E\u305B\u3093" }) : shown.map((s3) => /* @__PURE__ */ u3("section", { class: "vt-upd-section", "aria-labelledby": `vt-upd-${s3.id}`, children: [
+    /* @__PURE__ */ u3("p", { class: "vt-upd-since", children: model.since === null ? "Not viewed yet. Showing all notes" : `Last viewed: ${formatDateTime(model.since)}` }),
+    shown.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-upd-empty", children: "No notes changed since you last viewed" }) : shown.map((s3) => /* @__PURE__ */ u3("section", { class: "vt-upd-section", "aria-labelledby": `vt-upd-${s3.id}`, children: [
       /* @__PURE__ */ u3("h2", { class: "vt-upd-heading", id: `vt-upd-${s3.id}`, children: [
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-upd-heading-link", onClick: () => openList(s3.title, s3.command), children: s3.title }),
         /* @__PURE__ */ u3("span", { class: "vt-upd-count", children: model.sections.find((x2) => x2.id === s3.id)?.items.length ?? s3.items.length })
@@ -1548,7 +1548,7 @@ function UpdatesView({ app, model, deviceName }) {
     ] }, s3.id)),
     more && /* @__PURE__ */ u3("div", { ref: sentinel, class: "vt-upd-sentinel", "aria-hidden": "true" }),
     /* @__PURE__ */ u3("div", { class: "vt-upd-footer", children: [
-      !device && /* @__PURE__ */ u3("span", { class: "vt-upd-note", children: "pkm-task \u304B pkm-git \u306E\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u308B\u3068\u3001Viewed \u3092\u8A18\u9332\u3067\u304D\u307E\u3059" }),
+      !device && /* @__PURE__ */ u3("span", { class: "vt-upd-note", children: "Set a device name in pkm-task or pkm-git settings to record Viewed" }),
       /* @__PURE__ */ u3("button", { type: "button", class: "vt-upd-viewed", disabled: !device || saving, onClick: () => void viewed(), children: "Viewed" })
     ] })
   ] });
@@ -1565,7 +1565,7 @@ var PkmUpdatesPlugin = class extends import_obsidian4.Plugin {
     const model = new UpdatesModel(this.app);
     this.model = model;
     this.registerView(VIEW_TYPE, preactViewCreator({ type: VIEW_TYPE, title: "PKM Updates", icon: "bell" }, UpdatesView, { app: this.app, model, deviceName: () => this.deviceName() }));
-    this.addCommand({ id: "open-view", name: "PKM Updates \u3092\u958B\u304F", icon: "bell", callback: () => void openListView(this.app.workspace, VIEW_TYPE, { phone: import_obsidian4.Platform.isPhone }) });
+    this.addCommand({ id: "open-view", name: "Open PKM Updates", icon: "bell", callback: () => void openListView(this.app.workspace, VIEW_TYPE, { phone: import_obsidian4.Platform.isPhone }) });
     let lastCount = null;
     let lastSent = 0;
     let timer = null;

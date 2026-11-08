@@ -10,7 +10,7 @@
 
 ## 操作
 
-まとめて作成か Inbox の入力欄で入れる。Organize で 1 件ずつ決める。どの画面の「Inbox に戻す」でも、日付を消して戻せる。
+Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決める。どの画面の「Back to Inbox」でも、日付を消して戻せる。
 
 ## 使い方の筋道
 

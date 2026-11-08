@@ -56,20 +56,20 @@ export function RepeatFields(props: { draft: RepeatDraft; onChange: (draft: Repe
 	return (
 		<>
 			<div class="vt-text-field">
-				<span>くり返し</span>
+				<span>Repeat</span>
 				<div class="vt-chip-row">
 					{(
 						[
-							["day", "毎日"],
-							["week", "毎週"],
-							["month", "毎月"],
+							["day", "Daily"],
+							["week", "Weekly"],
+							["month", "Monthly"],
 						] as const
 					).map(([v, label]) => (
 						<button type="button" class={`vt-filter-chip${draft.every === v ? " is-on" : ""}`} onClick={() => set({ every: v })}>
 							{label}
 						</button>
 					))}
-					<span class="vt-muted">間隔</span>
+					<span class="vt-muted">Every</span>
 					<input class="vt-small-input" type="number" min={1} value={draft.interval} onInput={(e) => set({ interval: Math.max(1, Number(e.currentTarget.value) || 1) })} />
 				</div>
 			</div>
@@ -92,7 +92,7 @@ export function RepeatFields(props: { draft: RepeatDraft; onChange: (draft: Repe
 			)}
 			{draft.every === "month" && (
 				<label class="vt-text-field">
-					<span>日付（カンマ区切り。15 / last = 月末 / 2th-tue = 第 2 火曜 / last-fri = 最終金曜）</span>
+					<span>Days (comma-separated. 15 / last = last day / 2th-tue = 2nd Tuesday / last-fri = last Friday)</span>
 					<input type="text" value={draft.monthText} onInput={(e) => set({ monthText: e.currentTarget.value })} />
 				</label>
 			)}

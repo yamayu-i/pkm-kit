@@ -102,8 +102,8 @@ export function SummaryField(props: { badge: ComponentChild; summary: string; sa
 					}}
 				/>
 			) : (
-				<span class="vt-summary" onClick={() => setEditing(true)} title="クリックで編集">
-					{summary || "（summary なし）"}
+				<span class="vt-summary" onClick={() => setEditing(true)} title="Click to edit">
+					{summary || "(no summary)"}
 					<Icon name="pencil" class="vt-hover-icon" />
 				</span>
 			)}
@@ -132,7 +132,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 	};
 	const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
 	const editRevisit = () =>
-		new PreactModal(ctx.app, "revisit（この日を過ぎたら Organize に出す）", (close) => (
+		new PreactModal(ctx.app, "revisit (shows up in Organize after this date)", (close) => (
 			<DateForm
 				initial={issue.revisit}
 				onSubmit={(v) => {
@@ -149,7 +149,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 				{issue.status === "delegated" && (
 					<button class="vt-field-chip" onClick={() => pickMember(ctx, (id) => save({ delegated_to: id }))}>
 						<Icon name="user" />
-						{member ? member.nickname : issue.delegatedTo ?? "委任先を選ぶ"}
+						{member ? member.nickname : issue.delegatedTo ?? "Choose delegate"}
 					</button>
 				)}
 				{issue.status === "someday" && (
@@ -160,7 +160,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 				)}
 				<button class={`vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`} onClick={editDetail}>
 					<Icon name="pencil" />
-					{issue.statusDetail || "詳細を追加"}
+					{issue.statusDetail || "Add detail"}
 				</button>
 			</div>
 		</>
@@ -171,7 +171,7 @@ export function LabelsField(props: { ctx: TaskContext; labels: string[]; index: 
 	const { ctx, labels, index, save } = props;
 	const colors = new Map(index.data.labels.map((l) => [l.name, l.color]));
 	return (
-		<button class="vt-labels" onClick={() => editLabels(ctx, labels, save)} title="label を編集">
+		<button class="vt-labels" onClick={() => editLabels(ctx, labels, save)} title="Edit labels">
 			{labels.map((name) => (
 				<LabelBadge name={name} color={colors.get(name) ?? "var(--background-modifier-border)"} />
 			))}
@@ -195,7 +195,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 		save({ scheduled: [...next].sort() });
 	};
 	const openCalendar = () =>
-		new PreactModal(ctx.app, "実行日", (close) => (
+		new PreactModal(ctx.app, "Do Date", (close) => (
 			<CalendarForm
 				initial={issue.scheduled}
 				softDeadline={issue.softDeadline}
@@ -218,7 +218,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 				))}
 			</div>
 			<button class="vt-text-button" onClick={openCalendar}>
-				calendar &gt;{later > 0 ? `（ほか ${later} 日）` : ""}
+				calendar &gt;{later > 0 ? ` (+${later} days)` : ""}
 			</button>
 		</div>
 	);
@@ -240,7 +240,7 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	const row = (label: string, key: "soft_deadline" | "deadline", value: LocalDate | null) => (
 		<button class={`vt-due vt-due-${dueLevel(issue, value, today)}`} onClick={edit(key, value)}>
 			<span class="vt-due-label">{label}</span>
-			<span class="vt-due-value">{value ? formatShortDate(value) : "未設定"}</span>
+			<span class="vt-due-value">{value ? formatShortDate(value) : "Not set"}</span>
 			<Icon name="calendar" class="vt-trailing" />
 		</button>
 	);
@@ -260,7 +260,7 @@ function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => voi
 				{props.issue.summary}
 			</span>
 			{props.onRemove && (
-				<button class="vt-icon-button" aria-label="外す" title="外す" onClick={props.onRemove}>
+				<button class="vt-icon-button" aria-label="Remove" title="Remove" onClick={props.onRemove}>
 					<Icon name="x" />
 				</button>
 			)}
@@ -274,19 +274,19 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 	const children = index.children(issue.id);
 	const pickParent = () => {
 		const candidates = sortCandidates([...index.issues.values()].filter((c) => index.canSetParent(issue.id, c.id)));
-		new IssueSuggestModal(ctx.app, candidates, (p) => save({ parent: p.id }), "親にする issue を検索").open();
+		new IssueSuggestModal(ctx.app, candidates, (p) => save({ parent: p.id }), "Search for a parent issue").open();
 	};
 	const addChild = (e: MouseEvent) => {
 		const m = new Menu();
 		m.addItem((item) =>
-			item.setTitle("既存の issue を子にする").onClick(() => {
+			item.setTitle("Make an existing issue a child").onClick(() => {
 				const candidates = sortCandidates([...index.issues.values()].filter((c) => c.parent !== issue.id && index.canSetParent(c.id, issue.id)));
-				new IssueSuggestModal(ctx.app, candidates, (c) => save({ parent: issue.id }, c.path), "子にする issue を検索").open();
+				new IssueSuggestModal(ctx.app, candidates, (c) => save({ parent: issue.id }, c.path), "Search for a child issue").open();
 			}),
 		);
 		m.addItem((item) =>
-			item.setTitle("新しく作る").onClick(() =>
-				new PreactModal(ctx.app, "子 issue の summary", (close) => (
+			item.setTitle("Create new").onClick(() =>
+				new PreactModal(ctx.app, "Child issue summary", (close) => (
 					<TextForm
 						initial=""
 						onSubmit={(summary) => {
@@ -308,14 +308,14 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Parent
-					<button class="vt-icon-button" aria-label="親を選ぶ" title="親を選ぶ" onClick={pickParent}>
+					<button class="vt-icon-button" aria-label="Choose parent" title="Choose parent" onClick={pickParent}>
 						<Icon name="pencil" />
 					</button>
 				</div>
 				{parent ? (
 					<IssueLink ctx={ctx} issue={parent} onRemove={() => save({ parent: null })} />
 				) : issue.parent !== null ? (
-					<span class="vt-muted">{issue.parent}（見つかりません）</span>
+					<span class="vt-muted">{issue.parent} (not found)</span>
 				) : (
 					<span class="vt-muted">—</span>
 				)}
@@ -323,7 +323,7 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 			<div class="vt-relation-col">
 				<div class="vt-field-label">
 					Children
-					<button class="vt-icon-button" aria-label="子を追加" title="子を追加" onClick={addChild}>
+					<button class="vt-icon-button" aria-label="Add child" title="Add child" onClick={addChild}>
 						<Icon name="plus" />
 					</button>
 				</div>
@@ -351,7 +351,7 @@ function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save:
 				</span>
 				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated)}</span>
 			</button>
-			<div class="vt-effort-cell is-readonly" title="worklog から自動で計算">
+			<div class="vt-effort-cell is-readonly" title="Calculated from the worklog">
 				<span class="vt-field-label">actual</span>
 				<span class="vt-effort-value">{formatMinutes(actual)}</span>
 			</div>
@@ -372,7 +372,7 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 	const date = formatDateTime(log.fromMs).slice(0, 10);
 	const running = log.toMs === null;
 	const edit = () =>
-		new PreactModal(ctx.app, "worklog を編集", (close) => (
+		new PreactModal(ctx.app, "Edit worklog", (close) => (
 			<WorklogForm
 				initial={{ fromMs: log.fromMs, toMs: log.toMs, description: log.description }}
 				onSubmit={(d) => {
@@ -392,16 +392,16 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 			/>
 		)).open();
 	return (
-		<button class={`vt-log${running ? " is-running" : ""}`} onClick={edit} title="クリックで編集">
+		<button class={`vt-log${running ? " is-running" : ""}`} onClick={edit} title="Click to edit">
 			<span class="vt-log-date">
 				<span class="vt-log-day">{date.slice(5).replace("-", "/")}</span>
 				<span class="vt-log-weekday">{WEEKDAY_NAMES[weekdayOf(date)]}</span>
 			</span>
 			<span class="vt-log-main">
 				<span class="vt-log-time vt-num">
-					{formatTime(log.fromMs)} – {running ? "記録中" : formatTime(log.toMs!)}
+					{formatTime(log.fromMs)} – {running ? "running" : formatTime(log.toMs!)}
 				</span>
-				<span class={`vt-log-desc${log.description ? "" : " is-placeholder"}`}>{log.description || "内容なし"}</span>
+				<span class={`vt-log-desc${log.description ? "" : " is-placeholder"}`}>{log.description || "No description"}</span>
 			</span>
 			<span class="vt-log-duration vt-num">
 				{running && <span class="vt-live-dot" />}
@@ -418,7 +418,7 @@ export function Worklog(props: { ctx: TaskContext; taskId: string; index: TaskIn
 	const [page, setPage] = useState(0);
 	const add = () => {
 		const now = Date.now();
-		new PreactModal(ctx.app, "worklog を追加", (close) => (
+		new PreactModal(ctx.app, "Add worklog", (close) => (
 			<WorklogForm
 				initial={{ fromMs: now - 3_600_000, toMs: now, description: "" }}
 				onSubmit={(d) => {
@@ -439,13 +439,13 @@ export function Worklog(props: { ctx: TaskContext; taskId: string; index: TaskIn
 		<section class="vt-worklog">
 			<div class="vt-section-head">
 				<span class="vt-field-label">worklog</span>
-				{logs.length > 0 && <span class="vt-count">{logs.length} 件</span>}
+				{logs.length > 0 && <span class="vt-count">{logs.length}</span>}
 				<span class="vt-spacer" />
 				<button class="vt-text-button" onClick={add}>
-					<Icon name="plus" /> 追加
+					<Icon name="plus" /> Add
 				</button>
 			</div>
-			{logs.length === 0 && <div class="vt-empty">まだ記録がありません</div>}
+			{logs.length === 0 && <div class="vt-empty">No worklog yet</div>}
 			<div class="vt-log-list">
 				{shown.map((l) => (
 					<WorklogItem ctx={props.ctx} log={l} key={l.id} />

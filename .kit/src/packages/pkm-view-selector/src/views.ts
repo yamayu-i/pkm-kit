@@ -18,13 +18,15 @@ export interface ViewEntry {
 	commandId: string;
 	/** View の種類 */
 	viewType: string;
-	/** 表示名（コマンド名から「を開く」を除いたもの） */
+	/** 表示名（コマンド名から「Open 」を除いたもの。ADR-0076） */
 	name: string;
 	plugin: string;
 	icon: string | undefined;
 	open: boolean;
 }
 
+/** コマンド名は「Open <View>」（ADR-0076）。前の「<View> を開く」も読む */
+const OPEN_PREFIX = /^Open\s+/;
 const OPEN_SUFFIX = /\s*を開く$/;
 
 /**
@@ -41,7 +43,7 @@ export function collectViews(commands: readonly CommandLike[], isViewType: (type
 			if (!isViewType(viewType)) continue;
 			// Obsidian はコマンド名の前に「プラグイン名: 」を付けて登録する
 			const bare = c.name.replace(/^[^:]*:\s*/, "");
-			entries.push({ commandId: c.id, viewType, name: bare.replace(OPEN_SUFFIX, "") || bare, plugin, icon: c.icon, open: isOpen(viewType) });
+			entries.push({ commandId: c.id, viewType, name: bare.replace(OPEN_PREFIX, "").replace(OPEN_SUFFIX, "") || bare, plugin, icon: c.icon, open: isOpen(viewType) });
 		}
 	}
 	return entries;

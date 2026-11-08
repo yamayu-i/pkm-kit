@@ -49,13 +49,13 @@ export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; o
 			initial={props.issue.scheduled}
 			softDeadline={props.issue.softDeadline}
 			deadline={props.issue.deadline}
-			submitLabel="決定"
+			submitLabel="Done"
 			canSubmit={(count) => canConfirmSchedule(count, needEstimate, estimated)}
 			onSubmit={(dates) => props.onSubmit(dates, estimated)}
 		>
 			{needEstimate && (
 				<div class="vt-sheet">
-					<div class="vt-field-label">estimated（必須）</div>
+					<div class="vt-field-label">estimated (required)</div>
 					<div class="vt-chip-row">
 						{ESTIMATES.map((m) => (
 							<button class={`vt-filter-chip${estimated === m ? " is-on" : ""}`} aria-pressed={estimated === m} onClick={() => setEstimated(m)}>
@@ -138,20 +138,20 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	const schedule = () => {
 		if (!issue) return;
 		const target = issue;
-		new PreactModal(ctx.app, "Do Date を選ぶ", (close) => (
+		new PreactModal(ctx.app, "Choose Do Date", (close) => (
 			<ScheduleSheet
 				issue={target}
 				requireEstimate={isInbox(target)}
 				onSubmit={(dates, est) => {
 					close();
-					const label = dates.length === 1 ? `${formatShortDate(dates[0]!)} を Do Date に` : `${dates.length} 日を Do Date に`;
+					const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0]!)}` : `Do Date: ${dates.length} days`;
 					void apply(organizeSchedulePatch(target, dates, est), label);
 				}}
 			/>
 		)).open();
 	};
-	const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "Someday へ");
-	const later = () => void apply({}, "あとで");
+	const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
+	const later = () => void apply({}, "Later");
 	const cancel = () => void apply(cancelPatch(), "Cancel");
 	const close = () => void apply(closePatch(), "Closed");
 
@@ -192,7 +192,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		if (!issue) return;
 		const m = new Menu();
 		for (const p of PRIORITIES) m.addItem((mi) => mi.setTitle(p).setChecked(issue.priority === p).onClick(() => void ctx.writer.update(issue.path, { priority: p })));
-		m.addItem((mi) => mi.setTitle("なし").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
+		m.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
 		m.showAtMouseEvent(e);
 	};
 	const editLabels = () => {
@@ -217,15 +217,15 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		<div class="vt-page vt-organize" ref={root}>
 			<header class="vt-page-head">
 				<h2 class="vt-page-title">Organize</h2>
-				<span class="vt-count">残り {queue.length}</span>
+				<span class="vt-count">{queue.length} left</span>
 				<span class="vt-spacer" />
-				<div class="vt-chunk" title={`${CHUNK} 件で一区切り`}>
+				<div class="vt-chunk" title={`A break every ${CHUNK}`}>
 					{Array.from({ length: CHUNK }, (_, i) => (
 						<span class={`vt-chunk-dot${i < inChunk || (count > 0 && inChunk === 0) ? " is-on" : ""}`} />
 					))}
 				</div>
 			</header>
-			{count > 0 && inChunk === 0 && issue && <div class="vt-banner">{count} 件整理しました。ここで一区切り。続けるならそのまま次のカードへ</div>}
+			{count > 0 && inChunk === 0 && issue && <div class="vt-banner">Organized {count}. Good place for a break. To keep going, move on to the next card.</div>}
 			{issue ? (
 				<div class="vt-swipe-area">
 					<div class={`vt-swipe-hint is-left${hint === "left" ? " is-active" : ""}`}>
@@ -235,7 +235,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="calendar-plus" /> Do Date
 					</div>
 					<div class={`vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`}>
-						<Icon name="clock" /> あとで
+						<Icon name="clock" /> Later
 					</div>
 					<div class={`vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`}>
 						<Icon name="x" /> Cancel
@@ -281,27 +281,27 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 			) : (
 				<div class="vt-empty vt-organize-done">
 					<Icon name="party-popper" />
-					<div>整理するものはありません{count > 0 ? `（${count} 件整理しました）` : ""}</div>
+					<div>Nothing to organize{count > 0 ? ` (organized ${count})` : ""}</div>
 				</div>
 			)}
 			<div class="vt-organize-actions">
-				<button class="vt-round is-someday" disabled={!issue} onClick={someday} title="Someday へ（←）">
+				<button class="vt-round is-someday" disabled={!issue} onClick={someday} title="To Someday (←)">
 					<Icon name="cloud" />
 					<span>Someday</span>
 				</button>
-				<button class="vt-round" disabled={!issue} onClick={later} title="あとで（↑）">
+				<button class="vt-round" disabled={!issue} onClick={later} title="Later (↑)">
 					<Icon name="clock" />
-					<span>あとで</span>
+					<span>Later</span>
 				</button>
 				<button class="vt-round is-cancel" disabled={!issue} onClick={cancel} title="Cancel（↓）">
 					<Icon name="x" />
 					<span>Cancel</span>
 				</button>
-				<button class="vt-round" disabled={!issue} onClick={close} title="もう終わっていた">
+				<button class="vt-round" disabled={!issue} onClick={close} title="Already done">
 					<Icon name="check" />
 					<span>Closed</span>
 				</button>
-				<button class="vt-round is-schedule" disabled={!issue} onClick={schedule} title="Do Date を選ぶ（→）">
+				<button class="vt-round is-schedule" disabled={!issue} onClick={schedule} title="Choose Do Date (→)">
 					<Icon name="calendar-plus" />
 					<span>Do Date</span>
 				</button>
@@ -309,14 +309,14 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 			<div class="vt-organize-foot">
 				{undo ? (
 					<button class="vt-button is-text" onClick={() => void undoLast()}>
-						<Icon name="undo-2" /> 取り消す（{undo.id}: {undo.label}）
+						<Icon name="undo-2" /> Undo ({undo.id}: {undo.label})
 					</button>
 				) : (
-					<span class="vt-muted">← Someday ／ → Do Date ／ ↑ あとで ／ ↓ Cancel（スワイプか矢印キー）</span>
+					<span class="vt-muted">← Someday / → Do Date / ↑ Later / ↓ Cancel (swipe or arrow keys)</span>
 				)}
 				{issue && (
 					<button class="vt-button is-text" onClick={() => void ctx.openPath(issue.path, true)}>
-						<Icon name="external-link" /> 開く
+						<Icon name="external-link" /> Open
 					</button>
 				)}
 			</div>

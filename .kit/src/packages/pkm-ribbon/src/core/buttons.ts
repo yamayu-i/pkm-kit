@@ -10,10 +10,10 @@ export interface RibbonButton {
 }
 
 export const BUTTONS: readonly RibbonButton[] = [
-	{ icon: "calendar", title: "今日のデイリーノートを開く", command: "pkm-template:open-todays-daily" },
-	{ icon: "calendar-check", title: "Daily を開く", command: "pkm-task:open-daily" },
-	{ icon: "bell", title: "PKM Updates を開く", command: "pkm-updates:open-view" },
-	{ icon: "list-plus", title: "issue をまとめて作成", command: "pkm-task:capture-issues" },
+	{ icon: "calendar", title: "Open today's daily note", command: "pkm-template:open-todays-daily" },
+	{ icon: "sun", title: "Open Today", command: "pkm-task:open-daily" },
+	{ icon: "bell", title: "Open PKM Updates", command: "pkm-updates:open-view" },
+	{ icon: "list-plus", title: "Capture issues", command: "pkm-task:capture-issues" },
 	{ icon: "arrow-down-to-line", title: "Git: pull", command: "pkm-git:pull" },
 	{ icon: "arrow-up-from-line", title: "Git: push", command: "pkm-git:push" },
 ];

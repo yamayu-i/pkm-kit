@@ -61,7 +61,7 @@ export async function setRoutineResult(ctx: TaskContext, date: LocalDate, id: st
 export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Issue[], kind: "reschedule" | "inbox", fixedTo: LocalDate | null = null): Promise<void> {
 	let to = fixedTo;
 	if (kind === "reschedule" && to === null) {
-		to = await askDate(ctx, "実行日を移す");
+		to = await askDate(ctx, "Move Do Date");
 		if (to === null) return;
 	}
 	try {

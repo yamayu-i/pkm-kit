@@ -885,9 +885,9 @@ function MonthCalendar(props) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar", children: [
     /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-nav", children: [
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u524D\u306E\u6708", onClick: () => shift(-1), children: "\u2039" }),
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Previous month", onClick: () => shift(-1), children: "\u2039" }),
       /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u6B21\u306E\u6708", onClick: () => shift(1), children: "\u203A" })
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Next month", onClick: () => shift(1), children: "\u203A" })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-grid", children: [
       WEEKDAY_NAMES.map((w3) => /* @__PURE__ */ u3("span", { class: "vt-tpl-weekday", children: w3 })),
@@ -898,7 +898,7 @@ function MonthCalendar(props) {
         if (!d3.startsWith(month)) cls.push("is-dimmed");
         if (d3 === today) cls.push("is-today");
         if (d3 === props.selected) cls.push("is-selected");
-        const label = d3 === today ? `${d3}\uFF08\u4ECA\u65E5\uFF09` : d3;
+        const label = d3 === today ? `${d3} (today)` : d3;
         return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), "aria-pressed": d3 === props.selected, "aria-label": label, title: label, onClick: () => props.onPick(d3), children: Number(d3.slice(8, 10)) });
       })
     ] })
@@ -930,8 +930,8 @@ function DatePromptForm(props) {
               ref,
               type: "text",
               class: "vt-tpl-input",
-              "aria-label": "\u65E5\u4ED8",
-              placeholder: "\u4F8B: 15 / 1224 / +3 / mon / +2w / +2 -d",
+              "aria-label": "Date",
+              placeholder: "e.g. 15 / 1224 / +3 / mon / +2w / +2 -d",
               value: text2,
               onInput: (e3) => {
                 const value = e3.currentTarget.value;
@@ -941,10 +941,10 @@ function DatePromptForm(props) {
               }
             }
           ),
-          /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${output === null ? " is-error" : ""}`, "aria-live": "polite", children: output === null ? "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" : `\u5165\u308B\u5024: ${output}` }),
+          /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${output === null ? " is-error" : ""}`, "aria-live": "polite", children: output === null ? "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" : `Inserts: ${output}` }),
           /* @__PURE__ */ u3("label", { class: "vt-tpl-check", children: [
             /* @__PURE__ */ u3("input", { type: "checkbox", checked: weekday, disabled: parsed?.weekday === true, onChange: (e3) => setWeekdayChecked(e3.currentTarget.checked) }),
-            "\u66DC\u65E5\u3092\u4ED8\u3051\u308B\uFF08-d\uFF09"
+            "Add weekday (-d)"
           ] })
         ] }),
         /* @__PURE__ */ u3(
@@ -957,8 +957,8 @@ function DatePromptForm(props) {
           }
         ),
         /* @__PURE__ */ u3("div", { class: "vt-tpl-actions", children: [
-          !import_obsidian.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter \u3067\u633F\u5165" }),
-          /* @__PURE__ */ u3("button", { type: "submit", class: "vt-tpl-button is-primary", disabled: output === null, children: "\u633F\u5165" })
+          !import_obsidian.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter to insert" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "vt-tpl-button is-primary", disabled: output === null, children: "Insert" })
         ] })
       ]
     }
@@ -1075,7 +1075,7 @@ function CreateNoteForm(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-modal", onKeyDown: handleKeyDown, children: [
     /* @__PURE__ */ u3("div", { class: "vt-tpl-section", children: [
       /* @__PURE__ */ u3("div", { class: "vt-tpl-label", children: "TEMPLATE" }),
-      /* @__PURE__ */ u3("div", { class: "vt-tpl-chips", role: "listbox", "aria-label": "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u9078\u629E", children: templates.map((tpl, i3) => {
+      /* @__PURE__ */ u3("div", { class: "vt-tpl-chips", role: "listbox", "aria-label": "Templates", children: templates.map((tpl, i3) => {
         const active = i3 === selectedIdx;
         return /* @__PURE__ */ u3(
           "button",
@@ -1092,7 +1092,7 @@ function CreateNoteForm(props) {
       }) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-tpl-section", children: [
-      /* @__PURE__ */ u3("label", { class: "vt-tpl-label", for: "vt-tpl-title-input", children: idFileName ? "\u30BF\u30A4\u30C8\u30EB" : "\u30D5\u30A1\u30A4\u30EB\u540D / \u30BF\u30A4\u30C8\u30EB" }),
+      /* @__PURE__ */ u3("label", { class: "vt-tpl-label", for: "vt-tpl-title-input", children: idFileName ? "Title" : "File name / Title" }),
       /* @__PURE__ */ u3(
         "input",
         {
@@ -1100,7 +1100,7 @@ function CreateNoteForm(props) {
           ref: titleRef,
           type: "text",
           class: "vt-tpl-input",
-          placeholder: idFileName ? "\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\uFF08\u30D5\u30A1\u30A4\u30EB\u540D\u306F ID \u3067\u6C7A\u307E\u308A\u307E\u3059\uFF09" : defaultFileNameHint ? `\u7A7A\u6B04\u306A\u3089 ${defaultFileNameHint}` : "\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\uFF08\u4F8B: my-note\uFF09",
+          placeholder: idFileName ? "Title (the file name comes from the ID)" : defaultFileNameHint ? `Empty: ${defaultFileNameHint}` : "Title (e.g. my-note)",
           value: titleInput,
           onInput: (e3) => setTitleInput(e3.currentTarget.value),
           onKeyDown: (e3) => {
@@ -1123,7 +1123,7 @@ function CreateNoteForm(props) {
             id: inputId,
             type: "text",
             class: "vt-tpl-input",
-            placeholder: prompt.defaultValue ? `\u65E2\u5B9A\u5024: ${prompt.defaultValue}` : `${prompt.label}\u3092\u5165\u529B`,
+            placeholder: prompt.defaultValue ? `Default: ${prompt.defaultValue}` : prompt.label,
             value: promptValues[prompt.label] ?? "",
             onInput: (e3) => setPromptValues((prev) => ({
               ...prev,
@@ -1140,11 +1140,11 @@ function CreateNoteForm(props) {
       ] }, prompt.label);
     }),
     /* @__PURE__ */ u3("div", { class: "vt-tpl-footer", children: [
-      /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${errorMessage ? " is-error" : ""}`, children: errorMessage ? errorMessage : `\u4F5C\u6210\u5148: ${resolved.path}` }),
+      /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${errorMessage ? " is-error" : ""}`, children: errorMessage ? errorMessage : `Creates: ${resolved.path}` }),
       /* @__PURE__ */ u3("div", { class: "vt-tpl-actions", children: [
-        !import_obsidian2.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter / Mod+Enter \u3067\u4F5C\u6210" }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button", disabled: !canSubmit, onClick: () => submit(true), children: "\u65B0\u30BF\u30D6\u3067\u958B\u304F" }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button is-primary", disabled: !canSubmit, onClick: () => submit(false), children: "\u4F5C\u6210" })
+        !import_obsidian2.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter / Mod+Enter to create" }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button", disabled: !canSubmit, onClick: () => submit(true), children: "Open in new tab" }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button is-primary", disabled: !canSubmit, onClick: () => submit(false), children: "Create" })
       ] })
     ] })
   ] });
@@ -1160,7 +1160,7 @@ var CreateNoteModal = class extends import_obsidian2.Modal {
   templates;
   onReport;
   onOpen() {
-    this.setTitle("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210");
+    this.setTitle("Create new file from template");
     R(
       /* @__PURE__ */ u3(
         CreateNoteForm,
@@ -1748,7 +1748,7 @@ function NoteHeader({ app, model }) {
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-body", "data-hide-properties": model.hideProperties ? "true" : void 0, children: [
     /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-top", children: [
       /* @__PURE__ */ u3("div", { class: "vt-tpl-note-title", children: model.title }),
-      model.weekday !== null && /* @__PURE__ */ u3("ol", { class: "vt-tpl-week", "aria-label": "\u66DC\u65E5", children: WEEKDAYS2.map((w3, i3) => /* @__PURE__ */ u3("li", { class: i3 === model.weekday ? "vt-tpl-week-day is-current" : "vt-tpl-week-day", "aria-current": i3 === model.weekday ? "date" : void 0, children: w3 }, w3)) })
+      model.weekday !== null && /* @__PURE__ */ u3("ol", { class: "vt-tpl-week", "aria-label": "Weekdays", children: WEEKDAYS2.map((w3, i3) => /* @__PURE__ */ u3("li", { class: i3 === model.weekday ? "vt-tpl-week-day is-current" : "vt-tpl-week-day", "aria-current": i3 === model.weekday ? "date" : void 0, children: w3 }, w3)) })
     ] }),
     model.items.length > 0 && /* @__PURE__ */ u3("dl", { class: "vt-tpl-meta", children: model.items.map((it) => /* @__PURE__ */ u3("div", { class: "vt-tpl-meta-row", children: [
       /* @__PURE__ */ u3("dt", { children: it.label }),
@@ -1857,13 +1857,13 @@ var atSessionField = sessionField(AT_TRIGGER);
 // src/obsidian/SnippetSuggest.ts
 var import_obsidian6 = require("obsidian");
 var SNIPPET_KIND = {
-  label: "\u30B9\u30CB\u30DA\u30C3\u30C8",
+  label: "Snippet",
   field: slashSessionField,
   load: (m3) => m3.loadSnippets(),
   bodyOf: (s3) => s3.body
 };
 var INLINE_KIND = {
-  label: "\u30A4\u30F3\u30E9\u30A4\u30F3\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8",
+  label: "Inline template",
   field: atSessionField,
   load: (m3) => m3.loadInlineTemplates(),
   bodyOf: (s3) => inlineBody(s3.body)
@@ -1908,7 +1908,7 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
       this.cache = {
         sessionId: id,
         snippets: this.kind.load(this.manager).then(({ snippets, problems }) => {
-          for (const p3 of problems) console.warn(`pkm-template: ${this.kind.label}\u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F: ${p3}`);
+          for (const p3 of problems) console.warn(`pkm-template: ${this.kind.label} \u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F: ${p3}`);
           return snippets;
         })
       };
@@ -1979,19 +1979,19 @@ var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.fr
 var SPECS = {
   daily: {
     type: "daily",
-    empty: "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
+    empty: "No daily notes",
     sort: "name",
     columns: [{ label: "Date", sort: "name", cell: (n2) => dailyDate(n2.basename)?.label ?? n2.basename }, created]
   },
   note: {
     type: "note",
-    empty: "\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093",
+    empty: "No notes",
     sort: "created",
     columns: [titleColumn, { label: "Tags", cell: (n2) => tagList(n2.frontmatter.tags).join(" ") }, created]
   },
   source: {
     type: "source",
-    empty: "\u5143\u8CC7\u6599\u304C\u3042\u308A\u307E\u305B\u3093",
+    empty: "No sources",
     sort: "created",
     columns: [
       titleColumn,
@@ -2014,8 +2014,8 @@ function NoteList({ app, spec }) {
     if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian8.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
-    /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", "aria-label": "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
-    rows.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: query.trim() === "" ? spec.empty : "\u4E00\u81F4\u3059\u308B\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093" }) : /* @__PURE__ */ u3("table", { class: "vt-tpl-table", children: [
+    /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "Filter by title", "aria-label": "Filter by title", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
+    rows.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: query.trim() === "" ? spec.empty : "No matching notes" }) : /* @__PURE__ */ u3("table", { class: "vt-tpl-table", children: [
       /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: spec.columns.map((c3) => /* @__PURE__ */ u3("th", { "aria-sort": c3.sort && c3.sort === sort.key ? sort.order === "asc" ? "ascending" : "descending" : void 0, children: c3.sort ? /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-sort", onClick: () => toggle(c3.sort), children: [
         c3.label,
         c3.sort === sort.key ? sort.order === "asc" ? " \u2191" : " \u2193" : ""
@@ -2049,7 +2049,7 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
     };
     this.addCommand({
       id: "create-from-template",
-      name: "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210",
+      name: "Create new file from template",
       callback: () => void openCreateModal()
     });
     const openToday = async () => {
@@ -2061,12 +2061,12 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
     };
     this.addCommand({
       id: "open-todays-daily",
-      name: "\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u958B\u304F",
+      name: "Open today's daily note",
       callback: () => void openToday()
     });
     for (const spec of LIST_VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, icon: spec.icon, callback: () => void this.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void this.openView(spec.type) });
     }
     installNoteHeaders(this);
     this.registerEditorExtension(slashSessionField);

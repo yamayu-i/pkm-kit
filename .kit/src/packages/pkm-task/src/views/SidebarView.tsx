@@ -33,7 +33,7 @@ export function SidebarView(props: { ctx: TaskContext }) {
 	}
 
 	const items: NavItem[] = [
-		{ type: "pkm-task-daily", title: "Daily", icon: "calendar-check", count: counts.daily },
+		{ type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
 		{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
 		{ type: "pkm-task-organize", title: "Organize", icon: "layers", count: counts.organize },
 		{ type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
@@ -48,11 +48,11 @@ export function SidebarView(props: { ctx: TaskContext }) {
 	return (
 		<div class="vt-sidebar">
 			<button class="vt-button is-primary vt-sidebar-capture" onClick={() => openCaptureModal(ctx)}>
-				<Icon name="plus" /> issue をまとめて作成
+				<Icon name="plus" /> Capture issues
 			</button>
 			{runningByTask.size > 0 && (
 				<section class="vt-sidebar-section">
-					<div class="vt-field-label">記録中</div>
+					<div class="vt-field-label">Running</div>
 					<div class="vt-sidebar-running">
 						{[...runningByTask.entries()].map(([taskId, elapsed]) => {
 							const issue = index.issues.get(taskId);
@@ -71,8 +71,8 @@ export function SidebarView(props: { ctx: TaskContext }) {
 										)}
 										<button
 											class="vt-play is-running"
-											aria-label="記録を止める"
-											title="記録を止める"
+											aria-label="Stop timer"
+											title="Stop timer"
 											onClick={() => void stopTimer(ctx, [taskId])}
 										>
 											<Icon name="square" />

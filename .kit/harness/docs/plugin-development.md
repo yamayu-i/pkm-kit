@@ -67,7 +67,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/core/` | スキーマ、repeat、按分、索引、lint、ファイルの中身の生成 | なし |
 | `src/obsidian/` | 索引の保持（metadataCache から）、Vault への書き込み、モーダル、一括登録 | あり |
 | `src/header/` | issue・routine・member の画面のヘッダー（preact）。ページの一番上への差し込みは shared の `header-mount.ts`（ADR-0077） | あり |
-| `src/views/` | 各 View（Daily と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
+| `src/views/` | 各 View（Today（DailyView）と Board、Issues、Inbox、Organize、Scheduled、Someday、Routines、Board groups） | あり |
 | `src/ui/` | preact の部品（バッジ、一覧の行、操作バー、フォーム、カレンダー、ページング） | 一部 |
 | `preview/` | UI のプレビュー（`pnpm preview:ui`）。モックとデータ。プラグインには同梱しない | なし |
 | `cli/` | `pnpm task:lint`、`pnpm task:worklog-review`（worklog-review スキル用）、`pnpm task:mcp`（MCP サーバー。ADR-0025）の CLI。Node の API と `yaml` を使うので `src/` の外に置き、プラグインには同梱しない。ビルドして `.kit/bin/` に置き、Vault ではそれを直接使う | なし |

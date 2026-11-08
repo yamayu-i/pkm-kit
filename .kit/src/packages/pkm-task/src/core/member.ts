@@ -37,7 +37,7 @@ export const MEMBER_SORTS: { key: MemberSortKey; label: string }[] = [
 	{ key: "nickname", label: "nickname" },
 	{ key: "name", label: "name" },
 	{ key: "alias", label: "alias" },
-	{ key: "delegated", label: "委任中の数" },
+	{ key: "delegated", label: "Delegated" },
 	{ key: "created", label: "created" },
 ];
 

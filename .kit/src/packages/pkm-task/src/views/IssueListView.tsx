@@ -19,10 +19,10 @@ const SORTS: { key: SortKey; label: string }[] = [
 	{ key: "summary", label: "summary" },
 	{ key: "status", label: "status" },
 	{ key: "priority", label: "priority" },
-	{ key: "next_scheduled", label: "次の実行日" },
+	{ key: "next_scheduled", label: "Next Do Date" },
 	{ key: "soft_deadline", label: "soft_deadline" },
 	{ key: "deadline", label: "deadline" },
-	{ key: "created", label: "作成日" },
+	{ key: "created", label: "Created" },
 ];
 
 /** Issue List（ADR-0009）: 全 issue を検索・絞り込み・並び替え */
@@ -53,10 +53,10 @@ export function IssueListView(props: { ctx: TaskContext }) {
 		if (ctx.settings.presets.length > 0) m.addSeparator();
 		m.addItem((mi) =>
 			mi
-				.setTitle("今の条件を保存…")
+				.setTitle("Save current filter…")
 				.setIcon("save")
 				.onClick(() =>
-					new PreactModal(ctx.app, "条件の名前", (close) => (
+					new PreactModal(ctx.app, "Filter name", (close) => (
 						<TextForm
 							initial=""
 							onSubmit={(name) => {
@@ -72,7 +72,7 @@ export function IssueListView(props: { ctx: TaskContext }) {
 		for (const p of ctx.settings.presets) {
 			m.addItem((mi) =>
 				mi
-					.setTitle(`「${p.name}」を削除`)
+					.setTitle(`Delete "${p.name}"`)
 					.setIcon("trash")
 					.onClick(() => {
 						ctx.settings.presets = ctx.settings.presets.filter((x) => x !== p);
@@ -90,13 +90,13 @@ export function IssueListView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{results.length}</span>
 				<span class="vt-spacer" />
 				<button class="vt-button is-text" onClick={presetMenu}>
-					<Icon name="bookmark" /> 保存した条件
+					<Icon name="bookmark" /> Saved filters
 				</button>
 			</header>
 			<section class="vt-card vt-filters">
 				<label class="vt-search">
 					<Icon name="search" />
-					<input type="search" placeholder="ID・summary で検索" value={q.text} onInput={(e) => set({ text: e.currentTarget.value })} />
+					<input type="search" placeholder="Search by ID or summary" value={q.text} onInput={(e) => set({ text: e.currentTarget.value })} />
 				</label>
 				<div class="vt-filter-row">
 					<span class="vt-field-label">status</span>
@@ -119,32 +119,32 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					</div>
 				)}
 				<div class="vt-filter-row">
-					<span class="vt-field-label">実行日</span>
+					<span class="vt-field-label">Do Date</span>
 					{(
 						[
-							["any", "すべて"],
-							["yes", "あり"],
-							["no", "なし"],
+							["any", "Any"],
+							["yes", "Set"],
+							["no", "Not set"],
 						] as const
 					).map(([v, label]) => (
 						<FilterChip label={label} on={q.scheduled === v} onClick={() => set({ scheduled: v })} />
 					))}
 					<span class="vt-spacer" />
-					<span class="vt-field-label">並び替え</span>
+					<span class="vt-field-label">Sort</span>
 					<select class="dropdown" value={q.sort} onChange={(e) => set({ sort: e.currentTarget.value as SortKey })}>
 						{SORTS.map((s) => (
 							<option value={s.key}>{s.label}</option>
 						))}
 					</select>
-					<button class="vt-icon-button" title={q.desc ? "降順" : "昇順"} onClick={() => set({ desc: !q.desc })}>
+					<button class="vt-icon-button" title={q.desc ? "Descending" : "Ascending"} onClick={() => set({ desc: !q.desc })}>
 						<Icon name={q.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide"} />
 					</button>
 					<button class="vt-button is-text" onClick={() => set(defaultQuery())}>
-						リセット
+						Reset
 					</button>
 				</div>
 			</section>
-			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"]} empty="条件に合う issue はありません" />
+			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"]} empty="No issues match" />
 			<ActionBar
 				count={sel.length}
 				actions={[

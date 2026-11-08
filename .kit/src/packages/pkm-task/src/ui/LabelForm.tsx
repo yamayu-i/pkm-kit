@@ -45,12 +45,12 @@ export function LabelForm(props: {
 				))}
 			</div>
 			<form class="vt-form" onSubmit={create}>
-				<input type="text" placeholder="新しい label" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} />
-				<button type="submit">追加</button>
+				<input type="text" placeholder="New label" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} />
+				<button type="submit">Add</button>
 			</form>
 			<div class="vt-form">
 				<button class="mod-cta" onClick={() => props.onSubmit(names.filter((n) => selected.has(n)))}>
-					保存
+					Save
 				</button>
 			</div>
 		</div>

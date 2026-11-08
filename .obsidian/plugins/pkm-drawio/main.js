@@ -564,9 +564,9 @@ function editedCopyPath(path, now, taken) {
 // src/obsidian/copy.ts
 var import_obsidian = require("obsidian");
 var COPY_FORMATS = [
-  { format: "png", label: "PNG \u3068\u3057\u3066\u30B3\u30D4\u30FC", icon: "image" },
-  { format: "svg", label: "SVG \u3068\u3057\u3066\u30B3\u30D4\u30FC\uFF08\u7DE8\u96C6\u7528 XML \u306A\u3057\uFF09", icon: "file-image" },
-  { format: "xml", label: "XML \u3068\u3057\u3066\u30B3\u30D4\u30FC\uFF08Draw.io \u3067\u7DE8\u96C6\u3067\u304D\u308B\u5F62\uFF09", icon: "file-code" }
+  { format: "png", label: "Copy as PNG", icon: "image" },
+  { format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
+  { format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" }
 ];
 var PNG_SCALE = 2;
 var MAX_PNG_SIDE = 8192;
@@ -699,7 +699,7 @@ function askDiagramName(app, initial = "") {
     let done = false;
     const modal = new class extends import_obsidian2.Modal {
       onOpen() {
-        this.setTitle("\u56F3\u3092\u4F5C\u308B");
+        this.setTitle("New diagram");
         let value = initial;
         const error = this.contentEl.createEl("p", { cls: "vt-drawio-error" });
         const submit = () => {
@@ -710,7 +710,7 @@ function askDiagramName(app, initial = "") {
           resolve(value.trim());
           this.close();
         };
-        new import_obsidian2.Setting(this.contentEl).setName("\u540D\u524D").setDesc("asset/<\u540D\u524D>.drawio.svg \u306B\u4FDD\u5B58\u3057\u307E\u3059").addText((t) => {
+        new import_obsidian2.Setting(this.contentEl).setName("Name").setDesc("Saved as asset/<name>.drawio.svg").addText((t) => {
           t.setValue(initial).onChange((v) => {
             value = v;
           });
@@ -722,7 +722,7 @@ function askDiagramName(app, initial = "") {
           });
           window.setTimeout(() => t.inputEl.focus(), 0);
         });
-        new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Draw.io \u3067\u63CF\u304F").setCta().onClick(submit));
+        new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Draw in Draw.io").setCta().onClick(submit));
       }
       onClose() {
         this.contentEl.empty();
@@ -873,7 +873,7 @@ var EditSession = class {
     this.failed = false;
     const effects = [
       { type: "post", message: { action: "spinner", show: false } },
-      { type: "post", message: { action: "status", message: "\u4FDD\u5B58\u3057\u307E\u3057\u305F", modified: this.dirty } }
+      { type: "post", message: { action: "status", message: "Saved", modified: this.dirty } }
     ];
     if (this.queued) {
       const next = this.queued;
@@ -1009,9 +1009,9 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
     if (this.confirming) return;
     this.confirming = true;
     void choose(this.app, "\u4FDD\u5B58\u3057\u3066\u3044\u306A\u3044\u5909\u66F4\u304C\u3042\u308A\u307E\u3059", "Draw.io \u3067\u4FDD\u5B58\u3057\u3066\u304B\u3089\u9589\u3058\u308B\u304B\u3001\u5909\u66F4\u3092\u6368\u3066\u3066\u9589\u3058\u308B\u304B\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002", [
-      { label: "\u7DE8\u96C6\u306B\u623B\u308B", value: "back", style: "cta" },
-      { label: "XML \u3092\u30B3\u30D4\u30FC\u3057\u3066\u9589\u3058\u308B", value: "copy" },
-      { label: "\u5909\u66F4\u3092\u6368\u3066\u3066\u9589\u3058\u308B", value: "discard", style: "warning" }
+      { label: "Back to editing", value: "back", style: "cta" },
+      { label: "Copy XML and close", value: "copy" },
+      { label: "Discard and close", value: "discard", style: "warning" }
     ]).then(async (choice) => {
       this.confirming = false;
       if (choice === "copy") {
@@ -1083,9 +1083,9 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
   /** 編集中にファイルが変わっていた（同期・別の画面・外のエディタ） */
   async resolveConflict(target, svg) {
     const choice = await choose(this.app, "\u56F3\u306E\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u4E2D\u306B\u5909\u308F\u308A\u307E\u3057\u305F", `${target.file.path} \u306F\u3001\u7DE8\u96C6\u3092\u59CB\u3081\u3066\u304B\u3089\u5225\u306E\u5834\u6240\u3067\u5909\u66F4\u3055\u308C\u3066\u3044\u307E\u3059\uFF08\u540C\u671F\u306A\u3069\uFF09\u3002\u3069\u3046\u3057\u307E\u3059\u304B\u3002`, [
-      { label: "\u81EA\u5206\u306E\u7248\u3092\u5225\u540D\u3067\u4FDD\u5B58", value: "copy", style: "cta" },
-      { label: "\u4E0A\u66F8\u304D\u3059\u308B", value: "overwrite", style: "warning" },
-      { label: "\u7DE8\u96C6\u306B\u623B\u308B\uFF08\u4FDD\u5B58\u3057\u306A\u3044\uFF09", value: "back" }
+      { label: "Save mine as a copy", value: "copy", style: "cta" },
+      { label: "Overwrite", value: "overwrite", style: "warning" },
+      { label: "Back to editing (don't save)", value: "back" }
     ]);
     if (choice === "copy") {
       const vault = this.app.vault;
@@ -1148,7 +1148,7 @@ var DocToolbar = class {
   constructor(doc, host) {
     this.doc = doc;
     this.host = host;
-    this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "\u56F3\u306E\u64CD\u4F5C" } });
+    this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
     this.el.hidden = true;
     const button = (icon, label, onClick) => {
       const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
@@ -1161,8 +1161,8 @@ var DocToolbar = class {
         if (this.current) onClick(this.current.file, b);
       });
     };
-    button("copy", "\u30B3\u30D4\u30FC", (file, anchor) => this.host.copy(file, anchor));
-    button("pencil", "\u7DE8\u96C6", (file) => {
+    button("copy", "Copy", (file, anchor) => this.host.copy(file, anchor));
+    button("pencil", "Edit", (file) => {
       this.hide();
       this.host.edit(file);
     });
@@ -1314,24 +1314,24 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     for (const event of ["create", "delete", "rename"]) {
       this.registerEvent(this.app.vault.on(event, () => this.resources = null));
     }
-    this.addCommand({ id: "create-diagram", name: "\u56F3\u3092\u4F5C\u308B\uFF08asset/*.drawio.svg\uFF09", callback: () => void this.create() });
+    this.addCommand({ id: "create-diagram", name: "New diagram (asset/*.drawio.svg)", callback: () => void this.create() });
     this.addCommand({
       id: "edit-diagram",
-      name: "\u30CE\u30FC\u30C8\u306E\u56F3\u3092\u7DE8\u96C6",
+      name: "Edit a diagram in this note",
       checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => void this.edit(file))
     });
     this.addCommand({
       id: "copy-diagram",
-      name: "\u30CE\u30FC\u30C8\u306E\u56F3\u3092\u30B3\u30D4\u30FC\uFF08PNG / SVG / XML\uFF09",
+      name: "Copy a diagram in this note (PNG / SVG / XML)",
       checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => {
-        void pick(this.app, "\u30B3\u30D4\u30FC\u3059\u308B\u5F62\u5F0F", COPY_FORMATS, (f) => f.label).then((choice) => {
+        void pick(this.app, "Copy as", COPY_FORMATS, (f) => f.label).then((choice) => {
           if (choice) void this.copy(file, choice.format);
         });
       })
     });
     this.addCommand({
       id: "export-to-tmp",
-      name: "\u3053\u306E\u30CE\u30FC\u30C8\u3092 tmp/ \u306B\u66F8\u304D\u51FA\u3059\uFF08\u56F3\u3092\u57CB\u3081\u8FBC\u3080\uFF09",
+      name: "Export this note to tmp/ (embed diagrams)",
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || !documentKind(file.path)) return false;
@@ -1343,10 +1343,10 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
       this.app.workspace.on("file-menu", (menu, file) => {
         if (!(file instanceof import_obsidian6.TFile)) return;
         if (isDrawioSvgPath(file.path)) {
-          menu.addItem((i) => i.setTitle("Draw.io \u3067\u7DE8\u96C6").setIcon("pencil").onClick(() => void this.edit(file)));
+          menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
           for (const f of COPY_FORMATS) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
         } else if (documentKind(file.path)) {
-          menu.addItem((i) => i.setTitle("tmp/ \u306B\u66F8\u304D\u51FA\u3059\uFF08\u56F3\u3092\u57CB\u3081\u8FBC\u3080\uFF09").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
+          menu.addItem((i) => i.setTitle("Export to tmp/ (embed diagrams)").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
         }
       })
     );
@@ -1415,7 +1415,7 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
         new import_obsidian6.Notice("\u3053\u306E\u30CE\u30FC\u30C8\u306B\u56F3\uFF08asset/*.drawio.svg\uFF09\u304C\u3042\u308A\u307E\u305B\u3093");
         return;
       }
-      const file = files.length === 1 ? files[0] : await pick(this.app, "\u56F3\u3092\u9078\u3076", files, (f) => f.path);
+      const file = files.length === 1 ? files[0] : await pick(this.app, "Choose a diagram", files, (f) => f.path);
       if (file) run(file);
     });
     return true;

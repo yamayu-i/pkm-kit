@@ -17,10 +17,10 @@ import { Board, RoutineRows } from "./Board";
 type Step = "dead" | "previous" | "caution" | "board";
 
 const STEPS: { key: Step; label: string; icon: string }[] = [
-	{ key: "dead", label: "期限切れ", icon: "alarm-clock-off" },
-	{ key: "previous", label: "前回のボード", icon: "history" },
-	{ key: "caution", label: "期限が近い", icon: "alert-triangle" },
-	{ key: "board", label: "ボード", icon: "layout-dashboard" },
+	{ key: "dead", label: "Overdue", icon: "alarm-clock-off" },
+	{ key: "previous", label: "Previous boards", icon: "history" },
+	{ key: "caution", label: "Due soon", icon: "alert-triangle" },
+	{ key: "board", label: "Board", icon: "layout-dashboard" },
 ];
 
 /** deadline / soft_deadline の 2 つの表と操作（dead と caution で共通） */
@@ -91,7 +91,7 @@ function PreviousBoard(props: { ctx: TaskContext; board: DailyBoard; issues: Iss
 	return (
 		<section class="vt-card">
 			<div class="vt-section-head">
-				<span class="vt-field-label">{formatShortDate(board.date)} のボード</span>
+				<span class="vt-field-label">Board of {formatShortDate(board.date)}</span>
 				<span class="vt-count">{issues.length}</span>
 			</div>
 			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} />
@@ -183,9 +183,9 @@ export function DailyView(props: { ctx: TaskContext }) {
 	return (
 		<div class="vt-page">
 			<header class="vt-page-head">
-				<h2 class="vt-page-title">Daily · {formatShortDate(today)}</h2>
+				<h2 class="vt-page-title">Today · {formatShortDate(today)}</h2>
 			</header>
-			<nav class="vt-stepper" aria-label="段階">
+			<nav class="vt-stepper" aria-label="Steps">
 				{stepperItems(STEPS, step, counts, passed).map((s, i) => (
 					<Fragment key={s.key}>
 						{i > 0 && <span class="vt-step-line" aria-hidden="true" />}
@@ -204,22 +204,22 @@ export function DailyView(props: { ctx: TaskContext }) {
 				))}
 			</nav>
 
-			{step === "dead" && <DueStep ctx={ctx} lists={dead} empty="期限切れはありません" />}
-			{step === "previous" && (pending.length > 0 ? <PreviousStep ctx={ctx} boards={pending} /> : <div class="vt-empty">片付いていないボードはありません</div>)}
-			{step === "caution" && <DueStep ctx={ctx} lists={caution} empty="3 日以内の期限はありません" canScheduleToday />}
+			{step === "dead" && <DueStep ctx={ctx} lists={dead} empty="Nothing is overdue" />}
+			{step === "previous" && (pending.length > 0 ? <PreviousStep ctx={ctx} boards={pending} /> : <div class="vt-empty">No boards left open</div>)}
+			{step === "caution" && <DueStep ctx={ctx} lists={caution} empty="No deadlines in the next 3 days" canScheduleToday />}
 			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
 
 			{step !== "board" && (
 				<div class="vt-page-foot">
 					{step === "dead" || step === "previous" ? (
 						<button class="vt-button is-text" onClick={next}>
-							あとで（スキップ）
+							Later (skip)
 						</button>
 					) : (
 						<span />
 					)}
 					<button class="vt-button is-primary" onClick={next}>
-						次へ <Icon name="arrow-right" />
+						Next <Icon name="arrow-right" />
 					</button>
 				</div>
 			)}

@@ -10,9 +10,9 @@ import { useStoreVersion } from "../ui/hooks";
 type Order = "reviewed" | "revisit" | "created";
 
 const ORDERS: { key: Order; label: string }[] = [
-	{ key: "reviewed", label: "見直した日が古い順" },
-	{ key: "revisit", label: "revisit が近い順" },
-	{ key: "created", label: "作成日が新しい順" },
+	{ key: "reviewed", label: "Oldest review first" },
+	{ key: "revisit", label: "Nearest revisit first" },
+	{ key: "created", label: "Newest first" },
 ];
 
 function sortSomeday(issues: Issue[], order: Order): Issue[] {
@@ -43,7 +43,7 @@ export function SomedayView(props: { ctx: TaskContext }) {
 			)
 			.then(done, (e) => ctx.report("Inbox に戻せませんでした", e));
 	const setRevisit = async () => {
-		const date = await askDate(ctx, "revisit（この日を過ぎたら Organize に出す）");
+		const date = await askDate(ctx, "revisit (shows up in Organize after this date)");
 		if (date === null) return;
 		await ctx.writer.updateMany(
 			sel.map((i) => i.path),
@@ -63,14 +63,14 @@ export function SomedayView(props: { ctx: TaskContext }) {
 					))}
 				</select>
 				<button class="vt-button is-primary" disabled={issues.length === 0} onClick={() => void ctx.openView("pkm-task-organize")}>
-					<Icon name="layers" /> Organize で見直す
+					<Icon name="layers" /> Review in Organize
 				</button>
 			</header>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "revisit", "reviewed"]} empty="Someday は空です" />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "revisit", "reviewed"]} empty="Someday is empty" />
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Inbox に戻す", icon: "inbox", tone: "primary", run: reopen },
+					{ label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
 					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
 					{ label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e) => ctx.report("revisit を設定できませんでした", e)) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },

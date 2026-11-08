@@ -1,7 +1,7 @@
-# issue をまとめて作成
+# Capture issues
 
 - 種類: コマンド（モーダル）
-- 開き方: コマンド、リボンの「issue をまとめて作成」、[Tasks サイドバー](task-sidebar.md) のボタン。ホットキーは Obsidian で割り当てる
+- 開き方: コマンド、リボンの「Capture issues」、[Tasks サイドバー](task-sidebar.md) のボタン。ホットキーは Obsidian で割り当てる
 - 場面: [思いつきの捕捉](../jobs/task-capture.md)
 
 ## 今の振る舞い

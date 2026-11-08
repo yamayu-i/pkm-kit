@@ -28,7 +28,7 @@ export interface SnippetSuggestKind {
 
 /** 行頭の `/` でスニペット（ADR-0060） */
 export const SNIPPET_KIND: SnippetSuggestKind = {
-	label: "スニペット",
+	label: "Snippet",
 	field: slashSessionField,
 	load: (m) => m.loadSnippets(),
 	bodyOf: (s) => s.body,
@@ -36,7 +36,7 @@ export const SNIPPET_KIND: SnippetSuggestKind = {
 
 /** 行頭か半角空白の後の `@` でインラインテンプレート（ADR-0067）。ファイルの終わりの改行は入れない */
 export const INLINE_KIND: SnippetSuggestKind = {
-	label: "インラインテンプレート",
+	label: "Inline template",
 	field: atSessionField,
 	load: (m) => m.loadInlineTemplates(),
 	bodyOf: (s) => inlineBody(s.body),
@@ -89,7 +89,7 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 			this.cache = {
 				sessionId: id,
 				snippets: this.kind.load(this.manager).then(({ snippets, problems }) => {
-					for (const p of problems) console.warn(`pkm-template: ${this.kind.label}を読めませんでした: ${p}`);
+					for (const p of problems) console.warn(`pkm-template: ${this.kind.label} を読めませんでした: ${p}`);
 					return snippets;
 				}),
 			};

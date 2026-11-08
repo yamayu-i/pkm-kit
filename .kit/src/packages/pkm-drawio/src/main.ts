@@ -45,25 +45,25 @@ export default class PkmDrawioPlugin extends Plugin {
 			this.registerEvent(this.app.vault.on(event as "create", () => (this.resources = null)));
 		}
 
-		this.addCommand({ id: "create-diagram", name: "図を作る（asset/*.drawio.svg）", callback: () => void this.create() });
+		this.addCommand({ id: "create-diagram", name: "New diagram (asset/*.drawio.svg)", callback: () => void this.create() });
 		this.addCommand({
 			id: "edit-diagram",
-			name: "ノートの図を編集",
+			name: "Edit a diagram in this note",
 			checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => void this.edit(file)),
 		});
 		this.addCommand({
 			id: "copy-diagram",
-			name: "ノートの図をコピー（PNG / SVG / XML）",
+			name: "Copy a diagram in this note (PNG / SVG / XML)",
 			checkCallback: (checking) =>
 				this.withDiagramsInActive(checking, (file) => {
-					void pick(this.app, "コピーする形式", COPY_FORMATS, (f) => f.label).then((choice) => {
+					void pick(this.app, "Copy as", COPY_FORMATS, (f) => f.label).then((choice) => {
 						if (choice) void this.copy(file, choice.format);
 					});
 				}),
 		});
 		this.addCommand({
 			id: "export-to-tmp",
-			name: "このノートを tmp/ に書き出す（図を埋め込む）",
+			name: "Export this note to tmp/ (embed diagrams)",
 			checkCallback: (checking) => {
 				const file = this.app.workspace.getActiveFile();
 				if (!file || !documentKind(file.path)) return false;
@@ -76,10 +76,10 @@ export default class PkmDrawioPlugin extends Plugin {
 			this.app.workspace.on("file-menu", (menu, file) => {
 				if (!(file instanceof TFile)) return;
 				if (isDrawioSvgPath(file.path)) {
-					menu.addItem((i) => i.setTitle("Draw.io で編集").setIcon("pencil").onClick(() => void this.edit(file)));
+					menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
 					for (const f of COPY_FORMATS) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
 				} else if (documentKind(file.path)) {
-					menu.addItem((i) => i.setTitle("tmp/ に書き出す（図を埋め込む）").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
+					menu.addItem((i) => i.setTitle("Export to tmp/ (embed diagrams)").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
 				}
 			}),
 		);
@@ -155,7 +155,7 @@ export default class PkmDrawioPlugin extends Plugin {
 				new Notice("このノートに図（asset/*.drawio.svg）がありません");
 				return;
 			}
-			const file = files.length === 1 ? files[0] : await pick(this.app, "図を選ぶ", files, (f) => f.path);
+			const file = files.length === 1 ? files[0] : await pick(this.app, "Choose a diagram", files, (f) => f.path);
 			if (file) run(file);
 		});
 		return true;

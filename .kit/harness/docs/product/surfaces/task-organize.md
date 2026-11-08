@@ -8,7 +8,7 @@
 
 - 1 件ずつカードで出す。順は Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday
 - カード: summary、作成日、本文の冒頭。priority と label はカードの上で変えられる
-- 操作（スワイプ・ボタン・矢印キー）: Do Date（→。カレンダーで複数の日を選んで決定。Inbox のカードで estimated がなければ、それも選ぶまで決定できない）、Someday へ（←）、あとで（↑。reviewed だけ更新）、Cancel（↓）、もう終わっていた
+- 操作（スワイプ・ボタン・矢印キー）: Do Date（→。カレンダーで複数の日を選んで決定。Inbox のカードで estimated がなければ、それも選ぶまで決定できない）、To Someday（←）、Later（↑。reviewed だけ更新）、Cancel（↓）、Already done
 - 整理したカードは reviewed を今日にする。1 つ前に戻せる
 
 ## 使う概念

@@ -31,7 +31,7 @@ export function TextForm(props: { initial: string; maxLength?: number; placehold
 				</span>
 			)}
 			<button type="submit" class="mod-cta">
-				保存
+				Save
 			</button>
 		</form>
 	);
@@ -56,11 +56,11 @@ function MonthCalendar(props: {
 	return (
 		<div class="vt-calendar">
 			<div class="vt-calendar-nav">
-				<button type="button" aria-label="前の月" onClick={() => shift(-1)}>
+				<button type="button" aria-label="Previous month" onClick={() => shift(-1)}>
 					‹
 				</button>
 				<span>{month.replace("-", " / ")}</span>
-				<button type="button" aria-label="次の月" onClick={() => shift(1)}>
+				<button type="button" aria-label="Next month" onClick={() => shift(1)}>
 					›
 				</button>
 			</div>
@@ -86,7 +86,7 @@ function MonthCalendar(props: {
 
 /** 入力の解釈の結果を、入力欄の下に出す */
 function DateHint(props: { text: string; parsed: LocalDate | null }) {
-	if (props.text.trim() === "") return <div class="vt-date-hint">例: 15 / 1224 / +3 / mon / +2w / +m</div>;
+	if (props.text.trim() === "") return <div class="vt-date-hint">e.g. 15 / 1224 / +3 / mon / +2w / +m</div>;
 	if (props.parsed === null) return <div class="vt-error">日付として読めません</div>;
 	return <div class="vt-date-hint">{`${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}`}</div>;
 }
@@ -112,7 +112,7 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 				<input
 					ref={ref}
 					type="text"
-					aria-label="日付"
+					aria-label="Date"
 					value={text}
 					onInput={(e) => {
 						const value = e.currentTarget.value;
@@ -126,9 +126,9 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 			{props.presets !== false && (
 				<div class="vt-date-presets">
 					{[
-						["今日", 0],
-						["明日", 1],
-						["来週", 7],
+						["Today", 0],
+						["Tomorrow", 1],
+						["Next week", 7],
 					].map(([label, n]) => (
 						<button type="button" class="vt-field-chip" onClick={() => props.onSubmit(addDays(today, n as number))}>
 							{label}
@@ -140,11 +140,11 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 			<div class="vt-form">
 				{props.allowClear !== false && (
 					<button type="button" onClick={() => props.onSubmit(null)}>
-						クリア
+						Clear
 					</button>
 				)}
 				<button type="submit" class="mod-cta" disabled={invalid}>
-					保存
+					Save
 				</button>
 			</div>
 		</form>
@@ -177,9 +177,9 @@ export function CalendarForm(props: {
 			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => selected.has(d)} onPick={toggle} softDeadline={props.softDeadline} deadline={props.deadline} />
 			{props.children}
 			<div class="vt-form">
-				<span class="vt-muted">{selected.size} 日</span>
+				<span class="vt-muted">{selected.size} days</span>
 				<button class="mod-cta" disabled={!enabled} onClick={() => enabled && props.onSubmit([...selected].sort())}>
-					{props.submitLabel ?? "保存"}
+					{props.submitLabel ?? "Save"}
 				</button>
 			</div>
 		</div>
@@ -207,9 +207,9 @@ export function DayCell(props: {
 	if (props.dimmed) cls.push("is-dimmed");
 	// 色だけに頼らないよう、期限は読み上げと title でも伝える
 	// 今日も、印（太字と点）だけでなく読み上げとツールチップで伝える（ADR-0030）
-	const marks = [props.date === props.today ? "今日" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null]
+	const marks = [props.date === props.today ? "Today" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null]
 		.filter(Boolean)
-		.join("・");
+		.join(" · ");
 	const label = marks ? `${props.date}（${marks}）` : props.date;
 	return (
 		<button type="button" class={cls.join(" ")} onClick={props.onClick} aria-pressed={props.scheduled} aria-label={label} title={label}>
@@ -251,8 +251,8 @@ function DateTimeField(props: { label: string; date: string; time: string; onDat
 			<div class="vt-datetime">
 				<input
 					type="text"
-					aria-label={`${props.label}の日付`}
-					placeholder="日付"
+					aria-label={`${props.label} date`}
+					placeholder="Date"
 					value={props.date}
 					onInput={(e) => {
 						props.onDate(e.currentTarget.value);
@@ -260,8 +260,8 @@ function DateTimeField(props: { label: string; date: string; time: string; onDat
 						if (next !== null) setMonth(next.slice(0, 7));
 					}}
 				/>
-				<input class="vt-time-input" type="text" aria-label={`${props.label}の時刻`} placeholder="hhmm" value={props.time} onInput={(e) => props.onTime(e.currentTarget.value)} />
-				<button type="button" class="vt-calendar-toggle" aria-label={`${props.label}のカレンダー`} aria-expanded={open} onClick={() => setOpen(!open)}>
+				<input class="vt-time-input" type="text" aria-label={`${props.label} time`} placeholder="hhmm" value={props.time} onInput={(e) => props.onTime(e.currentTarget.value)} />
+				<button type="button" class="vt-calendar-toggle" aria-label={`${props.label} calendar`} aria-expanded={open} onClick={() => setOpen(!open)}>
 					<Icon name="calendar" />
 				</button>
 			</div>
@@ -320,22 +320,22 @@ export function WorklogForm(props: {
 				if (error === null) props.onSubmit({ fromMs: fromMs!, toMs: endMs, description: description.trim() });
 			}}
 		>
-			<DateTimeField label="開始" date={fromDate} time={fromTime} onDate={setFromDate} onTime={setFromTime} />
-			<DateTimeField label="終了（空なら記録中）" date={toDate} time={toTime} onDate={setToDate} onTime={setToTime} />
+			<DateTimeField label="Start" date={fromDate} time={fromTime} onDate={setFromDate} onTime={setFromTime} />
+			<DateTimeField label="End (empty while running)" date={toDate} time={toTime} onDate={setToDate} onTime={setToTime} />
 			<label class="vt-text-field">
-				<span>内容</span>
+				<span>Description</span>
 				<input type="text" value={description} onInput={(e) => setDescription(e.currentTarget.value)} />
 			</label>
 			{error !== null && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				{props.onDelete && (
 					<button type="button" class={confirming ? "mod-warning" : "vt-danger-text"} onClick={() => (confirming ? props.onDelete!() : setConfirming(true))}>
-						{confirming ? "もう一度押すと削除" : "削除"}
+						{confirming ? "Click again to delete" : "Delete"}
 					</button>
 				)}
 				<span class="vt-spacer" />
 				<button type="submit" class="mod-cta" disabled={error !== null}>
-					保存
+					Save
 				</button>
 			</div>
 		</form>

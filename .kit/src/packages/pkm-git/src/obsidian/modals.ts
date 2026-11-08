@@ -17,14 +17,14 @@ export class BehindModal extends Modal {
 		new Setting(this.contentEl)
 			.addButton((b) =>
 				b
-					.setButtonText("今すぐ pull")
+					.setButtonText("Pull now")
 					.setCta()
 					.onClick(() => {
 						this.close();
 						this.onPull();
 					}),
 			)
-			.addButton((b) => b.setButtonText("閉じる").onClick(() => this.close()));
+			.addButton((b) => b.setButtonText("Close").onClick(() => this.close()));
 	}
 
 	override onClose(): void {
@@ -90,14 +90,14 @@ export class ConfirmModal extends Modal {
 		new Setting(this.contentEl)
 			.addButton((b) =>
 				b
-					.setButtonText("実行")
+					.setButtonText("Run")
 					.setCta()
 					.onClick(() => {
 						this.close();
 						this.onConfirm();
 					}),
 			)
-			.addButton((b) => b.setButtonText("キャンセル").onClick(() => this.close()));
+			.addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
 	}
 
 	override onClose(): void {

@@ -18,7 +18,7 @@ function CaptureForm(props: { onSubmit: (summaries: string[]) => void }) {
 			<textarea
 				ref={ref}
 				rows={6}
-				placeholder={"1 行に 1 件、summary を書く\n- 箇条書きを貼り付けてもよい"}
+				placeholder={"One summary per line\n- You can paste a bulleted list"}
 				value={text}
 				onInput={(e) => setText(e.currentTarget.value)}
 				onKeyDown={(e) => {
@@ -30,10 +30,10 @@ function CaptureForm(props: { onSubmit: (summaries: string[]) => void }) {
 			/>
 			<div class="vt-form">
 				<span class="vt-muted">
-					{summaries.length} 件作成します{Platform.isMobile ? "" : "（Mod+Enter）"}
+					Create {summaries.length}{Platform.isMobile ? "" : " (Mod+Enter)"}
 				</span>
 				<button class="mod-cta" disabled={summaries.length === 0} onClick={submit}>
-					作成
+					Create
 				</button>
 			</div>
 		</div>
@@ -58,7 +58,7 @@ function showCreatedNotice(ctx: TaskContext, created: TFile[], failed: string[])
 	fragment.createEl("div", { text: failed.length > 0 ? `${message}。${failed.length} 件は失敗` : message });
 	let notice: Notice | null = null;
 	if (created.length > 0) {
-		const button = fragment.createEl("button", { text: "すべてタブで開く", cls: "vt-notice-button" });
+		const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
 		button.addEventListener("click", (e) => {
 			e.stopPropagation();
 			notice?.hide();
@@ -70,7 +70,7 @@ function showCreatedNotice(ctx: TaskContext, created: TFile[], failed: string[])
 
 /** issue の一括登録（ADR-0011） */
 export function openCaptureModal(ctx: TaskContext): void {
-	new PreactModal(ctx.app, "issue をまとめて作成", (close) => (
+	new PreactModal(ctx.app, "Capture issues", (close) => (
 		<CaptureForm
 			onSubmit={(summaries) => {
 				close();

@@ -75,13 +75,13 @@ export function LabelManagerView(props: { ctx: TaskContext }) {
 							setDirty(false);
 						}}
 					>
-						元に戻す
+						Revert
 					</button>
 				) : (
-					<span class="vt-muted">保存済み</span>
+					<span class="vt-muted">Saved</span>
 				)}
 				<button class="vt-button is-primary" disabled={!dirty || hasError || saving} onClick={save}>
-					<Icon name="save" /> 保存
+					<Icon name="save" /> Save
 				</button>
 			</header>
 
@@ -90,19 +90,19 @@ export function LabelManagerView(props: { ctx: TaskContext }) {
 					const used = d.from === null ? 0 : (usage.get(d.from) ?? 0);
 					const colorError = labelColorError(d.color);
 					return (
-						<section class="vt-card vt-label-edit" key={d.key} aria-label={`label ${d.name || "（名前なし）"}`}>
+						<section class="vt-card vt-label-edit" key={d.key} aria-label={`label ${d.name || "(no name)"}`}>
 							<div class="vt-label-edit-fields">
 								<input
 									type="color"
 									class="vt-color-swatch"
 									value={pickerValue(d.color)}
-									title="色を選ぶ"
-									aria-label="色を選ぶ"
+									title="Choose color"
+									aria-label="Choose color"
 									onInput={(e) => setLabel(d.key, { color: e.currentTarget.value })}
 								/>
-								<NameField label="名前" value={d.name} error={nameError(d)} autoFocus={focusKey === d.key} onInput={(v) => setLabel(d.key, { name: v })} />
+								<NameField label="Name" value={d.name} error={nameError(d)} autoFocus={focusKey === d.key} onInput={(v) => setLabel(d.key, { name: v })} />
 								<NameField
-									label="色"
+									label="Color"
 									class="vt-color-field"
 									placeholder="#rrggbb"
 									value={d.color}
@@ -116,28 +116,28 @@ export function LabelManagerView(props: { ctx: TaskContext }) {
 									count={drafts.length}
 									onMove={(n) => update(move(drafts, i, n))}
 									onDelete={() => update(drafts.filter((x) => x.key !== d.key))}
-									deleteDisabled={used > 0 ? `${used} 件の issue / routine / member で使われているので削除できません` : undefined}
+									deleteDisabled={used > 0 ? `Used by ${used} issues / routines / members, so it cannot be deleted` : undefined}
 								/>
 							</div>
 							<div class="vt-label-edit-meta">
-								<LabelBadge name={d.name.trim() || "（名前なし）"} color={HEX.test(d.color) ? d.color : DEFAULT_LABEL_COLOR} />
-								<span class="vt-muted">{used > 0 ? `${used} 件で使用中` : "未使用"}</span>
-								{d.from !== null && d.from !== d.name.trim() && <span class="vt-muted">（元の名前: {d.from}）</span>}
+								<LabelBadge name={d.name.trim() || "(no name)"} color={HEX.test(d.color) ? d.color : DEFAULT_LABEL_COLOR} />
+								<span class="vt-muted">{used > 0 ? `Used by ${used}` : "Unused"}</span>
+								{d.from !== null && d.from !== d.name.trim() && <span class="vt-muted">(was: {d.from})</span>}
 							</div>
 						</section>
 					);
 				})}
 				<button class="vt-add-group" onClick={add}>
-					<Icon name="plus" /> label を追加
+					<Icon name="plus" /> Add label
 				</button>
 			</div>
 			{dirty && (
 				<div class="vt-banner">
-					変更はまだ保存していません
-					{hasError ? "（エラーを直すと保存できます）" : renamed > 0 ? `（保存すると ${renamed} 件の issue / routine / member の label を書き換えます）` : ""}
+					Unsaved changes
+					{hasError ? " (fix the errors to save)" : renamed > 0 ? ` (saving rewrites the label on ${renamed} issues / routines / members)` : ""}
 				</div>
 			)}
-			<p class="vt-muted">名前を変えると、その label が付いた issue・routine・member の label も書き換えます。使われている label は、issue / routine / member から外してから削除できます。</p>
+			<p class="vt-muted">Renaming a label also rewrites it on the issues, routines and members that use it. To delete a label in use, remove it from those issues, routines and members first.</p>
 		</div>
 	);
 }

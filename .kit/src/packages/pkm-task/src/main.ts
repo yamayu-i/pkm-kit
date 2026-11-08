@@ -5,6 +5,7 @@ import { installTaskHeaders } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
+import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { StatusUndo } from "./obsidian/status-undo";
 import { TaskStore } from "./obsidian/store";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
@@ -23,7 +24,7 @@ import { SomedayView } from "./views/SomedayView";
 
 /** View の一覧（ADR-0009, 0010, 0021, 0035） */
 const VIEWS: ViewSpec[] = [
-	{ type: "pkm-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
+	{ type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
 	{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
 	{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", component: InboxView },
 	{ type: "pkm-task-organize", title: "Organize", icon: "layers", component: OrganizeView },
@@ -85,13 +86,15 @@ export default class PkmTaskPlugin extends Plugin {
 
 		for (const spec of VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, ctx));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} を開く`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `Open ${spec.title}`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
 		}
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
+		this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
 		installTaskHeaders(ctx, this);
-		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
-		// リボンのボタン（Daily を開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
+		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）
+		registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));

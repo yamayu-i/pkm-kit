@@ -19,7 +19,7 @@ export function NameField(props: { value: string; label: string; error: string |
 	return (
 		<label class={`vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`}>
 			<span class="vt-name-label">{props.label}</span>
-			<input ref={ref} type="text" value={props.value} placeholder={props.placeholder ?? "名前"} onInput={(e) => props.onInput(e.currentTarget.value)} />
+			<input ref={ref} type="text" value={props.value} placeholder={props.placeholder ?? "Name"} onInput={(e) => props.onInput(e.currentTarget.value)} />
 			{props.error && <span class="vt-name-error">{props.error}</span>}
 		</label>
 	);
@@ -27,13 +27,13 @@ export function NameField(props: { value: string; label: string; error: string |
 
 /** 行の上へ / 下へ / 削除。deleteDisabled を渡すと削除を押せなくし、その理由をツールチップに出す */
 export function RowTools(props: { index: number; count: number; onMove: (d: number) => void; onDelete: () => void; what: string; deleteDisabled?: string }) {
-	const deleteTitle = props.deleteDisabled ?? `${props.what}を削除`;
+	const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
 	return (
 		<span class="vt-row-tools">
-			<button class="vt-icon-button" title="上へ" aria-label="上へ" disabled={props.index === 0} onClick={() => props.onMove(-1)}>
+			<button class="vt-icon-button" title="Move up" aria-label="Move up" disabled={props.index === 0} onClick={() => props.onMove(-1)}>
 				<Icon name="arrow-up" />
 			</button>
-			<button class="vt-icon-button" title="下へ" aria-label="下へ" disabled={props.index === props.count - 1} onClick={() => props.onMove(1)}>
+			<button class="vt-icon-button" title="Move down" aria-label="Move down" disabled={props.index === props.count - 1} onClick={() => props.onMove(1)}>
 				<Icon name="arrow-down" />
 			</button>
 			<button class="vt-icon-button" title={deleteTitle} aria-label={deleteTitle} disabled={props.deleteDisabled !== undefined} onClick={props.onDelete}>

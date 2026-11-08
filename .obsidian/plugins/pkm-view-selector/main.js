@@ -27,6 +27,7 @@ var import_obsidian = require("obsidian");
 
 // src/views.ts
 var SOURCE_PLUGINS = ["pkm-task", "pkm-template", "pkm-updates"];
+var OPEN_PREFIX = /^Open\s+/;
 var OPEN_SUFFIX = /\s*を開く$/;
 function collectViews(commands, isViewType, isOpen) {
   const entries = [];
@@ -37,7 +38,7 @@ function collectViews(commands, isViewType, isOpen) {
       const viewType = `${plugin}-${c.id.slice(prefix.length)}`;
       if (!isViewType(viewType)) continue;
       const bare = c.name.replace(/^[^:]*:\s*/, "");
-      entries.push({ commandId: c.id, viewType, name: bare.replace(OPEN_SUFFIX, "") || bare, plugin, icon: c.icon, open: isOpen(viewType) });
+      entries.push({ commandId: c.id, viewType, name: bare.replace(OPEN_PREFIX, "").replace(OPEN_SUFFIX, "") || bare, plugin, icon: c.icon, open: isOpen(viewType) });
     }
   }
   return entries;
@@ -73,12 +74,12 @@ var ViewSelectorModal = class extends import_obsidian.SuggestModal {
     super(app);
     this.entries = entries;
     this.run = run;
-    this.setPlaceholder("View \u3092\u63A2\u3059\uFF08Issues, Inbox, Notes \u2026\uFF09");
-    this.emptyStateText = entries.length ? "\u5F53\u3066\u306F\u307E\u308B View \u304C\u3042\u308A\u307E\u305B\u3093" : "View \u304C\u3042\u308A\u307E\u305B\u3093\uFF08pkm-task \u304B pkm-template \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09";
+    this.setPlaceholder("Find a View (Issues, Inbox, Notes \u2026)");
+    this.emptyStateText = entries.length ? "No matching Views" : "View \u304C\u3042\u308A\u307E\u305B\u3093\uFF08pkm-task \u304B pkm-template \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09";
     this.setInstructions([
-      { command: "\u2191\u2193", purpose: "\u9078\u3076" },
-      { command: "\u21B5", purpose: "\u958B\u304F" },
-      { command: "esc", purpose: "\u9589\u3058\u308B" }
+      { command: "\u2191\u2193", purpose: "to navigate" },
+      { command: "\u21B5", purpose: "to open" },
+      { command: "esc", purpose: "to dismiss" }
     ]);
   }
   entries;
@@ -93,7 +94,7 @@ var ViewSelectorModal = class extends import_obsidian.SuggestModal {
     const content = el.createDiv({ cls: "suggestion-content" });
     content.createDiv({ cls: "suggestion-title", text: entry.name });
     content.createDiv({ cls: "suggestion-note", text: entry.plugin });
-    if (entry.open) el.createDiv({ cls: "suggestion-aux" }).createSpan({ cls: "suggestion-hotkey", text: "\u958B\u3044\u3066\u3044\u308B" });
+    if (entry.open) el.createDiv({ cls: "suggestion-aux" }).createSpan({ cls: "suggestion-hotkey", text: "open" });
   }
   onChooseSuggestion(entry) {
     this.run(entry);
@@ -103,7 +104,7 @@ var PkmViewSelectorPlugin = class extends import_obsidian.Plugin {
   onload() {
     this.addCommand({
       id: "open",
-      name: "View \u3092\u63A2\u3057\u3066\u958B\u304F",
+      name: "Find and open a View",
       icon: "layout-list",
       hotkeys: [{ modifiers: ["Mod"], key: "k" }],
       callback: () => this.openSelector()

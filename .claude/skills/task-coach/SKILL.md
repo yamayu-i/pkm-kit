@@ -10,6 +10,7 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 ## 前提と基準値
 
 - **1 日の集中作業に使える時間（`available_minutes`）**: 既定 **240 分（4 時間）**。ユーザーが「今日は 2 時間しか取れない」などと言ったときは引数の `available_minutes` を上書きして負荷を計算する
+- **estimated の `d` は 24 時間**（1440 分。ADR-0034）で、使える時間とは別。ユーザーが「1 日仕事」と言ったら `1d` ではなく使える時間ぶん（既定なら `4h`）で見積もりを提案する。`1d` 以上の見積もりは、負荷の計算で使える時間を大きく超えるので、分けるかどうかを確かめる
 - **AI の端末名**: `ai`（`board/ai/YYYY-MM.jsonl`、`worklog/ai/YYYY-MM.jsonl`、`statuslog/ai/YYYY-MM.jsonl` に記録され、Obsidian 側のログファイルと衝突しない）
 - **MCP サーバーの起動設定（Claude Code / Cursor）**:
   ```json
@@ -30,7 +31,7 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 - `board`: 今日のボードに載っている issue / routine、未完了、グループ配置（置いたことのあるカードは、前に置いたグループに初めから出る）
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
-- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue（Obsidian で Daily を開くと自動で載る。その日にボードから外したものは含まない）
+- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
 - `pendingBoards`: 今日より前で締めていないボード
 - `frequentlyCarried`: 2 回以上持ち越されている issue（分割・見直し候補）
 - `stalled`: `in-progress` なのに直近 3 日以上 worklog がない issue、`revisit` が来た someday、`waiting` / `delegated`

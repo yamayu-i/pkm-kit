@@ -45,7 +45,7 @@ export function askDiagramName(app: App, initial = ""): Promise<string | null> {
 		let done = false;
 		const modal = new (class extends Modal {
 			override onOpen(): void {
-				this.setTitle("図を作る");
+				this.setTitle("New diagram");
 				let value = initial;
 				const error = this.contentEl.createEl("p", { cls: "vt-drawio-error" });
 				const submit = () => {
@@ -57,8 +57,8 @@ export function askDiagramName(app: App, initial = ""): Promise<string | null> {
 					this.close();
 				};
 				new Setting(this.contentEl)
-					.setName("名前")
-					.setDesc("asset/<名前>.drawio.svg に保存します")
+					.setName("Name")
+					.setDesc("Saved as asset/<name>.drawio.svg")
 					.addText((t) => {
 						t.setValue(initial).onChange((v) => {
 							value = v;
@@ -71,7 +71,7 @@ export function askDiagramName(app: App, initial = ""): Promise<string | null> {
 						});
 						window.setTimeout(() => t.inputEl.focus(), 0);
 					});
-				new Setting(this.contentEl).addButton((b) => b.setButtonText("Draw.io で描く").setCta().onClick(submit));
+				new Setting(this.contentEl).addButton((b) => b.setButtonText("Draw in Draw.io").setCta().onClick(submit));
 			}
 			override onClose(): void {
 				this.contentEl.empty();

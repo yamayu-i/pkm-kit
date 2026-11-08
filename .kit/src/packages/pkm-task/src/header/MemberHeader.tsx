@@ -49,18 +49,18 @@ function DelegatedIssues(props: { ctx: TaskContext; issues: Issue[] }) {
 	const done = props.issues.length - active.length;
 	return (
 		<div class="vt-member-issues">
-			<div class="vt-field-label">委任中の issue {active.length}</div>
-			{active.length === 0 && <div class="vt-muted">委任中の issue はありません</div>}
+			<div class="vt-field-label">Delegated issues {active.length}</div>
+			{active.length === 0 && <div class="vt-muted">No delegated issues</div>}
 			{active.map((issue) => (
 				<div class="vt-member-issue" key={issue.id}>
 					<StatusBadge status={issue.status} />
 					<span class="vt-badge vt-id">{issue.id}</span>
 					<span class="vt-member-issue-summary" {...linkProps((e) => void ctx.openPath(issue.path, Keymap.isModEvent(e) !== false))}>
-						{issue.summary || "（summary なし）"}
+						{issue.summary || "(no summary)"}
 					</span>
 				</div>
 			))}
-			{done > 0 && <div class="vt-muted">終わったもの（closed / canceled）{done} 件</div>}
+			{done > 0 && <div class="vt-muted">Finished (closed / canceled) {done}</div>}
 		</div>
 	);
 }
@@ -91,9 +91,9 @@ export function MemberHeader(props: { ctx: TaskContext; path: string }) {
 				<span class="vt-badge vt-id">{member.id}</span>
 			</div>
 			<section class="vt-card vt-member-fields">
-				<MemberField label="nickname" field="nickname" value={member.nickname} hint="自分が呼んでいる呼び名。空にすると name を使う" save={save} />
-				<MemberField label="name" field="name" value={member.name} hint="本名（姓・名）" required save={save} />
-				<MemberField label="alias" field="alias" value={member.alias} hint={`委任先を選ぶときに @${member.alias} で探せる。空にすると ID を使う`} save={save} />
+				<MemberField label="nickname" field="nickname" value={member.nickname} hint="What you call them. Empty uses name" save={save} />
+				<MemberField label="name" field="name" value={member.name} hint="Full name" required save={save} />
+				<MemberField label="alias" field="alias" value={member.alias} hint={`Find them with @${member.alias} when choosing a delegate. Empty uses the ID`} save={save} />
 				<div class="vt-member-labels">
 					<span class="vt-field-label">label</span>
 					<LabelsField ctx={ctx} labels={member.labels} index={index} save={save} />

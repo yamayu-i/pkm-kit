@@ -17,8 +17,8 @@ export function pageItems(current: number, pages: number): (number | null)[] {
 export function Pager(props: { current: number; pages: number; onChange: (page: number) => void }) {
 	const { current, pages, onChange } = props;
 	return (
-		<nav class="vt-pager" aria-label="ページ">
-			<button class="vt-pager-step" disabled={current === 0} onClick={() => onChange(current - 1)} aria-label="新しい方へ">
+		<nav class="vt-pager" aria-label="Pages">
+			<button class="vt-pager-step" disabled={current === 0} onClick={() => onChange(current - 1)} aria-label="Newer">
 				<Icon name="chevron-left" />
 			</button>
 			{pageItems(current, pages).map((i) =>
@@ -30,7 +30,7 @@ export function Pager(props: { current: number; pages: number; onChange: (page: 
 					</button>
 				),
 			)}
-			<button class="vt-pager-step" disabled={current >= pages - 1} onClick={() => onChange(current + 1)} aria-label="古い方へ">
+			<button class="vt-pager-step" disabled={current >= pages - 1} onClick={() => onChange(current + 1)} aria-label="Older">
 				<Icon name="chevron-right" />
 			</button>
 		</nav>

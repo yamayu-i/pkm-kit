@@ -70,32 +70,32 @@ export function GroupManagerView(props: { ctx: TaskContext }) {
 						setDrafts(ctx.store.index.data.groups.map(toDraft));
 						setDirty(false);
 					}}>
-						元に戻す
+						Revert
 					</button>
 				) : (
-					<span class="vt-muted">保存済み</span>
+					<span class="vt-muted">Saved</span>
 				)}
 				<button class="vt-button is-primary" disabled={!dirty || hasError} onClick={save}>
-					<Icon name="save" /> 保存
+					<Icon name="save" /> Save
 				</button>
 			</header>
 
-			<section class="vt-card vt-layout-preview" aria-label="ボードでの並び方">
-				<span class="vt-field-label">ボードでの並び方</span>
+			<section class="vt-card vt-layout-preview" aria-label="Layout on the board">
+				<span class="vt-field-label">Layout on the board</span>
 				<div class="vt-preview-columns">
 					<div class="vt-preview-col is-ungrouped">
-						<span>未分類</span>
+						<span>Unsorted</span>
 					</div>
 					{drafts.map((g) => (
 						<div class="vt-preview-col">
-							<span>{g.name || "（名前なし）"}</span>
+							<span>{g.name || "(no name)"}</span>
 							{g.children.map((c) => (
-								<span class="vt-preview-sub">{c.name || "（名前なし）"}</span>
+								<span class="vt-preview-sub">{c.name || "(no name)"}</span>
 							))}
 						</div>
 					))}
 				</div>
-				<span class="vt-muted">グループはボードに横に並びます（狭い画面では縦）。サブグループはグループの中に縦に並びます。</span>
+				<span class="vt-muted">Groups are laid out side by side on the board (stacked on narrow screens). Subgroups stack inside their group.</span>
 			</section>
 
 			<div class="vt-group-editor">
@@ -103,27 +103,27 @@ export function GroupManagerView(props: { ctx: TaskContext }) {
 					<section class="vt-card vt-group-edit" key={g.key}>
 						<div class="vt-group-edit-head">
 							<NameField
-								label="グループ名"
+								label="Group name"
 								value={g.name}
 								error={errorOf(g, drafts)}
 								autoFocus={focusKey === g.key}
 								onInput={(v) => setGroup(g.key, (x) => ({ ...x, name: v }))}
 							/>
-							<RowTools what="グループ" index={i} count={drafts.length} onMove={(d) => update(move(drafts, i, d))} onDelete={() => update(drafts.filter((x) => x.key !== g.key))} />
+							<RowTools what="group" index={i} count={drafts.length} onMove={(d) => update(move(drafts, i, d))} onDelete={() => update(drafts.filter((x) => x.key !== g.key))} />
 						</div>
 						<div class="vt-sub-list">
 							{g.children.map((c, j) => (
 								<div class="vt-sub-edit" key={c.key}>
 									<Icon name="corner-down-right" class="vt-sub-mark" />
 									<NameField
-										label="サブグループ名"
+										label="Subgroup name"
 										value={c.name}
 										error={errorOf(c, g.children)}
 										autoFocus={focusKey === c.key}
 										onInput={(v) => setGroup(g.key, (x) => ({ ...x, children: x.children.map((y) => (y.key === c.key ? { ...y, name: v } : y)) }))}
 									/>
 									<RowTools
-										what="サブグループ"
+										what="subgroup"
 										index={j}
 										count={g.children.length}
 										onMove={(d) => setGroup(g.key, (x) => ({ ...x, children: move(x.children, j, d) }))}
@@ -132,17 +132,17 @@ export function GroupManagerView(props: { ctx: TaskContext }) {
 								</div>
 							))}
 							<button class="vt-button is-text vt-add-sub" onClick={() => addSub(g.key)}>
-								<Icon name="plus" /> サブグループを追加
+								<Icon name="plus" /> Add subgroup
 							</button>
 						</div>
 					</section>
 				))}
 				<button class="vt-add-group" onClick={addGroup}>
-					<Icon name="plus" /> グループを追加
+					<Icon name="plus" /> Add group
 				</button>
 			</div>
-			{dirty && <div class="vt-banner">変更はまだ保存していません{hasError ? "（名前のエラーを直すと保存できます）" : ""}</div>}
-			<p class="vt-muted">グループの名前を変えても、過去のボードでそのグループに置いたカードは移りません（未分類に出ます）。</p>
+			{dirty && <div class="vt-banner">Unsaved changes{hasError ? " (fix the name errors to save)" : ""}</div>}
+			<p class="vt-muted">Renaming a group does not move cards placed in it on past boards (they show up in Unsorted).</p>
 		</div>
 	);
 }

@@ -60,9 +60,9 @@ export class DrawioEditorModal extends Modal {
 		if (this.confirming) return;
 		this.confirming = true;
 		void choose(this.app, "保存していない変更があります", "Draw.io で保存してから閉じるか、変更を捨てて閉じるかを選んでください。", [
-			{ label: "編集に戻る", value: "back" as const, style: "cta" },
-			{ label: "XML をコピーして閉じる", value: "copy" as const },
-			{ label: "変更を捨てて閉じる", value: "discard" as const, style: "warning" },
+			{ label: "Back to editing", value: "back" as const, style: "cta" },
+			{ label: "Copy XML and close", value: "copy" as const },
+			{ label: "Discard and close", value: "discard" as const, style: "warning" },
 		]).then(async (choice) => {
 			this.confirming = false;
 			if (choice === "copy") {
@@ -138,9 +138,9 @@ export class DrawioEditorModal extends Modal {
 	/** 編集中にファイルが変わっていた（同期・別の画面・外のエディタ） */
 	private async resolveConflict(target: Extract<EditTarget, { kind: "existing" }>, svg: string): Promise<void> {
 		const choice = await choose(this.app, "図のファイルが編集中に変わりました", `${target.file.path} は、編集を始めてから別の場所で変更されています（同期など）。どうしますか。`, [
-			{ label: "自分の版を別名で保存", value: "copy" as const, style: "cta" },
-			{ label: "上書きする", value: "overwrite" as const, style: "warning" },
-			{ label: "編集に戻る（保存しない）", value: "back" as const },
+			{ label: "Save mine as a copy", value: "copy" as const, style: "cta" },
+			{ label: "Overwrite", value: "overwrite" as const, style: "warning" },
+			{ label: "Back to editing (don't save)", value: "back" as const },
 		]);
 		if (choice === "copy") {
 			const vault = this.app.vault;

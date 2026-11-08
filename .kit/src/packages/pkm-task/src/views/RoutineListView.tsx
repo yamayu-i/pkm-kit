@@ -32,28 +32,28 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 		>
 			<label class="vt-text-field">
 				<span>summary</span>
-				<input type="text" value={summary} placeholder="例: 週次レビュー" onInput={(e) => setSummary(e.currentTarget.value)} />
+				<input type="text" value={summary} placeholder="e.g. Weekly review" onInput={(e) => setSummary(e.currentTarget.value)} />
 			</label>
 			<RepeatFields draft={draft} onChange={setDraft} />
 			<div class="vt-chip-row">
 				<label class="vt-text-field">
-					<span>グループ（任意）</span>
+					<span>Group (optional)</span>
 					<select class="dropdown" value={group} onChange={(e) => setGroup(e.currentTarget.value)}>
-						<option value="">未分類</option>
+						<option value="">Unsorted</option>
 						{props.groups.map((g) => (
 							<option value={g}>{g}</option>
 						))}
 					</select>
 				</label>
 				<label class="vt-text-field">
-					<span>estimated（任意）</span>
+					<span>estimated (optional)</span>
 					<input class="vt-small-input" type="text" value={estimated} placeholder="30m / 2h / 1d" onInput={(e) => setEstimated(e.currentTarget.value)} />
 				</label>
 			</div>
 			{error !== null && summary && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				<button type="submit" class="mod-cta" disabled={error !== null}>
-					作成
+					Create
 				</button>
 			</div>
 		</form>
@@ -68,7 +68,7 @@ export function RoutineListView(props: { ctx: TaskContext }) {
 	const today = localToday();
 	const routines = [...index.routines.values()].sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
 	const create = () =>
-		new PreactModal(ctx.app, "routine を作成", (close) => (
+		new PreactModal(ctx.app, "Create routine", (close) => (
 			<RoutineForm
 				groups={groupKeys(index.data.groups)}
 				onSubmit={(summary, repeat, extra) => {
@@ -85,24 +85,24 @@ export function RoutineListView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{routines.length}</span>
 				<span class="vt-spacer" />
 				<button class="vt-button is-primary" onClick={create}>
-					<Icon name="plus" /> routine を作成
+					<Icon name="plus" /> Create routine
 				</button>
 			</header>
-			{routines.length === 0 && <div class="vt-empty">routine はまだありません。毎日・毎週のようにくり返すタスクを登録できます（task board にだけ出ます）</div>}
+			{routines.length === 0 && <div class="vt-empty">No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board).</div>}
 			<div class="vt-routine-list">
 				{routines.map((r) => (
 					<div class={`vt-routine-item${r.active ? "" : " is-paused"}`} key={r.id}>
 						<span class="vt-badge vt-id vt-routine-id">{r.id}</span>
 						<div class="vt-routine-main" {...linkProps((e) => void ctx.openPath(r.path, Keymap.isModEvent(e) !== false))}>
-							<span class="vt-routine-summary">{r.summary || "（summary なし）"}</span>
+							<span class="vt-routine-summary">{r.summary || "(no summary)"}</span>
 							<span class="vt-muted">
-								{r.repeat ? describeRepeat(r.repeat) : "repeat が読めません"}
+								{r.repeat ? describeRepeat(r.repeat) : "Invalid repeat"}
 								{r.group ? ` · ${r.group}` : ""}
 								{r.estimated ? ` · ${formatMinutes(r.estimated)}` : ""}
 							</span>
 						</div>
-						{routineOccursOn(r, today) && <span class="vt-chip-mini is-today">今日</span>}
-						<button class={`vt-switch${r.active ? " is-on" : ""}`} role="switch" aria-checked={r.active} title={r.active ? "一時停止する" : "再開する"} onClick={() => toggle(r)}>
+						{routineOccursOn(r, today) && <span class="vt-chip-mini is-today">Today</span>}
+						<button class={`vt-switch${r.active ? " is-on" : ""}`} role="switch" aria-checked={r.active} title={r.active ? "Pause" : "Resume"} onClick={() => toggle(r)}>
 							<span class="vt-switch-thumb" />
 						</button>
 					</div>

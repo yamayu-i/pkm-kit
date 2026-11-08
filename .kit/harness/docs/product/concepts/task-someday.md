@@ -14,7 +14,7 @@ Organize の「Someday へ」、status のメニュー。Someday の一覧で見
 
 ## 使い方の筋道
 
-someday にすると、Do Date と期限が消え、Daily・Scheduled・Issues の既定の表示から消える。revisit を過ぎると Organize に出てくる。Do Date や期限を入れると open に戻る。
+someday にすると、Do Date と期限が消え、Today・Scheduled・Issues の既定の表示から消える。revisit を過ぎると Organize に出てくる。Do Date や期限を入れると open に戻る。
 
 ## 根拠
 

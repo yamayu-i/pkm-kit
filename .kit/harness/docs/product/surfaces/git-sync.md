@@ -1,7 +1,7 @@
 # PKM Git
 
 - 種類: コマンド・リボン
-- 開き方: コマンド・リボンの pull / push、コマンド「未解決のコンフリクトを一覧」「リモートをこの Vault に clone（初回のみ）」
+- 開き方: コマンド・リボンの pull / push、コマンド「List unresolved conflicts」「Clone the remote into this vault (first time only)」
 - 場面: [端末間の同期](../jobs/sync-devices.md)
 
 ## 今の振る舞い

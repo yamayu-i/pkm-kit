@@ -30,17 +30,17 @@ export function InboxView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{issues.length}</span>
 				<span class="vt-spacer" />
 				<button class="vt-button is-primary" disabled={issues.length === 0} onClick={() => void ctx.openView("pkm-task-organize")}>
-					<Icon name="layers" /> Organize で整理
+					<Icon name="layers" /> Organize
 				</button>
 			</header>
 			<form class="vt-quick-add" onSubmit={create}>
 				<Icon name="plus" />
-				<input type="text" placeholder="summary を入力して Enter（Inbox に入ります）" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} />
+				<input type="text" placeholder="Type a summary and press Enter (goes to Inbox)" value={draft} onInput={(e) => setDraft(e.currentTarget.value)} />
 				<button type="button" class="vt-button is-text" onClick={() => openCaptureModal(ctx)}>
-					まとめて作成
+					Capture
 				</button>
 			</form>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "estimated", "created"]} empty="Inbox は空です" />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "estimated", "created"]} empty="Inbox is empty" />
 			<ActionBar
 				count={sel.length}
 				actions={[

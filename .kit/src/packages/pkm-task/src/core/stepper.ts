@@ -22,7 +22,7 @@ export function stepperItems<K extends string>(steps: readonly { key: K; label: 
 	return steps.map((s, i) => {
 		const count = counts[s.key];
 		const state: StepState = s.key === current ? "current" : count === 0 || passed.has(s.key) ? "done" : "todo";
-		const detail = state === "done" ? (count > 0 ? `済み・${count} 件` : "済み") : `${count} 件`;
-		return { key: s.key, number: i + 1, label: s.label, state, compact: state !== "current", count, title: `${i + 1}. ${s.label}（${detail}）` };
+		const detail = state === "done" ? (count > 0 ? `Done · ${count}` : "Done") : `${count}`;
+		return { key: s.key, number: i + 1, label: s.label, state, compact: state !== "current", count, title: `${i + 1}. ${s.label} (${detail})` };
 	});
 }

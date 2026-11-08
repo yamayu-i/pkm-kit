@@ -6,25 +6,25 @@ const TEMPLATE_VIEWS = ["daily-list", "note-list", "source-list"];
 
 /** 今の pkm-task・pkm-template・pkm-updates が登録するコマンド（Obsidian は名前の前にプラグイン名を付ける） */
 const COMMANDS: CommandLike[] = [
-	{ id: "pkm-template:create-from-template", name: "PKM Template: テンプレートから新規ファイルを作成" },
-	{ id: "pkm-template:open-todays-daily", name: "PKM Template: 今日のデイリーノートを開く" },
-	{ id: "pkm-template:open-daily-list", name: "PKM Template: Daily notes を開く", icon: "calendar-days" },
-	{ id: "pkm-template:open-note-list", name: "PKM Template: Notes を開く", icon: "notebook" },
-	{ id: "pkm-template:open-source-list", name: "PKM Template: Sources を開く", icon: "library" },
-	{ id: "pkm-task:open-daily", name: "PKM Task: Daily を開く", icon: "calendar-check" },
-	{ id: "pkm-task:open-issues", name: "PKM Task: Issues を開く", icon: "list-todo" },
-	{ id: "pkm-task:open-inbox", name: "PKM Task: Inbox を開く", icon: "inbox" },
-	{ id: "pkm-task:open-organize", name: "PKM Task: Organize を開く", icon: "layers" },
-	{ id: "pkm-task:open-scheduled", name: "PKM Task: Scheduled を開く", icon: "calendar-range" },
-	{ id: "pkm-task:open-someday", name: "PKM Task: Someday を開く", icon: "cloud" },
-	{ id: "pkm-task:open-routines", name: "PKM Task: Routines を開く", icon: "repeat" },
-	{ id: "pkm-task:open-groups", name: "PKM Task: Board groups を開く", icon: "layout-grid" },
-	{ id: "pkm-task:open-members", name: "PKM Task: Members を開く", icon: "users" },
-	{ id: "pkm-task:open-labels", name: "PKM Task: Labels を開く", icon: "tag" },
-	{ id: "pkm-task:open-sidebar", name: "PKM Task: Tasks サイドバーを開く", icon: "check-square" },
-	{ id: "pkm-task:capture-issues", name: "PKM Task: issue をまとめて作成" },
-	{ id: "pkm-updates:open-view", name: "PKM Updates: PKM Updates を開く", icon: "bell" },
-	{ id: "other:open-foo", name: "Other: Foo を開く" },
+	{ id: "pkm-template:create-from-template", name: "PKM Template: Create new file from template" },
+	{ id: "pkm-template:open-todays-daily", name: "PKM Template: Open today's daily note" },
+	{ id: "pkm-template:open-daily-list", name: "PKM Template: Open Daily notes", icon: "calendar-days" },
+	{ id: "pkm-template:open-note-list", name: "PKM Template: Open Notes", icon: "notebook" },
+	{ id: "pkm-template:open-source-list", name: "PKM Template: Open Sources", icon: "library" },
+	{ id: "pkm-task:open-daily", name: "PKM Task: Open Today", icon: "sun" },
+	{ id: "pkm-task:open-issues", name: "PKM Task: Open Issues", icon: "list-todo" },
+	{ id: "pkm-task:open-inbox", name: "PKM Task: Open Inbox", icon: "inbox" },
+	{ id: "pkm-task:open-organize", name: "PKM Task: Open Organize", icon: "layers" },
+	{ id: "pkm-task:open-scheduled", name: "PKM Task: Open Scheduled", icon: "calendar-range" },
+	{ id: "pkm-task:open-someday", name: "PKM Task: Open Someday", icon: "cloud" },
+	{ id: "pkm-task:open-routines", name: "PKM Task: Open Routines", icon: "repeat" },
+	{ id: "pkm-task:open-groups", name: "PKM Task: Open Board groups", icon: "layout-grid" },
+	{ id: "pkm-task:open-members", name: "PKM Task: Open Members", icon: "users" },
+	{ id: "pkm-task:open-labels", name: "PKM Task: Open Labels", icon: "tag" },
+	{ id: "pkm-task:open-sidebar", name: "PKM Task: Open Tasks sidebar", icon: "check-square" },
+	{ id: "pkm-task:capture-issues", name: "PKM Task: Capture issues" },
+	{ id: "pkm-updates:open-view", name: "PKM Updates: Open PKM Updates", icon: "bell" },
+	{ id: "other:open-foo", name: "Other: Open Foo" },
 ];
 
 const VIEW_TYPES = new Set([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view", "other-foo", "markdown"]);
@@ -44,10 +44,10 @@ describe("collectViews（ADR-0072）", () => {
 		expect(entries.map((e) => e.commandId)).not.toContain("other:open-foo");
 	});
 
-	it("名前はプラグイン名と「を開く」を除いたもの。アイコンはコマンドのもの", () => {
+	it("名前はプラグイン名と「Open 」を除いたもの。アイコンはコマンドのもの", () => {
 		const entries = collect();
 		expect(entries.find((e) => e.viewType === "pkm-task-groups")).toMatchObject({ name: "Board groups", plugin: "pkm-task", icon: "layout-grid" });
-		expect(entries.find((e) => e.viewType === "pkm-task-sidebar")?.name).toBe("Tasks サイドバー");
+		expect(entries.find((e) => e.viewType === "pkm-task-sidebar")?.name).toBe("Tasks sidebar");
 		expect(entries.find((e) => e.viewType === "pkm-template-note-list")?.name).toBe("Notes");
 		expect(entries.find((e) => e.viewType === "pkm-updates-view")).toMatchObject({ name: "PKM Updates", icon: "bell" });
 	});
@@ -59,9 +59,14 @@ describe("collectViews（ADR-0072）", () => {
 	});
 
 	it("コマンドがあっても View が登録されていなければ出さない。新しい View は open-<名前> を登録すれば出る", () => {
-		const added = [...COMMANDS, { id: "pkm-task:open-weekly", name: "PKM Task: Weekly を開く" }];
+		const added = [...COMMANDS, { id: "pkm-task:open-weekly", name: "PKM Task: Open Weekly" }];
 		expect(collect(added).map((e) => e.name)).not.toContain("Weekly");
 		expect(collect(added, new Set([...VIEW_TYPES, "pkm-task-weekly"])).map((e) => e.name)).toContain("Weekly");
+	});
+
+	it("前の形のコマンド名（「<View> を開く」）からも名前を取り出す", () => {
+		const old = [{ id: "pkm-task:open-inbox", name: "PKM Task: Inbox を開く", icon: "inbox" }];
+		expect(collect(old).map((e) => e.name)).toEqual(["Inbox"]);
 	});
 
 	it("開いている View に印を付ける", () => {
@@ -85,7 +90,10 @@ describe("matchViews", () => {
 	});
 
 	it("名前の先頭で当たるものを上にする", () => {
-		expect(names("daily").slice(0, 2)).toEqual(["Daily", "Daily notes"]);
+		expect(names("s").slice(0, 3)).toEqual(["Someday", "Sources", "Scheduled"]);
+		// タスクの View は Today（#38）。daily ではデイリーノートの一覧が先頭に出る
+		expect(names("daily")[0]).toBe("Daily notes");
+		expect(names("today")[0]).toBe("Today");
 	});
 
 	it("文字が順に現れれば当たる。空白は無視する", () => {

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-task/main.js", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -14,6 +14,8 @@ function obsidianMock() {
 	const creators = new Map<string, (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }>();
 	const events: string[] = [];
 	let layoutReady: (() => void) | null = null;
+	/** ステータスバーの項目（ADR-0075）。Obsidian が HTMLElement に足すメソッドの分だけ */
+	const statusItems: { text: string; shown: boolean; classes: string[] }[] = [];
 	/** 本物の ItemView と同じく、コンストラクタの中で getViewType を呼ぶ */
 	class ItemView {
 		constructor(readonly leaf: unknown) {
@@ -38,8 +40,21 @@ function obsidianMock() {
 			commands.push(c);
 		}
 		addRibbonIcon() {}
-		registerEvent() {}
+		addStatusBarItem() {
+			const item = { text: "", shown: true, classes: [] as string[] };
+			statusItems.push(item);
+			return {
+				addClass: (...c: string[]) => item.classes.push(...c),
+				toggle: (show: boolean) => (item.shown = show),
+				setText: (t: string) => (item.text = t),
+				addEventListener: () => {},
+			};
+		}
 		register() {}
+		registerInterval(id: number) {
+			return id;
+		}
+		registerEvent() {}
 		registerView(type: string, creator: (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }) {
 			views.push(type);
 			creators.set(type, creator);
@@ -68,7 +83,9 @@ function obsidianMock() {
 			TFile: class {},
 			editorInfoField: {},
 			normalizePath: (p: string) => p,
+			setTooltip: () => {},
 		},
+		statusItems,
 		commands,
 		extensions,
 		events,
@@ -79,6 +96,10 @@ function obsidianMock() {
 }
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
+	// Obsidian では window がある（ステータスバーの更新の setInterval。ADR-0075）
+	beforeEach(() => vi.stubGlobal("window", { setInterval: () => 0 }));
+	afterEach(() => vi.unstubAllGlobals());
+
 	it("Obsidian 以外を require せず、onload でコマンドと画面のヘッダーの差し込みを登録する（ADR-0077）", async () => {
 		const mock = obsidianMock();
 		const required = new Set<string>();
@@ -111,6 +132,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む
 		expect(mock.extensions).toHaveLength(0);
 		expect(mock.events).toEqual(expect.arrayContaining(["workspace:file-open", "workspace:active-leaf-change", "workspace:layout-change"]));
+		// 記録中がなければ、ステータスバーの項目は隠れている（ADR-0075）
+		expect(mock.statusItems).toEqual([{ text: "", shown: false, classes: ["mod-clickable", "pkm-task-running-status"] }]);
 	});
 
 	it("登録した View をすべて作れる（親のコンストラクタが getViewType を呼んでも落ちない）", async () => {
