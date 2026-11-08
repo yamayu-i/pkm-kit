@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseTemplateConfig } from "../src/core/config";
+import { parseSnippet } from "../src/core/snippet";
 import { renderTemplate } from "../src/core/template";
 
 // 上流の既定のテンプレート（.kit/templates/）を実際に読んで、規約（vault-conventions.md）とプラグインの記法に合っているか確かめる
@@ -80,5 +81,20 @@ describe(".kit/templates/config.json", () => {
 		expect(byFile["issue.md"]).toMatchObject({ folder: "issue", fileNamePattern: "{{id:i}}" });
 		expect(byFile["routine.md"]).toMatchObject({ folder: "routine", fileNamePattern: "{{id:r}}" });
 		expect(byFile["member.md"]).toMatchObject({ folder: "member", fileNamePattern: "{{id:m}}" });
+	});
+});
+
+describe(".kit/templates/snippet/*.md", () => {
+	const snippetFiles = readdirSync(join(root, "snippet")).filter((f) => f.endsWith(".md"));
+
+	for (const file of snippetFiles) {
+		it(`${file}: スニペットとして読める（ADR-0060）`, () => {
+			expect(parseSnippet(file, readFileSync(join(root, "snippet", file), "utf8")).problem).toBeNull();
+		});
+	}
+
+	it("new-drawio は /drawio で pkm-drawio の図の作成を実行する（ADR-0094）", () => {
+		const { snippet } = parseSnippet("new-drawio.md", readFileSync(join(root, "snippet", "new-drawio.md"), "utf8"));
+		expect(snippet).toMatchObject({ name: "new-drawio", alias: "drawio", command: "pkm-drawio:create-diagram" });
 	});
 });

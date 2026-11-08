@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import {
 	EditorSuggest,
+	Notice,
 	type App,
 	type Editor,
 	type EditorPosition,
@@ -9,7 +10,7 @@ import {
 	type TFile,
 } from "obsidian";
 import type { StateField } from "@codemirror/state";
-import { filterSnippets, inlineBody, type SlashSession, type Snippet } from "../core/snippet";
+import { filterSnippets, inlineBody, withoutCommands, type SlashSession, type Snippet } from "../core/snippet";
 import { extractDatePrompts, renderTemplate } from "../core/template";
 import type { TemplateManager } from "./creator";
 import { askDates } from "./DatePromptModal";
@@ -38,7 +39,7 @@ export const SNIPPET_KIND: SnippetSuggestKind = {
 export const INLINE_KIND: SnippetSuggestKind = {
 	label: "Inline template",
 	field: atSessionField,
-	load: (m) => m.loadInlineTemplates(),
+	load: (m) => m.loadInlineTemplates().then(({ snippets, problems }) => ({ snippets: withoutCommands(snippets), problems })),
 	bodyOf: (s) => inlineBody(s.body),
 };
 
@@ -108,6 +109,10 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 		if (!ctx) return;
 		const { editor, file, start, end } = ctx;
 		this.close();
+		if (snippet.command !== undefined) {
+			this.runCommand(snippet.command, editor, start, end);
+			return;
+		}
 		const body = this.kind.bodyOf(snippet);
 		// {{prompt-date}} があれば、挿入の前に日付を尋ねる。キャンセルなら挿入せず、打った /… や @… を残す（ADR-0065）
 		void askDates(this.app, extractDatePrompts(body)).then((dates) => {
@@ -130,5 +135,21 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 			editor.setCursor(editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
 			editor.focus();
 		});
+	}
+
+	/**
+	 * command のあるスニペット（ADR-0094）。打った `/…` を消してカーソルをそこに置き、コマンドを実行する。
+	 * 実行できなければ打った文字を戻して知らせる
+	 */
+	private runCommand(command: string, editor: Editor, start: EditorPosition, end: EditorPosition): void {
+		const typed = editor.getRange(start, end);
+		editor.replaceRange("", start, end);
+		editor.setCursor(start);
+		editor.focus();
+		const commands = (this.app as unknown as { commands: { executeCommandById(id: string): boolean } }).commands;
+		if (commands.executeCommandById(command)) return;
+		editor.replaceRange(typed, start);
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + typed.length));
+		new Notice(`${command} を実行できません（${command.split(":")[0]} が有効になっていません）`);
 	}
 }
