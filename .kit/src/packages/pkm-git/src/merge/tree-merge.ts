@@ -42,6 +42,13 @@ export interface TreeMergeResult {
 
 /** コンフリクトマーカーを入れてよい拡張子。JSON などに入れると Obsidian の設定が壊れる */
 const MARKER_EXTENSIONS = new Set(["md", "markdown", "txt"]);
+/**
+ * 行単位でマージしない（両側の変更はファイル単位で衝突として扱う）もの。
+ * Draw.io の図は、編集用 XML と描画を別々の変更から混ぜると、行が重ならなくても意味が壊れる(ADR-0064)
+ */
+const WHOLE_FILE_SUFFIXES = [".drawio.svg", ".drawio"];
+/** 衝突の版の名前で、まとめて 1 つの拡張子として扱うもの（別名の版も図として開けるように） */
+const COMPOUND_EXTENSIONS = [".drawio.svg"];
 const SUBMODULE_MODE = "160000";
 const SYMLINK_MODE = "120000";
 
@@ -49,6 +56,12 @@ function extension(path: string): string {
 	const name = basename(path);
 	const i = name.lastIndexOf(".");
 	return i <= 0 ? "" : name.slice(i + 1).toLowerCase();
+}
+
+function hasSuffix(name: string, suffixes: readonly string[]): string | null {
+	const lower = name.toLowerCase();
+	const suffix = suffixes.find((s) => lower.endsWith(s) && lower.length > s.length);
+	return suffix === undefined ? null : name.slice(name.length - suffix.length);
 }
 
 function decodeText(data: Uint8Array): string | null {
@@ -72,7 +85,8 @@ function sameEntry(a: TreeEntry | undefined, b: TreeEntry | undefined): boolean 
 export function conflictCopyPath(path: string, suffix: string, taken: (p: string) => boolean): string {
 	const dir = dirname(path);
 	const name = basename(path);
-	const dot = name.lastIndexOf(".");
+	const compound = hasSuffix(name, COMPOUND_EXTENSIONS);
+	const dot = compound !== null ? name.length - compound.length : name.lastIndexOf(".");
 	const stem = dot > 0 ? name.slice(0, dot) : name;
 	const ext = dot > 0 ? name.slice(dot) : "";
 	for (let n = 1; ; n++) {
@@ -86,6 +100,7 @@ export function conflictCopyPath(path: string, suffix: string, taken: (p: string
  * ファイル単位の 3-way マージ。どのケースでもデータを捨てない。
  * - 片側だけの変更 → その変更を採用
  * - 両側で変更 → 行単位でマージ。重なったら md/txt はマーカー、それ以外はリモート優先＋ローカル版を別名保存
+ *   （Draw.io の図は行単位でマージせず、リモート優先＋ローカル版を別名保存。ADR-0064）
  * - 削除 vs 編集 → 編集側を残す
  */
 export async function mergeTrees(input: TreeMergeInput): Promise<TreeMergeResult> {
@@ -122,7 +137,7 @@ export async function mergeTrees(input: TreeMergeInput): Promise<TreeMergeResult
 		}
 
 		const special = [o.mode, t.mode].some((m) => m === SUBMODULE_MODE || m === SYMLINK_MODE);
-		if (!special) {
+		if (!special && hasSuffix(basename(path), WHOLE_FILE_SUFFIXES) === null) {
 			const [oursData, theirsData, baseData] = await Promise.all([
 				input.readBlob(o.oid),
 				input.readBlob(t.oid),
