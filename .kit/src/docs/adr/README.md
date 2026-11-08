@@ -53,6 +53,8 @@
 | [0036](0036-member-labels-and-list-sort.md) | 承認 | member の label と、Members の一覧の絞り込み・並べ替え |
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する |
 | [0038](0038-tmp-folder.md) | 承認 | git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない |
+| [0044](0044-html-standalone-export.md) | 提案 | Vault の中の HTML を、トークンと画像を埋め込んだ 1 ファイルにして tmp/ に書き出す |
+| [0045](0045-tmp-list-view.md) | 提案 | tmp/ のファイルの一覧 View を pkm-template に足し、一覧から開く・消す |
 | [0058](0058-pkm-plugin-names.md) | 承認 | 自作プラグインの名前を vault-* から pkm-* にする |
 | [0060](0060-snippet-slash-insert.md) | 承認 | 行頭の / でスニペットを挿入する |
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
