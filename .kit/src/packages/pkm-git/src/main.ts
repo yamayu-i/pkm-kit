@@ -97,9 +97,12 @@ export default class PkmGitPlugin extends Plugin {
 		});
 		this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
 
-		this.registerVaultEvents();
 		this.registerTriggers();
-		this.app.workspace.onLayoutReady(() => void this.startup());
+		this.app.workspace.onLayoutReady(() => {
+			// 起動中の Vault の読み込みでは、全ファイルの create が届く。読み込みの後から数える
+			this.registerVaultEvents();
+			void this.startup();
+		});
 	}
 
 	override onunload(): void {
@@ -229,7 +232,8 @@ export default class PkmGitPlugin extends Plugin {
 		try {
 			outcome = await pending;
 		} catch (e) {
-			console.error("[pkm-git] sync failed", redactSecrets(String(e), [this.token()]));
+			const message = redactSecrets(String(e), [this.token()]);
+			console.error(`[pkm-git] sync failed: ${message}`);
 			return;
 		}
 		if (!outcome || outcome.skipped) return;
@@ -240,7 +244,8 @@ export default class PkmGitPlugin extends Plugin {
 			}
 			this.report(outcome, manual);
 		} catch (e) {
-			console.error("[pkm-git] report failed", redactSecrets(String(e), [this.token()]));
+			const message = redactSecrets(String(e), [this.token()]);
+			console.error(`[pkm-git] report failed: ${message}`);
 		}
 	}
 

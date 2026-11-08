@@ -591,7 +591,16 @@ export class PkmGit {
 			return head === journal.to && journal.branch === branch ? { action: "finished" } : { action: "discarded" };
 		}
 
-		const [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, journal.from), readTreeMap(this.ctx, journal.to)]);
+		let fromMap: Map<string, TreeEntry>;
+		let toMap: Map<string, TreeEntry>;
+		try {
+			[fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, journal.from), readTreeMap(this.ctx, journal.to)]);
+		} catch {
+			// 記録の版が読めない。続きは判断できないので、今の振る舞い（snapshot とマージ）に任せる。
+			// 記録を残すと、同期のたびに同じところで止まり続ける
+			await this.removeJournal();
+			return { action: "discarded" };
+		}
 		const paths = new Set<string>();
 		for (const [path, e] of toMap) if (fromMap.get(path)?.oid !== e.oid) paths.add(path);
 		for (const path of fromMap.keys()) if (!toMap.has(path)) paths.add(path);

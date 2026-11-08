@@ -22026,7 +22026,14 @@ var PkmGit = class {
       await this.removeJournal();
       return head === journal.to && journal.branch === branch2 ? { action: "finished" } : { action: "discarded" };
     }
-    const [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, journal.from), readTreeMap(this.ctx, journal.to)]);
+    let fromMap;
+    let toMap;
+    try {
+      [fromMap, toMap] = await Promise.all([readTreeMap(this.ctx, journal.from), readTreeMap(this.ctx, journal.to)]);
+    } catch {
+      await this.removeJournal();
+      return { action: "discarded" };
+    }
     const paths = /* @__PURE__ */ new Set();
     for (const [path, e] of toMap) if (fromMap.get(path)?.oid !== e.oid) paths.add(path);
     for (const path of fromMap.keys()) if (!toMap.has(path)) paths.add(path);
@@ -22908,9 +22915,11 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       callback: () => void this.showUnresolved()
     });
     this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
-    this.registerVaultEvents();
     this.registerTriggers();
-    this.app.workspace.onLayoutReady(() => void this.startup());
+    this.app.workspace.onLayoutReady(() => {
+      this.registerVaultEvents();
+      void this.startup();
+    });
   }
   onunload() {
     this.controller?.setPaused(true);
@@ -23022,7 +23031,8 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
     try {
       outcome = await pending;
     } catch (e) {
-      console.error("[pkm-git] sync failed", redactSecrets(String(e), [this.token()]));
+      const message = redactSecrets(String(e), [this.token()]);
+      console.error(`[pkm-git] sync failed: ${message}`);
       return;
     }
     if (!outcome || outcome.skipped) return;
@@ -23033,7 +23043,8 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       }
       this.report(outcome, manual);
     } catch (e) {
-      console.error("[pkm-git] report failed", redactSecrets(String(e), [this.token()]));
+      const message = redactSecrets(String(e), [this.token()]);
+      console.error(`[pkm-git] report failed: ${message}`);
     }
   }
   report(outcome, manual) {

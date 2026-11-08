@@ -42,7 +42,7 @@ describe("同期の記録（ADR-0089 の 8）", () => {
 	});
 
 	it("トークンと URL の認証情報を残さない", async () => {
-		const error = new Error(`failed https://user:${SECRET}@github.com/o/r.git token=${SECRET}`);
+		const error = new Error(`failed https://user:${SECRET}@github.com/o/r.git token=${SECRET}`); // security-scan: allow（テスト用のダミー値）
 		await log.write({ level: "error", event: "unexpected-error", error, detail: `with ${SECRET}` });
 		const text = new TextDecoder().decode(await store.read(SYNC_LOG));
 		expect(text).not.toContain(SECRET);

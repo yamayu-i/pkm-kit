@@ -228,6 +228,18 @@ describe("sync（ADR-0089）", () => {
 			expect(server.remoteFile("a.md")).toContain("pc line");
 		});
 
+		it("記録の版が読めなければ記録を消し、今の振る舞い（snapshot とマージ）で続ける", async () => {
+			const head = (await pc.read(".git/refs/heads/main")).trim();
+			await pc.store.write(APPLY_JOURNAL, new TextEncoder().encode(
+				JSON.stringify({ schemaVersion: 1, branch: "main", from: head, to: "0".repeat(40) }),
+			));
+			await pc.write("x.md", "x\n");
+			const res = await pc.git.sync();
+			expect(res).toMatchObject({ status: "shared", recovery: { action: "discarded" } });
+			expect(await pc.exists(APPLY_JOURNAL)).toBe(false);
+			expect(server.remoteFile("x.md")).toBe("x\n");
+		});
+
 		it("知らない形の記録なら何もせずに止まり、記録を消さない", async () => {
 			await pc.store.write(APPLY_JOURNAL, new TextEncoder().encode('{"schemaVersion":99}'));
 			await expect(pc.git.sync()).rejects.toBeInstanceOf(ApplyJournalError);
