@@ -3201,6 +3201,12 @@ body.is-mobile .vt-toast {
 	font-family: inherit;
 }
 
+/* キーボードで選んだときの枠（WCAG 2.4.7） */
+.vt-cal button:focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
 .vt-cal-nav.vt-cal-nav {
 	display: inline-flex;
 	align-items: center;
@@ -3282,12 +3288,12 @@ body.is-mobile .vt-toast {
 /* 期限は丸の外側に隙間を空けた輪で示す（塗りの丸と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
 .vt-cal-day.vt-cal-day.is-soft-deadline:not(:focus-visible) {
 	outline: var(--vt-border-width-thick) solid var(--vt-amber);
-	outline-offset: 1px;
+	outline-offset: 2px;
 }
 
 .vt-cal-day.vt-cal-day.is-deadline:not(:focus-visible) {
 	outline: var(--vt-border-width-thick) solid var(--vt-red);
-	outline-offset: 1px;
+	outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
