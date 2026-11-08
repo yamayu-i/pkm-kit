@@ -18,6 +18,9 @@ const fetchRequest: RequestFn = async ({ url, method, headers, body }) => {
 
 export interface Device {
 	name: string;
+	root: string;
+	/** true の間、HTTP の送受信が失敗する（オフラインを模す） */
+	setOffline(offline: boolean): void;
 	store: NodeFileStore;
 	git: PkmGit;
 	write(path: string, text: string): Promise<void>;
@@ -34,12 +37,17 @@ export function createDevice(
 	onTransfer?: EngineOptions["onTransfer"],
 ): Device {
 	const root = mkdtempSync(join(tmpdir(), `pkm-git-${name}-`));
+	let offline = false;
+	const request: RequestFn = async (req) => {
+		if (offline) throw new TypeError("fetch failed");
+		return fetchRequest(req);
+	};
 	const store = new NodeFileStore(root);
 	const git = new PkmGit({
 		store,
 		onTiming,
 		onTransfer,
-		http: createHttpClient(fetchRequest, authHost),
+		http: createHttpClient(request, authHost),
 		authHost,
 		deviceName: name,
 		author: { name, email: `${name}@example.com` },
@@ -48,6 +56,8 @@ export function createDevice(
 	});
 	return {
 		name,
+		root,
+		setOffline: (v) => { offline = v; },
 		store,
 		git,
 		write: (path, text) => store.write(path, new TextEncoder().encode(text)),
