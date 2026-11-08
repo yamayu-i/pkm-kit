@@ -27,5 +27,4 @@
 
 ## 知られている困りごと
 
-- [#35](https://github.com/yamayu-i/pkm-kit/issues/35) 取り消しのボタンが「やり直す」になっている
 - [#37](https://github.com/yamayu-i/pkm-kit/issues/37) タイマーが動いていることに、ボードやサイドバーを見ないと気づけない
