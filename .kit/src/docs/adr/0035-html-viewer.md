@@ -48,6 +48,12 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 - HTML の側は `var(--vt-…)` だけで書けば、ライト / ダークのテーマとデザイン規約に従う。トークンを使わない HTML は、そのままの色で出る（背景が白い HTML はダークでも白い）
 - 上流が作る HTML の書き方は、デザインルール（`.kit/src/docs/design.md`）に節を足す。値はトークンだけを使う（`styles.css` と同じ）。上流が HTML を作る仕組みは別の Issue で作り、その `<style>` には `styles.css` と同じ CSS の検査（`css-lint`）と、描画した画面の検査（コントラストなど）をかける
 
+### Vault の外に共有するとき
+
+- Vault の中の HTML には、トークンの値も画像も埋め込まない（vault-html が開くときに差し込む）。そのため、Vault の外（ブラウザなど）で開くと、色と大きさが付かず、Vault の中の画像も出ない
+- 外部に共有するときは、トークンの値と画像を埋め込んだ 1 ファイルを `tmp/` に書き出す。埋め込むのはこのときだけで、変換は LLM ではなくコードで決定論的に行う。書き出しは [Issue #44](https://github.com/yamayu-i/pkm-kit/issues/44)（`tmp/` 自体は [Issue #14](https://github.com/yamayu-i/pkm-kit/issues/14)）で決める
+- そのため、取り除く処理と画像の埋め込みは、Obsidian に依存しないコード（`src/core/`）に置き、書き出しから使えるようにする
+
 ### 検査
 
 - `test/` で、組み立てた `srcdoc` の文字列を検査する（消すべきものが消え、CSP が `<head>` の最初にある）
