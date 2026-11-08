@@ -7,6 +7,7 @@
 | 作業 | 例 | 工程 |
 |---|---|---|
 | wiki の操作 | 取り込み、回答の蓄積、lint、デイリーノートの整理 | 各スキル（[LLM wiki の仕組み](llm-wiki.md)）に従って main に直接コミット |
+| ノートの改名 | 日本語の名前のファイル名を英語にする | [note-rename](../skills/note-rename/SKILL.md) に従って main に直接コミット |
 | タスク管理 | 計画・振り返り、ボードの操作、worklog の修正 | [task-coach](../skills/task-coach/SKILL.md)・[worklog-review](../skills/worklog-review/SKILL.md)。データは MCP ツールか CLI を通して書く |
 | この Vault のものの仕組みを変える | `template/` のテンプレート、`local/CLAUDE.md`、`skills/local-*`、`.obsidian/*.json` | 何をどう変えるかをチャットで伝えて確認 → ブランチで変えて `verify.mjs` を通す → PR |
 | 上流の更新の取り込み | 新しい機能、上流の修正 | [vault-upgrade](../skills/vault-upgrade/SKILL.md)（ブランチで merge と移行 → 検査 → PR） |
@@ -27,7 +28,7 @@
 
 ### ブランチ
 
-- wiki の操作と気づきの記録（`.claude/notes/` だけの変更）は main に直接コミットして push する。push の前に `git pull --rebase origin main` で端末の snapshot を取り込む。人のノートで衝突したら、止めてユーザーに伝える
+- wiki の操作、ノートの改名（`note(rename):`）、気づきの記録（`.claude/notes/` だけの変更）は main に直接コミットして push する。push の前に `git pull --rebase origin main` で端末の snapshot を取り込む。人のノートで衝突したら、止めてユーザーに伝える
 - それ以外は main から切ったブランチで行い、PR にする。ブランチ名は `<英語の短い名前>`。クラウドのセッションで指定されたブランチがあれば、それを使う
 - force push をしない。PR をマージしない（マージはユーザーが行う）
 
@@ -46,6 +47,7 @@
 | type | 使う場面 |
 |---|---|
 | `wiki` | wiki の操作。scope は `ingest` / `query` / `lint` / `daily`。CI が追記だけかを検査する |
+| `note` | ノートの改名。scope は `rename`。CI が改名とリンク先の書き換えだけかを検査する |
 | `harness` | この Vault のハーネス（`local/`、`skills/local-*`）。気づきの記録は `harness(note): …` |
 | `docs` | この Vault の文書 |
 | `vault` | テンプレート・設定など、この Vault のそのほかのもの |
