@@ -1,6 +1,6 @@
 import { MarkdownView, type Plugin } from "obsidian";
 import { h, render } from "preact";
-import { installHeaderMount } from "../../../shared/src/header-mount.ts";
+import { installHeaderMount, remeasureEditor } from "../../../shared/src/header-mount.ts";
 import { buildHeader, type HeaderModel } from "../core/note-header";
 import { hasNoteHeader, WIKI_TYPES } from "../core/note-list";
 import { NoteHeader } from "./NoteHeader";
@@ -39,5 +39,6 @@ export function installNoteHeaders(plugin: Plugin): void {
 		model,
 		draw: (host, m) => render(h(NoteHeader, { app, model: m }), host),
 		clear: (host) => render(null, host),
+		resized: remeasureEditor,
 	});
 }

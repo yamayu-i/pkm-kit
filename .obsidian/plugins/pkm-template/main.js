@@ -1559,41 +1559,129 @@ function placeHeaders(sizers, className, show, create) {
   }
   return { hosts, removed };
 }
+function headerMissing(sizers, className) {
+  return sizers.some((sizer) => sizer.firstElementChild?.className !== className);
+}
+function eachSafely(items, fn) {
+  const errors = [];
+  for (const item2 of items) {
+    try {
+      fn(item2);
+    } catch (e3) {
+      errors.push(e3);
+    }
+  }
+  return errors;
+}
+function remeasureEditor(view) {
+  const cm = view.editor?.cm;
+  cm?.requestMeasure?.();
+}
 function installHeaderMount(options) {
   const { plugin, className } = options;
   const { app } = plugin;
   const observers = /* @__PURE__ */ new Map();
-  const watch = (sizer, host) => {
-    observers.get(sizer)?.disconnect();
-    const observer = new MutationObserver(() => {
+  const resizers = /* @__PURE__ */ new Map();
+  const scrolls = /* @__PURE__ */ new Map();
+  const report = (errors) => {
+    for (const e3 of errors) console.error(`[${plugin.manifest.id}] header`, e3);
+  };
+  const sizersOf = (view) => Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+  const watch = (view, sizer, host) => {
+    unwatch(sizer);
+    const keep = new MutationObserver(() => {
       keepFirst(sizer, host);
     });
-    observer.observe(sizer, { childList: true });
-    observers.set(sizer, observer);
+    keep.observe(sizer, { childList: true });
+    const list = [keep];
+    const parent = sizer.parentElement;
+    if (parent) {
+      const replaced = new MutationObserver(() => {
+        if (!sizer.isConnected) check(view);
+      });
+      replaced.observe(parent, { childList: true });
+      list.push(replaced);
+    }
+    observers.set(sizer, list);
+    if (options.resized && !resizers.has(host) && typeof ResizeObserver !== "undefined") {
+      const resized = options.resized;
+      const ro = new ResizeObserver(() => {
+        try {
+          resized(view);
+        } catch (e3) {
+          report([e3]);
+        }
+      });
+      ro.observe(host);
+      resizers.set(host, ro);
+    }
   };
   const unwatch = (sizer) => {
-    observers.get(sizer)?.disconnect();
+    for (const o3 of observers.get(sizer) ?? []) o3.disconnect();
     observers.delete(sizer);
   };
+  const unresize = (host) => {
+    resizers.get(host)?.disconnect();
+    resizers.delete(host);
+  };
+  let pending = /* @__PURE__ */ new Set();
+  let frame;
+  const check = (view) => {
+    pending.add(view);
+    if (frame !== void 0) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = void 0;
+      const views = Array.from(pending);
+      pending = /* @__PURE__ */ new Set();
+      report(
+        eachSafely(views, (v3) => {
+          if (scrolls.get(v3.contentEl)?.shown && headerMissing(sizersOf(v3), className)) mount(v3);
+        })
+      );
+    });
+  };
+  const listenScroll = (view, shown) => {
+    const el = view.contentEl;
+    const entry = scrolls.get(el);
+    if (entry) {
+      entry.shown = shown;
+      return;
+    }
+    const onScroll = () => check(view);
+    el.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    scrolls.set(el, { off: () => el.removeEventListener("scroll", onScroll, { capture: true }), shown });
+  };
   const mount = (view) => {
-    const sizers = Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+    const sizers = sizersOf(view);
     const model = options.model(view);
     const { hosts, removed } = placeHeaders(sizers, className, model !== null, () => {
       const el = document.createElement("div");
       el.className = className;
       return el;
     });
-    for (const host of removed) options.clear(host);
+    for (const host of removed) {
+      unresize(host);
+      options.clear(host);
+    }
     for (const sizer of sizers) {
       const host = findHost(sizer, className);
-      if (host) watch(sizer, host);
+      if (host) watch(view, sizer, host);
       else unwatch(sizer);
     }
-    if (model !== null) for (const host of hosts) options.draw(host, model, view);
+    listenScroll(view, model !== null);
+    if (model !== null) report(eachSafely(hosts, (host) => options.draw(host, model, view)));
   };
   const refresh = () => {
-    for (const view of options.views()) mount(view);
+    const views = options.views();
+    report(eachSafely(views, mount));
     for (const sizer of Array.from(observers.keys())) if (!sizer.isConnected) unwatch(sizer);
+    for (const host of Array.from(resizers.keys())) if (!host.isConnected) unresize(host);
+    const open = new Set(views.map((v3) => v3.contentEl));
+    for (const [el, entry] of Array.from(scrolls)) {
+      if (open.has(el) && el.isConnected) continue;
+      entry.off();
+      scrolls.delete(el);
+    }
   };
   let timer;
   const schedule = () => {
@@ -1602,7 +1690,7 @@ function installHeaderMount(options) {
   };
   const now = () => {
     const view = options.activeView();
-    if (view) mount(view);
+    if (view) report(eachSafely([view], mount));
     schedule();
   };
   const on = (ref) => plugin.registerEvent(ref);
@@ -1614,8 +1702,13 @@ function installHeaderMount(options) {
   app.workspace.onLayoutReady(refresh);
   plugin.register(() => {
     window.clearTimeout(timer);
-    for (const observer of observers.values()) observer.disconnect();
+    if (frame !== void 0) window.cancelAnimationFrame(frame);
+    for (const list of observers.values()) for (const o3 of list) o3.disconnect();
     observers.clear();
+    for (const ro of resizers.values()) ro.disconnect();
+    resizers.clear();
+    for (const entry of scrolls.values()) entry.off();
+    scrolls.clear();
     const selector = className.split(" ").map((c3) => `.${c3}`).join("");
     for (const host of Array.from(document.querySelectorAll(selector))) {
       options.clear(host);
@@ -1894,7 +1987,8 @@ function installNoteHeaders(plugin) {
     activeView: () => app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView),
     model,
     draw: (host, m3) => R(k(NoteHeader, { app, model: m3 }), host),
-    clear: (host) => R(null, host)
+    clear: (host) => R(null, host),
+    resized: remeasureEditor
   });
 }
 
