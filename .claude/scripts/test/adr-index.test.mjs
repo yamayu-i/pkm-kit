@@ -42,13 +42,15 @@ test("一覧が ADR と合っていないと失敗し、書き換えない", () 
 
 test("union の merge で行が重なって並びが崩れても、--write で整う", () => {
 	const dir = tempVault({
-		"README.md": `${README.replace("<!-- adr-index:end -->", "| 古い行 |\n| 古い行 |\n<!-- adr-index:end -->")}`,
+		"README.md": `${README.replace("<!-- adr-index:end -->", "| 古い行 |\n| 古い行 |\n<!-- adr-index:end -->")}| [0001](0001-a.md) | 承認 | 印の外に残った行 |\n`,
 		"0002-b.md": adr("0002", "B"),
 		"0001-a.md": adr("0001", "A"),
 	});
 	assert.deepEqual(indexDir(dir, { write: true }), []);
 	const text = readFileSync(join(dir, "README.md"), "utf8");
 	assert.ok(!text.includes("古い行"));
+	assert.ok(!text.includes("印の外に残った行"));
+	assert.ok(text.endsWith("<!-- adr-index:end -->\n"));
 	assert.ok(text.indexOf("0001-a.md") < text.indexOf("0002-b.md"));
 });
 

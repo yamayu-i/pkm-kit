@@ -30,4 +30,5 @@ test("利用実態を集計する", () => {
 	assert.match(report, /更新されていない: wiki\/a\.md/);
 	assert.match(report, /- ingest: 1/);
 	assert.match(report, /> 検索で見つからない/);
+	assert.match(report, /## 出力の記録（output-log）[\s\S]*### 段階ごと/);
 });

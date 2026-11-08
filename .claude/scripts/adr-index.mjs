@@ -51,12 +51,20 @@ export function renderIndex(adrs) {
 	return ["| ADR | 状態 | 内容 |", "|---|---|---|", ...rows].join("\n");
 }
 
-/** README の START と END の間を一覧に置き換えた全文を返す。印がなければ null */
+// 一覧の行。印の外にあれば、union の merge で残った古い行なので消す
+const ROW = /^\| \[\d{4}\]\(/;
+const dropRows = (text) =>
+	text
+		.split("\n")
+		.filter((l) => !ROW.test(l))
+		.join("\n");
+
+/** README の START と END の間を一覧に置き換え、印の外の一覧の行を消した全文を返す。印がなければ null */
 export function replaceIndex(readme, index) {
 	const s = readme.indexOf(START);
 	const e = readme.indexOf(END);
 	if (s < 0 || e < s) return null;
-	return `${readme.slice(0, s + START.length)}\n${index}\n${readme.slice(e)}`;
+	return `${dropRows(readme.slice(0, s + START.length))}\n${index}\n${dropRows(readme.slice(e))}`;
 }
 
 /** 1 つのディレクトリを確かめる（write なら書き直す）。戻り値はエラーの配列 */

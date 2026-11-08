@@ -37,5 +37,6 @@
 | [0010](0010-upstream-updates-and-migrations.md) | 承認（一部置換: ADR-0056） | 上流の更新は merge と移行で取り込み、Breaking Change は AI が移行する |
 | [0011](0011-harness-parent-and-child.md) | 承認 | ハーネスを親と子に分け、子で見つけた上流の改善はエスカレーションする |
 | [0012](0012-product-responsibility.md) | 承認 | ユーザー体験に責任を持つ責務（プロダクト）をハーネスに置く |
+| [0013](0013-output-by-reader-and-stage.md) | 承認（5 段階で試行し、記録をもとに見直す） | 出力を、読み手（LLM・人・両方）と、人が読む出力の段階で制御する |
 | [0056](0056-conflict-free-numbering.md) | 承認 | 並行する PR がぶつからないように、番号は Issue から取り、書き足す共有のファイルをなくす |
 <!-- adr-index:end -->

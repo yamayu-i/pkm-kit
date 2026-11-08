@@ -68,3 +68,12 @@ description: 子の Vault で見つけた、上流（pkm-kit）を変えない�
 
 - 上流からの返事（Issue のコメント、Close）は、月 1 回の [harness-review](../harness-review/SKILL.md) で確かめる
 - 上流で直ったら、上流の更新を取り込んだ後に効いているかを確かめる
+
+## 出力の段階
+
+出力は [write-for-reader](../write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 上流に伝える Issue・ファイルの本文 | 両方 | 3 |
+| 送る前にユーザーに見せる下書き | 人 | 3 |

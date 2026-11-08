@@ -18,6 +18,7 @@
 - 子は上流を merge で取り込む。上流のファイルは子にも届くので、上流のハーネス（ここ）は子でも見えるが、子では使わない
 - コミュニティプラグインは使わない。必要な機能は自作する
 - 文書・コミット・Issue・PR は日本語。識別子は英語
+- ユーザーへの返事と質問（質問のツールの問い・選択肢・説明を含む）も日本語
 
 ## ハーネスの 3 つの層
 
@@ -41,6 +42,7 @@
 | `.kit/harness/skills/` | 上流の手順 |
 | `.kit/harness/hooks/` | SessionStart フック（上流のときだけ、セキュリティチェックと評価の期限を知らせる） |
 | `.kit/harness/notes/` | 上流の開発中の気づき（未処理）。評価で処理したら消す |
+| `.kit/harness/output-log/` | 上流の作業での出力の記録（[write-for-reader](../../../.claude/skills/write-for-reader/recording.md)）。評価で読む。消さない |
 | `.kit/harness/reviews/` | 上流の評価のレポートと `last-review.json` |
 | `.kit/harness/security/` | セキュリティチェックの記録 |
 | `.kit/src/` | プラグインのソース。`docs/adr/` にプラグインの ADR |
@@ -110,5 +112,4 @@ Claude Code・Obsidian の更新 ───────────────�
 
 | 日付 | 行った手順 | 起票した Issue |
 |---|---|---|
-
-まだ評価していない。
+| 2026-11-08（初回） | 1〜7（調査は Claude Code と Obsidian の更新だけ） | #49、#50、#51、#52、#53（受け入れたエスカレーション #9） |

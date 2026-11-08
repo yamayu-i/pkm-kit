@@ -65,3 +65,12 @@ node .claude/scripts/verify.mjs
 ## 最初の取り込みについて
 
 上流を切り出す前から使っている Vault は、上流と共通の祖先がない。最初の 1 回だけ `git merge --allow-unrelated-histories upstream/main` を使い、上流のものは上流の版を、子のものは子の版を採る（[ADR-0009](../../../.kit/harness/docs/adr/0009-upstream-and-child-vaults.md) の 5）。その後に `node .kit/setup.mjs` を実行すると、移行も実行される。
+
+## 出力の段階
+
+出力は [write-for-reader](../write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 取り込みの PR の本文 | 両方 | 3,4（移行と子への影響の節が 4） |
+| 取り込みの完了の報告 | 人 | 1 |

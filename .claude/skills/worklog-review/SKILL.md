@@ -48,3 +48,12 @@ TZ=Asia/Tokyo node .kit/bin/worklog-review.mjs . --json   # 日またぎの判�
 - **他の端末で記録中のログ**（`to` が `null`）は、その端末で同期（vault-git の pull / push）してから直してもらう。同期前に直すと、その端末が止めたときに行の ID が合わず、プラグインが書き込みを止める
 - 直し終わったら `node .kit/bin/lint.mjs .` を実行し、エラーがないことを確かめる
 - 変更は worklog のファイルだけ。コミットするかはユーザーに確認する（ふだんは vault-git が同期するので、Claude Code からはコミットしなくてよいことが多い）
+
+## 出力の段階
+
+出力は [write-for-reader](../write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 候補の一覧 | 人 | 4 |
+| 1 件ずつの確認 | 人 | 3 |
