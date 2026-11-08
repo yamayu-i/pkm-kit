@@ -11,6 +11,14 @@
 - 記録のスクリプト `.claude/scripts/output-log.mjs` を足した。段階ごとの使われた回数、時間、モデルの名前、出力に問題があった会話を `.claude/output-log/` に記録する。`usage-report.mjs`（harness-review）に集計が出る
 - 子への影響: 移行はない。子の Vault に `.claude/output-log/` ができる（子のもの。気づきの記録と同じ扱いでコミットしてよい）。出力の長さ・網羅についての訂正は、harness-note ではなくこの記録に書く
 
+## git で管理しない一時ファイルの置き場 tmp/（temporary/ を使わない）
+
+- **移行 0006-tmp-untracked**: 上流の `.gitignore` に `tmp/` を入れた。`tmp/` は、外部共有用の書き出し先と、自分が一時的に見るだけで端末間で同期しなくてよいファイルの置き場（ADR-0038）。移行は何も変えず、git が追跡している `tmp/` のファイルがあれば一覧を出して止まる（追跡を外すと、ほかの端末で次の同期のときに消えるため）。ファイルごとに、`tmp/` の外へ移すか追跡を外すかをユーザーに確かめる
+- 一時ファイルの置き場は `tmp/` だけにした。updated の自動付与（vault-git と `.kit/bin/stamp-updated.mjs`）の対象外から `temporary/` を外した
+- `.claude/docs/vault-conventions.md`: 配置の表に `tmp/` を足し、除外の記述を `tmp/` にそろえた。`tmp/` の外のノートから `tmp/` へリンクしない
+- `tmp/` の一覧 View は #45 で扱う
+- 子への影響: 移行 0006 を実行する。`temporary/` にノートを置いているなら、コミット時に updated が付き、wiki-lint の対象になる。一時ファイルなら `tmp/` に移す。vault-git の `main.js` と `.kit/bin/` の CLI が変わった。モバイルの Vault Git で、`tmp/` に置いたファイルがコミットされないことを確かめる
+
 ## Vault の中の HTML を読み取り専用で表示する（vault-html）
 
 - **移行 0005-html-viewer**: 新しいプラグイン vault-html を有効にする（`community-plugins.json` に `vault-html` を足す）。`.html` / `.htm` がファイルエクスプローラーに出て、Obsidian のタブで読み取り専用で開ける。Markdown リンクからも開ける（ADR-0037）

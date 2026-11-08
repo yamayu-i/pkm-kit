@@ -21073,7 +21073,7 @@ function assertSafeWorktreePath(path) {
 
 // src/stamp/updated.ts
 init_buffer();
-var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["temporary", "template", "tmp"]);
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["template", "tmp"]);
 function isTargetPath(path) {
   if (!path.endsWith(".md")) return false;
   const parts = path.split("/");
