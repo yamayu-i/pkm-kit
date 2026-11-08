@@ -3,7 +3,6 @@ import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
-import { TemplateSettingTab } from "./obsidian/SettingTab";
 import { slashSessionField } from "./obsidian/snippet-session";
 import { SnippetSuggest } from "./obsidian/SnippetSuggest";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
@@ -62,7 +61,6 @@ export default class PkmTemplatePlugin extends Plugin {
 		// 行頭の / でスニペットを挿入する（ADR-0060）
 		this.registerEditorExtension(slashSessionField);
 		this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
-		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}
 
 	/** 一覧 View は左の固定ペインに開く（ADR-0033） */

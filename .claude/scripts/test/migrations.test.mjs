@@ -79,7 +79,9 @@ test("0001: 切り出す前からの Vault は、上流と同じ写しと設定�
 test("0001: 変えたテンプレートと子だけのテンプレートは残し、設定は上流と違う項目だけにする", async () => {
 	const root = childFrom("customized");
 	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
-	await runMigrations(root);
+	// 0061 が template/config.json を消すので、0001 だけを実行して途中の形を確かめる
+	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0001-template-overrides/migrate.mjs")).href);
+	migrate(root);
 	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
 	assert.equal(readFileSync(join(root, "template/file/note.md"), "utf8"), note);
 	const { templates } = JSON.parse(readFileSync(join(root, "template/config.json"), "utf8"));
@@ -356,4 +358,45 @@ test("0058: 読めない hotkeys.json は変えずに、check が失敗して止
 	assert.equal(failed?.name, "0058-pkm-plugin-names");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8"), "{壊れている");
+});
+
+/** 0061 より前の移行（0061 だけを実行するときに、適用済みとして記録する） */
+const before0061 = (root) => listMigrations(root).filter((m) => m < "0061");
+
+test("0061: template/config.json を消し、捨てる値を知らせる。テンプレートの中身は残す", async () => {
+	const root = childFrom("customized");
+	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
+	const { done, failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.ok(!existsSync(join(root, "template/config.json")));
+	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
+	assert.equal(readFileSync(join(root, "template/file/note.md"), "utf8"), note);
+	const changes = done.find((d) => d.name === "0061-fixed-template-config").changes.join("\n");
+	assert.match(changes, /template\/config\.json: 消す/);
+	assert.match(changes, /note\.md: folder = "memo"/);
+	assert.match(changes, /mine\.md: .*folder = "mine"/);
+});
+
+test("0061: template/ に config.json しかなければ、template/ ごと消す", async () => {
+	const root = childFrom("fresh");
+	write(root, { "template/config.json": JSON.stringify({ templates: [{ file: "note.md", folder: "memo" }] }) });
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0061(root) }) });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.ok(!existsSync(join(root, "template")));
+});
+
+test("0061: 読めない template/config.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	// 0001 も同じファイルを読むので、0061 より前をすべて適用済みにして 0061 だけを実行する
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, {
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0061(root) }),
+		"template/config.json": "{壊れている",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0061-fixed-template-config");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, "template/config.json"), "utf8"), "{壊れている");
 });

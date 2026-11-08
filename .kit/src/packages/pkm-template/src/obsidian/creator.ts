@@ -1,12 +1,8 @@
 import { MarkdownView, normalizePath, Platform, type App, type TFile } from "obsidian";
 import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import {
-	diffTemplateEntries,
-	layerTemplateEntries,
 	parseTemplateConfig,
-	parseTemplateOverrides,
-	serializeTemplateOverrides,
-	TEMPLATE_CONFIG_PATH,
+	resolveTemplateEntries,
 	TEMPLATE_DIR,
 	UPSTREAM_TEMPLATE_CONFIG_PATH,
 	UPSTREAM_TEMPLATE_DIR,
@@ -71,35 +67,13 @@ export class TemplateManager {
 	}
 
 	/**
-	 * 上流の既定（`.kit/templates/`）に、その Vault の `template/config.json` を項目ごとに重ねた設定一覧を返す。
+	 * 上流の設定（`.kit/templates/config.json`）と、使えるテンプレートを合わせた設定一覧を返す。設定は子が上書きしない（ADR-0061）。
 	 * テンプレートのファイルは、同じ名前ならその Vault の `template/file/` を優先する
 	 */
 	async loadConfig(): Promise<{ entries: TemplateEntry[]; problems: string[] }> {
 		const files = await this.listTemplateFiles();
 		const upstream = await this.loadUpstreamConfig();
-		const configFile = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-		const local = configFile ? parseTemplateOverrides(await this.app.vault.read(configFile)) : { overrides: [], problems: [] };
-		return {
-			entries: layerTemplateEntries({ upstream: upstream.templates, overrides: local.overrides, files }),
-			problems: [...upstream.problems, ...local.problems.map((p) => `${TEMPLATE_CONFIG_PATH}: ${p}`)],
-		};
-	}
-
-	/** その Vault の `template/config.json` に、上流と違う項目だけを保存する（上流の既定は変えない） */
-	async saveConfig(entries: readonly TemplateEntry[]): Promise<void> {
-		const upstream = await this.loadUpstreamConfig();
-		const text = serializeTemplateOverrides(diffTemplateEntries(entries, upstream.templates));
-		const existing = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-		if (existing) {
-			const { problems } = parseTemplateOverrides(await this.app.vault.read(existing));
-			if (problems.length > 0) {
-				throw new Error(`${TEMPLATE_CONFIG_PATH} に書式エラーがあるため上書きできません: ${problems.join(", ")}`);
-			}
-			await this.app.vault.modify(existing, text);
-			return;
-		}
-		await this.ensureFolder(TEMPLATE_CONFIG_PATH);
-		await this.app.vault.create(TEMPLATE_CONFIG_PATH, text);
+		return { entries: resolveTemplateEntries({ upstream: upstream.templates, files }), problems: upstream.problems };
 	}
 
 	/** テンプレート 1 件の中身とプロンプト定義を読み込む。その Vault の `template/file/` を先に見る。どちらにもなければ null */
@@ -170,7 +144,7 @@ export class TemplateManager {
 
 	/**
 	 * 今日のデイリーノートを開く。なければ daily.md のテンプレート（`template/file/` か `.kit/templates/file/`）から作る。
-	 * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
+	 * 生成先は `.kit/templates/config.json` の daily.md の設定に従う（有効・無効は問わない）。
 	 */
 	async openTodaysDaily(now: Date = new Date()): Promise<TFile> {
 		const { entries } = await this.loadConfig();

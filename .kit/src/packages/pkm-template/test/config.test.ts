@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveTemplateEntry, parseTemplateConfig } from "../src/core/config";
+import { parseTemplateConfig } from "../src/core/config";
 
 describe("parseTemplateConfig（上流の既定の設定）", () => {
 	it("正しい JSON を読み込める", () => {
@@ -23,18 +23,5 @@ describe("parseTemplateConfig（上流の既定の設定）", () => {
 		const res = parseTemplateConfig(JSON.stringify({ templates: [{ file: "" }, { file: "../evil.md" }] }));
 		expect(res.templates).toEqual([]);
 		expect(res.problems.length).toBeGreaterThanOrEqual(2);
-	});
-});
-
-describe("moveTemplateEntry", () => {
-	it("moveTemplateEntry で表示順を前後に移動できる", () => {
-		const items = [
-			{ file: "a.md", enabled: true, folder: "", fileNamePattern: "" },
-			{ file: "b.md", enabled: true, folder: "", fileNamePattern: "" },
-			{ file: "c.md", enabled: true, folder: "", fileNamePattern: "" },
-		];
-		expect(moveTemplateEntry(items, "b.md", -1).map((x) => x.file)).toEqual(["b.md", "a.md", "c.md"]);
-		expect(moveTemplateEntry(items, "b.md", 1).map((x) => x.file)).toEqual(["a.md", "c.md", "b.md"]);
-		expect(moveTemplateEntry(items, "a.md", -1).map((x) => x.file)).toEqual(["a.md", "b.md", "c.md"]);
 	});
 });

@@ -346,16 +346,6 @@ body.theme-dark {
 	cursor: not-allowed;
 }
 
-.vt-tpl-setting-error {
-	margin-bottom: 12px;
-	padding: 12px 16px;
-	border-radius: var(--vt-radius-m);
-	background: var(--vt-red-container);
-	color: var(--vt-on-red-container);
-	font-size: var(--vt-type-body-small-size);
-	line-height: var(--vt-type-body-small-line-height);
-}
-
 /* ---------- ノートのヘッダー(ADR-0026) ---------- */
 
 .vt-tpl-note-header {
