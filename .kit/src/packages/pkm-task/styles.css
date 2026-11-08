@@ -15,8 +15,9 @@
 	container-type: inline-size;
 }
 
-/* issue を開いているときは Properties 欄を隠す（ヘッダーが代わりに表示する） */
-.markdown-source-view.is-live-preview.show-properties:has(.vt-header) .metadata-container:not(.mod-error) {
+/* issue・routine・member を開いているときは、Live Preview とリーディングビューで Properties 欄を隠す（ヘッダーが代わりに表示する。ADR-0077） */
+.markdown-source-view.is-live-preview.show-properties:has(.vt-header) .metadata-container:not(.mod-error),
+.markdown-reading-view .markdown-preview-view .markdown-preview-sizer:has(> .vt-header) .metadata-container:not(.mod-error) {
 	display: none;
 }
 
