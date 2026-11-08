@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { lintVault } from "../wiki-lint.mjs";
+import { lintVault, pendingRenames } from "../wiki-lint.mjs";
 import { page, tempVault } from "./helpers.mjs";
 
 const messages = (list) => list.map((p) => `${p.path} ${p.message}`);
@@ -89,4 +89,14 @@ test("frontmatter のあるノートは updated が必須(秒までの ISO 8601�
 		"empty.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .kit/bin/stamp-updated.mjs --migrate）",
 		"missing.md frontmatter に updated がない（コミット時に自動で付与される。既存のノートは node .kit/bin/stamp-updated.mjs --migrate）",
 	]);
+});
+
+test("日本語の名前のノートは誤りにせず、改名を待っているノートとして数える", () => {
+	const root = tempVault({
+		"会議メモ.md": "x\n",
+		"note/english-name.md": "x\n",
+		"daily/2026/10/2026-10-30.md": "x\n",
+	});
+	assert.deepEqual(lintVault(root), { errors: [], warnings: [] });
+	assert.deepEqual(pendingRenames(root), ["会議メモ.md"]);
 });
