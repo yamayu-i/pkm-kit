@@ -1,4 +1,4 @@
-/** 0004 が終わった状態か。終わっていなければ、残っているものを返す */
+/** 0005 が終わった状態か。終わっていなければ、残っているものを返す */
 import { COMMUNITY, HTML, readJson } from "./common.mjs";
 
 export function check(root) {

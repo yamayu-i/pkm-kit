@@ -1,4 +1,4 @@
-/* vault-html の View（ADR-0035）。HTML は iframe の中に出し、ここでは iframe を View いっぱいに広げるだけ */
+/* vault-html の View（ADR-0037）。HTML は iframe の中に出し、ここでは iframe を View いっぱいに広げるだけ */
 .vault-html-view {
 	padding: 0;
 	overflow: hidden;

@@ -166,7 +166,7 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	// 0004 が後ろに vault-html を足す
+	// 0005 が後ろに vault-html を足す
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon", "vault-html"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
@@ -190,26 +190,26 @@ test("0002: 読めない core-plugins.json は変えずに、check が失敗し�
 	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
 });
 
-test("0004: community-plugins.json に vault-html を足す。ほかの要素と順は残す", async () => {
+test("0005: community-plugins.json に vault-html を足す。ほかの要素と順は残す", async () => {
 	const root = childFrom("customized");
 	const before = readJsonFile(root, ".obsidian/community-plugins.json");
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0002 が vault-ribbon を、0004 が vault-html を後ろに足す
+	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足す
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before, "vault-ribbon", "vault-html"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 });
 
-test("0004: 読めない community-plugins.json は変えずに、check が失敗して止まる", async () => {
+test("0005: 読めない community-plugins.json は変えずに、check が失敗して止まる", async () => {
 	const root = childFrom("fresh");
-	// 0002 も同じファイルを読むので、0003 までを適用済みにして 0004 だけを実行する
+	// 0002 も同じファイルを読むので、0004 までを適用済みにして 0005 だけを実行する
 	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
 	write(root, {
-		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline"] }),
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline", "0004-member-nickname-alias"] }),
 		".obsidian/community-plugins.json": "[壊れている",
 	});
 	const { failed } = await runMigrations(root);
-	assert.equal(failed?.name, "0004-html-viewer");
+	assert.equal(failed?.name, "0005-html-viewer");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8"), "[壊れている");
 });
@@ -250,4 +250,36 @@ test("0003: types.json に soft_deadline がすでにあれば、mid_due を消�
 	write(root, { ".obsidian/types.json": JSON.stringify({ types: { mid_due: "text", soft_deadline: "date" } }, null, 2) });
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/types.json"), { types: { soft_deadline: "date" } });
+});
+
+test("0004: nickname と alias のない member に、name と同じ値と ID を足す。値・本文・持っている member は変えない", async () => {
+	const root = childFrom("legacy");
+	const has = readFileSync(join(root, "member/m-2.md"), "utf8");
+	await runMigrations(root);
+	assert.equal(
+		readFileSync(join(root, "member/m-1.md"), "utf8"),
+		'---\nschema: 1\ntype: member\nid: m-1\nname: "佐藤 花子"\nnickname: "佐藤 花子"\nalias: m-1\ncreated: 2026-01-01T09:00:00+09:00\nupdated: 2026-01-01T09:00:00+09:00\n---\n\n本文の nickname: はキーではないので変えない。\n',
+	);
+	assert.equal(readFileSync(join(root, "member/m-2.md"), "utf8"), has);
+});
+
+test("0004: CRLF の member も行末を変えずに足す。片方だけないときは、ないものだけを足す", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		"member/m-3.md": "---\r\ntype: member\r\nid: m-3\r\nname: 田中\r\n---\r\n",
+		"member/m-4.md": "---\ntype: member\nid: m-4\nname: 高橋\nalias: taka\n---\n",
+	});
+	await runMigrations(root);
+	assert.equal(readFileSync(join(root, "member/m-3.md"), "utf8"), "---\r\ntype: member\r\nid: m-3\r\nname: 田中\r\nnickname: 田中\r\nalias: m-3\r\n---\r\n");
+	assert.equal(readFileSync(join(root, "member/m-4.md"), "utf8"), "---\ntype: member\nid: m-4\nname: 高橋\nnickname: 高橋\nalias: taka\n---\n");
+});
+
+test("0004: name か id が 1 行の値で読めない member は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	const block = "---\ntype: member\nid: m-5\nname: |\n  複数行\n---\n";
+	write(root, { "member/m-5.md": block });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0004-member-nickname-alias");
+	assert.match(failed.problems.join(), /member\/m-5\.md/);
+	assert.equal(readFileSync(join(root, "member/m-5.md"), "utf8"), block);
 });

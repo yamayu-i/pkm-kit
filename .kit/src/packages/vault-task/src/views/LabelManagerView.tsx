@@ -23,7 +23,7 @@ function pickerValue(color: string): string {
 
 /**
  * Labels（ADR-0024）。label の追加・改名・色の変更・並べ替え・削除を、下書きにしてまとめて保存する。
- * 改名は、その label が付いた issue と routine にも反映する。使われている label は削除できない
+ * 改名は、その label が付いた issue・routine・member にも反映する（ADR-0036）。使われている label は削除できない
  */
 export function LabelManagerView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
@@ -116,7 +116,7 @@ export function LabelManagerView(props: { ctx: TaskContext }) {
 									count={drafts.length}
 									onMove={(n) => update(move(drafts, i, n))}
 									onDelete={() => update(drafts.filter((x) => x.key !== d.key))}
-									deleteDisabled={used > 0 ? `${used} 件の issue / routine で使われているので削除できません` : undefined}
+									deleteDisabled={used > 0 ? `${used} 件の issue / routine / member で使われているので削除できません` : undefined}
 								/>
 							</div>
 							<div class="vt-label-edit-meta">
@@ -134,10 +134,10 @@ export function LabelManagerView(props: { ctx: TaskContext }) {
 			{dirty && (
 				<div class="vt-banner">
 					変更はまだ保存していません
-					{hasError ? "（エラーを直すと保存できます）" : renamed > 0 ? `（保存すると ${renamed} 件の issue / routine の label を書き換えます）` : ""}
+					{hasError ? "（エラーを直すと保存できます）" : renamed > 0 ? `（保存すると ${renamed} 件の issue / routine / member の label を書き換えます）` : ""}
 				</div>
 			)}
-			<p class="vt-muted">名前を変えると、その label が付いた issue と routine の label も書き換えます。使われている label は、issue / routine から外してから削除できます。</p>
+			<p class="vt-muted">名前を変えると、その label が付いた issue・routine・member の label も書き換えます。使われている label は、issue / routine / member から外してから削除できます。</p>
 		</div>
 	);
 }

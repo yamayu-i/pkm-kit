@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bytesToBase64, candidatePaths, classifyLink, CSP, firstSrcsetUrl, imageType, isScriptUrl } from "../src/core/policy.ts";
 
-describe("candidatePaths（ADR-0035: HTML からの相対パス → Vault ルートからのパス）", () => {
+describe("candidatePaths（ADR-0037: HTML からの相対パス → Vault ルートからのパス）", () => {
 	it("相対パスを先に、Vault ルートからのパスを後に返す", () => {
 		expect(candidatePaths("docs/a.html", "asset/x.png")).toEqual(["docs/asset/x.png", "asset/x.png"]);
 		expect(candidatePaths("a.html", "asset/x.png")).toEqual(["asset/x.png"]);

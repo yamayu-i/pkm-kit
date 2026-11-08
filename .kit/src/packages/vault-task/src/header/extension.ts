@@ -5,10 +5,18 @@ import { h, render } from "preact";
 import { frontmatterRange } from "../core/issue-file";
 import type { TaskContext } from "../obsidian/context";
 import { IssueHeader } from "./IssueHeader";
+import { MemberHeader } from "./MemberHeader";
 import { RoutineHeader } from "./RoutineHeader";
 
 const ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
 const ROUTINE_PATH_RE = /^routine\/[^/]+\.md$/;
+const MEMBER_PATH_RE = /^member\/[^/]+\.md$/;
+
+function headerFor(path: string) {
+	if (ROUTINE_PATH_RE.test(path)) return RoutineHeader;
+	if (MEMBER_PATH_RE.test(path)) return MemberHeader;
+	return IssueHeader;
+}
 
 class HeaderWidget extends WidgetType {
 	constructor(
@@ -24,8 +32,8 @@ class HeaderWidget extends WidgetType {
 
 	toDOM(): HTMLElement {
 		const el = document.createElement("div");
-		el.className = "vt-header";
-		render(h(ROUTINE_PATH_RE.test(this.path) ? RoutineHeader : IssueHeader, { ctx: this.ctx, path: this.path }), el);
+		el.className = "vt-header vt-ui";
+		render(h(headerFor(this.path), { ctx: this.ctx, path: this.path }), el);
 		return el;
 	}
 
@@ -46,14 +54,14 @@ interface HeaderState {
 }
 
 /**
- * issue と routine の md を開いたとき、文書の先頭に画面のヘッダーを差し込む（ADR-0008, 0012, 0018）。
+ * issue・routine・member の md を開いたとき、文書の先頭に画面のヘッダーを差し込む（ADR-0008, 0012, 0018, 0035）。
  * 本文はふつうのエディタのまま。Properties 欄は CSS で隠し、raw の frontmatter はヘッダーに置き換えて隠す。
  * ソースモードでは frontmatter を見せる（壊れたときに直せるように）
  */
 export function issueHeaderExtension(ctx: TaskContext): Extension {
 	const pathOf = (state: EditorState): string | null => {
 		const path = state.field(editorInfoField, false)?.file?.path ?? null;
-		return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path)) ? path : null;
+		return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path)) ? path : null;
 	};
 	const livePreviewOf = (state: EditorState): boolean => state.field(editorLivePreviewField, false) === true;
 	const build = (state: EditorState): HeaderState => {

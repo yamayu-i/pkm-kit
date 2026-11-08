@@ -1,4 +1,4 @@
-/** 0004 の migrate.mjs と check.mjs が共有するもの。依存なしの Node */
+/** 0005 の migrate.mjs と check.mjs が共有するもの。依存なしの Node */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

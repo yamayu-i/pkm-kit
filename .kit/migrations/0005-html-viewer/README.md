@@ -1,8 +1,8 @@
-# 0004: Vault の中の HTML を読み取り専用で表示するプラグイン vault-html を有効にする
+# 0005: Vault の中の HTML を読み取り専用で表示するプラグイン vault-html を有効にする
 
 ## 何が変わったか
 
-`.kit/src/docs/adr/0035-html-viewer.md`。
+`.kit/src/docs/adr/0037-html-viewer.md`。
 
 - 新しいプラグイン vault-html が、Vault の中の `.html` / `.htm` を Obsidian のタブで読み取り専用で表示する。ファイルエクスプローラーと Markdown リンクから開ける
 - HTML の中のスクリプトは動かず、外部に通信しない（iframe の sandbox と CSP）。Vault の中の画像は出る

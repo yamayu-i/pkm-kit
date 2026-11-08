@@ -15,7 +15,7 @@ const plugin = {
 	platform: "browser",
 	target: "es2022",
 	external: ["obsidian", "electron"],
-	// tokens.css（packages/design の生成物）は、iframe の中に差し込む文字列として束ねる（ADR-0035）
+	// tokens.css（packages/design の生成物）は、iframe の中に差し込む文字列として束ねる（ADR-0037）
 	loader: { ".css": "text" },
 	// 中身をレビューしやすく、ビルドの再現性を確認しやすくするため minify しない
 	minify: false,

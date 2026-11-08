@@ -18,4 +18,4 @@
 
 ## 根拠
 
-[ADR-0035](../../../../src/docs/adr/0035-html-viewer.md)
+[ADR-0037](../../../../src/docs/adr/0037-html-viewer.md)

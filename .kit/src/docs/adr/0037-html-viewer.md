@@ -1,4 +1,4 @@
-# ADR-0035: Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する
+# ADR-0037: Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する
 
 - 状態: 承認
 - 日付: 2026-11-08
@@ -80,7 +80,7 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 ## 影響
 
 - `.kit/src/packages/vault-html/` と `.obsidian/plugins/vault-html/`（`main.js`、`manifest.json`、`styles.css`）が増える。security-scan とビルドの再現の確認の対象に加える
-- `.kit/obsidian-required.json` の `community-plugins.json` に `vault-html` を足す。子の `.obsidian/community-plugins.json` を変えるので、移行 `0004-html-viewer` を付ける（`vault-html` を足すだけ）
+- `.kit/obsidian-required.json` の `community-plugins.json` に `vault-html` を足す。子の `.obsidian/community-plugins.json` を変えるので、移行 `0005-html-viewer` を付ける（`vault-html` を足すだけ）
 - `.kit/CHANGELOG.md`、プラグインの設計と開発（`.kit/harness/docs/plugin-development.md`）、デザインルール（HTML の書き方）、プロダクトの文書（`surfaces/` に HTML の表示）を更新する
 - 子の Vault では、`.html` がファイルエクスプローラーに出るようになる。モバイルでは、pull した後に HTML を開き、表示とリンクを確かめる
 - Obsidian の内部の DOM には依存しない（`FileView` と `iframe` だけ）。ただし、`.html` を別のプラグインが登録していると衝突する（コミュニティプラグインを使わない方針なので起きない想定）

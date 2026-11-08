@@ -34,10 +34,10 @@ export function labelColorError(color: string): string | null {
 	return null;
 }
 
-/** label ごとの、使っている issue と routine の数 */
-export function labelUsage(index: Pick<TaskIndex, "issues" | "routines">): Map<string, number> {
+/** label ごとの、使っている issue・routine・member の数（ADR-0024, 0036） */
+export function labelUsage(index: Pick<TaskIndex, "issues" | "routines" | "members">): Map<string, number> {
 	const usage = new Map<string, number>();
-	for (const item of [...index.issues.values(), ...index.routines.values()]) {
+	for (const item of [...index.issues.values(), ...index.routines.values(), ...index.members.values()]) {
 		for (const l of item.labels) usage.set(l, (usage.get(l) ?? 0) + 1);
 	}
 	return usage;

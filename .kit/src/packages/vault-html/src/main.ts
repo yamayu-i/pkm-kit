@@ -1,5 +1,5 @@
 /**
- * vault-html: Vault の中の HTML を、読み取り専用で表示する（ADR-0035）。
+ * vault-html: Vault の中の HTML を、読み取り専用で表示する（ADR-0037）。
  * .html / .htm を View に登録するだけ。ほかのプラグインには依存しない
  */
 import { Notice, Plugin } from "obsidian";

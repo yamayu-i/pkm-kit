@@ -87,7 +87,7 @@ check("危険な API を使っていない", () => {
 		[/localStorage|sessionStorage/, "Web Storage（秘密情報は SecretStorage に置く）"],
 		[/console\.(log|info|debug|warn|error)\([^)]*(token|password|secret)/i, "認証情報をログに出している可能性"],
 	];
-	// ADR-0035: srcdoc に入れてよいのは、sandbox と CSP を付ける vault-html の 1 ファイルだけ
+	// ADR-0037: srcdoc に入れてよいのは、sandbox と CSP を付ける vault-html の 1 ファイルだけ
 	const allowed = { "srcdoc への HTML 文字列の挿入": [".kit/src/packages/vault-html/src/ui/frame.ts"] };
 	const problems = [];
 	for (const pkg of packages) {
@@ -142,7 +142,7 @@ const plugins = [
 	},
 	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
 	{ id: "vault-ribbon", outdirEnv: "VAULT_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
-	// ADR-0035: HTML を sandbox の iframe に出す
+	// ADR-0037: HTML を sandbox の iframe に出す
 	{ id: "vault-html", outdirEnv: "VAULT_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 ];
 

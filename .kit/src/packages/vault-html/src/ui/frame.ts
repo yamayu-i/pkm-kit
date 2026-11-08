@@ -1,5 +1,5 @@
 /**
- * HTML を sandbox の iframe に出し、リンクのクリックを親で扱う（ADR-0035 の 1 と 4）。
+ * HTML を sandbox の iframe に出し、リンクのクリックを親で扱う（ADR-0037 の 1 と 4）。
  * DOM だけを使い、Obsidian に依存しない（preview で同じものを Chromium に出す）。
  * srcdoc への代入はこのファイルだけで行う（security-scan が検査する）
  */

@@ -28,7 +28,8 @@ export function preactViewCreator(spec: ViewSpec, ctx: TaskContext): (leaf: Work
 		}
 
 		override async onOpen(): Promise<void> {
-			this.contentEl.addClass("vt-view");
+			// vt-ui: 入力欄などの共通の見た目の範囲（#32）
+			this.contentEl.addClass("vt-view", "vt-ui");
 			render(h(spec.component, { ctx }), this.contentEl);
 		}
 

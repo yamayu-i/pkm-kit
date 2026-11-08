@@ -124,7 +124,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 ## vault-html（HTML の読み取り専用の表示）
 
-Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0035）。ほかのプラグインには依存しない。
+Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0037）。ほかのプラグインには依存しない。
 
 - 4 重の守り: iframe の `sandbox="allow-same-origin"`（`allow-scripts` を付けない）、`<head>` の最初の CSP（`default-src 'none'; img-src data:` など）、読み込む前の除去（`<script>`、`on*` 属性、`<meta http-equiv>`、`<link>`、`<iframe>` など、`javascript:`）、リンクのクリックを親で扱う
 - **`allow-scripts` を足さない**。`allow-same-origin` と一緒になると、iframe の中のスクリプトが親（Obsidian）に触れる

@@ -93,6 +93,35 @@ describe("lintCss", () => {
 		});
 	}
 
+	describe("入力欄（input/outlined）", () => {
+		const FIELDS = 'input[type="text"], input[type="search"], textarea, select';
+		const scoped = (sel: string) => FIELDS.split(", ").map((f) => `.vt-view ${f}${sel}`).join(", ");
+		const BASE = `${scoped("")} { border: 1px solid var(--vt-outline); background-color: var(--vt-surface); color: var(--vt-on-surface); box-shadow: none; }`;
+		const FOCUS = `${scoped(":focus")} { border-color: var(--vt-primary); box-shadow: inset 0 0 0 1px var(--vt-primary); }`;
+
+		it("入力欄を使わない CSS には求めない", () => {
+			expect(rules(".a { gap: 4px; }")).not.toContain("input/outlined");
+		});
+
+		it("面・枠・文字をトークンで決め、影を消し、フォーカスで primary の枠にしていれば問題なし", () => {
+			expect(rules(`${BASE}\n${FOCUS}\n.vt-form input[type="text"] { height: 40px; }`)).not.toContain("input/outlined");
+		});
+
+		it("入力欄があるのに、Obsidian の影を消すルールがないと見つける", () => {
+			expect(rules('.vt-form input[type="text"] { height: 40px; }')).toContain("input/outlined");
+			expect(rules(`${BASE.replace(" box-shadow: none;", "")}\n${FOCUS}`)).toContain("input/outlined");
+		});
+
+		it("フォーカスのルールがないと見つける", () => {
+			expect(rules(BASE)).toContain("input/outlined");
+		});
+
+		it("class で範囲を決めていない（Obsidian の input のルールに詳細度で勝てない）と見つける", () => {
+			const bare = `${FIELDS} { border: 1px solid var(--vt-outline); background-color: var(--vt-surface); color: var(--vt-on-surface); box-shadow: none; }`;
+			expect(rules(`${bare}\n${FOCUS}`)).toContain("input/outlined");
+		});
+	});
+
 	it(":focus-visible と prefers-reduced-motion がないと見つける", () => {
 		const problems = lintCss(".a { transition: opacity var(--vt-duration-short3) var(--vt-easing-standard); }", { tokens }).map((p) => p.rule);
 		expect(problems).toContain("a11y/focus-visible");

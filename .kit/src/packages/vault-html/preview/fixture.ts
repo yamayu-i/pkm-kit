@@ -76,7 +76,7 @@ window.vh = {
 		window.__srcdoc = srcdoc;
 		window.__frame = mountFrame(container(root), srcdoc, handlers(from));
 	},
-	/** 取り除く処理（ADR-0035 の 3）を通さず、CSP だけを入れたもの。sandbox と CSP だけでも止まることを確かめる */
+	/** 取り除く処理（ADR-0037 の 3）を通さず、CSP だけを入れたもの。sandbox と CSP だけでも止まることを確かめる */
 	mountRaw(name, root) {
 		const raw = (FIXTURES[name] as string).replace(/<head>/i, `<head><meta http-equiv="Content-Security-Policy" content="${CSP}">`);
 		window.__srcdoc = raw;

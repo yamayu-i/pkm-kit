@@ -1,5 +1,5 @@
 /**
- * 0004: Vault の中の HTML を読み取り専用で表示するプラグイン vault-html を有効にする（.kit/src/docs/adr/0035-html-viewer.md）。
+ * 0005: Vault の中の HTML を読み取り専用で表示するプラグイン vault-html を有効にする（.kit/src/docs/adr/0037-html-viewer.md）。
  * - .obsidian/community-plugins.json に vault-html を足す（ほかの要素と順は残す）
  * 何度実行しても同じ結果になる。読めない JSON は変えない（check が失敗して止まる）
  */

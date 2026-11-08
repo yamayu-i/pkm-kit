@@ -78,16 +78,17 @@ describe("importedSourcePaths", () => {
 });
 
 describe("hasNoteHeader", () => {
-	it("issue と routine にはヘッダーを出さない(vault-task が出す)", () => {
+	it("issue・routine・member にはヘッダーを出さない(vault-task が出す。ADR-0035)", () => {
 		expect(hasNoteHeader("issue/i-1.md", { type: "issue" })).toBe(false);
 		expect(hasNoteHeader("routine/r-1.md", { type: "routine" })).toBe(false);
 		expect(hasNoteHeader("issue/i-2.md", undefined)).toBe(false);
 		expect(hasNoteHeader("x/y.md", { type: "issue" })).toBe(false);
+		expect(hasNoteHeader("member/m-1.md", { type: "member" })).toBe(false);
+		expect(hasNoteHeader("member/m-2.md", undefined)).toBe(false);
 	});
 
 	it("それ以外の Markdown には出す(型のないものも)", () => {
 		expect(hasNoteHeader("daily/2026/11/2026-11-01.md", { type: "daily" })).toBe(true);
-		expect(hasNoteHeader("member/m-1.md", { type: "member" })).toBe(true);
 		expect(hasNoteHeader("memo.md", undefined)).toBe(true);
 	});
 });

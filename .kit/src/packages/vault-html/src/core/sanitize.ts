@@ -1,5 +1,5 @@
 /**
- * HTML を iframe の srcdoc に入れる文字列にする（ADR-0035 の 2 と 3）。
+ * HTML を iframe の srcdoc に入れる文字列にする（ADR-0037 の 2 と 3）。
  * DOMParser で解析し、危険なものを取り除き、Vault の中の画像を data: に置き換え、
  * CSP・トークン・テーマを入れる。Obsidian に依存しない（tmp/ への書き出しでも使う。Issue #44）
  */

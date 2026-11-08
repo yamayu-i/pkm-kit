@@ -149,7 +149,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 				{issue.status === "delegated" && (
 					<button class="vt-field-chip" onClick={() => pickMember(ctx, (id) => save({ delegated_to: id }))}>
 						<Icon name="user" />
-						{member ? member.name : issue.delegatedTo ?? "委任先を選ぶ"}
+						{member ? member.nickname : issue.delegatedTo ?? "委任先を選ぶ"}
 					</button>
 				)}
 				{issue.status === "someday" && (

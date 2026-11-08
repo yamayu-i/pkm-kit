@@ -7,12 +7,14 @@ import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
 import { StatusUndo } from "../src/obsidian/status-undo";
 import { RoutineHeader } from "../src/header/RoutineHeader";
+import { MemberHeader } from "../src/header/MemberHeader";
 import { DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
 import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
 import { LabelManagerView } from "../src/views/LabelManagerView";
+import { MemberListView } from "../src/views/MemberListView";
 import { OrganizeView, ScheduleSheet } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
 import { ScheduledView } from "../src/views/ScheduledView";
@@ -73,7 +75,9 @@ const { data } = collectVault({
 		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), group: "午前", estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
-		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤さん" } },
+		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
+		{ path: "member/m-2.md", frontmatter: { type: "member", id: "m-2", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", label: ["仕事"] } },
+		{ path: "member/m-3.md", frontmatter: { type: "member", id: "m-3", name: "鈴木" } },
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
 	boardLogs: [{ path: "board/pc/2026-10.jsonl", text: boardLog.join("\n") }],
@@ -109,6 +113,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	routines: RoutineListView,
 	groups: GroupManagerView,
 	labels: LabelManagerView,
+	members: MemberListView,
 	sidebar: SidebarView,
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
@@ -122,18 +127,24 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 };
 
 const name = location.hash.slice(1) || "header";
-if (name === "header" || name === "routine") {
+if (name === "header" || name === "routine" || name === "member") {
 	for (const [id, width] of [
 		["wide", 760],
 		["narrow", 360],
 	] as const) {
 		const el = document.createElement("div");
-		el.className = "vt-header";
+		el.className = "vt-header vt-ui";
 		el.id = id;
 		el.style.width = `${width}px`;
 		el.style.margin = "8px";
 		document.body.append(el);
-		render(name === "routine" ? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" }) : h(IssueHeader, { ctx: ctx as never, path: "issue/i-2.md" }), el);
+		const header =
+			name === "routine"
+				? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" })
+				: name === "member"
+					? h(MemberHeader, { ctx: ctx as never, path: "member/m-1.md" })
+					: h(IssueHeader, { ctx: ctx as never, path: "issue/i-2.md" });
+		render(header, el);
 	}
 } else {
 	for (const [id, width] of [
@@ -141,7 +152,7 @@ if (name === "header" || name === "routine") {
 		["narrow", 380],
 	] as const) {
 		const el = document.createElement("div");
-		el.className = "vt-view";
+		el.className = "vt-view vt-ui";
 		// Obsidian の .view-content.vt-view と同じ（幅に応じた表示を確かめる）
 		el.style.containerType = "inline-size";
 		el.id = id;

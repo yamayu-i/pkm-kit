@@ -6,10 +6,26 @@
 
 ## Vault の中の HTML を読み取り専用で表示する（vault-html）
 
-- **移行 0004-html-viewer**: 新しいプラグイン vault-html を有効にする（`community-plugins.json` に `vault-html` を足す）。`.html` / `.htm` がファイルエクスプローラーに出て、Obsidian のタブで読み取り専用で開ける。Markdown リンクからも開ける（ADR-0035）
+- **移行 0005-html-viewer**: 新しいプラグイン vault-html を有効にする（`community-plugins.json` に `vault-html` を足す）。`.html` / `.htm` がファイルエクスプローラーに出て、Obsidian のタブで読み取り専用で開ける。Markdown リンクからも開ける（ADR-0037）
 - HTML の中のスクリプトは動かず、外部に通信しない（iframe の sandbox と CSP。外部の画像・CSS・フォントは出ない）。Vault の中の画像は出る。リンクは、Vault の中のファイルは Obsidian で、`https:` / `mailto:` はブラウザで開く
 - ライト / ダークは Obsidian のテーマに合わせる。トークン（`var(--vt-…)`）で書いた HTML はデザインルールの見た目になる（`.kit/src/docs/design.md` の「HTML のページ」）
-- 子への影響: 移行 0004 を実行する。`.obsidian/plugins/vault-html/`（`main.js`、`manifest.json`、`styles.css`）が増えた。PC とスマホで HTML を開き、表示されること、編集できないこと、リンクと画像を確かめる
+- 子への影響: 移行 0005 を実行する。`.obsidian/plugins/vault-html/`（`main.js`、`manifest.json`、`styles.css`）が増えた。PC とスマホで HTML を開き、表示されること、編集できないこと、リンクと画像を確かめる
+
+## 入力欄を M3 の outlined text field にそろえる
+
+- vault-task と vault-template の入力欄（`input` / `textarea` / `select`）から、Obsidian が付ける浮いて見える影をなくした。面・枠・文字をトークンで決め（ダークモードでは暗い面）、ホバーで枠が濃くなり、フォーカスで primary の 2px の枠になる（M3 の outlined text field。#32）
+- vault-task の View・ヘッダー・モーダルの根に `.vt-ui` を付け、その中の入力欄に共通のルールを当てる。デザインの検査に `input/outlined` を足した
+- 子への影響: 移行はない。vault-task・vault-template の `main.js` と `styles.css` が変わった。PC とモバイルの両方で、ライト / ダークの入力欄（issue の題名の編集、日付、routine の作成、テンプレートからの新規作成、Notes の絞り込み）に影がなく、フォーカスで紫の枠になることを確かめる
+
+## member の項目（name / nickname / alias）と Members の View
+
+- **移行 0004-member-nickname-alias**: member に `nickname`（自分が呼んでいる呼び名）と `alias`（検索と委任先の候補に出す短い呼び方。単数の文字列）を足した。`name` は本名（姓・名）。移行は `member/*.md` に、`nickname` がなければ `name` と同じ値を、`alias` がなければ ID を足す。`nickname` / `alias` が空・ないときは、vault-task が `name` / ID を使う（ADR-0035）
+- 新しく作る member（委任先を選ぶ画面の「新しく作る」、Members の「member を作成」、テンプレート `member.md`）は、`name` と `nickname` に登録名、`alias` に ID が入る
+- 委任先を選ぶ画面は、候補を `@alias - nickname (name)` の形で出し、alias・nickname・name・ID のどれでも探せる。ボードと issue 画面の委任先には nickname を出す
+- vault-task に Members の一覧（コマンド「Members を開く」、Tasks サイドバー）を足した。検索・作成と、委任中の issue の数を出す
+- member のノートを開くと、vault-task のヘッダーが出る（`[人のアイコン] nickname (name)`、nickname・name・alias の編集欄、委任中の issue）。Properties 欄は issue と同じく隠す。vault-template の簡素なヘッダーは member に出さない
+- member に issue / routine と共用の `label` を付けられるようにした（member の画面の label の欄。任意の項目で、作るときは書かない）。Labels 画面の使用件数・改名・削除の制限は member も対象にする。Members の一覧は label のチップで絞り込み（すべて持つもの）、ID・nickname・name・alias・委任中の数・created で並べ替えられる（ADR-0036）
+- 子への影響: 移行 0004 を実行する（label には移行は要らない）。子の `template/file/member.md` で上流のテンプレートを上書きしているなら、`nickname` と `alias` を足すか確かめる。vault-task・vault-template の `main.js` と vault-task の `styles.css`、`.kit/bin/` の CLI が変わった。モバイルで、member のヘッダーの入力欄が狭いペインで収まるか、委任先を選ぶ画面で `@alias` で探せるかを確かめる
 
 ## Daily の段階表示を縮める
 

@@ -72,6 +72,7 @@ packages/design/tokens.json（正本）
   - `theme` は自由（ライト / ダークの両方を定義しているので `system` にしている）
 - **必須**: Obsidian 本体の色の変数（`--background-primary`、`--background-secondary`、`--text-normal`、`--text-muted`、`--text-faint`、`--interactive-accent`、`--text-accent`、`--color-accent`、`--text-on-accent`、`--text-error`）はスニペットで固定する。どれを固定するかはトークンの `obsidian` で決める
 - Obsidian の標準の `--text-faint` は 4.5:1 に届かないので、スニペットで上げている
+- **必須**: 入力欄（`input` / `textarea` / `select`）の面・枠・文字・影は Obsidian の既定に任せない。Obsidian は入力欄に浮いて見える影（`--input-shadow`）と自分の色を付けるので、プラグインの根（vault-task は `.vt-ui`、vault-template は `.vt-tpl-view` / `.vt-tpl-modal`）で範囲を決めた共通のルールで、面 `--vt-surface`・枠 `--vt-outline`・文字 `--vt-on-surface`・`box-shadow: none` にし、ホバーで枠を `--vt-on-surface`、フォーカスで `--vt-primary` の 2px の枠にする（M3 の outlined text field。`input/outlined` の検査）。プレビュー（`preview:ui`）はブラウザの既定で描くので、Obsidian 任せの見た目はプレビューと実機で食い違う
 - フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
 
 ## 4. 色
@@ -197,7 +198,8 @@ packages/design/tokens.json（正本）
 | 未分類 | `.vt-group.is-ungrouped` | グループと並べず、ボードの上に横長に置く（点線の枠、カードは横に並ぶ）。カードがすべてグループに入ったら出さない |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
 | スイッチ | `.vt-switch` | M3 の switch（52×32、つまみは 16px → 24px）。routine の一時停止 |
-| 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下にエラー。その場で作る・変える編集に使う |
+| 入力欄 | `.vt-ui` の中の `input` / `textarea` / `select` | M3 の outlined text field。`--vt-surface` の面 + `--vt-outline` の 1px の枠、影なし。ホバーで `--vt-on-surface` の枠、フォーカスで `--vt-primary` の 2px の枠（3 章）。View・ヘッダー・モーダルの根に `.vt-ui` を付ける |
+| 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下に説明（`.vt-name-hint`）かエラー。その場で作る・変える編集に使う |
 | 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
 | 色の見本 | `.vt-color-swatch` | 44px の角丸の四角のカラーピッカー（`input[type=color]`）。`--vt-outline` の枠。隣に `#rrggbb` の `.vt-name-field` を置く |
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
@@ -234,7 +236,7 @@ packages/design/tokens.json（正本）
 
 ### HTML のページ（vault-html で表示するもの）
 
-vault-html（ADR-0035）は、HTML を iframe に出し、`tokens.css` を差し込み、`<body>` に `theme-light` / `theme-dark` を付ける。上流が作る HTML は、次に従えばテーマとこのルールに合う。
+vault-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し込み、`<body>` に `theme-light` / `theme-dark` を付ける。上流が作る HTML は、次に従えばテーマとこのルールに合う。
 
 - **必須**: 値は `var(--vt-…)` だけで書く（プラグインの CSS と同じ）。文字は `var(--font-text)` / `var(--font-interface)` / `var(--font-monospace)`（vault-html が Obsidian の値を写す）
 - **必須**: スクリプトと外部の読み込み（画像・CSS・フォント）を使わない。動かず、読み込まれない。画像は Vault の中のもの（開くときに `data:` に置き換わる）か `data:`
@@ -287,6 +289,7 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 | `a11y/focus-visible` | :focus-visible で --vt-focus-ring の outline を付ける | WCAG 2.4.7 |
 | `a11y/no-outline-none` | outline: none / 0 で枠を消さない | WCAG 2.4.7 |
 | `a11y/reduced-motion` | transition / animation を使うなら prefers-reduced-motion で止める | WCAG 2.3.3 |
+| `input/outlined` | 入力欄を使うなら、class で範囲を決めた共通のルールで面・枠・文字をトークンにし、影を消し（`box-shadow: none`）、`:focus` で primary の枠にする | 3・8 章、M3 の outlined text field |
 
 ### トークン・生成物・文書（`pnpm check`。`packages/design/test/repo.test.ts`）
 

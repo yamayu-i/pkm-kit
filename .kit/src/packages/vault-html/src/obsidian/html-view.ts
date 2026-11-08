@@ -1,4 +1,4 @@
-/** Vault の中の HTML を読み取り専用で表示する View（ADR-0035） */
+/** Vault の中の HTML を読み取り専用で表示する View（ADR-0037） */
 import { FileView, Notice, TFile, type WorkspaceLeaf } from "obsidian";
 import { HTML_EXTENSIONS, MAX_IMAGE_BYTES } from "../core/policy.ts";
 import { buildSrcdoc, type Theme } from "../core/sanitize.ts";

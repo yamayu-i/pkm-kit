@@ -27,7 +27,7 @@ function load() {
 	return { plugin: new module.exports.default(), views, extensions, required };
 }
 
-describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0035）", () => {
+describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）", () => {
 	it("obsidian 以外を require せず、.html / .htm を View に登録する", async () => {
 		const { plugin, views, extensions, required } = load();
 		await plugin.onload();

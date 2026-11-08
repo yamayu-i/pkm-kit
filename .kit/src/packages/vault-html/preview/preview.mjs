@@ -1,5 +1,5 @@
 /**
- * vault-html の表示を、Obsidian なしで Chromium に出して確かめる（ADR-0035）。
+ * vault-html の表示を、Obsidian なしで Chromium に出して確かめる（ADR-0037）。
  * - 悪い HTML: スクリプトが動かず、外部への要求が 1 つも出ない（取り除く処理を通したものと、通さず sandbox + CSP だけのもの）
  * - リンク: Vault の中・外部・見出しを親が扱い、iframe の中で遷移しない
  * - 画像: Vault の中の画像は出る。Vault の外・上限超え・外部は出ない
