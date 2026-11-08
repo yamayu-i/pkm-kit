@@ -18,6 +18,8 @@ export class GitServer {
 	url = "";
 	/** Authorization ヘッダー付きで届いたリクエストの数 */
 	authorizedRequests = 0;
+	/** git-upload-pack（fetch・clone の pack の取得）の応答の body のバイト数の合計 */
+	uploadPackBytes = 0;
 
 	git(...args: string[]): string {
 		return execFileSync("git", args, { cwd: this.root, encoding: "utf8" });
@@ -36,6 +38,41 @@ export class GitServer {
 		execFileSync("git", ["commit", "-q", "-m", "init"], { cwd: seed, env });
 		execFileSync("git", ["clone", "-q", "--bare", seed, join(this.root, "remote.git")]);
 		execFileSync("git", ["config", "http.receivepack", "true"], { cwd: join(this.root, "remote.git") });
+	}
+
+	/**
+	 * seed で files を書いてコミットし、remote.git の main に送る（clone の前に履歴を作る用）。
+	 * 値が null のファイルは削除する。
+	 */
+	commitFromSeed(files: Record<string, string | Uint8Array | null>, message: string, branch = "main"): void {
+		const seed = join(this.root, "seed");
+		const env = { ...process.env, GIT_AUTHOR_NAME: "seed", GIT_AUTHOR_EMAIL: "s@e", GIT_COMMITTER_NAME: "seed", GIT_COMMITTER_EMAIL: "s@e" };
+		for (const [path, content] of Object.entries(files)) {
+			if (content === null) {
+				rmSync(join(seed, path), { force: true });
+				continue;
+			}
+			execFileSync("mkdir", ["-p", join(seed, path, "..")]);
+			writeFileSync(join(seed, path), content);
+		}
+		execFileSync("git", ["add", "-A"], { cwd: seed });
+		execFileSync("git", ["commit", "-q", "-m", message], { cwd: seed, env });
+		execFileSync("git", ["push", "-q", "--force", join(this.root, "remote.git"), `HEAD:refs/heads/${branch}`], { cwd: seed });
+	}
+
+	/** seed でブランチを切り替える（なければ現在のコミットから作る） */
+	seedCheckout(branch: string): void {
+		const seed = join(this.root, "seed");
+		try {
+			execFileSync("git", ["checkout", "-q", branch], { cwd: seed, stdio: "ignore" });
+		} catch {
+			execFileSync("git", ["checkout", "-q", "-b", branch], { cwd: seed });
+		}
+	}
+
+	/** remote.git に軽量タグを作る */
+	tag(name: string, rev = "main"): void {
+		execFileSync("git", ["tag", name, rev], { cwd: join(this.root, "remote.git") });
 	}
 
 	remoteLog(): string[] {
@@ -88,8 +125,10 @@ export class GitServer {
 					if (k.toLowerCase() === "status") status = Number.parseInt(v, 10);
 					else headers[k] = v;
 				}
+				const body = out.subarray(sep + 4);
+				if (url.pathname.endsWith("/git-upload-pack")) this.uploadPackBytes += body.byteLength;
 				res.writeHead(status, headers);
-				res.end(out.subarray(sep + 4));
+				res.end(body);
 			});
 		});
 		await new Promise<void>((resolve) => this.server?.listen(0, "127.0.0.1", resolve));

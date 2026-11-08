@@ -53,7 +53,7 @@ Obsidian に依存しない部分は、テストで本物の `git http-backend` 
 
 ### 処理時間の計測
 
-工程名と経過時間をコンソールに出す。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../src/packages/pkm-git/PERFORMANCE-HANDOFF.md) を参照。
+工程名と経過時間、通信した工程のリクエスト数と送受信のバイト数（body のみ）をコンソールに出す。fetch はサーバーも知っている追跡ブランチの先端を have として伝え、未 push のコミットがあっても全履歴を取り直さない（Issue #87）。計測範囲・検証・今後の高速化候補は [計測とツリー再利用](../../src/packages/pkm-git/PERFORMANCE-HANDOFF.md) を参照。
 
 ## pkm-task（タスク管理）
 
