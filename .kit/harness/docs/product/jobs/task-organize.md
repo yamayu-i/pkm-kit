@@ -24,4 +24,5 @@
 
 ## 知られている困りごと
 
-- [#33](https://github.com/yamayu-i/pkm-kit/issues/33) Organize と Daily で、Do Date の呼び方が場面ごとに違う
+
+まだない
