@@ -54,4 +54,5 @@
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する |
 | [0038](0038-tmp-folder.md) | 承認 | git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない |
 | [0058](0058-pkm-plugin-names.md) | 承認 | 自作プラグインの名前を vault-* から pkm-* にする |
+| [0060](0060-snippet-slash-insert.md) | 承認 | 行頭の / でスニペットを挿入する |
 <!-- adr-index:end -->

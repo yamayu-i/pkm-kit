@@ -12,6 +12,7 @@ import {
 	UPSTREAM_TEMPLATE_DIR,
 	type TemplateEntry,
 } from "../core/config";
+import { layerSnippets, parseSnippet, SNIPPET_DIR, UPSTREAM_SNIPPET_DIR, type Snippet } from "../core/snippet";
 import {
 	extractPrompts,
 	offsetToPos,
@@ -123,6 +124,43 @@ export class TemplateManager {
 			if (template) loaded.push(template);
 		}
 		return loaded;
+	}
+
+	/**
+	 * スニペット（ADR-0060）。上流の `.kit/templates/snippet/` に、その Vault の `template/snippet/` を重ねる
+	 * （同じファイル名ならその Vault のもの）。どちらも直下の `.md` だけ
+	 */
+	async loadSnippets(): Promise<{ snippets: Snippet[]; problems: string[] }> {
+		const problems: string[] = [];
+		const parseAll = (items: { file: string; text: string }[], dir: string) =>
+			items.flatMap(({ file, text }) => {
+				const { snippet, problem } = parseSnippet(file, text);
+				if (problem) problems.push(`${dir}/${problem}`);
+				return snippet ? [snippet] : [];
+			});
+
+		const upstream: { file: string; text: string }[] = [];
+		const adapter = this.app.vault.adapter;
+		if (await adapter.exists(UPSTREAM_SNIPPET_DIR)) {
+			const prefix = `${UPSTREAM_SNIPPET_DIR}/`;
+			for (const p of (await adapter.list(UPSTREAM_SNIPPET_DIR)).files) {
+				const name = p.startsWith(prefix) ? p.slice(prefix.length) : p;
+				if (name.includes("/") || !name.endsWith(".md")) continue;
+				upstream.push({ file: name, text: await adapter.read(`${prefix}${name}`) });
+			}
+		}
+
+		const local: { file: string; text: string }[] = [];
+		const localPrefix = `${SNIPPET_DIR}/`;
+		for (const f of this.app.vault.getFiles()) {
+			if (!f.path.startsWith(localPrefix)) continue;
+			const name = f.path.slice(localPrefix.length);
+			if (name.includes("/") || !name.endsWith(".md")) continue;
+			local.push({ file: name, text: await this.app.vault.cachedRead(f) });
+		}
+
+		const snippets = layerSnippets(parseAll(upstream, UPSTREAM_SNIPPET_DIR), parseAll(local, SNIPPET_DIR));
+		return { snippets, problems };
 	}
 
 	/** `{{id:…}}` の連番を決めるための、Vault 内のすべてのノートの basename（pkm-task と同じ見方） */

@@ -138,7 +138,8 @@ const plugins = [
 		outdirEnv: "PKM_TEMPLATE_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
 		bins: [],
-		allowedRequires: ["obsidian"],
+		// ADR-0060: 行頭の / の判定に StateField を使う。CodeMirror は Obsidian 本体が提供するもの（同梱しない）
+		allowedRequires: ["obsidian", "@codemirror/state"],
 	},
 	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
 	{ id: "pkm-ribbon", outdirEnv: "PKM_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
