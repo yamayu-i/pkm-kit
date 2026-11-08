@@ -60,4 +60,5 @@
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
 | [0067](0067-inline-template.md) | 承認 | 行頭か空白の後の @ で、インラインテンプレートを行の中に挿入する |
 | [0070](0070-pkm-updates.md) | 承認 | 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる |
+| [0072](0072-view-selector.md) | 承認 | Cmd+K で一覧の View を探して開くダイアログを、新しいプラグイン pkm-view-selector にする |
 <!-- adr-index:end -->

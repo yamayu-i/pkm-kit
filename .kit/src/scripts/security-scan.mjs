@@ -155,6 +155,8 @@ const plugins = [
 	{ id: "pkm-drawio", outdirEnv: "PKM_DRAWIO_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["drawio.mjs"], allowedRequires: ["obsidian"] },
 	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
 	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ
+	{ id: "pkm-view-selector", outdirEnv: "PKM_VIEW_SELECTOR_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

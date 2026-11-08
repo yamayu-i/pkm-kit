@@ -27,7 +27,8 @@
     "pkm-ribbon",
     "pkm-html",
     "pkm-drawio",
-    "pkm-updates"
+    "pkm-updates",
+    "pkm-view-selector"
   ],
   "core-plugins.json": {
     "daily-notes": false,
@@ -35,5 +36,8 @@
     "canvas": false,
     "bases": false,
     "templates": false
+  },
+  "hotkeys.json": {
+    "editor:insert-link": []
   }
 }
