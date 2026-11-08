@@ -91,7 +91,8 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 
 上流の既定（`.kit/templates/file/`）にその Vault の `template/file/` を重ねたテンプレートを選び、日時・タイトル・プロンプト入力・ID・カーソル位置を展開してノートを作成するプラグイン（ADR-0022、ADR-0023）。表示順・生成先・ファイル名パターンは上流の `.kit/templates/config.json` だけで決め、設定タブはない（ADR-0061）。
 
-- 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。pkm-task と同じ規則）
+- 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。pkm-task と同じ規則）、日付を尋ねる `{{prompt-date[:ラベル]}}`（作成・挿入の前にダイアログを開く。出力は `YYYY-MM-DD` か `YYYY-MM-DD DDD`。ADR-0065）
+- 日付の短い書き方の解釈（`parseDateInput`。ADR-0017）と日付の計算は `packages/shared/src/date-input.ts`・`dates.ts` にあり、pkm-task と pkm-template で共有する
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
 - コマンド「今日のデイリーノートを開く」（リボンのボタンは pkm-ribbon が出す。ADR-0029）: `.kit/templates/config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
 - 連番の関数は pkm-task（`core/ids.ts`）と pkm-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
@@ -104,12 +105,13 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
 | `src/core/date-format.ts` | `{{date:FORMAT}}` / `{{time:FORMAT}}` の日時フォーマット展開 | なし |
-| `src/core/template.ts` | `{{prompt:...}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証、今日のデイリーノートのパス | なし |
+| `src/core/template.ts` | `{{prompt:...}}`・`{{prompt-date}}` 抽出、変数展開、`{{cursor}}` 位置算出、生成先パスの検証、今日のデイリーノートのパス | なし |
+| `src/core/date-prompt.ts` | 日付のダイアログの入力（`-d` で曜日付き）と出力の形式（ADR-0065） | なし |
 | `src/core/ids.ts` | `{{id:…}}` の連番（pkm-task の `core/ids.ts` と同じ規則） | なし |
 | `src/core/config.ts` | 上流の設定（`.kit/templates/config.json`）の読み込みと、実在するテンプレートとの突き合わせ | なし |
 | `src/core/note-title.ts` | タイトルの決め方（`title` → `name` → ファイル名）、daily の日付と曜日 | なし |
 | `src/core/note-list.ts` / `note-format.ts` / `note-header.ts` | 一覧の絞り込み・並べ替え・取り込み状態の導出、値の整形、ヘッダーに出す内容の組み立て | なし |
-| `src/obsidian/` | 新規ファイル作成モーダル（Preact）、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
+| `src/obsidian/` | 新規ファイル作成モーダルと日付のダイアログ（Preact）、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
 | `src/views/` | 一覧 View（Preact） | あり |
 | `src/main.ts` | コマンド・リボン・View の登録 | あり |
 

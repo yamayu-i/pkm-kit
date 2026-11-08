@@ -10,6 +10,7 @@ import {
 } from "../core/config";
 import { layerSnippets, parseSnippet, SNIPPET_DIR, UPSTREAM_SNIPPET_DIR, type Snippet } from "../core/snippet";
 import {
+	extractDatePrompts,
 	extractPrompts,
 	offsetToPos,
 	renderTemplate,
@@ -22,6 +23,8 @@ export interface LoadedTemplate {
 	entry: TemplateEntry;
 	rawContent: string;
 	prompts: PromptField[];
+	/** `{{prompt-date}}` のラベル（ADR-0065）。作成の前にダイアログで尋ねる */
+	datePrompts: string[];
 }
 
 export class TemplateManager {
@@ -86,7 +89,7 @@ export class TemplateManager {
 			if (!(await this.app.vault.adapter.exists(upstreamPath))) return null;
 			rawContent = await this.app.vault.adapter.read(upstreamPath);
 		}
-		return { entry, rawContent, prompts: extractPrompts(rawContent) };
+		return { entry, rawContent, prompts: extractPrompts(rawContent), datePrompts: extractDatePrompts(rawContent) };
 	}
 
 	/** モーダルに表示する有効なテンプレートとその中身・プロンプト定義を読み込む */
@@ -175,6 +178,8 @@ export class TemplateManager {
 		template: LoadedTemplate;
 		titleInput: string;
 		prompts: Record<string, string>;
+		/** `{{prompt-date}}` の値（ADR-0065） */
+		dates?: Record<string, string>;
 		now?: Date;
 		newTab?: boolean;
 	}): Promise<TFile> {
@@ -203,6 +208,7 @@ export class TemplateManager {
 			folder: resolved.folder,
 			prompts: params.prompts,
 			takenNames,
+			dates: params.dates ?? {},
 		});
 
 		await this.ensureFolder(normalized);

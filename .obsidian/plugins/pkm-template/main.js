@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
@@ -97,7 +97,7 @@ async function openInNotePane(workspace, file, options) {
 }
 
 // src/obsidian/CreateNoteModal.tsx
-var import_obsidian = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -588,6 +588,20 @@ function extractPrompts(template) {
   }
   return fields;
 }
+var DEFAULT_DATE_PROMPT_LABEL = "\u65E5\u4ED8";
+function parseDatePromptSpec(body) {
+  if (body === "prompt-date") return DEFAULT_DATE_PROMPT_LABEL;
+  if (!body.startsWith("prompt-date:")) return null;
+  return body.slice("prompt-date:".length).trim() || DEFAULT_DATE_PROMPT_LABEL;
+}
+function extractDatePrompts(template) {
+  const labels = [];
+  for (const match of template.matchAll(PLACEHOLDER_RE)) {
+    const label = parseDatePromptSpec((match[1] ?? "").trim());
+    if (label !== null && !labels.includes(label)) labels.push(label);
+  }
+  return labels;
+}
 function expandInlineToken(token, ctx) {
   if (token === "date") return formatDateTime(ctx.now, "YYYY-MM-DD");
   if (token.startsWith("date:")) return formatDateTime(ctx.now, token.slice("date:".length) || "YYYY-MM-DD");
@@ -600,6 +614,8 @@ function expandInlineToken(token, ctx) {
     const prefix = token.slice("id:".length).trim();
     return isIdPrefix(prefix) ? nextId(prefix, ctx.takenNames ?? []) : null;
   }
+  const dateLabel = parseDatePromptSpec(token);
+  if (dateLabel !== null) return ctx.dates?.[dateLabel] ?? null;
   const prompt = parsePromptSpec(token);
   if (prompt) {
     const val = ctx.prompts[prompt.label];
@@ -740,6 +756,114 @@ function offsetToPos(text2, offset) {
   };
 }
 
+// src/obsidian/DatePromptModal.tsx
+var import_obsidian = require("obsidian");
+
+// ../shared/src/dates.ts
+var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+var DAY_MS = 864e5;
+var WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+function toEpochDay(date) {
+  const m3 = DATE_RE.exec(date);
+  if (!m3) return null;
+  const y3 = Number(m3[1]);
+  const mo = Number(m3[2]);
+  const d3 = Number(m3[3]);
+  const t3 = Date.UTC(y3, mo - 1, d3);
+  const back = new Date(t3);
+  if (back.getUTCFullYear() !== y3 || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d3) return null;
+  return t3 / DAY_MS;
+}
+function fromEpochDay(day) {
+  return new Date(day * DAY_MS).toISOString().slice(0, 10);
+}
+function isLocalDate(value) {
+  return typeof value === "string" && toEpochDay(value) !== null;
+}
+function requireDay(date) {
+  const day = toEpochDay(date);
+  if (day === null) throw new RangeError(`\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${date}`);
+  return day;
+}
+function addDays(date, days) {
+  return fromEpochDay(requireDay(date) + days);
+}
+function weekdayOf(date) {
+  return new Date(requireDay(date) * DAY_MS).getUTCDay();
+}
+function localToday(now = /* @__PURE__ */ new Date()) {
+  const y3 = now.getFullYear();
+  const m3 = String(now.getMonth() + 1).padStart(2, "0");
+  const d3 = String(now.getDate()).padStart(2, "0");
+  return `${y3}-${m3}-${d3}`;
+}
+function monthGridDays(month) {
+  const first = `${month}-01`;
+  const start = addDays(first, -weekdayOf(first));
+  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
+}
+
+// ../shared/src/date-input.ts
+function ymd(year, month, day) {
+  const date = `${year}-${month}-${day}`;
+  return isLocalDate(date) ? date : null;
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function addMonths(date, n2) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  const first = new Date(Date.UTC(y3, m3 - 1 + n2, 1));
+  const year = first.getUTCFullYear();
+  const month = first.getUTCMonth() + 1;
+  return fromEpochDay(Date.UTC(year, month - 1, Math.min(d3, daysInMonth(year, month))) / 864e5);
+}
+function addWeekdays(date, weekday, sign, n2) {
+  const gap = (sign * (weekday - weekdayOf(date)) + 7) % 7 || 7;
+  return addDays(date, sign * (gap + (n2 - 1) * 7));
+}
+function parseDateInput(input, today) {
+  const s3 = input.trim().toLowerCase();
+  const separated = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s3);
+  if (separated) return ymd(separated[1], separated[2], separated[3]);
+  if (/^\d+$/.test(s3)) {
+    const [year, month] = today.split("-");
+    if (s3.length === 2) return ymd(year, month, s3);
+    if (s3.length === 4) return ymd(year, s3.slice(0, 2), s3.slice(2));
+    if (s3.length === 6) return ymd(`20${s3.slice(0, 2)}`, s3.slice(2, 4), s3.slice(4));
+    if (s3.length === 8) return ymd(s3.slice(0, 4), s3.slice(4, 6), s3.slice(6));
+    return null;
+  }
+  const bare = WEEKDAY_NAMES.indexOf(s3);
+  if (bare >= 0) return addWeekdays(today, bare, 1, 1);
+  const m3 = /^([+-])(\d*)([a-z]*)$/.exec(s3);
+  if (!m3) return null;
+  const sign = m3[1] === "+" ? 1 : -1;
+  const digits = m3[2];
+  const unit = m3[3];
+  const n2 = digits === "" ? 1 : Number(digits);
+  if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
+  if (unit === "w") return addDays(today, sign * n2 * 7);
+  if (unit === "m") return addMonths(today, sign * n2);
+  const weekday = WEEKDAY_NAMES.indexOf(unit);
+  if (weekday < 0 || n2 < 1) return null;
+  return addWeekdays(today, weekday, sign, n2);
+}
+
+// src/core/date-prompt.ts
+function parseDatePromptInput(input, today) {
+  const words = input.trim().split(/\s+/).filter((w3) => w3 !== "");
+  const weekday = words.some((w3) => w3.toLowerCase() === "-d");
+  const rest = words.filter((w3) => w3.toLowerCase() !== "-d");
+  if (rest.length === 0) return { date: today, weekday };
+  if (rest.length > 1) return null;
+  const date = parseDateInput(rest[0], today);
+  return date === null ? null : { date, weekday };
+}
+function formatPromptDate(date, weekday) {
+  return weekday ? `${date} ${(WEEKDAY_NAMES[weekdayOf(date)] ?? "sun").toUpperCase()}` : date;
+}
+
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
 function u3(e3, t3, n2, o3, i3, u4) {
@@ -749,6 +873,135 @@ function u3(e3, t3, n2, o3, i3, u4) {
   var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
   if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
   return l.vnode && l.vnode(l3), l3;
+}
+
+// src/obsidian/DatePromptModal.tsx
+function MonthCalendar(props) {
+  const today = localToday();
+  const { month } = props;
+  const shift = (n2) => {
+    const [y3, m3] = month.split("-").map(Number);
+    props.onMonth(new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7));
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-nav", children: [
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u524D\u306E\u6708", onClick: () => shift(-1), children: "\u2039" }),
+      /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
+      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "\u6B21\u306E\u6708", onClick: () => shift(1), children: "\u203A" })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-grid", children: [
+      WEEKDAY_NAMES.map((w3) => /* @__PURE__ */ u3("span", { class: "vt-tpl-weekday", children: w3 })),
+      monthGridDays(month).map((d3) => {
+        const w3 = weekdayOf(d3);
+        const cls = ["vt-tpl-day"];
+        if (w3 === 0 || w3 === 6) cls.push("is-weekend");
+        if (!d3.startsWith(month)) cls.push("is-dimmed");
+        if (d3 === today) cls.push("is-today");
+        if (d3 === props.selected) cls.push("is-selected");
+        const label = d3 === today ? `${d3}\uFF08\u4ECA\u65E5\uFF09` : d3;
+        return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), "aria-pressed": d3 === props.selected, "aria-label": label, title: label, onClick: () => props.onPick(d3), children: Number(d3.slice(8, 10)) });
+      })
+    ] })
+  ] });
+}
+function DatePromptForm(props) {
+  const today = localToday();
+  const [text2, setText] = d2("");
+  const [weekdayChecked, setWeekdayChecked] = d2(false);
+  const [month, setMonth] = d2(today.slice(0, 7));
+  const ref = A2(null);
+  h2(() => ref.current?.focus(), []);
+  const parsed = parseDatePromptInput(text2, today);
+  const weekday = weekdayChecked || parsed?.weekday === true;
+  const output = parsed ? formatPromptDate(parsed.date, weekday) : null;
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-tpl-modal",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (output !== null) props.onSubmit(output);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-tpl-section", children: [
+          /* @__PURE__ */ u3(
+            "input",
+            {
+              ref,
+              type: "text",
+              class: "vt-tpl-input",
+              "aria-label": "\u65E5\u4ED8",
+              placeholder: "\u4F8B: 15 / 1224 / +3 / mon / +2w / +2 -d",
+              value: text2,
+              onInput: (e3) => {
+                const value = e3.currentTarget.value;
+                setText(value);
+                const next = parseDatePromptInput(value, today);
+                if (next !== null) setMonth(next.date.slice(0, 7));
+              }
+            }
+          ),
+          /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${output === null ? " is-error" : ""}`, "aria-live": "polite", children: output === null ? "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" : `\u5165\u308B\u5024: ${output}` }),
+          /* @__PURE__ */ u3("label", { class: "vt-tpl-check", children: [
+            /* @__PURE__ */ u3("input", { type: "checkbox", checked: weekday, disabled: parsed?.weekday === true, onChange: (e3) => setWeekdayChecked(e3.currentTarget.checked) }),
+            "\u66DC\u65E5\u3092\u4ED8\u3051\u308B\uFF08-d\uFF09"
+          ] })
+        ] }),
+        /* @__PURE__ */ u3(
+          MonthCalendar,
+          {
+            month,
+            onMonth: setMonth,
+            selected: parsed?.date ?? null,
+            onPick: (d3) => props.onSubmit(formatPromptDate(d3, weekday))
+          }
+        ),
+        /* @__PURE__ */ u3("div", { class: "vt-tpl-actions", children: [
+          !import_obsidian.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter \u3067\u633F\u5165" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "vt-tpl-button is-primary", disabled: output === null, children: "\u633F\u5165" })
+        ] })
+      ]
+    }
+  );
+}
+var DatePromptModal = class extends import_obsidian.Modal {
+  constructor(app, label, resolve) {
+    super(app);
+    this.label = label;
+    this.resolve = resolve;
+  }
+  label;
+  resolve;
+  done = false;
+  onOpen() {
+    this.setTitle(this.label);
+    R(
+      /* @__PURE__ */ u3(
+        DatePromptForm,
+        {
+          onSubmit: (value) => {
+            this.done = true;
+            this.close();
+            this.resolve(value);
+          }
+        }
+      ),
+      this.contentEl
+    );
+  }
+  onClose() {
+    R(null, this.contentEl);
+    if (!this.done) this.resolve(null);
+  }
+};
+async function askDates(app, labels) {
+  const values = {};
+  for (const label of labels) {
+    const value = await new Promise((resolve) => new DatePromptModal(app, label, resolve).open());
+    if (value === null) return null;
+    values[label] = value;
+  }
+  return values;
 }
 
 // src/obsidian/CreateNoteModal.tsx
@@ -787,13 +1040,21 @@ function CreateNoteForm(props) {
   const submit = (newTab) => {
     if (!canSubmit) return;
     setSubmitting(true);
-    void manager.createNoteFromTemplate({
-      template: current,
-      titleInput,
-      prompts: promptValues,
-      now,
-      newTab
-    }).then(() => onCreated()).catch((err) => {
+    void askDates(props.app, current.datePrompts).then(async (dates) => {
+      if (dates === null) {
+        setSubmitting(false);
+        return;
+      }
+      await manager.createNoteFromTemplate({
+        template: current,
+        titleInput,
+        prompts: promptValues,
+        dates,
+        now,
+        newTab
+      });
+      onCreated();
+    }).catch((err) => {
       setSubmitting(false);
       onReport("\u30CE\u30FC\u30C8\u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err);
     });
@@ -881,14 +1142,14 @@ function CreateNoteForm(props) {
     /* @__PURE__ */ u3("div", { class: "vt-tpl-footer", children: [
       /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${errorMessage ? " is-error" : ""}`, children: errorMessage ? errorMessage : `\u4F5C\u6210\u5148: ${resolved.path}` }),
       /* @__PURE__ */ u3("div", { class: "vt-tpl-actions", children: [
-        !import_obsidian.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter / Mod+Enter \u3067\u4F5C\u6210" }),
+        !import_obsidian2.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter / Mod+Enter \u3067\u4F5C\u6210" }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button", disabled: !canSubmit, onClick: () => submit(true), children: "\u65B0\u30BF\u30D6\u3067\u958B\u304F" }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button is-primary", disabled: !canSubmit, onClick: () => submit(false), children: "\u4F5C\u6210" })
       ] })
     ] })
   ] });
 }
-var CreateNoteModal = class extends import_obsidian.Modal {
+var CreateNoteModal = class extends import_obsidian2.Modal {
   constructor(app, manager, templates, onReport) {
     super(app);
     this.manager = manager;
@@ -904,6 +1165,7 @@ var CreateNoteModal = class extends import_obsidian.Modal {
       /* @__PURE__ */ u3(
         CreateNoteForm,
         {
+          app: this.app,
           templates: this.templates,
           manager: this.manager,
           onCreated: () => this.close(),
@@ -919,7 +1181,7 @@ var CreateNoteModal = class extends import_obsidian.Modal {
 };
 
 // src/obsidian/creator.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/core/config.ts
 var TEMPLATE_DIR = "template/file";
@@ -1086,7 +1348,7 @@ var TemplateManager = class {
       if (!await this.app.vault.adapter.exists(upstreamPath)) return null;
       rawContent = await this.app.vault.adapter.read(upstreamPath);
     }
-    return { entry, rawContent, prompts: extractPrompts(rawContent) };
+    return { entry, rawContent, prompts: extractPrompts(rawContent), datePrompts: extractDatePrompts(rawContent) };
   }
   /** モーダルに表示する有効なテンプレートとその中身・プロンプト定義を読み込む */
   async loadEnabledTemplates() {
@@ -1143,10 +1405,10 @@ var TemplateManager = class {
     const entry = entries.find((e3) => e3.file === "daily.md");
     const resolved = resolveDailyPath(entry, now);
     if (resolved.error) throw new Error(resolved.error);
-    const path = (0, import_obsidian2.normalizePath)(resolved.path);
+    const path = (0, import_obsidian3.normalizePath)(resolved.path);
     const existing = this.app.vault.getFileByPath(path);
     if (existing) {
-      await openInNotePane(this.app.workspace, existing, { newTab: false, phone: import_obsidian2.Platform.isPhone });
+      await openInNotePane(this.app.workspace, existing, { newTab: false, phone: import_obsidian3.Platform.isPhone });
       return existing;
     }
     const template = await this.loadTemplate(
@@ -1156,7 +1418,7 @@ var TemplateManager = class {
     return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
   }
   fileExists(path) {
-    return Boolean(this.app.vault.getFileByPath((0, import_obsidian2.normalizePath)(path)));
+    return Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(path)));
   }
   /** テンプレートを展開してファイルを作成し、エディタで開いてカーソルを移動する */
   async createNoteFromTemplate(params) {
@@ -1173,7 +1435,7 @@ var TemplateManager = class {
     if (resolved.error) {
       throw new Error(resolved.error);
     }
-    const normalized = (0, import_obsidian2.normalizePath)(resolved.path);
+    const normalized = (0, import_obsidian3.normalizePath)(resolved.path);
     if (this.fileExists(normalized)) {
       throw new Error(`\u3059\u3067\u306B\u540C\u3058\u540D\u524D\u306E\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u3059: ${normalized}`);
     }
@@ -1183,12 +1445,13 @@ var TemplateManager = class {
       path: normalized,
       folder: resolved.folder,
       prompts: params.prompts,
-      takenNames
+      takenNames,
+      dates: params.dates ?? {}
     });
     await this.ensureFolder(normalized);
     const created2 = await this.app.vault.create(normalized, rendered.content);
-    const leaf = await openInNotePane(this.app.workspace, created2, { newTab: params.newTab === true, phone: import_obsidian2.Platform.isPhone });
-    const view = this.app.workspace.getActiveViewOfType(import_obsidian2.MarkdownView) ?? leaf.view;
+    const leaf = await openInNotePane(this.app.workspace, created2, { newTab: params.newTab === true, phone: import_obsidian3.Platform.isPhone });
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView) ?? leaf.view;
     const editor = view?.editor;
     if (editor) {
       const offset = rendered.cursorOffset ?? rendered.content.length;
@@ -1209,7 +1472,7 @@ var TemplateManager = class {
 };
 
 // src/obsidian/header-mount.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/core/note-format.ts
 function shortDate(value) {
@@ -1341,7 +1604,7 @@ function buildHeader(note, ctx) {
 }
 
 // src/obsidian/NoteHeader.tsx
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 function Value({ app, v: v3 }) {
   if (v3.path !== void 0) {
     const path = v3.path;
@@ -1352,7 +1615,7 @@ function Value({ app, v: v3 }) {
         class: "vt-tpl-link",
         onClick: () => {
           const file = app.vault.getFileByPath(path);
-          if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian3.Platform.isPhone });
+          if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian4.Platform.isPhone });
         },
         children: v3.text
       }
@@ -1446,7 +1709,7 @@ function installNoteHeaders(plugin) {
   };
   const refresh = () => {
     app.workspace.iterateAllLeaves((leaf) => {
-      if (leaf.view instanceof import_obsidian4.MarkdownView) mount(leaf.view);
+      if (leaf.view instanceof import_obsidian5.MarkdownView) mount(leaf.view);
     });
   };
   let timer;
@@ -1499,8 +1762,8 @@ var slashSessionField = import_state.StateField.define({
 });
 
 // src/obsidian/SnippetSuggest.ts
-var import_obsidian5 = require("obsidian");
-var SnippetSuggest = class extends import_obsidian5.EditorSuggest {
+var import_obsidian6 = require("obsidian");
+var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
   constructor(app, manager) {
     super(app);
     this.manager = manager;
@@ -1553,26 +1816,34 @@ var SnippetSuggest = class extends import_obsidian5.EditorSuggest {
   selectSuggestion(snippet, _evt) {
     const ctx = this.context;
     if (!ctx) return;
-    const file = ctx.file;
-    const rendered = renderTemplate(snippet.body, {
-      now: /* @__PURE__ */ new Date(),
-      title: file?.basename ?? "",
-      path: file?.path ?? "",
-      folder: file?.parent && file.parent.path !== "/" ? file.parent.path : "",
-      prompts: {},
-      takenNames: this.manager.takenNames()
-    });
-    const startOffset = ctx.editor.posToOffset(ctx.start);
-    ctx.editor.replaceRange(rendered.content, ctx.start, ctx.end);
-    ctx.editor.setCursor(ctx.editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
+    const { editor, file, start, end } = ctx;
     this.close();
+    void askDates(this.app, extractDatePrompts(snippet.body)).then((dates) => {
+      if (dates === null) {
+        editor.focus();
+        return;
+      }
+      const rendered = renderTemplate(snippet.body, {
+        now: /* @__PURE__ */ new Date(),
+        title: file?.basename ?? "",
+        path: file?.path ?? "",
+        folder: file?.parent && file.parent.path !== "/" ? file.parent.path : "",
+        prompts: {},
+        takenNames: this.manager.takenNames(),
+        dates
+      });
+      const startOffset = editor.posToOffset(start);
+      editor.replaceRange(rendered.content, start, end);
+      editor.setCursor(editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
+      editor.focus();
+    });
   }
 };
 
 // src/obsidian/view.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian6.ItemView {
+  class PreactView extends import_obsidian7.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -1594,7 +1865,7 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
 var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
@@ -1632,7 +1903,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian7.Platform.isPhone });
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian8.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
     /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", "aria-label": "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
@@ -1656,7 +1927,7 @@ var LIST_VIEWS = [
   { type: "pkm-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
   { type: "pkm-template-source-list", title: "Sources", icon: "library", component: SourceListView }
 ];
-var PkmTemplatePlugin = class extends import_obsidian8.Plugin {
+var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
@@ -1696,11 +1967,11 @@ var PkmTemplatePlugin = class extends import_obsidian8.Plugin {
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian8.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian9.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`pkm-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian8.Notice(`${message}${detail}`);
+    new import_obsidian9.Notice(`${message}${detail}`);
   }
 };
