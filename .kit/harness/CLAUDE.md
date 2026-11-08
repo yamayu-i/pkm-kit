@@ -43,6 +43,7 @@
 | 自分でレビューして PR を出す | [dev-pr](skills/dev-pr/SKILL.md) |
 | 中断と再開 | [dev-handoff](skills/dev-handoff/SKILL.md) |
 | 上流の開発中の気づきを記録する | [kit-note](skills/kit-note/SKILL.md) |
+| 使う人の体験の困りごと（機会）を自分で見つけて起票する（月 1 回） | [product-review](skills/product-review/SKILL.md) |
 | 上流の仕組みを、子からのエスカレーションと利用実態で評価する（月 1 回） | [kit-review](skills/kit-review/SKILL.md) |
 | セキュリティチェック（週 1 回） | [security-check](skills/security-check/SKILL.md) |
 
@@ -53,6 +54,7 @@
 | 上流のハーネスの全体像、現在地、未決事項 | [上流のハーネスの設計](docs/harness.md) |
 | 作業の進め方、git、コミットの形式 | [進め方](docs/workflow.md) |
 | ハーネスと wiki の設計判断 | [ADR](docs/adr/README.md) |
+| 誰のどんな場面のために作るか、今の体験、用語（機能を変える前に読む） | [プロダクト](docs/product/README.md) |
 | プラグインの設計と開発 | [プラグインの設計と開発](docs/plugin-development.md) |
 | セキュリティチェックの頻度と実施ルール | [実施ルール](docs/security-check-schedule.md) |
 | 子のものに手を入れる変更に付ける移行の書き方 | [移行の書き方](docs/migrations.md) |

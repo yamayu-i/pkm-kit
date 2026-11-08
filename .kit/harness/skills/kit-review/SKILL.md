@@ -28,6 +28,7 @@ git log --oneline <前回の commit>..HEAD
 
 - 子からのエスカレーション: 上流の Issue のうち、ラベル `escalation`（または本文の先頭が `escalation`）で、まだ振り分けていないもの
 - `.kit/harness/notes/` のファイルをすべて読む
+- [product-review](../product-review/SKILL.md) で見つけた機会（ラベル `ux` の Issue）と、その状態
 - CI の失敗と、移行の fixture のテストの結果（前回から）
 - 前回のレポート（`.kit/harness/reviews/`）の改善案がどうなったか（Issue の状態）
 
