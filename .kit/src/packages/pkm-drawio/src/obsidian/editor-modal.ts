@@ -25,6 +25,7 @@ export class DrawioEditorModal extends Modal {
 	private frame: EditorFrame | null = null;
 	private forced = false;
 	private confirming = false;
+	private exportTimer: number | undefined;
 
 	constructor(
 		app: App,
@@ -45,6 +46,7 @@ export class DrawioEditorModal extends Modal {
 	}
 
 	override onClose(): void {
+		window.clearTimeout(this.exportTimer);
 		this.session.dispose();
 		this.frame?.destroy();
 		this.frame = null;
@@ -97,6 +99,10 @@ export class DrawioEditorModal extends Modal {
 						() => this.apply(this.session.writeDone(effect.generation, true)),
 						(e: unknown) => this.apply(this.session.writeDone(effect.generation, false, e instanceof Error ? e.message : String(e))),
 					);
+					break;
+				case "wait":
+					window.clearTimeout(this.exportTimer);
+					this.exportTimer = window.setTimeout(() => this.apply(this.session.exportTimedOut(effect.generation)), effect.ms);
 					break;
 				case "close":
 					this.forceClose();

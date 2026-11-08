@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { svgDataUri } from "../src/core/encoding.ts";
-import { EditSession, embedUrl, EMBED_ORIGIN, parseMessage, verifyExportedSvg, type Effect } from "../src/core/protocol.ts";
+import { EditSession, embedUrl, EXPORT_TIMEOUT_MS, EMBED_ORIGIN, parseMessage, verifyExportedSvg, type Effect } from "../src/core/protocol.ts";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 const DIAGRAM = fixture("two-pages.drawio.svg");
@@ -53,13 +53,46 @@ describe("EditSession", () => {
 	it("save → 同じ XML を指定して xmlsvg を export → 検査して write → 保存済みを知らせる", () => {
 		const s = started();
 		const exp = s.handle({ event: "save", xml: XML, exit: false });
-		expect(posts(exp)[1]).toEqual({ action: "export", format: "xmlsvg", xml: XML, spinKey: "saving" });
+		expect(posts(exp)).toContainEqual({ action: "export", format: "xmlsvg", xml: XML, spinKey: "saving" });
 		const write = s.handle({ event: "export", format: "xmlsvg", data: svgDataUri(DIAGRAM) });
 		expect(write).toEqual([{ type: "write", svg: DIAGRAM, xml: XML, generation: 1 }]);
 		expect(s.dirty).toBe(true);
 		const done = s.writeDone(1, true);
 		expect(posts(done)).toContainEqual({ action: "status", message: "Saved", modified: false });
 		expect(s.dirty).toBe(false);
+	});
+
+	it("export の前にスピナーを出さない（Draw.io はスピナーが出ていると spinKey 付きの export をしない。#98）", () => {
+		const s = started(null);
+		const exp = s.handle({ event: "save", xml: XML, exit: false });
+		expect(posts(exp).filter((m) => m?.action === "spinner")).toEqual([]);
+		expect(posts(exp)).toEqual([{ action: "export", format: "xmlsvg", xml: XML, spinKey: "saving" }]);
+	});
+
+	it("export を頼んだら、返事を待つ時間を親に知らせる", () => {
+		const s = started();
+		const exp = s.handle({ event: "save", xml: XML, exit: false });
+		expect(exp).toContainEqual({ type: "wait", generation: 1, ms: EXPORT_TIMEOUT_MS });
+	});
+
+	it("export の返事が来ないまま時間が切れたら、スピナーを消して知らせ、編集画面を残す", () => {
+		const s = started();
+		s.handle({ event: "save", xml: XML, exit: true });
+		const r = s.exportTimedOut(1);
+		expect(kinds(r)).toEqual(["post:spinner", "post:status", "error"]);
+		expect(s.busy).toBe(false);
+		expect(s.dirty).toBe(true);
+		expect(s.unsavedXml).toBe(XML);
+		// 遅れて届いた export は書かない
+		expect(kinds(s.handle({ event: "export", format: "xmlsvg", data: svgDataUri(DIAGRAM) }))).toEqual(["error"]);
+	});
+
+	it("書き出しが返った後の時間切れ・古い世代の時間切れは無視する", () => {
+		const s = started();
+		s.handle({ event: "save", xml: XML, exit: false });
+		s.handle({ event: "export", format: "xmlsvg", data: svgDataUri(DIAGRAM) });
+		expect(s.exportTimedOut(1)).toEqual([]);
+		expect(s.exportTimedOut(99)).toEqual([]);
 	});
 
 	it("保存して閉じる（exit）は、書けてから閉じる", () => {
