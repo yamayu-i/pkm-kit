@@ -86,7 +86,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる（入れられない環境では `CHROMIUM_PATH`。[クラウドのセッションでの準備](#クラウドのセッションでの準備)）。CI（`plugin.yml` の `preview-ui`）でも実行し、スクリーンショットを成果物 `preview-ui` に残す
 
 ## pkm-template（テンプレートからのノート作成）
 
@@ -221,10 +221,37 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - pkm-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
 - スクリプトは Node の型の除去で `.ts` をそのまま動かす（ビルドしない）
 
+## 開発環境の準備
+
+- Node と pnpm は `mise.toml` の版を使う（`mise install`）。`node .claude/scripts/verify.mjs` は最初に版を比べ、違えば警告する（止めない。結果が CI と揃わないことがある）
+- 新しい clone・worktree では、最初に `.kit/src` で `pnpm install --frozen-lockfile` を実行する。単一パッケージのテスト（`pnpm --filter <id> test`）を先に実行すると、ほかのパッケージの依存が入らないことがある。`verify.mjs --plugin` は、依存が一部のパッケージにしかなければ `pnpm check` の前で止める
+
+### クラウドのセッションでの準備
+
+mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Code のクラウドのセッションなど）では、次のようにする。
+
+- Node: 公式の配布物（`https://nodejs.org/dist/v<版>/`）の tar と `SHASUMS256.txt` を取り、`sha256sum -c` で照合してから、Vault の外の作業用のフォルダに展開し、`PATH` の先頭に足す
+- pnpm: その Node で `npm install -g pnpm@<mise.toml の版>`
+- Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-drawio` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
+
+### Obsidian の実機で確かめる
+
+テストと `preview:ui` は `obsidian` をモックにして描く。そのため、Obsidian 本体の CSS との詳細度の争い（本体の規則が勝ってプラグインの隠す CSS が効かない）や、View の生成の順の誤り（親のコンストラクタの中で未代入の値を読む）は見つからない。設定・CSS・View を変えたら、PR の前に実機で確かめる（[dev-implement](../skills/dev-implement/SKILL.md)）。
+
+- 使える環境: Obsidian が起動している PC。Obsidian の CLI を有効にしておく（設定で有効にし、`obsidian` コマンドが使えること）。クラウドのセッションでは使えないので、PR に「実機での確認が要る」と書く
+- 起動中のアプリで JavaScript を評価して、DOM と適用中の CSS を読む。引数の書き方は `obsidian help` で確かめる。例:
+
+```sh
+# 開いている View の種類
+obsidian eval code="app.workspace.getLeavesOfType('pkm-task-daily').length"
+# 要素に効いている CSS の値（本体の規則に負けていないか）
+obsidian eval code="getComputedStyle(document.querySelector('.metadata-container')).display"
+```
+
 ## 進め方
 
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
-- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す。`.kit/owned-paths.json` に、その ID の `main.js`・`manifest.json`・`styles.css` を足す（足し忘れると、上流の所有の境界の検査が失敗する。子が足すプラグインは子のもの）
 - Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（pkm-task の `esbuild.config.mjs`）

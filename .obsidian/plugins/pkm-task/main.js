@@ -3418,7 +3418,7 @@ var StatusUndo = class {
       const button = document.createElement("button");
       button.className = "vt-toast-action";
       button.type = "button";
-      button.append("\u3084\u308A\u76F4\u3059");
+      button.append("\u5143\u306B\u623B\u3059");
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
@@ -5583,14 +5583,14 @@ function OrganizeView(props) {
   const schedule = () => {
     if (!issue) return;
     const target = issue;
-    new PreactModal(ctx.app, "\u4E88\u5B9A\u3092\u5165\u308C\u308B", (close2) => /* @__PURE__ */ u3(
+    new PreactModal(ctx.app, "Do Date \u3092\u9078\u3076", (close2) => /* @__PURE__ */ u3(
       ScheduleSheet,
       {
         issue: target,
         requireEstimate: isInbox(target),
         onSubmit: (dates, est) => {
           close2();
-          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u306B\u4E88\u5B9A` : `${dates.length} \u65E5\u306B\u4E88\u5B9A`;
+          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u3092 Do Date \u306B` : `${dates.length} \u65E5\u3092 Do Date \u306B`;
           void apply2(organizeSchedulePatch(target, dates, est), label);
         }
       }
@@ -5674,7 +5674,7 @@ function OrganizeView(props) {
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        " \u4E88\u5B9A"
+        " Do Date"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "clock" }),
@@ -5750,9 +5750,9 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "check" }),
         /* @__PURE__ */ u3("span", { children: "Closed" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "\u4E88\u5B9A\u3092\u5165\u308C\u308B\uFF08\u2192\uFF09", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Do Date \u3092\u9078\u3076\uFF08\u2192\uFF09", children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        /* @__PURE__ */ u3("span", { children: "\u4E88\u5B9A" })
+        /* @__PURE__ */ u3("span", { children: "Do Date" })
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
@@ -5763,7 +5763,7 @@ function OrganizeView(props) {
         ": ",
         undo.label,
         "\uFF09"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday \uFF0F \u2192 \u4E88\u5B9A \uFF0F \u2191 \u3042\u3068\u3067 \uFF0F \u2193 Cancel\uFF08\u30B9\u30EF\u30A4\u30D7\u304B\u77E2\u5370\u30AD\u30FC\uFF09" }),
+      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday \uFF0F \u2192 Do Date \uFF0F \u2191 \u3042\u3068\u3067 \uFF0F \u2193 Cancel\uFF08\u30B9\u30EF\u30A4\u30D7\u304B\u77E2\u5370\u30AD\u30FC\uFF09" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
         /* @__PURE__ */ u3(Icon, { name: "external-link" }),
         " \u958B\u304F"

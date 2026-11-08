@@ -25,7 +25,7 @@
 
 ```
 packages/design/tokens.json（正本）
-  ├─ pnpm --filter design build（pnpm build に含まれる）
+  ├─ pnpm --filter design build（pnpm build の最初に実行する。ほかのパッケージはその後にビルドするので、1 回の pnpm build で新しい値になる）
   │    ├─ packages/pkm-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
@@ -313,6 +313,8 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 | `obsidian/no-translucency` | 半透明のウィンドウを使わない |
 
 ### 描画した画面（`pnpm preview:ui`。`packages/design/src/audit.ts`）
+
+pkm-task の画面は、CI（`plugin.yml` の `preview-ui`）でも描画して検査する。スクリーンショットは CI の成果物 `preview-ui` で見られる。
 
 | ID | 内容 | 根拠 |
 |---|---|---|

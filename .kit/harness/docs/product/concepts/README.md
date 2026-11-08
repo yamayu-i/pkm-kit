@@ -73,10 +73,10 @@ ADR へのリンク。
 | routine | Routines、routine | `routine/r-N.md`（`type: routine`） | routine、くり返しのタスク |
 | 委任先 | delegated、委任先 | `member/m-N.md`、issue の `delegated_to` | member、委任先 |
 | status | open / in-progress / waiting / delegated / someday / closed / canceled | `status`、補足は `status-detail` | status |
-| status の取り消し | 「N件のステータスが変更されました。 やり直す ›」 | `statuslog/` の `via: undo` | 取り消し |
+| status の取り消し | 「N件のステータスが変更されました。 元に戻す ›」 | `statuslog/` の `via: undo` | 取り消し |
 | Inbox | Inbox、Inbox に戻す | 保存しない（open で日付がないもの） | Inbox |
 | Someday | Someday、Someday へ | `status: someday`、`revisit`、`reviewed` | Someday |
-| Do Date | Add Do Date、Move Do Date、Do Today、Do Tomorrow。Organize では「予定を入れる」。一覧の View は Scheduled | `scheduled`（日付のリスト） | 実行日、予定、scheduled |
+| Do Date | Add Do Date、Move Do Date、Do Today、Do Tomorrow。Organize でも Do Date。一覧の View は Scheduled | `scheduled`（日付のリスト） | 実行日、予定、scheduled |
 | deadline | deadline、Change Deadline | `deadline` | deadline、固い締切 |
 | soft deadline | soft_deadline、Change Soft Deadline | `soft_deadline` | 緩い締切 |
 | estimated | estimated（`2h`、`1d` = 24h） | `estimated`（分） | 見積もり |

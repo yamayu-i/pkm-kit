@@ -26,7 +26,6 @@
 
 ## 知られている困りごと
 
-- [#33](https://github.com/yamayu-i/pkm-kit/issues/33) Organize と Daily で、Do Date の呼び方が場面ごとに違う
 - [#34](https://github.com/yamayu-i/pkm-kit/issues/34) 見積もりの 1d（24h）が、一日に使える時間とかみ合わない
 - [#36](https://github.com/yamayu-i/pkm-kit/issues/36) 1 つの画面の中で、英語と日本語の文言が混ざっている
 - [#38](https://github.com/yamayu-i/pkm-kit/issues/38) 「Daily」と「デイリーノート」の名前と入口が隣り合っている

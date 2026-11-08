@@ -9,12 +9,16 @@
  *   --append-only  wiki の操作が追記だけかを見る範囲（check-append-only.mjs の引数。空白で区切る）。
  *                  既定は origin/main..HEAD。CI はイベントから決めた範囲を渡す
  *
+ * 最初に開発環境を確かめる（lib/dev-env.mjs）。Node / pnpm の版が mise.toml と違えば警告する。
+ * --plugin のときは、.kit/src の依存が揃っていなければ pnpm check を実行せずに失敗にする
+ *
  * 検査の一覧はここだけに書く。CI はこのスクリプトを呼ぶ（個別の検査を CI に書かない。テストで確かめる）
  */
 import { spawnSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dependencyProblems, readMiseVersions, versionWarning } from "./lib/dev-env.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const scripts = join(root, ".claude/scripts");
@@ -32,7 +36,7 @@ const steps = [
 	["文書の構造（子向けのハーネス）", node, [join(scripts, "check-docs.mjs")]],
 	["文書の構造（上流のハーネス）", node, [join(scripts, "check-docs.mjs"), join(root, ".kit/harness")]],
 	["文書のリンク（プラグイン）", node, [join(scripts, "check-docs.mjs"), join(root, ".kit/src/docs"), "--links-only"]],
-	["ADR の一覧（ADR と合っているか）", node, [join(scripts, "adr-index.mjs")]],
+	["ADR の一覧（ADR と合っているか、番号が重なっていないか）", node, [join(scripts, "adr-index.mjs")]],
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
 	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
 	["所有の境界", node, [join(scripts, "check-kit-paths.mjs"), ...(process.argv.includes("--fetch") ? ["--fetch"] : [])]],
@@ -41,9 +45,28 @@ const steps = [
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), ...appendOnly]]
 		: ["wiki の操作が追記だけか（origin/main がないので省略）", null, []],
 ];
-if (process.argv.includes("--plugin")) steps.push(["プラグイン（pnpm check）", "pnpm", ["check"], join(root, ".kit/src")]);
+const plugin = process.argv.includes("--plugin");
+if (plugin) steps.push(["プラグイン（pnpm check）", "pnpm", ["check"], join(root, ".kit/src")]);
 
 const results = [];
+
+// 開発環境: 版は警告だけ。pnpm は --plugin のときだけ見る（子の Vault では pnpm を使わない）
+const misePath = join(root, "mise.toml");
+const wanted = existsSync(misePath) ? readMiseVersions(readFileSync(misePath, "utf8")) : { node: null, pnpm: null };
+const pnpmVersion = () => {
+	const r = spawnSync("pnpm", ["--version"], { cwd: root, encoding: "utf8" });
+	return r.status === 0 ? r.stdout : null;
+};
+const warnings = [versionWarning("Node", wanted.node, process.version), plugin ? versionWarning("pnpm", wanted.pnpm, pnpmVersion()) : null].filter(Boolean);
+for (const w of warnings) console.log(`警告: ${w}`);
+if (plugin) {
+	const problems = dependencyProblems(join(root, ".kit/src"));
+	if (problems.length) {
+		for (const p of problems) console.log(`エラー: ${p}`);
+		steps.pop();
+		results.push(["プラグイン（pnpm check。依存が揃っていないので実行しなかった）", "失敗"]);
+	}
+}
 for (const [name, cmd, args, cwd] of steps) {
 	if (!cmd) {
 		results.push([name, "省略"]);

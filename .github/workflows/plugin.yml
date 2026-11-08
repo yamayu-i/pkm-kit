@@ -55,3 +55,39 @@ jobs:
         run: test -z "$(git status --porcelain --untracked-files=all -- ../../.obsidian ../bin)"
       - name: セキュリティチェックの機械的な部分
         run: pnpm security:scan
+
+  # 描画した画面の検査（コントラスト・押せる大きさ・フォーカス・キーボード）。スクリーンショットは成果物で見る（#9）
+  preview-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .kit/src
+    steps:
+      - uses: actions/checkout@v6
+      - name: Node と pnpm の版を mise.toml から読む
+        id: versions
+        working-directory: .
+        run: |
+          echo "node=$(sed -nE 's/^node *= *"(.*)"/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+          echo "pnpm=$(sed -nE 's/^pnpm *= *"(.*)"/\1/p' mise.toml)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+      - name: pnpm を入れる
+        run: npm install -g "pnpm@${{ steps.versions.outputs.pnpm }}"
+      - name: 依存を入れる
+        run: pnpm install --frozen-lockfile
+      - name: Chromium を入れる
+        run: pnpm --filter pkm-task exec playwright install --with-deps chromium
+      - name: デザインの生成物を作る
+        run: pnpm --filter design build
+      - name: 画面を描いて検査する
+        run: pnpm --filter pkm-task preview:ui
+      - name: スクリーンショットを成果物にする
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-ui
+          path: .kit/src/packages/pkm-task/preview/out/*.png
+          if-no-files-found: ignore

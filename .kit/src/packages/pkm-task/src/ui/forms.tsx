@@ -151,7 +151,7 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 	);
 }
 
-/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の予定入れにも使う。ADR-0030） */
+/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の Do Date の選択にも使う。ADR-0030） */
 export function CalendarForm(props: {
 	initial: LocalDate[];
 	softDeadline: LocalDate | null;

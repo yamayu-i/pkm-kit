@@ -38,7 +38,7 @@ function snapshot(issue: Issue, patch: Patch): Patch {
 }
 
 /**
- * 予定を入れる（ADR-0030）: カレンダーだけを出し、日付を複数選んで決定する。
+ * Do Date を選ぶ（ADR-0030。呼び方は ADR-0032 の Do Date にそろえる）: カレンダーだけを出し、日付を複数選んで決定する。
  * Inbox で estimated がまだないときだけ、estimated も選ぶ（ADR-0009 の必須は残す）
  */
 export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; onSubmit: (dates: LocalDate[], estimated: number | null) => void }) {
@@ -138,13 +138,13 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	const schedule = () => {
 		if (!issue) return;
 		const target = issue;
-		new PreactModal(ctx.app, "予定を入れる", (close) => (
+		new PreactModal(ctx.app, "Do Date を選ぶ", (close) => (
 			<ScheduleSheet
 				issue={target}
 				requireEstimate={isInbox(target)}
 				onSubmit={(dates, est) => {
 					close();
-					const label = dates.length === 1 ? `${formatShortDate(dates[0]!)} に予定` : `${dates.length} 日に予定`;
+					const label = dates.length === 1 ? `${formatShortDate(dates[0]!)} を Do Date に` : `${dates.length} 日を Do Date に`;
 					void apply(organizeSchedulePatch(target, dates, est), label);
 				}}
 			/>
@@ -232,7 +232,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="cloud" /> Someday
 					</div>
 					<div class={`vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`}>
-						<Icon name="calendar-plus" /> 予定
+						<Icon name="calendar-plus" /> Do Date
 					</div>
 					<div class={`vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`}>
 						<Icon name="clock" /> あとで
@@ -301,9 +301,9 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<Icon name="check" />
 					<span>Closed</span>
 				</button>
-				<button class="vt-round is-schedule" disabled={!issue} onClick={schedule} title="予定を入れる（→）">
+				<button class="vt-round is-schedule" disabled={!issue} onClick={schedule} title="Do Date を選ぶ（→）">
 					<Icon name="calendar-plus" />
-					<span>予定</span>
+					<span>Do Date</span>
 				</button>
 			</div>
 			<div class="vt-organize-foot">
@@ -312,7 +312,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="undo-2" /> 取り消す（{undo.id}: {undo.label}）
 					</button>
 				) : (
-					<span class="vt-muted">← Someday ／ → 予定 ／ ↑ あとで ／ ↓ Cancel（スワイプか矢印キー）</span>
+					<span class="vt-muted">← Someday ／ → Do Date ／ ↑ あとで ／ ↓ Cancel（スワイプか矢印キー）</span>
 				)}
 				{issue && (
 					<button class="vt-button is-text" onClick={() => void ctx.openPath(issue.path, true)}>

@@ -65,8 +65,9 @@
 | 文書の構造 | `check-docs.mjs`（`.claude` と `.kit/harness` の両方） | CLAUDE.md の行数、リンク切れ、辿れない文書、スキルの frontmatter |
 | wiki の lint | `wiki-lint.mjs` | 上流にノートはないので、ほぼ何も見ない |
 | Obsidian の設定 | `check-obsidian-config.mjs` | 上流には `.obsidian/*.json` がない。必要なキーは `.kit/obsidian-required.json` で、デザインの検査が値を確かめる |
+| ADR の一覧と番号 | `adr-index.mjs` | 2 つの ADR の一覧が各 ADR と合っている。同じディレクトリの中と、2 つのディレクトリをまたいで（ADR-0056 より後の Issue の番号で）番号が重なっていない |
 | 所有の境界 | `check-kit-paths.mjs` | 追跡しているすべてのファイルが `.kit/owned-paths.json` に当たる（個人のノートや記録が紛れ込まない） |
-| プラグイン | `.kit/src` の `pnpm check`、`pnpm security:scan` | 型・ビルド・テスト、成果物（`main.js`、スニペット、`.kit/bin/`）の再現（`--plugin` を付けたとき、CI ではプラグインを変えたとき） |
+| プラグイン | `.kit/src` の `pnpm check`、`pnpm security:scan`、`preview:ui`（pkm-task） | 型・ビルド・テスト、成果物（`main.js`、スニペット、`.kit/bin/`）の再現（`--plugin` を付けたとき、CI ではプラグインを変えたとき）。CI では pkm-task の描画した画面の検査も行い、スクリーンショットを成果物に残す |
 
 規約を足す前に、検査で強制できないかを考える。検査を緩める変更は、大きい変更として扱う。
 
