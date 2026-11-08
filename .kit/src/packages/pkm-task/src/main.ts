@@ -1,7 +1,7 @@
 import { Notice, Platform, Plugin } from "obsidian";
 import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data.ts";
 import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
-import { issueHeaderExtension } from "./header/extension";
+import { installTaskHeaders } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
@@ -89,7 +89,7 @@ export default class PkmTaskPlugin extends Plugin {
 		}
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
 		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
-		this.registerEditorExtension(issueHeaderExtension(ctx));
+		installTaskHeaders(ctx, this);
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
 		// リボンのボタン（Daily を開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));

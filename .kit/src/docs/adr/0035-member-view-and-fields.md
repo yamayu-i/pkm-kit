@@ -1,6 +1,6 @@
 # ADR-0035: member の項目（name / nickname / alias）と、member の専用 View
 
-- 状態: 承認
+- 状態: 承認（一部置換: 0077）
 - 日付: 2026-11-07
 
 ## 背景

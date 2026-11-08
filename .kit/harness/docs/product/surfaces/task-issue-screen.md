@@ -18,7 +18,7 @@
 8. worklog（新しい順に 5 件ずつ。押して編集）
 9. 本文（ふつうのエディタ。新しい issue は ToDo / Description / Note の見出し）
 
-Properties 欄は隠す。
+ページの一番上に出る。編集の画面とリーディングビューの両方に出て、どちらでも編集できる。Properties 欄は隠す（ソースモードでは frontmatter が見える）。
 
 ## 使う概念
 
@@ -26,4 +26,4 @@ Properties 欄は隠す。
 
 ## 根拠
 
-[ADR-0008](../../../../src/docs/adr/0008-ui-preact.md)、[ADR-0012](../../../../src/docs/adr/0012-issue-screen.md)、[ADR-0017](../../../../src/docs/adr/0017-date-input.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)
+[ADR-0008](../../../../src/docs/adr/0008-ui-preact.md)、[ADR-0012](../../../../src/docs/adr/0012-issue-screen.md)、[ADR-0017](../../../../src/docs/adr/0017-date-input.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0077](../../../../src/docs/adr/0077-task-header-dom-mount.md)

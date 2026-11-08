@@ -16,10 +16,12 @@
 
 status、Do Date、期限、親子は持たない。
 
+issue 画面と同じく、ページの一番上に出る。編集の画面とリーディングビューの両方に出て、どちらでも編集できる。
+
 ## 使う概念
 
 [routine](../concepts/task-routine.md)、[estimated と実績](../concepts/task-estimate.md)
 
 ## 根拠
 
-[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0021](../../../../src/docs/adr/0021-routine-effort-and-sidebar.md)
+[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0021](../../../../src/docs/adr/0021-routine-effort-and-sidebar.md)、[ADR-0077](../../../../src/docs/adr/0077-task-header-dom-mount.md)

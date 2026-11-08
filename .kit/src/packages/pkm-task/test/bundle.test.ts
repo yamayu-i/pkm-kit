@@ -12,6 +12,7 @@ function obsidianMock() {
 	const extensions: unknown[] = [];
 	const views: string[] = [];
 	const creators = new Map<string, (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }>();
+	const events: string[] = [];
 	let layoutReady: (() => void) | null = null;
 	/** 本物の ItemView と同じく、コンストラクタの中で getViewType を呼ぶ */
 	class ItemView {
@@ -22,8 +23,13 @@ function obsidianMock() {
 	class Plugin {
 		app = {
 			vault: { getFiles: () => [], getMarkdownFiles: () => [], on: () => ({}) },
-			metadataCache: { on: () => ({}), getFileCache: () => null },
-			workspace: { onLayoutReady: (fn: () => void) => (layoutReady = fn) },
+			metadataCache: { on: (name: string) => (events.push(`metadataCache:${name}`), {}), getFileCache: () => null },
+			workspace: {
+				onLayoutReady: (fn: () => void) => (layoutReady = fn),
+				on: (name: string) => (events.push(`workspace:${name}`), {}),
+				iterateAllLeaves: () => {},
+				getActiveViewOfType: () => null,
+			},
 		};
 		registerEditorExtension(ext: unknown) {
 			extensions.push(ext);
@@ -33,6 +39,7 @@ function obsidianMock() {
 		}
 		addRibbonIcon() {}
 		registerEvent() {}
+		register() {}
 		registerView(type: string, creator: (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }) {
 			views.push(type);
 			creators.set(type, creator);
@@ -56,6 +63,7 @@ function obsidianMock() {
 			Notice: class {},
 			Menu: class {},
 			Keymap: {},
+			MarkdownView: class {},
 			Platform: { isMobile: false },
 			TFile: class {},
 			editorInfoField: {},
@@ -63,6 +71,7 @@ function obsidianMock() {
 		},
 		commands,
 		extensions,
+		events,
 		views,
 		creators,
 		ready: () => layoutReady?.(),
@@ -70,13 +79,12 @@ function obsidianMock() {
 }
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
-	it("Obsidian と CodeMirror 以外を require せず、onload でコマンドとエディタ拡張を登録する", async () => {
+	it("Obsidian 以外を require せず、onload でコマンドと画面のヘッダーの差し込みを登録する（ADR-0077）", async () => {
 		const mock = obsidianMock();
 		const required = new Set<string>();
 		const req = (name: string) => {
 			required.add(name);
 			if (name === "obsidian") return mock.obsidian;
-			if (name === "@codemirror/state" || name === "@codemirror/view") return require(name);
 			throw new Error(`unexpected require: ${name}`);
 		};
 		const module = { exports: {} as { default: new () => { onload(): Promise<void> } } };
@@ -84,7 +92,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const plugin = new module.exports.default();
 		await plugin.onload();
 		mock.ready();
-		expect([...required].sort()).toEqual(["@codemirror/state", "@codemirror/view", "obsidian"]);
+		expect([...required].sort()).toEqual(["obsidian"]);
 		expect(mock.commands.map((c) => c.id)).toEqual([
 			"open-daily",
 			"open-issues",
@@ -100,7 +108,9 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"capture-issues",
 		]);
 		expect(mock.views).toHaveLength(11);
-		expect(mock.extensions).toHaveLength(1);
+		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む
+		expect(mock.extensions).toHaveLength(0);
+		expect(mock.events).toEqual(expect.arrayContaining(["workspace:file-open", "workspace:active-leaf-change", "workspace:layout-change"]));
 	});
 
 	it("登録した View をすべて作れる（親のコンストラクタが getViewType を呼んでも落ちない）", async () => {
