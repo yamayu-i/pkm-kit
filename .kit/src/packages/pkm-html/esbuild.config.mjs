@@ -24,6 +24,26 @@ const plugin = {
 	logLevel: "info",
 };
 
+/**
+ * CLI（プラグインには同梱しない。PC の Claude Code とスキルから使う。ADR-0044）。
+ * .kit/bin/ に置き、ビルド済みのものをコミットする。DOM の解析に linkedom を束ねる
+ */
+const bindir = process.env.KIT_BINDIR ?? fileURLToPath(new URL("../../../bin/", import.meta.url));
+const cli = {
+	entryPoints: ["cli/html.ts"],
+	outdir: bindir,
+	outExtension: { ".js": ".mjs" },
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	target: "node22",
+	loader: { ".css": "text" },
+	minify: false,
+	sourcemap: false,
+	legalComments: "eof",
+	logLevel: "warning",
+};
+
 await mkdir(outdir, { recursive: true });
 await copyFile("manifest.json", `${outdir}manifest.json`);
 // トークン（packages/design の生成物）の後ろにプラグインの CSS を続ける（docs/design.md）
@@ -31,5 +51,5 @@ await writeFile(`${outdir}styles.css`, `${await readFile("tokens.css", "utf8")}\
 if (watch) {
 	await (await esbuild.context(plugin)).watch();
 } else {
-	await esbuild.build(plugin);
+	await Promise.all([esbuild.build(plugin), esbuild.build(cli)]);
 }

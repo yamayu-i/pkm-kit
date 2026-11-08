@@ -4,6 +4,7 @@
  * - リンク: Vault の中・外部・見出しを親が扱い、iframe の中で遷移しない
  * - 画像: Vault の中の画像は出る。Vault の外・上限超え・外部は出ない
  * - 見本: ライト / ダーク × 広い / 狭いのスクリーンショットと、描画した画面の検査（docs/design.md）
+ * - 書き出し（ADR-0044）: 書き出した HTML をそのまま開き、OS のライト / ダークに追従し、スクリプトが動かず、外部への要求が出ない
  *
  * 使い方: pnpm --filter pkm-html preview:ui  → preview/out/sample-<light|dark>(-narrow).png
  * 初回だけ Chromium を入れる: pnpm --filter pkm-html exec playwright install chromium（入れられない環境では CHROMIUM_PATH）
@@ -185,6 +186,54 @@ for (const theme of ["light", "dark"]) {
 	await expectQuiet(`sample ${theme}`, page, requests);
 	await page.close();
 	console.log(`${out}sample-${theme}(-narrow).png`);
+}
+
+// 6. tmp/ への書き出し（ADR-0044）: 書き出した HTML を、iframe なしで（受け取った人のブラウザと同じく）開く
+{
+	const { page } = await open();
+	const files = {};
+	for (const name of ["sample", "evil", "images"]) {
+		files[name] = await page.evaluate((n) => window.vh.standalone(n), name);
+		if (files[name] !== (await page.evaluate((n) => window.vh.standalone(n), name))) problems.push(`standalone ${name}: 同じ入力から違うバイト列になった`);
+		await writeFile(`${out}standalone-${name}.html`, files[name]);
+	}
+	await page.close();
+	for (const scheme of ["light", "dark"]) {
+		for (const [name, width] of [["sample", 900], ["sample", 360], ["evil", 900], ["images", 900]]) {
+			const where = `standalone ${name} ${scheme} ${width}`;
+			const ctx = await browser.newContext({ viewport: { width, height: 800 }, colorScheme: scheme });
+			const p = await ctx.newPage();
+			const requests = [];
+			await p.route(/^(?!data:|about:)/, (route) => {
+				const url = route.request().url();
+				if (url !== `file://${out}standalone-${name}.html`) requests.push(url);
+				return url.startsWith("file:") && requests.length === 0 ? route.continue() : route.abort();
+			});
+			p.on("pageerror", (e) => problems.push(`${where}: 実行時のエラー: ${e.message}`));
+			await p.goto(`file://${out}standalone-${name}.html`);
+			await p.waitForTimeout(name === "evil" ? 1500 : 300);
+			for (const id of ["#submit", "#ext", "#js"]) if ((await p.locator(id).count()) > 0) await p.locator(id).first().click({ timeout: 1000 }).catch(() => {});
+			await p.waitForTimeout(name === "evil" ? 500 : 0);
+			if (requests.length > 0) problems.push(`${where}: 外部への要求が出た: ${requests.join(", ")}`);
+			const pwned = await p.evaluate(() => window.__pwned).catch(() => "遷移した");
+			if (pwned !== undefined) problems.push(`${where}: スクリプトが動いた（${pwned}）`);
+			if (p.url() !== `file://${out}standalone-${name}.html`) problems.push(`${where}: 遷移した（${p.url()}）`);
+			if (name === "sample") {
+				const bg = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+				const want = scheme === "light" ? "rgb(246, 245, 242)" : "rgb(30, 30, 30)";
+				if (bg !== want) problems.push(`${where}: 背景がトークンの値でない（${bg}、期待 ${want}）`);
+				await p.screenshot({ path: `${out}standalone-sample-${scheme}${width < 600 ? "-narrow" : ""}.png`, fullPage: true });
+				for (const a of await p.evaluate(auditInPage, { rootSelector: "body", targetMin })) problems.push(`${where}: [${a.rule}] ${a.where}: ${a.message}`);
+			}
+			if (name === "images") {
+				const state = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll("img")].map((img) => [img.id, img.naturalWidth > 0])));
+				for (const id of ["root", "rel", "svg"]) if (!state[id]) problems.push(`${where}: ${id} が出ない`);
+				for (const id of ["outside", "big", "missing", "ext"]) if (state[id]) problems.push(`${where}: ${id} が出ている`);
+			}
+			await ctx.close();
+		}
+	}
+	console.log(`${out}standalone-sample-<light|dark>(-narrow).png`);
 }
 
 await browser.close();

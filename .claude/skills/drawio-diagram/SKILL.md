@@ -115,7 +115,7 @@ node .kit/bin/drawio.mjs inspect asset/<名前>.drawio.svg
 
 ## 外に共有する
 
-図を含むノートを外に渡すときは `node .kit/bin/drawio.mjs export <ノート>` で `tmp/` に書き出す（図を、編集用 XML を除いた SVG の data URI にして埋め込む。[ノートの書式と配置](../../docs/vault-conventions.md)）。
+図を含むノートを外に渡すときは `node .kit/bin/drawio.mjs export <ノート>` で `tmp/` に書き出す（図を、編集用 XML を除いた SVG の data URI にして埋め込む）。HTML は `node .kit/bin/html.mjs export <ファイル>` を使う（図・画像・トークンの値を埋め込む。[ノートの書式と配置](../../docs/vault-conventions.md)）。
 
 ## 出力の段階
 
