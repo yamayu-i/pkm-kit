@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { extractLinks, findWikiLinks, isExternal, parseFrontmatter, splitTarget, stripCode } from "./lib/markdown.mjs";
 import { classify, DAILY_RE, isWikiPage, vaultFiles, WIKI_INDEX } from "./lib/vault.mjs";
 // updated の規則の正本は pkm-git にある（ADR-0009）。Node の型の除去で .ts をそのまま読む
+import { listCandidates } from "./note-rename.mjs";
 import { isTargetPath } from "../../.kit/src/packages/pkm-git/src/stamp/updated.ts";
 
 export const PAGE_TYPES = ["concept", "entity", "topic", "answer"];
@@ -124,6 +125,11 @@ function lintIndex(files, fileSet, report, root) {
 	for (const p of pages) if (!linked.has(p)) report(p, 0, "wiki/index.md に載っていない");
 }
 
+/** ファイル名が英語のケバブケースになっていないノート。誤りではなく、note-rename で改名する（ADR-0015） */
+export function pendingRenames(root) {
+	return listCandidates(root);
+}
+
 function format({ path, line, message }) {
 	return `  ${path}${line ? `:${line}` : ""}  ${message}`;
 }
@@ -135,6 +141,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		console.log(`警告 ${warnings.length} 件（人のノート。LLM は直さず、ユーザーに伝える）`);
 		for (const w of warnings) console.log(format(w));
 	}
+	const pending = pendingRenames(root);
+	if (pending.length) console.log(`情報: ファイル名を英語にする改名を待っているノート ${pending.length} 件（note-rename スキル）`);
 	if (errors.length) {
 		console.log(`エラー ${errors.length} 件`);
 		for (const e of errors) console.log(format(e));
