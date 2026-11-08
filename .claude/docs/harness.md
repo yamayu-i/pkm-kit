@@ -57,10 +57,11 @@
 | Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` の JSON に末尾改行がないか。上流が求める必要なキーが入っているか |
 | 所有の境界 | `check-kit-paths.mjs` | 取り込んだ上流のコミット（`.kit-local/upstream.json`）から、上流のものが変わっていないか |
 | 移行 | `.kit/migrate.mjs --status` | 未適用の移行がないか |
+| ADR の一覧 | `adr-index.mjs` | 上流のものの ADR の一覧が、各 ADR の見出しと状態と合っているか |
 
 ## 上流の更新の取り込み
 
-[vault-upgrade](../skills/vault-upgrade/SKILL.md)（[ADR-0010](../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。ブランチで `upstream/main` を merge し、未適用の移行（`.kit/migrations/`）を `node .kit/migrate.mjs` で実行して、PR にする。移行のスクリプトで済まない部分は、移行の README に従って AI が直す。上流の変更の一覧は `.kit/CHANGELOG.md`。
+[vault-upgrade](../skills/vault-upgrade/SKILL.md)（[ADR-0010](../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。ブランチで `upstream/main` を merge し、未適用の移行（`.kit/migrations/`）を `node .kit/migrate.mjs` で実行して、PR にする。移行のスクリプトで済まない部分は、移行の README に従って AI が直す。上流の変更の一覧は `.kit/changes/`（1 変更 1 ファイル。2026-11-08 までは `.kit/CHANGELOG.md`）。
 
 - SessionStart フック（`upstream-status.mjs`）が、未取り込みの更新と未適用の移行を知らせる
 - `verify.mjs` と CI は、未適用の移行があると失敗する

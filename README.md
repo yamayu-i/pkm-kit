@@ -8,7 +8,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
-> 上流（このリポジトリ）と各 Vault の分け方の設計は、`.kit/harness/docs/adr/` の ADR-0009〜0011 にある。変更の記録は `.kit/CHANGELOG.md`。
+> 上流（このリポジトリ）と各 Vault の分け方の設計は、`.kit/harness/docs/adr/` の ADR-0009〜0011 にある。変更の記録は `.kit/changes/`（1 変更 1 ファイル。2026-11-08 までは `.kit/CHANGELOG.md`）。
 
 ## 新しい Vault を作る
 
@@ -89,7 +89,7 @@ node .kit/migrate.mjs --upstream=upstream/main   # 未適用の移行を実行�
 node .claude/scripts/verify.mjs
 ```
 
-取り込む変更と移行は `.kit/CHANGELOG.md` にある。PR をマージした後、モバイルは vault-git で pull するだけでよい。
+取り込む変更と移行は `.kit/changes/` にある（2026-11-08 までは `.kit/CHANGELOG.md`）。PR をマージした後、モバイルは vault-git で pull するだけでよい。
 
 ## 仕組み
 

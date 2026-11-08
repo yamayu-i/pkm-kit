@@ -1,3 +1,8 @@
 # 改行コードを変換しない。git CLI（Windows の autocrlf など）と、変換をしない
 # isomorphic-git（自作プラグイン）で中身がずれ、全ファイルが変更扱いになるのを防ぐ
 * -text
+
+# ADR の一覧は adr-index.mjs が作る。並行する PR が足した行を、手元の merge で両方残す（ADR-0056）。
+# 残った一覧は node .claude/scripts/adr-index.mjs --write で整える
+.kit/harness/docs/adr/README.md merge=union
+.kit/src/docs/adr/README.md merge=union
