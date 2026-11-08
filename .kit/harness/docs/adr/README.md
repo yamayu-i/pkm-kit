@@ -34,3 +34,4 @@
 | [0010](0010-upstream-updates-and-migrations.md) | 承認 | 上流の更新は merge と移行で取り込み、Breaking Change は AI が移行する |
 | [0011](0011-harness-parent-and-child.md) | 承認 | ハーネスを親と子に分け、子で見つけた上流の改善はエスカレーションする |
 | [0012](0012-product-responsibility.md) | 承認 | ユーザー体験に責任を持つ責務（プロダクト）を置き、機会は Claude が自分で見つける |
+| [0013](0013-output-by-reader-and-stage.md) | 提案 | 出力を、読み手（LLM・人・両方）と、人が読む出力の 5 つの段階で制御する |
