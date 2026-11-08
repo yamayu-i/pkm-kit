@@ -245,9 +245,11 @@ mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Co
 
 ### Obsidian の実機で確かめる
 
-テストと `preview:ui` は `obsidian` をモックにして描く。そのため、Obsidian 本体の CSS との詳細度の争い（本体の規則が勝ってプラグインの隠す CSS が効かない）や、View の生成の順の誤り（親のコンストラクタの中で未代入の値を読む）は見つからない。設定・CSS・View を変えたら、PR の前に実機で確かめる（[dev-implement](../skills/dev-implement/SKILL.md)）。
+テストと `preview:ui` は `obsidian` をモックにして描く。そのため、Obsidian 本体の CSS との詳細度の争い（本体の規則が勝ってプラグインの隠す CSS が効かない）や、View の生成の順の誤り（親のコンストラクタの中で未代入の値を読む）は見つからない。設定・CSS・View を変えたら、実機で確かめることを PR の本文に挙げ、ユーザーがマージの前に確かめる。エージェントは実機での確認のために止まらず、PR まで進める（[dev-implement](../skills/dev-implement/SKILL.md)）。
 
-- 使える環境: Obsidian が起動している PC。Obsidian の CLI を有効にしておく（設定で有効にし、`obsidian` コマンドが使えること）。クラウドのセッションでは使えないので、PR に「実機での確認が要る」と書く
+下は、ユーザーが確かめるときや、頼まれて実機の不具合を調べるときの方法。
+
+- 使える環境: Obsidian が起動している PC。Obsidian の CLI を有効にしておく（設定で有効にし、`obsidian` コマンドが使えること）。クラウドのセッションでは使えない
 - 起動中のアプリで JavaScript を評価して、DOM と適用中の CSS を読む。引数の書き方は `obsidian help` で確かめる。例:
 
 ```sh

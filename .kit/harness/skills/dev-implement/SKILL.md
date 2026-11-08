@@ -36,12 +36,14 @@ node .claude/scripts/verify.mjs --plugin   # プラグインを変えたとき�
 - 失敗したら原因を直し、すべてをもう一度実行する。`pnpm check` が失敗したら、再実行の前に出力をファイルに保存する（`pnpm check 2>&1 | tee <作業用のフォルダ>/check.log`）。再実行で通っても、1 回目の出力がないと原因（不安定なテストなど）を追えない
 - [セキュリティチェックが要る変更](../../docs/security-check-schedule.md)（依存、`src/git/`・`src/fs/`・`src/obsidian/`、ビルド設定、CI）なら、コミットの前に `security-check` スキルを実行する
 
-## 4. Obsidian の実機で確かめる
+## 4. 実機で確かめることを挙げる
 
-Obsidian の設定（`.obsidian/*.json`、`.kit/obsidian-required.json`）・CSS・View を変えたら、PR を出す前に実機で確かめる。テストと `preview:ui` は `obsidian` をモックにして描くので、本体の CSS との詳細度の争いや、View の生成の順の誤りは見つからない。
+実機（Obsidian）での確認はエージェントは行わず、PR を出した後にユーザーがマージの前に行う。確認のために止まったり、ユーザーの返事を待ったりせず、検査が通ったら [PR を出す](../dev-pr/SKILL.md) まで進める。
 
-- 起動中の Obsidian があれば、Obsidian の CLI の `eval` で DOM と適用中の CSS を読む（[プラグインの設計と開発](../../docs/plugin-development.md#obsidian-の実機で確かめる)）。または画面を開いて見る
-- 実機で確かめられない環境（クラウドのセッションなど）では、PR の本文の検証に「実機での確認が要る」と書き、確かめてほしいことを挙げる
+Obsidian の設定（`.obsidian/*.json`、`.kit/obsidian-required.json`）・CSS・View・プラグインの振る舞いを変えたら、実機で確かめてほしいことを控えておき、PR の本文の「実機で確かめること」に書く。テストと `preview:ui` は `obsidian` をモックにして描くので、本体の CSS との詳細度の争いや、View の生成の順の誤りは見つからない。そうした、自動の検査で確かめられなかったことを挙げる。
+
+- 1 項目に、操作と期待する結果を書く（例: 「Daily notes の View を開き、frontmatter の欄が隠れている」）
+- 実機の確認が要らない変更（文書だけ、ハーネスのスクリプトだけなど）なら「なし」と書く
 
 ## 5. コミットする
 
