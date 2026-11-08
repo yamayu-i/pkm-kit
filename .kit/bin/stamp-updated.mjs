@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // src/stamp/updated.ts
-var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["temporary", "template", "tmp"]);
+var EXCLUDED_DIRS = /* @__PURE__ */ new Set(["template", "tmp"]);
 function isTargetPath(path) {
   if (!path.endsWith(".md")) return false;
   const parts = path.split("/");

@@ -5,7 +5,7 @@ import { join, relative } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { listMigrations, readRecord, runMigrations } from "../../../.kit/migrate.mjs";
-import { tempVault, write } from "./helpers.mjs";
+import { commit, git, tempRepo, tempVault, write } from "./helpers.mjs";
 
 const here = fileURLToPath(new URL("../../..", import.meta.url));
 const FIXTURES = join(here, ".kit/fixtures");
@@ -282,4 +282,22 @@ test("0004: name か id が 1 行の値で読めない member は変えずに、
 	assert.equal(failed?.name, "0004-member-nickname-alias");
 	assert.match(failed.problems.join(), /member\/m-5\.md/);
 	assert.equal(readFileSync(join(root, "member/m-5.md"), "utf8"), block);
+});
+
+test("0006: 追跡中の tmp/ のファイルは変えずに、check が一覧を出して止まる。追跡を外せば通る", async () => {
+	const root = tempRepo({ "tmp/a.md": "a\n", "tmp/sub/b.html": "<p>b</p>\n", "note.md": "n\n" });
+	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0006-tmp-untracked/migrate.mjs")).href);
+	const { check } = await import(pathToFileURL(join(here, ".kit/migrations/0006-tmp-untracked/check.mjs")).href);
+	assert.equal(migrate(root).length, 1);
+	assert.deepEqual(git(root, "ls-files").trim().split("\n").sort(), ["note.md", "tmp/a.md", "tmp/sub/b.html"]);
+	assert.deepEqual(
+		check(root).map((p) => p.split(":")[0]),
+		["tmp/a.md", "tmp/sub/b.html"],
+	);
+
+	git(root, "rm", "-r", "-q", "--cached", "--", "tmp");
+	commit(root, "untrack tmp", { ".gitignore": "tmp/\n" });
+	assert.deepEqual(check(root), []);
+	assert.deepEqual(migrate(root), []);
+	assert.ok(existsSync(join(root, "tmp/a.md")));
 });
