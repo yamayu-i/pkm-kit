@@ -20,9 +20,16 @@ export interface Snippet {
 	alias: string;
 	/** frontmatter を閉じる `---` の行の直後から終わりまで。改行も含めてそのまま挿入する */
 	body: string;
+	/**
+	 * 選んだときに実行する Obsidian のコマンドの ID（ADR-0094）。あれば本文は挿入せず、
+	 * 打った `/…` を消してからこのコマンドを実行する
+	 */
+	command?: string;
 }
 
 const KEBAB_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/** Obsidian のコマンドの ID（`<プラグイン ID>:<コマンド>`） */
+const COMMAND_RE = /^[a-z0-9-]+:[A-Za-z0-9_-]+$/;
 
 function unquote(value: string): string {
 	const v = value.trim();
@@ -53,7 +60,18 @@ export function parseSnippet(file: string, text: string): { snippet: Snippet | n
 		if (v === undefined || v === "") return fail(`${key} がありません`);
 		if (!KEBAB_RE.test(v)) return fail(`${key} はケバブケースにします（${v}）`);
 	}
-	return { snippet: { file, name: fields.name!, alias: fields.alias!, body }, problem: null };
+	const command = fields.command;
+	if (command !== undefined && !COMMAND_RE.test(command)) {
+		return fail(`command は <プラグイン ID>:<コマンド> の形にします（${command}）`);
+	}
+	const snippet: Snippet = { file, name: fields.name!, alias: fields.alias!, body };
+	if (command !== undefined) snippet.command = command;
+	return { snippet, problem: null };
+}
+
+/** command のあるものを除く。インラインテンプレートでは command を使わない（ADR-0094） */
+export function withoutCommands(snippets: readonly Snippet[]): Snippet[] {
+	return snippets.filter((s) => s.command === undefined);
 }
 
 /** 上流の既定に、その Vault のものを重ねる。同じファイル名ならその Vault のものを使う */
