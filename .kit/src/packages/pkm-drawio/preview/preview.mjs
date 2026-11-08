@@ -101,17 +101,17 @@ const XML2 = '<mxfile><diagram id="p1" name="1"><mxGraphModel><root><mxCell id="
 
 	await frame.evaluate((xml) => window.send({ event: "save", xml, exit: false }), XML2);
 	await waitFor("編集: 保存", async () => (await page.evaluate(() => window.dv.files()["asset/sys.drawio.svg"])).includes("&lt;diagram id=&quot;p2&quot;"));
-	await waitFor("編集: 保存済みの通知", async () => (await frame.evaluate(() => window.received.length)) >= 5);
+	await waitFor("編集: 保存済みの通知", async () => (await frame.evaluate(() => window.received.length)) >= 4);
 	const received = await frame.evaluate(() => window.received.map((m) => m.action));
-	if (JSON.stringify(received) !== JSON.stringify(["load", "spinner", "export", "spinner", "status"])) problems.push(`編集: やり取りが違う（${received.join(", ")}）`);
+	if (JSON.stringify(received) !== JSON.stringify(["load", "export", "spinner", "status"])) problems.push(`編集: やり取りが違う（${received.join(", ")}）`);
 	const exportMsg = await frame.evaluate(() => window.received.find((m) => m.action === "export"));
 	if (exportMsg?.format !== "xmlsvg" || exportMsg?.xml !== XML2) problems.push("編集: 保存した XML を指定して xmlsvg を頼んでいない");
 
 	// 編集中にファイルが変わった（同期など）→ 上書きせず、別名で保存
 	await page.evaluate(() => window.dv.setFile("asset/sys.drawio.svg", '<svg xmlns="http://www.w3.org/2000/svg" content="&lt;mxfile/&gt;"/>'));
 	await frame.evaluate((xml) => window.send({ event: "save", xml, exit: true }), XML2.replace('name="1"', 'name="一"'));
-	await waitFor("衝突: 選ぶ画面", async () => (await page.locator("button", { hasText: "自分の版を別名で保存" }).count()) > 0);
-	await page.locator("button", { hasText: "自分の版を別名で保存" }).click();
+	await waitFor("衝突: 選ぶ画面", async () => (await page.locator("button", { hasText: "Save mine as a copy" }).count()) > 0);
+	await page.locator("button", { hasText: "Save mine as a copy" }).click();
 	await waitFor("衝突: 別名で保存", async () => Object.keys(await page.evaluate(() => window.dv.files())).some((p) => p.startsWith("asset/sys (編集 ")));
 	const after = await page.evaluate(() => window.dv.files());
 	if (after["asset/sys.drawio.svg"] !== '<svg xmlns="http://www.w3.org/2000/svg" content="&lt;mxfile/&gt;"/>') problems.push("衝突: 変わったファイルを上書きした");
@@ -150,12 +150,12 @@ const XML2 = '<mxfile><diagram id="p1" name="1"><mxGraphModel><root><mxCell id="
 	await page.waitForTimeout(100);
 	// Esc・× と同じ（Modal の close）
 	await page.evaluate(() => window.__modal?.close());
-	await waitFor("未保存: 確かめる", async () => (await page.locator("button", { hasText: "変更を捨てて閉じる" }).count()) > 0);
+	await waitFor("未保存: 確かめる", async () => (await page.locator("button", { hasText: "Discard and close" }).count()) > 0);
 	if ((await page.locator("iframe.vt-drawio-frame").count()) !== 1) problems.push("未保存: 確かめる前に閉じた");
-	await page.locator("button", { hasText: "編集に戻る" }).click();
+	await page.locator("button", { hasText: "Back to editing" }).click();
 	if ((await page.locator("iframe.vt-drawio-frame").count()) !== 1) problems.push("未保存: 編集に戻れない");
 	await page.evaluate(() => window.__modal?.close());
-	await page.locator("button", { hasText: "変更を捨てて閉じる" }).click();
+	await page.locator("button", { hasText: "Discard and close" }).click();
 	await waitFor("未保存: 捨てて閉じる", async () => (await page.locator("iframe.vt-drawio-frame").count()) === 0);
 	if (!(await page.evaluate(() => window.dv.files()["asset/sys.drawio.svg"])).includes("ページ1")) problems.push("未保存: 捨てたのにファイルが変わった");
 	await page.close();
@@ -177,13 +177,13 @@ for (const theme of ["light", "dark"]) {
 	if (!img || !box || box.x < img.x || box.x + box.width > img.x + img.width + 1 || box.y < img.y || box.y > img.y + 16) {
 		problems.push(`操作バー ${theme}: 画像の右上にない（画像 ${JSON.stringify(img)}、バー ${JSON.stringify(box)}）`);
 	}
-	await page.locator(".vt-drawio-tool", { hasText: "コピー" }).hover();
+	await page.locator(".vt-drawio-tool", { hasText: "Copy" }).hover();
 	await page.waitForTimeout(400);
 	if (!(await bar.isVisible())) problems.push(`操作バー ${theme}: バーに移ると消える`);
 	await page.screenshot({ path: `${out}toolbar-${theme}.png`, clip: { x: 0, y: 0, width: 560, height: 420 } });
 	for (const p of await page.evaluate(auditInPage, { rootSelector: ".vt-drawio-toolbar", targetMin })) problems.push(`操作バー ${theme}: [${p.rule}] ${p.where}: ${p.message}`);
-	await page.locator(".vt-drawio-tool", { hasText: "コピー" }).click();
-	await page.locator(".vt-drawio-tool", { hasText: "編集" }).click();
+	await page.locator(".vt-drawio-tool", { hasText: "Copy" }).click();
+	await page.locator(".vt-drawio-tool", { hasText: "Edit" }).click();
 	const actions = await page.evaluate(() => window.__actions);
 	if (JSON.stringify(actions) !== JSON.stringify(["copy:asset/sys.drawio.svg", "edit:asset/sys.drawio.svg"])) problems.push(`操作バー ${theme}: 押した結果が違う（${actions.join(", ")}）`);
 	// 離れると消える

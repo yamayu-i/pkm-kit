@@ -1,6 +1,6 @@
 import { MarkdownView, type Plugin } from "obsidian";
 import { h, render } from "preact";
-import { installHeaderMount } from "../../../shared/src/header-mount.ts";
+import { installHeaderMount, remeasureEditor } from "../../../shared/src/header-mount.ts";
 import type { TaskContext } from "../obsidian/context";
 import { IssueHeader } from "./IssueHeader";
 import { MemberHeader } from "./MemberHeader";
@@ -50,5 +50,6 @@ export function installTaskHeaders(ctx: TaskContext, plugin: Plugin): void {
 		// 別のノートに切り替わったら、ヘッダーの状態（開いた入力欄など）を持ち越さない
 		draw: (host, path) => render(h(headerFor(path), { key: path, ctx, path }), host),
 		clear: (host) => render(null, host),
+		resized: remeasureEditor,
 	});
 }

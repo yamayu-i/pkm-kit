@@ -54,6 +54,36 @@ export function placeHeaders<E extends ElementLike>(sizers: readonly E[], classN
 	return { hosts, removed };
 }
 
+/**
+ * 差し込むべき sizer のどれかで、先頭にヘッダーがないか。
+ * Obsidian が sizer を作り直したり、中身を描き直してヘッダーを外したりしたあと（スクロールなど）に確かめる（#99）
+ */
+export function headerMissing<E extends ElementLike>(sizers: readonly E[], className: string): boolean {
+	return sizers.some((sizer) => sizer.firstElementChild?.className !== className);
+}
+
+/** すべての要素に fn を行う。途中で投げても残りを続け、投げたものを返す（1 つのビューの失敗で、ほかのビューのヘッダーを止めない） */
+export function eachSafely<T>(items: readonly T[], fn: (item: T) => void): unknown[] {
+	const errors: unknown[] = [];
+	for (const item of items) {
+		try {
+			fn(item);
+		} catch (e) {
+			errors.push(e);
+		}
+	}
+	return errors;
+}
+
+/**
+ * Markdown のビューのエディタ（CodeMirror 6）に、高さを測り直させる。ヘッダーの resized に渡す。
+ * Obsidian の型には cm がないので、あるときだけ呼ぶ（リーディングビューでは何もしない）
+ */
+export function remeasureEditor(view: { editor?: unknown }): void {
+	const cm = (view.editor as { cm?: { requestMeasure?: () => void } } | undefined)?.cm;
+	cm?.requestMeasure?.();
+}
+
 export interface HeaderMountOptions<V extends { contentEl: HTMLElement }, M> {
 	plugin: Plugin;
 	/** 差し込む要素の class（プラグインごとに違うもの） */
@@ -66,52 +96,137 @@ export interface HeaderMountOptions<V extends { contentEl: HTMLElement }, M> {
 	model(view: V): M | null;
 	draw(host: HTMLElement, model: M, view: V): void;
 	clear(host: HTMLElement): void;
+	/**
+	 * ヘッダーの高さが変わった。エディタに測り直させる（CodeMirror は、本文の上の要素の高さの変化を知らない。#99）
+	 */
+	resized?(view: V): void;
 }
 
 /**
  * ノートを開いたときは、今のビューにすぐ差し込む（遅れて出て、ちらつかないように）。
  * 続けて起きるイベントは 100ms まとめて、すべてのビューを描き直す。
- * Obsidian が sizer の中身を描き直してヘッダーが外れたら（リーディングビューなど）、同じ要素を先頭に戻す
+ * Obsidian が sizer の中身を描き直してヘッダーが外れたら（リーディングビューなど）、同じ要素を先頭に戻す。
+ * sizer そのものが作り直されたときと、スクロールのあとも確かめて、外れていれば差し込み直す（#99）
  */
 export function installHeaderMount<V extends { contentEl: HTMLElement }, M>(options: HeaderMountOptions<V, M>): void {
 	const { plugin, className } = options;
 	const { app } = plugin;
-	const observers = new Map<HTMLElement, MutationObserver>();
+	/** sizer ごとの見張り（直下の子と、親の直下の子） */
+	const observers = new Map<HTMLElement, MutationObserver[]>();
+	/** ヘッダーごとの高さの見張り */
+	const resizers = new Map<HTMLElement, ResizeObserver>();
+	/** ビューの contentEl ごとの、スクロールの見張りと、最後に差し込んだか */
+	const scrolls = new Map<HTMLElement, { off: () => void; shown: boolean }>();
 
-	const watch = (sizer: HTMLElement, host: HTMLElement): void => {
-		observers.get(sizer)?.disconnect();
-		const observer = new MutationObserver(() => {
+	const report = (errors: unknown[]): void => {
+		for (const e of errors) console.error(`[${plugin.manifest.id}] header`, e);
+	};
+
+	const sizersOf = (view: V): HTMLElement[] => Array.from(view.contentEl.querySelectorAll<HTMLElement>(HEADER_SIZERS));
+
+	const watch = (view: V, sizer: HTMLElement, host: HTMLElement): void => {
+		unwatch(sizer);
+		const keep = new MutationObserver(() => {
 			keepFirst(sizer, host);
 		});
-		observer.observe(sizer, { childList: true });
-		observers.set(sizer, observer);
+		keep.observe(sizer, { childList: true });
+		const list = [keep];
+		// sizer が外されて作り直されたら（親の直下の子が変わったら）、そのビューを差し込み直す
+		const parent = sizer.parentElement;
+		if (parent) {
+			const replaced = new MutationObserver(() => {
+				if (!sizer.isConnected) check(view);
+			});
+			replaced.observe(parent, { childList: true });
+			list.push(replaced);
+		}
+		observers.set(sizer, list);
+		if (options.resized && !resizers.has(host) && typeof ResizeObserver !== "undefined") {
+			const resized = options.resized;
+			const ro = new ResizeObserver(() => {
+				try {
+					resized(view);
+				} catch (e) {
+					report([e]);
+				}
+			});
+			ro.observe(host);
+			resizers.set(host, ro);
+		}
 	};
 	const unwatch = (sizer: HTMLElement): void => {
-		observers.get(sizer)?.disconnect();
+		for (const o of observers.get(sizer) ?? []) o.disconnect();
 		observers.delete(sizer);
+	};
+	const unresize = (host: HTMLElement): void => {
+		resizers.get(host)?.disconnect();
+		resizers.delete(host);
+	};
+
+	/** ヘッダーを出したビューで、外れていたら差し込み直す。次のフレームにまとめる */
+	let pending = new Set<V>();
+	let frame: number | undefined;
+	const check = (view: V): void => {
+		pending.add(view);
+		if (frame !== undefined) return;
+		frame = window.requestAnimationFrame(() => {
+			frame = undefined;
+			const views = Array.from(pending);
+			pending = new Set();
+			report(
+				eachSafely(views, (v) => {
+					if (scrolls.get(v.contentEl)?.shown && headerMissing(sizersOf(v), className)) mount(v);
+				}),
+			);
+		});
+	};
+
+	const listenScroll = (view: V, shown: boolean): void => {
+		const el = view.contentEl;
+		const entry = scrolls.get(el);
+		if (entry) {
+			entry.shown = shown;
+			return;
+		}
+		// scroll は泡立たないので、捕捉で受ける（本文の .cm-scroller とリーディングビューのスクロール）
+		const onScroll = () => check(view);
+		el.addEventListener("scroll", onScroll, { capture: true, passive: true });
+		scrolls.set(el, { off: () => el.removeEventListener("scroll", onScroll, { capture: true }), shown });
 	};
 
 	const mount = (view: V): void => {
-		const sizers = Array.from(view.contentEl.querySelectorAll<HTMLElement>(HEADER_SIZERS));
+		const sizers = sizersOf(view);
 		const model = options.model(view);
 		const { hosts, removed } = placeHeaders(sizers, className, model !== null, () => {
 			const el = document.createElement("div");
 			el.className = className;
 			return el;
 		});
-		for (const host of removed) options.clear(host);
+		for (const host of removed) {
+			unresize(host);
+			options.clear(host);
+		}
 		for (const sizer of sizers) {
 			const host = findHost(sizer, className);
-			if (host) watch(sizer, host);
+			if (host) watch(view, sizer, host);
 			else unwatch(sizer);
 		}
-		if (model !== null) for (const host of hosts) options.draw(host, model, view);
+		listenScroll(view, model !== null);
+		if (model !== null) report(eachSafely(hosts, (host) => options.draw(host, model, view)));
 	};
 
 	const refresh = (): void => {
-		for (const view of options.views()) mount(view);
-		// 閉じたビューの sizer は見張らない
+		const views = options.views();
+		report(eachSafely(views, mount));
+		// 閉じたビューの sizer・ヘッダー・スクロールは見張らない
 		for (const sizer of Array.from(observers.keys())) if (!sizer.isConnected) unwatch(sizer);
+		for (const host of Array.from(resizers.keys())) if (!host.isConnected) unresize(host);
+		const open = new Set(views.map((v) => v.contentEl));
+		for (const [el, entry] of Array.from(scrolls)) {
+			if (open.has(el) && el.isConnected) continue;
+			entry.off();
+			scrolls.delete(el);
+		}
 	};
 
 	let timer: number | undefined;
@@ -121,7 +236,7 @@ export function installHeaderMount<V extends { contentEl: HTMLElement }, M>(opti
 	};
 	const now = (): void => {
 		const view = options.activeView();
-		if (view) mount(view);
+		if (view) report(eachSafely([view], mount));
 		schedule();
 	};
 
@@ -135,8 +250,13 @@ export function installHeaderMount<V extends { contentEl: HTMLElement }, M>(opti
 
 	plugin.register(() => {
 		window.clearTimeout(timer);
-		for (const observer of observers.values()) observer.disconnect();
+		if (frame !== undefined) window.cancelAnimationFrame(frame);
+		for (const list of observers.values()) for (const o of list) o.disconnect();
 		observers.clear();
+		for (const ro of resizers.values()) ro.disconnect();
+		resizers.clear();
+		for (const entry of scrolls.values()) entry.off();
+		scrolls.clear();
 		const selector = className.split(" ").map((c) => `.${c}`).join("");
 		for (const host of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
 			options.clear(host);

@@ -767,6 +767,7 @@ function embedUrl() {
   const params = new URLSearchParams({ embed: "1", proto: "json", spin: "1", saveAndExit: "1", libraries: "1", noExitBtn: "0", lang: "ja" });
   return `${EMBED_ORIGIN}/?${params.toString()}`;
 }
+var EXPORT_TIMEOUT_MS = 3e4;
 var MAX_MESSAGE_CHARS = 2 * MAX_SVG_BYTES + 1024 * 1024;
 function parseMessage(data) {
   if (typeof data !== "string" || data.length > MAX_MESSAGE_CHARS) return null;
@@ -883,6 +884,11 @@ var EditSession = class {
     if (done.exit || this.closeAfterSave) return [...effects, ...this.close()];
     return effects;
   }
+  /** export を頼んだ世代の返事が、待つ時間を過ぎても来なかった */
+  exportTimedOut(generation) {
+    if (this.phase !== "exporting" || !this.pending || this.pending.generation !== generation) return [];
+    return this.failExport("Draw.io \u304B\u3089 SVG \u304C\u8FD4\u3063\u3066\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
   /** 閉じた（親が Modal を閉じた） */
   dispose() {
     this.phase = "closed";
@@ -892,9 +898,10 @@ var EditSession = class {
     this.pending = { xml, exit, generation: this.generation };
     this.phase = "exporting";
     return [
-      { type: "post", message: { action: "spinner", show: true, messageKey: "saving" } },
-      // 保存した XML を指定して描く。描いている間の編集を混ぜない
-      { type: "post", message: { action: "export", format: "xmlsvg", xml, spinKey: "saving" } }
+      // 保存した XML を指定して描く。描いている間の編集を混ぜない。
+      // スピナーは spinKey で Draw.io が出す。先に spinner を送ると、Draw.io は「スピナーが出ている」として export をしない（#98）
+      { type: "post", message: { action: "export", format: "xmlsvg", xml, spinKey: "saving" } },
+      { type: "wait", generation: this.generation, ms: EXPORT_TIMEOUT_MS }
     ];
   }
   onExport(msg) {
@@ -907,18 +914,22 @@ var EditSession = class {
       this.phase = "writing";
       return [{ type: "write", svg, xml: pending.xml, generation: pending.generation }];
     } catch (e) {
-      this.pending = null;
-      this.queued = null;
-      this.closeAfterSave = false;
-      this.failed = true;
-      this.phase = "ready";
       const message = e instanceof DrawioFormatError ? e.message : String(e);
-      return [
-        { type: "post", message: { action: "spinner", show: false } },
-        { type: "post", message: { action: "status", message: "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", modified: true } },
-        { type: "error", message: `Draw.io \u304B\u3089\u53D7\u3051\u53D6\u3063\u305F SVG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093: ${message}` }
-      ];
+      return this.failExport(`Draw.io \u304B\u3089\u53D7\u3051\u53D6\u3063\u305F SVG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093: ${message}`);
     }
+  }
+  /** export の段階で保存をやめ、編集画面に戻す */
+  failExport(message) {
+    this.pending = null;
+    this.queued = null;
+    this.closeAfterSave = false;
+    this.failed = true;
+    this.phase = "ready";
+    return [
+      { type: "post", message: { action: "spinner", show: false } },
+      { type: "post", message: { action: "status", message: "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", modified: true } },
+      { type: "error", message }
+    ];
   }
   close() {
     this.phase = "closed";
@@ -988,6 +999,7 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
   frame = null;
   forced = false;
   confirming = false;
+  exportTimer;
   onOpen() {
     this.modalEl.addClass("vt-drawio-modal");
     this.contentEl.addClass("vt-drawio-modal-content");
@@ -995,6 +1007,7 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
     this.frame = mountEditorFrame(this.contentEl, (msg) => this.apply(this.session.handle(msg)));
   }
   onClose() {
+    window.clearTimeout(this.exportTimer);
     this.session.dispose();
     this.frame?.destroy();
     this.frame = null;
@@ -1044,6 +1057,10 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
             () => this.apply(this.session.writeDone(effect.generation, true)),
             (e) => this.apply(this.session.writeDone(effect.generation, false, e instanceof Error ? e.message : String(e)))
           );
+          break;
+        case "wait":
+          window.clearTimeout(this.exportTimer);
+          this.exportTimer = window.setTimeout(() => this.apply(this.session.exportTimedOut(effect.generation)), effect.ms);
           break;
         case "close":
           this.forceClose();

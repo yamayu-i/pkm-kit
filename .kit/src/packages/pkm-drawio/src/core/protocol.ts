@@ -16,6 +16,9 @@ export function embedUrl(): string {
 	return `${EMBED_ORIGIN}/?${params.toString()}`;
 }
 
+/** export を頼んでから返事を待つ時間。過ぎたら保存できなかったとして編集画面に戻す（#98） */
+export const EXPORT_TIMEOUT_MS = 30_000;
+
 /** 受け取るメッセージの大きさの上限（文字数） */
 export const MAX_MESSAGE_CHARS = 2 * MAX_SVG_BYTES + 1024 * 1024;
 
@@ -58,6 +61,8 @@ export type Effect =
 	| { type: "post"; message: Record<string, unknown> }
 	/** SVG 全体を書く。終わったら writeDone(generation, …) を呼ぶ */
 	| { type: "write"; svg: string; xml: string; generation: number }
+	/** export の返事を ms だけ待つ。過ぎたら exportTimedOut(generation) を呼ぶ */
+	| { type: "wait"; generation: number; ms: number }
 	/** 画面を閉じる */
 	| { type: "close" }
 	/** 保存に失敗した・受け取れないものが届いた */
@@ -161,6 +166,12 @@ export class EditSession {
 		return effects;
 	}
 
+	/** export を頼んだ世代の返事が、待つ時間を過ぎても来なかった */
+	exportTimedOut(generation: number): Effect[] {
+		if (this.phase !== "exporting" || !this.pending || this.pending.generation !== generation) return [];
+		return this.failExport("Draw.io から SVG が返ってきませんでした。もう一度保存してください");
+	}
+
 	/** 閉じた（親が Modal を閉じた） */
 	dispose(): void {
 		this.phase = "closed";
@@ -171,9 +182,10 @@ export class EditSession {
 		this.pending = { xml, exit, generation: this.generation };
 		this.phase = "exporting";
 		return [
-			{ type: "post", message: { action: "spinner", show: true, messageKey: "saving" } },
-			// 保存した XML を指定して描く。描いている間の編集を混ぜない
+			// 保存した XML を指定して描く。描いている間の編集を混ぜない。
+			// スピナーは spinKey で Draw.io が出す。先に spinner を送ると、Draw.io は「スピナーが出ている」として export をしない（#98）
 			{ type: "post", message: { action: "export", format: "xmlsvg", xml, spinKey: "saving" } },
+			{ type: "wait", generation: this.generation, ms: EXPORT_TIMEOUT_MS },
 		];
 	}
 
@@ -187,18 +199,23 @@ export class EditSession {
 			this.phase = "writing";
 			return [{ type: "write", svg, xml: pending.xml, generation: pending.generation }];
 		} catch (e) {
-			this.pending = null;
-			this.queued = null;
-			this.closeAfterSave = false;
-			this.failed = true;
-			this.phase = "ready";
 			const message = e instanceof DrawioFormatError ? e.message : String(e);
-			return [
-				{ type: "post", message: { action: "spinner", show: false } },
-				{ type: "post", message: { action: "status", message: "保存できませんでした", modified: true } },
-				{ type: "error", message: `Draw.io から受け取った SVG を保存できません: ${message}` },
-			];
+			return this.failExport(`Draw.io から受け取った SVG を保存できません: ${message}`);
 		}
+	}
+
+	/** export の段階で保存をやめ、編集画面に戻す */
+	private failExport(message: string): Effect[] {
+		this.pending = null;
+		this.queued = null;
+		this.closeAfterSave = false;
+		this.failed = true;
+		this.phase = "ready";
+		return [
+			{ type: "post", message: { action: "spinner", show: false } },
+			{ type: "post", message: { action: "status", message: "保存できませんでした", modified: true } },
+			{ type: "error", message },
+		];
 	}
 
 	private close(): Effect[] {

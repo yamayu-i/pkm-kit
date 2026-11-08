@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keepFirst, placeHeaders, type ElementLike } from "../src/header-mount.ts";
+import { eachSafely, headerMissing, keepFirst, placeHeaders, type ElementLike } from "../src/header-mount.ts";
 
 /** テスト用の最小の要素（DOM の環境を足さずに、差し込みの規則だけを確かめる） */
 class FakeElement implements ElementLike {
@@ -102,5 +102,48 @@ describe("keepFirst", () => {
 		const a = sizer("metadata-container");
 		const host = placeHeaders([a], HOST, true, create).hosts[0]!;
 		expect(keepFirst(a, host)).toBe(false);
+	});
+});
+
+describe("headerMissing", () => {
+	it("どの sizer でも先頭にヘッダーがあれば false", () => {
+		const a = sizer("metadata-container");
+		const b = sizer("mod-header");
+		placeHeaders([a, b], HOST, true, create);
+		expect(headerMissing([a, b], HOST)).toBe(false);
+	});
+
+	it("Obsidian が描き直してヘッダーが外れた sizer があれば true（スクロールで確かめる）", () => {
+		const a = sizer("metadata-container");
+		const host = placeHeaders([a], HOST, true, create).hosts[0]!;
+		host.remove();
+		expect(headerMissing([a], HOST)).toBe(true);
+	});
+
+	it("作り直されて、まだ差し込んでいない sizer があれば true", () => {
+		const a = sizer("metadata-container");
+		placeHeaders([a], HOST, true, create);
+		const fresh = sizer("inline-title", "metadata-container");
+		expect(headerMissing([a, fresh], HOST)).toBe(true);
+	});
+
+	it("先頭からずれていれば true", () => {
+		const a = sizer("metadata-container");
+		placeHeaders([a], HOST, true, create);
+		a.prepend(new FakeElement("inline-title"));
+		expect(headerMissing([a], HOST)).toBe(true);
+	});
+});
+
+describe("eachSafely", () => {
+	it("途中で投げても、残りをすべて処理し、エラーを返す", () => {
+		const seen: number[] = [];
+		const errors = eachSafely([1, 2, 3], (n) => {
+			seen.push(n);
+			if (n === 2) throw new Error("boom");
+		});
+		expect(seen).toEqual([1, 2, 3]);
+		expect(errors).toHaveLength(1);
+		expect(String(errors[0])).toContain("boom");
 	});
 });
