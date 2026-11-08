@@ -13,7 +13,7 @@
 ## 構成
 
 - `.kit/src/` : プラグインのソース（pnpm workspace）と、プラグインの ADR（`docs/adr/`）。UI のデザインルールは `docs/design.md`（UI を作る・変えるときは従う）。デザインの値の正本は `packages/design/tokens.json`
-- `.obsidian/plugins/<id>/`、`.obsidian/snippets/vault-theme.css`、`.kit/bin/` : ビルド成果物（モバイルではビルドできないのでコミットする）
+- `.obsidian/plugins/<id>/`、`.obsidian/snippets/pkm-theme.css`、`.kit/bin/` : ビルド成果物（モバイルではビルドできないのでコミットする）
 - `.kit/templates/` : テンプレートの既定。`.kit/setup.mjs`・`.kit/kit.json`・`.kit/lib/` : 子のセットアップ
 - `.kit/owned-paths.json` : 上流が持つパス。`.kit/obsidian-required.json` : 子の Obsidian の設定に必要なキー
 - `.claude/` : 子向けのハーネス（子の Vault で使う）。`.kit/harness/` : この上流のハーネス
@@ -24,8 +24,8 @@
 1. 作業はすべてブランチで行い PR にする（上流に main への直接のコミットはない）
 2. force push をしない。PR をマージしない。検査を迂回しない（`--no-verify`、フックを無効にする指定、テストの削除・スキップ）
 3. **上流は公開リポジトリ**。個人のノートの内容、端末名、秘密情報を、ソース・テスト・資料・文書・コミットに入れない
-4. 設計判断を含む変更は、実装の前に ADR を書いて合意する
-5. 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](docs/migrations.md)）。子から見える変更は `.kit/CHANGELOG.md` に書く
+4. 設計判断を含む変更は、実装の前に ADR を書いて合意する。ADR と移行の番号は Issue の番号（[ADR-0056](docs/adr/0056-conflict-free-numbering.md)）
+5. 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](docs/migrations.md)）。子から見える変更は `.kit/changes/` に 1 変更 1 ファイルで書く
 6. 秘密情報はプラグインでは Obsidian の SecretStorage に置く
 7. 依存はバージョン固定（`^` / `~` を使わない）。追加する前に必要性をユーザーに説明する
 8. ソースを変えたら必ず `pnpm build` して、成果物（`.obsidian/plugins/`、スニペット、`.kit/bin/`）も一緒にコミットする
@@ -69,7 +69,7 @@ cd .kit/src
 pnpm install --frozen-lockfile
 pnpm check                            # 型チェック → ビルド → テスト
 pnpm security:scan                    # セキュリティチェックの機械的な部分
-pnpm --filter vault-task preview:ui   # UI のスクリーンショットと、描画した画面の検査
+pnpm --filter pkm-task preview:ui   # UI のスクリーンショットと、描画した画面の検査
 ```
 
 ## このファイルを変えるとき

@@ -3,12 +3,12 @@
 Obsidian の Vault を、自作プラグインと Claude Code のハーネス（進め方・スキル・検査）で育てるための一式。
 このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
 
-- 同期は自作プラグイン **Vault Git**（モバイルでも動く git の pull / push）
-- タスク管理は **Vault Task**、今日のデイリーノートと Daily を開くリボンのボタンは **Vault Ribbon**、テンプレートからのノート作成は **Vault Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- 同期は自作プラグイン **PKM Git**（モバイルでも動く git の pull / push）
+- タスク管理は **PKM Task**、今日のデイリーノートと Daily を開くリボンのボタンは **PKM Ribbon**、テンプレートからのノート作成は **PKM Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
-> 上流（このリポジトリ）と各 Vault の分け方の設計は、`.kit/harness/docs/adr/` の ADR-0009〜0011 にある。変更の記録は `.kit/CHANGELOG.md`。
+> 上流（このリポジトリ）と各 Vault の分け方の設計は、`.kit/harness/docs/adr/` の ADR-0009〜0011 にある。変更の記録は `.kit/changes/`（1 変更 1 ファイル。2026-11-08 までは `.kit/CHANGELOG.md`）。
 
 ## 新しい Vault を作る
 
@@ -53,27 +53,27 @@ git add -A && git commit -m "vault: セットアップ" && git push
 ### 3. PC の Obsidian で開く
 
 1. 1 の `my-vault` フォルダを Vault として開く
-2. 下の「各端末の Vault Git の設定」を行う
+2. 下の「各端末の PKM Git の設定」を行う
 
 ほかの PC でも使うときは、自分の Vault のリポジトリ（`https://` の URL）を `git clone` して Vault として開き、`git config core.hooksPath .githooks` を 1 回実行してから、同じ設定を行う。
 
 ### 4. モバイルで使う（任意）
 
-1. 空の Vault を作り、`.obsidian/plugins/vault-git/` に `main.js` と `manifest.json` を（ファイルアプリなどで）コピーする
-2. 下の「各端末の Vault Git の設定」を行い、「初回 clone」にリモート URL（`https://github.com/…/….git`）とブランチを入れる
+1. 空の Vault を作り、`.obsidian/plugins/pkm-git/` に `main.js` と `manifest.json` を（ファイルアプリなどで）コピーする
+2. 下の「各端末の PKM Git の設定」を行い、「初回 clone」にリモート URL（`https://github.com/…/….git`）とブランチを入れる
 3. コマンド「リモートをこの Vault に clone（初回のみ）」を実行する
 
-### 各端末の Vault Git の設定（端末ごとに 1 回）
+### 各端末の PKM Git の設定（端末ごとに 1 回）
 
 1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
-2. 「Vault Git」を有効にする（ほかの自作プラグインは、セットアップ済みの Vault なら有効になっている）
+2. 「PKM Git」を有効にする（ほかの自作プラグインは、セットアップ済みの Vault なら有効になっている）
 3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
 4. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
 
 ### 5. 使い始める
 
 - この Vault だけの目的・規約は `.claude/local/CLAUDE.md` に書く。テンプレートを変えたいときは `template/` に置く（上流の既定を上書きする）
-- Obsidian のホットキー設定で「Vault Template: テンプレートから新規ファイルを作成」に `Cmd + N` などを割り当てると便利
+- Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` などを割り当てると便利
 - Claude Code で Vault を開き、「この記事を取り込んで: <URL>」などと頼む（下の「LLM wiki」）
 
 自分の Vault では、上流のもの（`.kit/owned-paths.json` に当たるファイル）を変えない（`verify.mjs` が検査する）。テンプレートは `template/` に置けば、上流の既定を上書きできる。
@@ -89,7 +89,7 @@ node .kit/migrate.mjs --upstream=upstream/main   # 未適用の移行を実行�
 node .claude/scripts/verify.mjs
 ```
 
-取り込む変更と移行は `.kit/CHANGELOG.md` にある。PR をマージした後、モバイルは vault-git で pull するだけでよい。
+取り込む変更と移行は `.kit/changes/` にある（2026-11-08 までは `.kit/CHANGELOG.md`）。PR をマージした後、モバイルは pkm-git で pull するだけでよい。
 
 ## 仕組み
 
@@ -126,7 +126,7 @@ Claude Code が、取り込んだ資料やデイリーノートをもとに wiki
 Claude Code への頼み方の例: 「この記事を取り込んで: <URL>」「wiki から〇〇について調べて」「wiki を点検して」「デイリーノートを整理して」。
 人が書いたノート（`daily/` など）は、Claude Code が書き換えることはない（末尾にリンクを追記するだけ）。
 
-## Vault Git の使い方
+## PKM Git の使い方
 
 | 操作 | 内容 |
 |---|---|
@@ -142,7 +142,7 @@ Claude Code への頼み方の例: 「この記事を取り込んで: <URL>」�
 
 ### セットアップ
 
-端末ごとの設定（PC・モバイル）は「新しい Vault を作る」の [各端末の Vault Git の設定](#各端末の-vault-git-の設定端末ごとに-1-回) にある。既存の Vault に端末を足すときも同じ手順で行う。
+端末ごとの設定（PC・モバイル）は「新しい Vault を作る」の [各端末の PKM Git の設定](#各端末の-pkm-git-の設定端末ごとに-1-回) にある。既存の Vault に端末を足すときも同じ手順で行う。
 
 ## 開発
 

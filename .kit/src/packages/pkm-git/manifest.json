@@ -1,0 +1,9 @@
+{
+	"id": "pkm-git",
+	"name": "PKM Git",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "この Vault 専用の自作 git 同期（pull / push）。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}

@@ -1,0 +1,18 @@
+{
+  "vault-template:new-from-template": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "N"
+    }
+  ],
+  "editor:toggle-bold": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "B"
+    }
+  ]
+}

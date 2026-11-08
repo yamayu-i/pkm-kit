@@ -5,14 +5,14 @@
 
 ## 期限の判定
 
-- 記録: `.kit/harness/security/last-check.json`（`date`, `commit`, `result`, `report`）
+- 記録: `.kit/harness/security/reports/` のレポート。日付はファイル名、commit と結果は本文の `- 対象 commit:` と `- 結果:` の行。前回は、作業ツリーと `origin/main` のレポートのうち最新の日付のもの（同じ日に `pass` があればそれ）。別の記録ファイルは置かない（並行するブランチがぶつかるため。[ADR-0056](adr/0056-conflict-free-numbering.md)）
 - セッション開始時に SessionStart フック（`.kit/harness/hooks/security-check-status.mjs`。上流のときだけ）が経過日数を出力する
 - 次のどれかに当てはまれば **期限切れ**:
-  - `last-check.json` がない
-  - `date` から 7 日以上経っている
-  - `result` が `pass` ではない
+  - レポートがない
+  - 前回の日付から 7 日以上経っている
+  - 前回の結果が `pass` ではない
 
-フックの出力が見当たらないとき（フックが動かない環境など）は、自分で `last-check.json` を読んで判定する。
+フックの出力が見当たらないとき（フックが動かない環境など）は、自分で `node .kit/harness/hooks/security-check-status.mjs` を実行して判定する。
 
 ## 期限切れのときの動き
 
@@ -31,5 +31,5 @@
 
 ## 記録
 
-- レポート: `.kit/harness/security/reports/YYYY-MM-DD.md`
-- 実施したら `last-check.json` を更新し、レポートと一緒にコミットする（他の端末やセッションから記録が見えるようにするため）
+- レポート: `.kit/harness/security/reports/YYYY-MM-DD-名前.md`（名前はブランチの作業。2026-11-08 までは `YYYY-MM-DD.md`）
+- 実施したらレポートをコミットする（他の端末やセッションから記録が見えるようにするため）

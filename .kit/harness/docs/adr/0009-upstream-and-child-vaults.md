@@ -1,6 +1,6 @@
 # ADR-0009: 仕組みを上流のリポジトリに分け、各 Vault はその子として更新を取り込む
 
-- 状態: 承認（テンプレートの `config.json` の重ね合わせは [プラグインの ADR-0039](../../../src/docs/adr/0039-fixed-template-config.md) で置換）
+- 状態: 承認（一部置換: プラグインの ADR-0061）
 - 日付: 2026-11-02
 - 関連: [ADR-0010](0010-upstream-updates-and-migrations.md)（更新の取り込みと移行）、[ADR-0011](0011-harness-parent-and-child.md)（ハーネスの親子分離とエスカレーション）
 
@@ -59,7 +59,7 @@
 
 | もの | 上流 | 子 | 決め方 |
 |---|---|---|---|
-| テンプレート | `.kit/templates/file/*.md`、`.kit/templates/config.json` | `template/file/*.md` | 同じ名前は子を優先する。vault-template が読み込むときに重ねる。設定（`config.json`）は上流だけが持ち、子は上書きしない（プラグインの ADR-0039） |
+| テンプレート | `.kit/templates/file/*.md`、`.kit/templates/config.json` | `template/file/*.md` | 同じ名前は子を優先する。pkm-template が読み込むときに重ねる。設定（`config.json`）は上流だけが持ち、子は上書きしない（プラグインの ADR-0061） |
 | `CLAUDE.md` | `.claude/CLAUDE.md`（子向けの目次） | `.claude/local/CLAUDE.md` | 上流の目次が `@local/CLAUDE.md` で子の分を読み込む |
 | スキル | `.claude/skills/<名前>/` | `.claude/skills/local-<名前>/` | 名前で分ける |
 | Obsidian の設定 | `.kit/obsidian-required.json`（必要なキーと値） | `.obsidian/*.json` | 上流はファイルを持たない。セットアップと移行で必要なキーだけを書き、`verify.mjs` が照合する。Obsidian 本体が書くキーや、ユーザーの好みは残る |

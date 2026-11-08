@@ -11,15 +11,16 @@ description: 検査を通したブランチを自分でレビューし、PR を�
 
 ## 1. 最新の main を取り込む
 
-PR を出す前に、main とぶつからないかを確かめる。CHANGELOG の先頭と ADR の一覧の末尾は、どの PR も書き足すのでぶつかりやすい。
+PR を出す前に、main とぶつからないかを確かめる。ADR と移行の番号は Issue の番号、変更の記録は 1 変更 1 ファイルなので、ふつうはぶつからない（[ADR-0056](../../docs/adr/0056-conflict-free-numbering.md)）。
 
 ```sh
 git fetch origin main
 git merge origin/main      # rebase や force push はしない
 ```
 
-- コンフリクトしたら解いてからマージコミットにする。両方の変更を残す（CHANGELOG は新しいものを上に）
-- ADR の番号が main のものと重なっていたら、こちらの番号を空いている番号に変え、参照（ソースのコメント、CHANGELOG、他の ADR の状態）も直す
+- コンフリクトしたら解いてからマージコミットにする。両方の変更を残す
+- ADR の一覧（ADR の README）は手で解かない。`node .claude/scripts/adr-index.mjs --write` で作り直す（手元の merge では `merge=union` で両方の行が残るので、それを整える）
+- ADR・移行の番号が Issue の番号でない、または main のものと重なっていたら、番号の付け方を間違えている。Issue の番号に直す
 - ビルド成果物（`main.js` など）は、merge の結果を使わずに `pnpm build` で作り直す
 - 取り込んだら [実装する](../dev-implement/SKILL.md) の検査をもう一度通す
 

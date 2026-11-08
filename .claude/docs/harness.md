@@ -6,7 +6,7 @@
 
 - 開発者は 1 人。使うツールは Claude Code（クラウドとローカルの両方）
 - この Vault は非公開のリポジトリ。上流（公開）を git の remote `upstream` でつなぎ、merge で更新を取り込む
-- 各端末（PC・モバイル）の Vault Git が main に snapshot を直接 push する
+- 各端末（PC・モバイル）の PKM Git が main に snapshot を直接 push する
 - 開発用のファイルは隠しフォルダに置く（Obsidian に索引させない）
 - 文書・コミット・Issue・PR は日本語。識別子は英語
 - ユーザーへの返事と質問（質問のツールの問い・選択肢・説明を含む）も日本語
@@ -15,7 +15,7 @@
 
 | 区分 | 例 | 変えてよいか |
 |---|---|---|
-| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/*/` の成果物、`.obsidian/snippets/vault-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
+| 上流のもの（`.kit/owned-paths.json` に当たる） | `.kit/`、`.claude/CLAUDE.md`・`docs/`・`skills/`（`local-*` を除く）・`scripts/`・`hooks/`・`settings.json`、`.githooks/`、`.github/workflows/` の上流のもの、`.obsidian/plugins/*/` の成果物、`.obsidian/snippets/pkm-theme.css`、`README.md` | 変えない。直したいことは [escalate](../skills/escalate/SKILL.md) で上流に伝える |
 | 子のもの | ノート全般、`template/`、`.obsidian/*.json`、`.claude/local/`、`.claude/skills/local-*/`、`.claude/notes/`・`reviews/`・`output-log/`、`.kit-local/` | 変えてよい |
 
 両方が書きたくなるものは、重ね合わせで境界をまたがないようにしている。
@@ -59,10 +59,11 @@
 | Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` の JSON に末尾改行がないか。上流が求める必要なキーが入っているか |
 | 所有の境界 | `check-kit-paths.mjs` | 取り込んだ上流のコミット（`.kit-local/upstream.json`）から、上流のものが変わっていないか |
 | 移行 | `.kit/migrate.mjs --status` | 未適用の移行がないか |
+| ADR の一覧 | `adr-index.mjs` | 上流のものの ADR の一覧が、各 ADR の見出しと状態と合っているか |
 
 ## 上流の更新の取り込み
 
-[vault-upgrade](../skills/vault-upgrade/SKILL.md)（[ADR-0010](../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。ブランチで `upstream/main` を merge し、未適用の移行（`.kit/migrations/`）を `node .kit/migrate.mjs` で実行して、PR にする。移行のスクリプトで済まない部分は、移行の README に従って AI が直す。上流の変更の一覧は `.kit/CHANGELOG.md`。
+[vault-upgrade](../skills/vault-upgrade/SKILL.md)（[ADR-0010](../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。ブランチで `upstream/main` を merge し、未適用の移行（`.kit/migrations/`）を `node .kit/migrate.mjs` で実行して、PR にする。移行のスクリプトで済まない部分は、移行の README に従って AI が直す。上流の変更の一覧は `.kit/changes/`（1 変更 1 ファイル。2026-11-08 までは `.kit/CHANGELOG.md`）。
 
 - SessionStart フック（`upstream-status.mjs`）が、未取り込みの更新と未適用の移行を知らせる
 - `verify.mjs` と CI は、未適用の移行があると失敗する

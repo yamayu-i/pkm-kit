@@ -7,7 +7,7 @@ description: 上流（pkm-kit）の更新を子の Vault に取り込む手順�
 
 上流の更新は、merge と移行で取り込む（[ADR-0010](../../../.kit/harness/docs/adr/0010-upstream-updates-and-migrations.md)）。上流のもののファイルは merge だけで新しくなる。上流の変更が子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要を生むときは、上流が移行（`.kit/migrations/`）を付けている。
 
-マージはユーザーが行う。モバイルは、マージされた後に vault-git で pull するだけでよい。
+マージはユーザーが行う。モバイルは、マージされた後に pkm-git で pull するだけでよい。
 
 ## 0. 前提を確かめる
 
@@ -24,7 +24,9 @@ git checkout -b upgrade-YYYY-MM-DD origin/main
 git merge upstream/main
 ```
 
-- `.kit/CHANGELOG.md` の差分を読み、取り込む変更と移行を把握する
+- 取り込む範囲で増えた変更の記録を読み、取り込む変更と移行を把握する。記録は 1 変更 1 ファイルで、ファイル名の日付で並ぶ:
+  `git diff --name-only --diff-filter=A <.kit-local/upstream.json の commit> upstream/main -- .kit/changes/`
+  （2026-11-08 より前の上流から取り込むときは、`.kit/CHANGELOG.md` の差分も読む）
 - 衝突したら、ファイルが上流のものか子のものかで解く（`.kit/owned-paths.json`）
   - 上流のもの: 上流の版を採る（`git checkout --theirs -- <パス>`）。子で変えていたなら、それは境界の違反なので、変えていた内容を [escalate](../escalate/SKILL.md) で伝える
   - 子のもの: 上流には子のものがないので、ふつうは衝突しない。衝突したら止めてユーザーに伝える
@@ -53,7 +55,7 @@ node .claude/scripts/verify.mjs
 
 - コミット: `vault(upgrade): 上流 <短い commit> を取り込む`。マージコミットと、移行による変更のコミットに分けてよい
 - PR の本文:
-  - 取り込んだ上流の範囲（前の commit → 新しい commit）と、`.kit/CHANGELOG.md` の要約
+  - 取り込んだ上流の範囲（前の commit → 新しい commit）と、増えた `.kit/changes/` の記録の要約
   - 実行した移行と、変わったファイル
   - AI が判断して直した箇所（移行の README に従ったもの）
   - 上書きしているテンプレート（`template/file/`）があれば、その一覧（上流の版との差をユーザーが見られるように）

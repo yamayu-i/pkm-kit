@@ -79,7 +79,7 @@ test("0001: 切り出す前からの Vault は、上流と同じ写しと設定�
 test("0001: 変えたテンプレートと子だけのテンプレートは残し、設定は上流と違う項目だけにする", async () => {
 	const root = childFrom("customized");
 	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
-	// 0007 が template/config.json を消すので、0001 だけを実行して途中の形を確かめる
+	// 0061 が template/config.json を消すので、0001 だけを実行して途中の形を確かめる
 	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0001-template-overrides/migrate.mjs")).href);
 	migrate(root);
 	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
@@ -168,8 +168,8 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	// 0005 が後ろに vault-html を足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon", "vault-html"]);
+	// 0005 が後ろに vault-html を足し、0058 がすべてを pkm-* に改名する
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "pkm-task", "pkm-template", "pkm-ribbon", "pkm-html"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
 	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
@@ -197,8 +197,8 @@ test("0005: community-plugins.json に vault-html を足す。ほかの要素と
 	const before = readJsonFile(root, ".obsidian/community-plugins.json");
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before, "vault-ribbon", "vault-html"]);
+	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足し、0058 が pkm-* に改名する
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before.map((id) => id.replace(/^vault-/, "pkm-")), "pkm-ribbon", "pkm-html"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 });
 
@@ -304,9 +304,66 @@ test("0006: 追跡中の tmp/ のファイルは変えずに、check が一覧�
 	assert.ok(existsSync(join(root, "tmp/a.md")));
 });
 
-const UNTIL_0006 = ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline", "0004-member-nickname-alias", "0005-html-viewer", "0006-tmp-untracked"];
+test("0058: community-plugins.json・appearance.json・hotkeys.json の vault-* を pkm-* にする。子が足したものと順は残す", async () => {
+	const root = childFrom("customized");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	const community = readJsonFile(root, ".obsidian/community-plugins.json");
+	assert.ok(community.every((id) => !id.startsWith("vault-")), JSON.stringify(community));
+	assert.deepEqual(readJsonFile(root, ".obsidian/appearance.json"), { accentColor: "#6750a4", enabledCssSnippets: ["pkm-theme", "my-snippet"] });
+	const hotkeys = readJsonFile(root, ".obsidian/hotkeys.json");
+	assert.deepEqual(Object.keys(hotkeys), ["pkm-template:new-from-template", "editor:toggle-bold"]);
+	assert.deepEqual(hotkeys["pkm-template:new-from-template"], [{ modifiers: ["Mod"], key: "N" }]);
+	// Obsidian と同じく末尾に改行を付けない
+	assert.ok(!readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8").endsWith("\n"));
+});
 
-test("0007: template/config.json を消し、捨てる値を知らせる。テンプレートの中身は残す", async () => {
+test("0058: 新旧の両方があれば、新しい方を残して古い方を除く", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		".obsidian/community-plugins.json": JSON.stringify(["vault-git", "pkm-git", "other"]),
+		".obsidian/hotkeys.json": JSON.stringify({ "vault-task:open-daily": [{ modifiers: ["Mod"], key: "D" }], "pkm-task:open-daily": [] }),
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html"]);
+	assert.deepEqual(readJsonFile(root, ".obsidian/hotkeys.json"), { "pkm-task:open-daily": [] });
+});
+
+test("0058: この端末の旧 ID の data.json を新しい ID へ写し、data.json だけが残る古いフォルダを消す", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		".obsidian/plugins/vault-git/data.json": '{"deviceName":"pc"}',
+		".obsidian/plugins/vault-task/data.json": '{"deviceName":"old"}',
+		".obsidian/plugins/pkm-task/data.json": '{"deviceName":"new"}',
+		".obsidian/plugins/vault-html/data.json": "{}",
+		".obsidian/plugins/vault-html/memo.txt": "子のファイル",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-git/data.json"), "utf8"), '{"deviceName":"pc"}');
+	assert.ok(!existsSync(join(root, ".obsidian/plugins/vault-git")));
+	// 新しい方がすでにあれば、上書きせず、古い方も消さない
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-task/data.json"), "utf8"), '{"deviceName":"new"}');
+	assert.ok(existsSync(join(root, ".obsidian/plugins/vault-task/data.json")));
+	// data.json 以外のファイルがあるフォルダは消さない
+	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-html/data.json"), "utf8"), "{}");
+	assert.ok(existsSync(join(root, ".obsidian/plugins/vault-html/memo.txt")));
+});
+
+test("0058: 読めない hotkeys.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	write(root, { ".obsidian/hotkeys.json": "{壊れている" });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0058-pkm-plugin-names");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".obsidian/hotkeys.json"), "utf8"), "{壊れている");
+});
+
+/** 0061 より前の移行（0061 だけを実行するときに、適用済みとして記録する） */
+const before0061 = (root) => listMigrations(root).filter((m) => m < "0061");
+
+test("0061: template/config.json を消し、捨てる値を知らせる。テンプレートの中身は残す", async () => {
 	const root = childFrom("customized");
 	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
 	const { done, failed } = await runMigrations(root);
@@ -314,32 +371,32 @@ test("0007: template/config.json を消し、捨てる値を知らせる。テ�
 	assert.ok(!existsSync(join(root, "template/config.json")));
 	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
 	assert.equal(readFileSync(join(root, "template/file/note.md"), "utf8"), note);
-	const changes = done.find((d) => d.name === "0007-fixed-template-config").changes.join("\n");
+	const changes = done.find((d) => d.name === "0061-fixed-template-config").changes.join("\n");
 	assert.match(changes, /template\/config\.json: 消す/);
 	assert.match(changes, /note\.md: folder = "memo"/);
 	assert.match(changes, /mine\.md: .*folder = "mine"/);
 });
 
-test("0007: template/ に config.json しかなければ、template/ ごと消す", async () => {
+test("0061: template/ に config.json しかなければ、template/ ごと消す", async () => {
 	const root = childFrom("fresh");
 	write(root, { "template/config.json": JSON.stringify({ templates: [{ file: "note.md", folder: "memo" }] }) });
 	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
-	write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: UNTIL_0006 }) });
+	write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0061(root) }) });
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
 	assert.ok(!existsSync(join(root, "template")));
 });
 
-test("0007: 読めない template/config.json は変えずに、check が失敗して止まる", async () => {
+test("0061: 読めない template/config.json は変えずに、check が失敗して止まる", async () => {
 	const root = childFrom("fresh");
-	// 0001 も同じファイルを読むので、0006 までを適用済みにして 0007 だけを実行する
+	// 0001 も同じファイルを読むので、0061 より前をすべて適用済みにして 0061 だけを実行する
 	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
 	write(root, {
-		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: UNTIL_0006 }),
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0061(root) }),
 		"template/config.json": "{壊れている",
 	});
 	const { failed } = await runMigrations(root);
-	assert.equal(failed?.name, "0007-fixed-template-config");
+	assert.equal(failed?.name, "0061-fixed-template-config");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, "template/config.json"), "utf8"), "{壊れている");
 });

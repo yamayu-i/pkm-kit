@@ -6,12 +6,12 @@ description: 上流 pkm-kit の自作 Obsidian プラグイン（.kit/src / .obs
 # 自作プラグインのセキュリティチェック
 
 実施ルールと頻度は [実施ルール](../../docs/security-check-schedule.md) を参照。上流（`.kit-local/` がない）で行う。ここでは手順を定める。
-すべて終わるまで `last-check.json` を更新しないこと。
+すべて終わるまでレポートをコミットしないこと。実施の記録はレポートだけで、別の記録ファイルは置かない（並行するブランチがぶつかるため。ハーネスの ADR-0056）。
 
 ## 1. 前回からの差分を把握する
 
 ```sh
-cat .kit/harness/security/last-check.json        # 前回の commit を確認（ない場合は初回）
+node .kit/harness/hooks/security-check-status.mjs   # 前回の日付・commit・レポート（作業ツリーと origin/main から。ない場合は初回）
 git log --oneline <前回の commit>..HEAD -- .kit/src .kit/bin .kit/setup.mjs .kit/lib .obsidian/plugins
 git diff <前回の commit>..HEAD --stat -- .kit/src .kit/bin .kit/setup.mjs .kit/lib .obsidian/plugins
 ```
@@ -71,7 +71,9 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 
 ## 5. 記録する
 
-`.kit/harness/security/reports/YYYY-MM-DD.md` を次の形式で書く。
+`.kit/harness/security/reports/YYYY-MM-DD-名前.md` を次の形式で書く。名前はブランチの作業を表す英小文字・数字・ハイフン（例: `2026-11-08-html-viewer`）。同じ日に別のブランチがチェックしても、ファイルが重ならないようにする。1 つのファイルには 1 回分だけ書く。
+
+フックは `- 対象 commit:` と `- 結果:` の行を読むので、この形を変えない。
 
 ```md
 # セキュリティチェック YYYY-MM-DD
@@ -92,18 +94,7 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 ## 対応したこと / 残課題
 ```
 
-`.kit/harness/security/last-check.json` を更新する。
-
-```json
-{
-  "date": "YYYY-MM-DD",
-  "commit": "<短縮 commit>",
-  "result": "pass",
-  "report": "reports/YYYY-MM-DD.md"
-}
-```
-
-最後にレポートと `last-check.json` をコミットする（メッセージ例: `security: weekly check YYYY-MM-DD`）。
+最後にレポートをコミットする（メッセージ例: `security: weekly check YYYY-MM-DD`）。
 
 ## 出力の段階
 

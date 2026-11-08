@@ -1,6 +1,6 @@
 # 一覧ペインとノートペイン
 
-- 種類: 画面の配置（vault-task と vault-template の両方）
+- 種類: 画面の配置（pkm-task と pkm-template の両方）
 - 場面: [朝の計画](../jobs/task-plan-day.md)、[前に書いたノートを探す](../jobs/note-find.md)
 
 ## 今の振る舞い

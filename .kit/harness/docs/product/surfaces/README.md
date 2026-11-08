@@ -24,7 +24,7 @@ ADR へのリンク。
 
 ## 一覧
 
-### タスク（vault-task）
+### タスク（pkm-task）
 
 | 面 | 種類 |
 |---|---|
@@ -44,7 +44,7 @@ ADR へのリンク。
 | [Tasks サイドバー](task-sidebar.md) | View（左サイドバー） |
 | [MCP と task-coach](task-mcp.md) | MCP・手順 |
 
-### ノート（vault-template）
+### ノート（pkm-template）
 
 | 面 | 種類 |
 |---|---|
@@ -52,7 +52,7 @@ ADR へのリンク。
 | [ノートの一覧](template-lists.md) | View |
 | [ノートのヘッダー](template-header.md) | 画面 |
 
-### HTML（vault-html）
+### HTML（pkm-html）
 
 | 面 | 種類 |
 |---|---|
@@ -64,5 +64,5 @@ ADR へのリンク。
 |---|---|
 | [リボン](ribbon.md) | リボン |
 | [一覧ペインとノートペイン](layout-panes.md) | 画面の配置 |
-| [Vault Git](git-sync.md) | コマンド・リボン |
+| [PKM Git](git-sync.md) | コマンド・リボン |
 | [上流の更新の取り込み](kit-upgrade.md) | 手順 |

@@ -8,7 +8,7 @@
 
 - SessionStart フックが、未取り込みの上流の更新と未適用の移行を知らせる
 - AI が子向けの vault-upgrade の手順で、ブランチで上流を merge し、移行を実行し（スクリプトで済まない部分は移行の README に従って直す）、検査を通して PR にする
-- PR の本文は `.kit/CHANGELOG.md` から書かれ、子への影響（移行、モバイルで確かめること）が入る
+- PR の本文は、取り込む範囲で増えた `.kit/changes/` のファイルから書かれ、子への影響（移行、モバイルで確かめること）が入る
 - 未適用の移行があると、検査と CI が失敗する
 
 ## 使う概念
@@ -17,4 +17,4 @@
 
 ## 根拠
 
-[ハーネスの ADR-0010](../../adr/0010-upstream-updates-and-migrations.md)、子向けの [ハーネスの設計](../../../../../.claude/docs/harness.md)
+[ハーネスの ADR-0010](../../adr/0010-upstream-updates-and-migrations.md)、[ADR-0056](../../adr/0056-conflict-free-numbering.md)、子向けの [ハーネスの設計](../../../../../.claude/docs/harness.md)

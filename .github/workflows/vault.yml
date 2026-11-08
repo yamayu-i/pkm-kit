@@ -1,5 +1,5 @@
 # ハーネスと Vault の検査。決定: .kit/harness/docs/adr/0005-checks-in-ci.md
-# 各端末の Vault Git の push でも動く。人のノートの書式の問題は警告だけで、失敗にしない。
+# 各端末の PKM Git の push でも動く。人のノートの書式の問題は警告だけで、失敗にしない。
 name: vault
 
 on:

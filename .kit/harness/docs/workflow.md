@@ -13,8 +13,8 @@
 | 上流の評価 | 月 1 回 | [kit-review](../skills/kit-review/SKILL.md) |
 
 - どちらか迷ったら大きい変更として扱う
-- ADR は計画より先に書き、合意してから計画に進む。プラグインの ADR は `.kit/src/docs/adr/`、ハーネスと wiki の ADR は [adr/](adr/README.md)
-- 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](migrations.md)）。子から見える変更は `.kit/CHANGELOG.md` に書く
+- ADR は計画より先に書き、合意してから計画に進む。ADR の番号は Issue の番号なので、先に Issue を作る。プラグインの ADR は `.kit/src/docs/adr/`、ハーネスと wiki の ADR は [adr/](adr/README.md)
+- 子のもの（ノート、`template/`、`.obsidian/*.json` など）に手を入れる必要が出る変更には、移行を付ける（[移行の書き方](migrations.md)）。子から見える変更は `.kit/changes/YYYY-MM-DD-名前.md` に 1 変更 1 ファイルで書く（[ADR-0056](adr/0056-conflict-free-numbering.md)）
 - 途中で止めるときは [中断と再開](../skills/dev-handoff/SKILL.md)
 - 作業中に訂正された・文書にないことを質問した・文書と実際が違った、などが起きたら、その場で [気づきを記録する](../skills/kit-note/SKILL.md)
 
@@ -57,7 +57,7 @@
 | `security` | セキュリティチェックの記録 |
 | `wip` | 中断するときの途中のコミット |
 
-- scope はプラグイン名（`vault-git`、`vault-task`）、`kit`、`harness` など
+- scope はプラグイン名（`pkm-git`、`pkm-task`）、`kit`、`harness` など
 - マージコミットは、この形式の対象外
 
 ### PR

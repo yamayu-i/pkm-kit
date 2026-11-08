@@ -7,7 +7,7 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { COMMUNITY, CORE, DAILY, isDefaultDaily, RIBBON, readJson } from "./common.mjs";
+import { COMMUNITY, CORE, DAILY, hasRibbon, isDefaultDaily, RIBBON, readJson } from "./common.mjs";
 
 // Obsidian と同じく 2 つの空白で字下げし、末尾に改行を付けない
 function write(root, path, value) {
@@ -23,7 +23,7 @@ export function migrate(root, { dryRun = false } = {}) {
 		changes.push(`${CORE}: daily-notes を false にする（コアプラグインのデイリーノートを無効にする）`);
 	}
 	const community = readJson(root, COMMUNITY);
-	if (!community.error && !(Array.isArray(community.value) && community.value.includes(RIBBON))) {
+	if (!community.error && !hasRibbon(community.value)) {
 		if (!dryRun) write(root, COMMUNITY, [...(Array.isArray(community.value) ? community.value : []), RIBBON]);
 		changes.push(`${COMMUNITY}: ${RIBBON} を有効にする`);
 	}

@@ -6,7 +6,7 @@ PC とスマホで同じ Vault を使い、どこで書いたものも失わな�
 
 ## 状態
 
-Vault は git のリポジトリ。各端末の Vault Git が、未コミットの変更を snapshot としてコミットし、main に push する。
+Vault は git のリポジトリ。各端末の PKM Git が、未コミットの変更を snapshot としてコミットし、main に push する。
 
 ## 操作
 

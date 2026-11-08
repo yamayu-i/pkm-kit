@@ -14,7 +14,7 @@ frontmatter の `type`。今の type: note、daily、source、concept、entity�
 
 ## 使い方の筋道
 
-type ごとにヘッダーが出て、主な項目を見せる（issue と routine は vault-task、それ以外は vault-template）。一覧 View は場所ではなく type で集める。
+type ごとにヘッダーが出て、主な項目を見せる（issue と routine は pkm-task、それ以外は pkm-template）。一覧 View は場所ではなく type で集める。
 
 ## 根拠
 
