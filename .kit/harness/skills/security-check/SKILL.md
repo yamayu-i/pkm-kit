@@ -104,3 +104,12 @@ pnpm outdated           # 更新のある依存（すぐ上げる必要はない
 ```
 
 最後にレポートと `last-check.json` をコミットする（メッセージ例: `security: weekly check YYYY-MM-DD`）。
+
+## 出力の段階
+
+出力は [write-for-reader](../../../../.claude/skills/write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| チェックの記録 | 両方 | 4 |
+| 問題の報告 | 人 | 4 |

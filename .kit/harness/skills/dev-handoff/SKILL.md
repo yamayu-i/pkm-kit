@@ -41,3 +41,11 @@ description: 開発の作業を途中で止めるときに引き継ぎを残す�
 
 2. 引き継ぎをそのまま信じない。main が進んでいたら取り込み（`git merge origin/main`。履歴は書き換えない）、`node .claude/scripts/verify.mjs` で今どこまで通るかを確かめる
 3. 未解決の疑問を最初にユーザーに確認し、次の一手から [実装する](../dev-implement/SKILL.md) を続ける
+
+## 出力の段階
+
+出力は [write-for-reader](../../../../.claude/skills/write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 中断の引き継ぎ | LLM だけ（再開するセッション） | - |

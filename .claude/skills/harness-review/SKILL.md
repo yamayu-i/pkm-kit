@@ -30,6 +30,7 @@ git diff <前回の commit> HEAD -- wiki/feedback.md
 ```
 
 - `.claude/notes/` のファイルをすべて読む（「直す先」も見る）
+- `usage-report.mjs` の「出力の記録」を読む（段階ごとの回数・時間・モデル・問題。見方は [write-for-reader の記録](../write-for-reader/recording.md#評価で使う)）
 - `wiki/log.md` の前回からの記録を読む（特に、query で答えられなかったもの、lint で繰り返し出た問題）
 - `wiki/feedback.md` の前回からの追記を読む
 - 前回のレポート（`.claude/reviews/`）の改善案がどうなったか（Issue の状態）
@@ -44,6 +45,7 @@ git diff <前回の commit> HEAD -- wiki/feedback.md
 | LLM wiki | 操作の回数と種類、ページの増え方、参照されない・更新されないページ、答えられなかった問い、フィードバック、未処理のデイリーノート |
 | タスク管理 | task-coach・worklog-review の使われ方、繰り返し出た訂正 |
 | ハーネス | 繰り返し出た気づき、使われていないスキルや文書、文書と実際の食い違い |
+| 出力の段階 | 段階ごとの回数・時間・問題の種類、既定からの上げ下げの向き。段階の分け方や規則の問題は直す先を上流にする |
 
 同じ内容の気づきが複数あるものを優先する。
 
@@ -73,3 +75,13 @@ git diff <前回の commit> HEAD -- wiki/feedback.md
   ```
 
 - 処理した `.claude/notes/` のファイルを消す（Issue にしたもの、エスカレーションしたもの、見送ると決めたもの）。判断を保留したものは残す
+
+## 出力の段階
+
+出力は [write-for-reader](../write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 評価のレポート | 両方 | 3 |
+| 振り分けた Issue | 両方 | 3 |
+| ユーザーへの報告 | 人 | 3 |

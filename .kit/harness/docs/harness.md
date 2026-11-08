@@ -41,6 +41,7 @@
 | `.kit/harness/skills/` | 上流の手順 |
 | `.kit/harness/hooks/` | SessionStart フック（上流のときだけ、セキュリティチェックと評価の期限を知らせる） |
 | `.kit/harness/notes/` | 上流の開発中の気づき（未処理）。評価で処理したら消す |
+| `.kit/harness/output-log/` | 上流の作業での出力の記録（[write-for-reader](../../../.claude/skills/write-for-reader/recording.md)）。評価で読む。消さない |
 | `.kit/harness/reviews/` | 上流の評価のレポートと `last-review.json` |
 | `.kit/harness/security/` | セキュリティチェックの記録 |
 | `.kit/src/` | プラグインのソース。`docs/adr/` にプラグインの ADR |

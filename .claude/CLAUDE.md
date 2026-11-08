@@ -34,6 +34,7 @@
 | デイリーノートを wiki に反映する | [wiki-daily](skills/wiki-daily/SKILL.md) |
 | タスク状況を把握し、計画・助言・振り返りを行う | [task-coach](skills/task-coach/SKILL.md) |
 | 間違っていそうな worklog を一緒に直す | [worklog-review](skills/worklog-review/SKILL.md) |
+| 調査報告・回答・計画などの成果物を、読み手と段階に合わせて書き、記録する | [write-for-reader](skills/write-for-reader/SKILL.md) |
 | 気づきを記録する（直す先が子か上流かも書く） | [harness-note](skills/harness-note/SKILL.md) |
 | 上流を変えないと直らないことを上流に伝える | [escalate](skills/escalate/SKILL.md) |
 | 上流の更新を取り込む（merge と移行） | [vault-upgrade](skills/vault-upgrade/SKILL.md) |

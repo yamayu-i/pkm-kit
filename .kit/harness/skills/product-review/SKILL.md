@@ -77,3 +77,12 @@ Claude の点検は、本人が使うことの代わりにはならない。観�
 ## 5. 記録する
 
 kit-review のレポート（`.kit/harness/reviews/YYYY-MM-DD.md`）に「体験」の節を設け、行った観測、起票した Issue と確かさ、直した文書を書く。kit-review を行わないときは、PR の本文に書く。
+
+## 出力の段階
+
+出力は [write-for-reader](../../../../.claude/skills/write-for-reader/SKILL.md) に従う。下は既定で、上げ下げはその場で判断する。
+
+| 出力 | 読み手 | 段階 |
+|---|---|---|
+| 機会の Issue | 両方 | 3 |
+| `surfaces/`・`concepts/` の文書 | 両方 | 5 |
