@@ -18,10 +18,21 @@ export function newIssueContent(id: string, summary: string, created: string, pa
 	return lines.join("\n");
 }
 
+/** 新しい member（ADR-0035）。name と nickname は登録名、alias は ID */
 export function newMemberContent(id: string, name: string, created: string): string {
-	return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, `updated: ${created}`, "---", ""].join(
-		"\n",
-	);
+	return [
+		"---",
+		`schema: ${SCHEMA_VERSION}`,
+		"type: member",
+		`id: ${id}`,
+		`name: ${yamlString(name)}`,
+		`nickname: ${yamlString(name)}`,
+		`alias: ${yamlString(id)}`,
+		`created: ${created}`,
+		`updated: ${created}`,
+		"---",
+		"",
+	].join("\n");
 }
 
 /** 新しい routine（ADR-0010）。repeat は JSON の形で書く（YAML のフロー形式として読める） */

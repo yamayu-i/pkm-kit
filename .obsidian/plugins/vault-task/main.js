@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian20 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["vault-task-", "vault-template-"];
@@ -99,7 +99,7 @@ async function openInNotePane(workspace, file, options) {
 // src/header/extension.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -756,7 +756,10 @@ function parseMember(path, fm) {
   const id = r3.common("member", "m");
   const name = r3.string("name") ?? "";
   if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  return { value: id === null ? null : { path, id, name }, problems: r3.problems };
+  const nickname = r3.string("nickname") || name;
+  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
 }
 
 // src/core/issue-file.ts
@@ -772,9 +775,19 @@ function newIssueContent(id, summary, created, parent = null, scheduled = []) {
   return lines.join("\n");
 }
 function newMemberContent(id, name, created) {
-  return ["---", `schema: ${SCHEMA_VERSION}`, "type: member", `id: ${id}`, `name: ${yamlString(name)}`, `created: ${created}`, `updated: ${created}`, "---", ""].join(
-    "\n"
-  );
+  return [
+    "---",
+    `schema: ${SCHEMA_VERSION}`,
+    "type: member",
+    `id: ${id}`,
+    `name: ${yamlString(name)}`,
+    `nickname: ${yamlString(name)}`,
+    `alias: ${yamlString(id)}`,
+    `created: ${created}`,
+    `updated: ${created}`,
+    "---",
+    ""
+  ].join("\n");
 }
 function newRoutineContent(id, summary, repeat, created, extra = {}) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
@@ -1992,6 +2005,68 @@ function LabelForm(props) {
 
 // src/obsidian/modals.ts
 var import_obsidian2 = require("obsidian");
+
+// src/core/member.ts
+function memberLabel(m3) {
+  return `@${m3.alias} - ${m3.nickname} (${m3.name})`;
+}
+function memberQuery(query) {
+  return query.trim().replace(/^@+/, "").trim().toLowerCase();
+}
+function memberMatches(m3, query) {
+  const q2 = memberQuery(query);
+  return [m3.alias, m3.nickname, m3.name, m3.id].some((v3) => v3.toLowerCase().includes(q2));
+}
+function memberExactly(m3, query) {
+  const q2 = memberQuery(query);
+  return q2 !== "" && [m3.alias, m3.nickname, m3.name].some((v3) => v3.toLowerCase() === q2);
+}
+function sortMembers(members) {
+  return [...members].sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+var MEMBER_SORTS = [
+  { key: "id", label: "ID" },
+  { key: "nickname", label: "nickname" },
+  { key: "name", label: "name" },
+  { key: "alias", label: "alias" },
+  { key: "delegated", label: "\u59D4\u4EFB\u4E2D\u306E\u6570" },
+  { key: "created", label: "created" }
+];
+function defaultMemberQuery() {
+  return { text: "", labels: [], sort: "id", desc: false };
+}
+function sortValue(m3, key, delegated) {
+  switch (key) {
+    case "id":
+      return Number(m3.id.slice(2));
+    case "nickname":
+      return m3.nickname;
+    case "name":
+      return m3.name;
+    case "alias":
+      return m3.alias;
+    case "delegated":
+      return delegated.get(m3.id) ?? 0;
+    case "created": {
+      const t3 = m3.created === null ? Number.NaN : Date.parse(m3.created);
+      return Number.isNaN(t3) ? null : t3;
+    }
+  }
+}
+function queryMembers(members, q2, delegated) {
+  const byId = (a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true });
+  return [...members].filter((m3) => memberMatches(m3, q2.text) && q2.labels.every((l3) => m3.labels.includes(l3))).sort((a3, b2) => {
+    const va = sortValue(a3, q2.sort, delegated);
+    const vb = sortValue(b2, q2.sort, delegated);
+    if (va === vb) return byId(a3, b2);
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    const c3 = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "ja");
+    return q2.desc ? -c3 : c3;
+  });
+}
+
+// src/obsidian/modals.ts
 var PreactModal = class extends import_obsidian2.Modal {
   constructor(app, title, view) {
     super(app);
@@ -2056,18 +2131,18 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
     super(app);
     this.members = members;
     this.onChoose = onChoose;
-    this.setPlaceholder("\u59D4\u4EFB\u5148\u3092\u540D\u524D\u3067\u691C\u7D22\u3002\u306A\u3051\u308C\u3070\u540D\u524D\u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
+    this.setPlaceholder("\u59D4\u4EFB\u5148\u3092 @alias\u30FB\u547C\u3073\u540D\u30FB\u540D\u524D\u3067\u691C\u7D22\u3002\u306A\u3051\u308C\u3070\u540D\u524D\u3092\u5165\u529B\u3057\u3066\u65B0\u898F\u4F5C\u6210");
   }
   members;
   onChoose;
   getSuggestions(query) {
-    const q2 = query.trim().toLowerCase();
-    const hits = this.members.filter((m3) => m3.name.toLowerCase().includes(q2)).map((member) => ({ kind: "member", member }));
-    if (q2 && !this.members.some((m3) => m3.name.toLowerCase() === q2)) hits.push({ kind: "create", name: query.trim() });
+    const hits = sortMembers(this.members).filter((m3) => memberMatches(m3, query)).map((member) => ({ kind: "member", member }));
+    const name = query.trim().replace(/^@+/, "").trim();
+    if (memberQuery(query) && !this.members.some((m3) => memberExactly(m3, query))) hits.push({ kind: "create", name });
     return hits;
   }
   renderSuggestion(choice, el) {
-    if (choice.kind === "member") el.createEl("div", { text: choice.member.name });
+    if (choice.kind === "member") el.createEl("div", { text: memberLabel(choice.member) });
     else el.createEl("div", { text: `\uFF0B\u300C${choice.name}\u300D\u3092\u65B0\u3057\u304F\u4F5C\u308B` });
   }
   onChooseSuggestion(choice) {
@@ -2430,7 +2505,7 @@ function StatusField(props) {
     /* @__PURE__ */ u3("div", { class: "vt-status-detail", children: [
       issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, (id) => save({ delegated_to: id })), children: [
         /* @__PURE__ */ u3(Icon, { name: "user" }),
-        member ? member.name : issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076"
+        member ? member.nickname : issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076"
       ] }),
       issue.status === "someday" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRevisit, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-clock" }),
@@ -2683,8 +2758,106 @@ function Worklog(props) {
   ] });
 }
 
-// src/header/RoutineHeader.tsx
+// src/header/MemberHeader.tsx
 var import_obsidian5 = require("obsidian");
+function MemberField(props) {
+  const { label, field, value, required, save } = props;
+  const [draft, setDraft] = d2(value);
+  h2(() => setDraft(value), [value]);
+  const error = required && !draft.trim() ? `${label} \u306F\u7A7A\u306B\u3067\u304D\u307E\u305B\u3093` : null;
+  const commit = () => {
+    const next = draft.trim();
+    if (error !== null) return;
+    if (next !== value) save({ [field]: next || null });
+  };
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field vt-member-field${error ? " is-error" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: label }),
+    /* @__PURE__ */ u3(
+      "input",
+      {
+        type: "text",
+        value: draft,
+        "aria-invalid": error !== null,
+        onInput: (e3) => setDraft(e3.currentTarget.value),
+        onBlur: commit,
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter" && !e3.isComposing) commit();
+          if (e3.key === "Escape") setDraft(value);
+        }
+      }
+    ),
+    /* @__PURE__ */ u3("span", { class: error ? "vt-name-error" : "vt-name-hint", children: error ?? props.hint })
+  ] });
+}
+function DelegatedIssues(props) {
+  const { ctx } = props;
+  const active = props.issues.filter((i3) => !isDoneStatus(i3.status));
+  const done = props.issues.length - active.length;
+  return /* @__PURE__ */ u3("div", { class: "vt-member-issues", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
+      "\u59D4\u4EFB\u4E2D\u306E issue ",
+      active.length
+    ] }),
+    active.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: "\u59D4\u4EFB\u4E2D\u306E issue \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
+      /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
+      /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "\uFF08summary \u306A\u3057\uFF09" })
+    ] }, issue.id)),
+    done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
+      "\u7D42\u308F\u3063\u305F\u3082\u306E\uFF08closed / canceled\uFF09",
+      done,
+      " \u4EF6"
+    ] })
+  ] });
+}
+function MemberHeader(props) {
+  const { ctx, path } = props;
+  useStoreVersion(ctx.store);
+  const index = ctx.store.index;
+  const member = [...index.members.values()].find((m3) => m3.path === path);
+  if (!member) {
+    return /* @__PURE__ */ u3("div", { class: "vt-header-missing", children: "member \u306E frontmatter \u3092\u8AAD\u3081\u307E\u305B\u3093\uFF08type / id \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF09" });
+  }
+  const save = (fields) => void ctx.writer.update(path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const issues = [...index.issues.values()].filter((i3) => i3.delegatedTo === member.id).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+  return /* @__PURE__ */ u3("div", { class: "vt-issue vt-member", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
+      /* @__PURE__ */ u3("span", { children: [
+        "created ",
+        formatDateTime(member.created)
+      ] }),
+      /* @__PURE__ */ u3("span", { children: [
+        "updated ",
+        formatDateTime(ctx.store.mtime(path))
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-title vt-member-title", children: [
+      /* @__PURE__ */ u3(Icon, { name: "user", class: "vt-member-icon" }),
+      /* @__PURE__ */ u3("span", { class: "vt-member-nickname", children: member.nickname }),
+      /* @__PURE__ */ u3("span", { class: "vt-member-name", children: [
+        "(",
+        member.name,
+        ")"
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: member.id })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-card vt-member-fields", children: [
+      /* @__PURE__ */ u3(MemberField, { label: "nickname", field: "nickname", value: member.nickname, hint: "\u81EA\u5206\u304C\u547C\u3093\u3067\u3044\u308B\u547C\u3073\u540D\u3002\u7A7A\u306B\u3059\u308B\u3068 name \u3092\u4F7F\u3046", save }),
+      /* @__PURE__ */ u3(MemberField, { label: "name", field: "name", value: member.name, hint: "\u672C\u540D\uFF08\u59D3\u30FB\u540D\uFF09", required: true, save }),
+      /* @__PURE__ */ u3(MemberField, { label: "alias", field: "alias", value: member.alias, hint: `\u59D4\u4EFB\u5148\u3092\u9078\u3076\u3068\u304D\u306B @${member.alias} \u3067\u63A2\u305B\u308B\u3002\u7A7A\u306B\u3059\u308B\u3068 ID \u3092\u4F7F\u3046`, save }),
+      /* @__PURE__ */ u3("div", { class: "vt-member-labels", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
+        /* @__PURE__ */ u3(LabelsField, { ctx, labels: member.labels, index, save })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(DelegatedIssues, { ctx, issues }) }),
+    /* @__PURE__ */ u3("hr", { class: "vt-sep" })
+  ] });
+}
+
+// src/header/RoutineHeader.tsx
+var import_obsidian6 = require("obsidian");
 
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
@@ -2879,7 +3052,7 @@ function RoutineHeader(props) {
     }
   )).open();
   const groupMenu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const key of ["", ...groupKeys(index.data.groups)]) {
       m3.addItem(
         (item) => item.setTitle(key || "\u672A\u5206\u985E").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
@@ -2967,6 +3140,12 @@ function RoutineHeader(props) {
 // src/header/extension.ts
 var ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
 var ROUTINE_PATH_RE = /^routine\/[^/]+\.md$/;
+var MEMBER_PATH_RE = /^member\/[^/]+\.md$/;
+function headerFor(path) {
+  if (ROUTINE_PATH_RE.test(path)) return RoutineHeader;
+  if (MEMBER_PATH_RE.test(path)) return MemberHeader;
+  return IssueHeader;
+}
 var HeaderWidget = class extends import_view.WidgetType {
   constructor(ctx, path) {
     super();
@@ -2981,7 +3160,7 @@ var HeaderWidget = class extends import_view.WidgetType {
   toDOM() {
     const el = document.createElement("div");
     el.className = "vt-header";
-    R(k(ROUTINE_PATH_RE.test(this.path) ? RoutineHeader : IssueHeader, { ctx: this.ctx, path: this.path }), el);
+    R(k(headerFor(this.path), { ctx: this.ctx, path: this.path }), el);
     return el;
   }
   destroy(dom) {
@@ -2994,10 +3173,10 @@ var HeaderWidget = class extends import_view.WidgetType {
 };
 function issueHeaderExtension(ctx) {
   const pathOf = (state) => {
-    const path = state.field(import_obsidian6.editorInfoField, false)?.file?.path ?? null;
-    return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path)) ? path : null;
+    const path = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? null;
+    return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path)) ? path : null;
   };
-  const livePreviewOf = (state) => state.field(import_obsidian6.editorLivePreviewField, false) === true;
+  const livePreviewOf = (state) => state.field(import_obsidian7.editorLivePreviewField, false) === true;
   const build = (state) => {
     const path = pathOf(state);
     const livePreview = livePreviewOf(state);
@@ -3022,7 +3201,7 @@ function issueHeaderExtension(ctx) {
 }
 
 // src/obsidian/capture.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/core/capture.ts
 var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
@@ -3059,7 +3238,7 @@ function CaptureForm(props) {
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         summaries.length,
         " \u4EF6\u4F5C\u6210\u3057\u307E\u3059",
-        import_obsidian7.Platform.isMobile ? "" : "\uFF08Mod+Enter\uFF09"
+        import_obsidian8.Platform.isMobile ? "" : "\uFF08Mod+Enter\uFF09"
       ] }),
       /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "\u4F5C\u6210" })
     ] })
@@ -3068,7 +3247,7 @@ function CaptureForm(props) {
 async function openAll(ctx, files) {
   let first = null;
   for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian7.Platform.isPhone });
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian8.Platform.isPhone });
     first ??= leaf;
   }
   if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
@@ -3088,7 +3267,7 @@ function showCreatedNotice(ctx, created, failed) {
       void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
     });
   }
-  notice = new import_obsidian7.Notice(fragment, NOTICE_MS);
+  notice = new import_obsidian8.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
   new PreactModal(ctx.app, "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
@@ -3103,9 +3282,9 @@ function openCaptureModal(ctx) {
 }
 
 // src/obsidian/settings.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
-var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
+var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -3115,7 +3294,7 @@ var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian8.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08vault-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+    new import_obsidian9.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08vault-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
       (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
@@ -3125,7 +3304,7 @@ var TaskSettingTab = class extends import_obsidian8.PluginSettingTab {
 };
 
 // src/obsidian/status-undo.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -3207,7 +3386,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian9.setIcon)(icon, "chevron-right");
+      (0, import_obsidian10.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -3220,7 +3399,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -3365,15 +3544,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian10.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian10.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian10.TFile) this.touch(file);
+        if (file instanceof import_obsidian11.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian10.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian11.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3434,9 +3613,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian11.ItemView {
+  class PreactView extends import_obsidian12.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -3458,7 +3637,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -3715,7 +3894,7 @@ function labelColorError(color) {
 }
 function labelUsage(index) {
   const usage = /* @__PURE__ */ new Map();
-  for (const item of [...index.issues.values(), ...index.routines.values()]) {
+  for (const item of [...index.issues.values(), ...index.routines.values(), ...index.members.values()]) {
     for (const l3 of item.labels) usage.set(l3, (usage.get(l3) ?? 0) + 1);
   }
   return usage;
@@ -3831,7 +4010,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("vault-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -3850,7 +4029,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian12.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian13.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
@@ -3864,7 +4043,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian12.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -3879,7 +4058,7 @@ var TaskWriter = class {
     await this.writeLabelsFile(labels);
   }
   /**
-   * Labels 画面の保存（ADR-0024）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+   * Labels 画面の保存（ADR-0024, 0036）。改名した label が付いた issue・routine・member を書き換えてから labels.json を書く。
    * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
    */
   async saveLabels(plan) {
@@ -3887,7 +4066,7 @@ var TaskWriter = class {
     const { index } = this.store;
     assertUnused(plan.removed, labelUsage(index));
     if (plan.renames.size > 0) {
-      const targets = [...index.issues.values(), ...index.routines.values()].filter((x2) => x2.labels.some((l3) => plan.renames.has(l3)));
+      const targets = [...index.issues.values(), ...index.routines.values(), ...index.members.values()].filter((x2) => x2.labels.some((l3) => plan.renames.has(l3)));
       for (const { path } of targets) {
         await this.app.fileManager.processFrontMatter(this.file(path), (fm) => {
           const next = renameLabelField(fm.label, plan.renames);
@@ -3923,7 +4102,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian12.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian13.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -3949,14 +4128,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian12.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -3974,7 +4153,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian12.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian13.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -3988,7 +4167,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian12.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -4134,7 +4313,7 @@ function stopTimer(ctx, ids) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -4187,7 +4366,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian13.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -4208,7 +4387,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
@@ -4225,7 +4404,7 @@ function changeIssueStatus(ctx, issue, to) {
 function DelegateChip(props) {
   const { ctx, issue } = props;
   const member = issue.delegatedTo === null ? void 0 : ctx.store.index.members.get(issue.delegatedTo);
-  const name = member?.name ?? issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076";
+  const name = member?.nickname ?? issue.delegatedTo ?? "\u59D4\u4EFB\u5148\u3092\u9078\u3076";
   const label = `\u59D4\u4EFB\u5148: ${name}\uFF08\u62BC\u3059\u3068\u9078\u3073\u76F4\u3059\uFF09`;
   return /* @__PURE__ */ u3(
     "button",
@@ -4282,7 +4461,7 @@ function TaskCard(props) {
   const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian14.Menu();
+    const m3 = new import_obsidian15.Menu();
     for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -4295,7 +4474,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian14.Menu();
+    const m3 = new import_obsidian15.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -4314,7 +4493,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -4961,7 +5140,7 @@ function LabelManagerView(props) {
                 count: drafts.length,
                 onMove: (n2) => update(move(drafts, i3, n2)),
                 onDelete: () => update(drafts.filter((x2) => x2.key !== d3.key)),
-                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
+                deleteDisabled: used > 0 ? `${used} \u4EF6\u306E issue / routine / member \u3067\u4F7F\u308F\u308C\u3066\u3044\u308B\u306E\u3067\u524A\u9664\u3067\u304D\u307E\u305B\u3093` : void 0
               }
             )
           ] }),
@@ -4983,14 +5162,119 @@ function LabelManagerView(props) {
     ] }),
     dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
       "\u5909\u66F4\u306F\u307E\u3060\u4FDD\u5B58\u3057\u3066\u3044\u307E\u305B\u3093",
-      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
+      hasError ? "\uFF08\u30A8\u30E9\u30FC\u3092\u76F4\u3059\u3068\u4FDD\u5B58\u3067\u304D\u307E\u3059\uFF09" : renamed > 0 ? `\uFF08\u4FDD\u5B58\u3059\u308B\u3068 ${renamed} \u4EF6\u306E issue / routine / member \u306E label \u3092\u66F8\u304D\u63DB\u3048\u307E\u3059\uFF09` : ""
     ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue \u3068 routine \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "\u540D\u524D\u3092\u5909\u3048\u308B\u3068\u3001\u305D\u306E label \u304C\u4ED8\u3044\u305F issue\u30FBroutine\u30FBmember \u306E label \u3082\u66F8\u304D\u63DB\u3048\u307E\u3059\u3002\u4F7F\u308F\u308C\u3066\u3044\u308B label \u306F\u3001issue / routine / member \u304B\u3089\u5916\u3057\u3066\u304B\u3089\u524A\u9664\u3067\u304D\u307E\u3059\u3002" })
+  ] });
+}
+
+// src/views/MemberListView.tsx
+var import_obsidian16 = require("obsidian");
+
+// src/ui/FilterChip.tsx
+function FilterChip(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
+    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
+    props.label
+  ] });
+}
+function toggle(list, v3) {
+  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+}
+
+// src/views/MemberListView.tsx
+function MemberForm(props) {
+  const [name, setName] = d2("");
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-worklog-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (name.trim()) props.onSubmit(name.trim());
+      },
+      children: [
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "name" }),
+          /* @__PURE__ */ u3("input", { type: "text", value: name, placeholder: "\u4F8B: \u7530\u4E2D \u592A\u90CE", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-muted", children: "nickname \u306B\u3082\u540C\u3058\u540D\u524D\u304C\u3001alias \u306B\u306F ID \u304C\u5165\u308A\u307E\u3059\u3002\u4F5C\u3063\u305F\u5F8C\u306B member \u306E\u753B\u9762\u3067\u76F4\u305B\u307E\u3059" }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name.trim(), children: "\u4F5C\u6210" }) })
+      ]
+    }
+  );
+}
+function MemberListView(props) {
+  const { ctx } = props;
+  useStoreVersion(ctx.store);
+  const index = ctx.store.index;
+  const [q2, setQ] = d2(defaultMemberQuery);
+  const set = (patch) => setQ({ ...q2, ...patch });
+  const delegated = /* @__PURE__ */ new Map();
+  for (const issue of index.issues.values()) {
+    if (issue.delegatedTo !== null && !isDoneStatus(issue.status)) delegated.set(issue.delegatedTo, (delegated.get(issue.delegatedTo) ?? 0) + 1);
+  }
+  const total = index.members.size;
+  const members = queryMembers(index.members.values(), q2, delegated);
+  const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
+  const labels = index.data.labels.map((l3) => l3.name);
+  const create = () => new PreactModal(ctx.app, "member \u3092\u4F5C\u6210", (close) => /* @__PURE__ */ u3(
+    MemberForm,
+    {
+      onSubmit: (name) => {
+        close();
+        void ctx.writer.createMember(name).then((id) => ctx.openPath(pathForId(id))).catch((e3) => ctx.report("member \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
+  return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
+    /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
+      /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Members" }),
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: total }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: create, children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        " member \u3092\u4F5C\u6210"
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-card vt-filters", children: [
+      /* @__PURE__ */ u3("label", { class: "vt-search", children: [
+        /* @__PURE__ */ u3(Icon, { name: "search" }),
+        /* @__PURE__ */ u3("input", { type: "search", placeholder: "@alias\u30FBnickname\u30FBname\u30FBID \u3067\u691C\u7D22", value: q2.text, onInput: (e3) => set({ text: e3.currentTarget.value }) })
+      ] }),
+      labels.length > 0 && /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "label" }),
+        labels.map((l3) => /* @__PURE__ */ u3(FilterChip, { label: l3, on: q2.labels.includes(l3), onClick: () => set({ labels: toggle(q2.labels, l3) }) }))
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "\u4E26\u3073\u66FF\u3048" }),
+        /* @__PURE__ */ u3("select", { class: "dropdown", value: q2.sort, onChange: (e3) => set({ sort: e3.currentTarget.value }), children: MEMBER_SORTS.map((s3) => /* @__PURE__ */ u3("option", { value: s3.key, children: s3.label })) }),
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: q2.desc ? "\u964D\u9806" : "\u6607\u9806", "aria-label": q2.desc ? "\u964D\u9806" : "\u6607\u9806", onClick: () => set({ desc: !q2.desc }), children: /* @__PURE__ */ u3(Icon, { name: q2.desc ? "arrow-down-wide-narrow" : "arrow-up-narrow-wide" }) }),
+        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => setQ(defaultMemberQuery()), children: "\u30EA\u30BB\u30C3\u30C8" })
+      ] })
+    ] }),
+    total === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "member \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002issue \u3092\u59D4\u4EFB\u3059\u308B\u76F8\u624B\u3092\u767B\u9332\u3067\u304D\u307E\u3059" }),
+    total > 0 && members.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "\u6761\u4EF6\u306B\u5408\u3046 member \u306F\u3042\u308A\u307E\u305B\u3093" }),
+    /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: members.map((m3) => {
+      const count = delegated.get(m3.id) ?? 0;
+      return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
+          /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
+          m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
+        ] }),
+        /* @__PURE__ */ u3("span", { class: "vt-muted", title: "\u59D4\u4EFB\u4E2D\uFF08closed / canceled \u3067\u306A\u3044\uFF09\u306E issue \u306E\u6570", children: [
+          "\u59D4\u4EFB\u4E2D ",
+          count
+        ] })
+      ] }, m3.id);
+    }) })
   ] });
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -4999,7 +5283,7 @@ function defaultQuery() {
 function nextScheduled(issue, today) {
   return issue.scheduled.find((d3) => d3 >= today) ?? null;
 }
-function sortValue(issue, key, today) {
+function sortValue2(issue, key, today) {
   switch (key) {
     case "id":
       return Number(issue.id.slice(2));
@@ -5032,8 +5316,8 @@ function queryIssues(issues, q2, today) {
     return words.every((w3) => hay.includes(w3));
   });
   return out.sort((a3, b2) => {
-    const va = sortValue(a3, q2.sort, today);
-    const vb = sortValue(b2, q2.sort, today);
+    const va = sortValue2(a3, q2.sort, today);
+    const vb = sortValue2(b2, q2.sort, today);
     if (va === vb) return a3.id.localeCompare(b2.id, "en", { numeric: true });
     if (va === null) return 1;
     if (vb === null) return -1;
@@ -5054,15 +5338,6 @@ var SORTS = [
   { key: "deadline", label: "deadline" },
   { key: "created", label: "\u4F5C\u6210\u65E5" }
 ];
-function toggle(list, v3) {
-  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
-}
-function FilterChip(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
-    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
-    props.label
-  ] });
-}
 function IssueListView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -5082,7 +5357,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian17.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -5173,7 +5448,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -5319,7 +5594,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian16.Menu();
+    const m3 = new import_obsidian18.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("\u306A\u3057").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -5462,7 +5737,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -5534,7 +5809,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
@@ -5549,7 +5824,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -5575,7 +5850,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -5586,7 +5861,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -5608,6 +5883,7 @@ function SidebarView(props) {
     { type: "vault-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
     { type: "vault-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
     { type: "vault-task-groups", title: "Board groups", icon: "layout-grid" },
+    { type: "vault-task-members", title: "Members", icon: "users" },
     { type: "vault-task-labels", title: "Labels", icon: "tag" }
   ];
   return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
@@ -5623,7 +5899,7 @@ function SidebarView(props) {
         const summary = issue?.summary || routine?.summary || taskId;
         const path = issue?.path ?? routine?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -5723,10 +5999,11 @@ var VIEWS = [
   { type: "vault-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
   { type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
   { type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
+  { type: "vault-task-members", title: "Members", icon: "users", component: MemberListView },
   { type: "vault-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "vault-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var VaultTaskPlugin = class extends import_obsidian20.Plugin {
+var VaultTaskPlugin = class extends import_obsidian22.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -5737,7 +6014,7 @@ var VaultTaskPlugin = class extends import_obsidian20.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`vault-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian20.Notice(`${message}${detail}`);
+      new import_obsidian22.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -5755,9 +6032,9 @@ var VaultTaskPlugin = class extends import_obsidian20.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian20.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian22.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian20.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian22.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {

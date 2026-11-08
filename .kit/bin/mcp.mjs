@@ -7997,7 +7997,10 @@ function parseMember(path, fm) {
   const id = r.common("member", "m");
   const name = r.string("name") ?? "";
   if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  return { value: id === null ? null : { path, id, name }, problems: r.problems };
+  const nickname = r.string("nickname") || name;
+  const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
 }
 
 // src/core/status-log.ts
@@ -8559,6 +8562,11 @@ function lintVault(data, options = {}) {
     }
     for (const label of issue.labels) {
       if (!labelNames.has(label)) add("warning", path, "unknown-label", `label\u300C${label}\u300D\u304C labels.json \u306B\u3042\u308A\u307E\u305B\u3093`);
+    }
+  }
+  for (const member of data.members) {
+    for (const label of member.labels) {
+      if (!labelNames.has(label)) add("warning", member.path, "unknown-label", `label\u300C${label}\u300D\u304C labels.json \u306B\u3042\u308A\u307E\u305B\u3093`);
     }
   }
   for (const b of data.boards) {

@@ -1,5 +1,6 @@
 import { FuzzySuggestModal, Modal, SuggestModal, prepareFuzzySearch, type App } from "obsidian";
 import { h, render, type ComponentChild } from "preact";
+import { memberExactly, memberLabel, memberMatches, memberQuery, sortMembers } from "../core/member";
 import type { Issue, Member } from "../core/schema";
 
 /** preact の部品を中身にするモーダル */
@@ -85,7 +86,7 @@ export class BoardIssueModal extends SuggestModal<BoardChoice> {
 
 type MemberChoice = { kind: "member"; member: Member } | { kind: "create"; name: string };
 
-/** 委任先を名前で検索するか、新しく作る（ADR-0007） */
+/** 委任先を alias / nickname / name / ID で検索するか、新しく作る（ADR-0007, 0035）。候補は `@alias - nickname (name)` */
 export class MemberSuggestModal extends SuggestModal<MemberChoice> {
 	constructor(
 		app: App,
@@ -93,20 +94,20 @@ export class MemberSuggestModal extends SuggestModal<MemberChoice> {
 		private readonly onChoose: (choice: MemberChoice) => void,
 	) {
 		super(app);
-		this.setPlaceholder("委任先を名前で検索。なければ名前を入力して新規作成");
+		this.setPlaceholder("委任先を @alias・呼び名・名前で検索。なければ名前を入力して新規作成");
 	}
 
 	getSuggestions(query: string): MemberChoice[] {
-		const q = query.trim().toLowerCase();
-		const hits: MemberChoice[] = this.members
-			.filter((m) => m.name.toLowerCase().includes(q))
+		const hits: MemberChoice[] = sortMembers(this.members)
+			.filter((m) => memberMatches(m, query))
 			.map((member) => ({ kind: "member", member }));
-		if (q && !this.members.some((m) => m.name.toLowerCase() === q)) hits.push({ kind: "create", name: query.trim() });
+		const name = query.trim().replace(/^@+/, "").trim();
+		if (memberQuery(query) && !this.members.some((m) => memberExactly(m, query))) hits.push({ kind: "create", name });
 		return hits;
 	}
 
 	renderSuggestion(choice: MemberChoice, el: HTMLElement): void {
-		if (choice.kind === "member") el.createEl("div", { text: choice.member.name });
+		if (choice.kind === "member") el.createEl("div", { text: memberLabel(choice.member) });
 		else el.createEl("div", { text: `＋「${choice.name}」を新しく作る` });
 	}
 

@@ -58,7 +58,7 @@ function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): void {
 function DelegateChip(props: { ctx: TaskContext; issue: Issue }) {
 	const { ctx, issue } = props;
 	const member = issue.delegatedTo === null ? undefined : ctx.store.index.members.get(issue.delegatedTo);
-	const name = member?.name ?? issue.delegatedTo ?? "委任先を選ぶ";
+	const name = member?.nickname ?? issue.delegatedTo ?? "委任先を選ぶ";
 	const label = `委任先: ${name}（押すと選び直す）`;
 	return (
 		<button

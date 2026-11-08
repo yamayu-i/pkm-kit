@@ -1254,7 +1254,7 @@ function dailyDate(basename) {
 
 // src/core/note-list.ts
 var WIKI_TYPES = ["concept", "entity", "topic", "answer"];
-var TASK_TYPES = ["issue", "routine"];
+var TASK_TYPES = ["issue", "routine", "member"];
 function notesOfType(notes, type) {
   return notes.filter((n2) => n2.frontmatter.type === type);
 }
@@ -1297,7 +1297,7 @@ function importedSourcePaths(notes) {
 function hasNoteHeader(path, frontmatter) {
   const type = frontmatter?.type;
   if (typeof type === "string" && TASK_TYPES.includes(type)) return false;
-  return !/^(issue|routine)\/[^/]+\.md$/.test(path);
+  return !/^(issue|routine|member)\/[^/]+\.md$/.test(path);
 }
 
 // src/core/note-header.ts

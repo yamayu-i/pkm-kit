@@ -165,7 +165,7 @@ export class TaskWriter {
 	}
 
 	/**
-	 * Labels 画面の保存（ADR-0024）。改名した label が付いた issue と routine を書き換えてから labels.json を書く。
+	 * Labels 画面の保存（ADR-0024, 0036）。改名した label が付いた issue・routine・member を書き換えてから labels.json を書く。
 	 * 途中で失敗しても、改名の元の名前が labels.json に残るので、もう一度保存すれば残りが書き換わる
 	 */
 	async saveLabels(plan: LabelSavePlan): Promise<void> {
@@ -173,7 +173,7 @@ export class TaskWriter {
 		const { index } = this.store;
 		assertUnused(plan.removed, labelUsage(index));
 		if (plan.renames.size > 0) {
-			const targets = [...index.issues.values(), ...index.routines.values()].filter((x) => x.labels.some((l) => plan.renames.has(l)));
+			const targets = [...index.issues.values(), ...index.routines.values(), ...index.members.values()].filter((x) => x.labels.some((l) => plan.renames.has(l)));
 			for (const { path } of targets) {
 				await this.app.fileManager.processFrontMatter(this.file(path), (fm: Record<string, unknown>) => {
 					const next = renameLabelField(fm.label, plan.renames);

@@ -58,6 +58,8 @@ describe(".kit/templates/file/*.md", () => {
 		expect(routine.repeat).toContain('"every"');
 		const member = frontmatter(render("member.md"));
 		expect(member).toMatchObject({ schema: "1", id: "m-10", name: "題名" });
+		// name と nickname は登録名、alias は ID（ADR-0035）
+		expect(member).toMatchObject({ nickname: "題名", alias: "m-10" });
 	});
 });
 

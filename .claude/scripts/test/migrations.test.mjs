@@ -226,3 +226,35 @@ test("0003: types.json に soft_deadline がすでにあれば、mid_due を消�
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/types.json"), { types: { soft_deadline: "date" } });
 });
+
+test("0004: nickname と alias のない member に、name と同じ値と ID を足す。値・本文・持っている member は変えない", async () => {
+	const root = childFrom("legacy");
+	const has = readFileSync(join(root, "member/m-2.md"), "utf8");
+	await runMigrations(root);
+	assert.equal(
+		readFileSync(join(root, "member/m-1.md"), "utf8"),
+		'---\nschema: 1\ntype: member\nid: m-1\nname: "佐藤 花子"\nnickname: "佐藤 花子"\nalias: m-1\ncreated: 2026-01-01T09:00:00+09:00\nupdated: 2026-01-01T09:00:00+09:00\n---\n\n本文の nickname: はキーではないので変えない。\n',
+	);
+	assert.equal(readFileSync(join(root, "member/m-2.md"), "utf8"), has);
+});
+
+test("0004: CRLF の member も行末を変えずに足す。片方だけないときは、ないものだけを足す", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		"member/m-3.md": "---\r\ntype: member\r\nid: m-3\r\nname: 田中\r\n---\r\n",
+		"member/m-4.md": "---\ntype: member\nid: m-4\nname: 高橋\nalias: taka\n---\n",
+	});
+	await runMigrations(root);
+	assert.equal(readFileSync(join(root, "member/m-3.md"), "utf8"), "---\r\ntype: member\r\nid: m-3\r\nname: 田中\r\nnickname: 田中\r\nalias: m-3\r\n---\r\n");
+	assert.equal(readFileSync(join(root, "member/m-4.md"), "utf8"), "---\ntype: member\nid: m-4\nname: 高橋\nnickname: 高橋\nalias: taka\n---\n");
+});
+
+test("0004: name か id が 1 行の値で読めない member は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	const block = "---\ntype: member\nid: m-5\nname: |\n  複数行\n---\n";
+	write(root, { "member/m-5.md": block });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0004-member-nickname-alias");
+	assert.match(failed.problems.join(), /member\/m-5\.md/);
+	assert.equal(readFileSync(join(root, "member/m-5.md"), "utf8"), block);
+});

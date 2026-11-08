@@ -16,8 +16,8 @@ function routine(id: string, fm: Record<string, unknown>): Routine {
 	return value;
 }
 
-function member(id: string): Member {
-	return parseMember(`member/${id}.md`, { type: "member", id, name: id }).value!;
+function member(id: string, extra: Record<string, unknown> = {}): Member {
+	return parseMember(`member/${id}.md`, { type: "member", id, name: id, ...extra }).value!;
 }
 
 function log(id: string, taskId: string, from: string, to: string | null, path = "worklog/pc/2026-10.jsonl"): WorklogEntry {
@@ -164,6 +164,11 @@ describe("lintVault", () => {
 			"issue/i-2.md stale-revisit",
 			"issue/i-2.md unknown-label",
 		]);
+	});
+
+	it("member の label も定義にあるかを見る（ADR-0036）", () => {
+		const d = data({ labels: [{ name: "仕事", color: "#d0d0d0" }], members: [member("m-1", { label: ["仕事", "取引先"] })] });
+		expect(codes(d)).toEqual(["member/m-1.md unknown-label"]);
 	});
 
 	it("worklog: ID の重複・ないタスク・長さが 0 以下", () => {

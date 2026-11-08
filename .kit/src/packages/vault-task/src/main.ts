@@ -12,6 +12,7 @@ import { DailyView } from "./views/DailyView";
 import { GroupManagerView } from "./views/GroupManagerView";
 import { InboxView } from "./views/InboxView";
 import { LabelManagerView } from "./views/LabelManagerView";
+import { MemberListView } from "./views/MemberListView";
 import { IssueListView } from "./views/IssueListView";
 import { OrganizeView } from "./views/OrganizeView";
 import { RoutineListView } from "./views/RoutineListView";
@@ -19,7 +20,7 @@ import { ScheduledView } from "./views/ScheduledView";
 import { SidebarView } from "./views/SidebarView";
 import { SomedayView } from "./views/SomedayView";
 
-/** View の一覧（ADR-0009, 0010, 0021） */
+/** View の一覧（ADR-0009, 0010, 0021, 0035） */
 const VIEWS: ViewSpec[] = [
 	{ type: "vault-task-daily", title: "Daily", icon: "calendar-check", component: DailyView },
 	{ type: "vault-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
@@ -29,6 +30,7 @@ const VIEWS: ViewSpec[] = [
 	{ type: "vault-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
 	{ type: "vault-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
 	{ type: "vault-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
+	{ type: "vault-task-members", title: "Members", icon: "users", component: MemberListView },
 	{ type: "vault-task-labels", title: "Labels", icon: "tag", component: LabelManagerView },
 ];
 
