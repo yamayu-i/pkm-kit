@@ -2,5 +2,6 @@
   "vault-git",
   "vault-task",
   "vault-template",
-  "vault-ribbon"
+  "vault-ribbon",
+  "vault-html"
 ]

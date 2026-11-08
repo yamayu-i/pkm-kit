@@ -4,6 +4,13 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## Vault の中の HTML を読み取り専用で表示する（vault-html）
+
+- **移行 0005-html-viewer**: 新しいプラグイン vault-html を有効にする（`community-plugins.json` に `vault-html` を足す）。`.html` / `.htm` がファイルエクスプローラーに出て、Obsidian のタブで読み取り専用で開ける。Markdown リンクからも開ける（ADR-0037）
+- HTML の中のスクリプトは動かず、外部に通信しない（iframe の sandbox と CSP。外部の画像・CSS・フォントは出ない）。Vault の中の画像は出る。リンクは、Vault の中のファイルは Obsidian で、`https:` / `mailto:` はブラウザで開く
+- ライト / ダークは Obsidian のテーマに合わせる。トークン（`var(--vt-…)`）で書いた HTML はデザインルールの見た目になる（`.kit/src/docs/design.md` の「HTML のページ」）
+- 子への影響: 移行 0005 を実行する。`.obsidian/plugins/vault-html/`（`main.js`、`manifest.json`、`styles.css`）が増えた。PC とスマホで HTML を開き、表示されること、編集できないこと、リンクと画像を確かめる
+
 ## 入力欄を M3 の outlined text field にそろえる
 
 - vault-task と vault-template の入力欄（`input` / `textarea` / `select`）から、Obsidian が付ける浮いて見える影をなくした。面・枠・文字をトークンで決め（ダークモードでは暗い面）、ホバーで枠が濃くなり、フォーカスで primary の 2px の枠になる（M3 の outlined text field。#32）
