@@ -4,7 +4,7 @@
 
 ## 置き場所と形
 
-`.kit/migrations/NNNN-短い名前/`（番号は連番。英小文字・数字・ハイフン）。
+`.kit/migrations/NNNN-短い名前/`（英小文字・数字・ハイフン）。番号は、その変更の GitHub Issue の番号（4 桁のゼロ埋め）。連番にしないのは、並行する PR が同じ番号を取らないようにするため（[ADR-0056](adr/0056-conflict-free-numbering.md)。0006 までは連番）。1 つの Issue に移行が 2 つ要るなら、名前で分ける（`0056-foo`、`0056-bar`）。実行は名前の順。並行して作った移行は互いに依存しないので、番号の順とマージの順が違ってもよい
 
 | ファイル | 必須 | 中身 |
 |---|---|---|
@@ -29,4 +29,4 @@
 
 - `.kit/fixtures/` の子を模した Vault のどれかに、その移行が扱う古い形を足す（[fixture の README](../../fixtures/README.md)）
 - `.claude/scripts/test/migrations.test.mjs` は、すべての移行をすべての fixture に実行し、`check` が通ること、2 回目に何も変えないことを確かめる。移行に固有の結果のテストも足す
-- `.kit/CHANGELOG.md` に、変更と移行と子への影響を書く
+- `.kit/changes/YYYY-MM-DD-名前.md` に、変更と移行と子への影響を書く（[書き方](../../changes/README.md)）
