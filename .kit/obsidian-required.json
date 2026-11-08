@@ -26,7 +26,8 @@
     "pkm-template",
     "pkm-ribbon",
     "pkm-html",
-    "pkm-drawio"
+    "pkm-drawio",
+    "pkm-updates"
   ],
   "core-plugins.json": {
     "daily-notes": false,

@@ -55,8 +55,7 @@ export default class PkmTemplatePlugin extends Plugin {
 			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} を開く`, callback: () => void this.openView(spec.type) });
 		}
 
-		// 「今日のデイリーノートを開く」のリボンは pkm-ribbon が、Daily と続けて並べる（ADR-0029）。コマンド open-todays-daily は残す
-		this.addRibbonIcon("file-plus-2", "テンプレートから新規ファイルを作成", () => void openCreateModal());
+		// リボンのボタンは pkm-ribbon が並びの表で出す（ADR-0029、ADR-0070）。テンプレートからの作成はコマンドだけにした
 		installNoteHeaders(this);
 		// 行頭の / でスニペットを挿入する（ADR-0060）
 		this.registerEditorExtension(slashSessionField);

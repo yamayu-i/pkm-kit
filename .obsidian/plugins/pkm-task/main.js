@@ -56,7 +56,7 @@ function loadPluginDataOrLegacy(plugin, legacyId) {
 }
 
 // ../shared/src/list-pane.ts
-var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
+var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
 var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar"]);
 function isListViewType(type) {
   return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
@@ -1425,6 +1425,9 @@ function isActive(issue) {
 }
 function isInbox(issue) {
   return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+}
+function isScheduledAhead(issue, today) {
+  return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -5864,7 +5867,7 @@ function ScheduledView(props) {
   useStoreVersion(ctx.store);
   const today = localToday(new Date(useNow(6e4)));
   const days = Array.from({ length: DAYS }, (_2, i3) => addDays(today, i3));
-  const issues = [...ctx.store.index.issues.values()].filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).sort((a3, b2) => (a3.scheduled.find((d3) => d3 >= today) ?? "").localeCompare(b2.scheduled.find((d3) => d3 >= today) ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true }));
+  const issues = [...ctx.store.index.issues.values()].filter((i3) => isScheduledAhead(i3, today)).sort((a3, b2) => (a3.scheduled.find((d3) => d3 >= today) ?? "").localeCompare(b2.scheduled.find((d3) => d3 >= today) ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true }));
   const toggle2 = (path, scheduled, d3) => {
     const next = scheduled.includes(d3) ? scheduled.filter((x2) => x2 !== d3) : [...scheduled, d3].sort();
     void ctx.writer.update(path, { scheduled: next }).catch((e3) => ctx.report("\u5B9F\u884C\u65E5\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
@@ -6086,7 +6089,6 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
-    this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));

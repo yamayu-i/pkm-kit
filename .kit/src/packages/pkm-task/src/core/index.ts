@@ -42,6 +42,11 @@ export function isInbox(issue: Issue): boolean {
 	return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
 }
 
+/** Scheduled に出す issue: 有効で、今日以降に Do Date がある（ADR-0009）。PKM Updates も同じ規則を使う（ADR-0070） */
+export function isScheduledAhead(issue: Issue, today: LocalDate): boolean {
+	return isActive(issue) && issue.scheduled.some((d) => d >= today);
+}
+
 /** routine の interval を数える起点: start、なければ created の日付 */
 export function routineAnchor(routine: Routine): LocalDate | null {
 	return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
