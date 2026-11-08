@@ -108,6 +108,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - コマンド「今日のデイリーノートを開く」（リボンのボタンは pkm-ribbon が出す。ADR-0029）: `.kit/templates/config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
 - 連番の関数は pkm-task（`core/ids.ts`）と pkm-template（`core/ids.ts`）の両方にある。規則を変えるときは両方を変える
 - 一覧 View（Daily notes / Notes / Sources）とノートのヘッダー（ADR-0026）: 対象は frontmatter の `type` で決める。ヘッダーは `.cm-sizer` / `.markdown-preview-sizer` の先頭への DOM の差し込みで、編集とリーディングの両方に出る（Obsidian の内部の DOM に依存するので、Obsidian を更新したら見た目を確かめる）。issue / routine には出さない（pkm-task のヘッダーがある）
+- Temporary files（ADR-0045）: `tmp/` の下のファイルを場所で集める唯一の一覧（`src/core/tmp-list.ts`、`src/views/TmpListView.tsx`）。ほかの一覧は `withoutTmp` で `tmp/` を除く。Obsidian が開けない拡張子を PC で開くのに、公開の API にない `app.openWithDefaultApp` を、あるときだけ使う
 - `test/templates-repo.test.ts` が、上流の既定のテンプレート（`.kit/templates/`）を読んで、created と updated が同じ値で入ること、pkm-task が必要とする項目があることを検査する
 - 上流のテンプレートは隠しパスにあり、Vault の索引（`vault.getFiles()` など）に載らない。`vault.adapter` の `exists` / `list` / `read` で読む（モバイルでも使える）。その Vault の `template/file/` は Vault の API で読む
 
@@ -167,14 +168,14 @@ pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイア�
 
 ## pkm-html（HTML の読み取り専用の表示）
 
-Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0037）。ほかのプラグインには依存しない。
+Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出し、トークンと画像を埋め込んだ 1 ファイルとして `tmp/` に書き出すプラグイン（ADR-0037、ADR-0044）。実行時には、ほかのプラグインに依存しない。
 
 - 4 重の守り: iframe の `sandbox="allow-same-origin"`（`allow-scripts` を付けない）、`<head>` の最初の CSP（`default-src 'none'; img-src data:` など）、読み込む前の除去（`<script>`、`on*` 属性、`<meta http-equiv>`、`<link>`、`<iframe>` など、`javascript:`）、リンクのクリックを親で扱う
 - **`allow-scripts` を足さない**。`allow-same-origin` と一緒になると、iframe の中のスクリプトが親（Obsidian）に触れる
 - `srcdoc` への代入は `src/ui/frame.ts` だけ（security-scan が検査する）
 - Vault の中の画像は `vault.readBinary` で読み、`data:` に置き換える。CSP を緩めない
 - テーマ: `tokens.css` を文字列として束ね（esbuild の `loader`）、iframe に差し込む。`css-change` で `<body>` のクラスと `color-scheme` を付け直す
-- 外部に共有する HTML（`tmp/` への書き出し）は Issue #44。そのため、除去と画像の置き換えは Obsidian に依存しない `src/core/` に置く
+- `tmp/` への書き出し（ADR-0044）: コマンド・ファイルのメニューと CLI（`.kit/bin/html.mjs export`）が、同じ `src/core/standalone.ts` を使う。解析はプラグインでは `DOMParser`、CLI では linkedom（解析後に `<head>` / `<body>` を整える）。トークンは design が生成する `tokens-standalone.css`（`prefers-color-scheme` 版）を埋め込む。図の共有用の SVG と書き出し先の名前は pkm-drawio の `src/core/` を束ねて使う
 
 ### コードの構成（`.kit/src/packages/pkm-html`）
 
@@ -183,10 +184,12 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `src/core/policy.ts` | CSP、画像の拡張子と上限、パスの解決、リンクの分類 | なし（DOM もなし） |
 | `src/core/sanitize.ts` | 除去、画像の置き換え、CSP・トークン・テーマの差し込み、`srcdoc` の文字列 | なし（`DOMParser` を使う） |
 | `src/ui/frame.ts` | iframe を作り、リンクのクリックとテーマの付け直しを扱う | なし |
-| `src/obsidian/html-view.ts`・`src/main.ts` | View、拡張子の登録、Vault からの読み込み、リンクを開く | あり |
-| `preview/` | `pnpm --filter pkm-html preview:ui`。悪い HTML でスクリプトが動かないこと・外部への要求がないこと、リンク、画像、見本の描画と検査を Chromium で確かめる。CI では動かない | なし |
+| `src/core/standalone.ts` | `tmp/` に書き出す HTML の文字列（除去、画像と図の埋め込み、CSP・トークンの差し込み） | なし（解析は呼ぶ側が渡す） |
+| `src/obsidian/html-view.ts`・`src/obsidian/export.ts`・`src/main.ts` | View、拡張子の登録、Vault からの読み込み、リンクを開く、書き出しのコマンドとメニュー | あり |
+| `cli/html.ts` | `.kit/bin/html.mjs`（`export`）。Node の API と linkedom を使う | なし |
+| `preview/` | `pnpm --filter pkm-html preview:ui`。悪い HTML でスクリプトが動かないこと・外部への要求がないこと、リンク、画像、見本の描画と検査、書き出した HTML（ライト / ダークの追従、スクリプト・外部への要求がないこと）を Chromium で確かめる。CI では動かない | なし |
 
-- `test/` は policy の単体テストと、ビルド済み `main.js` のテスト（`allow-scripts` を含まないこと、登録する拡張子）。DOM を使う部分は preview で確かめる
+- `test/` は policy の単体テスト、書き出しの変換のテスト（linkedom で解析）、ビルド済み `main.js` と `.kit/bin/html.mjs` のテスト。iframe の表示は preview で確かめる
 - Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
 
 ## pkm-drawio（Draw.io の図）

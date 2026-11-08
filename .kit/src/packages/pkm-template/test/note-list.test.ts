@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterByQuery, hasNoteHeader, importedSourcePaths, notesOfType, sortNotes, type NoteInfo } from "../src/core/note-list";
+import { filterByQuery, hasNoteHeader, importedSourcePaths, notesOfType, sortNotes, withoutTmp, type NoteInfo } from "../src/core/note-list";
 
 function note(path: string, frontmatter: Record<string, unknown> = {}): NoteInfo {
 	const name = path.split("/").pop() ?? path;
@@ -90,5 +90,12 @@ describe("hasNoteHeader", () => {
 	it("それ以外の Markdown には出す(型のないものも)", () => {
 		expect(hasNoteHeader("daily/2026/11/2026-11-01.md", { type: "daily" })).toBe(true);
 		expect(hasNoteHeader("memo.md", undefined)).toBe(true);
+	});
+});
+
+describe("withoutTmp", () => {
+	it("tmp/ の下のノートを、type があっても除く（ADR-0045）", () => {
+		const notes = [note("tmp/a.md", { type: "note" }), note("tmp/sub/b.md", { type: "note" }), note("tmpnote.md", { type: "note" }), note("c.md", { type: "note" })];
+		expect(withoutTmp(notes).map((n) => n.path)).toEqual(["tmpnote.md", "c.md"]);
 	});
 });

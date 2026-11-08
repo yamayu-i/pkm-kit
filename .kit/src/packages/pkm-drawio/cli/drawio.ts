@@ -6,12 +6,22 @@
  *       図の参照を、編集用 XML を除いた SVG の data URI に置き換えて書き出す（既定 tmp/<ファイル名>。あれば番号を付ける）
  *   node .kit/bin/drawio.mjs check <ファイルかフォルダ…> [--vault <ルート>]
  *       書き出したものに、図のファイルへの参照・編集用 XML が残っていないかを見る
- *   node .kit/bin/drawio.mjs extract <図.drawio.svg>     編集用 XML（全ページ）を標準出力に出す
+ *   node .kit/bin/drawio.mjs extract <図.drawio.svg> [--plain]   編集用 XML（全ページ）を標準出力に出す（--plain は圧縮したページを展開する）
  *   node .kit/bin/drawio.mjs strip <図.drawio.svg> [--output <…>]   共有用の SVG（編集用 XML を除く）
+ *
+ * Claude Code が図を作る・直す（ADR-0085）。描画は自前で、Draw.io で開いて保存すれば描き直される
+ *   node .kit/bin/drawio.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
+ *       短い JSON から配置を計算し、編集用 XML と描画を作る（- は標準入力。既存のファイルは --force で上書き）
+ *   node .kit/bin/drawio.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
+ *       編集用 XML から描画を作り直す（--output がなければ、図の SVG をその場で書き直す）
+ *   node .kit/bin/drawio.mjs inspect <図.drawio.svg|.drawio|.xml>
+ *       ページ・セル（ID・形・ラベル・位置）・辺・描けない書式を出す
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { buildDiagram, inspectDiagram, renderDiagram, xmlFromInput } from "../src/core/author.ts";
 import { checkExported, documentKind, embedDiagrams } from "../src/core/document.ts";
+import { decompressDiagramFile } from "../src/core/model.ts";
 import { exportPath } from "../src/core/names.ts";
 import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
 
@@ -19,20 +29,30 @@ export interface Io {
 	cwd: string;
 	out(text: string): void;
 	err(text: string): void;
+	/** 標準入力（build -） */
+	stdin?: () => Promise<string>;
 }
 
 const USAGE = `使い方:
   drawio.mjs export <ノート.md|.html> [--output <パス>] [--vault <ルート>]
   drawio.mjs check <ファイルかフォルダ…> [--vault <ルート>]
-  drawio.mjs extract <図.drawio.svg>
-  drawio.mjs strip <図.drawio.svg> [--output <パス>]`;
+  drawio.mjs extract <図.drawio.svg> [--plain]
+  drawio.mjs strip <図.drawio.svg> [--output <パス>]
+  drawio.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
+  drawio.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
+  drawio.mjs inspect <図.drawio.svg|.drawio|.xml>`;
+
+/** 値をとらない指定 */
+const FLAGS = new Set(["force", "plain"]);
 
 function parseArgs(args: string[]): { positional: string[]; options: Map<string, string> } {
 	const positional: string[] = [];
 	const options = new Map<string, string>();
 	for (let i = 0; i < args.length; i++) {
 		const a = args[i] as string;
-		if (a.startsWith("--")) {
+		if (a.startsWith("--") && FLAGS.has(a.slice(2))) {
+			options.set(a.slice(2), "true");
+		} else if (a.startsWith("--")) {
 			const value = args[i + 1];
 			if (value === undefined || value.startsWith("--")) throw new Error(`${a} に値がない`);
 			options.set(a.slice(2), value);
@@ -133,7 +153,7 @@ function runCheck(positional: string[], options: Map<string, string>, io: Io): n
 	return 0;
 }
 
-function runSvg(command: "extract" | "strip", positional: string[], options: Map<string, string>, io: Io): number {
+async function runSvg(command: "extract" | "strip", positional: string[], options: Map<string, string>, io: Io): Promise<number> {
 	const [input] = positional;
 	if (!input || positional.length > 1) {
 		io.err(USAGE);
@@ -146,7 +166,7 @@ function runSvg(command: "extract" | "strip", positional: string[], options: Map
 			io.err(`${input}: 編集用 XML がない（普通の SVG）`);
 			return 1;
 		}
-		io.out(r.xml);
+		io.out(options.has("plain") ? await decompressDiagramFile(r.xml) : r.xml);
 		return 0;
 	}
 	const sharing = toSharingSvg(svg);
@@ -165,6 +185,91 @@ function runSvg(command: "extract" | "strip", positional: string[], options: Map
 	return 0;
 }
 
+function warn(io: Io, warnings: string[]): void {
+	for (const w of warnings) io.err(`警告: ${w}`);
+}
+
+function checkDiagramOutput(output: string, io: Io): boolean {
+	if (!output.toLowerCase().endsWith(".drawio.svg")) {
+		io.err(`${output}: 書き出し先は .drawio.svg にしてください`);
+		return false;
+	}
+	return true;
+}
+
+async function runBuild(positional: string[], options: Map<string, string>, io: Io): Promise<number> {
+	const [input] = positional;
+	const output = options.get("output");
+	if (!input || positional.length > 1 || output === undefined) {
+		io.err(USAGE);
+		return 2;
+	}
+	if (!checkDiagramOutput(output, io)) return 2;
+	const full = resolve(io.cwd, output);
+	if (existsSync(full) && !options.has("force")) {
+		io.err(`${output} は既にあります（上書きするなら --force。今の図を直すなら extract → render）`);
+		return 1;
+	}
+	let text: string;
+	if (input === "-") {
+		if (!io.stdin) throw new Error("標準入力を読めない");
+		text = await io.stdin();
+	} else {
+		text = readFileSync(resolve(io.cwd, input), "utf8");
+	}
+	let spec: unknown;
+	try {
+		spec = JSON.parse(text);
+	} catch (e) {
+		io.err(`エラー: spec を JSON として読めない（${e instanceof Error ? e.message : String(e)}）`);
+		return 1;
+	}
+	const r = await buildDiagram(spec);
+	warn(io, r.warnings);
+	mkdirSync(dirname(full), { recursive: true });
+	writeFileSync(full, r.svg);
+	io.out(`${relative(io.cwd, full) || full}（ページ ${r.pages}）`);
+	return 0;
+}
+
+async function runRender(positional: string[], options: Map<string, string>, io: Io): Promise<number> {
+	const [input] = positional;
+	if (!input || positional.length > 1) {
+		io.err(USAGE);
+		return 2;
+	}
+	const inputFull = resolve(io.cwd, input);
+	const output = options.get("output");
+	const outFull = output === undefined ? inputFull : resolve(io.cwd, output);
+	if (!checkDiagramOutput(output ?? input, io)) return 2;
+	const page = options.has("page") ? Number(options.get("page")) : 1;
+	if (!Number.isInteger(page) || page < 1) {
+		io.err("--page は 1 以上の整数");
+		return 2;
+	}
+	const r = await renderDiagram(xmlFromInput(readFileSync(inputFull, "utf8")), page);
+	warn(io, r.warnings);
+	const before = existsSync(outFull) ? readFileSync(outFull, "utf8") : null;
+	if (before === r.svg) {
+		io.out(`${relative(io.cwd, outFull) || outFull}（変わらない）`);
+		return 0;
+	}
+	mkdirSync(dirname(outFull), { recursive: true });
+	writeFileSync(outFull, r.svg);
+	io.out(`${relative(io.cwd, outFull) || outFull}（ページ ${r.pages}、描いたのは ${page} ページ目）`);
+	return 0;
+}
+
+async function runInspect(positional: string[], io: Io): Promise<number> {
+	const [input] = positional;
+	if (!input || positional.length > 1) {
+		io.err(USAGE);
+		return 2;
+	}
+	io.out(await inspectDiagram(xmlFromInput(readFileSync(resolve(io.cwd, input), "utf8"))));
+	return 0;
+}
+
 export async function main(argv: string[], io: Io): Promise<number> {
 	const [command, ...rest] = argv;
 	try {
@@ -176,7 +281,13 @@ export async function main(argv: string[], io: Io): Promise<number> {
 				return runCheck(positional, options, io);
 			case "extract":
 			case "strip":
-				return runSvg(command, positional, options, io);
+				return await runSvg(command, positional, options, io);
+			case "build":
+				return await runBuild(positional, options, io);
+			case "render":
+				return await runRender(positional, options, io);
+			case "inspect":
+				return await runInspect(positional, io);
 			default:
 				io.err(USAGE);
 				return 2;
@@ -194,5 +305,10 @@ if (/drawio\.(mjs|ts)$/.test(invoked)) {
 		cwd: process.cwd(),
 		out: (t) => process.stdout.write(`${t}\n`),
 		err: (t) => process.stderr.write(`${t}\n`),
+		stdin: async () => {
+			const chunks: Buffer[] = [];
+			for await (const c of process.stdin) chunks.push(c as Buffer);
+			return Buffer.concat(chunks).toString("utf8");
+		},
 	});
 }

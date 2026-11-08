@@ -12,6 +12,8 @@ export const OUTPUTS = {
 	pluginCss: at("../../pkm-task/tokens.css"),
 	templatePluginCss: at("../../pkm-template/tokens.css"),
 	htmlPluginCss: at("../../pkm-html/tokens.css"),
+	/** 書き出した HTML に埋め込むもの（ADR-0044） */
+	htmlStandaloneCss: at("../../pkm-html/tokens-standalone.css"),
 	drawioPluginCss: at("../../pkm-drawio/tokens.css"),
 	ribbonPluginCss: at("../../pkm-ribbon/tokens.css"),
 	updatesPluginCss: at("../../pkm-updates/tokens.css"),

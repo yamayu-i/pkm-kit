@@ -7,12 +7,15 @@ import { atSessionField, slashSessionField } from "./obsidian/snippet-session";
 import { INLINE_KIND, SnippetSuggest } from "./obsidian/SnippetSuggest";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
+import { TmpListView } from "./views/TmpListView";
 
 /** 一覧 View(ADR-0026)。pkm-task の View と区別するため接頭辞は pkm-template- */
 const LIST_VIEWS: ViewSpec[] = [
 	{ type: "pkm-template-daily-list", title: "Daily notes", icon: "calendar-days", component: DailyListView },
 	{ type: "pkm-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
 	{ type: "pkm-template-source-list", title: "Sources", icon: "library", component: SourceListView },
+	// tmp/ のファイル（ADR-0045）。Markdown 以外も出す
+	{ type: "pkm-template-tmp-list", title: "Temporary files", icon: "folder-clock", component: TmpListView },
 ];
 
 export default class PkmTemplatePlugin extends Plugin {

@@ -1,4 +1,5 @@
 import { noteTitle, type Frontmatter } from "./note-title";
+import { isTmpPath } from "./tmp-list";
 
 /** 一覧とヘッダーが使うノートの情報（`metadataCache` から作る） */
 export interface NoteInfo {
@@ -17,6 +18,11 @@ export const WIKI_TYPES: readonly string[] = ["concept", "entity", "topic", "ans
 
 /** pkm-task が自分のヘッダーを出す type */
 const TASK_TYPES: readonly string[] = ["issue", "routine", "member"];
+
+/** tmp/ の下のノートを除く。tmp/ はノートの規約の対象外なので、type があっても一覧に出さない（ADR-0045） */
+export function withoutTmp(notes: readonly NoteInfo[]): NoteInfo[] {
+	return notes.filter((n) => !isTmpPath(n.path));
+}
 
 export function notesOfType(notes: readonly NoteInfo[], type: string): NoteInfo[] {
 	return notes.filter((n) => n.frontmatter.type === type);

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { main } from "../cli/drawio.ts";
 import { svgDataUri } from "../src/core/encoding.ts";
-import { toSharingSvg } from "../src/core/svg.ts";
+import { extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 const DIAGRAM = fixture("two-pages.drawio.svg");
@@ -62,7 +62,46 @@ describe("drawio.mjs", () => {
 	});
 
 	it("知らないコマンドは使い方を出す", async () => {
-		expect(await run("render")).toBe(2);
+		expect(await run("draw")).toBe(2);
 		expect(err[0]).toContain("使い方");
+		expect(await run("render")).toBe(2);
+	});
+
+	it("build: spec から図を作る。既存の図は --force がなければ上書きしない。標準入力も読む", async () => {
+		const spec = JSON.stringify({ nodes: [{ id: "a", label: "A" }, { id: "b", label: "B" }], edges: [{ from: "a", to: "b" }] });
+		writeFileSync(join(root, "spec.json"), spec);
+		expect(await run("build", "spec.json", "--output", "asset/new.drawio.svg")).toBe(0);
+		const made = readFileSync(join(root, "asset", "new.drawio.svg"), "utf8");
+		expect(made).toContain('content="&lt;mxfile host=&quot;pkm-kit&quot;');
+		expect(await run("build", "spec.json", "--output", "asset/new.drawio.svg")).toBe(1);
+		expect(err.join("\n")).toContain("--force");
+		const viaStdin = (...argv: string[]) => main(argv, { cwd: root, out: (t) => out.push(t), err: (t) => err.push(t), stdin: async () => spec });
+		expect(await viaStdin("build", "-", "--output", "asset/new.drawio.svg", "--force")).toBe(0);
+		expect(readFileSync(join(root, "asset", "new.drawio.svg"), "utf8")).toBe(made);
+		expect(await run("build", "spec.json", "--output", "asset/new.svg")).toBe(2);
+		writeFileSync(join(root, "bad.json"), "{");
+		expect(await run("build", "bad.json", "--output", "asset/bad.drawio.svg")).toBe(1);
+		writeFileSync(join(root, "bad.json"), JSON.stringify({ nodes: [{ id: "a", shape: "star" }] }));
+		expect(await run("build", "bad.json", "--output", "asset/bad.drawio.svg")).toBe(1);
+		expect(err.join("\n")).toContain("shape は");
+	});
+
+	it("render: 書き換えた XML から描き直す。図をその場で描き直しても XML は変えない", async () => {
+		expect(await run("render", "asset/sys.drawio.svg")).toBe(0);
+		const redrawn = readFileSync(join(root, "asset", "sys.drawio.svg"), "utf8");
+		const back = extractDiagramXml(redrawn);
+		expect(back.kind === "diagram" && back.xml).toBe(fixture("two-pages.drawio").trim());
+		expect(await run("render", "asset/sys.drawio.svg")).toBe(0);
+		expect(out[out.length - 1]).toContain("変わらない");
+		writeFileSync(join(root, "edit.xml"), fixture("two-pages.drawio").replace("開始 &amp; 終了", "始まり"));
+		expect(await run("render", "edit.xml", "--output", "asset/sys.drawio.svg")).toBe(0);
+		expect(readFileSync(join(root, "asset", "sys.drawio.svg"), "utf8")).toContain(">始まり</tspan>");
+		expect(await run("render", "edit.xml")).toBe(2);
+		expect(await run("render", "asset/sys.drawio.svg", "--page", "0")).toBe(2);
+	});
+
+	it("inspect: ページとセルを短く出す", async () => {
+		expect(await run("inspect", "asset/sys.drawio.svg")).toBe(0);
+		expect(out[0]).toBe('ページ 2\n[1] ページ1（id p1、セル 1）\n  a  rect  "開始 & 終了"  x=0 y=0 w=120 h=60\n[2] ページ2（id p2、セル 0）');
 	});
 });
