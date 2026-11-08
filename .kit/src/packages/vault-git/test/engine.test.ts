@@ -40,6 +40,18 @@ describe("VaultGit (本物の git smart HTTP サーバーで検証)", () => {
 		expect(await pc.git.push()).toEqual({ kind: "nothing" });
 	});
 
+	it("push: .gitignore に当たるファイル（tmp/）はコミットしない（ADR-0037）", async () => {
+		await pc.write(".gitignore", "tmp/\n");
+		await pc.write("tmp/share.html", "<p>share</p>\n");
+		await pc.write("tmp/sub/a.md", "a\n");
+		expect(await pc.git.push()).toEqual({ kind: "pushed", snapshot: true });
+		expect(server.remoteFile(".gitignore")).toBe("tmp/\n");
+		expect(() => server.remoteFile("tmp/share.html")).toThrow();
+		expect(() => server.remoteFile("tmp/sub/a.md")).toThrow();
+		await pc.write("tmp/share.html", "<p>changed</p>\n");
+		expect(await pc.git.push()).toEqual({ kind: "nothing" });
+	});
+
 	it("push: behind があるときはコミットも push もしない", async () => {
 		await phone.write("from-phone.md", "x\n");
 		await phone.git.push();

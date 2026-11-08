@@ -4,11 +4,13 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
-## 一時ファイルの置き場を tmp/ にそろえる（temporary/ を使わない）
+## git で管理しない一時ファイルの置き場 tmp/（temporary/ を使わない）
 
-- updated の自動付与（vault-git と `.kit/bin/stamp-updated.mjs`）の対象外から `temporary/` を外した。一時ファイルの置き場は `tmp/` だけにする（ADR-0037。`tmp/` を git で管理しないことなどは同じ ADR で提案中）
-- `.claude/docs/vault-conventions.md` の除外の記述を `tmp/` にそろえた
-- 子への影響: 移行はない。`temporary/` にノートを置いているなら、コミット時に updated が付き、wiki-lint の対象になる。一時ファイルなら `tmp/` に移す。vault-git の `main.js` と `.kit/bin/` の CLI が変わった
+- **移行 0005-tmp-untracked**: 上流の `.gitignore` に `tmp/` を入れた。`tmp/` は、外部共有用の書き出し先と、自分が一時的に見るだけで端末間で同期しなくてよいファイルの置き場（ADR-0037）。移行は何も変えず、git が追跡している `tmp/` のファイルがあれば一覧を出して止まる（追跡を外すと、ほかの端末で次の同期のときに消えるため）。ファイルごとに、`tmp/` の外へ移すか追跡を外すかをユーザーに確かめる
+- 一時ファイルの置き場は `tmp/` だけにした。updated の自動付与（vault-git と `.kit/bin/stamp-updated.mjs`）の対象外から `temporary/` を外した
+- `.claude/docs/vault-conventions.md`: 配置の表に `tmp/` を足し、除外の記述を `tmp/` にそろえた。`tmp/` の外のノートから `tmp/` へリンクしない
+- `tmp/` の一覧 View は #45 で扱う
+- 子への影響: 移行 0005 を実行する。`temporary/` にノートを置いているなら、コミット時に updated が付き、wiki-lint の対象になる。一時ファイルなら `tmp/` に移す。vault-git の `main.js` と `.kit/bin/` の CLI が変わった。モバイルの Vault Git で、`tmp/` に置いたファイルがコミットされないことを確かめる
 
 ## 入力欄を M3 の outlined text field にそろえる
 

@@ -1,6 +1,6 @@
 # ADR-0037: git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-08
 
 ## 背景
@@ -64,5 +64,5 @@
 - vault-git（`stamp/updated.ts`）と `.kit/bin/stamp-updated.mjs`: `temporary/` を対象外から外す。`temporary/` のノートにも updated が付き、wiki-lint の対象になる
 - `.gitignore` に `tmp/` を足す
 - `.claude/docs/vault-conventions.md`: 配置の表に `tmp/` を足し、除外の記述を `tmp/` にそろえる
-- 移行: 追跡中の `tmp/` のファイルを見つけて止める移行を足す（決定 5）。`.kit/CHANGELOG.md` に書く
+- 移行 `0005-tmp-untracked`: 追跡中の `tmp/` のファイルを見つけて止める（決定 5）。`.kit/CHANGELOG.md` に書く
 - ADR-0028 の状態を「一部置換: 0037」にする

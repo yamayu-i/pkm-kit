@@ -30,6 +30,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
+| `tmp/` | 一時ファイル（外部共有用の書き出し、自分が一時的に見るだけのファイル）。git で管理せず、端末間で同期しない。この規約（frontmatter、リンクの書式）の対象外。サブフォルダを作ってよい（[ADR-0037](../../.kit/src/docs/adr/0037-tmp-folder.md)） |
 | それ以外 | 通常のノート。新規ノートの既定の作成先は Vault ルート |
 
 `sources/` と `wiki/` の書式と、LLM がどのノートを変えてよいか（所有の区分）は [LLM wiki の仕組み](llm-wiki.md) にある。
@@ -40,6 +41,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
+- `tmp/` の外のノートから `tmp/` へリンクしない（ほかの端末にはないので、リンク切れになる）。残したいもの・ほかの端末でも見たいものは `tmp/` の外に置く
 
 ## 共通 frontmatter
 
