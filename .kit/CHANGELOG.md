@@ -4,6 +4,12 @@
 
 各項目に、子への影響（移行の有無、モバイルで確かめること）を書く。
 
+## 一時ファイルの置き場を tmp/ にそろえる（temporary/ を使わない）
+
+- updated の自動付与（vault-git と `.kit/bin/stamp-updated.mjs`）の対象外から `temporary/` を外した。一時ファイルの置き場は `tmp/` だけにする（ADR-0037。`tmp/` を git で管理しないことなどは同じ ADR で提案中）
+- `.claude/docs/vault-conventions.md` の除外の記述を `tmp/` にそろえた
+- 子への影響: 移行はない。`temporary/` にノートを置いているなら、コミット時に updated が付き、wiki-lint の対象になる。一時ファイルなら `tmp/` に移す。vault-git の `main.js` と `.kit/bin/` の CLI が変わった
+
 ## 入力欄を M3 の outlined text field にそろえる
 
 - vault-task と vault-template の入力欄（`input` / `textarea` / `select`）から、Obsidian が付ける浮いて見える影をなくした。面・枠・文字をトークンで決め（ダークモードでは暗い面）、ホバーで枠が濃くなり、フォーカスで primary の 2px の枠になる（M3 の outlined text field。#32）

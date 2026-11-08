@@ -38,7 +38,7 @@
 | [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
 | [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035） | 主要なノートの一覧 View とノートの View（ヘッダー）を vault-template に足す |
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
-| [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの 0009） | コミット時に変更ノートの updated を自動付与する |
+| [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの 0009、0037） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる（コアプラグインのデイリーノートは無効にする） |
 | [0030](0030-organize-schedule-calendar.md) | 承認 | Organize の予定入れを、複数日を選べるカレンダーにする |
 | [0031](0031-status-quick-change.md) | 承認（一部置換: 0032） | ボードからの status の 1 クリック変更、status のアイコン、取り消しのトースト、status の記録（statuslog） |
@@ -47,3 +47,4 @@
 | [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認 | estimated の単位入力（m / h / d）と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
 | [0035](0035-member-view-and-fields.md) | 承認 | member の項目（name / nickname / alias）と、member の専用 View |
 | [0036](0036-member-labels-and-list-sort.md) | 承認 | member の label と、Members の一覧の絞り込み・並べ替え |
+| [0037](0037-tmp-folder.md) | 提案 | git で管理しない一時ファイルの置き場 tmp/ を作り、temporary/ は使わない |
