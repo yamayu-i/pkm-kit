@@ -11,7 +11,7 @@
 |---|---|---|---|---|---|---|---|
 | `--vt-surface` | 面 | `#f6f5f2` | `#1e1e1e` | — | — | 基本の面。Obsidian のエディタの背景と同じにする Obsidian: `--background-primary` | 目に優しくするため純白を避け、ごくわずかに暖かい白にする（ADR-0019） |
 | `--vt-surface-container` | 面 | `#efeeea` | `#242424` | — | — | カードの面（surface より一段濃い） Obsidian: `--background-secondary` | M3 surface-container |
-| `--vt-surface-container-high` | 面 | `#e8e7e2` | `#2b2b2b` | — | — | 一段強い面（日付ブロック、関係のチップ、件数）（surface-container より一段濃い） | M3 surface-container-high |
+| `--vt-surface-container-high` | 面 | `#e8e7e2` | `#2b2b2b` | — | — | 一段強い面（日付ブロック、関係のチップ、件数、ノートのコード）（surface-container より一段濃い） Obsidian: `--code-background` | M3 surface-container-high。ノートのコードは、Obsidian の既定のままだと本文の面とほぼ同じ色（ライトでは本文より明るい）になるので、この面に固定する |
 | `--vt-on-surface` | 文字 | `#2b2a28` | `#d0d0d0` | 7:1 | 10.06 / 7.39 | 本文の文字 Obsidian: `--text-normal` | M3 on-surface（標準のコントラストで 7:1） |
 | `--vt-on-surface-variant` | 文字 | `#57564f` | `#b3b3b3` | 4.5:1 | 5.17 / 5.44 | 補助の文字、ラベル、アイコン、未入力の表示 Obsidian: `--text-muted` | M3 on-surface-variant |
 | `--vt-outline` | 印 | `#7f7e76` | `#7a7a7a` | 3:1 | 3.29 / 3.29 | 編集できるものの枠線 | M3 outline（3:1） |
@@ -26,7 +26,7 @@
 | `--vt-on-secondary-container` | 文字 | `#1d192b` | `#e8def8` | 4.5:1 | 11.52 / 7.34 | secondary-container の上の文字 | M3 baseline on-secondary-container |
 | `--vt-error` | 文字 | `#b3261e` | `#f2b8b5` | 4.5:1 | 5.27 / 8.29 | エラーの文字、削除ボタン Obsidian: `--text-error` | M3 baseline error |
 | `--vt-focus-ring` | 印 | `#6750a4`（= --vt-primary） | `#d0bcff`（= --vt-primary） | 3:1 | 5.20 / 8.30 | キーボードで選んだときの枠 |  |
-| `--vt-text-faint` | 文字 | `#696860` | `#8c8c8c` | 4.5:1 | 5.13 / 4.95 | Obsidian 本体の薄い文字。プラグインでは使わない（標準の値は 4.5:1 に届かないので上げる） （プラグインでは使わない） Obsidian: `--text-faint` | WCAG 1.4.3 |
+| `--vt-text-faint` | 文字 | `#696860` | `#949494` | 4.5:1 | 4.52 / 4.66 | Obsidian 本体の薄い文字。プラグインでは使わない（標準の値は 4.5:1 に届かないので上げる） （プラグインでは使わない） Obsidian: `--text-faint` | WCAG 1.4.3。ノートのコードの面（surface-container-high）にも載るので、ダークはその面で 4.5:1 になるまで上げる |
 | `--vt-green-container` | 面 | `#c4eed0` | `#0f5223` | — | — | green の面（open、実行日、記録中の worklog） |  |
 | `--vt-on-green-container` | 文字 | `#072711` | `#c4eed0` | 4.5:1 | 10.96 / 6.27 | green の面の上の文字 |  |
 | `--vt-green` | 印 | `#1e8e3e` | `#6dd58c` | 3:1 | 3.30 / 5.12 | green の印（点・アイコン・枠） |  |

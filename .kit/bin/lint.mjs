@@ -7485,7 +7485,7 @@ var colors = {
     "color.on-secondary-container": "#e8def8",
     "color.error": "#f2b8b5",
     "color.focus-ring": "#d0bcff",
-    "color.text-faint": "#8c8c8c",
+    "color.text-faint": "#949494",
     "color.green-container": "#0f5223",
     "color.on-green-container": "#c4eed0",
     "color.green": "#6dd58c",
