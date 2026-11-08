@@ -234,6 +234,20 @@ mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Co
 - pnpm: その Node で `npm install -g pnpm@<mise.toml の版>`
 - Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-drawio` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
 
+### Obsidian の実機で確かめる
+
+テストと `preview:ui` は `obsidian` をモックにして描く。そのため、Obsidian 本体の CSS との詳細度の争い（本体の規則が勝ってプラグインの隠す CSS が効かない）や、View の生成の順の誤り（親のコンストラクタの中で未代入の値を読む）は見つからない。設定・CSS・View を変えたら、PR の前に実機で確かめる（[dev-implement](../skills/dev-implement/SKILL.md)）。
+
+- 使える環境: Obsidian が起動している PC。Obsidian の CLI を有効にしておく（設定で有効にし、`obsidian` コマンドが使えること）。クラウドのセッションでは使えないので、PR に「実機での確認が要る」と書く
+- 起動中のアプリで JavaScript を評価して、DOM と適用中の CSS を読む。引数の書き方は `obsidian help` で確かめる。例:
+
+```sh
+# 開いている View の種類
+obsidian eval code="app.workspace.getLeavesOfType('pkm-task-daily').length"
+# 要素に効いている CSS の値（本体の規則に負けていないか）
+obsidian eval code="getComputedStyle(document.querySelector('.metadata-container')).display"
+```
+
 ## 進め方
 
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）

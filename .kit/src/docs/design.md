@@ -25,7 +25,7 @@
 
 ```
 packages/design/tokens.json（正本）
-  ├─ pnpm --filter design build（pnpm build に含まれる）
+  ├─ pnpm --filter design build（pnpm build の最初に実行する。ほかのパッケージはその後にビルドするので、1 回の pnpm build で新しい値になる）
   │    ├─ packages/pkm-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
