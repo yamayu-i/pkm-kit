@@ -18,6 +18,7 @@
 4. 分岐 → ファイル単位の 3-way マージ（`src/merge/tree-merge.ts`）
    - 片側だけの変更 → 採用
    - 両側の変更 → 行単位でマージ。重なったら md / txt はマーカー、それ以外はリモート優先＋ローカル版を別名保存
+   - Draw.io の図（`.drawio.svg` / `.drawio`）は両側の変更を行単位でマージせず、リモート優先＋ローカル版を別名保存（`<名前> (conflict …).drawio.svg`。ADR-0064）
    - 削除 vs 編集 → 編集側を残す
    - マージコミットのメッセージに `Conflicts:` として一覧を残す
 5. 作業ツリーへの反映は「書く → インデックス更新 → 最後にブランチを進める」の順。snapshot の後に編集されたファイルがあれば中断する
@@ -145,6 +146,30 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 - `test/` は policy の単体テストと、ビルド済み `main.js` のテスト（`allow-scripts` を含まないこと、登録する拡張子）。DOM を使う部分は preview で確かめる
 - Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
+
+## pkm-drawio（Draw.io の図）
+
+`asset/*.drawio.svg`（Draw.io の編集可能 SVG。ルートの `<svg>` の `content` 属性に全ページの編集用 XML を持つ）を、ノートからコピー・編集し、`tmp/` への書き出しで埋め込むプラグイン（ADR-0064）。表示は Obsidian の標準の画像の表示のまま（`.svg` の拡張子を View に登録しない）。
+
+- 操作バーは `document.body` に置く 1 つの要素を画像に重ねる。Reading view・Live Preview の DOM（CodeMirror の widget を含む）を書き換えない。画像からファイルへは、埋め込みの `src` か `vault.getResourcePath()` の値で引く
+- 編集は Modal の iframe（`https://embed.diagrams.net/`、JSON protocol）。保存は save → その XML を指定して `export`（`xmlsvg`）→ 検査 → `vault.process()` で、編集を始めたときの中身と同じときだけ書く。状態は `src/core/protocol.ts` の `EditSession`（DOM なしでテストする）
+- **`allow-scripts` を付けた iframe は `src/obsidian/frame.ts` だけ**（security-scan が検査する）。`postMessage` の送り先は固定の origin。受け取るのは origin と source が合うものだけ
+- 共有用の SVG は、ルートの開始タグから `content` 属性だけを除いた文字列（`toSharingSvg`）。DOM を使わないので CLI でも同じ結果になる
+- パスの解決と base64 は pkm-html の `src/core/policy.ts` を相対パスで読む
+
+### コードの構成（`.kit/src/packages/pkm-drawio`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/svg.ts` | ルートの `<svg>` の読み取り、編集用 XML の取り出し、共有用の SVG、SVG の検査 | なし（DOM もなし） |
+| `src/core/document.ts` | md / html の図の参照を探し、data URI に置き換える。書き出したものの検査 | なし（DOM もなし） |
+| `src/core/protocol.ts` | embed の URL・メッセージの読み取り・保存の流れの状態 | なし（DOM もなし） |
+| `src/core/names.ts` / `encoding.ts` | 図と書き出しのファイル名、data URI | なし |
+| `src/obsidian/` | 編集の Modal と iframe、操作バー、コピー（PNG は Canvas）、tmp/ への書き出し、ダイアログ | あり（`frame.ts` と `toolbar.ts` は DOM と `setIcon` だけ） |
+| `cli/drawio.ts` | `.kit/bin/drawio.mjs`（`export` / `check` / `extract` / `strip`）。Node の API を使う | なし |
+| `preview/` | `pnpm --filter pkm-drawio preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バーの位置と描画した画面の検査、PNG を Chromium で確かめる。CI では動かない | なし |
+
+- 本物の Draw.io との往復と、Obsidian の中の操作バーの位置、クリップボードは、実機で確かめる（自動の検査ではできない）
 
 ## shared（プラグインの共通の処理）
 

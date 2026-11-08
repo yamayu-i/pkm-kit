@@ -10,6 +10,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
   - 先頭に `/` を付けない。空白などは `%20` にエンコードするか、ファイル名に空白を使わない
   - 見出しへのリンクは `[…](topics/foo.md#見出し)`
 - 画像・PDF などの添付は `asset/` 直下に置き、`![説明](asset/foo.png)` で参照する
+- 図は Draw.io の編集可能 SVG を `asset/<名前>.drawio.svg` に置き、`![説明](asset/<名前>.drawio.svg)` で参照する（描画と編集用 XML を 1 ファイルに持つ。[ADR-0064](../../.kit/src/docs/adr/0064-drawio-diagrams.md)）。中の XML だけを書き換えると描画と食い違うので、図を変えるのは Draw.io（pkm-drawio の編集）を通す。XML を読むときは `node .kit/bin/drawio.mjs extract <図>`
 - 改行は Markdown どおり（段落は空行で区切る。単独の改行は表示上つながる）
 - インデントはスペース 2 つ（タブを使わない）
 - メタデータは先頭の YAML frontmatter に書く（`title`, `tags`, `created`, `updated`, `sources` など）
@@ -41,6 +42,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
+- 外部に共有する md / html を `tmp/` に作るときは、最後に `node .kit/bin/drawio.mjs export <元のファイル>` を通す（図を、編集用 XML を除いた SVG の data URI にして埋め込み、`tmp/` に書く）。既に `tmp/` にあるものは `node .kit/bin/drawio.mjs check tmp/` で、図への参照が残っていないかを確かめる
 - `tmp/` の外のノートから `tmp/` へリンクしない（ほかの端末にはないので、リンク切れになる）。残したいもの・ほかの端末でも見たいものは `tmp/` の外に置く
 
 ## 共通 frontmatter
