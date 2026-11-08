@@ -40,7 +40,7 @@ ADR へのリンク。
 | [Routines](task-routines.md) | View |
 | [Board groups](task-board-groups.md) | View |
 | [Labels](task-labels.md) | View |
-| [issue をまとめて作成](task-capture.md) | コマンド |
+| [Capture issues](task-capture.md) | コマンド |
 | [Tasks サイドバー](task-sidebar.md) | View（左サイドバー） |
 | [記録中のステータスバー](task-status-bar.md) | ステータスバー（PC） |
 | [MCP と task-coach](task-mcp.md) | MCP・手順 |

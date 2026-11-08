@@ -1,7 +1,7 @@
 # PKM Updates
 
 - 種類: View
-- 開き方: リボンの「PKM Updates を開く」、コマンド「PKM Updates を開く」。[一覧ペイン](layout-panes.md) に開く
+- 開き方: リボンの「Open PKM Updates」、コマンド「Open PKM Updates」。[一覧ペイン](layout-panes.md) に開く
 - 場面: [朝の計画](../jobs/task-plan-day.md)、[端末間の同期](../jobs/sync-devices.md)、[週の振り返り](../jobs/task-review-week.md)
 
 ## 今の振る舞い

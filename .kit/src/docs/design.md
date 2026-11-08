@@ -143,6 +143,12 @@ packages/design/tokens.json（正本）
 - **必須**: 文字の最小は label-small（11px）
 - 時刻・日付・時間の数字には `font-variant-numeric: tabular-nums` を付けて桁をそろえる（推奨）
 
+### 文言の言語（[ADR-0076](adr/0076-ui-language.md)）
+
+- **必須**: 画面に常に出る短い文言は英語にする。View の名前、見出し、段階の名前、ボタン、メニュー、項目の名前、ツールチップ、`aria-label`、プレースホルダ、空のときの表示、画面の短い説明、コマンド名、リボン、ステータスバー
+- **必須**: 読ませる文は日本語にする。通知（Notice）、取り消しのトースト、確認のモーダルの文、エラーの説明（入力欄の検査の文を含む）、設定タブ。通知や確認のモーダルの中のボタンは英語
+- 利用者が書いたもの（本文、title、summary、label の名前）と、ファイルに書く内容（ボードの要約など）は対象外
+
 ## 6. 形・余白・大きさ
 
 - **必須**: 角丸は `--vt-radius-xs` / `--vt-radius-s` / `--vt-radius-m` / `--vt-radius-l` / `--vt-radius-xl` / `--vt-radius-full`（M3 の corner-extra-small〜full）。丸は `--vt-radius-full`

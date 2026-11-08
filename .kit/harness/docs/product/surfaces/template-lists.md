@@ -1,7 +1,7 @@
 # ノートの一覧
 
 - 種類: View（Daily notes、Notes、Sources）
-- 開き方: コマンド「Daily notes を開く」など。[一覧ペイン](layout-panes.md) に開く
+- 開き方: コマンド「Open Daily notes」など。[一覧ペイン](layout-panes.md) に開く
 - 場面: [前に書いたノートを探す](../jobs/note-find.md)、[wiki を育てる](../jobs/wiki-grow.md)
 
 ## 今の振る舞い

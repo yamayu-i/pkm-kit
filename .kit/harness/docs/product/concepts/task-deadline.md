@@ -10,7 +10,7 @@
 
 ## 操作
 
-issue 画面で編集する。Today の期限切れ・期限が近いの表で Change Deadline / Change Soft Deadline。
+issue 画面で編集する。Today の Overdue・Due soon の表で Change Deadline / Change Soft Deadline。
 
 ## 使い方の筋道
 

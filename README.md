@@ -4,7 +4,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
 
 - 同期は自作プラグイン **PKM Git**（モバイルでも動く git の pull / push）
-- タスク管理は **PKM Task**、リボンのボタン（並びとバッジ）は **PKM Ribbon**、一覧 View の前回からの変更を 1 ページで見るのは **PKM Updates**、テンプレートからのノート作成は **PKM Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- タスク管理は **PKM Task**、リボンのボタン（並びとバッジ）は **PKM Ribbon**、一覧 View の前回からの変更を 1 ページで見るのは **PKM Updates**、テンプレートからのノート作成は **PKM Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「PKM Template: Create new file from template」に `Cmd + N` 等を割り当て可能）
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 
@@ -65,15 +65,16 @@ git add -A && git commit -m "vault: セットアップ" && git push
 
 ### 各端末の PKM Git の設定（端末ごとに 1 回）
 
-1. 設定 → コミュニティプラグイン → 制限モードをオフ（ストアからは何も入れない）
-2. 「PKM Git」を有効にする（ほかの自作プラグインは、セットアップ済みの Vault なら有効になっている）
-3. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
-4. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
+1. Settings → General → Language を **English** にし、Obsidian を開き直す。自作プラグインの画面は英語にそろえている（ADR-0076）。表示言語は端末ごとの設定で、その端末のほかの Vault も英語になる
+2. Settings → Community plugins → Restricted mode をオフ（ストアからは何も入れない）
+3. 「PKM Git」を有効にする（ほかの自作プラグインは、セットアップ済みの Vault なら有効になっている）
+4. プラグイン設定で、端末名・コミットの名前・メールアドレスを入れる
+5. アクセストークンを登録する（GitHub の fine-grained PAT。自分の Vault のリポジトリだけに限定し、権限は Contents: Read and write のみ）。トークンは Obsidian のキーチェーン（SecretStorage）に保存され、`data.json` には入らない。トークンは「トークンを送るホスト」（既定は `github.com`）の `https://` にしか送られない。PC で clone したリポジトリも origin を `https://` にしておくこと（SSH は非対応）
 
 ### 5. 使い始める
 
 - この Vault だけの目的・規約は `.claude/local/CLAUDE.md` に書く。テンプレートを変えたいときは `template/` に置く（上流の既定を上書きする）
-- Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` などを割り当てると便利
+- Obsidian の Hotkeys で「PKM Template: Create new file from template」に `Cmd + N` などを割り当てると便利
 - Claude Code で Vault を開き、「この記事を取り込んで: <URL>」などと頼む（下の「LLM wiki」）
 
 自分の Vault では、上流のもの（`.kit/owned-paths.json` に当たるファイル）を変えない（`verify.mjs` が検査する）。テンプレートは `template/` に置けば、上流の既定を上書きできる。

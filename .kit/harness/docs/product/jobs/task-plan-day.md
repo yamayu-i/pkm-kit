@@ -9,8 +9,8 @@
 
 ## 今の流れ
 
-1. リボンの「今日のタスクを開く」（[リボン](../surfaces/ribbon.md)）か、左サイドバーの Today（[Tasks サイドバー](../surfaces/task-sidebar.md)）を押す。Today は一覧ペインに開く（[一覧ペインとノートペイン](../surfaces/layout-panes.md)）
-2. [Today](../surfaces/task-today.md) の段階を順に片付ける: 期限切れ → 前回のボード → 期限が近い → ボード。今日が Do Date の issue と今日の routine は、自動でボードに載っている
+1. リボンの「Open Today」（[リボン](../surfaces/ribbon.md)）か、左サイドバーの Today（[Tasks サイドバー](../surfaces/task-sidebar.md)）を押す。Today は一覧ペインに開く（[一覧ペインとノートペイン](../surfaces/layout-panes.md)）
+2. [Today](../surfaces/task-today.md) の段階を順に片付ける: Overdue → Previous boards → Due soon → Board。今日が Do Date の issue と今日の routine は、自動でボードに載っている
 3. [task board](../surfaces/task-board.md) で、カードをグループ（午前・午後など）に置く。前に置いたグループに初めから出る
 4. AI と相談するときは、task-coach が MCP で状況を読み、負荷（見積もりの合計と使える時間）を見て、載せすぎを減らす（[MCP と task-coach](../surfaces/task-mcp.md)）
 
@@ -26,4 +26,4 @@
 
 ## 知られている困りごと
 
-- [#36](https://github.com/yamayu-i/pkm-kit/issues/36) 1 つの画面の中で、英語と日本語の文言が混ざっている
+まだない。
