@@ -59,11 +59,11 @@
 | [0064](0064-drawio-diagrams.md) | 承認 | Draw.io の図を、編集用 XML を内包した SVG（asset/*.drawio.svg）として持ち、pkm-drawio で表示・コピー・編集・書き出しする |
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
 | [0067](0067-inline-template.md) | 承認 | 行頭か空白の後の @ で、インラインテンプレートを行の中に挿入する |
-| [0070](0070-pkm-updates.md) | 承認 | 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる |
+| [0070](0070-pkm-updates.md) | 承認（一部置換: [ADR-0089](0089-git-auto-sync.md)。Git の pull と push のボタンを「Git: Sync」の 1 つにした） | 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる |
 | [0072](0072-view-selector.md) | 承認 | Cmd+K で一覧の View を探して開くダイアログを、新しいプラグイン pkm-view-selector にする |
 | [0075](0075-running-timer-status-bar.md) | 承認 | 記録中のタイマーを、PC のステータスバーに出す |
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
 | [0077](0077-task-header-dom-mount.md) | 承認 | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
-| [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
 | [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
+| [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
 <!-- adr-index:end -->

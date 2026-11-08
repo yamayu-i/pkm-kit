@@ -88,4 +88,4 @@ ADR へのリンク。
 | label | Labels、label | `issue/labels.json`、`label` | label |
 | デイリーノート | Daily notes、Open today's daily note | `daily/YYYY/MM/YYYY-MM-DD.md`（`type: daily`） | デイリーノート、DailyNote |
 | テンプレート | テンプレートから新規ファイルを作成 | `.kit/templates/`、`template/` | テンプレート |
-| 同期 | Git: pull、Git: push | `vault: snapshot (<端末名>)` のコミット | 同期、snapshot |
+| 同期 | Git: Sync、Sync now、Keep this version、ステータスバーの Git: Synced / Not synced | `vault: snapshot (<端末名>)`・`vault: keep <名前> (<端末名>)` のコミット、`.git/pkm-git/log.jsonl`（同期の記録） | 同期、snapshot、共有済み、共有待ち |

@@ -13,8 +13,7 @@
 | 2 | Open Today（`sun`） | [Today](task-today.md) を開く |
 | 3 | Open PKM Updates（`bell`） | [PKM Updates](updates.md) を開く。前回の確認から変わったノートの数のバッジが付く（100 件以上は 99+、0 件は出ない） |
 | 4 | Capture issues（`list-plus`） | [Capture issues](task-capture.md) |
-| 5 | Git: pull（`arrow-down-to-line`） | [PKM Git](git-sync.md) |
-| 6 | Git: push（`arrow-up-from-line`） | [PKM Git](git-sync.md) |
+| 5 | Git: Sync（`refresh-cw`） | [PKM Git](git-sync.md) の同期（取り込んでから送る） |
 
 - 並びはプラグインの読み込み順によらず、いつもこの順
 - 呼ぶ先のプラグインが無効なら、押したときにそう知らせる。バッジも出ない
@@ -27,4 +26,4 @@
 
 ## 根拠
 
-[ADR-0029](../../../../src/docs/adr/0029-ribbon-plugin.md)、[ADR-0023](../../../../src/docs/adr/0023-template-id-and-daily.md)、[ADR-0070](../../../../src/docs/adr/0070-pkm-updates.md)
+[ADR-0029](../../../../src/docs/adr/0029-ribbon-plugin.md)、[ADR-0023](../../../../src/docs/adr/0023-template-id-and-daily.md)、[ADR-0070](../../../../src/docs/adr/0070-pkm-updates.md)、[ADR-0089](../../../../src/docs/adr/0089-git-auto-sync.md)
