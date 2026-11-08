@@ -64,5 +64,5 @@
 | [0075](0075-running-timer-status-bar.md) | 承認 | 記録中のタイマーを、PC のステータスバーに出す |
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
 | [0077](0077-task-header-dom-mount.md) | 承認 | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
-| [0089](0089-git-auto-sync.md) | 提案 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
+| [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
 <!-- adr-index:end -->
