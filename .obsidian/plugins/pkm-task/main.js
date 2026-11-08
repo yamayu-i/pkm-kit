@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // ../shared/src/legacy-data.ts
 function legacyDataPath(configDir, legacyId) {
@@ -3339,8 +3339,50 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
   }
 };
 
-// src/obsidian/status-undo.ts
+// src/obsidian/status-bar.ts
 var import_obsidian10 = require("obsidian");
+
+// src/core/running.ts
+var SUMMARY_MAX = 24;
+function runningStatus(index, now) {
+  const elapsedByTask = /* @__PURE__ */ new Map();
+  for (const l3 of index.running()) {
+    const elapsed = Math.max(0, now - l3.fromMs);
+    elapsedByTask.set(l3.taskId, Math.max(elapsedByTask.get(l3.taskId) ?? 0, elapsed));
+  }
+  if (elapsedByTask.size === 0) return null;
+  const rows = [...elapsedByTask.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([taskId, elapsed]) => {
+    const task = index.issues.get(taskId) ?? index.routines.get(taskId);
+    return { taskId, summary: task?.summary ?? "", path: task?.path ?? null, time: formatMinutes(Math.floor(elapsed / 6e4)) };
+  });
+  const tooltip = rows.map((r4) => [r4.taskId, r4.summary, r4.time].filter(Boolean).join(" ")).join("\n");
+  if (rows.length > 1) return { text: `\u25CF ${rows.length} running ${rows[0].time}`, tooltip, path: null };
+  const r3 = rows[0];
+  const summary = r3.summary.length > SUMMARY_MAX ? `${r3.summary.slice(0, SUMMARY_MAX)}\u2026` : r3.summary;
+  return { text: ["\u25CF", r3.taskId, summary, r3.time].filter(Boolean).join(" "), tooltip, path: r3.path };
+}
+
+// src/obsidian/status-bar.ts
+var REFRESH_MS = 3e4;
+function registerRunningStatusBar(host, store, open) {
+  const el = host.addStatusBarItem();
+  el.addClass("mod-clickable", "pkm-task-running-status");
+  let path = null;
+  const render = () => {
+    const s3 = runningStatus(store.index, Date.now());
+    path = s3?.path ?? null;
+    el.toggle(s3 !== null);
+    el.setText(s3?.text ?? "");
+    (0, import_obsidian10.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+  };
+  el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
+  host.register(store.subscribe(render));
+  host.registerInterval(window.setInterval(render, REFRESH_MS));
+  render();
+}
+
+// src/obsidian/status-undo.ts
+var import_obsidian11 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -3422,7 +3464,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian10.setIcon)(icon, "chevron-right");
+      (0, import_obsidian11.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -3435,7 +3477,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -3580,15 +3622,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian11.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian11.TFile) this.touch(file);
+        if (file instanceof import_obsidian12.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian11.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian12.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3649,9 +3691,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian12.ItemView {
+  class PreactView extends import_obsidian13.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -3673,7 +3715,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -4046,7 +4088,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -4065,7 +4107,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian13.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian14.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
@@ -4079,7 +4121,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -4138,7 +4180,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian13.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian14.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -4164,14 +4206,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian13.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -4189,7 +4231,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian13.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian14.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -4203,7 +4245,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian13.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -4349,7 +4391,7 @@ function stopTimer(ctx, ids) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -4402,7 +4444,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `${issue.id} \u3092\u9078\u629E` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian14.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -4423,7 +4465,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
@@ -4497,7 +4539,7 @@ function TaskCard(props) {
   const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian16.Menu();
     for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -4510,7 +4552,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian15.Menu();
+    const m3 = new import_obsidian16.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 \u672A\u5206\u985E" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -4529,7 +4571,7 @@ function TaskCard(props) {
       onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -5205,7 +5247,7 @@ function LabelManagerView(props) {
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -5296,7 +5338,7 @@ function MemberListView(props) {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
@@ -5310,7 +5352,7 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -5393,7 +5435,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian17.Menu();
+    const m3 = new import_obsidian18.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -5484,7 +5526,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -5630,7 +5672,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian19.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("\u306A\u3057").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -5773,7 +5815,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -5845,7 +5887,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "routine \u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093\u3002\u6BCE\u65E5\u30FB\u6BCE\u9031\u306E\u3088\u3046\u306B\u304F\u308A\u8FD4\u3059\u30BF\u30B9\u30AF\u3092\u767B\u9332\u3067\u304D\u307E\u3059\uFF08task board \u306B\u3060\u3051\u51FA\u307E\u3059\uFF09" }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "\uFF08summary \u306A\u3057\uFF09" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "repeat \u304C\u8AAD\u3081\u307E\u305B\u3093",
@@ -5860,7 +5902,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -5886,7 +5928,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -5897,7 +5939,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -5935,7 +5977,7 @@ function SidebarView(props) {
         const summary = issue?.summary || routine?.summary || taskId;
         const path = issue?.path ?? routine?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -6039,7 +6081,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian22.Plugin {
+var PkmTaskPlugin = class extends import_obsidian23.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -6050,7 +6092,7 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian22.Notice(`${message}${detail}`);
+      new import_obsidian23.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -6068,9 +6110,9 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian22.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian23.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian22.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian23.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -6089,6 +6131,7 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
+    registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));

@@ -5,6 +5,7 @@ import { issueHeaderExtension } from "./header/extension";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
+import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { StatusUndo } from "./obsidian/status-undo";
 import { TaskStore } from "./obsidian/store";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
@@ -92,6 +93,8 @@ export default class PkmTaskPlugin extends Plugin {
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
 		// リボンのボタン（今日のタスクを開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）
+		registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));
