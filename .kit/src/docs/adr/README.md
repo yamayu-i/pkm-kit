@@ -58,4 +58,5 @@
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
 | [0064](0064-drawio-diagrams.md) | 承認 | Draw.io の図を、編集用 XML を内包した SVG（asset/*.drawio.svg）として持ち、pkm-drawio で表示・コピー・編集・書き出しする |
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
+| [0072](0072-view-switcher.md) | 提案 | Cmd+K で一覧の View を探して開くダイアログを pkm-ribbon に置く |
 <!-- adr-index:end -->
