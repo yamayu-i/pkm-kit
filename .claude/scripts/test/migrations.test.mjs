@@ -79,7 +79,9 @@ test("0001: 切り出す前からの Vault は、上流と同じ写しと設定�
 test("0001: 変えたテンプレートと子だけのテンプレートは残し、設定は上流と違う項目だけにする", async () => {
 	const root = childFrom("customized");
 	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
-	await runMigrations(root);
+	// 0007 が template/config.json を消すので、0001 だけを実行して途中の形を確かめる
+	const { migrate } = await import(pathToFileURL(join(here, ".kit/migrations/0001-template-overrides/migrate.mjs")).href);
+	migrate(root);
 	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
 	assert.equal(readFileSync(join(root, "template/file/note.md"), "utf8"), note);
 	const { templates } = JSON.parse(readFileSync(join(root, "template/config.json"), "utf8"));
@@ -300,4 +302,44 @@ test("0006: 追跡中の tmp/ のファイルは変えずに、check が一覧�
 	assert.deepEqual(check(root), []);
 	assert.deepEqual(migrate(root), []);
 	assert.ok(existsSync(join(root, "tmp/a.md")));
+});
+
+const UNTIL_0006 = ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline", "0004-member-nickname-alias", "0005-html-viewer", "0006-tmp-untracked"];
+
+test("0007: template/config.json を消し、捨てる値を知らせる。テンプレートの中身は残す", async () => {
+	const root = childFrom("customized");
+	const note = readFileSync(join(root, "template/file/note.md"), "utf8");
+	const { done, failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.ok(!existsSync(join(root, "template/config.json")));
+	assert.deepEqual(readdirSync(join(root, "template/file")).sort(), ["mine.md", "note.md"]);
+	assert.equal(readFileSync(join(root, "template/file/note.md"), "utf8"), note);
+	const changes = done.find((d) => d.name === "0007-fixed-template-config").changes.join("\n");
+	assert.match(changes, /template\/config\.json: 消す/);
+	assert.match(changes, /note\.md: folder = "memo"/);
+	assert.match(changes, /mine\.md: .*folder = "mine"/);
+});
+
+test("0007: template/ に config.json しかなければ、template/ ごと消す", async () => {
+	const root = childFrom("fresh");
+	write(root, { "template/config.json": JSON.stringify({ templates: [{ file: "note.md", folder: "memo" }] }) });
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: UNTIL_0006 }) });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.ok(!existsSync(join(root, "template")));
+});
+
+test("0007: 読めない template/config.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	// 0001 も同じファイルを読むので、0006 までを適用済みにして 0007 だけを実行する
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, {
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: UNTIL_0006 }),
+		"template/config.json": "{壊れている",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0007-fixed-template-config");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, "template/config.json"), "utf8"), "{壊れている");
 });
