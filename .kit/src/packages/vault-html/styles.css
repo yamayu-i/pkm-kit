@@ -1,0 +1,19 @@
+/* vault-html の View（ADR-0035）。HTML は iframe の中に出し、ここでは iframe を View いっぱいに広げるだけ */
+.vault-html-view {
+	padding: 0;
+	overflow: hidden;
+}
+
+.vault-html-frame {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: none;
+	background: var(--vt-surface);
+}
+
+/* キーボードで iframe に入ったとき（中の HTML を読む・スクロールする）の目印。内側に出す（View の端で切れないように） */
+.vault-html-frame:focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: -2px;
+}

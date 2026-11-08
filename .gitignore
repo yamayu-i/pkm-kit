@@ -8,6 +8,7 @@
 .obsidian/plugins/vault-task/data.json
 .obsidian/plugins/vault-template/data.json
 .obsidian/plugins/vault-ribbon/data.json
+.obsidian/plugins/vault-html/data.json
 
 # 開発
 node_modules/

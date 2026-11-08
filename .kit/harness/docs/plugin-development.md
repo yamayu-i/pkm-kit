@@ -122,6 +122,30 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - vault-template と vault-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、vault-ribbon も変える
 - `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
 
+## vault-html（HTML の読み取り専用の表示）
+
+Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0035）。ほかのプラグインには依存しない。
+
+- 4 重の守り: iframe の `sandbox="allow-same-origin"`（`allow-scripts` を付けない）、`<head>` の最初の CSP（`default-src 'none'; img-src data:` など）、読み込む前の除去（`<script>`、`on*` 属性、`<meta http-equiv>`、`<link>`、`<iframe>` など、`javascript:`）、リンクのクリックを親で扱う
+- **`allow-scripts` を足さない**。`allow-same-origin` と一緒になると、iframe の中のスクリプトが親（Obsidian）に触れる
+- `srcdoc` への代入は `src/ui/frame.ts` だけ（security-scan が検査する）
+- Vault の中の画像は `vault.readBinary` で読み、`data:` に置き換える。CSP を緩めない
+- テーマ: `tokens.css` を文字列として束ね（esbuild の `loader`）、iframe に差し込む。`css-change` で `<body>` のクラスと `color-scheme` を付け直す
+- 外部に共有する HTML（`tmp/` への書き出し）は Issue #44。そのため、除去と画像の置き換えは Obsidian に依存しない `src/core/` に置く
+
+### コードの構成（`.kit/src/packages/vault-html`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/policy.ts` | CSP、画像の拡張子と上限、パスの解決、リンクの分類 | なし（DOM もなし） |
+| `src/core/sanitize.ts` | 除去、画像の置き換え、CSP・トークン・テーマの差し込み、`srcdoc` の文字列 | なし（`DOMParser` を使う） |
+| `src/ui/frame.ts` | iframe を作り、リンクのクリックとテーマの付け直しを扱う | なし |
+| `src/obsidian/html-view.ts`・`src/main.ts` | View、拡張子の登録、Vault からの読み込み、リンクを開く | あり |
+| `preview/` | `pnpm --filter vault-html preview:ui`。悪い HTML でスクリプトが動かないこと・外部への要求がないこと、リンク、画像、見本の描画と検査を Chromium で確かめる。CI では動かない | なし |
+
+- `test/` は policy の単体テストと、ビルド済み `main.js` のテスト（`allow-scripts` を含まないこと、登録する拡張子）。DOM を使う部分は preview で確かめる
+- Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
+
 ## shared（プラグインの共通の処理）
 
 `.kit/src/packages/shared`。プラグインではなく、複数のプラグインが同じ規則で動く必要がある処理を置く。各プラグインが `src/` を相対パスで読み、束ねる。Obsidian の値は import せず、型だけを使う（テストは偽の workspace で書く）。

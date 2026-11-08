@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv="refresh" content="0;url=https://example.com/refresh">
+<meta http-equiv="Content-Security-Policy" content="default-src *">
+<base href="https://example.com/base/">
+<link rel="stylesheet" href="https://example.com/link.css">
+<link rel="preload" href="https://example.com/preload.js" as="script">
+<link rel="prefetch" href="https://example.com/prefetch">
+<link rel="dns-prefetch" href="https://dns.example.com">
+<style>
+@import url("https://example.com/import.css");
+@font-face { font-family: remote; src: url("https://example.com/font.woff2"); }
+body { background: url("https://example.com/bg.png"); font-family: remote; }
+</style>
+<script>parent.__pwned = "script";</script>
+<script src="https://example.com/script.js"></script>
+</head>
+<body onload="parent.__pwned = 'onload'">
+<h1>悪い HTML</h1>
+<img src="https://example.com/img.png" onerror="parent.__pwned = 'onerror'">
+<img src="x" onerror="parent.__pwned = 'onerror-local'">
+<img srcset="https://example.com/srcset.png 1x">
+<picture><source srcset="https://example.com/source.png"><img src="https://example.com/picture.png"></picture>
+<video poster="https://example.com/poster.png" src="https://example.com/video.mp4"></video>
+<audio src="https://example.com/audio.mp3" autoplay></audio>
+<input type="image" src="https://example.com/input.png">
+<iframe src="https://example.com/iframe"></iframe>
+<iframe srcdoc="<script>parent.parent.__pwned = 'srcdoc'</script>"></iframe>
+<object data="https://example.com/object"></object>
+<embed src="https://example.com/embed">
+<svg width="10" height="10"><image href="https://example.com/svg.png" width="10" height="10"/><script>parent.__pwned = "svg-script";</script></svg>
+<svg width="10" height="10"><a><animate attributeName="href" to="javascript:parent.__pwned='animate'"/><rect width="10" height="10"/></a></svg>
+<div style="background-image: url('https://example.com/inline.png')">inline</div>
+<form action="https://example.com/form" method="post"><input name="q" value="x"><button id="submit">送る</button></form>
+<a id="js" href="javascript:parent.__pwned = 'href'">javascript</a>
+<a id="ext" href="https://example.com/link">外部</a>
+<details open ontoggle="parent.__pwned = 'toggle'"><summary>x</summary></details>
+<noscript><img src="https://example.com/noscript.png"></noscript>
+<p style="font-family: remote">フォント</p>
+</body>
+</html>

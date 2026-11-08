@@ -11,13 +11,14 @@ export const VAULT_ROOT = at("../../../../../");
 export const OUTPUTS = {
 	pluginCss: at("../../vault-task/tokens.css"),
 	templatePluginCss: at("../../vault-template/tokens.css"),
+	htmlPluginCss: at("../../vault-html/tokens.css"),
 	obsidianSnippet: at("../../../../../.obsidian/snippets/vault-theme.css"),
 	doc: at("../../../docs/design-tokens.md"),
 	ts: at("../generated/tokens.ts"),
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../vault-task/styles.css"), at("../../vault-template/styles.css")];
+export const PLUGIN_CSS = [at("../../vault-task/styles.css"), at("../../vault-template/styles.css"), at("../../vault-html/styles.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 /** 子の Obsidian の設定に必要なキーと値（ADR-0009）。ここの "appearance.json" をデザインルールと照らす */

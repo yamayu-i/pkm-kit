@@ -166,7 +166,8 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
 	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon"]);
+	// 0004 が後ろに vault-html を足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["vault-git", "vault-task", "vault-template", "vault-ribbon", "vault-html"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
 	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
@@ -187,6 +188,30 @@ test("0002: 読めない core-plugins.json は変えずに、check が失敗し�
 	assert.equal(failed?.name, "0002-ribbon-and-core-daily-notes");
 	assert.match(failed.problems.join(), /JSON として読めない/);
 	assert.equal(readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8"), "{壊れている");
+});
+
+test("0004: community-plugins.json に vault-html を足す。ほかの要素と順は残す", async () => {
+	const root = childFrom("customized");
+	const before = readJsonFile(root, ".obsidian/community-plugins.json");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	// 0002 が vault-ribbon を、0004 が vault-html を後ろに足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before, "vault-ribbon", "vault-html"]);
+	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
+});
+
+test("0004: 読めない community-plugins.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("fresh");
+	// 0002 も同じファイルを読むので、0003 までを適用済みにして 0004 だけを実行する
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, {
+		".kit-local/upstream.json": JSON.stringify({ ...record, migrations: ["0001-template-overrides", "0002-ribbon-and-core-daily-notes", "0003-soft-deadline"] }),
+		".obsidian/community-plugins.json": "[壊れている",
+	});
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0004-html-viewer");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8"), "[壊れている");
 });
 
 test("0003: issue と template の frontmatter の mid_due を soft_deadline にする。値・本文・ほかの issue は変えない", async () => {

@@ -81,17 +81,21 @@ check("危険な API を使っていない", () => {
 		[/new\s+Function\s*\(/, "new Function"],
 		[/\.(innerHTML|outerHTML)\s*=/, "innerHTML/outerHTML への代入"],
 		[/insertAdjacentHTML|document\.write/, "HTML 文字列の挿入"],
+		[/\.srcdoc\s*=|setAttribute\(\s*["']srcdoc["']/, "srcdoc への HTML 文字列の挿入"],
 		[/child_process|require\(\s*["'](fs|net|http|https)["']\s*\)|from\s+["']node:/, "Node API の直接利用（モバイルで動かず、権限も広い）"],
 		[/(?<![.\w])(?<!async )fetch\s*\(|XMLHttpRequest|WebSocket/, "requestUrl 以外の通信"],
 		[/localStorage|sessionStorage/, "Web Storage（秘密情報は SecretStorage に置く）"],
 		[/console\.(log|info|debug|warn|error)\([^)]*(token|password|secret)/i, "認証情報をログに出している可能性"],
 	];
+	// ADR-0035: srcdoc に入れてよいのは、sandbox と CSP を付ける vault-html の 1 ファイルだけ
+	const allowed = { "srcdoc への HTML 文字列の挿入": [".kit/src/packages/vault-html/src/ui/frame.ts"] };
 	const problems = [];
 	for (const pkg of packages) {
 		for (const file of walk(join(pkg, "src"))) {
 			const lines = readFileSync(file, "utf8").split("\n");
 			lines.forEach((line, i) => {
 				for (const [re, label] of rules) {
+					if (allowed[label]?.includes(relative(repo, file))) continue;
 					if (re.test(line)) problems.push(`${relative(repo, file)}:${i + 1}: ${label}`);
 				}
 			});
@@ -138,6 +142,8 @@ const plugins = [
 	},
 	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
 	{ id: "vault-ribbon", outdirEnv: "VAULT_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0035: HTML を sandbox の iframe に出す
+	{ id: "vault-html", outdirEnv: "VAULT_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

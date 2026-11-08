@@ -1,6 +1,6 @@
 # ADR-0035: Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-08
 
 ## 背景
@@ -23,7 +23,7 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 
 1. **`sandbox="allow-same-origin"`**（`allow-scripts` を付けない）: iframe の中のスクリプトは動かない（`<script>`、`onerror` などの属性、`javascript:` の URL）。フォームの送信、ポップアップ、親や上位の画面の遷移もできない。`allow-same-origin` は、親（プラグイン）からリンクのクリックを受け取るためだけに付ける。`allow-scripts` と一緒に付けることはしない
 2. **CSP を先頭に差し込む**: `<head>` の最初に `<meta http-equiv="Content-Security-Policy">` を入れる。`default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; form-action 'none'`。外部の画像・CSS・フォント・`<iframe>`・`<object>` などは読み込まない。CSS の `@import` と `url(https://…)` も止まる。`<meta>` の CSP は iOS（WKWebView）でも効く（`iframe` の `csp` 属性は Chromium にしかないので使わない）
-3. **読み込む前に取り除く**: `DOMParser` で解析し、`<script>`、`<noscript>`、`<base>`、`<meta http-equiv>`（`refresh` と、元の HTML の CSP）、`<iframe>` / `<frame>` / `<object>` / `<embed>` / `<portal>`、`on*` 属性、`javascript:` / `vbscript:` の URL を消す。その上で 2 の CSP を差し込み、文字列に戻して `srcdoc` に入れる。sandbox と CSP があれば動かないものだが、念のため消す
+3. **読み込む前に取り除く**: `DOMParser` で解析し、`<script>`、`<noscript>`、`<base>`、`<meta http-equiv>`（`refresh` と、元の HTML の CSP）、`<link>`（外部の CSS・先読み）、`<iframe>` / `<frame>` / `<object>` / `<embed>` / `<portal>`、`on*` 属性、`javascript:` / `vbscript:` の URL（SVG のアニメーションの `to` / `values` なども）を消す。その上で 2 の CSP を差し込み、文字列に戻して `srcdoc` に入れる。sandbox と CSP があれば動かないものだが、念のため消す
 4. **リンクは親が扱う**: iframe の中のクリックを親が受け取り、既定の動き（iframe の中での遷移）を止める
    - Vault の中のファイル（相対パス、または Vault ルートからのパス。`.md` も `.html` も）: `workspace.openLinkText` で Obsidian で開く（ADR-0033 の右のノートペイン）
    - `https:` / `http:` / `mailto:`: `window.open` で OS の既定のブラウザ（メール）で開く。開く前に確かめない（Markdown の外部リンクと同じ）
@@ -56,8 +56,8 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 
 ### 検査
 
-- `test/` で、組み立てた `srcdoc` の文字列を検査する（消すべきものが消え、CSP が `<head>` の最初にある）
-- `preview/` で、Playwright の Chromium に View を描画し、悪い HTML（`<script>`、`onerror`、外部の `<img>` / `<link>` / `@import` / フォント、`<meta refresh>`、`<form>`、`javascript:` のリンク）を開いて、スクリプトの副作用がないこと、外部への要求が 1 つも出ないこと（`page.on("request")`）を確かめる。Vault の中の画像が出ること、Vault の外を指す画像・上限を超える画像が出ないことも確かめる。ライト / ダーク × 広い / 狭いのスクリーンショットと、描画した画面の検査（ADR-0016）も行う
+- `test/`（`pnpm check`）で、パスの解決・リンクの分類などの DOM を使わない規則と、ビルド済みの `main.js`（`allow-scripts` を含まない、登録する拡張子）を検査する
+- `preview/` で、Playwright の Chromium に View を描画し、組み立てた `srcdoc`（消すべきものが消え、CSP が `<head>` の最初にある）を確かめ、悪い HTML（`<script>`、`onerror`、外部の `<img>` / `<link>` / `@import` / フォント、`<meta refresh>`、`<form>`、`javascript:` のリンク）を開いて、スクリプトの副作用がないこと、外部への要求が 1 つも出ないこと（`page.on("request")`）を確かめる。Vault の中の画像が出ること、Vault の外を指す画像・上限を超える画像が出ないことも確かめる。ライト / ダーク × 広い / 狭いのスクリーンショットと、描画した画面の検査（ADR-0016）も行う
 - security-scan: `srcdoc` への代入は HTML 文字列の挿入なので、規則に足す。許可するのは vault-html の表示を組み立てる 1 ファイルだけにする
 
 ## 理由

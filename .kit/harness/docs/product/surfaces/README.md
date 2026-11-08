@@ -52,6 +52,12 @@ ADR へのリンク。
 | [ノートの一覧](template-lists.md) | View |
 | [ノートのヘッダー](template-header.md) | 画面 |
 
+### HTML（vault-html）
+
+| 面 | 種類 |
+|---|---|
+| [HTML の表示](html-view.md) | View |
+
 ### 全体
 
 | 面 | 種類 |
