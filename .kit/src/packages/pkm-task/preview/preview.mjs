@@ -45,7 +45,8 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 </style>
 <link rel="stylesheet" href="${OUTPUTS.obsidianSnippet}">
 <link rel="stylesheet" href="../../tokens.css">
-<link rel="stylesheet" href="../../styles.css"></head><body class="theme-${name}"><script src="fixture.js"></script></body></html>`,
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="../../../shared/src/month-calendar.css"></head><body class="theme-${name}"><script src="fixture.js"></script></body></html>`,
 	);
 }
 

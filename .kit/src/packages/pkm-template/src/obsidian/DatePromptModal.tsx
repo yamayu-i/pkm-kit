@@ -1,52 +1,11 @@
 import { Modal, Platform, type App } from "obsidian";
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { localToday, monthGridDays, weekdayOf, WEEKDAY_NAMES, type LocalDate } from "../../../shared/src/dates.ts";
+import { localToday } from "../../../shared/src/dates.ts";
+import { MonthCalendar } from "../../../shared/src/month-calendar.tsx";
 import { formatPromptDate, parseDatePromptInput } from "../core/date-prompt";
 
-/** 月のカレンダー（pkm-task の日付の入力と同じ形。ADR-0017・ADR-0065）。日を押すとその日で決める */
-function MonthCalendar(props: { month: string; onMonth: (month: string) => void; selected: LocalDate | null; onPick: (date: LocalDate) => void }) {
-	const today = localToday();
-	const { month } = props;
-	const shift = (n: number) => {
-		const [y, m] = month.split("-").map(Number) as [number, number];
-		props.onMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
-	};
-	return (
-		<div class="vt-tpl-calendar">
-			<div class="vt-tpl-calendar-nav">
-				<button type="button" aria-label="Previous month" onClick={() => shift(-1)}>
-					‹
-				</button>
-				<span>{month.replace("-", " / ")}</span>
-				<button type="button" aria-label="Next month" onClick={() => shift(1)}>
-					›
-				</button>
-			</div>
-			<div class="vt-tpl-calendar-grid">
-				{WEEKDAY_NAMES.map((w) => (
-					<span class="vt-tpl-weekday">{w}</span>
-				))}
-				{monthGridDays(month).map((d) => {
-					const w = weekdayOf(d);
-					const cls = ["vt-tpl-day"];
-					if (w === 0 || w === 6) cls.push("is-weekend");
-					if (!d.startsWith(month)) cls.push("is-dimmed");
-					if (d === today) cls.push("is-today");
-					if (d === props.selected) cls.push("is-selected");
-					const label = d === today ? `${d} (today)` : d;
-					return (
-						<button type="button" class={cls.join(" ")} aria-pressed={d === props.selected} aria-label={label} title={label} onClick={() => props.onPick(d)}>
-							{Number(d.slice(8, 10))}
-						</button>
-					);
-				})}
-			</div>
-		</div>
-	);
-}
-
-/** 日付を 1 つ選ぶ（ADR-0065）。短い書き方の入力欄（`-d` で曜日付き）、曜日のチェックボックス、カレンダー */
+/** 日付を 1 つ選ぶ（ADR-0065）。カレンダーは pkm-task と共有（ADR-0078）。短い書き方の入力欄（`-d` で曜日付き）、曜日のチェックボックス、カレンダー */
 function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 	const today = localToday();
 	const [text, setText] = useState("");
@@ -73,7 +32,7 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 					type="text"
 					class="vt-tpl-input"
 					aria-label="Date"
-					placeholder="e.g. 15 / 1224 / +3 / mon / +2w / +2 -d"
+					placeholder="e.g. 15 / 1224 / +1d / mon / +2w / +2 -d"
 					value={text}
 					onInput={(e) => {
 						const value = e.currentTarget.value;
@@ -93,7 +52,8 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 			<MonthCalendar
 				month={month}
 				onMonth={setMonth}
-				selected={parsed?.date ?? null}
+				today={today}
+				isSelected={(d) => d === parsed?.date}
 				onPick={(d) => props.onSubmit(formatPromptDate(d, weekday))}
 			/>
 			<div class="vt-tpl-actions">

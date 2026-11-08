@@ -47,6 +47,7 @@ export function parseDateInput(input: string, today: LocalDate): LocalDate | nul
 	const unit = m[3]!;
 	const n = digits === "" ? 1 : Number(digits);
 	if (unit === "") return digits === "" ? null : addDays(today, sign * n);
+	if (unit === "d") return addDays(today, sign * n);
 	if (unit === "w") return addDays(today, sign * n * 7);
 	if (unit === "m") return addMonths(today, sign * n);
 	const weekday = (WEEKDAY_NAMES as readonly string[]).indexOf(unit);
