@@ -803,6 +803,65 @@ function monthGridDays(month) {
   return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
 }
 
+// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
+var f3 = 0;
+function u3(e3, t3, n2, o3, i3, u4) {
+  t3 || (t3 = {});
+  var a3, c3, p3 = t3;
+  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
+  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
+  return l.vnode && l.vnode(l3), l3;
+}
+
+// ../shared/src/month-calendar.tsx
+var MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+var WEEKDAY_INITIALS = WEEKDAY_NAMES.map((w3) => w3.charAt(0).toUpperCase());
+function formatMonthTitle(month) {
+  const [y3, m3] = month.split("-").map(Number);
+  return `${MONTH_NAMES[m3 - 1] ?? ""} ${y3}`;
+}
+function shiftMonth(month, n2) {
+  const [y3, m3] = month.split("-").map(Number);
+  return new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7);
+}
+function monthWeeks(month) {
+  const days = monthGridDays(month).map((d3) => d3.startsWith(month) ? d3 : null);
+  const weeks = [];
+  for (let i3 = 0; i3 < days.length; i3 += 7) {
+    const week = days.slice(i3, i3 + 7);
+    if (week.some((d3) => d3 !== null)) weeks.push(week);
+  }
+  return weeks;
+}
+function Chevron(props) {
+  return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "20", height: "20", "aria-hidden": "true", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", children: /* @__PURE__ */ u3("path", { d: props.dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6" }) });
+}
+function MonthCalendar(props) {
+  const { month, today } = props;
+  return /* @__PURE__ */ u3("div", { class: "vt-cal", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-cal-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: formatMonthTitle(month) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
+      WEEKDAY_INITIALS.map((w3, i3) => /* @__PURE__ */ u3("span", { class: "vt-cal-weekday", "aria-hidden": "true", title: WEEKDAY_NAMES[i3], children: w3 })),
+      monthWeeks(month).flat().map((d3, i3) => {
+        if (d3 === null) return /* @__PURE__ */ u3("span", { class: "vt-cal-blank" }, `b${i3}`);
+        const selected = props.isSelected(d3);
+        const mark = props.mark?.(d3) ?? null;
+        const cls = ["vt-cal-day", ...mark?.classes ?? []];
+        if (d3 === today) cls.push("is-today");
+        if (selected) cls.push("is-selected");
+        const notes = [d3 === today ? "Today" : null, ...mark?.notes ?? []].filter(Boolean);
+        const label = notes.length > 0 ? `${d3} (${notes.join(" \xB7 ")})` : d3;
+        return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), "aria-pressed": selected, "aria-label": label, title: label, onClick: () => props.onPick(d3), children: Number(d3.slice(8, 10)) }, d3);
+      })
+    ] })
+  ] });
+}
+
 // ../shared/src/date-input.ts
 function ymd(year, month, day) {
   const date = `${year}-${month}-${day}`;
@@ -843,6 +902,7 @@ function parseDateInput(input, today) {
   const unit = m3[3];
   const n2 = digits === "" ? 1 : Number(digits);
   if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
+  if (unit === "d") return addDays(today, sign * n2);
   if (unit === "w") return addDays(today, sign * n2 * 7);
   if (unit === "m") return addMonths(today, sign * n2);
   const weekday = WEEKDAY_NAMES.indexOf(unit);
@@ -864,46 +924,7 @@ function formatPromptDate(date, weekday) {
   return weekday ? `${date} ${(WEEKDAY_NAMES[weekdayOf(date)] ?? "sun").toUpperCase()}` : date;
 }
 
-// ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
-var f3 = 0;
-function u3(e3, t3, n2, o3, i3, u4) {
-  t3 || (t3 = {});
-  var a3, c3, p3 = t3;
-  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
-  var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
-  if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
-  return l.vnode && l.vnode(l3), l3;
-}
-
 // src/obsidian/DatePromptModal.tsx
-function MonthCalendar(props) {
-  const today = localToday();
-  const { month } = props;
-  const shift = (n2) => {
-    const [y3, m3] = month.split("-").map(Number);
-    props.onMonth(new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7));
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-nav", children: [
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Previous month", onClick: () => shift(-1), children: "\u2039" }),
-      /* @__PURE__ */ u3("span", { children: month.replace("-", " / ") }),
-      /* @__PURE__ */ u3("button", { type: "button", "aria-label": "Next month", onClick: () => shift(1), children: "\u203A" })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-tpl-calendar-grid", children: [
-      WEEKDAY_NAMES.map((w3) => /* @__PURE__ */ u3("span", { class: "vt-tpl-weekday", children: w3 })),
-      monthGridDays(month).map((d3) => {
-        const w3 = weekdayOf(d3);
-        const cls = ["vt-tpl-day"];
-        if (w3 === 0 || w3 === 6) cls.push("is-weekend");
-        if (!d3.startsWith(month)) cls.push("is-dimmed");
-        if (d3 === today) cls.push("is-today");
-        if (d3 === props.selected) cls.push("is-selected");
-        const label = d3 === today ? `${d3} (today)` : d3;
-        return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), "aria-pressed": d3 === props.selected, "aria-label": label, title: label, onClick: () => props.onPick(d3), children: Number(d3.slice(8, 10)) });
-      })
-    ] })
-  ] });
-}
 function DatePromptForm(props) {
   const today = localToday();
   const [text2, setText] = d2("");
@@ -931,7 +952,7 @@ function DatePromptForm(props) {
               type: "text",
               class: "vt-tpl-input",
               "aria-label": "Date",
-              placeholder: "e.g. 15 / 1224 / +3 / mon / +2w / +2 -d",
+              placeholder: "e.g. 15 / 1224 / +1d / mon / +2w / +2 -d",
               value: text2,
               onInput: (e3) => {
                 const value = e3.currentTarget.value;
@@ -952,7 +973,8 @@ function DatePromptForm(props) {
           {
             month,
             onMonth: setMonth,
-            selected: parsed?.date ?? null,
+            today,
+            isSelected: (d3) => d3 === parsed?.date,
             onPick: (d3) => props.onSubmit(formatPromptDate(d3, weekday))
           }
         ),

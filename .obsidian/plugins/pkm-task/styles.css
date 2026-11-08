@@ -779,38 +779,6 @@ button.vt-badge:disabled::after {
 	gap: 12px;
 }
 
-.vt-calendar-nav {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	font-weight: var(--vt-weight-semibold);
-}
-
-.vt-calendar-nav button {
-	width: 36px;
-	height: 36px;
-	padding: 0;
-	border-radius: var(--vt-radius-full);
-	background: transparent;
-	box-shadow: none;
-}
-
-.vt-calendar-nav button:hover {
-	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
-}
-
-.vt-calendar-grid {
-	display: grid;
-	grid-template-columns: repeat(7, 40px);
-	gap: 8px;
-	justify-content: center;
-}
-
-.vt-calendar-grid .vt-day {
-	width: 40px;
-	height: 40px;
-}
-
 /* ---------- 期限（ADR-0006: 3 日前から 薄い黄色 → 黄色 → オレンジ → 赤、過ぎたら赤い枠） ---------- */
 
 .vt-dues {
@@ -2332,6 +2300,22 @@ body.is-mobile .vt-toast {
 	gap: 12px;
 }
 
+/* 複数日のカレンダーの入力欄（ADR-0078）。Enter か Add で選んだ日に足す */
+.vt-date-add {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-date-add .vt-date-field {
+	flex: 1;
+	min-width: 0;
+}
+
+.vt-date-add button {
+	height: 40px;
+}
+
 .vt-date-form .vt-form {
 	margin-top: 0;
 }
@@ -3185,4 +3169,129 @@ body.is-mobile .vt-toast {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px;
+}
+
+/* ---------- 月のカレンダー（ADR-0078。packages/shared/src/month-calendar.tsx。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */
+
+.vt-cal {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 100%;
+	max-width: 320px;
+	align-self: center;
+}
+
+.vt-cal-head {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding-left: 8px;
+}
+
+.vt-cal-title {
+	flex: 1;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-title-medium-size);
+	font-weight: var(--vt-type-title-medium-weight);
+	letter-spacing: var(--vt-type-title-medium-tracking);
+}
+
+.vt-cal button {
+	font-family: inherit;
+}
+
+.vt-cal-nav.vt-cal-nav {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+}
+
+.vt-cal-nav.vt-cal-nav:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-cal-grid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	justify-items: center;
+	row-gap: 2px;
+}
+
+.vt-cal-weekday {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 32px;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-cal-blank {
+	height: 40px;
+}
+
+/* 日は枠のない丸。今日は枠線の丸、選んだ日は塗りの丸（Material 3 の日付の選択と同じ）。選んだ日は実行日と同じ色（docs/design.md） */
+.vt-cal-day.vt-cal-day {
+	position: relative;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-cal-day.vt-cal-day:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-cal-day.vt-cal-day.is-today {
+	border-color: var(--vt-primary);
+	color: var(--vt-primary);
+}
+
+.vt-cal-day.vt-cal-day.is-selected {
+	border-color: var(--vt-scheduled);
+	background: var(--vt-scheduled);
+	color: var(--vt-on-scheduled);
+}
+
+/* 期限より後の日は文字を一段弱くする（押せる） */
+.vt-cal-day.vt-cal-day.is-after-deadline:not(.is-selected) {
+	color: var(--vt-on-surface-variant);
+}
+
+/* 期限は丸の外側に隙間を空けた輪で示す（塗りの丸と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
+.vt-cal-day.vt-cal-day.is-soft-deadline:not(:focus-visible) {
+	outline: var(--vt-border-width-thick) solid var(--vt-amber);
+	outline-offset: 1px;
+}
+
+.vt-cal-day.vt-cal-day.is-deadline:not(:focus-visible) {
+	outline: var(--vt-border-width-thick) solid var(--vt-red);
+	outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vt-cal-day.vt-cal-day {
+		transition: none;
+	}
 }

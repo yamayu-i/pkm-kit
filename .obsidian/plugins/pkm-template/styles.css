@@ -574,61 +574,88 @@ body.theme-dark {
 	cursor: pointer;
 }
 
-.vt-tpl-calendar {
+
+/* ---------- 月のカレンダー（ADR-0078。packages/shared/src/month-calendar.tsx。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */
+
+.vt-cal {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 4px;
+	width: 100%;
+	max-width: 320px;
+	align-self: center;
 }
 
-.vt-tpl-calendar-nav {
+.vt-cal-head {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	font-weight: var(--vt-weight-semibold);
+	gap: 4px;
+	padding-left: 8px;
 }
 
-.vt-tpl-calendar-nav button {
-	width: 36px;
-	height: 36px;
+.vt-cal-title {
+	flex: 1;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-title-medium-size);
+	font-weight: var(--vt-type-title-medium-weight);
+	letter-spacing: var(--vt-type-title-medium-tracking);
+}
+
+.vt-cal button {
+	font-family: inherit;
+}
+
+.vt-cal-nav.vt-cal-nav {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
 	padding: 0;
 	border: none;
 	border-radius: var(--vt-radius-full);
 	background: transparent;
 	box-shadow: none;
-	color: var(--vt-on-surface);
-	font-family: inherit;
+	color: var(--vt-on-surface-variant);
 	cursor: pointer;
 }
 
-.vt-tpl-calendar-nav button:hover {
-	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+.vt-cal-nav.vt-cal-nav:hover {
+	background: var(--vt-state-hover);
 }
 
-.vt-tpl-calendar-grid {
+.vt-cal-grid {
 	display: grid;
-	grid-template-columns: repeat(7, 40px);
-	gap: 8px;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	justify-items: center;
+	row-gap: 2px;
+}
+
+.vt-cal-weekday {
+	display: flex;
+	align-items: center;
 	justify-content: center;
+	height: 32px;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
 }
 
-.vt-tpl-weekday {
-	text-align: center;
-	font-size: var(--vt-type-label-small-size);
-	color: var(--vt-on-surface-variant);
+.vt-cal-blank {
+	height: 40px;
 }
 
-.vt-tpl-day {
+/* 日は枠のない丸。今日は枠線の丸、選んだ日は塗りの丸（Material 3 の日付の選択と同じ）。選んだ日は実行日と同じ色（docs/design.md） */
+.vt-cal-day.vt-cal-day {
 	position: relative;
 	width: 40px;
 	height: 40px;
 	padding: 0;
-	border-radius: var(--vt-radius-m);
-	border: 1px solid var(--vt-outline);
+	border: 1px solid transparent;
+	border-radius: var(--vt-radius-full);
 	background: transparent;
-	color: var(--vt-on-surface);
 	box-shadow: none;
-	font-family: inherit;
-	font-size: var(--vt-type-body-small-size);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
 	font-variant-numeric: tabular-nums;
 	cursor: pointer;
 	transition:
@@ -636,27 +663,39 @@ body.theme-dark {
 		color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
-.vt-tpl-day:hover {
-	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+.vt-cal-day.vt-cal-day:hover {
+	background: var(--vt-state-hover);
 }
 
-.vt-tpl-day:active {
-	transform: scale(var(--vt-scale-press-small));
+.vt-cal-day.vt-cal-day.is-today {
+	border-color: var(--vt-primary);
+	color: var(--vt-primary);
 }
 
-.vt-tpl-day.is-weekend { border-width: 2px; }
-.vt-tpl-day.is-dimmed { color: var(--vt-on-surface-variant); border-color: var(--vt-outline-variant); }
-.vt-tpl-day.is-today { font-weight: var(--vt-weight-bold); }
-.vt-tpl-day.is-today:not(.is-selected) { border-color: var(--vt-primary); color: var(--vt-primary); }
-.vt-tpl-day.is-today::after {
-	content: "";
-	position: absolute;
-	left: 50%;
-	bottom: 4px;
-	width: 4px;
-	height: 4px;
-	margin-left: -2px;
-	border-radius: var(--vt-radius-full);
-	background: currentColor;
+.vt-cal-day.vt-cal-day.is-selected {
+	border-color: var(--vt-scheduled);
+	background: var(--vt-scheduled);
+	color: var(--vt-on-scheduled);
 }
-.vt-tpl-day.is-selected { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
+
+/* 期限より後の日は文字を一段弱くする（押せる） */
+.vt-cal-day.vt-cal-day.is-after-deadline:not(.is-selected) {
+	color: var(--vt-on-surface-variant);
+}
+
+/* 期限は丸の外側に隙間を空けた輪で示す（塗りの丸と重なっても見える）。キーボードで選んだときはフォーカスの枠を優先する */
+.vt-cal-day.vt-cal-day.is-soft-deadline:not(:focus-visible) {
+	outline: var(--vt-border-width-thick) solid var(--vt-amber);
+	outline-offset: 1px;
+}
+
+.vt-cal-day.vt-cal-day.is-deadline:not(:focus-visible) {
+	outline: var(--vt-border-width-thick) solid var(--vt-red);
+	outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vt-cal-day.vt-cal-day {
+		transition: none;
+	}
+}

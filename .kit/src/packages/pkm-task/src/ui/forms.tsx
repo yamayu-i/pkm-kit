@@ -1,7 +1,8 @@
-import type { ComponentChildren } from "preact";
+import type { ComponentChildren, Ref } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { parseDateInput, parseTimeInput } from "../core/date-input";
-import { addDays, formatShortDate, localToday, monthGridDays, type LocalDate, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
+import { MonthCalendar, type DayMark } from "../../../shared/src/month-calendar.tsx";
+import { addDays, formatShortDate, localToday, type LocalDate, weekdayOf } from "../core/dates";
 import { Icon } from "./Icon";
 
 /** 1 行のテキストを入力して保存する */
@@ -37,58 +38,31 @@ export function TextForm(props: { initial: string; maxLength?: number; placehold
 	);
 }
 
-/** 月のカレンダー（ADR-0017）。依存を足さずに、実行日の枠と同じ部品で描く */
-function MonthCalendar(props: {
-	month: string;
-	onMonth: (month: string) => void;
-	isSelected: (date: LocalDate) => boolean;
-	onPick: (date: LocalDate) => void;
-	softDeadline?: LocalDate | null;
-	deadline?: LocalDate | null;
-}) {
-	const today = localToday();
-	const { month } = props;
-	const days = monthGridDays(month);
-	const shift = (n: number) => {
-		const [y, m] = month.split("-").map(Number) as [number, number];
-		props.onMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
-	};
-	return (
-		<div class="vt-calendar">
-			<div class="vt-calendar-nav">
-				<button type="button" aria-label="Previous month" onClick={() => shift(-1)}>
-					‹
-				</button>
-				<span>{month.replace("-", " / ")}</span>
-				<button type="button" aria-label="Next month" onClick={() => shift(1)}>
-					›
-				</button>
-			</div>
-			<div class="vt-calendar-grid">
-				{[0, 1, 2, 3, 4, 5, 6].map((w) => (
-					<span class="vt-weekday">{WEEKDAY_NAMES[w]}</span>
-				))}
-				{days.map((d) => (
-					<DayCell
-						date={d}
-						dimmed={!d.startsWith(month)}
-						scheduled={props.isSelected(d)}
-						softDeadline={props.softDeadline ?? null}
-						deadline={props.deadline ?? null}
-						today={today}
-						onClick={() => props.onPick(d)}
-					/>
-				))}
-			</div>
-		</div>
-	);
+/** 期限の印（ADR-0006・ADR-0030）。カレンダーの日に足す */
+function dueMark(date: LocalDate, softDeadline: LocalDate | null, deadline: LocalDate | null): DayMark | null {
+	const classes: string[] = [];
+	const notes: string[] = [];
+	if (date === softDeadline) (classes.push("is-soft-deadline"), notes.push("soft_deadline"));
+	if (date === deadline) (classes.push("is-deadline"), notes.push("deadline"));
+	if (deadline !== null && date > deadline) classes.push("is-after-deadline");
+	return classes.length > 0 ? { classes, notes } : null;
 }
 
 /** 入力の解釈の結果を、入力欄の下に出す */
 function DateHint(props: { text: string; parsed: LocalDate | null }) {
-	if (props.text.trim() === "") return <div class="vt-date-hint">e.g. 15 / 1224 / +3 / mon / +2w / +m</div>;
+	if (props.text.trim() === "") return <div class="vt-date-hint">e.g. 15 / 1224 / +1d / mon / +2w / +m</div>;
 	if (props.parsed === null) return <div class="vt-error">日付として読めません</div>;
 	return <div class="vt-date-hint">{`${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}`}</div>;
+}
+
+/** 短い書き方の日付の入力欄（ADR-0017）と、解釈の結果。日付の選択はすべてこれとカレンダーを並べる（ADR-0078） */
+function DateTextField(props: { text: string; parsed: LocalDate | null; onText: (value: string) => void; inputRef?: Ref<HTMLInputElement>; placeholder?: string }) {
+	return (
+		<div class="vt-date-field">
+			<input ref={props.inputRef} type="text" aria-label="Date" placeholder={props.placeholder} value={props.text} onInput={(e) => props.onText(e.currentTarget.value)} />
+			<DateHint text={props.text} parsed={props.parsed} />
+		</div>
+	);
 }
 
 /** 日付を 1 つ選ぶ。短い書き方の入力（ADR-0017）とカレンダーで選べる。クリアもできる */
@@ -108,21 +82,16 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 				if (!invalid) props.onSubmit(parsed);
 			}}
 		>
-			<div class="vt-date-field">
-				<input
-					ref={ref}
-					type="text"
-					aria-label="Date"
-					value={text}
-					onInput={(e) => {
-						const value = e.currentTarget.value;
-						setText(value);
-						const next = parseDateInput(value, today);
-						if (next !== null) setMonth(next.slice(0, 7));
-					}}
-				/>
-				<DateHint text={text} parsed={parsed} />
-			</div>
+			<DateTextField
+				inputRef={ref}
+				text={text}
+				parsed={parsed}
+				onText={(value) => {
+					setText(value);
+					const next = parseDateInput(value, today);
+					if (next !== null) setMonth(next.slice(0, 7));
+				}}
+			/>
 			{props.presets !== false && (
 				<div class="vt-date-presets">
 					{[
@@ -136,7 +105,7 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 					))}
 				</div>
 			)}
-			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => d === parsed} onPick={(d) => props.onSubmit(d)} />
+			<MonthCalendar month={month} onMonth={setMonth} today={today} isSelected={(d) => d === parsed} onPick={(d) => props.onSubmit(d)} />
 			<div class="vt-form">
 				{props.allowClear !== false && (
 					<button type="button" onClick={() => props.onSubmit(null)}>
@@ -151,7 +120,10 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 	);
 }
 
-/** 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の Do Date の選択にも使う。ADR-0030） */
+/**
+ * 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の Do Date の選択にも使う。ADR-0030）。
+ * 短い書き方の入力で Enter を押しても、その日を選べる（ADR-0078）
+ */
 export function CalendarForm(props: {
 	initial: LocalDate[];
 	softDeadline: LocalDate | null;
@@ -163,8 +135,11 @@ export function CalendarForm(props: {
 	/** カレンダーと決定のボタンの間に出すもの（Organize の estimated など） */
 	children?: ComponentChildren;
 }) {
+	const today = localToday();
 	const [selected, setSelected] = useState(new Set(props.initial));
-	const [month, setMonth] = useState(localToday().slice(0, 7));
+	const [month, setMonth] = useState(today.slice(0, 7));
+	const [text, setText] = useState("");
+	const parsed = parseDateInput(text, today);
 	const enabled = props.canSubmit?.(selected.size) ?? true;
 	const toggle = (d: LocalDate) => {
 		const next = new Set(selected);
@@ -174,7 +149,39 @@ export function CalendarForm(props: {
 	};
 	return (
 		<div class="vt-calendar">
-			<MonthCalendar month={month} onMonth={setMonth} isSelected={(d) => selected.has(d)} onPick={toggle} softDeadline={props.softDeadline} deadline={props.deadline} />
+			<form
+				class="vt-date-add"
+				onSubmit={(e) => {
+					e.preventDefault();
+					if (parsed === null) return;
+					// 入力からは足すだけ（すでに選んでいれば外さない）
+					setSelected(new Set(selected).add(parsed));
+					setMonth(parsed.slice(0, 7));
+					setText("");
+				}}
+			>
+				<DateTextField
+					text={text}
+					parsed={parsed}
+					placeholder="Type a date and press Enter"
+					onText={(value) => {
+						setText(value);
+						const next = parseDateInput(value, today);
+						if (next !== null) setMonth(next.slice(0, 7));
+					}}
+				/>
+				<button type="submit" disabled={parsed === null}>
+					Add
+				</button>
+			</form>
+			<MonthCalendar
+				month={month}
+				onMonth={setMonth}
+				today={today}
+				isSelected={(d) => selected.has(d)}
+				onPick={toggle}
+				mark={(d) => dueMark(d, props.softDeadline, props.deadline)}
+			/>
 			{props.children}
 			<div class="vt-form">
 				<span class="vt-muted">{selected.size} days</span>
@@ -270,6 +277,7 @@ function DateTimeField(props: { label: string; date: string; time: string; onDat
 				<MonthCalendar
 					month={month}
 					onMonth={setMonth}
+					today={today}
 					isSelected={(d) => d === parsed}
 					onPick={(d) => {
 						props.onDate(d);
