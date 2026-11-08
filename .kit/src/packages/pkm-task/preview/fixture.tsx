@@ -8,7 +8,7 @@ import { IssueHeader } from "../src/header/IssueHeader";
 import { StatusUndo } from "../src/obsidian/status-undo";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
-import { DateForm, WorklogForm } from "../src/ui/forms";
+import { CalendarForm, DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
 import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
@@ -121,6 +121,8 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 			{/* Organize の予定入れ（ADR-0030）: Inbox で estimated がないとき / someday で実行日があるとき */}
 			<ScheduleSheet issue={store.index.issues.get("i-7")!} requireEstimate={true} onSubmit={() => {}} />
 			<ScheduleSheet issue={{ ...store.index.issues.get("i-10")!, scheduled: [t, addDays(t, 2)] }} requireEstimate={false} onSubmit={() => {}} />
+			{/* 期限の印（ADR-0030）: soft_deadline と deadline のある issue の「calendar >」 */}
+			<CalendarForm initial={[t]} softDeadline={addDays(t, 3)} deadline={addDays(t, 5)} onSubmit={() => {}} />
 			<WorklogForm initial={{ fromMs: Date.now() - 3_600_000, toMs: Date.now(), description: "作業" }} onSubmit={() => {}} onDelete={() => {}} />
 		</div>
 	),

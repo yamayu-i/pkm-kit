@@ -21,7 +21,7 @@ export const OUTPUTS = {
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-drawio/styles.css"), at("../../pkm-ribbon/styles.css"), at("../../pkm-updates/styles.css")];
+export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-drawio/styles.css"), at("../../pkm-ribbon/styles.css"), at("../../pkm-updates/styles.css"), at("../../shared/src/month-calendar.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 /** 子の Obsidian の設定に必要なキーと値（ADR-0009）。ここの "appearance.json" をデザインルールと照らす */

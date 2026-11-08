@@ -31,7 +31,7 @@
 | [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換） | DailyTaskView と task board の保存形式・細部 |
 | [0015](0015-board-layout-simplified.md) | 承認 | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
-| [0017](0017-date-input.md) | 承認 | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
+| [0017](0017-date-input.md) | 承認（一部置換: 0078） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
 | [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032, 0077） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
@@ -44,7 +44,7 @@
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる |
-| [0030](0030-organize-schedule-calendar.md) | 承認（ADR-0009 の Organize の「右: 予定を入れる」を一部置換） | Organize の予定入れを、複数日を選べるカレンダーにする |
+| [0030](0030-organize-schedule-calendar.md) | 承認（ADR-0009 の Organize の「右: 予定を入れる」を一部置換。一部置換: 0078） | Organize の予定入れを、複数日を選べるカレンダーにする |
 | [0031](0031-status-quick-change.md) | 承認（一部置換: 0032。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
 | [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認（ADR-0002 と ADR-0006 の `mid_due` の名前、ADR-0009 / ADR-0014 / ADR-0018 のアクション名、ADR-0031 のカードの status メニューを一部置換） | 日付のアクション名の整理、mid_due の改名（soft_deadline）、ボードからの delegated |
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
@@ -65,4 +65,5 @@
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
 | [0077](0077-task-header-dom-mount.md) | 承認 | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
 | [0085](0085-drawio-cli-build-render.md) | 承認 | Claude Code が図を作る・直せるように、CLI に build / render / inspect を足し、描画を XML から自前で作る |
+| [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
 <!-- adr-index:end -->
