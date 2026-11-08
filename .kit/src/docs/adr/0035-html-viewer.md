@@ -33,19 +33,25 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 ### 対象にする HTML
 
 - 任意の HTML を開く（上流が作ったものに限らない）。上の 4 つは、どの HTML にも同じようにかける
-- スクリプトで描く HTML（グラフなど）は動かない。外部の画像・CSS・フォントを使う HTML は、その部分が欠ける。画像は `data:` で埋め込んだものだけが出る。上流が作る HTML は、この前提で 1 ファイルに閉じて作る
-- Vault の中の画像（`asset/foo.png` への相対パス）も、この段階では出さない。必要になったら、`app://` の資源 URL への書き換えを別の ADR で決める
+- スクリプトで描く HTML（グラフなど）は動かない。外部の画像・CSS・フォントを使う HTML は、その部分が欠ける。上流が作る HTML は、この前提で 1 ファイルに閉じて作る
 
-### テーマ
+### Vault の中の画像
 
-- iframe には、Obsidian のテーマのクラス（`theme-light` / `theme-dark`）を `<html>` に、デザイントークン（`--vt-*`。ADR-0016）の今の値を `<style>` で差し込む。値は親の `getComputedStyle` から読み、Obsidian の `css-change` で入れ直す
-- HTML の側は、`var(--vt-…, 既定の値)` で書けばテーマに追従する。トークンを使わない HTML は、そのままの色で出る（背景が白い HTML はダークでも白い）
-- 上流が作る HTML の書き方（トークンの使い方）は、デザインルール（`.kit/src/docs/design.md`）に書き足す
+- `<img src>` と `<picture>` の `<source srcset>` が Vault の中の画像を指していたら、`vault.readBinary` で読み、`data:` の URL に置き換えてから `srcdoc` に入れる。CSP は `img-src data:` のままにする（iframe からローカルのファイルを取りに行かせない。資源の URL の形が PC・Android・iOS で違うことにも左右されない）
+- パスは HTML ファイルからの相対パスか、Vault ルートからのパスとして解決する。対象は、解決したパスが Vault の中のファイルで、拡張子が `png` / `jpg` / `jpeg` / `gif` / `webp` / `svg` のものだけ。`../` で Vault の外に出るパス、見つからないファイルは置き換えない（出ない）
+- SVG も `<img>` として読み込むので、中のスクリプトは動かない
+- 1 枚の上限は 10MB。超えたものは置き換えない。CSS の `url(...)`（背景の画像）は対象にしない
+
+### テーマとデザイン規約
+
+- vault-html は、ほかのプラグインと同じく `tokens.json` から生成した `tokens.css`（ADR-0016）を持ち、iframe の `<head>` に差し込む。iframe の `<body>` には Obsidian のテーマのクラス（`theme-light` / `theme-dark`）を付け、Obsidian の `css-change` で付け直す
+- HTML の側は `var(--vt-…)` だけで書けば、ライト / ダークのテーマとデザイン規約に従う。トークンを使わない HTML は、そのままの色で出る（背景が白い HTML はダークでも白い）
+- 上流が作る HTML の書き方は、デザインルール（`.kit/src/docs/design.md`）に節を足す。値はトークンだけを使う（`styles.css` と同じ）。上流が HTML を作る仕組みは別の Issue で作り、その `<style>` には `styles.css` と同じ CSS の検査（`css-lint`）と、描画した画面の検査（コントラストなど）をかける
 
 ### 検査
 
 - `test/` で、組み立てた `srcdoc` の文字列を検査する（消すべきものが消え、CSP が `<head>` の最初にある）
-- `preview/` で、Playwright の Chromium に View を描画し、悪い HTML（`<script>`、`onerror`、外部の `<img>` / `<link>` / `@import` / フォント、`<meta refresh>`、`<form>`、`javascript:` のリンク）を開いて、スクリプトの副作用がないこと、外部への要求が 1 つも出ないこと（`page.on("request")`）を確かめる。ライト / ダーク × 広い / 狭いのスクリーンショットと、描画した画面の検査（ADR-0016）も行う
+- `preview/` で、Playwright の Chromium に View を描画し、悪い HTML（`<script>`、`onerror`、外部の `<img>` / `<link>` / `@import` / フォント、`<meta refresh>`、`<form>`、`javascript:` のリンク）を開いて、スクリプトの副作用がないこと、外部への要求が 1 つも出ないこと（`page.on("request")`）を確かめる。Vault の中の画像が出ること、Vault の外を指す画像・上限を超える画像が出ないことも確かめる。ライト / ダーク × 広い / 狭いのスクリーンショットと、描画した画面の検査（ADR-0016）も行う
 - security-scan: `srcdoc` への代入は HTML 文字列の挿入なので、規則に足す。許可するのは vault-html の表示を組み立てる 1 ファイルだけにする
 
 ## 理由
@@ -61,6 +67,8 @@ HTML を `iframe` の `srcdoc` に入れて表示する。次の 4 つを重ね�
 - **HTML を解析して DOM に変換し、Obsidian の画面に直接入れる**（`sanitizeHTMLToDom` など）: 取り除く処理の漏れが、そのまま Obsidian の画面でのスクリプトの実行になる。HTML の CSS が Obsidian の画面に漏れる（Shadow DOM で閉じても、外部の読み込みは別に止める必要がある）
 - **sandbox の `allow-same-origin` も付けない**: いちばん強いが、リンクを Obsidian で開けない。iframe の中にスクリプトを入れて `postMessage` で伝える方法は、`allow-scripts` が要るので取らない
 - **vault-template に足す**: 新しいプラグインを有効にする移行は要らなくなるが、ノートの作成と一覧のプラグインに、性質の違う守りが混ざる。security-check で vault-template 全体を読む必要が出る
+- **Vault の中の画像を資源の URL（`app://…` など）で読ませる**: 埋め込むより軽いが、CSP にローカルの資源の origin を許す必要があり、その形が PC・Android・iOS で違う。PC の `app://` は Vault の外のファイルも指せる
+- **テーマの色を親の `getComputedStyle` から読んで差し込む**: 生成した `tokens.css` を差し込めば、規約の値と一致することがビルドで保証される
 - **HTML ではなく PDF にする**: Obsidian は PDF を開けるが、テーマに追従せず、スマホでは文字が小さく、作るのに別の道具が要る
 
 ## 影響
