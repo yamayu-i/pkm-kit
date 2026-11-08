@@ -314,6 +314,8 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 
 ### 描画した画面（`pnpm preview:ui`。`packages/design/src/audit.ts`）
 
+pkm-task の画面は、CI（`plugin.yml` の `preview-ui`）でも描画して検査する。スクリーンショットは CI の成果物 `preview-ui` で見られる。
+
 | ID | 内容 | 根拠 |
 |---|---|---|
 | `run/contrast` | 描画された文字と、その下の面（重なりと opacity を含む）の比が 4.5:1（大きい文字は 3:1）以上 | WCAG 1.4.3 |
