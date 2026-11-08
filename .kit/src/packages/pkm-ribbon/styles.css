@@ -1,0 +1,34 @@
+/*
+ * pkm-ribbon（ADR-0029、ADR-0070）
+ * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-ribbon/styles.css にする。
+ */
+
+.vt-ribbon-badge-host {
+	position: relative;
+}
+
+.vt-ribbon-badge-host:focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+.vt-ribbon-badge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 var(--vt-space-4);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-type-label-small-weight);
+	letter-spacing: 0;
+	line-height: 1;
+	pointer-events: none;
+}

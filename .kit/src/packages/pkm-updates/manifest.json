@@ -1,0 +1,9 @@
+{
+	"id": "pkm-updates",
+	"name": "PKM Updates",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "一覧 View（pkm-task と pkm-template）の前回の確認からの変更を、1 ページで見る自作プラグイン。どちらのプラグインにも実行時には依存しない。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}

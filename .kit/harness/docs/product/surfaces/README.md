@@ -52,6 +52,12 @@ ADR へのリンク。
 | [ノートの一覧](template-lists.md) | View |
 | [ノートのヘッダー](template-header.md) | 画面 |
 
+### 変更の確認（pkm-updates）
+
+| 面 | 種類 |
+|---|---|
+| [PKM Updates](updates.md) | View |
+
 ### HTML（pkm-html）
 
 | 面 | 種類 |

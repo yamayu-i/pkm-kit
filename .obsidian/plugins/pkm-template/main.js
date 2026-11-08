@@ -26,7 +26,7 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian9 = require("obsidian");
 
 // ../shared/src/list-pane.ts
-var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
+var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
 var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar"]);
 function isListViewType(type) {
   return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
@@ -2004,7 +2004,6 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
       this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void this.openView(spec.type) });
     }
-    this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);
     this.registerEditorExtension(slashSessionField);
     this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));

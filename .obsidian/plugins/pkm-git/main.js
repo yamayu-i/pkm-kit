@@ -22223,8 +22223,6 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
     this.statusEl = this.addStatusBarItem();
     this.statusEl.addClass("mod-clickable");
     this.statusEl.addEventListener("click", () => void this.showUnresolved());
-    this.addRibbonIcon("arrow-down-to-line", "Git: pull", () => void this.pull());
-    this.addRibbonIcon("arrow-up-from-line", "Git: push", () => void this.push());
     this.addCommand({ id: "pull", name: "pull\uFF08\u53D6\u308A\u8FBC\u307F\uFF09", callback: () => void this.pull() });
     this.addCommand({ id: "push", name: "push\uFF08\u30B3\u30DF\u30C3\u30C8\u3057\u3066\u9001\u4FE1\uFF09", callback: () => void this.push() });
     this.addCommand({

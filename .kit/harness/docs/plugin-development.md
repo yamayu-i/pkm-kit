@@ -37,7 +37,7 @@
 | `fs/` | isomorphic-git 用の fs アダプタ | なし |
 | `git/http.ts` | `requestUrl` を isomorphic-git の HTTP クライアントにする | なし（関数を注入） |
 | `obsidian/` | Vault への読み書き、設定画面、モーダル | あり |
-| `main.ts` | コマンド・リボン・ステータスバー | あり |
+| `main.ts` | コマンド・ステータスバー（リボンのボタンは pkm-ribbon。ADR-0070） | あり |
 
 Obsidian に依存しない部分は、テストで本物の `git http-backend` サーバーを立てて検証している（`test/engine.test.ts`）。
 `test/bundle.test.ts` はビルド済みの `main.js` を Obsidian API のモック上で、Buffer がない状態（モバイル相当）で動かす。
@@ -114,16 +114,37 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/core/note-list.ts` / `note-format.ts` / `note-header.ts` | 一覧の絞り込み・並べ替え・取り込み状態の導出、値の整形、ヘッダーに出す内容の組み立て | なし |
 | `src/obsidian/` | 新規ファイル作成モーダルと日付のダイアログ（Preact）、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
 | `src/views/` | 一覧 View（Preact） | あり |
-| `src/main.ts` | コマンド・リボン・View の登録 | あり |
+| `src/main.ts` | コマンド・View の登録 | あり |
 
 ## pkm-ribbon（リボンのボタン）
 
-「今日のデイリーノートを開く」（`calendar`）と「Daily を開く」（`calendar-check`）のボタンを、リボンに続けて並べるだけのプラグイン（ADR-0029）。リボンの並びはボタンを登録した順で決まるので、2 つを 1 つのプラグインが続けて登録する。
+自作プラグインのリボンのボタンを、並びの表（`src/core/buttons.ts`）の順に登録するプラグイン（ADR-0029、ADR-0070）。リボンの並びはボタンを登録した順で決まるので、1 つのプラグインがすべてを登録する。
 
-- pkm-template と pkm-task には依存しない（import しない）。実行時に `app.commands.executeCommandById` で `pkm-template:open-todays-daily` と `pkm-task:open-daily` を呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える
-- `app.commands` は Obsidian の公開の型にないので、使う形だけを型に書いてある
-- pkm-template と pkm-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、pkm-ribbon も変える
-- `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
+- **自作プラグインの `src/` で `addRibbonIcon` を使ってよいのは pkm-ribbon だけ**（`test/ribbon-owner.test.ts` が検査する）。ほかのプラグインはコマンドだけを持ち、ボタンを足すときは表に 1 行足す
+- どのプラグインにも依存しない（import しない）。実行時に `app.commands.executeCommandById` でコマンドを ID で呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える。コマンドの ID を変えるときは、表も変える
+- バッジ: ボタンに数を出したいプラグインは、インスタンスに `getRibbonBadge(commandId): number | null` を持ち、数が変わったら `app.workspace.trigger("pkm-ribbon:badge-changed", commandId)` を出す。pkm-ribbon は起動の後とそのイベントで `app.plugins.getPlugin(<コマンドの接頭辞>)` に尋ねて描き直す。表示の規則（99+、0 と null は出さない）は `badgeText` だけ
+- `app.commands` と `app.plugins` は Obsidian の公開の型にないので、使う形だけを型に書いてある
+- `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順、コマンドの呼び出し、バッジを確かめる
+
+## pkm-updates（一覧 View の前回からの変更）
+
+一覧 View ごとのセクションに、前回の確認（Viewed）より後に `updated` が新しくなったノートを出す View（ADR-0070）。
+
+- 載せる規則は、pkm-task と pkm-template の `src/core/`（Obsidian に依存しない）を相対パスで読んで束ねる（`collectVault`、`isInbox`、`organizeQueue`、`isScheduledAhead`、`noteTitle` など）。規則を写さない。一覧の規則を変えたら、`test/sections.test.ts` も見る
+- 実行時には pkm-task と pkm-template に依存しない。セクションの見出しは、一覧 View のコマンドを ID で呼ぶ（`src/core/sections.ts` の `SECTIONS`）
+- Viewed の記録は `updates/<端末名>/YYYY-MM.jsonl` に `{"viewed_at": …}` を追記するだけ。基準は全端末の最大。端末名は pkm-task の `taskSettings.deviceName`、なければ pkm-git の `settings.deviceName`
+- リボンのバッジの数（重複を除いたノートの数）を `getRibbonBadge` で返し、変わったら間引いて（1 秒に 1 回まで）pkm-ribbon に知らせる
+
+### コードの構成（`.kit/src/packages/pkm-updates`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/sections.ts` | セクションの定義、基準より新しいものの抽出と並べ替え、件数 | なし |
+| `src/core/viewed-log.ts` | Viewed のログのパス・行・全端末の最大 | なし |
+| `src/core/paging.ts` / `format.ts` | 50 行ずつの表示、日時の表示 | なし |
+| `src/obsidian/model.ts` | metadataCache とログからの作り直し、Viewed の書き込み | あり |
+| `src/views/UpdatesView.tsx` | View（Preact）。無限スクロールは `IntersectionObserver` | あり |
+| `src/main.ts` | View・コマンドの登録、バッジ | あり |
 
 ## pkm-html（HTML の読み取り専用の表示）
 
@@ -155,7 +176,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 | パス | 役割 |
 |---|---|
-| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task と pkm-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task・pkm-template・pkm-updates がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
 
 ## design（デザイントークンと検査）
 

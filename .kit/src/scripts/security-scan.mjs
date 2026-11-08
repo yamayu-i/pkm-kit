@@ -141,10 +141,12 @@ const plugins = [
 		// ADR-0060: 行頭の / の判定に StateField を使う。CodeMirror は Obsidian 本体が提供するもの（同梱しない）
 		allowedRequires: ["obsidian", "@codemirror/state"],
 	},
-	// ADR-0029: リボンのボタンだけ。ほかのプラグインのコマンドを ID で呼ぶ
-	{ id: "pkm-ribbon", outdirEnv: "PKM_RIBBON_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0029、ADR-0070: リボンのボタンとバッジだけ。ほかのプラグインのコマンドを ID で呼ぶ
+	{ id: "pkm-ribbon", outdirEnv: "PKM_RIBBON_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0037: HTML を sandbox の iframe に出す
 	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
+	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

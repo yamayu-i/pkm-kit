@@ -1,6 +1,6 @@
 import { Keymap } from "obsidian";
 import { addDays, localToday, WEEKDAY_NAMES, weekdayOf } from "../core/dates";
-import { isActive } from "../core/index";
+import { isScheduledAhead } from "../core/index";
 import type { TaskContext } from "../obsidian/context";
 import { IdBadge } from "../ui/badges";
 import { DayCell } from "../ui/forms";
@@ -16,7 +16,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 	const today = localToday(new Date(useNow(60_000)));
 	const days = Array.from({ length: DAYS }, (_, i) => addDays(today, i));
 	const issues = [...ctx.store.index.issues.values()]
-		.filter((i) => isActive(i) && i.scheduled.some((d) => d >= today))
+		.filter((i) => isScheduledAhead(i, today))
 		.sort((a, b) => (a.scheduled.find((d) => d >= today) ?? "").localeCompare(b.scheduled.find((d) => d >= today) ?? "") || a.id.localeCompare(b.id, "en", { numeric: true }));
 	const toggle = (path: string, scheduled: string[], d: string) => {
 		const next = scheduled.includes(d) ? scheduled.filter((x) => x !== d) : [...scheduled, d].sort();

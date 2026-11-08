@@ -27,6 +27,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
 | `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `statuslog/<端末名>/YYYY-MM.jsonl` | issue の status の変化の記録（1 行 1 件。追記だけ。分析用で、status の正本は frontmatter） |
+| `updates/<端末名>/YYYY-MM.jsonl` | PKM Updates の Viewed を押した記録（1 行 1 件。追記だけ。基準は全端末の最大。[ADR-0070](../../.kit/src/docs/adr/0070-pkm-updates.md)） |
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |

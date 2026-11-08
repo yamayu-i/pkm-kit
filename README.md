@@ -4,7 +4,7 @@ Obsidian の Vault を、自作プラグインと Claude Code のハーネス（
 このリポジトリから自分の Vault（非公開のリポジトリ）を作り、ここが更新されたらその変更を取り込むと、新しい機能が使える。
 
 - 同期は自作プラグイン **PKM Git**（モバイルでも動く git の pull / push）
-- タスク管理は **PKM Task**、今日のデイリーノートと Daily を開くリボンのボタンは **PKM Ribbon**、テンプレートからのノート作成は **PKM Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
+- タスク管理は **PKM Task**、リボンのボタン（並びとバッジ）は **PKM Ribbon**、一覧 View の前回からの変更を 1 ページで見るのは **PKM Updates**、テンプレートからのノート作成は **PKM Template**（既定のテンプレートは `.kit/templates/`。各 Vault の `template/` で上書きできる。Obsidian のホットキー設定で「PKM Template: テンプレートから新規ファイルを作成」に `Cmd + N` 等を割り当て可能）
 - ノートは素の Markdown で書き、Claude Code が LLM wiki をまとめる
 - コミュニティプラグインは使わない
 

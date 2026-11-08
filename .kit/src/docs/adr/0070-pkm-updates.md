@@ -77,7 +77,7 @@
 - 数が変わったら、そのプラグインが `app.workspace.trigger("pkm-ribbon:badge-changed", commandId)` を出す
 - pkm-ribbon は、起動の後（`onLayoutReady`）と、そのイベントを受けたときに、コマンドの ID の接頭辞のプラグイン（`app.plugins.getPlugin`）に尋ねて描き直す。プラグインがない・メソッドがない・例外のときはバッジを出さない
 - 表示の規則は pkm-ribbon の 1 か所だけ: 1〜99 はその数、100 以上は `99+`、0 と `null` は出さない
-- バッジは `addRibbonIcon` が返す要素の中に要素を足して出す。色と形はトークンに足す（ADR-0016）
+- バッジは `addRibbonIcon` が返す要素の中に要素を足して出す。色と形はトークンから取る（ADR-0016）
 - pkm-updates は、全セクションを通したノートの数（重複を数えない）を返す。索引の変更と Viewed で数え直し、イベントは間引いて 1 秒に 1 回まで
 
 ## 理由
