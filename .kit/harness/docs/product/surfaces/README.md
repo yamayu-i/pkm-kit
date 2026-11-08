@@ -58,6 +58,12 @@ ADR へのリンク。
 |---|---|
 | [HTML の表示](html-view.md) | View |
 
+### 図（pkm-drawio）
+
+| 面 | 種類 |
+|---|---|
+| [Draw.io の図](drawio.md) | 画面・コマンド |
+
 ### 全体
 
 | 面 | 種類 |

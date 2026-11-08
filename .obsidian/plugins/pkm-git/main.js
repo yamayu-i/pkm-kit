@@ -21437,12 +21437,19 @@ function hasConflictMarkers(text) {
 
 // src/merge/tree-merge.ts
 var MARKER_EXTENSIONS = /* @__PURE__ */ new Set(["md", "markdown", "txt"]);
+var WHOLE_FILE_SUFFIXES = [".drawio.svg", ".drawio"];
+var COMPOUND_EXTENSIONS = [".drawio.svg"];
 var SUBMODULE_MODE = "160000";
 var SYMLINK_MODE = "120000";
 function extension(path) {
   const name = basename2(path);
   const i = name.lastIndexOf(".");
   return i <= 0 ? "" : name.slice(i + 1).toLowerCase();
+}
+function hasSuffix(name, suffixes) {
+  const lower2 = name.toLowerCase();
+  const suffix = suffixes.find((s) => lower2.endsWith(s) && lower2.length > s.length);
+  return suffix === void 0 ? null : name.slice(name.length - suffix.length);
 }
 function decodeText(data) {
   if (data.subarray(0, 8e3).includes(0)) return null;
@@ -21462,7 +21469,8 @@ function sameEntry(a, b) {
 function conflictCopyPath(path, suffix, taken) {
   const dir = dirname2(path);
   const name = basename2(path);
-  const dot = name.lastIndexOf(".");
+  const compound = hasSuffix(name, COMPOUND_EXTENSIONS);
+  const dot = compound !== null ? name.length - compound.length : name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const ext = dot > 0 ? name.slice(dot) : "";
   for (let n = 1; ; n++) {
@@ -21500,7 +21508,7 @@ async function mergeTrees(input) {
       continue;
     }
     const special = [o.mode, t.mode].some((m) => m === SUBMODULE_MODE || m === SYMLINK_MODE);
-    if (!special) {
+    if (!special && hasSuffix(basename2(path), WHOLE_FILE_SUFFIXES) === null) {
       const [oursData, theirsData, baseData] = await Promise.all([
         input.readBlob(o.oid),
         input.readBlob(t.oid),

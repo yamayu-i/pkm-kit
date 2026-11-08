@@ -88,4 +88,31 @@ describe("mergeTrees", () => {
 		const { conflicts } = await run({ "README.md": "b" }, { "README.md": "o" }, { "README.md": "t" });
 		expect(conflicts.map((c) => c.kind)).toEqual(["markers"]);
 	});
+
+	it("Draw.io の図は、両側の変更が別の行でも行単位でマージせず、リモート版と別名のローカル版を残す(ADR-0064)", async () => {
+		const svg = (label: string, page: string) => `<svg content="&lt;mxfile&gt;${page}&lt;/mxfile&gt;">\n<text>${label}</text>\n</svg>\n`;
+		const { run } = setup({ b: svg("a", "p1"), o: svg("a", "p1-ours"), t: svg("b", "p1") });
+		for (const path of ["asset/sys.drawio.svg", "asset/sys.drawio", "asset/SYS.DRAWIO.SVG"]) {
+			const r = await run({ [path]: "b" }, { [path]: "o" }, { [path]: "t" });
+			const dot = path.toLowerCase().lastIndexOf(".drawio");
+			const copyPath = `${path.slice(0, dot)} (conflict pc 2026-10-31 1200)${path.slice(dot)}`;
+			expect(r.entries.get(path)).toEqual({ oid: "t", mode: "100644" });
+			expect(r.entries.get(copyPath)).toEqual({ oid: "o", mode: "100644" });
+			expect(r.conflicts).toEqual([{ path, kind: "copy", copyPath }]);
+		}
+	});
+
+	it("Draw.io の図でも、片側だけの変更・同じ変更はそのまま採る(ADR-0064)", async () => {
+		const { run } = setup({});
+		const r = await run({ "asset/a.drawio.svg": "b", "asset/c.drawio.svg": "b" }, { "asset/a.drawio.svg": "o", "asset/c.drawio.svg": "x" }, { "asset/a.drawio.svg": "b", "asset/c.drawio.svg": "x" });
+		expect(r.entries.get("asset/a.drawio.svg")).toEqual({ oid: "o", mode: "100644" });
+		expect(r.entries.get("asset/c.drawio.svg")).toEqual({ oid: "x", mode: "100644" });
+		expect(r.conflicts).toEqual([]);
+	});
+
+	it("衝突の版の名前は、Draw.io の図の二重の拡張子を保つ(ADR-0064)", () => {
+		expect(conflictCopyPath("asset/a.drawio.svg", "s", () => false)).toBe("asset/a (conflict s).drawio.svg");
+		expect(conflictCopyPath("asset/a.b.svg", "s", () => false)).toBe("asset/a.b (conflict s).svg");
+		expect(conflictCopyPath("asset/.drawio.svg", "s", () => false)).toBe("asset/.drawio (conflict s).svg");
+	});
 });
