@@ -11,7 +11,7 @@ import { useStoreVersion } from "../ui/hooks";
 import { LabelsField, formatDateTime } from "./IssueHeader";
 
 /**
- * その場で編集する 1 行の欄。Enter か、欄を離れたときに保存する。Escape で元に戻す。
+ * その場で編集する 1 行の欄（M3 の outlined text field 風の `.vt-name-field`。枠の上にラベル、下に説明かエラー）。Enter か、欄を離れたときに保存する。Escape で元に戻す。
  * required なら空では保存しない。空で保存すると frontmatter から項目を外す（読むときに既定に戻る。ADR-0035）
  */
 function MemberField(props: { label: string; field: string; value: string; hint: string; required?: boolean; save: Save }) {
@@ -25,8 +25,8 @@ function MemberField(props: { label: string; field: string; value: string; hint:
 		if (next !== value) save({ [field]: next || null });
 	};
 	return (
-		<label class={`vt-text-field vt-member-field${error ? " is-error" : ""}`}>
-			<span>{label}</span>
+		<label class={`vt-name-field vt-member-field${error ? " is-error" : ""}`}>
+			<span class="vt-name-label">{label}</span>
 			<input
 				type="text"
 				value={draft}
@@ -38,7 +38,7 @@ function MemberField(props: { label: string; field: string; value: string; hint:
 					if (e.key === "Escape") setDraft(value);
 				}}
 			/>
-			<span class={error ? "vt-error" : "vt-muted"}>{error ?? props.hint}</span>
+			<span class={error ? "vt-name-error" : "vt-name-hint"}>{error ?? props.hint}</span>
 		</label>
 	);
 }

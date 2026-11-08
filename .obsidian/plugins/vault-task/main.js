@@ -2770,8 +2770,8 @@ function MemberField(props) {
     if (error !== null) return;
     if (next !== value) save({ [field]: next || null });
   };
-  return /* @__PURE__ */ u3("label", { class: `vt-text-field vt-member-field${error ? " is-error" : ""}`, children: [
-    /* @__PURE__ */ u3("span", { children: label }),
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field vt-member-field${error ? " is-error" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: label }),
     /* @__PURE__ */ u3(
       "input",
       {
@@ -2786,7 +2786,7 @@ function MemberField(props) {
         }
       }
     ),
-    /* @__PURE__ */ u3("span", { class: error ? "vt-error" : "vt-muted", children: error ?? props.hint })
+    /* @__PURE__ */ u3("span", { class: error ? "vt-name-error" : "vt-name-hint", children: error ?? props.hint })
   ] });
 }
 function DelegatedIssues(props) {

@@ -2714,6 +2714,7 @@ body.is-mobile .vt-toast {
 	border: 1px solid var(--vt-outline);
 	border-radius: var(--vt-radius-s);
 	background: var(--vt-surface);
+	color: var(--vt-on-surface);
 	font-size: var(--vt-type-body-medium-size);
 }
 
@@ -2916,16 +2917,15 @@ body.is-mobile .vt-toast {
 .vt-member-fields {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	/* 枠の上に出るラベルの分だけ広くとる */
+	gap: 20px;
 }
 
-.vt-member-field .vt-muted,
-.vt-member-field .vt-error {
-	font-weight: var(--vt-weight-regular);
-}
-
-.vt-member-field.is-error input {
-	border-color: var(--vt-error);
+/* .vt-name-field の下の説明（エラーのないとき） */
+.vt-name-hint {
+	padding: 4px 16px 0;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
 }
 
 .vt-member-issues {
