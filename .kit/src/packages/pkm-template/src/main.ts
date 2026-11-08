@@ -4,6 +4,8 @@ import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
 import { TemplateSettingTab } from "./obsidian/SettingTab";
+import { slashSessionField } from "./obsidian/snippet-session";
+import { SnippetSuggest } from "./obsidian/SnippetSuggest";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
 
@@ -57,6 +59,9 @@ export default class PkmTemplatePlugin extends Plugin {
 		// 「今日のデイリーノートを開く」のリボンは pkm-ribbon が、Daily と続けて並べる（ADR-0029）。コマンド open-todays-daily は残す
 		this.addRibbonIcon("file-plus-2", "テンプレートから新規ファイルを作成", () => void openCreateModal());
 		installNoteHeaders(this);
+		// 行頭の / でスニペットを挿入する（ADR-0060）
+		this.registerEditorExtension(slashSessionField);
+		this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
 		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}
 

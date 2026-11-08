@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
@@ -499,7 +499,7 @@ function D2(n2, t3) {
 
 // src/core/date-format.ts
 var WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-var TOKEN_RE = /\[([^\]]*)\]|YYYY|YY|MM|M|ddd|DD|D|HH|H|mm|m|ss|s|Z/g;
+var TOKEN_RE = /\[([^\]]*)\]|YYYY|YY|MM|M|ddd|DDD|DD|D|HH|H|mm|m|ss|s|Z/g;
 function pad2(n2) {
   return String(Math.trunc(Math.abs(n2))).padStart(2, "0");
 }
@@ -522,6 +522,8 @@ function formatDateTime(date, format = "YYYY-MM-DD") {
         return String(date.getMonth() + 1);
       case "ddd":
         return WEEKDAYS[date.getDay()] ?? "sun";
+      case "DDD":
+        return (WEEKDAYS[date.getDay()] ?? "sun").toUpperCase();
       case "DD":
         return pad2(date.getDate());
       case "D":
@@ -1044,6 +1046,63 @@ function diffTemplateEntries(entries, upstream) {
   });
 }
 
+// src/core/snippet.ts
+var SNIPPET_DIR = "template/snippet";
+var UPSTREAM_SNIPPET_DIR = ".kit/templates/snippet";
+var KEBAB_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function unquote(value) {
+  const v3 = value.trim();
+  if (v3.length >= 2 && v3.startsWith('"') && v3.endsWith('"')) return v3.slice(1, -1);
+  if (v3.length >= 2 && v3.startsWith("'") && v3.endsWith("'")) return v3.slice(1, -1).replace(/''/g, "'");
+  return v3;
+}
+function parseSnippet(file, text2) {
+  const fail = (problem) => ({ snippet: null, problem: `${file}: ${problem}` });
+  const open = /^---\r?\n/.exec(text2);
+  if (!open) return fail("frontmatter \u304C\u3042\u308A\u307E\u305B\u3093");
+  const close = /^---[ \t]*(?:\r?\n|$)/m;
+  const rest = text2.slice(open[0].length);
+  const m3 = close.exec(rest);
+  if (!m3) return fail("frontmatter \u304C\u9589\u3058\u3066\u3044\u307E\u305B\u3093");
+  const fm = rest.slice(0, m3.index);
+  const body = rest.slice(m3.index + m3[0].length);
+  const fields = {};
+  for (const line of fm.split(/\r?\n/)) {
+    const kv = /^([A-Za-z_][\w-]*):(.*)$/.exec(line);
+    if (kv) fields[kv[1]] = unquote(kv[2]);
+  }
+  for (const key of ["name", "alias"]) {
+    const v3 = fields[key];
+    if (v3 === void 0 || v3 === "") return fail(`${key} \u304C\u3042\u308A\u307E\u305B\u3093`);
+    if (!KEBAB_RE.test(v3)) return fail(`${key} \u306F\u30B1\u30D0\u30D6\u30B1\u30FC\u30B9\u306B\u3057\u307E\u3059\uFF08${v3}\uFF09`);
+  }
+  return { snippet: { file, name: fields.name, alias: fields.alias, body }, problem: null };
+}
+function layerSnippets(upstream, local) {
+  const byFile = /* @__PURE__ */ new Map();
+  for (const s3 of upstream) byFile.set(s3.file, s3);
+  for (const s3 of local) byFile.set(s3.file, s3);
+  return [...byFile.values()];
+}
+function filterSnippets(snippets, query) {
+  const q2 = query.toLowerCase();
+  return snippets.filter((s3) => s3.name.startsWith(q2) || s3.alias.startsWith(q2)).sort((a3, b2) => a3.alias.localeCompare(b2.alias) || a3.name.localeCompare(b2.name));
+}
+var QUERY_RE = /^\/[A-Za-z0-9-]*$/;
+function nextSlashSession(prev, update, doc, newId2) {
+  let candidate = null;
+  const typed = update.typedSlashAt;
+  if (typed !== null && doc.lineStartAt(typed) === typed) candidate = { id: newId2(), from: typed };
+  else if (prev) candidate = { id: prev.id, from: update.mapPos(prev.from) };
+  if (!candidate) return null;
+  const { from } = candidate;
+  const { head } = update;
+  if (!update.empty || head <= from) return null;
+  if (doc.lineStartAt(from) !== from || doc.lineStartAt(head) !== from) return null;
+  if (!QUERY_RE.test(doc.slice(from, head))) return null;
+  return candidate;
+}
+
 // src/obsidian/creator.ts
 var TemplateManager = class {
   constructor(app) {
@@ -1133,6 +1192,38 @@ var TemplateManager = class {
       if (template) loaded.push(template);
     }
     return loaded;
+  }
+  /**
+   * スニペット（ADR-0060）。上流の `.kit/templates/snippet/` に、その Vault の `template/snippet/` を重ねる
+   * （同じファイル名ならその Vault のもの）。どちらも直下の `.md` だけ
+   */
+  async loadSnippets() {
+    const problems = [];
+    const parseAll = (items, dir) => items.flatMap(({ file, text: text2 }) => {
+      const { snippet, problem } = parseSnippet(file, text2);
+      if (problem) problems.push(`${dir}/${problem}`);
+      return snippet ? [snippet] : [];
+    });
+    const upstream = [];
+    const adapter = this.app.vault.adapter;
+    if (await adapter.exists(UPSTREAM_SNIPPET_DIR)) {
+      const prefix = `${UPSTREAM_SNIPPET_DIR}/`;
+      for (const p3 of (await adapter.list(UPSTREAM_SNIPPET_DIR)).files) {
+        const name = p3.startsWith(prefix) ? p3.slice(prefix.length) : p3;
+        if (name.includes("/") || !name.endsWith(".md")) continue;
+        upstream.push({ file: name, text: await adapter.read(`${prefix}${name}`) });
+      }
+    }
+    const local = [];
+    const localPrefix = `${SNIPPET_DIR}/`;
+    for (const f4 of this.app.vault.getFiles()) {
+      if (!f4.path.startsWith(localPrefix)) continue;
+      const name = f4.path.slice(localPrefix.length);
+      if (name.includes("/") || !name.endsWith(".md")) continue;
+      local.push({ file: name, text: await this.app.vault.cachedRead(f4) });
+    }
+    const snippets = layerSnippets(parseAll(upstream, UPSTREAM_SNIPPET_DIR), parseAll(local, SNIPPET_DIR));
+    return { snippets, problems };
   }
   /** `{{id:…}}` の連番を決めるための、Vault 内のすべてのノートの basename（pkm-task と同じ見方） */
   takenNames() {
@@ -1542,10 +1633,110 @@ var TemplateSettingTab = class extends import_obsidian5.PluginSettingTab {
   }
 };
 
-// src/obsidian/view.ts
+// src/obsidian/snippet-session.ts
+var import_state = require("@codemirror/state");
+var lastId = 0;
+var newId = () => ++lastId;
+function typedSlashAt(tr) {
+  if (!tr.docChanged || !tr.isUserEvent("input.type")) return null;
+  let at = null;
+  let count = 0;
+  tr.changes.iterChanges((fromA, toA, fromB, _toB, inserted) => {
+    count++;
+    if (fromA === toA && inserted.toString() === "/") at = fromB;
+  });
+  return count === 1 ? at : null;
+}
+var slashSessionField = import_state.StateField.define({
+  create: () => null,
+  update(prev, tr) {
+    if (!tr.docChanged && !tr.selection) return prev;
+    const doc = tr.state.doc;
+    const sel = tr.state.selection.main;
+    return nextSlashSession(
+      prev,
+      { typedSlashAt: typedSlashAt(tr), mapPos: (p3) => tr.changes.mapPos(p3, 1), head: sel.head, empty: sel.empty },
+      { lineStartAt: (pos) => doc.lineAt(pos).from, slice: (from, to) => doc.sliceString(from, to) },
+      newId
+    );
+  }
+});
+
+// src/obsidian/SnippetSuggest.ts
 var import_obsidian6 = require("obsidian");
+var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
+  constructor(app, manager) {
+    super(app);
+    this.manager = manager;
+  }
+  manager;
+  /** いま候補を出しているセッション */
+  sessionId = null;
+  /** Escape で閉じたか、候補を選んで終えたセッション。同じセッションでは開き直さない */
+  dismissedId = null;
+  /** 最後に出した候補の数。0 件で閉じたとき（打ち直せばまた出る）と区別する */
+  shownCount = 0;
+  cache = null;
+  /**
+   * Escape・候補の選択・クリックで閉じたら、そのセッションでは開き直さない。
+   * onTrigger が null を返して閉じるとき（セッションが終わった）と、候補が 0 件で閉じるときは除く
+   */
+  close() {
+    if (this.sessionId !== null && this.shownCount > 0) this.dismissedId = this.sessionId;
+    super.close();
+  }
+  onTrigger(cursor, editor, _file) {
+    const view = editor.cm;
+    const session = view?.state.field(slashSessionField, false) ?? null;
+    if (!session || session.id === this.dismissedId) {
+      this.sessionId = null;
+      return null;
+    }
+    this.sessionId = session.id;
+    const start = editor.offsetToPos(session.from);
+    return { start, end: cursor, query: editor.getRange(start, cursor).slice(1) };
+  }
+  async getSuggestions(context) {
+    const id = this.sessionId ?? -1;
+    if (!this.cache || this.cache.sessionId !== id) {
+      this.cache = {
+        sessionId: id,
+        snippets: this.manager.loadSnippets().then(({ snippets, problems }) => {
+          for (const p3 of problems) console.warn(`pkm-template: \u30B9\u30CB\u30DA\u30C3\u30C8\u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F: ${p3}`);
+          return snippets;
+        })
+      };
+    }
+    const found = filterSnippets(await this.cache.snippets, context.query);
+    this.shownCount = found.length;
+    return found;
+  }
+  renderSuggestion(snippet, el) {
+    el.setText(`${snippet.alias}: ${snippet.name}`);
+  }
+  selectSuggestion(snippet, _evt) {
+    const ctx = this.context;
+    if (!ctx) return;
+    const file = ctx.file;
+    const rendered = renderTemplate(snippet.body, {
+      now: /* @__PURE__ */ new Date(),
+      title: file?.basename ?? "",
+      path: file?.path ?? "",
+      folder: file?.parent && file.parent.path !== "/" ? file.parent.path : "",
+      prompts: {},
+      takenNames: this.manager.takenNames()
+    });
+    const startOffset = ctx.editor.posToOffset(ctx.start);
+    ctx.editor.replaceRange(rendered.content, ctx.start, ctx.end);
+    ctx.editor.setCursor(ctx.editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
+    this.close();
+  }
+};
+
+// src/obsidian/view.ts
+var import_obsidian7 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian6.ItemView {
+  class PreactView extends import_obsidian7.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -1567,7 +1758,7 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
 var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
@@ -1605,7 +1796,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian7.Platform.isPhone });
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian8.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
     /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", "aria-label": "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
@@ -1629,7 +1820,7 @@ var LIST_VIEWS = [
   { type: "pkm-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
   { type: "pkm-template-source-list", title: "Sources", icon: "library", component: SourceListView }
 ];
-var PkmTemplatePlugin = class extends import_obsidian8.Plugin {
+var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
@@ -1664,15 +1855,17 @@ var PkmTemplatePlugin = class extends import_obsidian8.Plugin {
     }
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);
+    this.registerEditorExtension(slashSessionField);
+    this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
     this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian8.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian9.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`pkm-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian8.Notice(`${message}${detail}`);
+    new import_obsidian9.Notice(`${message}${detail}`);
   }
 };

@@ -1,6 +1,6 @@
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
-const TOKEN_RE = /\[([^\]]*)\]|YYYY|YY|MM|M|ddd|DD|D|HH|H|mm|m|ss|s|Z/g;
+const TOKEN_RE = /\[([^\]]*)\]|YYYY|YY|MM|M|ddd|DDD|DD|D|HH|H|mm|m|ss|s|Z/g;
 
 function pad2(n: number): string {
 	return String(Math.trunc(Math.abs(n))).padStart(2, "0");
@@ -30,6 +30,9 @@ export function formatDateTime(date: Date, format = "YYYY-MM-DD"): string {
 				return String(date.getMonth() + 1);
 			case "ddd":
 				return WEEKDAYS[date.getDay()] ?? "sun";
+			case "DDD":
+				// 曜日の英大文字 3 字（ADR-0060。moment.js の DDD とは違う）
+				return (WEEKDAYS[date.getDay()] ?? "sun").toUpperCase();
 			case "DD":
 				return pad2(date.getDate());
 			case "D":

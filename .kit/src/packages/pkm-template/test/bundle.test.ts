@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+
+const require = createRequire(import.meta.url);
 
 const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-template/main.js", import.meta.url));
 
@@ -106,6 +109,8 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 			events.push(ref);
 		}
 		register() {}
+		registerEditorExtension() {}
+		registerEditorSuggest() {}
 		addCommand(c: { id: string; name: string; callback?: () => void }) {
 			commands.push(c);
 		}
@@ -125,6 +130,10 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 		obsidian: {
 			Plugin,
 			Modal,
+			EditorSuggest: class {
+				constructor(readonly app: unknown) {}
+				close() {}
+			},
 			PluginSettingTab: class {},
 			Setting: class {},
 			MarkdownView: class {},
@@ -173,6 +182,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const req = (name: string) => {
 			required.add(name);
 			if (name === "obsidian") return mock.obsidian;
+			// CodeMirror は Obsidian が持つものを使う（ADR-0060。pkm-task と同じ）
+			if (name === "@codemirror/state") return require(name);
 			throw new Error(`unexpected require: ${name}`);
 		};
 
@@ -199,7 +210,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const plugin = new module.exports.default();
 		await plugin.onload();
 
-		expect([...required]).toEqual(["obsidian"]);
+		expect([...required].sort()).toEqual(["@codemirror/state", "obsidian"]);
 		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list"]);
 		expect(mock.views).toEqual(["pkm-template-daily-list", "pkm-template-note-list", "pkm-template-source-list"]);
 		// ヘッダーを差し込むための購読(ADR-0026)
@@ -267,6 +278,7 @@ type BundlePlugin = {
 		openTodaysDaily(now: Date): Promise<{ path: string }>;
 		loadConfig(): Promise<{ entries: { file: string; enabled: boolean; folder: string; fileNamePattern: string }[]; problems: string[] }>;
 		saveConfig(entries: { file: string; enabled: boolean; folder: string; fileNamePattern: string }[]): Promise<void>;
+		loadSnippets(): Promise<{ snippets: { file: string; name: string; alias: string; body: string }[]; problems: string[] }>;
 	};
 };
 
@@ -274,6 +286,7 @@ async function loadBundle(mock: ReturnType<typeof createObsidianMock>): Promise<
 	const module = { exports: {} as { default: new () => BundlePlugin } };
 	const req = (name: string) => {
 		if (name === "obsidian") return mock.obsidian;
+		if (name === "@codemirror/state") return require(name);
 		throw new Error(`unexpected require: ${name}`);
 	};
 	new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
@@ -402,5 +415,23 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: 上流の既�
 		const after = await plugin.manager.loadConfig();
 		expect(after.entries.find((e) => e.file === "note.md")?.folder).toBe("notes");
 		expect(after.entries.find((e) => e.file === "daily.md")?.enabled).toBe(true);
+	});
+});
+
+describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: スニペット（ADR-0060）", () => {
+	it("上流の .kit/templates/snippet/ に template/snippet/ を重ね、書式の誤ったものは問題として返す", async () => {
+		const mock = createObsidianMock({
+			".kit/templates/snippet/today-h1.md": "---\nname: today-h1\nalias: t1\n---\n# {{date}}\n\n\n",
+			".kit/templates/snippet/today-h2.md": "---\nname: today-h2\nalias: t2\n---\n## {{date}}\n",
+			"template/snippet/today-h2.md": "---\nname: today-h2\nalias: t2\n---\n## 子のもの\n",
+			"template/snippet/bad.md": "---\nname: Bad Name\nalias: b\n---\nx",
+			"template/snippet/sub/deep.md": "---\nname: deep\nalias: d\n---\nx",
+		});
+		const plugin = await loadBundle(mock);
+		const { snippets, problems } = await plugin.manager.loadSnippets();
+		const byName = Object.fromEntries(snippets.map((s) => [s.name, s.body]));
+		expect(byName).toEqual({ "today-h1": "# {{date}}\n\n\n", "today-h2": "## 子のもの\n" });
+		expect(problems).toHaveLength(1);
+		expect(problems[0]).toMatch(/^template\/snippet\/bad\.md: name/);
 	});
 });
