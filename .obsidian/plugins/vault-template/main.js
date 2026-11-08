@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => VaultTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["vault-task-", "vault-template-"];
@@ -921,7 +921,6 @@ var import_obsidian2 = require("obsidian");
 
 // src/core/config.ts
 var TEMPLATE_DIR = "template/file";
-var TEMPLATE_CONFIG_PATH = "template/config.json";
 var UPSTREAM_TEMPLATE_DIR = ".kit/templates/file";
 var UPSTREAM_TEMPLATE_CONFIG_PATH = ".kit/templates/config.json";
 function isValidTemplateFileName(file) {
@@ -962,86 +961,13 @@ function parseTemplateConfig(text2) {
   }
   return { templates, problems };
 }
-function moveTemplateEntry(entries, file, delta) {
-  const idx = entries.findIndex((e3) => e3.file === file);
-  const targetIdx = idx + delta;
-  if (idx === -1 || targetIdx < 0 || targetIdx >= entries.length) return [...entries];
-  const next = [...entries];
-  const current = next[idx];
-  next[idx] = next[targetIdx];
-  next[targetIdx] = current;
-  return next;
-}
-function parseTemplateOverrides(text2) {
-  const problems = [];
-  let data;
-  try {
-    data = JSON.parse(text2);
-  } catch {
-    return { overrides: [], problems: ["JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093"] };
-  }
-  const obj = typeof data === "object" && data !== null && !Array.isArray(data) ? data : null;
-  if (!obj || !Array.isArray(obj.templates)) return { overrides: [], problems: ["templates \u914D\u5217\u304C\u3042\u308A\u307E\u305B\u3093"] };
-  const overrides = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const raw of obj.templates) {
-    const item2 = typeof raw === "object" && raw !== null ? raw : {};
-    const file = typeof item2.file === "string" ? item2.file.trim() : "";
-    if (!isValidTemplateFileName(file)) {
-      problems.push(`\u4E0D\u6B63\u306A\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u30D5\u30A1\u30A4\u30EB\u540D\u3067\u3059: ${JSON.stringify(raw)}`);
-      continue;
-    }
-    if (seen.has(file)) {
-      problems.push(`\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u8A2D\u5B9A\u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${file}`);
-      continue;
-    }
-    seen.add(file);
-    const o3 = { file };
-    if ("enabled" in item2) {
-      if (typeof item2.enabled === "boolean") o3.enabled = item2.enabled;
-      else problems.push(`${file}: enabled \u306F true \u304B false \u306B\u3057\u307E\u3059`);
-    }
-    for (const key of ["folder", "fileNamePattern"]) {
-      if (!(key in item2)) continue;
-      const v3 = item2[key];
-      if (typeof v3 === "string") o3[key] = key === "folder" ? v3.trim().replace(/^\/+|\/+$/g, "") : v3.trim();
-      else problems.push(`${file}: ${key} \u306F\u6587\u5B57\u5217\u306B\u3057\u307E\u3059`);
-    }
-    overrides.push(o3);
-  }
-  return { overrides, problems };
-}
-function serializeTemplateOverrides(overrides) {
-  return `${JSON.stringify({ templates: overrides }, null, 2)}
-`;
-}
 var defaultEntry = (file) => ({ file, enabled: true, folder: "", fileNamePattern: "" });
-function layerTemplateEntries(params) {
+function resolveTemplateEntries(params) {
   const actual = new Set(params.files.filter(isValidTemplateFileName));
-  const base = new Map(params.upstream.map((e3) => [e3.file, e3]));
-  const over = new Map(params.overrides.map((o3) => [o3.file, o3]));
-  const order = [];
-  const push = (file) => {
-    if (actual.has(file) && !order.includes(file)) order.push(file);
-  };
-  for (const o3 of params.overrides) push(o3.file);
-  for (const e3 of params.upstream) push(e3.file);
-  for (const f4 of [...actual].sort((a3, b2) => a3.localeCompare(b2))) push(f4);
-  return order.map((file) => {
-    const { file: _f, ...fields } = over.get(file) ?? { file };
-    return { ...base.get(file) ?? defaultEntry(file), ...fields, file };
-  });
-}
-function diffTemplateEntries(entries, upstream) {
-  const base = new Map(upstream.map((e3) => [e3.file, e3]));
-  return entries.map((e3) => {
-    const b2 = base.get(e3.file) ?? defaultEntry(e3.file);
-    const o3 = { file: e3.file };
-    if (e3.enabled !== b2.enabled) o3.enabled = e3.enabled;
-    if (e3.folder !== b2.folder) o3.folder = e3.folder;
-    if (e3.fileNamePattern !== b2.fileNamePattern) o3.fileNamePattern = e3.fileNamePattern;
-    return o3;
-  });
+  const listed = params.upstream.filter((e3) => actual.has(e3.file));
+  const listedFiles = new Set(listed.map((e3) => e3.file));
+  const rest = [...actual].filter((f4) => !listedFiles.has(f4)).sort((a3, b2) => a3.localeCompare(b2));
+  return [...listed.map((e3) => ({ ...e3 })), ...rest.map(defaultEntry)];
 }
 
 // src/obsidian/creator.ts
@@ -1083,34 +1009,13 @@ var TemplateManager = class {
     return { templates, problems: problems.map((p3) => `${UPSTREAM_TEMPLATE_CONFIG_PATH}: ${p3}`) };
   }
   /**
-   * 上流の既定（`.kit/templates/`）に、その Vault の `template/config.json` を項目ごとに重ねた設定一覧を返す。
+   * 上流の設定（`.kit/templates/config.json`）と、使えるテンプレートを合わせた設定一覧を返す。設定は子が上書きしない（ADR-0039）。
    * テンプレートのファイルは、同じ名前ならその Vault の `template/file/` を優先する
    */
   async loadConfig() {
     const files = await this.listTemplateFiles();
     const upstream = await this.loadUpstreamConfig();
-    const configFile = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-    const local = configFile ? parseTemplateOverrides(await this.app.vault.read(configFile)) : { overrides: [], problems: [] };
-    return {
-      entries: layerTemplateEntries({ upstream: upstream.templates, overrides: local.overrides, files }),
-      problems: [...upstream.problems, ...local.problems.map((p3) => `${TEMPLATE_CONFIG_PATH}: ${p3}`)]
-    };
-  }
-  /** その Vault の `template/config.json` に、上流と違う項目だけを保存する（上流の既定は変えない） */
-  async saveConfig(entries) {
-    const upstream = await this.loadUpstreamConfig();
-    const text2 = serializeTemplateOverrides(diffTemplateEntries(entries, upstream.templates));
-    const existing = this.app.vault.getFileByPath(TEMPLATE_CONFIG_PATH);
-    if (existing) {
-      const { problems } = parseTemplateOverrides(await this.app.vault.read(existing));
-      if (problems.length > 0) {
-        throw new Error(`${TEMPLATE_CONFIG_PATH} \u306B\u66F8\u5F0F\u30A8\u30E9\u30FC\u304C\u3042\u308B\u305F\u3081\u4E0A\u66F8\u304D\u3067\u304D\u307E\u305B\u3093: ${problems.join(", ")}`);
-      }
-      await this.app.vault.modify(existing, text2);
-      return;
-    }
-    await this.ensureFolder(TEMPLATE_CONFIG_PATH);
-    await this.app.vault.create(TEMPLATE_CONFIG_PATH, text2);
+    return { entries: resolveTemplateEntries({ upstream: upstream.templates, files }), problems: upstream.problems };
   }
   /** テンプレート 1 件の中身とプロンプト定義を読み込む。その Vault の `template/file/` を先に見る。どちらにもなければ null */
   async loadTemplate(entry) {
@@ -1140,7 +1045,7 @@ var TemplateManager = class {
   }
   /**
    * 今日のデイリーノートを開く。なければ daily.md のテンプレート（`template/file/` か `.kit/templates/file/`）から作る。
-   * 生成先は `template/config.json` の daily.md の設定に従う（有効・無効は問わない）。
+   * 生成先は `.kit/templates/config.json` の daily.md の設定に従う（有効・無効は問わない）。
    */
   async openTodaysDaily(now = /* @__PURE__ */ new Date()) {
     const { entries } = await this.loadConfig();
@@ -1473,79 +1378,10 @@ function installNoteHeaders(plugin) {
   });
 }
 
-// src/obsidian/SettingTab.ts
-var import_obsidian5 = require("obsidian");
-var TemplateSettingTab = class extends import_obsidian5.PluginSettingTab {
-  constructor(app, plugin, manager, onReport) {
-    super(app, plugin);
-    this.manager = manager;
-    this.onReport = onReport;
-  }
-  manager;
-  onReport;
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    void this.renderAsync(containerEl);
-  }
-  async renderAsync(containerEl) {
-    const { entries, problems } = await this.manager.loadConfig();
-    containerEl.empty();
-    new import_obsidian5.Setting(containerEl).setName("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u4E00\u89A7\u3068\u751F\u6210\u5148").setDesc(
-      `${UPSTREAM_TEMPLATE_DIR}/\uFF08\u4E0A\u6D41\u306E\u65E2\u5B9A\uFF09\u3068 ${TEMPLATE_DIR}/\uFF08\u3053\u306E Vault\uFF09\u306B\u3042\u308B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8868\u793A\u9806\u30FB\u30E2\u30FC\u30C0\u30EB\u3078\u306E\u8868\u793A\u6709\u7121\u30FB\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\u30FB\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\u3092\u8A2D\u5B9A\u3057\u307E\u3059\u3002\u540C\u3058\u540D\u524D\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306F\u3053\u306E Vault \u306E\u3082\u306E\u3092\u4F7F\u3044\u307E\u3059\u3002\u4FDD\u5B58\u5148\u306F ${TEMPLATE_CONFIG_PATH} \u3067\u3001\u4E0A\u6D41\u306E\u65E2\u5B9A\u3068\u9055\u3046\u9805\u76EE\u3060\u3051\u3092\u66F8\u304D\u307E\u3059\u3002`
-    ).setHeading();
-    if (problems.length > 0) {
-      const warn = containerEl.createEl("div", { cls: "vt-tpl-setting-error" });
-      warn.createEl("div", {
-        text: `\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306E\u8A2D\u5B9A\u306B\u66F8\u5F0F\u30A8\u30E9\u30FC\u304C\u3042\u308A\u307E\u3059: ${problems.join(" / ")}`
-      });
-    }
-    const saveAndRefresh = async (next, rerender = false) => {
-      try {
-        await this.manager.saveConfig(next);
-        if (rerender) await this.renderAsync(containerEl);
-      } catch (err) {
-        this.onReport("\u8A2D\u5B9A\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err);
-      }
-    };
-    entries.forEach((entry, index) => {
-      const row = new import_obsidian5.Setting(containerEl).setName(entry.file).setDesc("\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\uFF08\u4F8B: wiki, daily/{{date:YYYY}}/{{date:MM}}\uFF09\u3068\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\uFF08\u4F8B: {{date:YYYY-MM-DD}}\uFF09");
-      row.addText(
-        (text2) => text2.setPlaceholder("\u751F\u6210\u5148\u30D5\u30A9\u30EB\u30C0\uFF08\u30EB\u30FC\u30C8\u306A\u3089\u7A7A\u6B04\uFF09").setValue(entry.folder).onChange((val) => {
-          entry.folder = val.trim().replace(/^\/+|\/+$/g, "");
-          void saveAndRefresh(entries, false);
-        })
-      );
-      row.addText(
-        (text2) => text2.setPlaceholder("\u521D\u671F\u30D5\u30A1\u30A4\u30EB\u540D\u30D1\u30BF\u30FC\u30F3\uFF08\u4EFB\u610F\uFF09").setValue(entry.fileNamePattern).onChange((val) => {
-          entry.fileNamePattern = val.trim();
-          void saveAndRefresh(entries, false);
-        })
-      );
-      row.addExtraButton(
-        (btn) => btn.setIcon("arrow-up").setTooltip("\u4E0A\u3078\u79FB\u52D5").setDisabled(index === 0).onClick(() => {
-          void saveAndRefresh(moveTemplateEntry(entries, entry.file, -1), true);
-        })
-      );
-      row.addExtraButton(
-        (btn) => btn.setIcon("arrow-down").setTooltip("\u4E0B\u3078\u79FB\u52D5").setDisabled(index === entries.length - 1).onClick(() => {
-          void saveAndRefresh(moveTemplateEntry(entries, entry.file, 1), true);
-        })
-      );
-      row.addToggle(
-        (toggle) => toggle.setTooltip("\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u4F5C\u6210\u30E2\u30FC\u30C0\u30EB\u306B\u8868\u793A\u3059\u308B").setValue(entry.enabled).onChange((val) => {
-          entry.enabled = val;
-          void saveAndRefresh(entries, false);
-        })
-      );
-    });
-  }
-};
-
 // src/obsidian/view.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian6.ItemView {
+  class PreactView extends import_obsidian5.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -1567,7 +1403,7 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
 var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
@@ -1605,7 +1441,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian7.Platform.isPhone });
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian6.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
     /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", "aria-label": "\u30BF\u30A4\u30C8\u30EB\u3067\u7D5E\u308A\u8FBC\u3080", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
@@ -1629,7 +1465,7 @@ var LIST_VIEWS = [
   { type: "vault-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
   { type: "vault-template-source-list", title: "Sources", icon: "library", component: SourceListView }
 ];
-var VaultTemplatePlugin = class extends import_obsidian8.Plugin {
+var VaultTemplatePlugin = class extends import_obsidian7.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
@@ -1664,15 +1500,14 @@ var VaultTemplatePlugin = class extends import_obsidian8.Plugin {
     }
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);
-    this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian8.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian7.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`vault-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian8.Notice(`${message}${detail}`);
+    new import_obsidian7.Notice(`${message}${detail}`);
   }
 };

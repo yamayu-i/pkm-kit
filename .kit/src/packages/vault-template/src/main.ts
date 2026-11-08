@@ -3,7 +3,6 @@ import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
-import { TemplateSettingTab } from "./obsidian/SettingTab";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
 
@@ -57,7 +56,6 @@ export default class VaultTemplatePlugin extends Plugin {
 		// 「今日のデイリーノートを開く」のリボンは vault-ribbon が、Daily と続けて並べる（ADR-0029）。コマンド open-todays-daily は残す
 		this.addRibbonIcon("file-plus-2", "テンプレートから新規ファイルを作成", () => void openCreateModal());
 		installNoteHeaders(this);
-		this.addSettingTab(new TemplateSettingTab(this.app, this, this.manager, (msg, err) => this.report(msg, err)));
 	}
 
 	/** 一覧 View は左の固定ペインに開く（ADR-0033） */
