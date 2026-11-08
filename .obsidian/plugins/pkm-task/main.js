@@ -127,8 +127,6 @@ async function openInNotePane(workspace, file, options) {
 }
 
 // src/header/extension.ts
-var import_state = require("@codemirror/state");
-var import_view = require("@codemirror/view");
 var import_obsidian7 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
@@ -388,459 +386,98 @@ n = w.slice, l = { __e: function(n2, l3, u4, t3) {
   return n2.__v.__b - l3.__v.__b;
 }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
 
-// ../shared/src/dates.ts
-var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-var DAY_MS = 864e5;
-var WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-function toEpochDay(date) {
-  const m3 = DATE_RE.exec(date);
-  if (!m3) return null;
-  const y3 = Number(m3[1]);
-  const mo = Number(m3[2]);
-  const d3 = Number(m3[3]);
-  const t3 = Date.UTC(y3, mo - 1, d3);
-  const back = new Date(t3);
-  if (back.getUTCFullYear() !== y3 || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d3) return null;
-  return t3 / DAY_MS;
-}
-function fromEpochDay(day) {
-  return new Date(day * DAY_MS).toISOString().slice(0, 10);
-}
-function isLocalDate(value) {
-  return typeof value === "string" && toEpochDay(value) !== null;
-}
-function requireDay(date) {
-  const day = toEpochDay(date);
-  if (day === null) throw new RangeError(`\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${date}`);
-  return day;
-}
-function addDays(date, days) {
-  return fromEpochDay(requireDay(date) + days);
-}
-function diffDays(a3, b2) {
-  return requireDay(a3) - requireDay(b2);
-}
-function weekdayOf(date) {
-  return new Date(requireDay(date) * DAY_MS).getUTCDay();
-}
-function localToday(now = /* @__PURE__ */ new Date()) {
-  const y3 = now.getFullYear();
-  const m3 = String(now.getMonth() + 1).padStart(2, "0");
-  const d3 = String(now.getDate()).padStart(2, "0");
-  return `${y3}-${m3}-${d3}`;
-}
-function monthGridDays(month) {
-  const first = `${month}-01`;
-  const start = addDays(first, -weekdayOf(first));
-  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
-}
-
-// src/core/dates.ts
-function normalizeDate(value) {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
-  if (typeof value === "string") {
-    const s3 = value.trim();
-    return isLocalDate(s3) ? s3 : null;
-  }
+// ../shared/src/header-mount.ts
+var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
+function findHost(sizer, className) {
+  for (const child of Array.from(sizer.children)) if (child.className === className) return child;
   return null;
 }
-function localDateTime(now = /* @__PURE__ */ new Date()) {
-  const pad = (n2) => String(Math.trunc(Math.abs(n2))).padStart(2, "0");
-  const offset = -now.getTimezoneOffset();
-  const sign = offset >= 0 ? "+" : "-";
-  return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+function keepFirst(sizer, host) {
+  if (sizer.firstElementChild === host) return false;
+  sizer.prepend(host);
+  return true;
 }
-function formatShortDate(date) {
-  return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m3 ? Number(m3[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-function nextIds(prefix, existing, count = 1) {
-  let max = 0;
-  for (const id of existing) {
-    const n2 = idNumber(id, prefix);
-    if (n2 !== null && n2 > max) max = n2;
-  }
-  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
-}
-function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
-  return `${folder}/${id}.md`;
-}
-
-// src/core/repeat.ts
-function parseWeekday(s3) {
-  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
-  return i3 < 0 ? null : i3;
-}
-function parseMonthSpec(value) {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
-  }
-  if (typeof value !== "string") return null;
-  const s3 = value.trim().toLowerCase();
-  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
-  if (s3 === "last") return { kind: "last" };
-  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
-  if (nth) {
-    const weekday = parseWeekday(nth[2]);
-    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
-  }
-  const last = /^last-([a-z]{3})$/.exec(s3);
-  if (last) {
-    const weekday = parseWeekday(last[1]);
-    return weekday === null ? null : { kind: "lastWeekday", weekday };
-  }
-  return null;
-}
-function asList(value) {
-  if (value === void 0 || value === null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-function serializeMonthSpec(spec) {
-  switch (spec.kind) {
-    case "day":
-      return spec.day;
-    case "last":
-      return "last";
-    case "nth":
-      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
-    case "lastWeekday":
-      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
-  }
-}
-function serializeRepeat(rule) {
-  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
-  if (rule.every === "day") return { every: "day", ...interval };
-  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
-  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
-}
-function parseRepeat(value) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
-  }
-  const raw = value;
-  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
-  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
-    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
-  }
-  const on = asList(raw.on);
-  switch (raw.every) {
-    case "day":
-      return { ok: true, value: { every: "day", interval } };
-    case "week": {
-      const weekdays = [];
-      for (const v3 of on) {
-        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
-        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        if (!weekdays.includes(w3)) weekdays.push(w3);
+function placeHeaders(sizers, className, show, create) {
+  const hosts = [];
+  const removed = [];
+  for (const sizer of sizers) {
+    let host = findHost(sizer, className);
+    if (!show) {
+      if (host) {
+        host.remove();
+        removed.push(host);
       }
-      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "week", interval, weekdays } };
+      continue;
     }
-    case "month": {
-      const days = [];
-      for (const v3 of on) {
-        const spec = parseMonthSpec(v3);
-        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        days.push(spec);
-      }
-      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "month", interval, days } };
-    }
-    default:
-      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
+    if (!host) host = create();
+    keepFirst(sizer, host);
+    hosts.push(host);
   }
+  return { hosts, removed };
 }
-function daysInMonth(year, month) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-function matchesMonthSpec(spec, year, month, day, weekday) {
-  const last = daysInMonth(year, month);
-  switch (spec.kind) {
-    case "day":
-      return spec.day === day;
-    case "last":
-      return day === last;
-    case "nth":
-      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
-    case "lastWeekday":
-      return weekday === spec.weekday && day + 7 > last;
-  }
-}
-function mondayOffset(date) {
-  return (weekdayOf(date) + 6) % 7;
-}
-function occursOn(rule, anchor, date) {
-  const elapsed = diffDays(date, anchor);
-  if (elapsed < 0) return false;
-  switch (rule.every) {
-    case "day":
-      return elapsed % rule.interval === 0;
-    case "week": {
-      if (!rule.weekdays.includes(weekdayOf(date))) return false;
-      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
-      return weeks % rule.interval === 0;
-    }
-    case "month": {
-      const [y3, m3, d3] = date.split("-").map(Number);
-      const [ay, am] = anchor.split("-").map(Number);
-      const months = (y3 - ay) * 12 + (m3 - am);
-      if (months % rule.interval !== 0) return false;
-      const weekday = weekdayOf(date);
-      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
-    }
-  }
-}
-var ORDINAL = ["", "\u7B2C 1", "\u7B2C 2", "\u7B2C 3", "\u7B2C 4", "\u7B2C 5"];
-function describeRepeat(rule) {
-  const every = (unit, each) => rule.interval === 1 ? each : `${rule.interval} ${unit}\u3054\u3068`;
-  switch (rule.every) {
-    case "day":
-      return every("\u65E5", "\u6BCE\u65E5");
-    case "week":
-      return `${rule.interval === 2 ? "\u9694\u9031" : every("\u9031", "\u6BCE\u9031")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
-    case "month": {
-      const days = rule.days.map((d3) => {
-        switch (d3.kind) {
-          case "day":
-            return `${d3.day} \u65E5`;
-          case "last":
-            return "\u6708\u672B";
-          case "nth":
-            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
-          case "lastWeekday":
-            return `\u6700\u7D42 ${WEEKDAY_NAMES[d3.weekday]}`;
-        }
-      });
-      return `${rule.interval === 2 ? "\u9694\u6708" : every("\u304B\u6708", "\u6BCE\u6708")} ${days.join(", ")}`;
-    }
-  }
-}
-
-// src/core/schema.ts
-var SCHEMA_VERSION = 1;
-var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
-var PRIORITIES = ["high", "mid", "low", "chore"];
-var STATUS_DETAIL_MAX = 20;
-var Reader = class {
-  constructor(path, fm) {
-    this.path = path;
-    this.fm = fm;
-  }
-  path;
-  fm;
-  problems = [];
-  problem(code, message, severity = "error") {
-    this.problems.push({ severity, path: this.path, code, message });
-  }
-  has(key) {
-    const v3 = this.fm[key];
-    return v3 !== void 0 && v3 !== null && v3 !== "";
-  }
-  string(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "string") return v3.trim();
-    if (typeof v3 === "number") return String(v3);
-    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    return null;
-  }
-  oneOf(key, values) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (values.includes(v3)) return v3;
-    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
-    return null;
-  }
-  date(key) {
-    if (!this.has(key)) return null;
-    const d3 = normalizeDate(this.fm[key]);
-    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
-    return d3;
-  }
-  datetime(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
-    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
-    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
-    return null;
-  }
-  minutes(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
-    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
-    return null;
-  }
-  list(key) {
-    if (!this.has(key)) return [];
-    const v3 = this.fm[key];
-    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
-  }
-  strings(key) {
-    const out = [];
-    for (const v3 of this.list(key)) {
-      if (typeof v3 === "string" || typeof v3 === "number") {
-        const s3 = String(v3).trim();
-        if (s3 && !out.includes(s3)) out.push(s3);
-      } else {
-        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
-      }
-    }
-    return out;
-  }
-  dates(key) {
-    const out = /* @__PURE__ */ new Set();
-    for (const v3 of this.list(key)) {
-      const d3 = normalizeDate(v3);
-      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
-      else out.add(d3);
-    }
-    return [...out].sort();
-  }
-  ref(key, prefix) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (isId(v3, prefix)) return v3;
-    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
-    return null;
-  }
-  common(type, prefix) {
-    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
-      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
-    }
-    const id = this.string("id");
-    if (id === null || !isId(id, prefix)) {
-      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
-      return null;
-    }
-    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
-    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
-    return id;
-  }
-};
-function parseIssue(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("issue", "i");
-  const summary = r3.string("summary") ?? "";
-  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
-  const status = r3.oneOf("status", STATUSES);
-  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
-  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
-  const issue = {
-    path,
-    id: id ?? "",
-    summary,
-    status: status ?? "open",
-    statusDetail: r3.string("status-detail") ?? "",
-    delegatedTo: r3.ref("delegated_to", "m"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    parent: r3.ref("parent", "i"),
-    related: r3.strings("related"),
-    estimated: r3.minutes("estimated"),
-    scheduled: r3.dates("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
-    revisit: r3.date("revisit"),
-    reviewed: r3.date("reviewed"),
-    created: r3.datetime("created")
+function installHeaderMount(options) {
+  const { plugin, className } = options;
+  const { app } = plugin;
+  const observers = /* @__PURE__ */ new Map();
+  const watch = (sizer, host) => {
+    observers.get(sizer)?.disconnect();
+    const observer = new MutationObserver(() => {
+      keepFirst(sizer, host);
+    });
+    observer.observe(sizer, { childList: true });
+    observers.set(sizer, observer);
   };
-  return { value: id === null ? null : issue, problems: r3.problems };
-}
-function parseRoutine(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("routine", "r");
-  let repeat = null;
-  const parsed = parseRepeat(fm.repeat);
-  if (parsed.ok) repeat = parsed.value;
-  else r3.problem("invalid-repeat", parsed.error);
-  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
-  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const routine = {
-    path,
-    id: id ?? "",
-    summary: r3.string("summary") ?? "",
-    repeat,
-    start: r3.date("start"),
-    end: r3.date("end"),
-    active: active !== false,
-    group: r3.string("group"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    estimated: r3.minutes("estimated"),
-    created: r3.datetime("created")
+  const unwatch = (sizer) => {
+    observers.get(sizer)?.disconnect();
+    observers.delete(sizer);
   };
-  return { value: id === null ? null : routine, problems: r3.problems };
-}
-function parseMember(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("member", "m");
-  const name = r3.string("name") ?? "";
-  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  const nickname = r3.string("nickname") || name;
-  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
-  if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
-}
-
-// src/core/issue-file.ts
-var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString(s3) {
-  return JSON.stringify(s3);
-}
-function newIssueContent(id, summary, created, parent = null, scheduled = []) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
-  if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
-  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
-  return lines.join("\n");
-}
-function newMemberContent(id, name, created) {
-  return [
-    "---",
-    `schema: ${SCHEMA_VERSION}`,
-    "type: member",
-    `id: ${id}`,
-    `name: ${yamlString(name)}`,
-    `nickname: ${yamlString(name)}`,
-    `alias: ${yamlString(id)}`,
-    `created: ${created}`,
-    `updated: ${created}`,
-    "---",
-    ""
-  ].join("\n");
-}
-function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
-  if (extra.start) lines.push(`start: ${extra.start}`);
-  lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
-  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
-  return lines.join("\n");
-}
-function frontmatterRange(text) {
-  const m3 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
-  return m3 ? { from: 0, to: m3[0].length } : null;
-}
-function newDailyContent(created) {
-  return `---
-type: daily
-created: ${created}
-updated: ${created}
----
-`;
+  const mount = (view) => {
+    const sizers = Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+    const model = options.model(view);
+    const { hosts, removed } = placeHeaders(sizers, className, model !== null, () => {
+      const el = document.createElement("div");
+      el.className = className;
+      return el;
+    });
+    for (const host of removed) options.clear(host);
+    for (const sizer of sizers) {
+      const host = findHost(sizer, className);
+      if (host) watch(sizer, host);
+      else unwatch(sizer);
+    }
+    if (model !== null) for (const host of hosts) options.draw(host, model, view);
+  };
+  const refresh = () => {
+    for (const view of options.views()) mount(view);
+    for (const sizer of Array.from(observers.keys())) if (!sizer.isConnected) unwatch(sizer);
+  };
+  let timer;
+  const schedule = () => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(refresh, 100);
+  };
+  const now = () => {
+    const view = options.activeView();
+    if (view) mount(view);
+    schedule();
+  };
+  const on = (ref) => plugin.registerEvent(ref);
+  on(app.workspace.on("file-open", now));
+  on(app.workspace.on("active-leaf-change", now));
+  on(app.workspace.on("layout-change", schedule));
+  on(app.metadataCache.on("changed", schedule));
+  on(app.metadataCache.on("resolved", schedule));
+  app.workspace.onLayoutReady(refresh);
+  plugin.register(() => {
+    window.clearTimeout(timer);
+    for (const observer of observers.values()) observer.disconnect();
+    observers.clear();
+    const selector = className.split(" ").map((c3) => `.${c3}`).join("");
+    for (const host of Array.from(document.querySelectorAll(selector))) {
+      options.clear(host);
+      host.remove();
+    }
+  });
 }
 
 // src/header/IssueHeader.tsx
@@ -985,6 +622,72 @@ function C2(n2, t3) {
 }
 function D2(n2, t3) {
   return "function" == typeof t3 ? t3(n2) : t3;
+}
+
+// ../shared/src/dates.ts
+var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+var DAY_MS = 864e5;
+var WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+function toEpochDay(date) {
+  const m3 = DATE_RE.exec(date);
+  if (!m3) return null;
+  const y3 = Number(m3[1]);
+  const mo = Number(m3[2]);
+  const d3 = Number(m3[3]);
+  const t3 = Date.UTC(y3, mo - 1, d3);
+  const back = new Date(t3);
+  if (back.getUTCFullYear() !== y3 || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d3) return null;
+  return t3 / DAY_MS;
+}
+function fromEpochDay(day) {
+  return new Date(day * DAY_MS).toISOString().slice(0, 10);
+}
+function isLocalDate(value) {
+  return typeof value === "string" && toEpochDay(value) !== null;
+}
+function requireDay(date) {
+  const day = toEpochDay(date);
+  if (day === null) throw new RangeError(`\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${date}`);
+  return day;
+}
+function addDays(date, days) {
+  return fromEpochDay(requireDay(date) + days);
+}
+function diffDays(a3, b2) {
+  return requireDay(a3) - requireDay(b2);
+}
+function weekdayOf(date) {
+  return new Date(requireDay(date) * DAY_MS).getUTCDay();
+}
+function localToday(now = /* @__PURE__ */ new Date()) {
+  const y3 = now.getFullYear();
+  const m3 = String(now.getMonth() + 1).padStart(2, "0");
+  const d3 = String(now.getDate()).padStart(2, "0");
+  return `${y3}-${m3}-${d3}`;
+}
+function monthGridDays(month) {
+  const first = `${month}-01`;
+  const start = addDays(first, -weekdayOf(first));
+  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
+}
+
+// src/core/dates.ts
+function normalizeDate(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (typeof value === "string") {
+    const s3 = value.trim();
+    return isLocalDate(s3) ? s3 : null;
+  }
+  return null;
+}
+function localDateTime(now = /* @__PURE__ */ new Date()) {
+  const pad = (n2) => String(Math.trunc(Math.abs(n2))).padStart(2, "0");
+  const offset = -now.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+}
+function formatShortDate(date) {
+  return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
 }
 
 // src/core/board.ts
@@ -1323,6 +1026,346 @@ function prorateEffort(intervals, now) {
     prev = t3;
   }
   return result;
+}
+
+// src/core/repeat.ts
+function parseWeekday(s3) {
+  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
+  return i3 < 0 ? null : i3;
+}
+function parseMonthSpec(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
+  }
+  if (typeof value !== "string") return null;
+  const s3 = value.trim().toLowerCase();
+  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
+  if (s3 === "last") return { kind: "last" };
+  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
+  if (nth) {
+    const weekday = parseWeekday(nth[2]);
+    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
+  }
+  const last = /^last-([a-z]{3})$/.exec(s3);
+  if (last) {
+    const weekday = parseWeekday(last[1]);
+    return weekday === null ? null : { kind: "lastWeekday", weekday };
+  }
+  return null;
+}
+function asList(value) {
+  if (value === void 0 || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+function serializeMonthSpec(spec) {
+  switch (spec.kind) {
+    case "day":
+      return spec.day;
+    case "last":
+      return "last";
+    case "nth":
+      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
+    case "lastWeekday":
+      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
+  }
+}
+function serializeRepeat(rule) {
+  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
+  if (rule.every === "day") return { every: "day", ...interval };
+  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
+  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
+}
+function parseRepeat(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
+  }
+  const raw = value;
+  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
+  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
+    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
+  }
+  const on = asList(raw.on);
+  switch (raw.every) {
+    case "day":
+      return { ok: true, value: { every: "day", interval } };
+    case "week": {
+      const weekdays = [];
+      for (const v3 of on) {
+        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
+        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        if (!weekdays.includes(w3)) weekdays.push(w3);
+      }
+      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "week", interval, weekdays } };
+    }
+    case "month": {
+      const days = [];
+      for (const v3 of on) {
+        const spec = parseMonthSpec(v3);
+        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        days.push(spec);
+      }
+      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "month", interval, days } };
+    }
+    default:
+      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
+  }
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function matchesMonthSpec(spec, year, month, day, weekday) {
+  const last = daysInMonth(year, month);
+  switch (spec.kind) {
+    case "day":
+      return spec.day === day;
+    case "last":
+      return day === last;
+    case "nth":
+      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
+    case "lastWeekday":
+      return weekday === spec.weekday && day + 7 > last;
+  }
+}
+function mondayOffset(date) {
+  return (weekdayOf(date) + 6) % 7;
+}
+function occursOn(rule, anchor, date) {
+  const elapsed = diffDays(date, anchor);
+  if (elapsed < 0) return false;
+  switch (rule.every) {
+    case "day":
+      return elapsed % rule.interval === 0;
+    case "week": {
+      if (!rule.weekdays.includes(weekdayOf(date))) return false;
+      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
+      return weeks % rule.interval === 0;
+    }
+    case "month": {
+      const [y3, m3, d3] = date.split("-").map(Number);
+      const [ay, am] = anchor.split("-").map(Number);
+      const months = (y3 - ay) * 12 + (m3 - am);
+      if (months % rule.interval !== 0) return false;
+      const weekday = weekdayOf(date);
+      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
+    }
+  }
+}
+var ORDINAL = ["", "\u7B2C 1", "\u7B2C 2", "\u7B2C 3", "\u7B2C 4", "\u7B2C 5"];
+function describeRepeat(rule) {
+  const every = (unit, each) => rule.interval === 1 ? each : `${rule.interval} ${unit}\u3054\u3068`;
+  switch (rule.every) {
+    case "day":
+      return every("\u65E5", "\u6BCE\u65E5");
+    case "week":
+      return `${rule.interval === 2 ? "\u9694\u9031" : every("\u9031", "\u6BCE\u9031")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
+    case "month": {
+      const days = rule.days.map((d3) => {
+        switch (d3.kind) {
+          case "day":
+            return `${d3.day} \u65E5`;
+          case "last":
+            return "\u6708\u672B";
+          case "nth":
+            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
+          case "lastWeekday":
+            return `\u6700\u7D42 ${WEEKDAY_NAMES[d3.weekday]}`;
+        }
+      });
+      return `${rule.interval === 2 ? "\u9694\u6708" : every("\u304B\u6708", "\u6BCE\u6708")} ${days.join(", ")}`;
+    }
+  }
+}
+
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+function nextIds(prefix, existing, count = 1) {
+  let max = 0;
+  for (const id of existing) {
+    const n2 = idNumber(id, prefix);
+    if (n2 !== null && n2 > max) max = n2;
+  }
+  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
+}
+function pathForId(id) {
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  return `${folder}/${id}.md`;
+}
+
+// src/core/schema.ts
+var SCHEMA_VERSION = 1;
+var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var PRIORITIES = ["high", "mid", "low", "chore"];
+var STATUS_DETAIL_MAX = 20;
+var Reader = class {
+  constructor(path, fm) {
+    this.path = path;
+    this.fm = fm;
+  }
+  path;
+  fm;
+  problems = [];
+  problem(code, message, severity = "error") {
+    this.problems.push({ severity, path: this.path, code, message });
+  }
+  has(key) {
+    const v3 = this.fm[key];
+    return v3 !== void 0 && v3 !== null && v3 !== "";
+  }
+  string(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "string") return v3.trim();
+    if (typeof v3 === "number") return String(v3);
+    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    return null;
+  }
+  oneOf(key, values) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (values.includes(v3)) return v3;
+    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
+    return null;
+  }
+  date(key) {
+    if (!this.has(key)) return null;
+    const d3 = normalizeDate(this.fm[key]);
+    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
+    return d3;
+  }
+  datetime(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
+    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
+    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
+    return null;
+  }
+  minutes(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
+    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
+    return null;
+  }
+  list(key) {
+    if (!this.has(key)) return [];
+    const v3 = this.fm[key];
+    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
+  }
+  strings(key) {
+    const out = [];
+    for (const v3 of this.list(key)) {
+      if (typeof v3 === "string" || typeof v3 === "number") {
+        const s3 = String(v3).trim();
+        if (s3 && !out.includes(s3)) out.push(s3);
+      } else {
+        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
+      }
+    }
+    return out;
+  }
+  dates(key) {
+    const out = /* @__PURE__ */ new Set();
+    for (const v3 of this.list(key)) {
+      const d3 = normalizeDate(v3);
+      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
+      else out.add(d3);
+    }
+    return [...out].sort();
+  }
+  ref(key, prefix) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (isId(v3, prefix)) return v3;
+    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
+    return null;
+  }
+  common(type, prefix) {
+    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
+      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
+    }
+    const id = this.string("id");
+    if (id === null || !isId(id, prefix)) {
+      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
+      return null;
+    }
+    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
+    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
+    return id;
+  }
+};
+function parseIssue(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("issue", "i");
+  const summary = r3.string("summary") ?? "";
+  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  const issue = {
+    path,
+    id: id ?? "",
+    summary,
+    status: status ?? "open",
+    statusDetail: r3.string("status-detail") ?? "",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    parent: r3.ref("parent", "i"),
+    related: r3.strings("related"),
+    estimated: r3.minutes("estimated"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    revisit: r3.date("revisit"),
+    reviewed: r3.date("reviewed"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : issue, problems: r3.problems };
+}
+function parseRoutine(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("routine", "r");
+  let repeat = null;
+  const parsed = parseRepeat(fm.repeat);
+  if (parsed.ok) repeat = parsed.value;
+  else r3.problem("invalid-repeat", parsed.error);
+  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
+  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const routine = {
+    path,
+    id: id ?? "",
+    summary: r3.string("summary") ?? "",
+    repeat,
+    start: r3.date("start"),
+    end: r3.date("end"),
+    active: active !== false,
+    group: r3.string("group"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    estimated: r3.minutes("estimated"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : routine, problems: r3.problems };
+}
+function parseMember(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("member", "m");
+  const name = r3.string("name") ?? "";
+  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  const nickname = r3.string("nickname") || name;
+  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
 }
 
 // src/core/status-log.ts
@@ -3177,62 +3220,35 @@ function RoutineHeader(props) {
 var ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
 var ROUTINE_PATH_RE = /^routine\/[^/]+\.md$/;
 var MEMBER_PATH_RE = /^member\/[^/]+\.md$/;
+var HEADER_CLASS = "vt-header vt-ui";
+function isTaskNotePath(path) {
+  return ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path);
+}
 function headerFor(path) {
   if (ROUTINE_PATH_RE.test(path)) return RoutineHeader;
   if (MEMBER_PATH_RE.test(path)) return MemberHeader;
   return IssueHeader;
 }
-var HeaderWidget = class extends import_view.WidgetType {
-  constructor(ctx, path) {
-    super();
-    this.ctx = ctx;
-    this.path = path;
-  }
-  ctx;
-  path;
-  eq(other) {
-    return other.path === this.path;
-  }
-  toDOM() {
-    const el = document.createElement("div");
-    el.className = "vt-header vt-ui";
-    R(k(headerFor(this.path), { ctx: this.ctx, path: this.path }), el);
-    return el;
-  }
-  destroy(dom) {
-    R(null, dom);
-  }
-  /** ヘッダーの中のクリックや入力をエディタに渡さない */
-  ignoreEvent() {
-    return true;
-  }
-};
-function issueHeaderExtension(ctx) {
-  const pathOf = (state) => {
-    const path = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? null;
-    return path !== null && (ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path)) ? path : null;
-  };
-  const livePreviewOf = (state) => state.field(import_obsidian7.editorLivePreviewField, false) === true;
-  const build = (state) => {
-    const path = pathOf(state);
-    const livePreview = livePreviewOf(state);
-    if (path === null) return { path, livePreview, decorations: import_view.Decoration.none };
-    const widget = new HeaderWidget(ctx, path);
-    const range = livePreview ? frontmatterRange(state.doc.toString()) : null;
-    const decoration = range ? import_view.Decoration.replace({ widget, block: true }).range(range.from, range.to) : import_view.Decoration.widget({ widget, block: true, side: -1 }).range(0);
-    return { path, livePreview, decorations: import_view.Decoration.set([decoration]) };
-  };
-  return import_state.StateField.define({
-    create: build,
-    update(value, tr) {
-      if (tr.docChanged || pathOf(tr.state) !== value.path || livePreviewOf(tr.state) !== value.livePreview) return build(tr.state);
-      return value;
+function installTaskHeaders(ctx, plugin) {
+  const { app } = ctx;
+  installHeaderMount({
+    plugin,
+    className: HEADER_CLASS,
+    views: () => {
+      const views = [];
+      app.workspace.iterateAllLeaves((leaf) => {
+        if (leaf.view instanceof import_obsidian7.MarkdownView) views.push(leaf.view);
+      });
+      return views;
     },
-    provide: (field) => [
-      import_view.EditorView.decorations.from(field, (v3) => v3.decorations),
-      // カーソルが隠した frontmatter の中に入らないようにする
-      import_view.EditorView.atomicRanges.of((view) => view.state.field(field).decorations)
-    ]
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView),
+    model: (view) => {
+      const path = view.file?.path ?? null;
+      return path !== null && isTaskNotePath(path) ? path : null;
+    },
+    // 別のノートに切り替わったら、ヘッダーの状態（開いた入力欄など）を持ち越さない
+    draw: (host, path) => R(k(headerFor(path), { key: path, ctx, path }), host),
+    clear: (host) => R(null, host)
   });
 }
 
@@ -3745,6 +3761,51 @@ function closeBoardNote(text, date, index, board) {
   const remaining = unfinished(index, date, board);
   if (remaining.issues.length + remaining.routines.length > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
+}
+
+// src/core/issue-file.ts
+var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function newIssueContent(id, summary, created, parent = null, scheduled = []) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  if (parent !== null) lines.push(`parent: ${parent}`);
+  if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  return lines.join("\n");
+}
+function newMemberContent(id, name, created) {
+  return [
+    "---",
+    `schema: ${SCHEMA_VERSION}`,
+    "type: member",
+    `id: ${id}`,
+    `name: ${yamlString(name)}`,
+    `nickname: ${yamlString(name)}`,
+    `alias: ${yamlString(id)}`,
+    `created: ${created}`,
+    `updated: ${created}`,
+    "---",
+    ""
+  ].join("\n");
+}
+function newRoutineContent(id, summary, repeat, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  if (extra.start) lines.push(`start: ${extra.start}`);
+  lines.push("active: true");
+  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
+  return lines.join("\n");
+}
+function newDailyContent(created) {
+  return `---
+type: daily
+created: ${created}
+updated: ${created}
+---
+`;
 }
 
 // ../design/src/color.ts
@@ -6087,7 +6148,7 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     }
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
     this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
-    this.registerEditorExtension(issueHeaderExtension(ctx));
+    installTaskHeaders(ctx, this);
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
