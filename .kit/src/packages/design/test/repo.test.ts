@@ -56,6 +56,11 @@ describe("このリポジトリのデザイン", () => {
 		expect(container?.obsidian).toContain("--background-secondary");
 	});
 
+	it("Obsidian のノートのコードの面を、一段強い面に固定する", () => {
+		const high = tokens.find((t) => t.path === "color.surface-container-high");
+		expect(high?.obsidian).toContain("--code-background");
+	});
+
 	it("design.md がトークン・CSS・検査と食い違っていない", () => {
 		const css = PLUGIN_CSS.map((p) => readFileSync(p, "utf8")).join("\n");
 		expect(lintDesignDoc(readFileSync(DESIGN_DOC, "utf8"), tokens, css)).toEqual([]);
