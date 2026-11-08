@@ -37,7 +37,7 @@
 | パス | 置くもの |
 |---|---|
 | `.kit/harness/CLAUDE.md` | 上流の目次。100 行以内 |
-| `.kit/harness/docs/` | 上流の設計と規約。`adr/` にハーネスと wiki の ADR |
+| `.kit/harness/docs/` | 上流の設計と規約。`adr/` にハーネスと wiki の ADR、`product/` にプロダクトの文書 |
 | `.kit/harness/skills/` | 上流の手順 |
 | `.kit/harness/hooks/` | SessionStart フック（上流のときだけ、セキュリティチェックと評価の期限を知らせる） |
 | `.kit/harness/notes/` | 上流の開発中の気づき（未処理）。評価で処理したら消す |
@@ -84,6 +84,20 @@ Claude Code・Obsidian の更新 ───────────────�
 ```
 
 子の改善のサイクル（harness-note → harness-review → 子で直す / escalate）は、子向けの [ハーネスの設計](../../../.claude/docs/harness.md) にある。
+
+## プロダクトの責務
+
+[ADR-0012](adr/0012-product-responsibility.md)。使う人の体験に責任を持つ責務を、実装の工程（dev-*）とは別に置く。人が価値を判断し、Claude が機会（困りごと）を自分で見つけて起票する。
+
+| もの | 置き場所 |
+|---|---|
+| 戦略、場面、概念と用語、今の体験の正本 | [プロダクト](product/README.md)（1 単位 1 ファイル。構成を変えずに育てる） |
+| 見た目の規則 | [デザインルール](../../src/docs/design.md) |
+| 機会 | GitHub の Issue（ラベル `ux`） |
+| 機会を見つける手順 | [product-review](../skills/product-review/SKILL.md)（月 1 回。kit-review の前） |
+
+- 利用者に見える振る舞いを変える PR では、`product/surfaces/` も書き換える
+- 子の記録（worklog、statuslog、ボードの操作ログ、`wiki/feedback.md`）から体験の兆しを集める仕組みは、別の ADR で決める
 
 ## 未決事項
 
