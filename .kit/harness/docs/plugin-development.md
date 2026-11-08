@@ -38,7 +38,7 @@
 | `fs/` | isomorphic-git 用の fs アダプタ | なし |
 | `git/http.ts` | `requestUrl` を isomorphic-git の HTTP クライアントにする | なし（関数を注入） |
 | `obsidian/` | Vault への読み書き、設定画面、モーダル | あり |
-| `main.ts` | コマンド・リボン・ステータスバー | あり |
+| `main.ts` | コマンド・ステータスバー（リボンのボタンは pkm-ribbon。ADR-0070） | あり |
 
 Obsidian に依存しない部分は、テストで本物の `git http-backend` サーバーを立てて検証している（`test/engine.test.ts`）。
 `test/bundle.test.ts` はビルド済みの `main.js` を Obsidian API のモック上で、Buffer がない状態（モバイル相当）で動かす。
@@ -86,13 +86,14 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - CodeMirror（`@codemirror/*`）は Obsidian 本体のものを使うので external にする。security-scan もそれだけを許可している
 - **UI はデザインルール `.kit/src/docs/design.md` に従う**（ADR-0016）。値は `packages/design/tokens.json` にだけ書き、`styles.css` ではトークン（`--vt-*`）だけを使う。新しい色や部品を足したら、トークンと design.md も更新する
 - `styles.css` はビルドで `tokens.css`（生成物）の後ろに連結して出力する
-- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる
+- UI は Obsidian なしで確認できる: `pnpm preview:ui`（`packages/pkm-task/preview/`）。`obsidian` をモックに差し替えて束ね、Vault のスニペットを読み込み、Chromium でライト / ダーク × 広い / 狭いペインのスクリーンショットを撮る。続けて描画した画面を検査する（コントラスト・押せる大きさ・フォーカス・キーボード）。UI を変えたら、通して見てからコミットする。Playwright は `pkm-task` の devDependencies にあり、Chromium は初回だけ `pnpm --filter pkm-task exec playwright install chromium` で入れる（入れられない環境では `CHROMIUM_PATH`。[クラウドのセッションでの準備](#クラウドのセッションでの準備)）。CI（`plugin.yml` の `preview-ui`）でも実行し、スクリーンショットを成果物 `preview-ui` に残す
 
 ## pkm-template（テンプレートからのノート作成）
 
 上流の既定（`.kit/templates/file/`）にその Vault の `template/file/` を重ねたテンプレートを選び、日時・タイトル・プロンプト入力・ID・カーソル位置を展開してノートを作成するプラグイン（ADR-0022、ADR-0023）。表示順・生成先・ファイル名パターンは上流の `.kit/templates/config.json` だけで決め、設定タブはない（ADR-0061）。
 
 - 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。pkm-task と同じ規則）、日付を尋ねる `{{prompt-date[:ラベル]}}`（作成・挿入の前にダイアログを開く。出力は `YYYY-MM-DD` か `YYYY-MM-DD DDD`。ADR-0065）
+- スニペット（ADR-0060）: 行頭の `/` で `template/snippet/`（上流の既定は `.kit/templates/snippet/`）の断片を挿入する。インラインテンプレート（ADR-0067）: 行頭か半角空白の後の `@` で `template/inline/`（上流の既定は `.kit/templates/inline/`）のものを行の中に挿入する。書式と検索は同じで、インラインは本文の終わりの改行を削る
 - 日付の短い書き方の解釈（`parseDateInput`。ADR-0017）と日付の計算は `packages/shared/src/date-input.ts`・`dates.ts` にあり、pkm-task と pkm-template で共有する
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
 - コマンド「今日のデイリーノートを開く」（リボンのボタンは pkm-ribbon が出す。ADR-0029）: `.kit/templates/config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く
@@ -114,22 +115,43 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 | `src/core/note-list.ts` / `note-format.ts` / `note-header.ts` | 一覧の絞り込み・並べ替え・取り込み状態の導出、値の整形、ヘッダーに出す内容の組み立て | なし |
 | `src/obsidian/` | 新規ファイル作成モーダルと日付のダイアログ（Preact）、ファイル作成とカーソル移動、ノートのヘッダーの差し込み（`header-mount.ts`） | あり |
 | `src/views/` | 一覧 View（Preact） | あり |
-| `src/main.ts` | コマンド・リボン・View の登録 | あり |
+| `src/main.ts` | コマンド・View の登録 | あり |
 
 ## pkm-ribbon（リボンのボタン）
 
-「今日のデイリーノートを開く」（`calendar`）と「Daily を開く」（`calendar-check`）のボタンを、リボンに続けて並べるだけのプラグイン（ADR-0029）。リボンの並びはボタンを登録した順で決まるので、2 つを 1 つのプラグインが続けて登録する。
+自作プラグインのリボンのボタンを、並びの表（`src/core/buttons.ts`）の順に登録するプラグイン（ADR-0029、ADR-0070）。リボンの並びはボタンを登録した順で決まるので、1 つのプラグインがすべてを登録する。
 
-- pkm-template と pkm-task には依存しない（import しない）。実行時に `app.commands.executeCommandById` で `pkm-template:open-todays-daily` と `pkm-task:open-daily` を呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える
-- `app.commands` は Obsidian の公開の型にないので、使う形だけを型に書いてある
-- pkm-template と pkm-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、pkm-ribbon も変える
-- `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
+- **自作プラグインの `src/` で `addRibbonIcon` を使ってよいのは pkm-ribbon だけ**（`test/ribbon-owner.test.ts` が検査する）。ほかのプラグインはコマンドだけを持ち、ボタンを足すときは表に 1 行足す
+- どのプラグインにも依存しない（import しない）。実行時に `app.commands.executeCommandById` でコマンドを ID で呼ぶ。コマンドがない（そのプラグインが無効）ときは Notice で伝える。コマンドの ID を変えるときは、表も変える
+- バッジ: ボタンに数を出したいプラグインは、インスタンスに `getRibbonBadge(commandId): number | null` を持ち、数が変わったら `app.workspace.trigger("pkm-ribbon:badge-changed", commandId)` を出す。pkm-ribbon は起動の後とそのイベントで `app.plugins.getPlugin(<コマンドの接頭辞>)` に尋ねて描き直す。表示の規則（99+、0 と null は出さない）は `badgeText` だけ
+- `app.commands` と `app.plugins` は Obsidian の公開の型にないので、使う形だけを型に書いてある
+- `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順、コマンドの呼び出し、バッジを確かめる
+
+## pkm-updates（一覧 View の前回からの変更）
+
+一覧 View ごとのセクションに、前回の確認（Viewed）より後に `updated` が新しくなったノートを出す View（ADR-0070）。
+
+- 載せる規則は、pkm-task と pkm-template の `src/core/`（Obsidian に依存しない）を相対パスで読んで束ねる（`collectVault`、`isInbox`、`organizeQueue`、`isScheduledAhead`、`noteTitle` など）。規則を写さない。一覧の規則を変えたら、`test/sections.test.ts` も見る
+- 実行時には pkm-task と pkm-template に依存しない。セクションの見出しは、一覧 View のコマンドを ID で呼ぶ（`src/core/sections.ts` の `SECTIONS`）
+- Viewed の記録は `updates/<端末名>/YYYY-MM.jsonl` に `{"viewed_at": …}` を追記するだけ。基準は全端末の最大。端末名は pkm-task の `taskSettings.deviceName`、なければ pkm-git の `settings.deviceName`
+- リボンのバッジの数（重複を除いたノートの数）を `getRibbonBadge` で返し、変わったら間引いて（1 秒に 1 回まで）pkm-ribbon に知らせる
+
+### コードの構成（`.kit/src/packages/pkm-updates`）
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/sections.ts` | セクションの定義、基準より新しいものの抽出と並べ替え、件数 | なし |
+| `src/core/viewed-log.ts` | Viewed のログのパス・行・全端末の最大 | なし |
+| `src/core/paging.ts` / `format.ts` | 50 行ずつの表示、日時の表示 | なし |
+| `src/obsidian/model.ts` | metadataCache とログからの作り直し、Viewed の書き込み | あり |
+| `src/views/UpdatesView.tsx` | View（Preact）。無限スクロールは `IntersectionObserver` | あり |
+| `src/main.ts` | View・コマンドの登録、バッジ | あり |
 
 ## pkm-view-selector（View を探して開く）
 
-pkm-task と pkm-template の一覧の View を、1 つのダイアログ（`SuggestModal`）から探して開くプラグイン（ADR-0072）。コマンド `pkm-view-selector:open` の既定のホットキーは Mod+K。
+pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイアログ（`SuggestModal`）から探して開くプラグイン（ADR-0072）。コマンド `pkm-view-selector:open` の既定のホットキーは Mod+K。
 
-- pkm-task と pkm-template には依存しない（import しない）。ダイアログを開くたびに `app.commands.commands` から `<プラグイン>:open-<名前>` のコマンドを集め、`app.viewRegistry.viewByType` に `<プラグイン>-<名前>` がある（View を開く）ものだけを候補にする。選んだら `executeCommandById` で呼ぶ
+- pkm-task・pkm-template・pkm-updates には依存しない（import しない）。ダイアログを開くたびに `app.commands.commands` から `<プラグイン>:open-<名前>` のコマンドを集め、`app.viewRegistry.viewByType` に `<プラグイン>-<名前>` がある（View を開く）ものだけを候補にする。選んだら `executeCommandById` で呼ぶ
 - View を足すときは、これまでどおり `open-<名前>` のコマンドを、View のアイコン（`icon`）付きで登録すれば候補に載る。コマンドの ID と View の種類の対応を崩さない
 - 「Markdown リンクを挿入」（`editor:insert-link`）の Mod+K は、`.kit/obsidian-required.json` の `hotkeys.json` で外している
 - `src/views.ts` が候補の集め方とあいまい検索（大文字と小文字を区別しない）の純粋な関数で、`test/views.test.ts` が確かめる
@@ -188,7 +210,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 | パス | 役割 |
 |---|---|
-| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task と pkm-template がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
+| `src/list-pane.ts` | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す（ADR-0033）。pkm-task・pkm-template・pkm-updates がノートや View を開くときは、`getLeaf` を直接使わずにここを通す |
 
 ## design（デザイントークンと検査）
 
@@ -208,10 +230,37 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - pkm-task は `src/color.ts` と `generated/tokens.ts` を相対パスで読み、プラグインに束ねている（`src/` は Obsidian にも Node にも依存しない）
 - スクリプトは Node の型の除去で `.ts` をそのまま動かす（ビルドしない）
 
+## 開発環境の準備
+
+- Node と pnpm は `mise.toml` の版を使う（`mise install`）。`node .claude/scripts/verify.mjs` は最初に版を比べ、違えば警告する（止めない。結果が CI と揃わないことがある）
+- 新しい clone・worktree では、最初に `.kit/src` で `pnpm install --frozen-lockfile` を実行する。単一パッケージのテスト（`pnpm --filter <id> test`）を先に実行すると、ほかのパッケージの依存が入らないことがある。`verify.mjs --plugin` は、依存が一部のパッケージにしかなければ `pnpm check` の前で止める
+
+### クラウドのセッションでの準備
+
+mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Code のクラウドのセッションなど）では、次のようにする。
+
+- Node: 公式の配布物（`https://nodejs.org/dist/v<版>/`）の tar と `SHASUMS256.txt` を取り、`sha256sum -c` で照合してから、Vault の外の作業用のフォルダに展開し、`PATH` の先頭に足す
+- pnpm: その Node で `npm install -g pnpm@<mise.toml の版>`
+- Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-drawio` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
+
+### Obsidian の実機で確かめる
+
+テストと `preview:ui` は `obsidian` をモックにして描く。そのため、Obsidian 本体の CSS との詳細度の争い（本体の規則が勝ってプラグインの隠す CSS が効かない）や、View の生成の順の誤り（親のコンストラクタの中で未代入の値を読む）は見つからない。設定・CSS・View を変えたら、PR の前に実機で確かめる（[dev-implement](../skills/dev-implement/SKILL.md)）。
+
+- 使える環境: Obsidian が起動している PC。Obsidian の CLI を有効にしておく（設定で有効にし、`obsidian` コマンドが使えること）。クラウドのセッションでは使えないので、PR に「実機での確認が要る」と書く
+- 起動中のアプリで JavaScript を評価して、DOM と適用中の CSS を読む。引数の書き方は `obsidian help` で確かめる。例:
+
+```sh
+# 開いている View の種類
+obsidian eval code="app.workspace.getLeavesOfType('pkm-task-daily').length"
+# 要素に効いている CSS の値（本体の規則に負けていないか）
+obsidian eval code="getComputedStyle(document.querySelector('.metadata-container')).display"
+```
+
 ## 進め方
 
 - 工程は [進め方](workflow.md) に従う（計画 → テストを先に書いて実装 → PR）
 - 変更したら `pnpm check`（型チェック・ビルド・テスト）を通してからコミットする。`node .claude/scripts/verify.mjs --plugin` でハーネスの検査とまとめて実行できる
 - 新しいマージのケースを扱うときは、先に `test/engine.test.ts` か `test/tree-merge.test.ts` にテストを足す
-- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す
+- 新しいプラグインを作るときは `.kit/src/packages/<id>/` に置き、ビルド結果を `.obsidian/plugins/<id>/` に出す。`.kit/owned-paths.json` に、その ID の `main.js`・`manifest.json`・`styles.css` を足す（足し忘れると、上流の所有の境界の検査が失敗する。子が足すプラグインは子のもの）
 - Vault で使う CLI は、依存も束ねて `.kit/bin/` に出す（ビルド済みのものをコミットする。ADR-0009）。ESM に CJS の依存を束ねるときは、`createRequire` の banner を付ける（pkm-task の `esbuild.config.mjs`）

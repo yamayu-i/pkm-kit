@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { formatDateTime } from "../src/core/date-format";
-import { filterSnippets, layerSnippets, nextSlashSession, parseSnippet, type SessionDoc, type Snippet } from "../src/core/snippet";
+import {
+	AT_TRIGGER,
+	filterSnippets,
+	inlineBody,
+	layerSnippets,
+	nextSlashSession,
+	nextTriggerSession,
+	parseSnippet,
+	type SessionDoc,
+	type Snippet,
+} from "../src/core/snippet";
 
 describe("formatDateTime の DDD", () => {
 	it("曜日を英大文字 3 字にする（ddd は小文字のまま）", () => {
@@ -70,37 +80,74 @@ describe("nextSlashSession", () => {
 	const id = (p: number) => p;
 
 	it("行頭に / を打ったら始まる", () => {
-		const s = nextSlashSession(null, { typedSlashAt: 4, mapPos: id, head: 5, empty: true }, doc("abc\n/"), newId);
+		const s = nextSlashSession(null, { typedAt: 4, mapPos: id, head: 5, empty: true }, doc("abc\n/"), newId);
 		expect(s).toMatchObject({ from: 4 });
 	});
 
 	it("行頭でない / や、空白のあとの / では始まらない", () => {
-		expect(nextSlashSession(null, { typedSlashAt: 1, mapPos: id, head: 2, empty: true }, doc("a/"), newId)).toBeNull();
-		expect(nextSlashSession(null, { typedSlashAt: 1, mapPos: id, head: 2, empty: true }, doc(" /"), newId)).toBeNull();
+		expect(nextSlashSession(null, { typedAt: 1, mapPos: id, head: 2, empty: true }, doc("a/"), newId)).toBeNull();
+		expect(nextSlashSession(null, { typedAt: 1, mapPos: id, head: 2, empty: true }, doc(" /"), newId)).toBeNull();
 	});
 
 	it("打った / から続けて入力しているあいだは続く", () => {
-		const s0 = nextSlashSession(null, { typedSlashAt: 0, mapPos: id, head: 1, empty: true }, doc("/"), newId)!;
-		const s1 = nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 3, empty: true }, doc("/t-"), newId);
+		const s0 = nextSlashSession(null, { typedAt: 0, mapPos: id, head: 1, empty: true }, doc("/"), newId)!;
+		const s1 = nextSlashSession(s0, { typedAt: null, mapPos: id, head: 3, empty: true }, doc("/t-"), newId);
 		expect(s1).toEqual(s0);
 	});
 
 	it("カーソルが範囲の外に出たり、選択したり、ケバブケース以外を打ったり、/ を消したら終わる", () => {
-		const s0 = nextSlashSession(null, { typedSlashAt: 0, mapPos: id, head: 1, empty: true }, doc("/t\nx"), newId)!;
-		expect(nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 4, empty: true }, doc("/t\nx"), newId)).toBeNull();
-		expect(nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 0, empty: true }, doc("/t\nx"), newId)).toBeNull();
-		expect(nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 2, empty: false }, doc("/t\nx"), newId)).toBeNull();
-		expect(nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 3, empty: true }, doc("/t "), newId)).toBeNull();
-		expect(nextSlashSession(s0, { typedSlashAt: null, mapPos: id, head: 0, empty: true }, doc(""), newId)).toBeNull();
+		const s0 = nextSlashSession(null, { typedAt: 0, mapPos: id, head: 1, empty: true }, doc("/t\nx"), newId)!;
+		expect(nextSlashSession(s0, { typedAt: null, mapPos: id, head: 4, empty: true }, doc("/t\nx"), newId)).toBeNull();
+		expect(nextSlashSession(s0, { typedAt: null, mapPos: id, head: 0, empty: true }, doc("/t\nx"), newId)).toBeNull();
+		expect(nextSlashSession(s0, { typedAt: null, mapPos: id, head: 2, empty: false }, doc("/t\nx"), newId)).toBeNull();
+		expect(nextSlashSession(s0, { typedAt: null, mapPos: id, head: 3, empty: true }, doc("/t "), newId)).toBeNull();
+		expect(nextSlashSession(s0, { typedAt: null, mapPos: id, head: 0, empty: true }, doc(""), newId)).toBeNull();
 	});
 
 	it("終わったあとにカーソルを / の後ろへ戻しても始まらない", () => {
-		expect(nextSlashSession(null, { typedSlashAt: null, mapPos: id, head: 1, empty: true }, doc("/t"), newId)).toBeNull();
+		expect(nextSlashSession(null, { typedAt: null, mapPos: id, head: 1, empty: true }, doc("/t"), newId)).toBeNull();
 	});
 
 	it("前の行に文字が増えても、位置を写して続く", () => {
-		const s0 = nextSlashSession(null, { typedSlashAt: 2, mapPos: id, head: 3, empty: true }, doc("a\n/"), newId)!;
-		const s1 = nextSlashSession(s0, { typedSlashAt: null, mapPos: (p) => p + 1, head: 4, empty: true }, doc("ab\n/"), newId);
+		const s0 = nextSlashSession(null, { typedAt: 2, mapPos: id, head: 3, empty: true }, doc("a\n/"), newId)!;
+		const s1 = nextSlashSession(s0, { typedAt: null, mapPos: (p) => p + 1, head: 4, empty: true }, doc("ab\n/"), newId);
 		expect(s1).toEqual({ id: s0.id, from: 3 });
+	});
+});
+
+describe("nextTriggerSession（@、ADR-0067）", () => {
+	let n = 100;
+	const newId = () => ++n;
+	const id = (p: number) => p;
+	const at = (prev: ReturnType<typeof nextTriggerSession>, typedAt: number | null, head: number, text: string, empty = true) =>
+		nextTriggerSession(AT_TRIGGER, prev, { typedAt, mapPos: id, head, empty }, doc(text), newId);
+
+	it("行頭か、半角空白の直後に @ を打ったら始まる", () => {
+		expect(at(null, 0, 1, "@")).toMatchObject({ from: 0 });
+		expect(at(null, 4, 5, "abc @")).toMatchObject({ from: 4 });
+		expect(at(null, 2, 3, "a\n@")).toMatchObject({ from: 2 });
+	});
+
+	it("文字の直後（メールアドレスなど）、全角空白やタブの後の @ では始まらない", () => {
+		expect(at(null, 3, 4, "foo@")).toBeNull();
+		expect(at(null, 1, 2, "　@")).toBeNull();
+		expect(at(null, 1, 2, "\t@")).toBeNull();
+	});
+
+	it("続けて入力しているあいだは続き、空白・別の行・前の空白を消すと終わる", () => {
+		const s0 = at(null, 2, 3, "a @")!;
+		expect(at(s0, null, 7, "a @date")).toEqual(s0);
+		expect(at(s0, null, 8, "a @date ")).toBeNull();
+		expect(at(s0, null, 9, "a @date\nx")).toBeNull();
+		expect(at(s0, null, 6, "a@date")).toBeNull();
+	});
+});
+
+describe("inlineBody", () => {
+	it("ファイルの終わりの改行だけを削る", () => {
+		expect(inlineBody("{{prompt-date}}\n")).toBe("{{prompt-date}}");
+		expect(inlineBody("a\r\n\r\n")).toBe("a");
+		expect(inlineBody("a\nb\n")).toBe("a\nb");
+		expect(inlineBody(" a ")).toBe(" a ");
 	});
 });

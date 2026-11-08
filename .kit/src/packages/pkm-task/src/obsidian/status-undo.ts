@@ -62,7 +62,7 @@ export class StatusUndo {
 			const button = document.createElement("button");
 			button.className = "vt-toast-action";
 			button.type = "button";
-			button.append("やり直す");
+			button.append("元に戻す");
 			const icon = document.createElement("span");
 			icon.className = "vt-icon";
 			icon.setAttribute("aria-hidden", "true");

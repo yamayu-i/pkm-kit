@@ -1,9 +1,17 @@
-/** スニペット（ADR-0060）。行頭の `/` で本文の途中に挿入する断片 */
+/**
+ * スニペット（ADR-0060）。行頭の `/` で本文の途中に挿入する断片。
+ * インラインテンプレート（ADR-0067）も同じ書式で、行頭か半角空白の後の `@` で行の中に挿入する
+ */
 
 /** その Vault のスニペット（子のもの。同じファイル名なら上流を上書きする） */
 export const SNIPPET_DIR = "template/snippet";
 /** 上流（pkm-kit）の既定のスニペット。隠しパスなので Vault の索引には載らない */
 export const UPSTREAM_SNIPPET_DIR = ".kit/templates/snippet";
+
+/** その Vault のインラインテンプレート（ADR-0067） */
+export const INLINE_DIR = "template/inline";
+/** 上流の既定のインラインテンプレート */
+export const UPSTREAM_INLINE_DIR = ".kit/templates/inline";
 
 export interface Snippet {
 	/** スニペットのフォルダ直下のファイル名 */
@@ -64,7 +72,15 @@ export function filterSnippets(snippets: readonly Snippet[], query: string): Sni
 		.sort((a, b) => a.alias.localeCompare(b.alias) || a.name.localeCompare(b.name));
 }
 
-/** 行頭に打った `/` から続く入力。from は `/` の位置 */
+/**
+ * インラインテンプレートとして挿入する本文。行の中に入れるので、ファイルの終わりの改行は削る
+ * （途中の改行はそのまま）
+ */
+export function inlineBody(body: string): string {
+	return body.replace(/(?:\r?\n)+$/, "");
+}
+
+/** 打った `/`（または `@`）から続く入力。from はその文字の位置 */
 export interface SlashSession {
 	id: number;
 	from: number;
@@ -78,8 +94,8 @@ export interface SessionDoc {
 }
 
 export interface SessionUpdate {
-	/** 入力（タイプ）で `/` を 1 文字だけ挿入したとき、その位置（変更のあと）。それ以外は null */
-	typedSlashAt: number | null;
+	/** 入力（タイプ）できっかけの文字（`/` か `@`）を 1 文字だけ挿入したとき、その位置（変更のあと）。それ以外は null */
+	typedAt: number | null;
 	/** 変更の前の位置を、変更のあとの位置に写す */
 	mapPos(pos: number): number;
 	/** 主カーソルの位置と、選択が空か */
@@ -87,28 +103,59 @@ export interface SessionUpdate {
 	empty: boolean;
 }
 
-const QUERY_RE = /^\/[A-Za-z0-9-]*$/;
+/** きっかけの文字と、その文字で始めてよい位置 */
+export interface SessionTrigger {
+	char: string;
+	/** pos にきっかけの文字があるとき、そこで始めてよいか（続いているあいだも毎回確かめる） */
+	canStartAt(pos: number, doc: SessionDoc): boolean;
+}
+
+/** スニペット: 行頭の `/`（ADR-0060） */
+export const SLASH_TRIGGER: SessionTrigger = {
+	char: "/",
+	canStartAt: (pos, doc) => doc.lineStartAt(pos) === pos,
+};
+
+/** インラインテンプレート: 行頭か、半角空白の直後の `@`（ADR-0067） */
+export const AT_TRIGGER: SessionTrigger = {
+	char: "@",
+	canStartAt: (pos, doc) => doc.lineStartAt(pos) === pos || doc.slice(pos - 1, pos) === " ",
+};
+
+const QUERY_TAIL_RE = /^[A-Za-z0-9-]*$/;
 
 /**
- * 1 回の変更（選択だけの変更も）のあとのセッション。行頭で `/` を打ったときだけ始まり、
- * カーソルの前が `/` とケバブケースの文字だけのあいだ続く。一度終わったら、同じ `/` では始まらない
+ * 1 回の変更（選択だけの変更も）のあとのセッション。始めてよい位置できっかけの文字を打ったときだけ始まり、
+ * カーソルの前がその文字とケバブケースの文字だけ（同じ行）のあいだ続く。一度終わったら、同じ文字では始まらない
  */
-export function nextSlashSession(
+export function nextTriggerSession(
+	trigger: SessionTrigger,
 	prev: SlashSession | null,
 	update: SessionUpdate,
 	doc: SessionDoc,
 	newId: () => number,
 ): SlashSession | null {
 	let candidate: SlashSession | null = null;
-	const typed = update.typedSlashAt;
-	if (typed !== null && doc.lineStartAt(typed) === typed) candidate = { id: newId(), from: typed };
+	const typed = update.typedAt;
+	if (typed !== null && trigger.canStartAt(typed, doc)) candidate = { id: newId(), from: typed };
 	else if (prev) candidate = { id: prev.id, from: update.mapPos(prev.from) };
 	if (!candidate) return null;
 
 	const { from } = candidate;
 	const { head } = update;
 	if (!update.empty || head <= from) return null;
-	if (doc.lineStartAt(from) !== from || doc.lineStartAt(head) !== from) return null;
-	if (!QUERY_RE.test(doc.slice(from, head))) return null;
+	if (!trigger.canStartAt(from, doc) || doc.lineStartAt(head) !== doc.lineStartAt(from)) return null;
+	const typedText = doc.slice(from, head);
+	if (!typedText.startsWith(trigger.char) || !QUERY_TAIL_RE.test(typedText.slice(trigger.char.length))) return null;
 	return candidate;
+}
+
+/** 行頭で打った `/` のセッション（ADR-0060） */
+export function nextSlashSession(
+	prev: SlashSession | null,
+	update: SessionUpdate,
+	doc: SessionDoc,
+	newId: () => number,
+): SlashSession | null {
+	return nextTriggerSession(SLASH_TRIGGER, prev, update, doc, newId);
 }

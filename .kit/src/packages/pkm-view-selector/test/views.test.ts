@@ -4,7 +4,7 @@ import { collectViews, matchViews, type CommandLike } from "../src/views";
 const TASK_VIEWS = ["daily", "issues", "inbox", "organize", "scheduled", "someday", "routines", "groups", "members", "labels", "sidebar"];
 const TEMPLATE_VIEWS = ["daily-list", "note-list", "source-list"];
 
-/** 今の pkm-task と pkm-template が登録するコマンド（Obsidian は名前の前にプラグイン名を付ける） */
+/** 今の pkm-task・pkm-template・pkm-updates が登録するコマンド（Obsidian は名前の前にプラグイン名を付ける） */
 const COMMANDS: CommandLike[] = [
 	{ id: "pkm-template:create-from-template", name: "PKM Template: テンプレートから新規ファイルを作成" },
 	{ id: "pkm-template:open-todays-daily", name: "PKM Template: 今日のデイリーノートを開く" },
@@ -23,10 +23,11 @@ const COMMANDS: CommandLike[] = [
 	{ id: "pkm-task:open-labels", name: "PKM Task: Labels を開く", icon: "tag" },
 	{ id: "pkm-task:open-sidebar", name: "PKM Task: Tasks サイドバーを開く", icon: "check-square" },
 	{ id: "pkm-task:capture-issues", name: "PKM Task: issue をまとめて作成" },
+	{ id: "pkm-updates:open-view", name: "PKM Updates: PKM Updates を開く", icon: "bell" },
 	{ id: "other:open-foo", name: "Other: Foo を開く" },
 ];
 
-const VIEW_TYPES = new Set([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "other-foo", "markdown"]);
+const VIEW_TYPES = new Set([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view", "other-foo", "markdown"]);
 
 const collect = (commands = COMMANDS, types = VIEW_TYPES, open = new Set<string>()) =>
 	collectViews(
@@ -36,9 +37,9 @@ const collect = (commands = COMMANDS, types = VIEW_TYPES, open = new Set<string>
 	);
 
 describe("collectViews（ADR-0072）", () => {
-	it("pkm-task の 11 個と pkm-template の 3 個を、View を開くコマンドだけ集める", () => {
+	it("pkm-task の 11 個、pkm-template の 3 個、pkm-updates の 1 個を、View を開くコマンドだけ集める", () => {
 		const entries = collect();
-		expect(entries.map((e) => e.viewType)).toEqual([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`)]);
+		expect(entries.map((e) => e.viewType)).toEqual([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view"]);
 		expect(entries.map((e) => e.commandId)).not.toContain("pkm-template:open-todays-daily");
 		expect(entries.map((e) => e.commandId)).not.toContain("other:open-foo");
 	});
@@ -48,12 +49,13 @@ describe("collectViews（ADR-0072）", () => {
 		expect(entries.find((e) => e.viewType === "pkm-task-groups")).toMatchObject({ name: "Board groups", plugin: "pkm-task", icon: "layout-grid" });
 		expect(entries.find((e) => e.viewType === "pkm-task-sidebar")?.name).toBe("Tasks サイドバー");
 		expect(entries.find((e) => e.viewType === "pkm-template-note-list")?.name).toBe("Notes");
+		expect(entries.find((e) => e.viewType === "pkm-updates-view")).toMatchObject({ name: "PKM Updates", icon: "bell" });
 	});
 
 	it("片方のプラグインが無効（コマンドも View もない）なら、その分は出ない", () => {
 		const noTask = COMMANDS.filter((c) => !c.id.startsWith("pkm-task:"));
 		const entries = collect(noTask, new Set([...VIEW_TYPES].filter((t) => !t.startsWith("pkm-task-"))));
-		expect(entries.map((e) => e.plugin)).toEqual(["pkm-template", "pkm-template", "pkm-template"]);
+		expect(entries.map((e) => e.plugin)).toEqual(["pkm-template", "pkm-template", "pkm-template", "pkm-updates"]);
 	});
 
 	it("コマンドがあっても View が登録されていなければ出さない。新しい View は open-<名前> を登録すれば出る", () => {

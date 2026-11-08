@@ -61,3 +61,12 @@ describe("このリポジトリのデザイン", () => {
 		expect(lintDesignDoc(readFileSync(DESIGN_DOC, "utf8"), tokens, css)).toEqual([]);
 	});
 });
+
+describe("ビルドの順（#8・#52）", () => {
+	it("ルートの build は、design の生成（tokens.css）を先に済ませてから、ほかのパッケージをビルドする", () => {
+		const root = JSON.parse(readFileSync(new URL("../../../package.json", import.meta.url), "utf8"));
+		const steps = String(root.scripts.build).split("&&").map((s) => s.trim());
+		expect(steps[0]).toBe("pnpm --filter design build");
+		expect(steps.slice(1)).toEqual(["pnpm -r --filter !design build"]);
+	});
+});

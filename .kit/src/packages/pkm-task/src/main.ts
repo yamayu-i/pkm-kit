@@ -91,8 +91,7 @@ export default class PkmTaskPlugin extends Plugin {
 		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
-		this.addRibbonIcon("list-plus", "issue をまとめて作成", () => openCaptureModal(ctx));
-		// 「Daily を開く」のリボンは pkm-ribbon が、今日のデイリーノートと続けて並べる（ADR-0029）。コマンド open-daily は残す
+		// リボンのボタン（Daily を開く、issue をまとめて作成）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
 		this.app.workspace.onLayoutReady(() => {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));

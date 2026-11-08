@@ -274,6 +274,7 @@ type BundlePlugin = {
 		openTodaysDaily(now: Date): Promise<{ path: string }>;
 		loadConfig(): Promise<{ entries: { file: string; enabled: boolean; folder: string; fileNamePattern: string }[]; problems: string[] }>;
 		loadSnippets(): Promise<{ snippets: { file: string; name: string; alias: string; body: string }[]; problems: string[] }>;
+		loadInlineTemplates(): Promise<{ snippets: { file: string; name: string; alias: string; body: string }[]; problems: string[] }>;
 	};
 };
 
@@ -421,5 +422,21 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: スニペッ�
 		expect(byName).toEqual({ "today-h1": "# {{date}}\n\n\n", "today-h2": "## 子のもの\n" });
 		expect(problems).toHaveLength(1);
 		expect(problems[0]).toMatch(/^template\/snippet\/bad\.md: name/);
+	});
+});
+
+describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js: インラインテンプレート（ADR-0067）", () => {
+	it("上流の .kit/templates/inline/ に template/inline/ を重ね、スニペットとは混ざらない", async () => {
+		const mock = createObsidianMock({
+			".kit/templates/inline/prompt-date.md": "---\nname: prompt-date\nalias: date\n---\n{{prompt-date}}\n",
+			".kit/templates/inline/now.md": "---\nname: now\nalias: now\n---\n{{time}}\n",
+			"template/inline/now.md": "---\nname: now\nalias: now\n---\n子のもの\n",
+			"template/snippet/today-h1.md": "---\nname: today-h1\nalias: t1\n---\n# {{date}}\n",
+		});
+		const plugin = await loadBundle(mock);
+		const { snippets, problems } = await plugin.manager.loadInlineTemplates();
+		const byName = Object.fromEntries(snippets.map((s) => [s.name, s.body]));
+		expect(byName).toEqual({ "prompt-date": "{{prompt-date}}\n", now: "子のもの\n" });
+		expect(problems).toEqual([]);
 	});
 });

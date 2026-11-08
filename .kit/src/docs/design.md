@@ -25,7 +25,7 @@
 
 ```
 packages/design/tokens.json（正本）
-  ├─ pnpm --filter design build（pnpm build に含まれる）
+  ├─ pnpm --filter design build（pnpm build の最初に実行する。ほかのパッケージはその後にビルドするので、1 回の pnpm build で新しい値になる）
   │    ├─ packages/pkm-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
@@ -177,6 +177,7 @@ packages/design/tokens.json（正本）
 | 完了の欄 | `.vt-done` | ボードの下のカード。closed / canceled のカードを並べる。カードは落とせない |
 | 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
+| リボンのバッジ | `.vt-ribbon-badge` | リボンのボタンの右上に重ねる 16px の丸（数が多ければ横に伸びる）。primary の面 + on-primary の文字、label-small。押せない（ボタンを押す）。読み上げはボタンの名前に件数を足す（ADR-0070） |
 | ID | `.vt-id` | 丸いバッジ、等幅フォント、status の色 |
 | priority | `.vt-priority` | 記号（▲ ■ ▼ ·）付きのチップ + ▾。記号は飾りなので `aria-hidden` |
 | 入力チップ | `.vt-field-chip` | 枠線 + 先頭のアイコン。未入力は点線で「〜を追加」 |
@@ -199,6 +200,8 @@ packages/design/tokens.json（正本）
 | グループ | `.vt-group` | ボードの枠。1 階層目は横に等分（`.vt-board-columns`、狭いペインでは縦）、サブグループは中に縦に積む。カードを落とせるときは primary の枠 + secondary-container の面 |
 | 未分類 | `.vt-group.is-ungrouped` | グループと並べず、ボードの上に横長に置く（点線の枠、カードは横に並ぶ）。カードがすべてグループに入ったら出さない |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
+| 変更の行 | `.vt-upd-row` | PKM Updates の行。押せるカード（48px 以上）で、タイトルと、右に弱い文字の日時。セクションの見出し（`.vt-upd-heading-link`）は一覧 View へのリンクで、primary の文字に下線 |
+| 確認のボタン | `.vt-upd-viewed` | PKM Updates の下に固定した帯（`.vt-upd-footer`、`position: sticky`）の右の filled（primary）の丸いボタン。一覧が短くても画面の下に置く |
 | スイッチ | `.vt-switch` | M3 の switch（52×32、つまみは 16px → 24px）。routine の一時停止 |
 | 入力欄 | `.vt-ui` の中の `input` / `textarea` / `select` | M3 の outlined text field。`--vt-surface` の面 + `--vt-outline` の 1px の枠、影なし。ホバーで `--vt-on-surface` の枠、フォーカスで `--vt-primary` の 2px の枠（3 章）。View・ヘッダー・モーダルの根に `.vt-ui` を付ける |
 | 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下に説明（`.vt-name-hint`）かエラー。その場で作る・変える編集に使う |
@@ -310,6 +313,8 @@ ID は検査が出すメッセージと同じ。新しい検査を足したら�
 | `obsidian/no-translucency` | 半透明のウィンドウを使わない |
 
 ### 描画した画面（`pnpm preview:ui`。`packages/design/src/audit.ts`）
+
+pkm-task の画面は、CI（`plugin.yml` の `preview-ui`）でも描画して検査する。スクリーンショットは CI の成果物 `preview-ui` で見られる。
 
 | ID | 内容 | 根拠 |
 |---|---|---|

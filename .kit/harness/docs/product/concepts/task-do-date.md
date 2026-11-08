@@ -10,7 +10,7 @@
 
 ## 操作
 
-Add Do Date（足す）、Move Do Date（その日を外して移す）、Do Today / Do Tomorrow（決まった日に移す）、Organize の「予定を入れる」（カレンダーで複数選ぶ）、issue 画面の 7 日ストリップ、Scheduled の表のセル。
+Add Do Date（足す）、Move Do Date（その日を外して移す）、Do Today / Do Tomorrow（決まった日に移す）、Organize の「Do Date」（カレンダーで複数選ぶ）、issue 画面の 7 日ストリップ、Scheduled の表のセル。
 
 ## 使い方の筋道
 

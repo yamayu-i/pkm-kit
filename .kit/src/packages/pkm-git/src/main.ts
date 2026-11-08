@@ -38,8 +38,7 @@ export default class PkmGitPlugin extends Plugin {
 		this.statusEl.addClass("mod-clickable");
 		this.statusEl.addEventListener("click", () => void this.showUnresolved());
 
-		this.addRibbonIcon("arrow-down-to-line", "Git: pull", () => void this.pull());
-		this.addRibbonIcon("arrow-up-from-line", "Git: push", () => void this.push());
+		// リボンのボタンは pkm-ribbon が並びの表で出し、このコマンドを呼ぶ（ADR-0070）
 		this.addCommand({ id: "pull", name: "pull（取り込み）", callback: () => void this.pull() });
 		this.addCommand({ id: "push", name: "push（コミットして送信）", callback: () => void this.push() });
 		this.addCommand({

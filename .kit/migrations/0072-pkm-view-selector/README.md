@@ -4,7 +4,7 @@
 
 `.kit/src/docs/adr/0072-view-selector.md`。
 
-- 新しいプラグイン pkm-view-selector。コマンド「View を探して開く」（既定のホットキー Mod+K）で、pkm-task と pkm-template の一覧の View（Daily, Issues, Inbox, …, Daily notes, Notes, Sources）を 1 つのダイアログから探して開く。検索は大文字と小文字を区別しない
+- 新しいプラグイン pkm-view-selector。コマンド「View を探して開く」（既定のホットキー Mod+K）で、pkm-task・pkm-template・pkm-updates の一覧の View（Daily, Issues, Inbox, …, Daily notes, Notes, Sources, PKM Updates）を 1 つのダイアログから探して開く。検索は大文字と小文字を区別しない
 - Obsidian の既定で Mod+K に割り当てられている「Markdown リンクを挿入」（`editor:insert-link`）のホットキーを外す。コマンドパレットからは引き続き使える
 - 上流が子に求める Obsidian の設定（`.kit/obsidian-required.json`）に、`community-plugins.json` の `pkm-view-selector` と、`hotkeys.json` の `"editor:insert-link": []` が増えた
 

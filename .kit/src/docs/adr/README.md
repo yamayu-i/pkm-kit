@@ -58,5 +58,7 @@
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
 | [0064](0064-drawio-diagrams.md) | 承認 | Draw.io の図を、編集用 XML を内包した SVG（asset/*.drawio.svg）として持ち、pkm-drawio で表示・コピー・編集・書き出しする |
 | [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
+| [0067](0067-inline-template.md) | 承認 | 行頭か空白の後の @ で、インラインテンプレートを行の中に挿入する |
+| [0070](0070-pkm-updates.md) | 承認 | 一覧 View の前回からの変更を新しいプラグイン pkm-updates の 1 ページで見て、リボンのボタンを pkm-ribbon にまとめる |
 | [0072](0072-view-selector.md) | 承認 | Cmd+K で一覧の View を探して開くダイアログを、新しいプラグイン pkm-view-selector にする |
 <!-- adr-index:end -->

@@ -26,7 +26,7 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 
 // src/views.ts
-var SOURCE_PLUGINS = ["pkm-task", "pkm-template"];
+var SOURCE_PLUGINS = ["pkm-task", "pkm-template", "pkm-updates"];
 var OPEN_SUFFIX = /\s*を開く$/;
 function collectViews(commands, isViewType, isOpen) {
   const entries = [];

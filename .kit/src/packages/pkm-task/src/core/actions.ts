@@ -72,7 +72,7 @@ export function reschedulePatch(issue: Issue, target: RescheduleTarget, to: Loca
 	return { scheduled: [...dates].sort() };
 }
 
-/** 実行日を足す（Organize で予定を入れるとき。estimated も一緒に入れられる） */
+/** 実行日を足す（Organize で Do Date を選ぶとき。estimated も一緒に入れられる） */
 export function schedulePatch(issue: Issue, dates: LocalDate[], estimated: number | null = null): Patch {
 	const patch: Patch = { scheduled: [...new Set([...issue.scheduled, ...dates])].sort() };
 	if (issue.status === "someday") Object.assign(patch, reopenPatch());

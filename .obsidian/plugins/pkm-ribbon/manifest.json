@@ -3,7 +3,7 @@
 	"name": "PKM Ribbon",
 	"version": "0.1.0",
 	"minAppVersion": "1.11.4",
-	"description": "今日のデイリーノート（pkm-template）と Daily（pkm-task）を開くボタンを、リボンに続けて並べる自作プラグイン。どちらのプラグインにも依存せず、コマンドを呼ぶだけ。モバイル対応。",
+	"description": "自作プラグインのリボンのボタンを、決めた順に並べる自作プラグイン。どのプラグインにも依存せず、コマンドを呼び、バッジの数を尋ねるだけ。モバイル対応。",
 	"author": "yamayu-i",
 	"isDesktopOnly": false
 }

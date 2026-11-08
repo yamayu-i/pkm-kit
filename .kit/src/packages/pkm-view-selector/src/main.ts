@@ -2,8 +2,8 @@ import { Plugin, SuggestModal, setIcon, type App, type Command } from "obsidian"
 import { collectViews, matchViews, type ViewEntry } from "./views";
 
 /**
- * pkm-task と pkm-template の一覧の View を、1 つのダイアログから探して開く（ADR-0072）。
- * どちらのプラグインも import しない。実行時にコマンドの登録から候補を集め、選んだらコマンドを ID で呼ぶ
+ * pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイアログから探して開く（ADR-0072）。
+ * どのプラグインも import しない。実行時にコマンドの登録から候補を集め、選んだらコマンドを ID で呼ぶ
  */
 
 /** Obsidian の公開の型にはないが、コマンドと View の登録を読むのに使う */

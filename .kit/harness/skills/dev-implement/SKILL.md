@@ -19,6 +19,8 @@ description: 承認済みの計画に従って、テストを先に書いてか�
 
 ## 2. 実装する
 
+UI を足すときは、先に [デザインルール](../../../src/docs/design.md) の「部品」の表から使う部品を選ぶ。近い見た目の部品を目で選ばない。表で組めないときだけ新しい部品を作り、表とトークンも更新する。
+
 1. テストが通る最小の実装を書く
 2. 通ったら、通ったまま整理する
 3. 条件がなくなるまで繰り返す
@@ -31,10 +33,17 @@ node .claude/scripts/verify.mjs --plugin   # プラグインを変えたとき�
 ```
 
 - プラグインのソースを変えたら `pnpm build` し、`.obsidian/plugins/<id>/` のビルド成果物（`main.js` など）も一緒にコミットする
-- 失敗したら原因を直し、すべてをもう一度実行する
+- 失敗したら原因を直し、すべてをもう一度実行する。`pnpm check` が失敗したら、再実行の前に出力をファイルに保存する（`pnpm check 2>&1 | tee <作業用のフォルダ>/check.log`）。再実行で通っても、1 回目の出力がないと原因（不安定なテストなど）を追えない
 - [セキュリティチェックが要る変更](../../docs/security-check-schedule.md)（依存、`src/git/`・`src/fs/`・`src/obsidian/`、ビルド設定、CI）なら、コミットの前に `security-check` スキルを実行する
 
-## 4. コミットする
+## 4. Obsidian の実機で確かめる
+
+Obsidian の設定（`.obsidian/*.json`、`.kit/obsidian-required.json`）・CSS・View を変えたら、PR を出す前に実機で確かめる。テストと `preview:ui` は `obsidian` をモックにして描くので、本体の CSS との詳細度の争いや、View の生成の順の誤りは見つからない。
+
+- 起動中の Obsidian があれば、Obsidian の CLI の `eval` で DOM と適用中の CSS を読む（[プラグインの設計と開発](../../docs/plugin-development.md#obsidian-の実機で確かめる)）。または画面を開いて見る
+- 実機で確かめられない環境（クラウドのセッションなど）では、PR の本文の検証に「実機での確認が要る」と書き、確かめてほしいことを挙げる
+
+## 5. コミットする
 
 まとまりごとにコミットする。形式は [コミットの形式](../../docs/workflow.md#コミットの形式)。終わったら [PR を出す](../dev-pr/SKILL.md)。
 

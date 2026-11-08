@@ -13,13 +13,15 @@ export const OUTPUTS = {
 	templatePluginCss: at("../../pkm-template/tokens.css"),
 	htmlPluginCss: at("../../pkm-html/tokens.css"),
 	drawioPluginCss: at("../../pkm-drawio/tokens.css"),
+	ribbonPluginCss: at("../../pkm-ribbon/tokens.css"),
+	updatesPluginCss: at("../../pkm-updates/tokens.css"),
 	obsidianSnippet: at("../../../../../.obsidian/snippets/pkm-theme.css"),
 	doc: at("../../../docs/design-tokens.md"),
 	ts: at("../generated/tokens.ts"),
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-drawio/styles.css")];
+export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-drawio/styles.css"), at("../../pkm-ribbon/styles.css"), at("../../pkm-updates/styles.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 /** 子の Obsidian の設定に必要なキーと値（ADR-0009）。ここの "appearance.json" をデザインルールと照らす */

@@ -27,6 +27,7 @@
     "pkm-ribbon",
     "pkm-html",
     "pkm-drawio",
+    "pkm-updates",
     "pkm-view-selector"
   ],
   "core-plugins.json": {

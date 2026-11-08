@@ -56,7 +56,7 @@ function loadPluginDataOrLegacy(plugin, legacyId) {
 }
 
 // ../shared/src/list-pane.ts
-var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-"];
+var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
 var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar"]);
 function isListViewType(type) {
   return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
@@ -1425,6 +1425,9 @@ function isActive(issue) {
 }
 function isInbox(issue) {
   return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+}
+function isScheduledAhead(issue, today) {
+  return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -3415,7 +3418,7 @@ var StatusUndo = class {
       const button = document.createElement("button");
       button.className = "vt-toast-action";
       button.type = "button";
-      button.append("\u3084\u308A\u76F4\u3059");
+      button.append("\u5143\u306B\u623B\u3059");
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
@@ -5580,14 +5583,14 @@ function OrganizeView(props) {
   const schedule = () => {
     if (!issue) return;
     const target = issue;
-    new PreactModal(ctx.app, "\u4E88\u5B9A\u3092\u5165\u308C\u308B", (close2) => /* @__PURE__ */ u3(
+    new PreactModal(ctx.app, "Do Date \u3092\u9078\u3076", (close2) => /* @__PURE__ */ u3(
       ScheduleSheet,
       {
         issue: target,
         requireEstimate: isInbox(target),
         onSubmit: (dates, est) => {
           close2();
-          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u306B\u4E88\u5B9A` : `${dates.length} \u65E5\u306B\u4E88\u5B9A`;
+          const label = dates.length === 1 ? `${formatShortDate(dates[0])} \u3092 Do Date \u306B` : `${dates.length} \u65E5\u3092 Do Date \u306B`;
           void apply2(organizeSchedulePatch(target, dates, est), label);
         }
       }
@@ -5671,7 +5674,7 @@ function OrganizeView(props) {
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        " \u4E88\u5B9A"
+        " Do Date"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "clock" }),
@@ -5747,9 +5750,9 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "check" }),
         /* @__PURE__ */ u3("span", { children: "Closed" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "\u4E88\u5B9A\u3092\u5165\u308C\u308B\uFF08\u2192\uFF09", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Do Date \u3092\u9078\u3076\uFF08\u2192\uFF09", children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        /* @__PURE__ */ u3("span", { children: "\u4E88\u5B9A" })
+        /* @__PURE__ */ u3("span", { children: "Do Date" })
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
@@ -5760,7 +5763,7 @@ function OrganizeView(props) {
         ": ",
         undo.label,
         "\uFF09"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday \uFF0F \u2192 \u4E88\u5B9A \uFF0F \u2191 \u3042\u3068\u3067 \uFF0F \u2193 Cancel\uFF08\u30B9\u30EF\u30A4\u30D7\u304B\u77E2\u5370\u30AD\u30FC\uFF09" }),
+      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday \uFF0F \u2192 Do Date \uFF0F \u2191 \u3042\u3068\u3067 \uFF0F \u2193 Cancel\uFF08\u30B9\u30EF\u30A4\u30D7\u304B\u77E2\u5370\u30AD\u30FC\uFF09" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
         /* @__PURE__ */ u3(Icon, { name: "external-link" }),
         " \u958B\u304F"
@@ -5864,7 +5867,7 @@ function ScheduledView(props) {
   useStoreVersion(ctx.store);
   const today = localToday(new Date(useNow(6e4)));
   const days = Array.from({ length: DAYS }, (_2, i3) => addDays(today, i3));
-  const issues = [...ctx.store.index.issues.values()].filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).sort((a3, b2) => (a3.scheduled.find((d3) => d3 >= today) ?? "").localeCompare(b2.scheduled.find((d3) => d3 >= today) ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true }));
+  const issues = [...ctx.store.index.issues.values()].filter((i3) => isScheduledAhead(i3, today)).sort((a3, b2) => (a3.scheduled.find((d3) => d3 >= today) ?? "").localeCompare(b2.scheduled.find((d3) => d3 >= today) ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true }));
   const toggle2 = (path, scheduled, d3) => {
     const next = scheduled.includes(d3) ? scheduled.filter((x2) => x2 !== d3) : [...scheduled, d3].sort();
     void ctx.writer.update(path, { scheduled: next }).catch((e3) => ctx.report("\u5B9F\u884C\u65E5\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
@@ -6086,7 +6089,6 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
-    this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));

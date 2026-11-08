@@ -1,9 +1,9 @@
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
-import { slashSessionField } from "../src/obsidian/snippet-session";
+import { atSessionField, slashSessionField } from "../src/obsidian/snippet-session";
 
 const start = (doc: string, cursor: number) =>
-	EditorState.create({ doc, selection: EditorSelection.cursor(cursor), extensions: [slashSessionField] });
+	EditorState.create({ doc, selection: EditorSelection.cursor(cursor), extensions: [slashSessionField, atSessionField] });
 
 /** カーソルの位置に文字を打つ（Obsidian の入力と同じ userEvent） */
 const type = (state: EditorState, text: string) => {
@@ -38,5 +38,24 @@ describe("slashSessionField", () => {
 
 	it("空白を打つと終わる", () => {
 		expect(session(type(type(start("", 0), "/"), " "))).toBeNull();
+	});
+});
+
+describe("atSessionField（ADR-0067）", () => {
+	const atSession = (state: EditorState) => state.field(atSessionField);
+
+	it("行頭か半角空白の後で @ を打つと始まり、/ のセッションとは別に動く", () => {
+		let s = type(start("会議は ", 4), "@");
+		expect(atSession(s)).toMatchObject({ from: 4 });
+		expect(session(s)).toBeNull();
+		s = type(type(s, "d"), "a");
+		expect(atSession(s)).toMatchObject({ from: 4 });
+		expect(atSession(type(start("", 0), "@"))).toMatchObject({ from: 0 });
+	});
+
+	it("文字の直後の @ や、貼り付けでは始まらない", () => {
+		expect(atSession(type(start("foo", 3), "@"))).toBeNull();
+		const pasted = start(" ", 1).update({ changes: { from: 1, insert: "@" }, selection: EditorSelection.cursor(2), userEvent: "input.paste" }).state;
+		expect(atSession(pasted)).toBeNull();
 	});
 });
