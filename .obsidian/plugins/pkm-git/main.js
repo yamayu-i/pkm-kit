@@ -21612,6 +21612,21 @@ function formatStamp(d) {
 function sanitizeDeviceName(name) {
   return name.replace(/[\\/:*?"<>|#^[\]\n\r\t]/g, "-").trim() || "device";
 }
+function countingHttp(inner, traffic) {
+  async function* count(body, key) {
+    for await (const chunk of body) {
+      traffic[key] += chunk.byteLength;
+      yield chunk;
+    }
+  }
+  return {
+    async request(req) {
+      traffic.requests++;
+      const res = await inner.request(req.body ? { ...req, body: count(req.body, "sentBytes") } : req);
+      return res.body ? { ...res, body: count(res.body, "receivedBytes") } : res;
+    }
+  };
+}
 var PkmGit = class {
   constructor(opts) {
     this.opts = opts;
@@ -21619,6 +21634,7 @@ var PkmGit = class {
     this.fs = createGitFs(opts.store);
     this.remote = opts.remote ?? "origin";
     this.now = opts.now ?? (() => /* @__PURE__ */ new Date());
+    this.http = countingHttp(opts.http, this.traffic);
   }
   opts;
   store;
@@ -21627,14 +21643,36 @@ var PkmGit = class {
   cache = {};
   remote;
   now;
+  http;
+  /** これまでの通信の累計。工程ごとの差分を onTransfer に渡す */
+  traffic = { requests: 0, sentBytes: 0, receivedBytes: 0 };
   async measure(phase, run) {
     const start = performance.now();
     try {
-      return await run();
+      return await this.countTransfer(phase, run);
     } finally {
       try {
         this.opts.onTiming?.(phase, performance.now() - start);
       } catch {
+      }
+    }
+  }
+  /** run の間の通信量を onTransfer に渡す。通信しなかったら何も渡さない */
+  async countTransfer(phase, run) {
+    const before = { ...this.traffic };
+    try {
+      return await run();
+    } finally {
+      const requests = this.traffic.requests - before.requests;
+      if (requests > 0) {
+        try {
+          this.opts.onTransfer?.(phase, {
+            requests,
+            sentBytes: this.traffic.sentBytes - before.sentBytes,
+            receivedBytes: this.traffic.receivedBytes - before.receivedBytes
+          });
+        } catch {
+        }
       }
     }
   }
@@ -21647,7 +21685,7 @@ var PkmGit = class {
       return this.opts.getAuth() ?? void 0;
     };
     return {
-      http: this.opts.http,
+      http: this.http,
       onAuth,
       // 同じ認証情報で再試行し続けないようにする
       onAuthFailure: () => ({ cancel: true })
@@ -21668,7 +21706,7 @@ var PkmGit = class {
     return await this.store.stat(".git/HEAD") !== null;
   }
   async clone(url, branch2) {
-    await isomorphic_git_default.clone({ ...this.ctx, ...this.net, url, ref: branch2, singleBranch: true, noCheckout: true });
+    await this.countTransfer("clone", () => isomorphic_git_default.clone({ ...this.ctx, ...this.net, url, ref: branch2, singleBranch: true, noCheckout: true }));
     const tree = await readTreeMap(this.ctx, await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 }));
     for (const path of tree.keys()) assertSafeWorktreePath(path);
     await isomorphic_git_default.checkout({ ...this.ctx, ref: branch2, force: true });
@@ -21769,11 +21807,21 @@ var PkmGit = class {
       ...this.ctx,
       ...this.net,
       remote: this.remote,
-      ref: branch2,
+      // isomorphic-git は singleBranch のとき、ref が指すコミット 1 つだけを「持っている」と
+      // サーバーに伝える。ローカルの先端が未 push のコミットだとサーバーはそれを知らず、
+      // 共通の履歴がないとみなして全履歴の pack を返す。前回取得したリモートの先端を ref にして、
+      // サーバーも知っているコミットを伝える。取得する先は remoteRef で指定する
+      ref: await this.haveRef(branch2),
+      remoteRef: branch2,
       singleBranch: true,
       tags: false
     });
     return this.remoteHead(branch2);
+  }
+  /** fetch で「持っている」と伝えるコミットの ref。追跡ブランチがなければローカルのブランチ */
+  async haveRef(branch2) {
+    const tracking = `refs/remotes/${this.remote}/${branch2}`;
+    return await this.remoteHead(branch2) ? tracking : `refs/heads/${branch2}`;
   }
   async remoteHead(branch2) {
     try {
@@ -22215,6 +22263,12 @@ function reportTiming(phase, elapsedMs) {
   } catch {
   }
 }
+function reportTransfer(phase, t) {
+  try {
+    console.debug(`[pkm-git] ${phase}: ${t.requests} requests, sent ${t.sentBytes} B, received ${t.receivedBytes} B`);
+  } catch {
+  }
+}
 var CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
 var CONFLICT_NOTES = {
   markers: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u5165\u308A",
@@ -22268,6 +22322,7 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       }, s.authHost),
       deviceName: s.deviceName,
       onTiming: reportTiming,
+      onTransfer: reportTransfer,
       author: {
         name: s.authorName || s.deviceName,
         email: s.authorEmail || "pkm-git@localhost"

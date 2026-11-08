@@ -21,6 +21,22 @@ PR #20 の実装・正式検証・配布成果物更新は完了。同期の各�
 - 回帰テストで snapshot 後のツリー展開が base / local / remote / merged の4回で、local を再読しないことを確認。
 - 配布用 `.obsidian/plugins/pkm-git/main.js` を再生成。Obsidian API モック上のバンドルテストも成功。
 
+## fetch の転送量（Issue #87）
+
+- 不具合: isomorphic-git 1.44.8 の `fetch` は `singleBranch: true` のとき、`ref` が指すコミット 1 つだけを have として伝える。`ref` にローカルのブランチを渡していたので、未 push の snapshot・マージがあると、サーバーは共通の履歴がないとみなし全履歴の pack を返していた。
+- 修正: `ref` に追跡ブランチ（`refs/remotes/<remote>/<branch>`）、`remoteRef` に取得するブランチを渡す。追跡ブランチがなければローカルのブランチ。依存は変えていない。
+- 計測: `onTransfer` で、通信した工程（`clone` / `fetch` / `push`）のリクエスト数と送受信の body のバイト数を通知する。HTTP ヘッダー・TLS は含まない。
+- テスト（`test/fetch-transfer.test.ts`。git http-backend、64 KiB の圧縮の効かないアセットを 16 版持つ履歴）での upload-pack の応答の大きさ:
+
+| 場面 | 修正前 | 修正後 |
+| --- | ---: | ---: |
+| 未 push のコミットあり、リモート不変（pull） | 1,059,671 B | 209 B |
+| 同上（push の前の fetch） | 1,059,866 B | 209 B |
+| 双方に変更あり（pull でマージ） | 1,060,314 B | 767 B |
+| pull → push を 3 回繰り返す（1 回あたり） | 約 2.1 MB | 975〜1,216 B |
+
+- 限界: push の応答を失い追跡ブランチが古いままだと、次の fetch で自分が送った分を 1 回取り直す（その push の分だけ）。初回の clone は全履歴を取得する。GitHub・実機での計測は未実施。
+
 ## 今後の高速化候補
 
 以下は本 PR に含めない。今回の計測値を実機で集め、費用対効果と必要な設計・テストを検討する。

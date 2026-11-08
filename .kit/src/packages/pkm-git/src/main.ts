@@ -1,7 +1,7 @@
 import { Errors } from "isomorphic-git";
 import { MarkdownView, Notice, Plugin, requestUrl } from "obsidian";
 import { AuthTargetError } from "./git/auth-target";
-import { PkmGit, WorktreeChangedError, type PullResult } from "./git/engine";
+import { PkmGit, WorktreeChangedError, type PullResult, type Transfer } from "./git/engine";
 import { createHttpClient, redactSecrets } from "./git/http";
 import type { MergeConflict } from "./merge/tree-merge";
 import { hasConflictMarkers } from "./merge/text-merge";
@@ -14,6 +14,13 @@ import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data";
 function reportTiming(phase: string, elapsedMs: number): void {
 	try {
 		console.debug(`[pkm-git] ${phase}: ${elapsedMs.toFixed(1)} ms`);
+	} catch { /* diagnostic only */ }
+}
+
+/** 固定の工程名と、リクエスト数・body のバイト数だけを出力する。URL・本文・認証情報は出さない。 */
+function reportTransfer(phase: string, t: Transfer): void {
+	try {
+		console.debug(`[pkm-git] ${phase}: ${t.requests} requests, sent ${t.sentBytes} B, received ${t.receivedBytes} B`);
 	} catch { /* diagnostic only */ }
 }
 
@@ -81,6 +88,7 @@ export default class PkmGitPlugin extends Plugin {
 			}, s.authHost),
 			deviceName: s.deviceName,
 			onTiming: reportTiming,
+			onTransfer: reportTransfer,
 			author: {
 				name: s.authorName || s.deviceName,
 				email: s.authorEmail || "pkm-git@localhost",
