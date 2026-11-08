@@ -6,7 +6,7 @@
 
 ## 状態
 
-上流の既定 `.kit/templates/` に、Vault の `template/` を重ねる。`config.json` に、モーダルに出すか・置き場所・ファイル名のパターン。`{{title}}`、`{{date}}`、`{{prompt:…}}`、`{{id:i}}` などの変数。
+上流の既定 `.kit/templates/` に、Vault の `template/` を重ねる。`config.json` に、モーダルに出すか・置き場所・ファイル名のパターン。`{{title}}`、`{{date}}`、`{{prompt:…}}`、`{{prompt-date}}`（日付をダイアログで尋ねる）、`{{id:i}}` などの変数。
 
 ## 操作
 

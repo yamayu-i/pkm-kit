@@ -381,3 +381,101 @@
 	border-color: var(--vt-primary);
 	box-shadow: inset 0 0 0 1px var(--vt-primary);
 }
+
+/* ---------- 日付のダイアログ（ADR-0065。pkm-task の日付の入力と同じ形） ---------- */
+
+.vt-tpl-check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: var(--vt-type-body-small-size);
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+}
+
+.vt-tpl-calendar {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-tpl-calendar-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-tpl-calendar-nav button {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	cursor: pointer;
+}
+
+.vt-tpl-calendar-nav button:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 40px);
+	gap: 8px;
+	justify-content: center;
+}
+
+.vt-tpl-weekday {
+	text-align: center;
+	font-size: var(--vt-type-label-small-size);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-tpl-day {
+	position: relative;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border-radius: var(--vt-radius-m);
+	border: 1px solid var(--vt-outline);
+	background: transparent;
+	color: var(--vt-on-surface);
+	box-shadow: none;
+	font-family: inherit;
+	font-size: var(--vt-type-body-small-size);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	transition:
+		background-color var(--vt-duration-short3) var(--vt-easing-standard),
+		color var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-tpl-day:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-day:active {
+	transform: scale(var(--vt-scale-press-small));
+}
+
+.vt-tpl-day.is-weekend { border-width: 2px; }
+.vt-tpl-day.is-dimmed { color: var(--vt-on-surface-variant); border-color: var(--vt-outline-variant); }
+.vt-tpl-day.is-today { font-weight: var(--vt-weight-bold); }
+.vt-tpl-day.is-today:not(.is-selected) { border-color: var(--vt-primary); color: var(--vt-primary); }
+.vt-tpl-day.is-today::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: 4px;
+	width: 4px;
+	height: 4px;
+	margin-left: -2px;
+	border-radius: var(--vt-radius-full);
+	background: currentColor;
+}
+.vt-tpl-day.is-selected { background: var(--vt-scheduled); color: var(--vt-on-scheduled); }
