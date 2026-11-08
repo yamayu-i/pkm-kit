@@ -31,12 +31,14 @@ export function createDevice(
 	token: string | null = TEST_TOKEN,
 	authHost = "127.0.0.1",
 	onTiming?: EngineOptions["onTiming"],
+	onTransfer?: EngineOptions["onTransfer"],
 ): Device {
 	const root = mkdtempSync(join(tmpdir(), `pkm-git-${name}-`));
 	const store = new NodeFileStore(root);
 	const git = new PkmGit({
 		store,
 		onTiming,
+		onTransfer,
 		http: createHttpClient(fetchRequest, authHost),
 		authHost,
 		deviceName: name,

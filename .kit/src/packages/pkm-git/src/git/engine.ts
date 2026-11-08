@@ -26,6 +26,14 @@ export interface EngineOptions {
 	now?: () => Date;
 	/** 処理名と経過時間のみ。パス・本文・認証情報は渡さない */
 	onTiming?: (phase: string, elapsedMs: number) => void;
+	/** 通信した工程の、リクエスト数と送受信したバイト数（body のみ。ヘッダーと TLS を除く）。URL・本文・認証情報は渡さない */
+	onTransfer?: (phase: string, transfer: Transfer) => void;
+}
+
+export interface Transfer {
+	requests: number;
+	sentBytes: number;
+	receivedBytes: number;
 }
 
 export type PullResult =
@@ -63,6 +71,25 @@ export function sanitizeDeviceName(name: string): string {
 	return name.replace(/[\\/:*?"<>|#^[\]\n\r\t]/g, "-").trim() || "device";
 }
 
+/** 送受信した body のバイト数を数える。中身は見ない */
+function countingHttp(inner: HttpClient, traffic: Transfer): HttpClient {
+	async function* count(
+		body: AsyncIterableIterator<Uint8Array>, key: "sentBytes" | "receivedBytes",
+	): AsyncIterableIterator<Uint8Array> {
+		for await (const chunk of body) {
+			traffic[key] += chunk.byteLength;
+			yield chunk;
+		}
+	}
+	return {
+		async request(req) {
+			traffic.requests++;
+			const res = await inner.request(req.body ? { ...req, body: count(req.body, "sentBytes") } : req);
+			return res.body ? { ...res, body: count(res.body, "receivedBytes") } : res;
+		},
+	};
+}
+
 export class PkmGit {
 	private readonly store: FileStore;
 	private readonly fs: PromiseFsClient;
@@ -70,21 +97,44 @@ export class PkmGit {
 	private readonly cache = {};
 	private readonly remote: string;
 	private readonly now: () => Date;
+	private readonly http: HttpClient;
+	/** これまでの通信の累計。工程ごとの差分を onTransfer に渡す */
+	private readonly traffic: Transfer = { requests: 0, sentBytes: 0, receivedBytes: 0 };
 
 	constructor(private readonly opts: EngineOptions) {
 		this.store = opts.store;
 		this.fs = createGitFs(opts.store);
 		this.remote = opts.remote ?? "origin";
 		this.now = opts.now ?? (() => new Date());
+		this.http = countingHttp(opts.http, this.traffic);
 	}
 
 	private async measure<T>(phase: string, run: () => Promise<T>): Promise<T> {
 		const start = performance.now();
 		try {
-			return await run();
+			return await this.countTransfer(phase, run);
 		} finally {
 			// 診断コードの失敗で同期の結果を変えない。
 			try { this.opts.onTiming?.(phase, performance.now() - start); } catch { /* diagnostic only */ }
+		}
+	}
+
+	/** run の間の通信量を onTransfer に渡す。通信しなかったら何も渡さない */
+	private async countTransfer<T>(phase: string, run: () => Promise<T>): Promise<T> {
+		const before = { ...this.traffic };
+		try {
+			return await run();
+		} finally {
+			const requests = this.traffic.requests - before.requests;
+			if (requests > 0) {
+				try {
+					this.opts.onTransfer?.(phase, {
+						requests,
+						sentBytes: this.traffic.sentBytes - before.sentBytes,
+						receivedBytes: this.traffic.receivedBytes - before.receivedBytes,
+					});
+				} catch { /* diagnostic only */ }
+			}
 		}
 	}
 
@@ -99,7 +149,7 @@ export class PkmGit {
 			return this.opts.getAuth() ?? undefined;
 		};
 		return {
-			http: this.opts.http,
+			http: this.http,
 			onAuth,
 			// 同じ認証情報で再試行し続けないようにする
 			onAuthFailure: () => ({ cancel: true }),
@@ -124,7 +174,8 @@ export class PkmGit {
 	}
 
 	async clone(url: string, branch: string): Promise<void> {
-		await git.clone({ ...this.ctx, ...this.net, url, ref: branch, singleBranch: true, noCheckout: true });
+		await this.countTransfer("clone", () =>
+			git.clone({ ...this.ctx, ...this.net, url, ref: branch, singleBranch: true, noCheckout: true }));
 		// 展開する前に、Vault の外や .git に書くパスがないか確かめる
 		const tree = await readTreeMap(this.ctx, await git.resolveRef({ ...this.ctx, ref: branch }));
 		for (const path of tree.keys()) assertSafeWorktreePath(path);
@@ -236,11 +287,22 @@ export class PkmGit {
 			...this.ctx,
 			...this.net,
 			remote: this.remote,
-			ref: branch,
+			// isomorphic-git は singleBranch のとき、ref が指すコミット 1 つだけを「持っている」と
+			// サーバーに伝える。ローカルの先端が未 push のコミットだとサーバーはそれを知らず、
+			// 共通の履歴がないとみなして全履歴の pack を返す。前回取得したリモートの先端を ref にして、
+			// サーバーも知っているコミットを伝える。取得する先は remoteRef で指定する
+			ref: await this.haveRef(branch),
+			remoteRef: branch,
 			singleBranch: true,
 			tags: false,
 		});
 		return this.remoteHead(branch);
+	}
+
+	/** fetch で「持っている」と伝えるコミットの ref。追跡ブランチがなければローカルのブランチ */
+	private async haveRef(branch: string): Promise<string> {
+		const tracking = `refs/remotes/${this.remote}/${branch}`;
+		return (await this.remoteHead(branch)) ? tracking : `refs/heads/${branch}`;
 	}
 
 	private async remoteHead(branch: string): Promise<string | null> {
