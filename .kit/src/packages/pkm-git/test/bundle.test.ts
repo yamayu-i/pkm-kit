@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,9 +11,11 @@ const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-g
 
 interface PluginInstance {
 	data: unknown;
+	commands: Record<string, () => void>;
 	onload(): Promise<void>;
 	pull(): Promise<void>;
 	push(): Promise<void>;
+	sync(): Promise<void>;
 }
 
 /**
@@ -56,11 +58,12 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		await server.stop();
 	});
 
-	it("pull でコンフリクトをマーカー入りで残し、push できる。behind ならモーダルを出す", async () => {
+	it("pull でコンフリクトをマーカー入りで残し、push できる。リモートが先に進んでいても取り込んでから送る（ADR-0089）", async () => {
 		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
 		const Plugin = loadBundle(mock.obsidian);
 		const plugin = new Plugin();
-		plugin.data = { tokenSecretId: "gh", deviceName: "iphone", authHost: "127.0.0.1" };
+		// 起動時の自動の同期と競わないよう、このテストでは自動の同期を止める
+		plugin.data = { tokenSecretId: "gh", deviceName: "iphone", authHost: "127.0.0.1", autoSyncMinutes: 0 };
 
 		await plugin.onload();
 
@@ -82,7 +85,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		expect(mock.adapterWrites.every((p) => p.startsWith(".git/"))).toBe(true);
 
 		await plugin.push();
-		expect(mock.notices.at(-1)).toBe("Git: push しました");
+		expect(mock.notices.at(-1)).toBe("Git: 同期しました");
 		expect(server.remoteFile("note.md")).toContain("<<<<<<< local (iphone)");
 
 		await pc.git.pull();
@@ -90,7 +93,49 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		await pc.git.push();
 		await mock.vault.createBinary("mine.md", new TextEncoder().encode("m\n").buffer);
 		await plugin.push();
-		expect(mock.modals.at(-1)).toBe("リモートに新しい変更があります");
+		expect(mock.notices.at(-1)).toBe("Git: 同期しました（取り込み 1 件）");
+		expect(server.remoteFile("mine.md")).toBe("m\n");
+		expect(readFileSync(join(phoneRoot, "other.md"), "utf8")).toBe("x\n");
+	});
+
+	it("起動すると自動で同期し、共有の状態をステータスバーに出す。編集すると共有待ちになる（ADR-0089）", async () => {
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))();
+		plugin.data = { tokenSecretId: "gh", deviceName: "iphone", authHost: "127.0.0.1" };
+		await pc.write("from-pc.md", "pc\n");
+		await pc.git.push();
+		await plugin.onload();
+		// 起動時の同期を待つ（同じキューに並べた手の同期が終われば、起動時のものも終わっている）
+		await plugin.sync();
+		expect(readFileSync(join(phoneRoot, "from-pc.md"), "utf8")).toBe("pc\n");
+		expect(mock.statusTexts.at(-1)).toBe("Git: Synced");
+		await mock.vault.createBinary("draft.md", new TextEncoder().encode("d\n").buffer);
+		mock.emit("create", "draft.md");
+		expect(mock.statusTexts.at(-1)).toBe("Git: Not synced");
+		await plugin.sync();
+		expect(mock.statusTexts.at(-1)).toBe("Git: Synced");
+		expect(server.remoteFile("draft.md")).toBe("d\n");
+	});
+
+	it("同期できないときは記録に残し、トークンを書かない（ADR-0089 の 8）", async () => {
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))();
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1", autoSyncMinutes: 0 };
+		await plugin.onload();
+		// 知らない形の取り込みの記録
+		mkdirSync(join(phoneRoot, ".git/pkm-git"), { recursive: true });
+		writeFileSync(join(phoneRoot, ".git/pkm-git/apply.json"), '{"schemaVersion":99}');
+		await plugin.sync();
+		expect(mock.notices.at(-1)).toContain("同期できませんでした");
+		expect(mock.statusTexts.at(-1)).toBe("Git: Sync failed");
+		const log = readFileSync(join(phoneRoot, ".git/pkm-git/log.jsonl"), "utf8");
+		expect(JSON.parse(log.trim().split("\n").at(-1) as string)).toMatchObject({
+			level: "error", event: "apply-journal-unreadable", trigger: "manual", pluginVersion: "0.0.0-test",
+		});
+		expect(log).not.toContain(TEST_TOKEN);
+		plugin.commands["show-sync-log"]?.();
+		await new Promise((r) => setTimeout(r, 50));
+		expect(mock.modals.at(-1)).toBe("Sync log");
 	});
 
 	it("設定にないホストにはトークンを送らない（既定は github.com）", async () => {
