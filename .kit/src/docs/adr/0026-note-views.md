@@ -89,5 +89,5 @@
 - member は vault-task の専用 View([Issue #39](https://github.com/yamayu-i/yamayu-pkm/issues/39))ができるまで、タイトルだけの簡素なヘッダー(`name`)になる
 - `.claude/docs/vault-conventions.md` に、タイトルの決め方(`title`、`name`、ファイル名)と `showInlineTitle` を追記する
 - ファイル名の統一と、新規作成時のタイトル・ファイル名の別入力は [Issue #41](https://github.com/yamayu-i/yamayu-pkm/issues/41) で扱う
-- `tmp/` とその一覧は [Issue #40](https://github.com/yamayu-i/yamayu-pkm/issues/40) で扱う
+- `tmp/` とその一覧は [Issue #14](https://github.com/yamayu-i/pkm-kit/issues/14) で扱う
 - ファイルの読み取りとヘッダーの描画だけで、書き込みは増えない。セキュリティチェックの対象は、`app.json` の変更とビルド成果物

@@ -16,3 +16,6 @@ node_modules/
 
 # Claude Code の個人設定
 .claude/settings.local.json
+
+# 一時ファイルの置き場（外部共有用の書き出し、同期しなくてよい自分用のファイル。ADR-0038）
+tmp/

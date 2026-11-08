@@ -34,7 +34,7 @@
   ],
   [
    "temporary/a.md",
-   false
+   true
   ],
   [
    "template/file/note.md",

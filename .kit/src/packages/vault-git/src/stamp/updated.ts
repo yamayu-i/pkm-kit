@@ -3,7 +3,7 @@
  * 規則の正本はここだけ(ADR-0009)。PC の Git CLI 用の cli/stamp-updated.mjs と、
  * Vault の検査(.claude/scripts/wiki-lint.mjs)もこのファイルを使う。表は test/fixtures/updated-cases.json
  */
-const EXCLUDED_DIRS = new Set(["temporary", "template", "tmp"]);
+const EXCLUDED_DIRS = new Set(["template", "tmp"]);
 
 /** updated を付与する対象のパスか。Vault ルートからのパス */
 export function isTargetPath(path: string): boolean {
