@@ -8,6 +8,7 @@
 |---|---|---|
 | wiki の操作 | 取り込み、回答の蓄積、lint、デイリーノートの整理 | 各スキル（[LLM wiki の仕組み](llm-wiki.md)）に従って main に直接コミット |
 | ノートの改名 | 日本語の名前のファイル名を英語にする | [note-rename](../skills/note-rename/SKILL.md) に従って main に直接コミット |
+| 図を作る・直す | ノート・wiki のページに図を足す、既存の図を直す | [drawio-diagram](../skills/drawio-diagram/SKILL.md)。wiki の操作の中で新しく作る図はそのコミットで main に、それ以外はブランチで PR（`docs(diagram):`） |
 | タスク管理 | 計画・振り返り、ボードの操作、worklog の修正 | [task-coach](../skills/task-coach/SKILL.md)・[worklog-review](../skills/worklog-review/SKILL.md)。データは MCP ツールか CLI を通して書く |
 | この Vault のものの仕組みを変える | `template/` のテンプレート、`local/CLAUDE.md`、`skills/local-*`、`.obsidian/*.json` | 何をどう変えるかをチャットで伝えて確認 → ブランチで変えて `verify.mjs` を通す → PR |
 | 上流の更新の取り込み | 新しい機能、上流の修正 | [vault-upgrade](../skills/vault-upgrade/SKILL.md)（ブランチで merge と移行 → 検査 → PR） |
