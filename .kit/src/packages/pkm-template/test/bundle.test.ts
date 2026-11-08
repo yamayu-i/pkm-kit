@@ -214,8 +214,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		await plugin.onload();
 
 		expect([...required].sort()).toEqual(["@codemirror/state", "obsidian"]);
-		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list"]);
-		expect(mock.views).toEqual(["pkm-template-daily-list", "pkm-template-note-list", "pkm-template-source-list"]);
+		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list", "open-tmp-list"]);
+		expect(mock.views).toEqual(["pkm-template-daily-list", "pkm-template-note-list", "pkm-template-source-list", "pkm-template-tmp-list"]);
 		// 設定タブはない(ADR-0061)
 		expect(mock.settingTabs).toEqual([]);
 		// ヘッダーを差し込むための購読(ADR-0026)

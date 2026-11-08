@@ -13,6 +13,7 @@
 - 「New diagram」は名前を聞いて Draw.io を開き、最初の保存で `asset/<名前>.drawio.svg` を作り、開いていたノートのカーソルの位置に参照を入れる
 - 「このノートを tmp/ に書き出す」は、md / html の図の参照を、編集用 XML を除いた SVG の data URI に置き換えて `tmp/<ファイル名>` に書く（あれば番号を付けた別名）。元のノートと図は変えない。見つからない図・壊れた図があれば何も書かない。コードブロックの中の例は変えない。data URI の画像を出せるかは、渡した先の表示による
 - 編集用 XML のない SVG（`.drawio.svg` という名前の普通の SVG）は、表示とコピー（PNG / SVG）はできるが、編集と XML のコピーはできない（そう知らせる）
+- Claude Code は CLI（`node .kit/bin/drawio.mjs` の `build` / `render` / `inspect`）で図を作る・直す・読み取る（スキル drawio-diagram）。短い JSON から配置を計算して描くので、ネットワークは要らない。描画は自前で、Draw.io と細部が違うことがある。pkm-drawio で開いて保存すると Draw.io の描画になる
 - 同期（PKM Git）で両側が変えた図は行単位で混ぜず、リモート版と `<名前> (conflict <端末> <日時>).drawio.svg` を残す
 
 ## 使う概念
@@ -21,4 +22,4 @@
 
 ## 根拠
 
-[ADR-0064](../../../../src/docs/adr/0064-drawio-diagrams.md)
+[ADR-0064](../../../../src/docs/adr/0064-drawio-diagrams.md)、[ADR-0085](../../../../src/docs/adr/0085-drawio-cli-build-render.md)

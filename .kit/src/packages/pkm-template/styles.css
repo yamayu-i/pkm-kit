@@ -330,6 +330,30 @@
 	cursor: pointer;
 }
 
+/* tmp/ の一覧（ADR-0045） */
+.vt-tpl-nowrap {
+	white-space: nowrap;
+}
+
+.vt-tpl-delete {
+	min-width: var(--vt-size-target-min);
+	min-height: var(--vt-size-target-min);
+	padding: 0 var(--vt-space-4);
+	border: 0;
+	background: none;
+	box-shadow: none;
+	height: auto;
+	color: var(--vt-error);
+	font-family: inherit;
+	font-size: inherit;
+	line-height: inherit;
+	cursor: pointer;
+}
+
+.vt-tpl-delete:hover {
+	text-decoration: underline;
+}
+
 .vt-tpl-table tbody tr:hover {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }

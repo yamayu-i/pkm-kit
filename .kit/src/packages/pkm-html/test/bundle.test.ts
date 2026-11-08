@@ -7,7 +7,13 @@ const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-h
 function load() {
 	const views: string[] = [];
 	const extensions: [string[], string][] = [];
+	const commands: string[] = [];
 	class Plugin {
+		app = { workspace: { on: () => ({}), getActiveFile: () => null } };
+		addCommand(c: { id: string }) {
+			commands.push(c.id);
+		}
+		registerEvent() {}
 		registerView(type: string) {
 			views.push(type);
 		}
@@ -24,16 +30,17 @@ function load() {
 		throw new Error(`unexpected require: ${name}`);
 	};
 	new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
-	return { plugin: new module.exports.default(), views, extensions, required };
+	return { plugin: new module.exports.default(), views, extensions, required, commands };
 }
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）", () => {
 	it("obsidian 以外を require せず、.html / .htm を View に登録する", async () => {
-		const { plugin, views, extensions, required } = load();
+		const { plugin, views, extensions, required, commands } = load();
 		await plugin.onload();
 		expect([...required]).toEqual(["obsidian"]);
 		expect(views).toEqual(["pkm-html"]);
 		expect(extensions).toEqual([[["html", "htm"], "pkm-html"]]);
+		expect(commands).toEqual(["export-to-tmp"]);
 	});
 
 	it("iframe の sandbox に allow-scripts を付けない。CSP とトークンを束ねている", () => {
@@ -42,5 +49,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）"
 		expect(bundle).toContain('"allow-same-origin"');
 		expect(bundle).toContain("default-src 'none'");
 		expect(bundle).toContain("--vt-surface:");
+		// 書き出し（ADR-0044）の prefers-color-scheme 版のトークン
+		expect(bundle).toContain("@media (prefers-color-scheme: dark)");
 	});
 });

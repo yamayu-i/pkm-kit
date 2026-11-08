@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian9 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
@@ -1661,9 +1661,55 @@ function dailyDate(basename) {
   return { date: basename, weekday, label: `${basename} ${WEEKDAYS2[weekday]}` };
 }
 
+// src/core/tmp-list.ts
+var TMP_FOLDER = "tmp";
+function isTmpPath(path) {
+  return path.startsWith(`${TMP_FOLDER}/`);
+}
+function collectTmpEntries(files) {
+  return files.filter((f4) => isTmpPath(f4.path)).map((f4) => ({ path: f4.path, name: f4.path.slice(TMP_FOLDER.length + 1), ext: f4.extension.toLowerCase(), mtime: f4.stat.mtime, size: f4.stat.size }));
+}
+function filterTmpEntries(entries, query) {
+  const q2 = query.trim().toLowerCase();
+  if (q2 === "") return [...entries];
+  return entries.filter((e3) => e3.name.toLowerCase().includes(q2));
+}
+function sortTmpEntries(entries, key, order) {
+  const sign = order === "asc" ? 1 : -1;
+  return [...entries].sort((a3, b2) => {
+    const byName = a3.name.localeCompare(b2.name);
+    if (key === "name") return sign * byName;
+    const d3 = key === "modified" ? a3.mtime - b2.mtime : a3.size - b2.size;
+    return d3 !== 0 ? sign * d3 : byName;
+  });
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let i3 = 0;
+  while (value >= 1024 && i3 < units.length - 1) {
+    value /= 1024;
+    i3++;
+  }
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i3]}`;
+}
+function formatModified(mtime) {
+  const d3 = new Date(mtime);
+  const pad = (n2) => String(n2).padStart(2, "0");
+  return `${d3.getFullYear()}-${pad(d3.getMonth() + 1)}-${pad(d3.getDate())} ${pad(d3.getHours())}:${pad(d3.getMinutes())}`;
+}
+var OPENABLE = /* @__PURE__ */ new Set(["md", "canvas", "base", "html", "htm", "avif", "bmp", "gif", "jpeg", "jpg", "png", "svg", "webp", "flac", "m4a", "mp3", "ogg", "wav", "3gp", "mkv", "mov", "mp4", "ogv", "webm", "pdf"]);
+function openableInObsidian(ext) {
+  return OPENABLE.has(ext.toLowerCase());
+}
+
 // src/core/note-list.ts
 var WIKI_TYPES = ["concept", "entity", "topic", "answer"];
 var TASK_TYPES = ["issue", "routine", "member"];
+function withoutTmp(notes) {
+  return notes.filter((n2) => !isTmpPath(n2.path));
+}
 function notesOfType(notes, type) {
   return notes.filter((n2) => n2.frontmatter.type === type);
 }
@@ -2056,7 +2102,7 @@ function NoteList({ app, spec }) {
   const tick = useVaultChanges(app);
   const [query, setQuery] = d2("");
   const [sort, setSort] = d2({ key: spec.sort, order: "desc" });
-  const all = T2(() => collectNotes(app), [app, tick]);
+  const all = T2(() => withoutTmp(collectNotes(app)), [app, tick]);
   const imported = T2(() => importedSourcePaths(all), [all]);
   const rows = T2(() => sortNotes(filterByQuery(notesOfType(all, spec.type), query), sort.key, sort.order), [all, spec, query, sort]);
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
@@ -2080,13 +2126,102 @@ var DailyListView = make(SPECS.daily);
 var NoteListView = make(SPECS.note);
 var SourceListView = make(SPECS.source);
 
+// src/views/TmpListView.tsx
+var import_obsidian10 = require("obsidian");
+
+// src/obsidian/ConfirmDeleteModal.ts
+var import_obsidian9 = require("obsidian");
+var ConfirmDeleteModal = class extends import_obsidian9.Modal {
+  constructor(app, path, onConfirm) {
+    super(app);
+    this.path = path;
+    this.onConfirm = onConfirm;
+  }
+  path;
+  onConfirm;
+  onOpen() {
+    this.setTitle("Delete file");
+    this.contentEl.createEl("p", { text: `${this.path} \u3092\u524A\u9664\u3057\u307E\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002` });
+    new import_obsidian9.Setting(this.contentEl).addButton(
+      (b2) => b2.setButtonText("Delete").setWarning().onClick(() => {
+        this.close();
+        this.onConfirm();
+      })
+    ).addButton((b2) => b2.setButtonText("Cancel").onClick(() => this.close()));
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// src/views/TmpListView.tsx
+var COLUMNS = [{ label: "Name", sort: "name" }, { label: "Type" }, { label: "Modified", sort: "modified" }, { label: "Size", sort: "size" }, { label: "" }];
+function useTmpModify(app) {
+  const [n2, setN] = d2(0);
+  h2(() => {
+    const ref = app.vault.on("modify", (file) => {
+      if (isTmpPath(file.path)) setN((x2) => x2 + 1);
+    });
+    return () => app.vault.offref(ref);
+  }, [app]);
+  return n2;
+}
+function TmpListView({ app }) {
+  const tick = useVaultChanges(app);
+  const modified = useTmpModify(app);
+  const [query, setQuery] = d2("");
+  const [sort, setSort] = d2({ key: "modified", order: "desc" });
+  const all = T2(() => collectTmpEntries(app.vault.getFiles()), [app, tick, modified]);
+  const rows = T2(() => sortTmpEntries(filterTmpEntries(all, query), sort.key, sort.order), [all, query, sort]);
+  const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "name" ? "asc" : "desc" });
+  const open = (entry) => {
+    const file = app.vault.getFileByPath(entry.path);
+    if (!file) return;
+    if (openableInObsidian(entry.ext)) {
+      void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian10.Platform.isPhone });
+      return;
+    }
+    const withDefault = app;
+    if (import_obsidian10.Platform.isDesktopApp && typeof withDefault.openWithDefaultApp === "function") withDefault.openWithDefaultApp(file.path);
+    else new import_obsidian10.Notice(`${entry.name} \u306F Obsidian \u3067\u958B\u3051\u307E\u305B\u3093`);
+  };
+  const remove = (entry) => {
+    new ConfirmDeleteModal(app, entry.path, () => {
+      const file = app.vault.getAbstractFileByPath(entry.path);
+      if (!(file instanceof import_obsidian10.TFile)) return;
+      app.fileManager.trashFile(file).catch((e3) => {
+        console.error("pkm-template: \u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+        new import_obsidian10.Notice(`\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+      });
+    }).open();
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
+    /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "Filter by name", "aria-label": "Filter by name", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
+    rows.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-tpl-empty", children: query.trim() === "" ? "No temporary files" : "No matching files" }) : /* @__PURE__ */ u3("table", { class: "vt-tpl-table vt-tpl-tmp-table", children: [
+      /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: COLUMNS.map((c3) => /* @__PURE__ */ u3("th", { "aria-sort": c3.sort && c3.sort === sort.key ? sort.order === "asc" ? "ascending" : "descending" : void 0, children: c3.sort ? /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-sort", onClick: () => toggle(c3.sort), children: [
+        c3.label,
+        c3.sort === sort.key ? sort.order === "asc" ? " \u2191" : " \u2193" : ""
+      ] }) : c3.label }, c3.label)) }) }),
+      /* @__PURE__ */ u3("tbody", { children: rows.map((e3) => /* @__PURE__ */ u3("tr", { children: [
+        /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-link", onClick: () => open(e3), children: e3.name }) }),
+        /* @__PURE__ */ u3("td", { children: e3.ext }),
+        /* @__PURE__ */ u3("td", { class: "vt-tpl-nowrap", children: formatModified(e3.mtime) }),
+        /* @__PURE__ */ u3("td", { class: "vt-tpl-nowrap", children: formatSize(e3.size) }),
+        /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-delete", "aria-label": `Delete ${e3.name}`, onClick: () => remove(e3), children: "Delete" }) })
+      ] }, e3.path)) })
+    ] })
+  ] });
+}
+
 // src/main.ts
 var LIST_VIEWS = [
   { type: "pkm-template-daily-list", title: "Daily notes", icon: "calendar-days", component: DailyListView },
   { type: "pkm-template-note-list", title: "Notes", icon: "notebook", component: NoteListView },
-  { type: "pkm-template-source-list", title: "Sources", icon: "library", component: SourceListView }
+  { type: "pkm-template-source-list", title: "Sources", icon: "library", component: SourceListView },
+  // tmp/ のファイル（ADR-0045）。Markdown 以外も出す
+  { type: "pkm-template-tmp-list", title: "Temporary files", icon: "folder-clock", component: TmpListView }
 ];
-var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
+var PkmTemplatePlugin = class extends import_obsidian11.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
@@ -2127,11 +2262,11 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian9.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian11.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`pkm-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian9.Notice(`${message}${detail}`);
+    new import_obsidian11.Notice(`${message}${detail}`);
   }
 };
