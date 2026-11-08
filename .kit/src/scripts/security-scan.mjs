@@ -153,6 +153,8 @@ const plugins = [
 	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0064: Draw.io の図。編集画面は embed.diagrams.net の iframe
 	{ id: "pkm-drawio", outdirEnv: "PKM_DRAWIO_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["drawio.mjs"], allowedRequires: ["obsidian"] },
+	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ
+	{ id: "pkm-view-selector", outdirEnv: "PKM_VIEW_SELECTOR_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

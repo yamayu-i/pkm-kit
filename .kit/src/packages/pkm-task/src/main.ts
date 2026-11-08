@@ -85,10 +85,10 @@ export default class PkmTaskPlugin extends Plugin {
 
 		for (const spec of VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, ctx));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} を開く`, callback: () => void ctx.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} を開く`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
 		}
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", callback: () => void openSidebar(true) });
+		this.addCommand({ id: "open-sidebar", name: "Tasks サイドバーを開く", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
 		this.registerEditorExtension(issueHeaderExtension(ctx));
 		this.addCommand({ id: "capture-issues", name: "issue をまとめて作成", callback: () => openCaptureModal(ctx) });
 		this.addRibbonIcon("list-plus", "issue をまとめて作成", () => openCaptureModal(ctx));

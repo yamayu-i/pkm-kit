@@ -1958,7 +1958,7 @@ var PkmTemplatePlugin = class extends import_obsidian9.Plugin {
     });
     for (const spec of LIST_VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, this.app));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void this.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, icon: spec.icon, callback: () => void this.openView(spec.type) });
     }
     this.addRibbonIcon("file-plus-2", "\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304B\u3089\u65B0\u898F\u30D5\u30A1\u30A4\u30EB\u3092\u4F5C\u6210", () => void openCreateModal());
     installNoteHeaders(this);

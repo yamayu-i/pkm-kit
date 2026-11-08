@@ -6080,10 +6080,10 @@ var PkmTaskPlugin = class extends import_obsidian22.Plugin {
     };
     for (const spec of VIEWS) {
       this.registerView(spec.type, preactViewCreator(spec, ctx));
-      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, callback: () => void ctx.openView(spec.type) });
+      this.addCommand({ id: `open-${spec.type.replace("pkm-task-", "")}`, name: `${spec.title} \u3092\u958B\u304F`, icon: spec.icon, callback: () => void ctx.openView(spec.type) });
     }
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
-    this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", callback: () => void openSidebar(true) });
+    this.addCommand({ id: "open-sidebar", name: "Tasks \u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304F", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     this.registerEditorExtension(issueHeaderExtension(ctx));
     this.addCommand({ id: "capture-issues", name: "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", callback: () => openCaptureModal(ctx) });
     this.addRibbonIcon("list-plus", "issue \u3092\u307E\u3068\u3081\u3066\u4F5C\u6210", () => openCaptureModal(ctx));

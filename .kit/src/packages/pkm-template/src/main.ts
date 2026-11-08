@@ -52,7 +52,7 @@ export default class PkmTemplatePlugin extends Plugin {
 
 		for (const spec of LIST_VIEWS) {
 			this.registerView(spec.type, preactViewCreator(spec, this.app));
-			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} を開く`, callback: () => void this.openView(spec.type) });
+			this.addCommand({ id: `open-${spec.type.replace("pkm-template-", "")}`, name: `${spec.title} を開く`, icon: spec.icon, callback: () => void this.openView(spec.type) });
 		}
 
 		// 「今日のデイリーノートを開く」のリボンは pkm-ribbon が、Daily と続けて並べる（ADR-0029）。コマンド open-todays-daily は残す

@@ -125,6 +125,15 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 - pkm-template と pkm-task は、この 2 つのボタンを登録しない。コマンドの ID を変えるときは、pkm-ribbon も変える
 - `test/bundle.test.ts` が、ビルド済みの `main.js` でボタンの順とコマンドの呼び出しを確かめる
 
+## pkm-view-selector（View を探して開く）
+
+pkm-task と pkm-template の一覧の View を、1 つのダイアログ（`SuggestModal`）から探して開くプラグイン（ADR-0072）。コマンド `pkm-view-selector:open` の既定のホットキーは Mod+K。
+
+- pkm-task と pkm-template には依存しない（import しない）。ダイアログを開くたびに `app.commands.commands` から `<プラグイン>:open-<名前>` のコマンドを集め、`app.viewRegistry.viewByType` に `<プラグイン>-<名前>` がある（View を開く）ものだけを候補にする。選んだら `executeCommandById` で呼ぶ
+- View を足すときは、これまでどおり `open-<名前>` のコマンドを、View のアイコン（`icon`）付きで登録すれば候補に載る。コマンドの ID と View の種類の対応を崩さない
+- 「Markdown リンクを挿入」（`editor:insert-link`）の Mod+K は、`.kit/obsidian-required.json` の `hotkeys.json` で外している
+- `src/views.ts` が候補の集め方とあいまい検索（大文字と小文字を区別しない）の純粋な関数で、`test/views.test.ts` が確かめる
+
 ## pkm-html（HTML の読み取り専用の表示）
 
 Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出すプラグイン（ADR-0037）。ほかのプラグインには依存しない。
