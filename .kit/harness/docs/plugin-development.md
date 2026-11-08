@@ -92,6 +92,7 @@ ADR-0001 の段階 1〜5 はすべて実装済み（スキーマ・索引・lint
 上流の既定（`.kit/templates/file/`）にその Vault の `template/file/` を重ねたテンプレートを選び、日時・タイトル・プロンプト入力・ID・カーソル位置を展開してノートを作成するプラグイン（ADR-0022、ADR-0023）。表示順・生成先・ファイル名パターンは上流の `.kit/templates/config.json` だけで決め、設定タブはない（ADR-0061）。
 
 - 変数: `{{date}}` `{{time}}` `{{title}}` `{{path}}` `{{folder}}` `{{prompt:ラベル}}` `{{cursor}}` と、連番の ID `{{id:i}}` `{{id:r}}` `{{id:m}}`（既存のノートの basename の最大番号 + 1。pkm-task と同じ規則）、日付を尋ねる `{{prompt-date[:ラベル]}}`（作成・挿入の前にダイアログを開く。出力は `YYYY-MM-DD` か `YYYY-MM-DD DDD`。ADR-0065）
+- スニペット（ADR-0060）: 行頭の `/` で `template/snippet/`（上流の既定は `.kit/templates/snippet/`）の断片を挿入する。インラインテンプレート（ADR-0067）: 行頭か半角空白の後の `@` で `template/inline/`（上流の既定は `.kit/templates/inline/`）のものを行の中に挿入する。書式と検索は同じで、インラインは本文の終わりの改行を削る
 - 日付の短い書き方の解釈（`parseDateInput`。ADR-0017）と日付の計算は `packages/shared/src/date-input.ts`・`dates.ts` にあり、pkm-task と pkm-template で共有する
 - `fileNamePattern` に `{{id:…}}` があるテンプレートは、ファイル名が ID で固定され、モーダルの入力欄は `{{title}}`（タイトル）になる。issue / routine / member が該当する
 - コマンド「今日のデイリーノートを開く」（リボンのボタンは pkm-ribbon が出す。ADR-0029）: `.kit/templates/config.json` の `daily.md` の設定（無効でも）で今日のパスを決め、あれば開き、なければ作って開く

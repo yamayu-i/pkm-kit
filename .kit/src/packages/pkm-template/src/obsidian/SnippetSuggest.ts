@@ -8,13 +8,41 @@ import {
 	type EditorSuggestTriggerInfo,
 	type TFile,
 } from "obsidian";
-import { filterSnippets, type Snippet } from "../core/snippet";
+import type { StateField } from "@codemirror/state";
+import { filterSnippets, inlineBody, type SlashSession, type Snippet } from "../core/snippet";
 import { extractDatePrompts, renderTemplate } from "../core/template";
 import type { TemplateManager } from "./creator";
 import { askDates } from "./DatePromptModal";
-import { slashSessionField } from "./snippet-session";
+import { atSessionField, slashSessionField } from "./snippet-session";
 
-/** 行頭の `/` でスニペットの候補を出し、選んだものを挿入する（ADR-0060） */
+/** 候補の出し方。スニペット（`/`）とインラインテンプレート（`@`）で違うところ */
+export interface SnippetSuggestKind {
+	/** コンソールに出す呼び名 */
+	label: string;
+	/** きっかけの文字（`/` か `@`）からのセッション */
+	field: StateField<SlashSession | null>;
+	load(manager: TemplateManager): Promise<{ snippets: Snippet[]; problems: string[] }>;
+	/** 挿入する本文（展開の前） */
+	bodyOf(snippet: Snippet): string;
+}
+
+/** 行頭の `/` でスニペット（ADR-0060） */
+export const SNIPPET_KIND: SnippetSuggestKind = {
+	label: "スニペット",
+	field: slashSessionField,
+	load: (m) => m.loadSnippets(),
+	bodyOf: (s) => s.body,
+};
+
+/** 行頭か半角空白の後の `@` でインラインテンプレート（ADR-0067）。ファイルの終わりの改行は入れない */
+export const INLINE_KIND: SnippetSuggestKind = {
+	label: "インラインテンプレート",
+	field: atSessionField,
+	load: (m) => m.loadInlineTemplates(),
+	bodyOf: (s) => inlineBody(s.body),
+};
+
+/** きっかけの文字で候補を出し、選んだものを挿入する（ADR-0060、ADR-0067） */
 export class SnippetSuggest extends EditorSuggest<Snippet> {
 	/** いま候補を出しているセッション */
 	private sessionId: number | null = null;
@@ -27,6 +55,7 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 	constructor(
 		app: App,
 		private readonly manager: TemplateManager,
+		private readonly kind: SnippetSuggestKind = SNIPPET_KIND,
 	) {
 		super(app);
 	}
@@ -43,7 +72,7 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 	override onTrigger(cursor: EditorPosition, editor: Editor, _file: TFile | null): EditorSuggestTriggerInfo | null {
 		// Obsidian の Editor は CodeMirror 6 の EditorView を cm に持つ
 		const view = (editor as unknown as { cm?: EditorView }).cm;
-		const session = view?.state.field(slashSessionField, false) ?? null;
+		const session = view?.state.field(this.kind.field, false) ?? null;
 		if (!session || session.id === this.dismissedId) {
 			this.sessionId = null;
 			return null;
@@ -59,8 +88,8 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 		if (!this.cache || this.cache.sessionId !== id) {
 			this.cache = {
 				sessionId: id,
-				snippets: this.manager.loadSnippets().then(({ snippets, problems }) => {
-					for (const p of problems) console.warn(`pkm-template: スニペットを読めませんでした: ${p}`);
+				snippets: this.kind.load(this.manager).then(({ snippets, problems }) => {
+					for (const p of problems) console.warn(`pkm-template: ${this.kind.label}を読めませんでした: ${p}`);
 					return snippets;
 				}),
 			};
@@ -79,13 +108,14 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 		if (!ctx) return;
 		const { editor, file, start, end } = ctx;
 		this.close();
-		// {{prompt-date}} があれば、挿入の前に日付を尋ねる。キャンセルなら挿入せず、打った /… を残す（ADR-0065）
-		void askDates(this.app, extractDatePrompts(snippet.body)).then((dates) => {
+		const body = this.kind.bodyOf(snippet);
+		// {{prompt-date}} があれば、挿入の前に日付を尋ねる。キャンセルなら挿入せず、打った /… や @… を残す（ADR-0065）
+		void askDates(this.app, extractDatePrompts(body)).then((dates) => {
 			if (dates === null) {
 				editor.focus();
 				return;
 			}
-			const rendered = renderTemplate(snippet.body, {
+			const rendered = renderTemplate(body, {
 				now: new Date(),
 				title: file?.basename ?? "",
 				path: file?.path ?? "",

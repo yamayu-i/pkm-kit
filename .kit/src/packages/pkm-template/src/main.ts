@@ -3,8 +3,8 @@ import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
-import { slashSessionField } from "./obsidian/snippet-session";
-import { SnippetSuggest } from "./obsidian/SnippetSuggest";
+import { atSessionField, slashSessionField } from "./obsidian/snippet-session";
+import { INLINE_KIND, SnippetSuggest } from "./obsidian/SnippetSuggest";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { DailyListView, NoteListView, SourceListView } from "./views/NoteListView";
 
@@ -61,6 +61,9 @@ export default class PkmTemplatePlugin extends Plugin {
 		// 行頭の / でスニペットを挿入する（ADR-0060）
 		this.registerEditorExtension(slashSessionField);
 		this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
+		// 行頭か半角空白の後の @ でインラインテンプレートを挿入する（ADR-0067）
+		this.registerEditorExtension(atSessionField);
+		this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager, INLINE_KIND));
 	}
 
 	/** 一覧 View は左の固定ペインに開く（ADR-0033） */
