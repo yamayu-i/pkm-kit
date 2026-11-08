@@ -7370,7 +7370,7 @@ var require_dist = __commonJS({
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-// src/core/dates.ts
+// ../shared/src/dates.ts
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var DAY_MS = 864e5;
 var WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -7391,14 +7391,6 @@ function fromEpochDay(day) {
 function isLocalDate(value) {
   return typeof value === "string" && toEpochDay(value) !== null;
 }
-function normalizeDate(value) {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
-  if (typeof value === "string") {
-    const s = value.trim();
-    return isLocalDate(s) ? s : null;
-  }
-  return null;
-}
 function requireDay(date) {
   const day = toEpochDay(date);
   if (day === null) throw new RangeError(`\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${date}`);
@@ -7418,6 +7410,16 @@ function localToday(now = /* @__PURE__ */ new Date()) {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+// src/core/dates.ts
+function normalizeDate(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (typeof value === "string") {
+    const s = value.trim();
+    return isLocalDate(s) ? s : null;
+  }
+  return null;
 }
 function localDateTime(now = /* @__PURE__ */ new Date()) {
   const pad = (n) => String(Math.trunc(Math.abs(n))).padStart(2, "0");

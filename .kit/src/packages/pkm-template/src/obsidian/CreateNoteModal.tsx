@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { formatDateTime } from "../core/date-format";
 import { resolveOutputPath, usesIdFileName } from "../core/template";
 import type { LoadedTemplate, TemplateManager } from "./creator";
+import { askDates } from "./DatePromptModal";
 
 function templateLabel(file: string): string {
 	return file.replace(/\.md$/i, "");
 }
 
 function CreateNoteForm(props: {
+	app: App;
 	templates: LoadedTemplate[];
 	manager: TemplateManager;
 	onCreated: () => void;
@@ -58,15 +60,23 @@ function CreateNoteForm(props: {
 	const submit = (newTab: boolean) => {
 		if (!canSubmit) return;
 		setSubmitting(true);
-		void manager
-			.createNoteFromTemplate({
-				template: current,
-				titleInput,
-				prompts: promptValues,
-				now,
-				newTab,
+		// {{prompt-date}} があれば、ファイルを作る前に日付を尋ねる。キャンセルなら作らない（ADR-0065）
+		void askDates(props.app, current.datePrompts)
+			.then(async (dates) => {
+				if (dates === null) {
+					setSubmitting(false);
+					return;
+				}
+				await manager.createNoteFromTemplate({
+					template: current,
+					titleInput,
+					prompts: promptValues,
+					dates,
+					now,
+					newTab,
+				});
+				onCreated();
 			})
-			.then(() => onCreated())
 			.catch((err) => {
 				setSubmitting(false);
 				onReport("ノートを作成できませんでした", err);
@@ -200,6 +210,7 @@ export class CreateNoteModal extends Modal {
 		this.setTitle("テンプレートから新規ファイルを作成");
 		render(
 			<CreateNoteForm
+				app={this.app}
 				templates={this.templates}
 				manager={this.manager}
 				onCreated={() => this.close()}

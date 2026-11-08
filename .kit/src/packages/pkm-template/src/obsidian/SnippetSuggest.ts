@@ -9,8 +9,9 @@ import {
 	type TFile,
 } from "obsidian";
 import { filterSnippets, type Snippet } from "../core/snippet";
-import { renderTemplate } from "../core/template";
+import { extractDatePrompts, renderTemplate } from "../core/template";
 import type { TemplateManager } from "./creator";
+import { askDates } from "./DatePromptModal";
 import { slashSessionField } from "./snippet-session";
 
 /** 行頭の `/` でスニペットの候補を出し、選んだものを挿入する（ADR-0060） */
@@ -76,19 +77,28 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 	override selectSuggestion(snippet: Snippet, _evt: MouseEvent | KeyboardEvent): void {
 		const ctx = this.context;
 		if (!ctx) return;
-		const file = ctx.file;
-		const rendered = renderTemplate(snippet.body, {
-			now: new Date(),
-			title: file?.basename ?? "",
-			path: file?.path ?? "",
-			folder: file?.parent && file.parent.path !== "/" ? file.parent.path : "",
-			prompts: {},
-			takenNames: this.manager.takenNames(),
-		});
-		const startOffset = ctx.editor.posToOffset(ctx.start);
-		ctx.editor.replaceRange(rendered.content, ctx.start, ctx.end);
-		// {{cursor}} がなければ挿入した末尾（改行は足さない）
-		ctx.editor.setCursor(ctx.editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
+		const { editor, file, start, end } = ctx;
 		this.close();
+		// {{prompt-date}} があれば、挿入の前に日付を尋ねる。キャンセルなら挿入せず、打った /… を残す（ADR-0065）
+		void askDates(this.app, extractDatePrompts(snippet.body)).then((dates) => {
+			if (dates === null) {
+				editor.focus();
+				return;
+			}
+			const rendered = renderTemplate(snippet.body, {
+				now: new Date(),
+				title: file?.basename ?? "",
+				path: file?.path ?? "",
+				folder: file?.parent && file.parent.path !== "/" ? file.parent.path : "",
+				prompts: {},
+				takenNames: this.manager.takenNames(),
+				dates,
+			});
+			const startOffset = editor.posToOffset(start);
+			editor.replaceRange(rendered.content, start, end);
+			// {{cursor}} がなければ挿入した末尾（改行は足さない）
+			editor.setCursor(editor.offsetToPos(startOffset + (rendered.cursorOffset ?? rendered.content.length)));
+			editor.focus();
+		});
 	}
 }

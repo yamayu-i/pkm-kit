@@ -56,4 +56,5 @@
 | [0058](0058-pkm-plugin-names.md) | 承認 | 自作プラグインの名前を vault-* から pkm-* にする |
 | [0060](0060-snippet-slash-insert.md) | 承認 | 行頭の / でスニペットを挿入する |
 | [0061](0061-fixed-template-config.md) | 承認 | テンプレートの設定を上流で固定し、設定タブと子の template/config.json をなくす |
+| [0065](0065-date-prompt.md) | 承認 | テンプレートとスニペットで、ダイアログから日付を選んで入れる |
 <!-- adr-index:end -->

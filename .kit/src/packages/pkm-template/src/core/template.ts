@@ -15,6 +15,8 @@ export interface RenderContext {
 	prompts: Record<string, string>;
 	/** `{{id:…}}` の連番を決めるための既存の名前（ファイルの basename）。省略時は空 */
 	takenNames?: readonly string[];
+	/** `{{prompt-date[:ラベル]}}` の値（ラベル → 入れる文字列。ADR-0065）。ないラベルは展開しない */
+	dates?: Record<string, string>;
 }
 
 export interface RenderResult {
@@ -64,6 +66,26 @@ export function extractPrompts(template: string): PromptField[] {
 	return fields;
 }
 
+/** `{{prompt-date}}` のラベルを省略したときのラベル（ADR-0065） */
+export const DEFAULT_DATE_PROMPT_LABEL = "日付";
+
+/** `prompt-date` / `prompt-date:ラベル` ならラベル。違えば null */
+function parseDatePromptSpec(body: string): string | null {
+	if (body === "prompt-date") return DEFAULT_DATE_PROMPT_LABEL;
+	if (!body.startsWith("prompt-date:")) return null;
+	return body.slice("prompt-date:".length).trim() || DEFAULT_DATE_PROMPT_LABEL;
+}
+
+/** テンプレート内の `{{prompt-date[:ラベル]}}` のラベルを出現順に重複なく取り出す（ADR-0065） */
+export function extractDatePrompts(template: string): string[] {
+	const labels: string[] = [];
+	for (const match of template.matchAll(PLACEHOLDER_RE)) {
+		const label = parseDatePromptSpec((match[1] ?? "").trim());
+		if (label !== null && !labels.includes(label)) labels.push(label);
+	}
+	return labels;
+}
+
 function expandInlineToken(token: string, ctx: RenderContext): string | null {
 	if (token === "date") return formatDateTime(ctx.now, "YYYY-MM-DD");
 	if (token.startsWith("date:")) return formatDateTime(ctx.now, token.slice("date:".length) || "YYYY-MM-DD");
@@ -76,6 +98,8 @@ function expandInlineToken(token: string, ctx: RenderContext): string | null {
 		const prefix = token.slice("id:".length).trim();
 		return isIdPrefix(prefix) ? nextId(prefix, ctx.takenNames ?? []) : null;
 	}
+	const dateLabel = parseDatePromptSpec(token);
+	if (dateLabel !== null) return ctx.dates?.[dateLabel] ?? null;
 	const prompt = parsePromptSpec(token);
 	if (prompt) {
 		const val = ctx.prompts[prompt.label];

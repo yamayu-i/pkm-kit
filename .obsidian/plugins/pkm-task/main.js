@@ -388,7 +388,7 @@ n = w.slice, l = { __e: function(n2, l3, u4, t3) {
   return n2.__v.__b - l3.__v.__b;
 }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
 
-// src/core/dates.ts
+// ../shared/src/dates.ts
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var DAY_MS = 864e5;
 var WEEKDAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -408,14 +408,6 @@ function fromEpochDay(day) {
 }
 function isLocalDate(value) {
   return typeof value === "string" && toEpochDay(value) !== null;
-}
-function normalizeDate(value) {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
-  if (typeof value === "string") {
-    const s3 = value.trim();
-    return isLocalDate(s3) ? s3 : null;
-  }
-  return null;
 }
 function requireDay(date) {
   const day = toEpochDay(date);
@@ -437,16 +429,26 @@ function localToday(now = /* @__PURE__ */ new Date()) {
   const d3 = String(now.getDate()).padStart(2, "0");
   return `${y3}-${m3}-${d3}`;
 }
+function monthGridDays(month) {
+  const first = `${month}-01`;
+  const start = addDays(first, -weekdayOf(first));
+  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
+}
+
+// src/core/dates.ts
+function normalizeDate(value) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  if (typeof value === "string") {
+    const s3 = value.trim();
+    return isLocalDate(s3) ? s3 : null;
+  }
+  return null;
+}
 function localDateTime(now = /* @__PURE__ */ new Date()) {
   const pad = (n2) => String(Math.trunc(Math.abs(n2))).padStart(2, "0");
   const offset = -now.getTimezoneOffset();
   const sign = offset >= 0 ? "+" : "-";
   return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
-}
-function monthGridDays(month) {
-  const first = `${month}-01`;
-  const start = addDays(first, -weekdayOf(first));
-  return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
 }
 function formatShortDate(date) {
   return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
@@ -1671,7 +1673,7 @@ function schedulePatch(issue, dates, estimated = null) {
   return patch;
 }
 
-// src/core/date-input.ts
+// ../shared/src/date-input.ts
 function ymd(year, month, day) {
   const date = `${year}-${month}-${day}`;
   return isLocalDate(date) ? date : null;
