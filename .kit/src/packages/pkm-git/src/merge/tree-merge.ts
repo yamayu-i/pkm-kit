@@ -48,11 +48,9 @@ export interface TreeMergeResult {
 const MARKER_EXTENSIONS = new Set(["md", "markdown", "txt"]);
 /**
  * 行単位でマージしない（両側の変更はファイル単位で衝突として扱う）もの。
- * Draw.io の図は、編集用 XML と描画を別々の変更から混ぜると、行が重ならなくても意味が壊れる(ADR-0064)
+ * SVG の図は CLI が作る生成物で（スタイルと描画、D2 の出力）、別々の変更から行を混ぜると、行が重ならなくても図が壊れる(ADR-0111)
  */
-const WHOLE_FILE_SUFFIXES = [".drawio.svg", ".drawio"];
-/** 衝突の版の名前で、まとめて 1 つの拡張子として扱うもの（別名の版も図として開けるように） */
-const COMPOUND_EXTENSIONS = [".drawio.svg"];
+const WHOLE_FILE_SUFFIXES = [".svg"];
 const SUBMODULE_MODE = "160000";
 const SYMLINK_MODE = "120000";
 
@@ -89,8 +87,7 @@ function sameEntry(a: TreeEntry | undefined, b: TreeEntry | undefined): boolean 
 export function conflictCopyPath(path: string, suffix: string, taken: (p: string) => boolean): string {
 	const dir = dirname(path);
 	const name = basename(path);
-	const compound = hasSuffix(name, COMPOUND_EXTENSIONS);
-	const dot = compound !== null ? name.length - compound.length : name.lastIndexOf(".");
+	const dot = name.lastIndexOf(".");
 	const stem = dot > 0 ? name.slice(0, dot) : name;
 	const ext = dot > 0 ? name.slice(dot) : "";
 	for (let n = 1; ; n++) {
@@ -119,7 +116,7 @@ export function commonBaseTree(bases: ReadonlyArray<ReadonlyMap<string, TreeEntr
  * ファイル単位の 3-way マージ。どのケースでもデータを捨てない。
  * - 片側だけの変更 → その変更を採用
  * - 両側で変更 → 行単位でマージ。重なったら md/txt はマーカー、それ以外はリモート優先＋ローカル版を別名保存
- *   （Draw.io の図は行単位でマージせず、リモート優先＋ローカル版を別名保存。ADR-0064）
+ *   （SVG の図は行単位でマージせず、リモート優先＋ローカル版を別名保存。ADR-0111）
  * - 削除 vs 編集 → 編集側を残す
  */
 export async function mergeTrees(input: TreeMergeInput): Promise<TreeMergeResult> {

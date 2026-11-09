@@ -20,10 +20,10 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/main.ts
 var main_exports = {};
 __export(main_exports, {
-  default: () => PkmDrawioPlugin
+  default: () => PkmDiagramPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../pkm-html/src/core/policy.ts
 var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -112,18 +112,13 @@ function utf8(bytes) {
 }
 
 // src/core/svg.ts
-var DRAWIO_SVG_SUFFIX = ".drawio.svg";
 var MAX_SVG_BYTES = 10 * 1024 * 1024;
-var MAX_XML_CHARS = 20 * 1024 * 1024;
-function isDrawioSvgPath(path) {
-  return path.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX) && path.length > DRAWIO_SVG_SUFFIX.length && !path.endsWith(`/${DRAWIO_SVG_SUFFIX}`);
-}
 function isDiagramSvgPath(path) {
   const base = path.split("/").pop() ?? "";
   return base.toLowerCase().endsWith(".svg") && base.length > ".svg".length;
 }
-var DrawioFormatError = class extends Error {
-  name = "DrawioFormatError";
+var SvgFormatError = class extends Error {
+  name = "SvgFormatError";
 };
 function parseRootSvg(text) {
   let i = text.charCodeAt(0) === 65279 ? 1 : 0;
@@ -134,103 +129,53 @@ function parseRootSvg(text) {
     skipSpace();
     if (text.startsWith("<?", i)) {
       const end = text.indexOf("?>", i + 2);
-      if (end < 0) throw new DrawioFormatError("XML \u5BA3\u8A00\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      if (end < 0) throw new SvgFormatError("XML \u5BA3\u8A00\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
       i = end + 2;
     } else if (text.startsWith("<!--", i)) {
       const end = text.indexOf("-->", i + 4);
-      if (end < 0) throw new DrawioFormatError("\u30B3\u30E1\u30F3\u30C8\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      if (end < 0) throw new SvgFormatError("\u30B3\u30E1\u30F3\u30C8\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
       i = end + 3;
     } else if (/^<!DOCTYPE\b/i.test(text.slice(i, i + 9))) {
       const end = text.indexOf(">", i);
-      if (end < 0) throw new DrawioFormatError("DOCTYPE \u304C\u9589\u3058\u3066\u3044\u306A\u3044");
-      if (text.slice(i, end).includes("[")) throw new DrawioFormatError("DOCTYPE \u306B\u5B9F\u4F53\u306E\u5BA3\u8A00\u304C\u3042\u308B");
+      if (end < 0) throw new SvgFormatError("DOCTYPE \u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      if (text.slice(i, end).includes("[")) throw new SvgFormatError("DOCTYPE \u306B\u5B9F\u4F53\u306E\u5BA3\u8A00\u304C\u3042\u308B");
       i = end + 1;
     } else {
       break;
     }
   }
-  if (!/^<svg[\s>/]/.test(text.slice(i, i + 5))) throw new DrawioFormatError("SVG \u3067\u306F\u306A\u3044\uFF08\u30EB\u30FC\u30C8\u304C <svg> \u3067\u306F\u306A\u3044\uFF09");
+  if (!/^<svg[\s>/]/.test(text.slice(i, i + 5))) throw new SvgFormatError("SVG \u3067\u306F\u306A\u3044\uFF08\u30EB\u30FC\u30C8\u304C <svg> \u3067\u306F\u306A\u3044\uFF09");
   const start = i;
   i += 4;
   const attributes = [];
   for (; ; ) {
     const before = i;
     skipSpace();
-    if (i >= text.length) throw new DrawioFormatError("<svg> \u306E\u958B\u59CB\u30BF\u30B0\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+    if (i >= text.length) throw new SvgFormatError("<svg> \u306E\u958B\u59CB\u30BF\u30B0\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
     if (text[i] === ">") return { start, end: i + 1, attributes };
     if (text.startsWith("/>", i)) return { start, end: i + 2, attributes };
-    if (i === before) throw new DrawioFormatError("<svg> \u306E\u5C5E\u6027\u306E\u9593\u306B\u7A7A\u767D\u304C\u306A\u3044");
+    if (i === before) throw new SvgFormatError("<svg> \u306E\u5C5E\u6027\u306E\u9593\u306B\u7A7A\u767D\u304C\u306A\u3044");
     const nameMatch = /^[^\s=/>"']+/.exec(text.slice(i, i + 256));
-    if (!nameMatch) throw new DrawioFormatError("<svg> \u306E\u5C5E\u6027\u3092\u8AAD\u3081\u306A\u3044");
+    if (!nameMatch) throw new SvgFormatError("<svg> \u306E\u5C5E\u6027\u3092\u8AAD\u3081\u306A\u3044");
     const name = nameMatch[0];
     i += name.length;
     skipSpace();
-    if (text[i] !== "=") throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306B\u5024\u304C\u306A\u3044`);
+    if (text[i] !== "=") throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306B\u5024\u304C\u306A\u3044`);
     i++;
     skipSpace();
     const quote = text[i];
-    if (quote !== '"' && quote !== "'") throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u5F15\u7528\u7B26\u3067\u56F2\u307E\u308C\u3066\u3044\u306A\u3044`);
+    if (quote !== '"' && quote !== "'") throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u5F15\u7528\u7B26\u3067\u56F2\u307E\u308C\u3066\u3044\u306A\u3044`);
     const close = text.indexOf(quote, i + 1);
-    if (close < 0) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u9589\u3058\u3066\u3044\u306A\u3044`);
+    if (close < 0) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u9589\u3058\u3066\u3044\u306A\u3044`);
     const raw = text.slice(i + 1, close);
-    if (raw.includes("<")) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u306B < \u304C\u3042\u308B`);
-    if (attributes.some((a) => a.name === name)) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u304C\u91CD\u8907\u3057\u3066\u3044\u308B`);
+    if (raw.includes("<")) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u306B < \u304C\u3042\u308B`);
+    if (attributes.some((a) => a.name === name)) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u304C\u91CD\u8907\u3057\u3066\u3044\u308B`);
     attributes.push({ name, raw, start: before, end: close + 1 });
     i = close + 1;
   }
 }
-var NAMED_ENTITIES = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" };
-function decodeXmlEntities(raw) {
-  if (/&(?![^;&\s]{1,16};)/.test(raw)) throw new DrawioFormatError("& \u304C\u5B9F\u4F53\u53C2\u7167\u306B\u306A\u3063\u3066\u3044\u306A\u3044");
-  return raw.replace(/&([^;&\s]{1,16});/g, (_, ref) => {
-    if (ref.startsWith("#x") || ref.startsWith("#X")) {
-      const code = Number.parseInt(ref.slice(2), 16);
-      if (!/^[0-9a-f]+$/i.test(ref.slice(2)) || code > 1114111) throw new DrawioFormatError(`\u8AAD\u3081\u306A\u3044\u6587\u5B57\u53C2\u7167 &${ref};`);
-      return String.fromCodePoint(code);
-    }
-    if (ref.startsWith("#")) {
-      const code = Number.parseInt(ref.slice(1), 10);
-      if (!/^[0-9]+$/.test(ref.slice(1)) || code > 1114111) throw new DrawioFormatError(`\u8AAD\u3081\u306A\u3044\u6587\u5B57\u53C2\u7167 &${ref};`);
-      return String.fromCodePoint(code);
-    }
-    const named = NAMED_ENTITIES[ref];
-    if (named === void 0) throw new DrawioFormatError(`\u77E5\u3089\u306A\u3044\u5B9F\u4F53\u53C2\u7167 &${ref};`);
-    return named;
-  });
-}
-function utf8FromBase64(b64) {
-  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 !== 0) return null;
-  try {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    return null;
-  }
-}
-function extractDiagramXml(svg) {
-  if (svg.length > MAX_SVG_BYTES) throw new DrawioFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
-  const root = parseRootSvg(svg);
-  const content = root.attributes.find((a) => a.name === "content");
-  if (!content) return { kind: "plain-svg" };
-  let xml = decodeXmlEntities(content.raw).trim();
-  if (!xml.startsWith("<")) {
-    const decoded = utf8FromBase64(xml);
-    if (decoded === null || !decoded.trimStart().startsWith("<")) throw new DrawioFormatError("\u7DE8\u96C6\u7528 XML \u306E\u5F62\u5F0F\u3092\u8AAD\u3081\u306A\u3044");
-    xml = decoded.trim();
-  }
-  if (xml.length > MAX_XML_CHARS) throw new DrawioFormatError("\u7DE8\u96C6\u7528 XML \u304C\u5927\u304D\u3059\u304E\u308B");
-  if (!/^<(mxfile|mxGraphModel)[\s>/]/.test(xml)) throw new DrawioFormatError("\u7DE8\u96C6\u7528 XML \u304C <mxfile> / <mxGraphModel> \u3067\u306F\u306A\u3044");
-  if (/<!(DOCTYPE|ENTITY)/i.test(xml)) throw new DrawioFormatError("\u7DE8\u96C6\u7528 XML \u306B DOCTYPE\u30FB\u5B9F\u4F53\u306E\u5BA3\u8A00\u304C\u3042\u308B");
-  return { kind: "diagram", xml };
-}
-function countPages(xml) {
-  if (xml.startsWith("<mxGraphModel")) return 1;
-  return (xml.match(/<diagram[\s>]/g) ?? []).length;
-}
 function toSharingSvg(svg) {
-  if (svg.length > MAX_SVG_BYTES) throw new DrawioFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
+  if (svg.length > MAX_SVG_BYTES) throw new SvgFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
   const root = parseRootSvg(svg);
   const content = root.attributes.find((a) => a.name === "content");
   if (!content) return svg;
@@ -450,7 +395,7 @@ function unescapeUrl(ref) {
   if (ref.syntax === "markdown") return ref.url.replace(/\\([!-/:-@[-`{-~])/g, "$1");
   return ref.url.replace(/&(amp|lt|gt|quot|apos|#39);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" })[e] ?? "");
 }
-function drawioCandidates(sourcePath, ref, kind) {
+function diagramCandidates(sourcePath, ref, kind) {
   const url = unescapeUrl(ref);
   const candidates = kind === "markdown" && ref.syntax === "markdown" ? candidatePaths("", url) : candidatePaths(sourcePath, url);
   return candidates.filter(isDiagramSvgPath);
@@ -469,20 +414,19 @@ async function embedDiagrams(text, options) {
     if (uris.has(path)) return uris.get(path) ?? null;
     let uri = null;
     try {
-      if (isDrawioSvgPath(path) && extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: \u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\uFF08\u666E\u901A\u306E SVG \u3068\u3057\u3066\u57CB\u3081\u8FBC\u3080\uFF09`);
       const sharing = toSharingSvg(svg);
       const problems = findSvgProblems(sharing);
       for (const p of problems.errors) errors.push(`${path}: ${p}\u304C\u3042\u308B`);
       for (const p of problems.warnings) warnings.push(`${path}: ${p}\u304C\u3042\u308B\uFF08\u66F8\u304D\u51FA\u3057\u305F\u5148\u3067\u306F\u8868\u793A\u3055\u308C\u306A\u3044\uFF09`);
       if (problems.errors.length === 0) uri = svgDataUri(sharing);
     } catch (e) {
-      errors.push(`${path}: ${e instanceof DrawioFormatError ? e.message : String(e)}`);
+      errors.push(`${path}: ${e instanceof SvgFormatError ? e.message : String(e)}`);
     }
     uris.set(path, uri);
     return uri;
   };
   for (const ref of findImageReferences(text, options.kind)) {
-    const candidates = drawioCandidates(options.sourcePath, ref, options.kind);
+    const candidates = diagramCandidates(options.sourcePath, ref, options.kind);
     if (candidates.length === 0) continue;
     let found = false;
     for (const path of candidates) {
@@ -505,7 +449,7 @@ async function embedDiagrams(text, options) {
 function checkExported(text, kind, sourcePath = "") {
   const problems = [];
   for (const ref of findImageReferences(text, kind)) {
-    if (drawioCandidates(sourcePath, ref, kind).length > 0) {
+    if (diagramCandidates(sourcePath, ref, kind).length > 0) {
       problems.push(`\u56F3\u306E\u30D5\u30A1\u30A4\u30EB\u3078\u306E\u53C2\u7167\u304C\u6B8B\u3063\u3066\u3044\u308B: ${ref.url}`);
       continue;
     }
@@ -523,46 +467,6 @@ function checkExported(text, kind, sourcePath = "") {
     }
   }
   return problems;
-}
-
-// src/core/names.ts
-var ASSET_FOLDER = "asset";
-var TMP_FOLDER = "tmp";
-function invalidDiagramName(name) {
-  const trimmed = name.trim();
-  if (trimmed === "") return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
-  if (/[\\/:*?"<>|#^[\]\u0000-\u001f]/.test(trimmed)) return '\u4F7F\u3048\u306A\u3044\u6587\u5B57\uFF08/ \\ : * ? " < > | # ^ [ ]\uFF09\u304C\u5165\u3063\u3066\u3044\u307E\u3059';
-  if (trimmed.startsWith(".")) return "\u540D\u524D\u3092 . \u3067\u59CB\u3081\u306A\u3044\u3067\u304F\u3060\u3055\u3044";
-  if (trimmed.length > 100) return "\u540D\u524D\u304C\u9577\u3059\u304E\u307E\u3059\uFF08100 \u6587\u5B57\u307E\u3067\uFF09";
-  return null;
-}
-function diagramPath(name) {
-  return `${ASSET_FOLDER}/${name.trim()}${DRAWIO_SVG_SUFFIX}`;
-}
-function diagramName(path) {
-  const base = path.slice(path.lastIndexOf("/") + 1);
-  return base.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX) ? base.slice(0, -DRAWIO_SVG_SUFFIX.length) : base;
-}
-function markdownImage(alt, path) {
-  const url = path.split("/").map((s) => encodeURIComponent(s)).join("/");
-  return `![${alt.replace(/[[\]\\]/g, (c) => `\\${c}`)}](${url})`;
-}
-function freePath(folder, stem, ext, taken) {
-  for (let n = 1; ; n++) {
-    const path = `${folder}/${stem}${n > 1 ? ` ${n}` : ""}${ext}`;
-    if (!taken(path)) return path;
-  }
-}
-function exportPath(sourcePath, taken) {
-  const base = sourcePath.slice(sourcePath.lastIndexOf("/") + 1);
-  const dot = base.lastIndexOf(".");
-  return freePath(TMP_FOLDER, dot > 0 ? base.slice(0, dot) : base, dot > 0 ? base.slice(dot) : "", taken);
-}
-function editedCopyPath(path, now, taken) {
-  const pad = (n) => String(n).padStart(2, "0");
-  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}${pad(now.getMinutes())}`;
-  const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ASSET_FOLDER;
-  return freePath(folder, `${diagramName(path)} (\u7DE8\u96C6 ${stamp})`, DRAWIO_SVG_SUFFIX, taken);
 }
 
 // ../design/generated/tokens.ts
@@ -687,12 +591,8 @@ function pngFileName(base) {
 var import_obsidian = require("obsidian");
 var COPY_FORMATS = [
   { format: "png", label: "Copy as PNG", icon: "image" },
-  { format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
-  { format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" }
+  { format: "svg", label: "Copy as SVG", icon: "file-image" }
 ];
-function copyFormatsFor(drawio) {
-  return drawio ? COPY_FORMATS : COPY_FORMATS.filter((f) => f.format !== "xml");
-}
 var PNG_SCALE = 2;
 var MAX_PNG_SIDE = 8192;
 function clipboardItemCtor() {
@@ -705,16 +605,6 @@ function supports(type) {
 }
 async function copyDiagram(svg, format, doc) {
   try {
-    if (format === "xml") {
-      const r = extractDiagramXml(svg);
-      if (r.kind !== "diagram") {
-        new import_obsidian.Notice("\u3053\u306E SVG \u306B\u306F\u7DE8\u96C6\u7528 XML \u304C\u3042\u308A\u307E\u305B\u3093\uFF08Draw.io \u306E\u56F3\u3067\u306F\u306A\u3044\uFF09");
-        return;
-      }
-      await navigator.clipboard.writeText(r.xml);
-      new import_obsidian.Notice("XML \u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F");
-      return;
-    }
     const sharing = toSharingSvg(svg);
     if (format === "svg") {
       const Item2 = clipboardItemCtor();
@@ -734,13 +624,13 @@ async function copyDiagram(svg, format, doc) {
     }
     const Item = clipboardItemCtor();
     if (!Item || !supports("image/png")) {
-      new import_obsidian.Notice("\u3053\u306E\u74B0\u5883\u3067\u306F PNG \u3092\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3002SVG \u304B XML \u3067\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044");
+      new import_obsidian.Notice("\u3053\u306E\u74B0\u5883\u3067\u306F PNG \u3092\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3002SVG \u3067\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044");
       return;
     }
     await navigator.clipboard.write([new Item({ "image/png": renderPng(sharing, doc) })]);
     new import_obsidian.Notice("PNG \u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F");
   } catch (e) {
-    const message = e instanceof DrawioFormatError ? e.message : e instanceof Error ? e.message : String(e);
+    const message = e instanceof SvgFormatError ? e.message : e instanceof Error ? e.message : String(e);
     new import_obsidian.Notice(`\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${message}`, 8e3);
   }
 }
@@ -780,7 +670,7 @@ async function draw(svgText, doc, size) {
 async function renderPng(svg, doc) {
   const sharingSvg = forceLightSvg(svg);
   const parsed = new DOMParser().parseFromString(sharingSvg, SVG_MIME);
-  if (parsed.getElementsByTagName("parsererror").length > 0) throw new DrawioFormatError("SVG \u3092\u8AAD\u3081\u306A\u3044");
+  if (parsed.getElementsByTagName("parsererror").length > 0) throw new SvgFormatError("SVG \u3092\u8AAD\u3081\u306A\u3044");
   const size = svgSize(parsed);
   try {
     return await draw(sharingSvg, doc, size);
@@ -794,72 +684,6 @@ async function renderPng(svg, doc) {
 
 // src/obsidian/dialogs.ts
 var import_obsidian2 = require("obsidian");
-function choose(app, title, message, choices) {
-  return new Promise((resolve) => {
-    let done = false;
-    const modal = new class extends import_obsidian2.Modal {
-      onOpen() {
-        this.setTitle(title);
-        this.contentEl.createEl("p", { text: message });
-        const setting = new import_obsidian2.Setting(this.contentEl);
-        for (const c of choices) {
-          setting.addButton((b) => {
-            b.setButtonText(c.label).onClick(() => {
-              done = true;
-              resolve(c.value);
-              this.close();
-            });
-            if (c.style === "cta") b.setCta();
-            if (c.style === "warning") b.setWarning();
-          });
-        }
-      }
-      onClose() {
-        this.contentEl.empty();
-        if (!done) resolve(null);
-      }
-    }(app);
-    modal.open();
-  });
-}
-function askDiagramName(app, initial = "") {
-  return new Promise((resolve) => {
-    let done = false;
-    const modal = new class extends import_obsidian2.Modal {
-      onOpen() {
-        this.setTitle("New diagram");
-        let value = initial;
-        const error = this.contentEl.createEl("p", { cls: "vt-drawio-error" });
-        const submit = () => {
-          const problem = invalidDiagramName(value);
-          error.setText(problem ?? "");
-          if (problem) return;
-          done = true;
-          resolve(value.trim());
-          this.close();
-        };
-        new import_obsidian2.Setting(this.contentEl).setName("Name").setDesc("Saved as asset/<name>.drawio.svg").addText((t) => {
-          t.setValue(initial).onChange((v) => {
-            value = v;
-          });
-          t.inputEl.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && !e.isComposing) {
-              e.preventDefault();
-              submit();
-            }
-          });
-          window.setTimeout(() => t.inputEl.focus(), 0);
-        });
-        new import_obsidian2.Setting(this.contentEl).addButton((b) => b.setButtonText("Draw in Draw.io").setCta().onClick(submit));
-      }
-      onClose() {
-        this.contentEl.empty();
-        if (!done) resolve(null);
-      }
-    }(app);
-    modal.open();
-  });
-}
 function pick(app, placeholder, items, label) {
   return new Promise((resolve) => {
     let chosen = false;
@@ -886,375 +710,28 @@ function pick(app, placeholder, items, label) {
   });
 }
 
-// src/obsidian/editor-modal.ts
+// src/obsidian/export.ts
 var import_obsidian3 = require("obsidian");
 
-// src/core/protocol.ts
-var EMBED_ORIGIN = "https://embed.diagrams.net";
-function embedUrl() {
-  const params = new URLSearchParams({ embed: "1", proto: "json", spin: "1", saveAndExit: "1", libraries: "1", noExitBtn: "0", lang: "ja" });
-  return `${EMBED_ORIGIN}/?${params.toString()}`;
-}
-var EXPORT_TIMEOUT_MS = 3e4;
-var MAX_MESSAGE_CHARS = 2 * MAX_SVG_BYTES + 1024 * 1024;
-function parseMessage(data) {
-  if (typeof data !== "string" || data.length > MAX_MESSAGE_CHARS) return null;
-  let msg;
-  try {
-    msg = JSON.parse(data);
-  } catch {
-    return null;
-  }
-  if (typeof msg !== "object" || msg === null) return null;
-  const m = msg;
-  switch (m.event) {
-    case "init":
-      return { event: "init" };
-    case "autosave":
-      return typeof m.xml === "string" ? { event: "autosave", xml: m.xml } : null;
-    case "save":
-      return typeof m.xml === "string" ? { event: "save", xml: m.xml, exit: m.exit === true } : null;
-    case "export":
-      return typeof m.data === "string" && typeof m.format === "string" ? { event: "export", format: m.format, data: m.data } : null;
-    case "exit":
-      return { event: "exit", modified: m.modified === true };
-    default:
-      return null;
+// src/core/names.ts
+var TMP_FOLDER = "tmp";
+function freePath(folder, stem, ext, taken) {
+  for (let n = 1; ; n++) {
+    const path = `${folder}/${stem}${n > 1 ? ` ${n}` : ""}${ext}`;
+    if (!taken(path)) return path;
   }
 }
-var EditSession = class {
-  constructor(initialXml, title) {
-    this.initialXml = initialXml;
-    this.title = title;
-    this.savedXml = initialXml;
-    this.latestXml = initialXml;
-  }
-  initialXml;
-  title;
-  phase = "starting";
-  /** 最後に書けた XML（新しい図なら null） */
-  savedXml;
-  /** 編集画面の最新の XML（autosave / save で更新） */
-  latestXml;
-  /** 保存中の XML と、その世代 */
-  pending = null;
-  /** 保存中に届いた次の保存 */
-  queued = null;
-  closeAfterSave = false;
-  /** 最後の保存が失敗した（成功するまで未保存として扱う） */
-  failed = false;
-  generation = 0;
-  /** 保存していない変更があるか */
-  get dirty() {
-    return this.failed || this.latestXml !== this.savedXml || this.pending !== null || this.queued !== null;
-  }
-  /** 保存していない変更の XML（退避用） */
-  get unsavedXml() {
-    return this.dirty ? this.queued?.xml ?? this.latestXml : null;
-  }
-  get busy() {
-    return this.phase === "exporting" || this.phase === "writing";
-  }
-  handle(msg) {
-    if (this.phase === "closed") return [];
-    switch (msg.event) {
-      case "init":
-        if (this.phase !== "starting") return [];
-        this.phase = "ready";
-        return [{ type: "post", message: { action: "load", xml: this.initialXml ?? "", autosave: 1, title: this.title } }];
-      case "autosave":
-        this.latestXml = msg.xml;
-        return [];
-      case "save":
-        this.latestXml = msg.xml;
-        if (this.busy) {
-          this.queued = { xml: msg.xml, exit: msg.exit || (this.queued?.exit ?? false) };
-          return [];
-        }
-        return this.startExport(msg.xml, msg.exit);
-      case "export":
-        return this.onExport(msg);
-      case "exit":
-        if (this.busy) {
-          this.closeAfterSave = true;
-          return [];
-        }
-        return this.close();
-    }
-  }
-  /** 親がファイルを書き終えた（ok = false なら失敗） */
-  writeDone(generation, ok, error) {
-    if (this.phase !== "writing" || !this.pending || this.pending.generation !== generation) return [];
-    const done = this.pending;
-    this.pending = null;
-    this.phase = "ready";
-    if (!ok) {
-      this.failed = true;
-      this.queued = null;
-      this.closeAfterSave = false;
-      return [
-        { type: "post", message: { action: "spinner", show: false } },
-        { type: "post", message: { action: "status", message: "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", modified: true } },
-        { type: "error", message: error ?? "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F" }
-      ];
-    }
-    this.savedXml = done.xml;
-    this.failed = false;
-    const effects = [
-      { type: "post", message: { action: "spinner", show: false } },
-      { type: "post", message: { action: "status", message: "Saved", modified: this.dirty } }
-    ];
-    if (this.queued) {
-      const next = this.queued;
-      this.queued = null;
-      return [...effects, ...this.startExport(next.xml, next.exit || done.exit)];
-    }
-    if (done.exit || this.closeAfterSave) return [...effects, ...this.close()];
-    return effects;
-  }
-  /** export を頼んだ世代の返事が、待つ時間を過ぎても来なかった */
-  exportTimedOut(generation) {
-    if (this.phase !== "exporting" || !this.pending || this.pending.generation !== generation) return [];
-    return this.failExport("Draw.io \u304B\u3089 SVG \u304C\u8FD4\u3063\u3066\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044");
-  }
-  /** 閉じた（親が Modal を閉じた） */
-  dispose() {
-    this.phase = "closed";
-  }
-  startExport(xml, exit) {
-    this.generation += 1;
-    this.pending = { xml, exit, generation: this.generation };
-    this.phase = "exporting";
-    return [
-      // 保存した XML を指定して描く。描いている間の編集を混ぜない。
-      // スピナーは spinKey で Draw.io が出す。先に spinner を送ると、Draw.io は「スピナーが出ている」として export をしない（#98）
-      { type: "post", message: { action: "export", format: "xmlsvg", xml, spinKey: "saving" } },
-      { type: "wait", generation: this.generation, ms: EXPORT_TIMEOUT_MS }
-    ];
-  }
-  onExport(msg) {
-    if (this.phase !== "exporting" || !this.pending || msg.format !== "xmlsvg") {
-      return [{ type: "error", message: "\u983C\u3093\u3067\u3044\u306A\u3044\u66F8\u304D\u51FA\u3057\u306E\u7D50\u679C\u304C\u5C4A\u3044\u305F\u306E\u3067\u7121\u8996\u3057\u307E\u3057\u305F" }];
-    }
-    const pending = this.pending;
-    try {
-      const svg = verifyExportedSvg(msg.data, pending.xml);
-      this.phase = "writing";
-      return [{ type: "write", svg, xml: pending.xml, generation: pending.generation }];
-    } catch (e) {
-      const message = e instanceof DrawioFormatError ? e.message : String(e);
-      return this.failExport(`Draw.io \u304B\u3089\u53D7\u3051\u53D6\u3063\u305F SVG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093: ${message}`);
-    }
-  }
-  /** export の段階で保存をやめ、編集画面に戻す */
-  failExport(message) {
-    this.pending = null;
-    this.queued = null;
-    this.closeAfterSave = false;
-    this.failed = true;
-    this.phase = "ready";
-    return [
-      { type: "post", message: { action: "spinner", show: false } },
-      { type: "post", message: { action: "status", message: "\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", modified: true } },
-      { type: "error", message }
-    ];
-  }
-  close() {
-    this.phase = "closed";
-    return [{ type: "close" }];
-  }
-};
-function verifyExportedSvg(data, savedXml) {
-  const decoded = decodeDataUri(data);
-  if (!decoded || decoded.mime !== SVG_MIME) throw new DrawioFormatError("SVG \u306E data URI \u3067\u306F\u306A\u3044");
-  if (decoded.bytes.length > MAX_SVG_BYTES) throw new DrawioFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
-  const svg = utf8(decoded.bytes);
-  if (svg === null) throw new DrawioFormatError("UTF-8 \u3068\u3057\u3066\u8AAD\u3081\u306A\u3044");
-  const embedded = extractDiagramXml(svg);
-  if (embedded.kind !== "diagram") throw new DrawioFormatError("\u7DE8\u96C6\u7528 XML \u304C\u5165\u3063\u3066\u3044\u306A\u3044");
-  const saved = savedXml.trim();
-  if (saved.startsWith("<") && countPages(embedded.xml) !== countPages(saved)) {
-    throw new DrawioFormatError(`\u30DA\u30FC\u30B8\u306E\u6570\u304C\u5408\u308F\u306A\u3044\uFF08\u4FDD\u5B58 ${countPages(saved)}\u3001SVG ${countPages(embedded.xml)}\uFF09`);
-  }
-  return svg;
+function exportPath(sourcePath, taken) {
+  const base = sourcePath.slice(sourcePath.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return freePath(TMP_FOLDER, dot > 0 ? base.slice(0, dot) : base, dot > 0 ? base.slice(dot) : "", taken);
 }
-
-// src/obsidian/frame.ts
-var EDITOR_SANDBOX = "allow-scripts allow-same-origin allow-forms";
-function mountEditorFrame(container, onMessage) {
-  const doc = container.ownerDocument;
-  const win = doc.defaultView ?? window;
-  const iframe = doc.createElement("iframe");
-  iframe.className = "vt-drawio-frame";
-  iframe.setAttribute("sandbox", EDITOR_SANDBOX);
-  iframe.setAttribute("referrerpolicy", "no-referrer");
-  iframe.setAttribute("allow", "clipboard-read; clipboard-write");
-  iframe.setAttribute("title", "Draw.io");
-  const listener = (e) => {
-    if (e.origin !== EMBED_ORIGIN || e.source !== iframe.contentWindow) return;
-    const msg = parseMessage(e.data);
-    if (msg) onMessage(msg);
-  };
-  win.addEventListener("message", listener);
-  iframe.setAttribute("src", embedUrl());
-  container.appendChild(iframe);
-  return {
-    iframe,
-    post(message) {
-      iframe.contentWindow?.postMessage(JSON.stringify(message), EMBED_ORIGIN);
-    },
-    destroy() {
-      win.removeEventListener("message", listener);
-      iframe.remove();
-    }
-  };
-}
-
-// src/obsidian/editor-modal.ts
-var ConflictError = class extends Error {
-};
-var DrawioEditorModal = class extends import_obsidian3.Modal {
-  constructor(app, target) {
-    super(app);
-    this.target = target;
-    const title = target.kind === "existing" ? target.file.basename.replace(/\.drawio$/i, "") : (target.path.split("/").pop() ?? "").replace(/\.drawio\.svg$/i, "");
-    this.title = title;
-    this.session = new EditSession(target.kind === "existing" ? target.xml : null, title);
-  }
-  target;
-  session;
-  title;
-  frame = null;
-  forced = false;
-  confirming = false;
-  exportTimer;
-  onOpen() {
-    this.modalEl.addClass("vt-drawio-modal");
-    this.contentEl.addClass("vt-drawio-modal-content");
-    this.setTitle(`Draw.io: ${this.title}`);
-    this.frame = mountEditorFrame(this.contentEl, (msg) => this.apply(this.session.handle(msg)));
-  }
-  onClose() {
-    window.clearTimeout(this.exportTimer);
-    this.session.dispose();
-    this.frame?.destroy();
-    this.frame = null;
-    this.contentEl.empty();
-  }
-  /** Esc・× ボタン・外側を押したときも、ここを通る */
-  close() {
-    if (this.forced || !this.session.dirty) {
-      super.close();
-      return;
-    }
-    if (this.confirming) return;
-    this.confirming = true;
-    void choose(this.app, "\u4FDD\u5B58\u3057\u3066\u3044\u306A\u3044\u5909\u66F4\u304C\u3042\u308A\u307E\u3059", "Draw.io \u3067\u4FDD\u5B58\u3057\u3066\u304B\u3089\u9589\u3058\u308B\u304B\u3001\u5909\u66F4\u3092\u6368\u3066\u3066\u9589\u3058\u308B\u304B\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002", [
-      { label: "Back to editing", value: "back", style: "cta" },
-      { label: "Copy XML and close", value: "copy" },
-      { label: "Discard and close", value: "discard", style: "warning" }
-    ]).then(async (choice) => {
-      this.confirming = false;
-      if (choice === "copy") {
-        const xml = this.session.unsavedXml;
-        if (xml) {
-          try {
-            await navigator.clipboard.writeText(xml);
-            new import_obsidian3.Notice("\u4FDD\u5B58\u3057\u3066\u3044\u306A\u3044\u56F3\u306E XML \u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F");
-          } catch {
-            new import_obsidian3.Notice("XML \u3092\u30B3\u30D4\u30FC\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u9589\u3058\u305A\u306B\u6B8B\u3057\u307E\u3059");
-            return;
-          }
-        }
-      }
-      if (choice === "copy" || choice === "discard") this.forceClose();
-    });
-  }
-  forceClose() {
-    this.forced = true;
-    this.close();
-  }
-  apply(effects) {
-    for (const effect of effects) {
-      switch (effect.type) {
-        case "post":
-          this.frame?.post(effect.message);
-          break;
-        case "write":
-          void this.write(effect.svg).then(
-            () => this.apply(this.session.writeDone(effect.generation, true)),
-            (e) => this.apply(this.session.writeDone(effect.generation, false, e instanceof Error ? e.message : String(e)))
-          );
-          break;
-        case "wait":
-          window.clearTimeout(this.exportTimer);
-          this.exportTimer = window.setTimeout(() => this.apply(this.session.exportTimedOut(effect.generation)), effect.ms);
-          break;
-        case "close":
-          this.forceClose();
-          break;
-        case "error":
-          new import_obsidian3.Notice(`pkm-diagram: ${effect.message}`, 8e3);
-          break;
-      }
-    }
-  }
-  /** SVG 全体を書く。失敗したら投げる（編集画面は残る） */
-  async write(svg) {
-    const target = this.target;
-    if (target.kind === "new") {
-      const vault = this.app.vault;
-      const folder = target.path.includes("/") ? target.path.slice(0, target.path.lastIndexOf("/")) : "";
-      if (folder && !vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
-      const stem = (target.path.split("/").pop() ?? "").slice(0, -DRAWIO_SVG_SUFFIX.length);
-      const path = vault.getAbstractFileByPath(target.path) ? freePath(folder, stem, DRAWIO_SVG_SUFFIX, (p) => vault.getAbstractFileByPath(p) !== null) : target.path;
-      const file = await vault.create(path, svg);
-      this.target = { kind: "existing", file, base: svg, xml: "" };
-      new import_obsidian3.Notice(`${file.path} \u3092\u4F5C\u308A\u307E\u3057\u305F`);
-      target.onCreated?.(file);
-      return;
-    }
-    try {
-      await this.app.vault.process(target.file, (current) => {
-        if (current !== target.base) throw new ConflictError();
-        return svg;
-      });
-      target.base = svg;
-    } catch (e) {
-      if (!(e instanceof ConflictError)) throw e;
-      await this.resolveConflict(target, svg);
-    }
-  }
-  /** 編集中にファイルが変わっていた（同期・別の画面・外のエディタ） */
-  async resolveConflict(target, svg) {
-    const choice = await choose(this.app, "\u56F3\u306E\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u4E2D\u306B\u5909\u308F\u308A\u307E\u3057\u305F", `${target.file.path} \u306F\u3001\u7DE8\u96C6\u3092\u59CB\u3081\u3066\u304B\u3089\u5225\u306E\u5834\u6240\u3067\u5909\u66F4\u3055\u308C\u3066\u3044\u307E\u3059\uFF08\u540C\u671F\u306A\u3069\uFF09\u3002\u3069\u3046\u3057\u307E\u3059\u304B\u3002`, [
-      { label: "Save mine as a copy", value: "copy", style: "cta" },
-      { label: "Overwrite", value: "overwrite", style: "warning" },
-      { label: "Back to editing (don't save)", value: "back" }
-    ]);
-    if (choice === "copy") {
-      const vault = this.app.vault;
-      const path = editedCopyPath(target.file.path, /* @__PURE__ */ new Date(), (p) => vault.getAbstractFileByPath(p) !== null);
-      const file = await vault.create(path, svg);
-      this.target = { kind: "existing", file, base: svg, xml: "" };
-      new import_obsidian3.Notice(`${file.path} \u306B\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002\u4EE5\u964D\u306E\u4FDD\u5B58\u3082\u3053\u306E\u30D5\u30A1\u30A4\u30EB\u306B\u66F8\u304D\u307E\u3059`, 8e3);
-      return;
-    }
-    if (choice === "overwrite") {
-      await this.app.vault.modify(target.file, svg);
-      target.base = svg;
-      return;
-    }
-    throw new Error("\u4FDD\u5B58\u3057\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u30D5\u30A1\u30A4\u30EB\u304C\u7DE8\u96C6\u4E2D\u306B\u5909\u308F\u3063\u305F\u305F\u3081\uFF09");
-  }
-};
 
 // src/obsidian/export.ts
-var import_obsidian4 = require("obsidian");
 async function exportToTmp(app, file) {
   const kind = documentKind(file.path);
   if (!kind) {
-    new import_obsidian4.Notice("\u66F8\u304D\u51FA\u305B\u308B\u306E\u306F md \u3068 html \u3060\u3051\u3067\u3059");
+    new import_obsidian3.Notice("\u66F8\u304D\u51FA\u305B\u308B\u306E\u306F md \u3068 html \u3060\u3051\u3067\u3059");
     return null;
   }
   const vault = app.vault;
@@ -1264,12 +741,12 @@ async function exportToTmp(app, file) {
     kind,
     readText: async (path) => {
       const f = vault.getAbstractFileByPath(path);
-      return f instanceof import_obsidian4.TFile ? await vault.read(f) : null;
+      return f instanceof import_obsidian3.TFile ? await vault.read(f) : null;
     }
   });
   if (result.errors.length > 0) {
     console.warn("pkm-diagram: \u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F", result.errors);
-    new import_obsidian4.Notice(`\u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u4F55\u3082\u66F8\u3044\u3066\u3044\u307E\u305B\u3093\uFF09:
+    new import_obsidian3.Notice(`\u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u4F55\u3082\u66F8\u3044\u3066\u3044\u307E\u305B\u3093\uFF09:
 ${result.errors.join("\n")}`, 12e3);
     return null;
   }
@@ -1278,7 +755,7 @@ ${result.errors.join("\n")}`, 12e3);
   const created = await vault.create(out, result.text);
   const problems = checkExported(result.text, kind, out);
   const lines = [`${out} \u306B\u66F8\u304D\u51FA\u3057\u307E\u3057\u305F\uFF08\u56F3 ${result.diagrams.length} \u4EF6\uFF09`, ...result.warnings, ...problems];
-  new import_obsidian4.Notice(lines.join("\n"), result.warnings.length + problems.length > 0 ? 12e3 : 5e3);
+  new import_obsidian3.Notice(lines.join("\n"), result.warnings.length + problems.length > 0 ? 12e3 : 5e3);
   return created;
 }
 
@@ -1381,7 +858,7 @@ function mermaidSvgText(svg, light) {
 }
 
 // src/obsidian/save.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var TMP = "tmp";
 function isAbort(e) {
   return e instanceof Error && e.name === "AbortError";
@@ -1389,7 +866,7 @@ function isAbort(e) {
 async function freeTmpPath(app, name) {
   const stem = name.replace(/\.png$/i, "");
   for (let n = 1; ; n++) {
-    const path = (0, import_obsidian5.normalizePath)(`${TMP}/${n === 1 ? stem : `${stem} ${n}`}.png`);
+    const path = (0, import_obsidian4.normalizePath)(`${TMP}/${n === 1 ? stem : `${stem} ${n}`}.png`);
     if (!await app.vault.adapter.exists(path)) return path;
   }
 }
@@ -1397,7 +874,7 @@ async function saveToTmp(app, png, name) {
   if (!await app.vault.adapter.exists(TMP)) await app.vault.adapter.mkdir(TMP);
   const path = await freeTmpPath(app, name);
   await app.vault.adapter.writeBinary(path, await png.arrayBuffer());
-  new import_obsidian5.Notice(`PNG \u3092 ${path} \u306B\u4FDD\u5B58\u3057\u307E\u3057\u305F`);
+  new import_obsidian4.Notice(`PNG \u3092 ${path} \u306B\u4FDD\u5B58\u3057\u307E\u3057\u305F`);
 }
 async function savePng(app, png, name, doc) {
   const win = doc.defaultView ?? window;
@@ -1422,7 +899,7 @@ async function savePng(app, png, name, doc) {
         const writable = await handle.createWritable();
         await writable.write(await png);
         await writable.close();
-        new import_obsidian5.Notice("PNG \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F");
+        new import_obsidian4.Notice("PNG \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F");
         return;
       }
       if (method === "share") {
@@ -1440,7 +917,7 @@ async function savePng(app, png, name, doc) {
       return;
     }
   } catch (e) {
-    new import_obsidian5.Notice(`PNG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
+    new import_obsidian4.Notice(`PNG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
   }
 }
 
@@ -1558,7 +1035,7 @@ function mermaidMinTextSize(svg) {
 }
 
 // src/obsidian/toolbar.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var HIDE_DELAY = 300;
 var INSET = 8;
 function asElement(el) {
@@ -1568,30 +1045,24 @@ var DocToolbar = class {
   constructor(doc, host) {
     this.doc = doc;
     this.host = host;
-    this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
+    this.el = doc.body.createDiv({ cls: "vt-diagram-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
     this.el.hidden = true;
     const button = (icon, label, onClick) => {
-      const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
-      (0, import_obsidian6.setIcon)(b, icon);
-      b.createSpan({ cls: "vt-drawio-tool-label", text: label });
+      const b = this.el.createEl("button", { cls: "vt-diagram-tool", attr: { type: "button", "aria-label": label, title: label } });
+      (0, import_obsidian5.setIcon)(b, icon);
+      b.createSpan({ cls: "vt-diagram-tool-label", text: label });
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (this.current) onClick(this.current.target, b);
       });
-      return b;
     };
     button("copy", "Copy", (target, anchor) => this.host.copy(target, anchor));
     button("download", "Save PNG", (target) => this.host.save(target));
     button("maximize-2", "Expand", (target) => {
       this.hide();
       this.host.expand(target);
-    });
-    this.editButton = button("pencil", "Edit", (target) => {
-      if (target.kind !== "file") return;
-      this.hide();
-      this.host.edit(target.file);
     });
     this.el.addEventListener("pointerenter", () => this.cancelHide());
     this.el.addEventListener("pointerleave", (e) => {
@@ -1605,14 +1076,12 @@ var DocToolbar = class {
   host;
   el;
   current = null;
-  editButton;
   hideTimer = null;
   pinned = false;
   show(found, pinned) {
     this.cancelHide();
     this.current = found;
     this.pinned = pinned;
-    this.editButton.hidden = !(found.target.kind === "file" && found.target.drawio);
     this.el.hidden = false;
     this.place();
   }
@@ -1716,7 +1185,7 @@ var DiagramToolbar = class {
 };
 
 // src/obsidian/zoom-modal.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/core/viewport.ts
 var MIN_SCALE = 0.05;
@@ -1770,7 +1239,7 @@ function wheelFactor(deltaY, deltaMode = 0) {
 
 // src/obsidian/zoom-modal.ts
 var FALLBACK = { width: 800, height: 600 };
-var DiagramZoomModal = class extends import_obsidian7.Modal {
+var DiagramZoomModal = class extends import_obsidian6.Modal {
   constructor(app, source) {
     super(app);
     this.source = source;
@@ -1791,7 +1260,7 @@ var DiagramZoomModal = class extends import_obsidian7.Modal {
     const bar = this.contentEl.createDiv({ cls: "vt-diagram-zoom-bar", attr: { role: "toolbar", "aria-label": "Zoom" } });
     const button = (icon, label, onClick) => {
       const b = bar.createEl("button", { cls: "vt-diagram-zoom-button", attr: { type: "button", "aria-label": label, title: label } });
-      (0, import_obsidian7.setIcon)(b, icon);
+      (0, import_obsidian6.setIcon)(b, icon);
       b.addEventListener("click", onClick);
     };
     button("zoom-out", "Zoom out", () => this.zoomBy(1 / ZOOM_STEP));
@@ -1905,7 +1374,7 @@ function resourceKey(url) {
     return cut;
   }
 }
-var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
+var PkmDiagramPlugin = class extends import_obsidian7.Plugin {
   toolbar = null;
   shrink = null;
   /** getResourcePath() の値（? を除く）→ 図のファイル。ファイルが増減・改名したら作り直す */
@@ -1915,8 +1384,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
       resolve: (el) => this.resolveDiagram(el),
       copy: (target, anchor) => this.showCopyMenu(target, anchor),
       save: (target) => this.save(target, activeDocument),
-      expand: (target) => this.expand(target),
-      edit: (file) => void this.edit(file)
+      expand: (target) => this.expand(target)
     });
     this.toolbar = toolbar;
     const register = (doc, type, cb, capture = false) => this.registerDomEvent(doc, type, cb, { capture });
@@ -1948,17 +1416,11 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     for (const event of ["create", "delete", "rename"]) {
       this.registerEvent(this.app.vault.on(event, () => this.resources = null));
     }
-    this.addCommand({ id: "create-diagram", name: "New diagram (asset/*.drawio.svg)", callback: () => void this.create() });
-    this.addCommand({
-      id: "edit-diagram",
-      name: "Edit a diagram in this note",
-      checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => void this.edit(file))
-    });
     this.addCommand({
       id: "copy-diagram",
-      name: "Copy a diagram in this note (PNG / SVG / XML)",
+      name: "Copy a diagram in this note (PNG / SVG)",
       checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => {
-        void pick(this.app, "Copy as", copyFormatsFor(isDrawioSvgPath(file.path)), (f) => f.label).then((choice) => {
+        void pick(this.app, "Copy as", COPY_FORMATS, (f) => f.label).then((choice) => {
           if (choice) void this.copy(file, choice.format);
         });
       })
@@ -1985,11 +1447,9 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     });
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof import_obsidian8.TFile)) return;
+        if (!(file instanceof import_obsidian7.TFile)) return;
         if (isDiagramSvgPath(file.path)) {
-          const drawio = isDrawioSvgPath(file.path);
-          if (drawio) menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
-          for (const f of copyFormatsFor(drawio)) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
+          for (const f of COPY_FORMATS) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
           menu.addItem((i) => i.setTitle("Save as PNG").setIcon("download").onClick(() => this.save(this.fileTarget(file), activeDocument)));
         } else if (documentKind(file.path)) {
           menu.addItem((i) => i.setTitle("Export to tmp/ (embed diagrams)").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
@@ -2004,7 +1464,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     this.shrink = null;
   }
   fileTarget(file) {
-    return { kind: "file", file, drawio: isDrawioSvgPath(file.path) };
+    return { kind: "file", file };
   }
   /** 要素が図なら、その図。画像は Vault の SVG の図を指すもの、それ以外は Mermaid の図の中の要素 */
   resolveDiagram(el) {
@@ -2015,7 +1475,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     const svg = findMermaidSvg(el);
     return svg ? { el: svg, target: { kind: "mermaid", svg } } : null;
   }
-  /** 図の SVG の文字列。light なら PNG 用（ライトの色。Draw.io の図は編集用 XML を除く） */
+  /** 図の SVG の文字列。light なら PNG 用（ライトの色。以前の Draw.io の図は編集用 XML を除く） */
   async svgText(target, light) {
     if (target.kind === "mermaid") return mermaidSvgText(target.svg, light);
     const svg = await this.app.vault.cachedRead(target.file);
@@ -2036,7 +1496,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
       const title = target.kind === "file" ? target.file.basename.replace(/\.drawio$/i, "") : this.app.workspace.getActiveFile()?.basename ?? "Mermaid";
       new DiagramZoomModal(this.app, { src, title }).open();
     } catch (e) {
-      new import_obsidian8.Notice(`\u56F3\u3092\u62E1\u5927\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
+      new import_obsidian7.Notice(`\u56F3\u3092\u62E1\u5927\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
     }
   }
   /** 画像（Reading view・Live Preview・画像の View）が指す図のファイル */
@@ -2055,7 +1515,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   fileFromLink(link) {
     for (const path of candidatePaths("", link)) {
       const f = this.app.vault.getAbstractFileByPath(path);
-      if (f instanceof import_obsidian8.TFile && isDiagramSvgPath(f.path)) return f;
+      if (f instanceof import_obsidian7.TFile && isDiagramSvgPath(f.path)) return f;
     }
     const linkpath = resourceKey(link);
     const dest = this.app.metadataCache.getFirstLinkpathDest(linkpath, this.app.workspace.getActiveFile()?.path ?? "");
@@ -2080,9 +1540,9 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     const text = await this.app.vault.cachedRead(file);
     const found = /* @__PURE__ */ new Map();
     for (const ref of findImageReferences(text, kind)) {
-      for (const path of drawioCandidates(file.path, ref, kind)) {
+      for (const path of diagramCandidates(file.path, ref, kind)) {
         const f = this.app.vault.getAbstractFileByPath(path);
-        if (f instanceof import_obsidian8.TFile) {
+        if (f instanceof import_obsidian7.TFile) {
           found.set(f.path, f);
           break;
         }
@@ -2096,7 +1556,7 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     if (checking) return true;
     void this.diagramsInActive().then(async (files) => {
       if (files.length === 0) {
-        new import_obsidian8.Notice("\u3053\u306E\u30CE\u30FC\u30C8\u306B\u56F3\uFF08asset/ \u306E SVG\uFF09\u304C\u3042\u308A\u307E\u305B\u3093\u3002Mermaid \u306E\u56F3\u306F\u3001\u56F3\u306E\u53F3\u4E0A\u306E\u64CD\u4F5C\u30D0\u30FC\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044");
+        new import_obsidian7.Notice("\u3053\u306E\u30CE\u30FC\u30C8\u306B\u56F3\uFF08asset/ \u306E SVG\uFF09\u304C\u3042\u308A\u307E\u305B\u3093\u3002Mermaid \u306E\u56F3\u306F\u3001\u56F3\u306E\u53F3\u4E0A\u306E\u64CD\u4F5C\u30D0\u30FC\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044");
         return;
       }
       const file = files.length === 1 ? files[0] : await pick(this.app, "Choose a diagram", files, (f) => f.path);
@@ -2106,8 +1566,8 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   }
   showCopyMenu(target, anchor) {
     const content = target.kind === "file" ? this.app.vault.cachedRead(target.file) : Promise.resolve(mermaidSvgText(target.svg, true));
-    const menu = new import_obsidian8.Menu();
-    for (const f of copyFormatsFor(target.kind === "file" && target.drawio)) {
+    const menu = new import_obsidian7.Menu();
+    for (const f of COPY_FORMATS) {
       menu.addItem(
         (i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void content.then((svg) => copyDiagram(svg, f.format, anchor.ownerDocument)))
       );
@@ -2117,47 +1577,5 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   }
   async copy(file, format) {
     await copyDiagram(await this.app.vault.cachedRead(file), format, activeDocument);
-  }
-  async edit(file) {
-    const svg = await this.app.vault.read(file);
-    let xml;
-    try {
-      const r = extractDiagramXml(svg);
-      if (r.kind !== "diagram") {
-        new import_obsidian8.Notice(`${file.path} \u306B\u306F\u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\u306E\u3067\u3001Draw.io \u306E\u56F3\u3068\u3057\u3066\u7DE8\u96C6\u3067\u304D\u307E\u305B\u3093\uFF08\u666E\u901A\u306E SVG\uFF09`, 8e3);
-        return;
-      }
-      xml = r.xml;
-    } catch (e) {
-      new import_obsidian8.Notice(`${file.path} \u3092\u8AAD\u3081\u307E\u305B\u3093: ${e instanceof DrawioFormatError ? e.message : String(e)}`, 8e3);
-      return;
-    }
-    new DrawioEditorModal(this.app, { kind: "existing", file, base: svg, xml }).open();
-  }
-  /** 新しい図を作る。開いていたノートのカーソルの位置に、図の参照を入れる */
-  async create() {
-    const view = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
-    const notePath = view?.file?.path ?? null;
-    const editor = view?.editor ?? null;
-    const cursor = editor?.getCursor() ?? null;
-    const name = await askDiagramName(this.app);
-    if (name === null) return;
-    const path = diagramPath(name);
-    if (this.app.vault.getAbstractFileByPath(path)) {
-      new import_obsidian8.Notice(`${path} \u306F\u65E2\u306B\u3042\u308A\u307E\u3059\u3002\u5225\u306E\u540D\u524D\u306B\u3059\u308B\u304B\u3001\u305D\u306E\u56F3\u3092\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044`);
-      return;
-    }
-    new DrawioEditorModal(this.app, {
-      kind: "new",
-      path,
-      onCreated: (file) => {
-        const link = markdownImage(diagramName(file.path), file.path);
-        if (view && editor && cursor && view.file?.path === notePath && view.editor === editor) {
-          editor.replaceRange(link, cursor);
-        } else {
-          void navigator.clipboard.writeText(link).then(() => new import_obsidian8.Notice("\u56F3\u306E\u53C2\u7167\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002\u30CE\u30FC\u30C8\u306B\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044"));
-        }
-      }
-    }).open();
   }
 };

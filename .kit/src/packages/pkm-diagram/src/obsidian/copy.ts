@@ -1,24 +1,18 @@
 /**
- * 図のコピー（ADR-0064、ADR-0102）。PNG / SVG（共有用。編集用 XML を除く）/ XML（全ページの編集用 XML。Draw.io の図だけ）。
+ * 図のコピー（ADR-0102）。PNG / SVG（共有用。以前の Draw.io の図は編集用 XML を除く。ADR-0111）。
  * PNG は常にライトの色で、ライトの面の色を背景にする。失敗したら通知する（成功したふりをしない）
  */
 import { Notice } from "obsidian";
 import { SVG_MIME as SVG_MIME_TYPE, svgDataUri } from "../core/encoding.ts";
 import { forceLightSvg, PNG_BACKGROUND } from "../core/png.ts";
-import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../core/svg.ts";
+import { SvgFormatError, toSharingSvg } from "../core/svg.ts";
 
-export type CopyFormat = "png" | "svg" | "xml";
+export type CopyFormat = "png" | "svg";
 
 export const COPY_FORMATS: ReadonlyArray<{ format: CopyFormat; label: string; icon: string }> = [
 	{ format: "png", label: "Copy as PNG", icon: "image" },
-	{ format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
-	{ format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" },
+	{ format: "svg", label: "Copy as SVG", icon: "file-image" },
 ];
-
-/** 図の種類ごとに選べるコピーの形式（XML は Draw.io の図だけ） */
-export function copyFormatsFor(drawio: boolean): typeof COPY_FORMATS {
-	return drawio ? COPY_FORMATS : COPY_FORMATS.filter((f) => f.format !== "xml");
-}
 
 /** PNG の倍率（貼り付け先で粗く見えないように） */
 const PNG_SCALE = 2;
@@ -42,16 +36,6 @@ function supports(type: string): boolean {
  */
 export async function copyDiagram(svg: string, format: CopyFormat, doc: Document): Promise<void> {
 	try {
-		if (format === "xml") {
-			const r = extractDiagramXml(svg);
-			if (r.kind !== "diagram") {
-				new Notice("この SVG には編集用 XML がありません（Draw.io の図ではない）");
-				return;
-			}
-			await navigator.clipboard.writeText(r.xml);
-			new Notice("XML をコピーしました");
-			return;
-		}
 		const sharing = toSharingSvg(svg);
 		if (format === "svg") {
 			const Item = clipboardItemCtor();
@@ -72,13 +56,13 @@ export async function copyDiagram(svg: string, format: CopyFormat, doc: Document
 		}
 		const Item = clipboardItemCtor();
 		if (!Item || !supports("image/png")) {
-			new Notice("この環境では PNG をコピーできません。SVG か XML でコピーしてください");
+			new Notice("この環境では PNG をコピーできません。SVG でコピーしてください");
 			return;
 		}
 		await navigator.clipboard.write([new Item({ "image/png": renderPng(sharing, doc) })]);
 		new Notice("PNG をコピーしました");
 	} catch (e) {
-		const message = e instanceof DrawioFormatError ? e.message : e instanceof Error ? e.message : String(e);
+		const message = e instanceof SvgFormatError ? e.message : e instanceof Error ? e.message : String(e);
 		new Notice(`コピーできませんでした: ${message}`, 8000);
 	}
 }
@@ -123,12 +107,12 @@ async function draw(svgText: string, doc: Document, size: { width: number; heigh
 
 /**
  * 共有用の SVG を PNG にする（ダークのときだけ効く指定を除き、ライトの色にする）。Canvas が汚染されたら、<switch> の中の foreignObject を外して
- * Draw.io が用意している <text> の代わりの表示で描き直す
+ * <text> の代わりの表示（以前の Draw.io の図が用意しているもの）で描き直す
  */
 export async function renderPng(svg: string, doc: Document): Promise<Blob> {
 	const sharingSvg = forceLightSvg(svg);
 	const parsed = new DOMParser().parseFromString(sharingSvg, SVG_MIME_TYPE);
-	if (parsed.getElementsByTagName("parsererror").length > 0) throw new DrawioFormatError("SVG を読めない");
+	if (parsed.getElementsByTagName("parsererror").length > 0) throw new SvgFormatError("SVG を読めない");
 	const size = svgSize(parsed);
 	try {
 		return await draw(sharingSvg, doc, size);

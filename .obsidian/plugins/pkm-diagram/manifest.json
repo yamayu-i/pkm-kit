@@ -3,7 +3,7 @@
 	"name": "PKM Diagram",
 	"version": "0.1.0",
 	"minAppVersion": "1.11.4",
-	"description": "asset/*.drawio.svg（編集用 XML を内包した SVG）の図を、ノートからコピー・編集し、tmp/ への書き出しで埋め込む自作プラグイン。編集には Draw.io（embed.diagrams.net）を使う。モバイル対応。",
+	"description": "ノートの図（asset/ の SVG と Mermaid）を、コピー・PNG で保存・拡大表示し、tmp/ への書き出しで埋め込む自作プラグイン。縮めすぎて読めない図に印を出す。モバイル対応。",
 	"author": "yamayu-i",
 	"isDesktopOnly": false
 }

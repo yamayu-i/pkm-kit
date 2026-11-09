@@ -39,16 +39,17 @@ export function normalizeStructure(doc: Document): void {
 	}
 }
 
-/** 図（*.drawio.svg）は、編集用 XML を除いた共有用の SVG にする（ADR-0064 と同じバイト列） */
+/** SVG の図は共有用の SVG にする（以前の Draw.io の図は編集用 XML を除く。pkm-diagram の書き出しと同じバイト列。ADR-0111） */
 function sharingImages(readImage: ReadImage): ReadImage {
 	return async (candidates) => {
 		const bytes = await readImage(candidates);
-		if (bytes === null || !(candidates[0] ?? "").toLowerCase().endsWith(".drawio.svg")) return bytes;
+		if (bytes === null || !(candidates[0] ?? "").toLowerCase().endsWith(".svg")) return bytes;
+		const text = new TextDecoder().decode(bytes);
 		try {
-			return new TextEncoder().encode(toSharingSvg(new TextDecoder().decode(bytes)));
+			return new TextEncoder().encode(toSharingSvg(text));
 		} catch {
-			// 大きすぎる・読めない図は埋め込まない
-			return null;
+			// ルートを読めない SVG: 編集用 XML を持つ以前の Draw.io の図は埋め込まない（大きすぎる・壊れている）。普通の SVG はそのまま
+			return /\scontent\s*=/.test(text.slice(0, 4096)) ? null : bytes;
 		}
 	};
 }

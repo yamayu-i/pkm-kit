@@ -1,12 +1,12 @@
 /**
- * 図に浮かべる操作バー（ADR-0064、ADR-0102）。「コピー」「PNG で保存」「拡大」と、Draw.io の図だけ「編集」。
- * 対象は、Vault の SVG の図の画像（.drawio.svg と、AI が書く / D2 で描く .svg）と、ノートの Mermaid の図。
+ * 図に浮かべる操作バー（ADR-0102）。「コピー」「PNG で保存」「拡大」。
+ * 対象は、Vault の SVG の図の画像（AI が書く / D2 で描く .svg と、以前の Draw.io の .drawio.svg）と、ノートの Mermaid の図。
  * Obsidian の描いた DOM（Reading view、Live Preview の widget）は書き換えず、body に置く 1 つの要素を図の右上に重ねる。
  * マウスは図に載せると出る。タッチは図を押すと出て、ほかの場所を押すと消える
  */
 import { setIcon, type TFile } from "obsidian";
 
-export type DiagramTarget = { kind: "file"; file: TFile; drawio: boolean } | { kind: "mermaid"; svg: SVGSVGElement };
+export type DiagramTarget = { kind: "file"; file: TFile } | { kind: "mermaid"; svg: SVGSVGElement };
 
 export interface FoundDiagram {
 	/** 操作バーを重ねる要素（画像か、Mermaid の SVG） */
@@ -20,7 +20,6 @@ export interface ToolbarHost {
 	copy(target: DiagramTarget, anchor: HTMLElement): void;
 	save(target: DiagramTarget): void;
 	expand(target: DiagramTarget): void;
-	edit(file: TFile): void;
 }
 
 type Register = <K extends keyof DocumentEventMap>(doc: Document, type: K, cb: (e: DocumentEventMap[K]) => void, capture?: boolean) => void;
@@ -37,7 +36,6 @@ function asElement(el: EventTarget | null): Element | null {
 class DocToolbar {
 	readonly el: HTMLDivElement;
 	private current: FoundDiagram | null = null;
-	private readonly editButton: HTMLButtonElement;
 	private hideTimer: number | null = null;
 	private pinned = false;
 
@@ -45,12 +43,12 @@ class DocToolbar {
 		private readonly doc: Document,
 		private readonly host: ToolbarHost,
 	) {
-		this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
+		this.el = doc.body.createDiv({ cls: "vt-diagram-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
 		this.el.hidden = true;
 		const button = (icon: string, label: string, onClick: (target: DiagramTarget, anchor: HTMLElement) => void) => {
-			const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
+			const b = this.el.createEl("button", { cls: "vt-diagram-tool", attr: { type: "button", "aria-label": label, title: label } });
 			setIcon(b, icon);
-			b.createSpan({ cls: "vt-drawio-tool-label", text: label });
+			b.createSpan({ cls: "vt-diagram-tool-label", text: label });
 			// 押してもエディタのカーソルと選択を動かさない
 			b.addEventListener("mousedown", (e) => e.preventDefault());
 			b.addEventListener("click", (e) => {
@@ -58,18 +56,12 @@ class DocToolbar {
 				e.stopPropagation();
 				if (this.current) onClick(this.current.target, b);
 			});
-			return b;
 		};
 		button("copy", "Copy", (target, anchor) => this.host.copy(target, anchor));
 		button("download", "Save PNG", (target) => this.host.save(target));
 		button("maximize-2", "Expand", (target) => {
 			this.hide();
 			this.host.expand(target);
-		});
-		this.editButton = button("pencil", "Edit", (target) => {
-			if (target.kind !== "file") return;
-			this.hide();
-			this.host.edit(target.file);
 		});
 		this.el.addEventListener("pointerenter", () => this.cancelHide());
 		this.el.addEventListener("pointerleave", (e) => {
@@ -84,7 +76,6 @@ class DocToolbar {
 		this.cancelHide();
 		this.current = found;
 		this.pinned = pinned;
-		this.editButton.hidden = !(found.target.kind === "file" && found.target.drawio);
 		this.el.hidden = false;
 		this.place();
 	}

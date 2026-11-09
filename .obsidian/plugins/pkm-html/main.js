@@ -130,74 +130,6 @@ function firstSrcsetUrl(srcset) {
 // src/obsidian/export.ts
 var import_obsidian = require("obsidian");
 
-// ../pkm-diagram/src/core/svg.ts
-var MAX_SVG_BYTES = 10 * 1024 * 1024;
-var MAX_XML_CHARS = 20 * 1024 * 1024;
-var DrawioFormatError = class extends Error {
-  name = "DrawioFormatError";
-};
-function parseRootSvg(text) {
-  let i = text.charCodeAt(0) === 65279 ? 1 : 0;
-  const skipSpace = () => {
-    while (i < text.length && /\s/.test(text[i])) i++;
-  };
-  for (; ; ) {
-    skipSpace();
-    if (text.startsWith("<?", i)) {
-      const end = text.indexOf("?>", i + 2);
-      if (end < 0) throw new DrawioFormatError("XML \u5BA3\u8A00\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
-      i = end + 2;
-    } else if (text.startsWith("<!--", i)) {
-      const end = text.indexOf("-->", i + 4);
-      if (end < 0) throw new DrawioFormatError("\u30B3\u30E1\u30F3\u30C8\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
-      i = end + 3;
-    } else if (/^<!DOCTYPE\b/i.test(text.slice(i, i + 9))) {
-      const end = text.indexOf(">", i);
-      if (end < 0) throw new DrawioFormatError("DOCTYPE \u304C\u9589\u3058\u3066\u3044\u306A\u3044");
-      if (text.slice(i, end).includes("[")) throw new DrawioFormatError("DOCTYPE \u306B\u5B9F\u4F53\u306E\u5BA3\u8A00\u304C\u3042\u308B");
-      i = end + 1;
-    } else {
-      break;
-    }
-  }
-  if (!/^<svg[\s>/]/.test(text.slice(i, i + 5))) throw new DrawioFormatError("SVG \u3067\u306F\u306A\u3044\uFF08\u30EB\u30FC\u30C8\u304C <svg> \u3067\u306F\u306A\u3044\uFF09");
-  const start = i;
-  i += 4;
-  const attributes = [];
-  for (; ; ) {
-    const before = i;
-    skipSpace();
-    if (i >= text.length) throw new DrawioFormatError("<svg> \u306E\u958B\u59CB\u30BF\u30B0\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
-    if (text[i] === ">") return { start, end: i + 1, attributes };
-    if (text.startsWith("/>", i)) return { start, end: i + 2, attributes };
-    if (i === before) throw new DrawioFormatError("<svg> \u306E\u5C5E\u6027\u306E\u9593\u306B\u7A7A\u767D\u304C\u306A\u3044");
-    const nameMatch = /^[^\s=/>"']+/.exec(text.slice(i, i + 256));
-    if (!nameMatch) throw new DrawioFormatError("<svg> \u306E\u5C5E\u6027\u3092\u8AAD\u3081\u306A\u3044");
-    const name = nameMatch[0];
-    i += name.length;
-    skipSpace();
-    if (text[i] !== "=") throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306B\u5024\u304C\u306A\u3044`);
-    i++;
-    skipSpace();
-    const quote = text[i];
-    if (quote !== '"' && quote !== "'") throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u5F15\u7528\u7B26\u3067\u56F2\u307E\u308C\u3066\u3044\u306A\u3044`);
-    const close = text.indexOf(quote, i + 1);
-    if (close < 0) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u9589\u3058\u3066\u3044\u306A\u3044`);
-    const raw = text.slice(i + 1, close);
-    if (raw.includes("<")) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u306B < \u304C\u3042\u308B`);
-    if (attributes.some((a) => a.name === name)) throw new DrawioFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u304C\u91CD\u8907\u3057\u3066\u3044\u308B`);
-    attributes.push({ name, raw, start: before, end: close + 1 });
-    i = close + 1;
-  }
-}
-function toSharingSvg(svg) {
-  if (svg.length > MAX_SVG_BYTES) throw new DrawioFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
-  const root = parseRootSvg(svg);
-  const content = root.attributes.find((a) => a.name === "content");
-  if (!content) return svg;
-  return svg.slice(0, content.start) + svg.slice(content.end);
-}
-
 // ../pkm-diagram/src/core/names.ts
 var TMP_FOLDER = "tmp";
 function freePath(folder, stem, ext, taken) {
@@ -210,6 +142,73 @@ function exportPath(sourcePath, taken) {
   const base = sourcePath.slice(sourcePath.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
   return freePath(TMP_FOLDER, dot > 0 ? base.slice(0, dot) : base, dot > 0 ? base.slice(dot) : "", taken);
+}
+
+// ../pkm-diagram/src/core/svg.ts
+var MAX_SVG_BYTES = 10 * 1024 * 1024;
+var SvgFormatError = class extends Error {
+  name = "SvgFormatError";
+};
+function parseRootSvg(text) {
+  let i = text.charCodeAt(0) === 65279 ? 1 : 0;
+  const skipSpace = () => {
+    while (i < text.length && /\s/.test(text[i])) i++;
+  };
+  for (; ; ) {
+    skipSpace();
+    if (text.startsWith("<?", i)) {
+      const end = text.indexOf("?>", i + 2);
+      if (end < 0) throw new SvgFormatError("XML \u5BA3\u8A00\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      i = end + 2;
+    } else if (text.startsWith("<!--", i)) {
+      const end = text.indexOf("-->", i + 4);
+      if (end < 0) throw new SvgFormatError("\u30B3\u30E1\u30F3\u30C8\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      i = end + 3;
+    } else if (/^<!DOCTYPE\b/i.test(text.slice(i, i + 9))) {
+      const end = text.indexOf(">", i);
+      if (end < 0) throw new SvgFormatError("DOCTYPE \u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+      if (text.slice(i, end).includes("[")) throw new SvgFormatError("DOCTYPE \u306B\u5B9F\u4F53\u306E\u5BA3\u8A00\u304C\u3042\u308B");
+      i = end + 1;
+    } else {
+      break;
+    }
+  }
+  if (!/^<svg[\s>/]/.test(text.slice(i, i + 5))) throw new SvgFormatError("SVG \u3067\u306F\u306A\u3044\uFF08\u30EB\u30FC\u30C8\u304C <svg> \u3067\u306F\u306A\u3044\uFF09");
+  const start = i;
+  i += 4;
+  const attributes = [];
+  for (; ; ) {
+    const before = i;
+    skipSpace();
+    if (i >= text.length) throw new SvgFormatError("<svg> \u306E\u958B\u59CB\u30BF\u30B0\u304C\u9589\u3058\u3066\u3044\u306A\u3044");
+    if (text[i] === ">") return { start, end: i + 1, attributes };
+    if (text.startsWith("/>", i)) return { start, end: i + 2, attributes };
+    if (i === before) throw new SvgFormatError("<svg> \u306E\u5C5E\u6027\u306E\u9593\u306B\u7A7A\u767D\u304C\u306A\u3044");
+    const nameMatch = /^[^\s=/>"']+/.exec(text.slice(i, i + 256));
+    if (!nameMatch) throw new SvgFormatError("<svg> \u306E\u5C5E\u6027\u3092\u8AAD\u3081\u306A\u3044");
+    const name = nameMatch[0];
+    i += name.length;
+    skipSpace();
+    if (text[i] !== "=") throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306B\u5024\u304C\u306A\u3044`);
+    i++;
+    skipSpace();
+    const quote = text[i];
+    if (quote !== '"' && quote !== "'") throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u5F15\u7528\u7B26\u3067\u56F2\u307E\u308C\u3066\u3044\u306A\u3044`);
+    const close = text.indexOf(quote, i + 1);
+    if (close < 0) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u304C\u9589\u3058\u3066\u3044\u306A\u3044`);
+    const raw = text.slice(i + 1, close);
+    if (raw.includes("<")) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u306E\u5024\u306B < \u304C\u3042\u308B`);
+    if (attributes.some((a) => a.name === name)) throw new SvgFormatError(`<svg> \u306E\u5C5E\u6027 ${name} \u304C\u91CD\u8907\u3057\u3066\u3044\u308B`);
+    attributes.push({ name, raw, start: before, end: close + 1 });
+    i = close + 1;
+  }
+}
+function toSharingSvg(svg) {
+  if (svg.length > MAX_SVG_BYTES) throw new SvgFormatError("SVG \u304C\u5927\u304D\u3059\u304E\u308B\uFF0810 MiB \u307E\u3067\uFF09");
+  const root = parseRootSvg(svg);
+  const content = root.attributes.find((a) => a.name === "content");
+  if (!content) return svg;
+  return svg.slice(0, content.start) + svg.slice(content.end);
 }
 
 // src/core/sanitize.ts
@@ -298,11 +297,12 @@ function normalizeStructure(doc) {
 function sharingImages(readImage) {
   return async (candidates) => {
     const bytes = await readImage(candidates);
-    if (bytes === null || !(candidates[0] ?? "").toLowerCase().endsWith(".drawio.svg")) return bytes;
+    if (bytes === null || !(candidates[0] ?? "").toLowerCase().endsWith(".svg")) return bytes;
+    const text = new TextDecoder().decode(bytes);
     try {
-      return new TextEncoder().encode(toSharingSvg(new TextDecoder().decode(bytes)));
+      return new TextEncoder().encode(toSharingSvg(text));
     } catch {
-      return null;
+      return /\scontent\s*=/.test(text.slice(0, 4096)) ? null : bytes;
     }
   };
 }

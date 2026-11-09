@@ -12,7 +12,7 @@
 1. その日のことなら、リボンの「Open today's daily note」（[リボン](../surfaces/ribbon.md)）。なければテンプレートから作られる
 2. それ以外は、[テンプレートから作成](../surfaces/template-create.md)（コマンド）。テンプレートを選ぶと、置き場所とファイル名が決まる
 3. 開いたノートの上には [ノートのヘッダー](../surfaces/template-header.md) が出る
-4. 図を描くときは、コマンド「New diagram」で Draw.io を開く。保存すると `asset/` に図ができ、カーソルの位置に参照が入る（[Draw.io の図](../surfaces/drawio.md)）
+4. 図は Claude Code に頼む（Mermaid・D2・SVG から内容に合わせて選んで描く）。ノートの図は、コピー・PNG で保存・拡大できる（[図](../surfaces/diagram.md)）
 
 ## 関わる概念
 

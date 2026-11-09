@@ -5,7 +5,7 @@
  */
 import { candidatePaths } from "../../../pkm-html/src/core/policy.ts";
 import { decodeDataUri, SVG_MIME, svgDataUri, utf8 } from "./encoding.ts";
-import { DrawioFormatError, extractDiagramXml, findSvgProblems, isDiagramSvgPath, isDrawioSvgPath, parseRootSvg, toSharingSvg } from "./svg.ts";
+import { findSvgProblems, isDiagramSvgPath, parseRootSvg, SvgFormatError, toSharingSvg } from "./svg.ts";
 
 export type DocumentKind = "markdown" | "html";
 
@@ -223,7 +223,7 @@ function unescapeUrl(ref: Reference): string {
 }
 
 /** 参照が図を指すなら、試す Vault の中のパス。md は Vault ルートから（ノートの規約）。html はファイルからの相対、なければルート（pkm-html と同じ） */
-export function drawioCandidates(sourcePath: string, ref: Reference, kind: DocumentKind): string[] {
+export function diagramCandidates(sourcePath: string, ref: Reference, kind: DocumentKind): string[] {
 	const url = unescapeUrl(ref);
 	const candidates = kind === "markdown" && ref.syntax === "markdown" ? candidatePaths("", url) : candidatePaths(sourcePath, url);
 	return candidates.filter(isDiagramSvgPath);
@@ -261,21 +261,20 @@ export async function embedDiagrams(text: string, options: EmbedOptions): Promis
 		if (uris.has(path)) return uris.get(path) ?? null;
 		let uri: string | null = null;
 		try {
-			if (isDrawioSvgPath(path) && extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: 編集用 XML がない（普通の SVG として埋め込む）`);
 			const sharing = toSharingSvg(svg);
 			const problems = findSvgProblems(sharing);
 			for (const p of problems.errors) errors.push(`${path}: ${p}がある`);
 			for (const p of problems.warnings) warnings.push(`${path}: ${p}がある（書き出した先では表示されない）`);
 			if (problems.errors.length === 0) uri = svgDataUri(sharing);
 		} catch (e) {
-			errors.push(`${path}: ${e instanceof DrawioFormatError ? e.message : String(e)}`);
+			errors.push(`${path}: ${e instanceof SvgFormatError ? e.message : String(e)}`);
 		}
 		uris.set(path, uri);
 		return uri;
 	};
 
 	for (const ref of findImageReferences(text, options.kind)) {
-		const candidates = drawioCandidates(options.sourcePath, ref, options.kind);
+		const candidates = diagramCandidates(options.sourcePath, ref, options.kind);
 		if (candidates.length === 0) continue;
 		let found = false;
 		for (const path of candidates) {
@@ -303,7 +302,7 @@ export async function embedDiagrams(text: string, options: EmbedOptions): Promis
 export function checkExported(text: string, kind: DocumentKind, sourcePath = ""): string[] {
 	const problems: string[] = [];
 	for (const ref of findImageReferences(text, kind)) {
-		if (drawioCandidates(sourcePath, ref, kind).length > 0) {
+		if (diagramCandidates(sourcePath, ref, kind).length > 0) {
 			problems.push(`図のファイルへの参照が残っている: ${ref.url}`);
 			continue;
 		}

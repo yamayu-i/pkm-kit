@@ -93,8 +93,8 @@ describe(".kit/templates/snippet/*.md", () => {
 		});
 	}
 
-	it("new-drawio は /drawio で pkm-diagram の図の作成を実行する（ADR-0094）", () => {
-		const { snippet } = parseSnippet("new-drawio.md", readFileSync(join(root, "snippet", "new-drawio.md"), "utf8"));
-		expect(snippet).toMatchObject({ name: "new-drawio", alias: "drawio", command: "pkm-diagram:create-diagram" });
+	it("上流の既定に /drawio（Draw.io の図の作成）はない（ADR-0111）", () => {
+		expect(snippetFiles).not.toContain("new-drawio.md");
+		for (const file of snippetFiles) expect(readFileSync(join(root, "snippet", file), "utf8")).not.toContain("create-diagram");
 	});
 });
