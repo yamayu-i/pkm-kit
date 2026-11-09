@@ -10,6 +10,8 @@ import { DrawioEditorModal } from "../src/obsidian/editor-modal.ts";
 import { findMermaidSvg, mermaidSvgText } from "../src/obsidian/mermaid.ts";
 import { DiagramToolbar, type DiagramTarget } from "../src/obsidian/toolbar.ts";
 import { DiagramZoomModal } from "../src/obsidian/zoom-modal.ts";
+import { minTextSize } from "../src/core/plain-svg.ts";
+import { mermaidMinTextSize, ShrinkMarker } from "../src/obsidian/shrink-marker.ts";
 import diagram from "../test/fixtures/two-pages.drawio.svg";
 import plain from "../test/fixtures/plain.svg";
 
@@ -25,6 +27,8 @@ const MERMAID = `<svg id="mermaid-1" width="100%" viewBox="0 0 300 120" style="m
 const files = new Map<string, string>([
 	["asset/sys.drawio.svg", diagram],
 	["asset/plain.svg", plain],
+	// 横に長い図（ノートの幅に縮めると文字が読めない）
+	["asset/wide.svg", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 200" width="2000" height="200"><rect x="0" y="0" width="2000" height="200" fill="none" stroke="currentColor"/><text x="1000" y="100" font-size="13" text-anchor="middle">横に長い図</text></svg>'],
 ]);
 /** モックの TFile はパスを受け取る（本物の型は引数なし） */
 const makeFile = (path: string): TFile => new (TFile as unknown as new (p: string) => TFile)(path);
@@ -55,6 +59,7 @@ declare global {
 		__notices?: string[];
 		__actions: string[];
 		__modal?: DrawioEditorModal;
+		__shrink?: ShrinkMarker;
 		dv: {
 			files(): Record<string, string>;
 			setFile(path: string, text: string): void;
@@ -76,10 +81,12 @@ window.dv = {
 		for (const [id, path] of [
 			["img-drawio", "asset/sys.drawio.svg"],
 			["img-plain", "asset/plain.svg"],
+			["img-wide", "asset/wide.svg"],
 		] as const) {
 			const span = root.createSpan({ cls: "internal-embed image-embed", attr: { src: path } });
 			const img = span.createEl("img", { attr: { id, alt: id, src: svgDataUri(files.get(path) ?? "") } });
 			img.style.width = id === "img-plain" ? "160px" : "360px";
+			if (id === "img-wide") img.style.height = "auto";
 			root.createEl("p", { text: "本文の段落。図の下に続く文章。" });
 		}
 		// Obsidian が描く Mermaid の図と同じ形（ラベルは foreignObject の HTML）
@@ -103,6 +110,19 @@ window.dv = {
 			edit: (file) => window.__actions.push(`edit:${file.path}`),
 		});
 		toolbar.attach(document, (doc, type, cb, capture) => doc.addEventListener(type, cb as EventListener, { capture }));
+		const resolve = (el: Element) => {
+			if (el.tagName === "IMG") {
+				const file = fileOf(el.closest(".internal-embed")?.getAttribute("src") ?? "");
+				return file ? { el, target: { kind: "file" as const, file, drawio: file.path.endsWith(".drawio.svg") } } : null;
+			}
+			const svg = findMermaidSvg(el);
+			return svg ? { el: svg, target: { kind: "mermaid" as const, svg } } : null;
+		};
+		window.__shrink = new ShrinkMarker({
+			resolve,
+			minTextSize: async (t) => (t.kind === "mermaid" ? mermaidMinTextSize(t.svg) : minTextSize(files.get(t.file.path) ?? "")),
+		});
+		window.__shrink.attach(document);
 	},
 	openEditor(path) {
 		if (path === null) {

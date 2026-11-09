@@ -8,6 +8,7 @@ import { candidatePaths } from "../../pkm-html/src/core/policy.ts";
 import { documentKind, drawioCandidates, findImageReferences } from "./core/document.ts";
 import { diagramName, diagramPath, markdownImage } from "./core/names.ts";
 import { svgDataUri } from "./core/encoding.ts";
+import { minTextSize } from "./core/plain-svg.ts";
 import { pngFileName } from "./core/png.ts";
 import { DrawioFormatError, extractDiagramXml, isDiagramSvgPath, isDrawioSvgPath, toSharingSvg } from "./core/svg.ts";
 import { COPY_FORMATS, copyDiagram, copyFormatsFor, renderPng } from "./obsidian/copy.ts";
@@ -16,6 +17,7 @@ import { DrawioEditorModal } from "./obsidian/editor-modal.ts";
 import { exportToTmp } from "./obsidian/export.ts";
 import { findMermaidSvg, mermaidSvgText } from "./obsidian/mermaid.ts";
 import { savePng } from "./obsidian/save.ts";
+import { mermaidMinTextSize, ShrinkMarker } from "./obsidian/shrink-marker.ts";
 import { DiagramToolbar, type DiagramTarget, type FoundDiagram } from "./obsidian/toolbar.ts";
 import { DiagramZoomModal } from "./obsidian/zoom-modal.ts";
 
@@ -31,6 +33,7 @@ function resourceKey(url: string): string {
 
 export default class PkmDrawioPlugin extends Plugin {
 	private toolbar: DiagramToolbar | null = null;
+	private shrink: ShrinkMarker | null = null;
 	/** getResourcePath() の値（? を除く）→ 図のファイル。ファイルが増減・改名したら作り直す */
 	private resources: Map<string, TFile> | null = null;
 
@@ -46,9 +49,31 @@ export default class PkmDrawioPlugin extends Plugin {
 		const register = <K extends keyof DocumentEventMap>(doc: Document, type: K, cb: (e: DocumentEventMap[K]) => void, capture = false) =>
 			this.registerDomEvent(doc, type, cb, { capture });
 		toolbar.attach(document, register);
-		this.registerEvent(this.app.workspace.on("window-open", (win) => toolbar.attach(win.doc, register)));
-		this.registerEvent(this.app.workspace.on("window-close", (win) => toolbar.detach(win.doc)));
-		this.registerEvent(this.app.workspace.on("layout-change", () => toolbar.hideAll()));
+		// 縮めすぎて読めない図の印（ADR-0102 の段階 3）
+		const shrink = new ShrinkMarker({
+			resolve: (el) => this.resolveDiagram(el),
+			minTextSize: async (target) => (target.kind === "mermaid" ? mermaidMinTextSize(target.svg) : minTextSize(await this.app.vault.cachedRead(target.file))),
+		});
+		this.shrink = shrink;
+		shrink.attach(document);
+		this.registerEvent(
+			this.app.workspace.on("window-open", (win) => {
+				toolbar.attach(win.doc, register);
+				shrink.attach(win.doc);
+			}),
+		);
+		this.registerEvent(
+			this.app.workspace.on("window-close", (win) => {
+				toolbar.detach(win.doc);
+				shrink.detach(win.doc);
+			}),
+		);
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				toolbar.hideAll();
+				shrink.rescan();
+			}),
+		);
 		for (const event of ["create", "delete", "rename"] as const) {
 			this.registerEvent(this.app.vault.on(event as "create", () => (this.resources = null)));
 		}
@@ -108,6 +133,8 @@ export default class PkmDrawioPlugin extends Plugin {
 	override onunload(): void {
 		this.toolbar?.destroy();
 		this.toolbar = null;
+		this.shrink?.destroy();
+		this.shrink = null;
 	}
 
 	private fileTarget(file: TFile): DiagramTarget {

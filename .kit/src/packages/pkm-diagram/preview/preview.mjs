@@ -6,6 +6,7 @@
  * - 操作バー: 図（Draw.io の図・普通の SVG の図・Mermaid の図）に載せると右上に出る。「編集」は Draw.io の図だけ。タッチで押しても出る。描画した画面の検査（docs/design.md）
  * - 拡大表示: 全体を表示・拡大・100%・ドラッグ。描画した画面の検査
  * - Mermaid の PNG: foreignObject を <text> にし、ライトの色で作る
+ * - 印: 縮めすぎて読めない図だけに「Expand to read」が出て、読める幅になると消える
  * - PNG: 共有用の SVG（foreignObject を含む）を 2 倍の PNG にできる
  *
  * 使い方: pnpm --filter pkm-diagram preview:ui  → preview/out/toolbar-<light|dark>.png
@@ -217,6 +218,32 @@ for (const theme of ["light", "dark"]) {
 	console.log(`${out}toolbar-${theme}.png`);
 }
 
+// 4b. 縮めすぎて読めない図の印（横に長い図だけに出て、幅を広げると消える）
+for (const theme of ["light", "dark"]) {
+	const { page } = await open(theme);
+	await page.evaluate(() => window.dv.mountToolbar());
+	await page.waitForTimeout(700);
+	const marked = await page.evaluate(() => [...document.querySelectorAll(".vt-diagram-shrunk")].map((e) => e.getAttribute("src") ?? e.id));
+	if (JSON.stringify(marked) !== JSON.stringify(["asset/wide.svg"])) problems.push(`印 ${theme}: 横に長い図だけに出ていない（${marked.join(", ")}）`);
+	const badge = await page.evaluate(() => {
+		const el = document.querySelector(".vt-diagram-shrunk");
+		return el ? getComputedStyle(el, "::after").content : "";
+	});
+	if (badge !== '"Expand to read"') problems.push(`印 ${theme}: 文言が違う（${badge}）`);
+	await page.locator(".vt-diagram-shrunk").screenshot({ path: `${out}shrunk-${theme}.png` });
+	// 幅を広げて読める大きさになれば消える
+	await page.evaluate(() => {
+		const note = document.getElementById("note");
+		if (note) note.style.width = "2400px";
+		const img = document.getElementById("img-wide");
+		if (img) img.style.width = "2000px";
+	});
+	await page.waitForTimeout(400);
+	if (await page.locator(".vt-diagram-shrunk").count()) problems.push(`印 ${theme}: 読める大きさにしても消えない`);
+	await page.close();
+	console.log(`${out}shrunk-${theme}.png`);
+}
+
 // 5. 拡大表示（全体を表示・拡大・100%、スクリーンショットと描画した画面の検査）
 for (const theme of ["light", "dark"]) {
 	const { page } = await open(theme);
@@ -274,4 +301,4 @@ if (problems.length > 0) {
 	console.error(`pkm-diagram の preview: ${new Set(problems).size} 件の問題`);
 	process.exit(1);
 }
-console.log("pkm-diagram の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・拡大表示・描画した画面の検査・PNG・Mermaid の PNG）");
+console.log("pkm-diagram の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・印・拡大表示・描画した画面の検査・PNG・Mermaid の PNG）");
