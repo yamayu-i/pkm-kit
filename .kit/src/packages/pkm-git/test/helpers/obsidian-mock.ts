@@ -201,6 +201,7 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 
 	const obsidian = {
 		Plugin,
+		TFile,
 		Modal,
 		Setting,
 		PluginSettingTab: class {},

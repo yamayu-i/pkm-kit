@@ -4,7 +4,7 @@ import { ApplyJournalError } from "../src/git/engine";
 import type { SyncLogInput } from "../src/git/sync-log";
 import { FOCUS_MIN_GAP_MS, SyncController, type ShareView, type SyncEngine } from "../src/sync/controller";
 
-const shared: SyncResult = { status: "shared", snapshot: true, changed: [], conflicts: [], attempts: 1, recovery: null };
+const shared: SyncResult = { status: "shared", snapshot: true, changed: [], conflicts: [], attempts: 1, recovery: null, mergeBases: [] };
 
 /** sync の結果と、HEAD と違うパスを決めておけるエンジン */
 class FakeEngine implements SyncEngine {

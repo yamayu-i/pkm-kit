@@ -1,9 +1,18 @@
 import { Modal, Notice, Setting, type App } from "obsidian";
 import type { SyncLogEntry } from "../git/sync-log";
 
+export interface ConflictAction {
+	label: string;
+	run(): void | Promise<void>;
+}
+
 export interface ConflictItem {
 	path: string;
 	note: string;
+	/** 記録の行の解決のボタン（ADR-0103 の 3）。押すとモーダルを閉じてから実行する */
+	actions?: ConflictAction[];
+	/** false ならクリックで開かない（読めない記録など、Vault の一覧にないファイル） */
+	openable?: boolean;
 }
 
 /** 未解決のコンフリクト一覧。クリックでファイルを開く */
@@ -28,13 +37,24 @@ export class ConflictsModal extends Modal {
 		const list = this.contentEl.createEl("ul");
 		for (const item of this.items) {
 			const li = list.createEl("li");
-			const link = li.createEl("a", { text: item.path, href: "#" });
-			link.addEventListener("click", (e) => {
-				e.preventDefault();
-				this.close();
-				void this.app.workspace.openLinkText(item.path, "", false);
-			});
+			if (item.openable === false) {
+				li.createEl("code", { text: item.path });
+			} else {
+				const link = li.createEl("a", { text: item.path, href: "#" });
+				link.addEventListener("click", (e) => {
+					e.preventDefault();
+					this.close();
+					void this.app.workspace.openLinkText(item.path, "", false);
+				});
+			}
 			li.appendText(` — ${item.note}`);
+			for (const action of item.actions ?? []) {
+				const button = li.createEl("button", { text: action.label });
+				button.addEventListener("click", () => {
+					this.close();
+					void action.run();
+				});
+			}
 		}
 	}
 
