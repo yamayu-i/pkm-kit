@@ -65,7 +65,7 @@ ADR へのリンク。
 |---|---|
 | [HTML の表示](html-view.md) | View |
 
-### 図（pkm-drawio）
+### 図（pkm-diagram）
 
 | 面 | 種類 |
 |---|---|

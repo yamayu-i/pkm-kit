@@ -49,7 +49,7 @@ AI は色の値（hex）を書かず、役割の名前（`blue`、`amber` など
 
 ### 3. PNG のコピーと保存を、図すべてで使えるようにする
 
-- pkm-drawio の図の操作バー（ADR-0064）を、図すべて（`asset/` の SVG、Mermaid のコードブロック、既存の `.drawio.svg`）に広げる
+- 図の操作バー（ADR-0064）を、図すべて（`asset/` の SVG、Mermaid のコードブロック、既存の `.drawio.svg`）に広げる
 - 操作は「コピー」「PNG で保存」「拡大」の 3 つ。`.drawio.svg` は今の「SVG・XML のコピー」「編集」も残す
 - PNG は、ノートをダークテーマで見ていても常にライトの色で作る（貼り付け先の多くは白い背景）
 - Mermaid は、Obsidian の API（`loadMermaid`）でラベルを `<text>` にする設定で描き直してから PNG にする。Obsidian が描いたものは、ラベルが `foreignObject` で Canvas が汚染されるうえ、CSS の色が SVG を取り出すと消えるため
@@ -67,7 +67,8 @@ AI は色の値（hex）を書かず、役割の名前（`blue`、`amber` など
 
 - 既存の `.drawio.svg` の表示・コピー・編集（embed）・`render` はそのまま。移行はしない
 - 新しい図は 1 の 3 方式で作る。drawio の新しい機能（自前のエディタ、`build` の配置の改善）は作らない
-- プラグインは pkm-drawio のまま広げる。ID を変えると子の Vault の設定に移行が要るため、名前は変えない
+- プラグインは pkm-drawio を広げ、ID を `pkm-diagram`（表示名 PKM Diagram）に改名する。図全般を扱うのに drawio の名前は合わない。子の Vault の設定（`community-plugins.json`、`hotkeys.json`、スニペットの `command`）は移行 `0102-pkm-diagram` で直す
+- CLI は `.kit/bin/diagram.mjs` にする。`.kit/bin/drawio.mjs` は旧名として残し、同じものを動かす
 
 ### 6. 安全性
 
@@ -78,7 +79,7 @@ AI は色の値（hex）を書かず、役割の名前（`blue`、`amber` など
 
 - 「AI が描いて、人が見る」が主な使い方なら、見やすさは描く段階で決まる。AI に配置まで任せる c が最も見やすく、a・b は手間と直しやすさで勝る。場面ごとに選べば、すべてを 1 つの方式でまかなうより良い
 - テーマを生成すれば、方式が違っても色と形が揃い、AI が色を選ぶ手間とばらつきがなくなる
-- 操作バーは pkm-drawio にすでにあり（コピー、PNG の作成）、広げるだけで済む
+- 操作バーは pkm-drawio（改名して pkm-diagram）にすでにあり（コピー、PNG の作成）、広げるだけで済む
 - drawio を残せば、既存の図と、手で細かく直したいときの逃げ道を失わない。新しい開発をしなければ、費用は増えない
 
 ## 却下した案
@@ -93,8 +94,8 @@ AI は色の値（hex）を書かず、役割の名前（`blue`、`amber` など
 ## 影響
 
 - スキル: `drawio-diagram` を、3 方式から選んで描く手順に変える（名前を変えるかは実装時に決める）。子向けの規約（`.claude/docs/vault-conventions.md`）の図の規則を変える
-- CLI: `.kit/bin/` に、c の SVG へのスタイルの差し込みと検査、b の D2 の描画（テーマの読み込み）を足す。D2 は外部のコマンド（`d2`）を使い、リポジトリの依存には足さない。Claude Code の環境に入れる
+- CLI: `.kit/bin/diagram.mjs` に、c の SVG へのスタイルの差し込みと検査、b の D2 の描画（テーマの読み込み）を足す。D2 は外部のコマンド（`d2`）を使い、リポジトリの依存には足さない。Claude Code の環境に入れる
 - デザイン: `tokens.json` から、Mermaid の CSS（`pkm-theme.css`）、D2 のテーマ、SVG のスタイルを生成する
-- pkm-drawio: 操作バーを図すべてに広げ、PNG の保存と全画面の拡大表示、大きい図の印を足す
+- pkm-diagram（旧 pkm-drawio）: 操作バーを図すべてに広げ、PNG の保存と全画面の拡大表示、大きい図の印を足す
 - ADR-0064 と ADR-0085 は一部置換になる
-- 子の Vault のファイルは変えないので、移行はない。子から見える変更は `.kit/changes/` に書く
+- 移行 `0102-pkm-diagram`: プラグインの改名に合わせて、子の Vault の設定を直す。子から見える変更は `.kit/changes/` に書く

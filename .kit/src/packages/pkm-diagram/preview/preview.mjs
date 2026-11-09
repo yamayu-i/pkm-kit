@@ -1,13 +1,13 @@
 /**
- * pkm-drawio を、Obsidian なしで Chromium に出して確かめる（ADR-0064）。
+ * pkm-diagram を、Obsidian なしで Chromium に出して確かめる（ADR-0064）。
  * - 編集画面: https://embed.diagrams.net/ を偽の Draw.io（fake-drawio.html）に差し替えて、
  *   init → load → save → export（xmlsvg）→ 書く、の往復。別の origin からの save は受け取らない。
  *   編集中にファイルが変わったら上書きせず、別名で保存できる。新しい図を作れる
  * - 操作バー: 図の画像に載せると右上に出て、普通の SVG には出ない。タッチで押しても出る。描画した画面の検査（docs/design.md）
  * - PNG: 共有用の SVG（foreignObject を含む）を 2 倍の PNG にできる
  *
- * 使い方: pnpm --filter pkm-drawio preview:ui  → preview/out/toolbar-<light|dark>.png
- * 初回だけ Chromium を入れる: pnpm --filter pkm-drawio exec playwright install chromium（入れられない環境では CHROMIUM_PATH）
+ * 使い方: pnpm --filter pkm-diagram preview:ui  → preview/out/toolbar-<light|dark>.png
+ * 初回だけ Chromium を入れる: pnpm --filter pkm-diagram exec playwright install chromium（入れられない環境では CHROMIUM_PATH）
  * 本物の Draw.io には繋がない。CI では動かない（pkm-html の preview:ui と同じ）
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -212,7 +212,7 @@ await browser.close();
 
 for (const p of [...new Set(problems)]) console.error(p);
 if (problems.length > 0) {
-	console.error(`pkm-drawio の preview: ${new Set(problems).size} 件の問題`);
+	console.error(`pkm-diagram の preview: ${new Set(problems).size} 件の問題`);
 	process.exit(1);
 }
-console.log("pkm-drawio の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・描画した画面の検査・PNG）");
+console.log("pkm-diagram の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・描画した画面の検査・PNG）");

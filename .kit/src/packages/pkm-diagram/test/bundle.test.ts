@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-drawio/main.js", import.meta.url));
+const bundlePath = fileURLToPath(new URL("../../../../../.obsidian/plugins/pkm-diagram/main.js", import.meta.url));
 
 /** ビルド済みの main.js を、Obsidian の API のモックの上で、Buffer も Node の API もない状態（モバイル相当）で動かす */
 function load() {

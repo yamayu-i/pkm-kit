@@ -22,7 +22,7 @@ export async function exportToTmp(app: App, file: TFile): Promise<TFile | null> 
 		},
 	});
 	if (result.errors.length > 0) {
-		console.warn("pkm-drawio: 書き出せませんでした", result.errors);
+		console.warn("pkm-diagram: 書き出せませんでした", result.errors);
 		new Notice(`書き出せませんでした（何も書いていません）:\n${result.errors.join("\n")}`, 12000);
 		return null;
 	}

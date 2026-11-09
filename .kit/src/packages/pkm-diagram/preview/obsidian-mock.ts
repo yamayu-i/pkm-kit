@@ -1,4 +1,4 @@
-/** preview 用の obsidian のモック。pkm-drawio が使う形だけ（Chromium で Obsidian なしに動かす） */
+/** preview 用の obsidian のモック。pkm-diagram が使う形だけ（Chromium で Obsidian なしに動かす） */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Obsidian が HTMLElement に足している関数

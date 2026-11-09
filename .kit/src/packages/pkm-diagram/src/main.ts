@@ -1,5 +1,5 @@
 /**
- * pkm-drawio: asset/*.drawio.svg（編集用 XML を内包した SVG）の図を、ノートからコピー・編集し、
+ * pkm-diagram: asset/*.drawio.svg（編集用 XML を内包した SVG）の図を、ノートからコピー・編集し、
  * tmp/ への書き出しで埋め込む（ADR-0064）。表示は Obsidian の標準の画像の表示のまま。ほかのプラグインには依存しない
  */
 import { MarkdownView, Menu, Notice, Plugin, TFile, type Editor } from "obsidian";

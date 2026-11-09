@@ -1,20 +1,20 @@
 /**
- * Draw.io の図の CLI（ADR-0064）。PC の Claude Code とスキルが使う。プラグインと同じ src/core/ の処理を使う。
- * ビルドして .kit/bin/drawio.mjs に置く（子の Vault はビルドせずに使う）。
+ * 図の CLI（ADR-0064、ADR-0102）。PC の Claude Code とスキルが使う。プラグインと同じ src/core/ の処理を使う。
+ * ビルドして .kit/bin/diagram.mjs に置く（子の Vault はビルドせずに使う）。
  *
- *   node .kit/bin/drawio.mjs export <ノート.md|.html> [--output <tmp/…>] [--vault <ルート>]
+ *   node .kit/bin/diagram.mjs export <ノート.md|.html> [--output <tmp/…>] [--vault <ルート>]
  *       図の参照を、編集用 XML を除いた SVG の data URI に置き換えて書き出す（既定 tmp/<ファイル名>。あれば番号を付ける）
- *   node .kit/bin/drawio.mjs check <ファイルかフォルダ…> [--vault <ルート>]
+ *   node .kit/bin/diagram.mjs check <ファイルかフォルダ…> [--vault <ルート>]
  *       書き出したものに、図のファイルへの参照・編集用 XML が残っていないかを見る
- *   node .kit/bin/drawio.mjs extract <図.drawio.svg> [--plain]   編集用 XML（全ページ）を標準出力に出す（--plain は圧縮したページを展開する）
- *   node .kit/bin/drawio.mjs strip <図.drawio.svg> [--output <…>]   共有用の SVG（編集用 XML を除く）
+ *   node .kit/bin/diagram.mjs extract <図.drawio.svg> [--plain]   編集用 XML（全ページ）を標準出力に出す（--plain は圧縮したページを展開する）
+ *   node .kit/bin/diagram.mjs strip <図.drawio.svg> [--output <…>]   共有用の SVG（編集用 XML を除く）
  *
  * Claude Code が図を作る・直す（ADR-0085）。描画は自前で、Draw.io で開いて保存すれば描き直される
- *   node .kit/bin/drawio.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
+ *   node .kit/bin/diagram.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
  *       短い JSON から配置を計算し、編集用 XML と描画を作る（- は標準入力。既存のファイルは --force で上書き）
- *   node .kit/bin/drawio.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
+ *   node .kit/bin/diagram.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
  *       編集用 XML から描画を作り直す（--output がなければ、図の SVG をその場で書き直す）
- *   node .kit/bin/drawio.mjs inspect <図.drawio.svg|.drawio|.xml>
+ *   node .kit/bin/diagram.mjs inspect <図.drawio.svg|.drawio|.xml>
  *       ページ・セル（ID・形・ラベル・位置）・辺・描けない書式を出す
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -34,13 +34,13 @@ export interface Io {
 }
 
 const USAGE = `使い方:
-  drawio.mjs export <ノート.md|.html> [--output <パス>] [--vault <ルート>]
-  drawio.mjs check <ファイルかフォルダ…> [--vault <ルート>]
-  drawio.mjs extract <図.drawio.svg> [--plain]
-  drawio.mjs strip <図.drawio.svg> [--output <パス>]
-  drawio.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
-  drawio.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
-  drawio.mjs inspect <図.drawio.svg|.drawio|.xml>`;
+  diagram.mjs export <ノート.md|.html> [--output <パス>] [--vault <ルート>]
+  diagram.mjs check <ファイルかフォルダ…> [--vault <ルート>]
+  diagram.mjs extract <図.drawio.svg> [--plain]
+  diagram.mjs strip <図.drawio.svg> [--output <パス>]
+  diagram.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
+  diagram.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
+  diagram.mjs inspect <図.drawio.svg|.drawio|.xml>`;
 
 /** 値をとらない指定 */
 const FLAGS = new Set(["force", "plain"]);
@@ -300,7 +300,7 @@ export async function main(argv: string[], io: Io): Promise<number> {
 
 // テストから import したときは動かさない
 const invoked = process.argv[1] ?? "";
-if (/drawio\.(mjs|ts)$/.test(invoked)) {
+if (/(diagram|drawio)\.(mjs|ts)$/.test(invoked)) {
 	process.exitCode = await main(process.argv.slice(2), {
 		cwd: process.cwd(),
 		out: (t) => process.stdout.write(`${t}\n`),

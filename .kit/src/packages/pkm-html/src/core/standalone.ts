@@ -3,7 +3,7 @@
  * 取り除く処理と画像の埋め込みは表示（ADR-0037）と同じ関数を使い、トークンは prefers-color-scheme 版を埋め込む。
  * DOM の解析は呼ぶ側が渡す（Obsidian では DOMParser、CLI では linkedom）。Obsidian に依存しない
  */
-import { toSharingSvg } from "../../../pkm-drawio/src/core/svg.ts";
+import { toSharingSvg } from "../../../pkm-diagram/src/core/svg.ts";
 import { CSP } from "./policy.ts";
 import { inlineImages, MARK_ATTRIBUTE, stripDangerous, type ReadImage } from "./sanitize.ts";
 

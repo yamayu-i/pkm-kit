@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { main } from "../cli/drawio.ts";
+import { main } from "../cli/diagram.ts";
 import { svgDataUri } from "../src/core/encoding.ts";
 import { extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
 
@@ -15,7 +15,7 @@ let err: string[];
 const run = (...argv: string[]) => main(argv, { cwd: root, out: (t) => out.push(t), err: (t) => err.push(t) });
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), "pkm-drawio-cli-"));
+	root = mkdtempSync(join(tmpdir(), "pkm-diagram-cli-"));
 	out = [];
 	err = [];
 	mkdirSync(join(root, "asset"));
@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-describe("drawio.mjs", () => {
+describe("diagram.mjs", () => {
 	it("export: tmp/ に書き出し、元のノートと図は変えない。2 回目は別名で同じ中身", async () => {
 		expect(await run("export", "daily/note.md")).toBe(0);
 		const first = readFileSync(join(root, "tmp", "note.md"), "utf8");

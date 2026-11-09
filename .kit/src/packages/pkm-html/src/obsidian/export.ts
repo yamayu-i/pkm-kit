@@ -2,7 +2,7 @@
  * HTML を、トークンと画像を埋め込んだ 1 ファイルにして tmp/ に書き出す（ADR-0044）。元の HTML と画像は変えない
  */
 import { Notice, TFile, type App } from "obsidian";
-import { exportPath, TMP_FOLDER } from "../../../pkm-drawio/src/core/names.ts";
+import { exportPath, TMP_FOLDER } from "../../../pkm-diagram/src/core/names.ts";
 import { MAX_IMAGE_BYTES } from "../core/policy.ts";
 import { buildStandalone } from "../core/standalone.ts";
 import standaloneCss from "../../tokens-standalone.css";

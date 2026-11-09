@@ -1066,7 +1066,7 @@ var DrawioEditorModal = class extends import_obsidian3.Modal {
           this.forceClose();
           break;
         case "error":
-          new import_obsidian3.Notice(`pkm-drawio: ${effect.message}`, 8e3);
+          new import_obsidian3.Notice(`pkm-diagram: ${effect.message}`, 8e3);
           break;
       }
     }
@@ -1140,7 +1140,7 @@ async function exportToTmp(app, file) {
     }
   });
   if (result.errors.length > 0) {
-    console.warn("pkm-drawio: \u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F", result.errors);
+    console.warn("pkm-diagram: \u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F", result.errors);
     new import_obsidian4.Notice(`\u66F8\u304D\u51FA\u305B\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u4F55\u3082\u66F8\u3044\u3066\u3044\u307E\u305B\u3093\uFF09:
 ${result.errors.join("\n")}`, 12e3);
     return null;

@@ -10,7 +10,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
   - 先頭に `/` を付けない。空白などは `%20` にエンコードするか、ファイル名に空白を使わない
   - 見出しへのリンクは `[…](topics/foo.md#見出し)`
 - 画像・PDF などの添付は `asset/` 直下に置き、`![説明](asset/foo.png)` で参照する
-- 図は Draw.io の編集可能 SVG を `asset/<名前>.drawio.svg` に置き、`![説明](asset/<名前>.drawio.svg)` で参照する（描画と編集用 XML を 1 ファイルに持つ。[ADR-0064](../../.kit/src/docs/adr/0064-drawio-diagrams.md)）。中の XML だけを書き換えると描画と食い違うので、図を変えるのは Draw.io（pkm-drawio の編集）か、Claude Code なら CLI の `build` / `render`（描画と XML を同時に書く。[drawio-diagram](../skills/drawio-diagram/SKILL.md)、[ADR-0085](../../.kit/src/docs/adr/0085-drawio-cli-build-render.md)）を通す。中身を把握するときは `node .kit/bin/drawio.mjs inspect <図>`、XML を読むときは `extract <図> --plain`
+- 図は Draw.io の編集可能 SVG を `asset/<名前>.drawio.svg` に置き、`![説明](asset/<名前>.drawio.svg)` で参照する（描画と編集用 XML を 1 ファイルに持つ。[ADR-0064](../../.kit/src/docs/adr/0064-drawio-diagrams.md)）。中の XML だけを書き換えると描画と食い違うので、図を変えるのは Draw.io（pkm-diagram の編集）か、Claude Code なら CLI の `build` / `render`（描画と XML を同時に書く。[drawio-diagram](../skills/drawio-diagram/SKILL.md)、[ADR-0085](../../.kit/src/docs/adr/0085-drawio-cli-build-render.md)）を通す。中身を把握するときは `node .kit/bin/diagram.mjs inspect <図>`、XML を読むときは `extract <図> --plain`
 - 改行は Markdown どおり（段落は空行で区切る。単独の改行は表示上つながる）
 - インデントはスペース 2 つ（タブを使わない）
 - メタデータは先頭の YAML frontmatter に書く（`title`, `tags`, `created`, `updated`, `sources` など）
@@ -44,7 +44,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
 - ファイル名: ノートは日本語のタイトルを入力するだけで作ってよい（入力した文字がファイル名と `title` になる）。あとで頼まれたときに、[note-rename](../skills/note-rename/SKILL.md) でファイル名だけを英語のケバブケース（英小文字・数字・ハイフン）に改名する。`title` は日本語のまま残す。`daily/`・`issue/`・`routine/`・`member/`・`asset/`・`tmp/`・`template/`・`sources/` は、決まった名前のまま改名しない（[ADR-0015](../../.kit/harness/docs/adr/0015-english-file-names.md)）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
-- 外部に共有する md を `tmp/` に作るときは、最後に `node .kit/bin/drawio.mjs export <元のファイル>` を通す（図を、編集用 XML を除いた SVG の data URI にして埋め込み、`tmp/` に書く）。html は `node .kit/bin/html.mjs export <元のファイル>` を通す（図に加えて、Vault の中の画像とデザイントークンの値を埋め込み、スクリプトと外部の読み込みを除く。[ADR-0044](../../.kit/src/docs/adr/0044-html-standalone-export.md)）。既に `tmp/` にあるものは `node .kit/bin/drawio.mjs check tmp/` で、図への参照が残っていないかを確かめる
+- 外部に共有する md を `tmp/` に作るときは、最後に `node .kit/bin/diagram.mjs export <元のファイル>` を通す（図を、編集用 XML を除いた SVG の data URI にして埋め込み、`tmp/` に書く）。html は `node .kit/bin/html.mjs export <元のファイル>` を通す（図に加えて、Vault の中の画像とデザイントークンの値を埋め込み、スクリプトと外部の読み込みを除く。[ADR-0044](../../.kit/src/docs/adr/0044-html-standalone-export.md)）。既に `tmp/` にあるものは `node .kit/bin/diagram.mjs check tmp/` で、図への参照が残っていないかを確かめる
 - `tmp/` の外のノートから `tmp/` へリンクしない（ほかの端末にはないので、リンク切れになる）。残したいもの・ほかの端末でも見たいものは `tmp/` の外に置く
 
 ## 共通 frontmatter

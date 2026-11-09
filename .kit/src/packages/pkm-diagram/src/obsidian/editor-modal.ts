@@ -108,7 +108,7 @@ export class DrawioEditorModal extends Modal {
 					this.forceClose();
 					break;
 				case "error":
-					new Notice(`pkm-drawio: ${effect.message}`, 8000);
+					new Notice(`pkm-diagram: ${effect.message}`, 8000);
 					break;
 			}
 		}

@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import esbuild from "esbuild";
 
 /** ビルド結果は Vault 内のプラグインフォルダへ直接出す（モバイルはビルドできないのでコミットする） */
-// PKM_DRAWIO_OUTDIR はビルド再現性の検証（security-scan）用
-const outdir = process.env.PKM_DRAWIO_OUTDIR ?? fileURLToPath(new URL("../../../../.obsidian/plugins/pkm-drawio/", import.meta.url));
+// PKM_DIAGRAM_OUTDIR はビルド再現性の検証（security-scan）用
+const outdir = process.env.PKM_DIAGRAM_OUTDIR ?? fileURLToPath(new URL("../../../../.obsidian/plugins/pkm-diagram/", import.meta.url));
 const watch = process.argv.includes("--watch");
 
 const plugin = {
@@ -28,7 +28,7 @@ const plugin = {
  */
 const bindir = process.env.KIT_BINDIR ?? fileURLToPath(new URL("../../../bin/", import.meta.url));
 const cli = {
-	entryPoints: ["cli/drawio.ts"],
+	entryPoints: ["cli/diagram.ts"],
 	outdir: bindir,
 	outExtension: { ".js": ".mjs" },
 	bundle: true,
@@ -49,4 +49,6 @@ if (watch) {
 	await (await esbuild.context(plugin)).watch();
 } else {
 	await Promise.all([esbuild.build(plugin), esbuild.build(cli)]);
+	// 旧名（ADR-0102 で pkm-drawio を pkm-diagram にした）。子の Vault の手順やメモが呼んでも動くように残す
+	await writeFile(`${bindir}drawio.mjs`, '// 旧名。.kit/bin/diagram.mjs を使う（ADR-0102）\nimport "./diagram.mjs";\n');
 }

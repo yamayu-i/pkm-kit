@@ -180,9 +180,9 @@ body.theme-dark {
 }
 
 /*
- * pkm-drawio（ADR-0064）
+ * pkm-diagram（ADR-0064）
  * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
- * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-drawio/styles.css にする。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-diagram/styles.css にする。
  */
 
 :is([class*="vt-drawio-"], [class*="vt-drawio-"] *):focus-visible {

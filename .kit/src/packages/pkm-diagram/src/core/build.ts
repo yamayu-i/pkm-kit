@@ -791,5 +791,5 @@ function pageXml(page: PageSpec, pageIndex: number, where: string): string {
 /** spec から編集用 XML を作る */
 export function buildXml(pages: PageSpec[]): string {
 	const body = pages.map((p, i) => pageXml(p, i, pages.length > 1 ? `pages[${i}]` : "ページ")).join("");
-	return `<mxfile host="pkm-kit" agent="pkm-drawio-cli" version="1">${body}</mxfile>`;
+	return `<mxfile host="pkm-kit" agent="pkm-diagram-cli" version="1">${body}</mxfile>`;
 }

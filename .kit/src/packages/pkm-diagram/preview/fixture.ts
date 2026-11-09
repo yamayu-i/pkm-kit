@@ -1,5 +1,5 @@
 /**
- * preview の画面: pkm-drawio の操作バー・編集画面・PNG を、Obsidian なしで Chromium に出す。
+ * preview の画面: pkm-diagram の操作バー・編集画面・PNG を、Obsidian なしで Chromium に出す。
  * obsidian はモック（preview/obsidian-mock.ts）。Vault は Map
  */
 import { Notice, TFile } from "obsidian";

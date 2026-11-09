@@ -29,7 +29,7 @@ packages/design/tokens.json（正本）
   │    ├─ packages/pkm-task/tokens.css        … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
-  │    ├─ packages/pkm-drawio/tokens.css      … プラグインの CSS 変数。ビルドで styles.css の前に連結する
+  │    ├─ packages/pkm-diagram/tokens.css      … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ .obsidian/snippets/pkm-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
   │    ├─ docs/design-tokens.md                 … 値とコントラスト比の一覧
   │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）
@@ -200,7 +200,7 @@ packages/design/tokens.json（正本）
 | 段階表示 | `.vt-stepper` / `.vt-step` | 今の段階だけ丸い番号 + ラベル + 件数（赤い tonal）を secondary-container の面で出す。ほかは 40px の番号の丸に縮め、細い線でつなぐ。済みは緑のチェック、残りがあれば右上に赤い点。名前と件数はツールチップ（`title` / `aria-label`）。狭いペインでも横スクロールにしない |
 | 一覧の行 | `.vt-table` / `.vt-tr` | 押せるカードの行（48px 以上）。選んだ行は primary の枠 + secondary-container の面。狭いペインでは補助の列を隠す |
 | 操作バー | `.vt-actionbar` | 選んだ行への操作。下に貼り付き、選ぶと浮き上がる（`--vt-elevation-4`） |
-| 図の操作バー | `.vt-drawio-toolbar` / `.vt-drawio-tool` | 図の画像の右上に浮かべる丸いバー（`--vt-surface-container-high` + `--vt-elevation-4`）。32px のアイコン + ラベルのボタン（コピー・編集）。pkm-drawio（ADR-0064） |
+| 図の操作バー | `.vt-drawio-toolbar` / `.vt-drawio-tool` | 図の画像の右上に浮かべる丸いバー（`--vt-surface-container-high` + `--vt-elevation-4`）。32px のアイコン + ラベルのボタン（コピー・編集）。pkm-diagram（ADR-0064） |
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
 | カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠 |
@@ -353,5 +353,5 @@ pnpm preview:ui board inbox  # 画面を絞る（header / routine / daily / boar
 - **必須**: UI を変えたら `pnpm preview:ui` を通し、変えた画面のライト / ダークと狭いペインを見てからコミットする
 - 新しい View を作ったら、fixture に足して同じように確認・検査できるようにする
 - pkm-html は `pnpm --filter pkm-html preview:ui`。見本の HTML の描画の検査に加えて、悪い HTML でスクリプトが動かず外部に通信しないこと、リンクと画像の扱いを確かめる
-- pkm-drawio は `pnpm --filter pkm-drawio preview:ui`。図の操作バーの描画の検査に加えて、偽の Draw.io との保存の往復と PNG を確かめる
+- pkm-diagram は `pnpm --filter pkm-diagram preview:ui`。図の操作バーの描画の検査に加えて、偽の Draw.io との保存の往復と PNG を確かめる
 - 値を変えるときは `tokens.json` を編集して `pnpm build`。ルールを変えるときはこのファイルと検査を一緒に変え、決定が変わるなら ADR を足す
