@@ -1,14 +1,25 @@
 /**
- * 図の画像に浮かべる操作バー（ADR-0064）。「コピー」「編集」の 2 つ。
- * Obsidian の描いた DOM（Reading view、Live Preview の widget）は書き換えず、body に置く 1 つの要素を画像の右上に重ねる。
- * マウスは画像に載せると出る。タッチは画像を押すと出て、ほかの場所を押すと消える
+ * 図に浮かべる操作バー（ADR-0064、ADR-0102）。「コピー」「PNG で保存」「拡大」と、Draw.io の図だけ「編集」。
+ * 対象は、Vault の SVG の図の画像（.drawio.svg と、AI が書く / D2 で描く .svg）と、ノートの Mermaid の図。
+ * Obsidian の描いた DOM（Reading view、Live Preview の widget）は書き換えず、body に置く 1 つの要素を図の右上に重ねる。
+ * マウスは図に載せると出る。タッチは図を押すと出て、ほかの場所を押すと消える
  */
 import { setIcon, type TFile } from "obsidian";
 
+export type DiagramTarget = { kind: "file"; file: TFile; drawio: boolean } | { kind: "mermaid"; svg: SVGSVGElement };
+
+export interface FoundDiagram {
+	/** 操作バーを重ねる要素（画像か、Mermaid の SVG） */
+	el: Element;
+	target: DiagramTarget;
+}
+
 export interface ToolbarHost {
-	/** 画像が図のファイルを指していれば、そのファイル */
-	resolve(img: HTMLImageElement): TFile | null;
-	copy(file: TFile, anchor: HTMLElement): void;
+	/** 要素が図（またはその中）なら、その図 */
+	resolve(el: Element): FoundDiagram | null;
+	copy(target: DiagramTarget, anchor: HTMLElement): void;
+	save(target: DiagramTarget): void;
+	expand(target: DiagramTarget): void;
 	edit(file: TFile): void;
 }
 
@@ -19,13 +30,14 @@ const HIDE_DELAY = 300;
 /** 画像の端からの間隔（px） */
 const INSET = 8;
 
-function isImg(el: EventTarget | null): el is HTMLImageElement {
-	return !!el && (el as Element).tagName === "IMG";
+function asElement(el: EventTarget | null): Element | null {
+	return el && typeof (el as Element).closest === "function" ? (el as Element) : null;
 }
 
 class DocToolbar {
 	readonly el: HTMLDivElement;
-	private current: { img: HTMLImageElement; file: TFile } | null = null;
+	private current: FoundDiagram | null = null;
+	private readonly editButton: HTMLButtonElement;
 	private hideTimer: number | null = null;
 	private pinned = false;
 
@@ -35,7 +47,7 @@ class DocToolbar {
 	) {
 		this.el = doc.body.createDiv({ cls: "vt-drawio-toolbar", attr: { role: "toolbar", "aria-label": "Diagram actions" } });
 		this.el.hidden = true;
-		const button = (icon: string, label: string, onClick: (file: TFile, anchor: HTMLElement) => void) => {
+		const button = (icon: string, label: string, onClick: (target: DiagramTarget, anchor: HTMLElement) => void) => {
 			const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
 			setIcon(b, icon);
 			b.createSpan({ cls: "vt-drawio-tool-label", text: label });
@@ -44,13 +56,20 @@ class DocToolbar {
 			b.addEventListener("click", (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				if (this.current) onClick(this.current.file, b);
+				if (this.current) onClick(this.current.target, b);
 			});
+			return b;
 		};
-		button("copy", "Copy", (file, anchor) => this.host.copy(file, anchor));
-		button("pencil", "Edit", (file) => {
+		button("copy", "Copy", (target, anchor) => this.host.copy(target, anchor));
+		button("download", "Save PNG", (target) => this.host.save(target));
+		button("maximize-2", "Expand", (target) => {
 			this.hide();
-			this.host.edit(file);
+			this.host.expand(target);
+		});
+		this.editButton = button("pencil", "Edit", (target) => {
+			if (target.kind !== "file") return;
+			this.hide();
+			this.host.edit(target.file);
 		});
 		this.el.addEventListener("pointerenter", () => this.cancelHide());
 		this.el.addEventListener("pointerleave", (e) => {
@@ -61,10 +80,11 @@ class DocToolbar {
 		});
 	}
 
-	show(img: HTMLImageElement, file: TFile, pinned: boolean): void {
+	show(found: FoundDiagram, pinned: boolean): void {
 		this.cancelHide();
-		this.current = { img, file };
+		this.current = found;
 		this.pinned = pinned;
+		this.editButton.hidden = !(found.target.kind === "file" && found.target.drawio);
 		this.el.hidden = false;
 		this.place();
 	}
@@ -89,7 +109,7 @@ class DocToolbar {
 	/** 画像の右上の内側に置く。画像が小さければ画像の上に出す */
 	private place(): void {
 		if (!this.current) return;
-		const rect = this.current.img.getBoundingClientRect();
+		const rect = this.current.el.getBoundingClientRect();
 		if (rect.width === 0 && rect.height === 0) {
 			this.hide();
 			return;
@@ -108,16 +128,15 @@ class DocToolbar {
 			this.cancelHide();
 			return;
 		}
-		if (isImg(target)) {
-			if (this.current?.img === target) {
+		const el = asElement(target);
+		const found = el ? this.host.resolve(el) : null;
+		if (found) {
+			if (this.current?.el === found.el) {
 				this.cancelHide();
 				return;
 			}
-			const file = this.host.resolve(target);
-			if (file) {
-				this.show(target, file, false);
-				return;
-			}
+			this.show(found, false);
+			return;
 		}
 		if (this.current) this.scheduleHide();
 	}
@@ -125,10 +144,11 @@ class DocToolbar {
 	onPointerDown(e: PointerEvent): void {
 		const target = e.target;
 		if (this.el.contains(target as Node)) return;
-		if (e.pointerType !== "mouse" && isImg(target)) {
-			const file = this.host.resolve(target);
-			if (file) {
-				this.show(target, file, true);
+		const el = asElement(target);
+		if (e.pointerType !== "mouse" && el) {
+			const found = this.host.resolve(el);
+			if (found) {
+				this.show(found, true);
 				return;
 			}
 		}

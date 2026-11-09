@@ -3,7 +3,9 @@
  * - 編集画面: https://embed.diagrams.net/ を偽の Draw.io（fake-drawio.html）に差し替えて、
  *   init → load → save → export（xmlsvg）→ 書く、の往復。別の origin からの save は受け取らない。
  *   編集中にファイルが変わったら上書きせず、別名で保存できる。新しい図を作れる
- * - 操作バー: 図の画像に載せると右上に出て、普通の SVG には出ない。タッチで押しても出る。描画した画面の検査（docs/design.md）
+ * - 操作バー: 図（Draw.io の図・普通の SVG の図・Mermaid の図）に載せると右上に出る。「編集」は Draw.io の図だけ。タッチで押しても出る。描画した画面の検査（docs/design.md）
+ * - 拡大表示: 全体を表示・拡大・100%・ドラッグ。描画した画面の検査
+ * - Mermaid の PNG: foreignObject を <text> にし、ライトの色で作る
  * - PNG: 共有用の SVG（foreignObject を含む）を 2 倍の PNG にできる
  *
  * 使い方: pnpm --filter pkm-diagram preview:ui  → preview/out/toolbar-<light|dark>.png
@@ -39,8 +41,8 @@ for (const theme of ["light", "dark"]) {
 	await writeFile(
 		`${out}${theme}.html`,
 		`<!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../styles.css">
-<style>body{margin:0;padding:24px;background:var(--vt-surface);color:var(--vt-on-surface);font-family:sans-serif} #note{width:480px;height:1200px} .modal-container{position:fixed;inset:0} .modal{position:absolute;inset:24px}</style>
+<link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../styles.css"><link rel="stylesheet" href="../../../../../../.obsidian/snippets/pkm-theme.css">
+<style>body{margin:0;padding:24px;background:var(--vt-surface);color:var(--vt-on-surface);font-family:sans-serif} #note{width:480px;height:1200px} .image-embed{display:block} .modal-container{position:fixed;inset:0} .modal{position:absolute;inset:24px} .modal.vt-diagram-zoom{width:auto;height:auto}</style>
 </head><body class="theme-${theme}"><div id="note" class="markdown-preview-view"></div><script src="fixture.js"></script></body></html>`,
 	);
 }
@@ -166,12 +168,23 @@ for (const theme of ["light", "dark"]) {
 	const { page, external } = await open(theme);
 	await page.evaluate(() => window.dv.mountToolbar());
 	await page.waitForTimeout(200);
-	await page.hover("#img-plain");
-	await page.waitForTimeout(400);
-	if (await page.locator(".vt-drawio-toolbar").isVisible()) problems.push(`操作バー ${theme}: 普通の SVG に出た`);
-	await page.hover("#img-drawio");
 	const bar = page.locator(".vt-drawio-toolbar");
+	const edit = page.locator(".vt-drawio-tool", { hasText: "Edit" });
+	// 普通の SVG の図: 出るが、編集はない
+	await page.hover("#img-plain");
+	await page.waitForTimeout(200);
+	if (!(await bar.isVisible())) problems.push(`操作バー ${theme}: 普通の SVG の図に出ない`);
+	if (await edit.isVisible()) problems.push(`操作バー ${theme}: 普通の SVG の図に「編集」が出た`);
+	// Mermaid の図: 中の要素に載せても出る
+	const mermaidBox = await page.locator("#mermaid svg").boundingBox();
+	await page.mouse.move(mermaidBox.x + 70, mermaidBox.y + 60);
+	await page.waitForTimeout(200);
+	if (!(await bar.isVisible())) problems.push(`操作バー ${theme}: Mermaid の図に出ない`);
+	if (await edit.isVisible()) problems.push(`操作バー ${theme}: Mermaid の図に「編集」が出た`);
+	await page.locator(".vt-drawio-tool", { hasText: "Save PNG" }).click();
+	await page.hover("#img-drawio");
 	if (!(await bar.isVisible())) problems.push(`操作バー ${theme}: 図に載せても出ない`);
+	if (!(await edit.isVisible())) problems.push(`操作バー ${theme}: Draw.io の図に「編集」がない`);
 	const img = await page.locator("#img-drawio").boundingBox();
 	const box = await bar.boundingBox();
 	if (!img || !box || box.x < img.x || box.x + box.width > img.x + img.width + 1 || box.y < img.y || box.y > img.y + 16) {
@@ -183,9 +196,13 @@ for (const theme of ["light", "dark"]) {
 	await page.screenshot({ path: `${out}toolbar-${theme}.png`, clip: { x: 0, y: 0, width: 560, height: 420 } });
 	for (const p of await page.evaluate(auditInPage, { rootSelector: ".vt-drawio-toolbar", targetMin })) problems.push(`操作バー ${theme}: [${p.rule}] ${p.where}: ${p.message}`);
 	await page.locator(".vt-drawio-tool", { hasText: "Copy" }).click();
+	await page.locator(".vt-drawio-tool", { hasText: "Save PNG" }).click();
 	await page.locator(".vt-drawio-tool", { hasText: "Edit" }).click();
+	await page.hover("#img-drawio");
+	await page.locator(".vt-drawio-tool", { hasText: "Expand" }).click();
 	const actions = await page.evaluate(() => window.__actions);
-	if (JSON.stringify(actions) !== JSON.stringify(["copy:asset/sys.drawio.svg", "edit:asset/sys.drawio.svg"])) problems.push(`操作バー ${theme}: 押した結果が違う（${actions.join(", ")}）`);
+	const expected = ["save:mermaid", "copy:asset/sys.drawio.svg", "save:asset/sys.drawio.svg", "edit:asset/sys.drawio.svg", "expand:asset/sys.drawio.svg"];
+	if (JSON.stringify(actions) !== JSON.stringify(expected)) problems.push(`操作バー ${theme}: 押した結果が違う（${actions.join(", ")}）`);
 	// 離れると消える
 	await page.mouse.move(900, 700);
 	await page.waitForTimeout(500);
@@ -200,7 +217,49 @@ for (const theme of ["light", "dark"]) {
 	console.log(`${out}toolbar-${theme}.png`);
 }
 
-// 5. PNG
+// 5. 拡大表示（全体を表示・拡大・100%、スクリーンショットと描画した画面の検査）
+for (const theme of ["light", "dark"]) {
+	const { page } = await open(theme);
+	await page.evaluate(() => window.dv.openZoom("asset/sys.drawio.svg"));
+	const image = page.locator(".vt-diagram-zoom-image");
+	await waitFor(`拡大 ${theme}: 表示`, async () => ((await image.getAttribute("style")) ?? "").includes("scale("));
+	const percent = page.locator(".vt-diagram-zoom-percent");
+	const fitText = await percent.textContent();
+	const stage = await page.locator(".vt-diagram-zoom-stage").boundingBox();
+	const shown = await image.boundingBox();
+	if (!stage || !shown || shown.x < stage.x - 1 || shown.x + shown.width > stage.x + stage.width + 1 || Math.abs(shown.x + shown.width / 2 - (stage.x + stage.width / 2)) > 2) {
+		problems.push(`拡大 ${theme}: 全体を表示で、真ん中に収まっていない（${JSON.stringify(stage)} / ${JSON.stringify(shown)}）`);
+	}
+	await page.locator(".vt-diagram-zoom-button[aria-label='Zoom in']").click();
+	if ((await percent.textContent()) === fitText) problems.push(`拡大 ${theme}: 拡大のボタンで変わらない`);
+	await page.locator(".vt-diagram-zoom-button[aria-label='100%']").click();
+	if ((await percent.textContent()) !== "100%") problems.push(`拡大 ${theme}: 100% にならない（${await percent.textContent()}）`);
+	// ドラッグで動かす
+	const before = await image.boundingBox();
+	await page.mouse.move(400, 400);
+	await page.mouse.down();
+	await page.mouse.move(460, 430, { steps: 4 });
+	await page.mouse.up();
+	const moved = await image.boundingBox();
+	if (!before || !moved || Math.abs(moved.x - before.x - 60) > 2 || Math.abs(moved.y - before.y - 30) > 2) problems.push(`拡大 ${theme}: ドラッグで動かない`);
+	await page.locator(".vt-diagram-zoom-button[aria-label='Fit']").click();
+	await page.screenshot({ path: `${out}zoom-${theme}.png` });
+	for (const p of await page.evaluate(auditInPage, { rootSelector: ".vt-diagram-zoom-bar", targetMin })) problems.push(`拡大 ${theme}: [${p.rule}] ${p.where}: ${p.message}`);
+	await page.close();
+	console.log(`${out}zoom-${theme}.png`);
+}
+
+// 6. Mermaid の PNG（foreignObject を <text> にし、ダークで描いていてもライトの色で作る）
+for (const theme of ["light", "dark"]) {
+	const { page } = await open(theme);
+	await page.evaluate(() => window.dv.mountToolbar());
+	const png = await page.evaluate(() => window.dv.mermaidPng());
+	if (png.width !== 600 || png.height !== 240 || png.bytes < 100) problems.push(`Mermaid の PNG ${theme}: 大きさが違う（${JSON.stringify(png)}）`);
+	if (png.foreignObjects !== 0 || !png.hasText) problems.push(`Mermaid の PNG ${theme}: ラベルを <text> にしていない`);
+	await page.close();
+}
+
+// 7. PNG
 {
 	const { page } = await open();
 	const png = await page.evaluate(() => window.dv.pngSize());
@@ -215,4 +274,4 @@ if (problems.length > 0) {
 	console.error(`pkm-diagram の preview: ${new Set(problems).size} 件の問題`);
 	process.exit(1);
 }
-console.log("pkm-diagram の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・描画した画面の検査・PNG）");
+console.log("pkm-diagram の preview: 問題なし（編集の往復・origin・衝突・新しい図・操作バー・拡大表示・描画した画面の検査・PNG・Mermaid の PNG）");

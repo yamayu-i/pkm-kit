@@ -1,9 +1,10 @@
 /**
- * 図のコピー（ADR-0064）。PNG / SVG（共有用。編集用 XML を除く）/ XML（全ページの編集用 XML）。
- * 失敗したら通知する（成功したふりをしない）
+ * 図のコピー（ADR-0064、ADR-0102）。PNG / SVG（共有用。編集用 XML を除く）/ XML（全ページの編集用 XML。Draw.io の図だけ）。
+ * PNG は常にライトの色で、ライトの面の色を背景にする。失敗したら通知する（成功したふりをしない）
  */
 import { Notice } from "obsidian";
 import { SVG_MIME as SVG_MIME_TYPE, svgDataUri } from "../core/encoding.ts";
+import { forceLightSvg, PNG_BACKGROUND } from "../core/png.ts";
 import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../core/svg.ts";
 
 export type CopyFormat = "png" | "svg" | "xml";
@@ -13,6 +14,11 @@ export const COPY_FORMATS: ReadonlyArray<{ format: CopyFormat; label: string; ic
 	{ format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
 	{ format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" },
 ];
+
+/** 図の種類ごとに選べるコピーの形式（XML は Draw.io の図だけ） */
+export function copyFormatsFor(drawio: boolean): typeof COPY_FORMATS {
+	return drawio ? COPY_FORMATS : COPY_FORMATS.filter((f) => f.format !== "xml");
+}
 
 /** PNG の倍率（貼り付け先で粗く見えないように） */
 const PNG_SCALE = 2;
@@ -101,6 +107,9 @@ async function draw(svgText: string, doc: Document, size: { width: number; heigh
 	canvas.height = Math.max(1, Math.round(size.height * scale));
 	const ctx = canvas.getContext("2d");
 	if (!ctx) throw new Error("Canvas を使えない");
+	// 貼り付け先の背景に左右されないように、ライトの面の色を敷く
+	ctx.fillStyle = PNG_BACKGROUND;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 	return await new Promise<Blob>((resolve, reject) => {
 		try {
@@ -113,10 +122,11 @@ async function draw(svgText: string, doc: Document, size: { width: number; heigh
 }
 
 /**
- * 共有用の SVG を PNG にする。Canvas が汚染されたら、<switch> の中の foreignObject を外して
+ * 共有用の SVG を PNG にする（ダークのときだけ効く指定を除き、ライトの色にする）。Canvas が汚染されたら、<switch> の中の foreignObject を外して
  * Draw.io が用意している <text> の代わりの表示で描き直す
  */
-export async function renderPng(sharingSvg: string, doc: Document): Promise<Blob> {
+export async function renderPng(svg: string, doc: Document): Promise<Blob> {
+	const sharingSvg = forceLightSvg(svg);
 	const parsed = new DOMParser().parseFromString(sharingSvg, SVG_MIME_TYPE);
 	if (parsed.getElementsByTagName("parsererror").length > 0) throw new DrawioFormatError("SVG を読めない");
 	const size = svgSize(parsed);

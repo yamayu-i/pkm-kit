@@ -69,7 +69,7 @@ ADR へのリンク。
 
 | 面 | 種類 |
 |---|---|
-| [Draw.io の図](drawio.md) | 画面・コマンド |
+| [図（Draw.io・SVG・Mermaid）](drawio.md) | 画面・コマンド |
 
 ### 全体
 

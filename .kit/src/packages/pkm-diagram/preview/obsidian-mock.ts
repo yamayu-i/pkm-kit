@@ -20,6 +20,9 @@ proto.createSpan = function (o: any = {}) {
 proto.addClass = function (c: string) {
 	this.classList.add(c);
 };
+proto.removeClass = function (c: string) {
+	this.classList.remove(c);
+};
 proto.empty = function () {
 	this.replaceChildren();
 };
@@ -55,6 +58,7 @@ export class Modal {
 	modalEl = document.createElement("div");
 	titleEl = document.createElement("div");
 	contentEl = document.createElement("div");
+	scope = { register: (_m: string[], key: string, fn: () => unknown) => document.addEventListener("keydown", (e) => e.key === key && fn()) };
 	constructor(public app: any) {
 		this.containerEl.className = "modal-container";
 		this.modalEl.className = "modal";
