@@ -32,7 +32,7 @@ issue 画面の構成は最初の構想で決めていたが、ADR に残して�
 - **Parent**: 欄の鉛筆ボタンで、issue を検索するモーダル（ID と summary であいまい検索）を出して選ぶ。× で外す
 - **Children**: 「+ 子を追加」で、次のどちらかを選ぶ
   - 既存の issue を検索して選ぶ → その issue の `parent` をこの issue にする
-  - summary を入力して新しく作る → `parent` がこの issue の新しい issue を作る（Inbox に入る）
+  - summary を入力して新しく作る → `parent` がこの issue の新しい issue を作る（Inbox に入る）。入力は issue の一括登録（ADR-0011）と同じで、1 行に 1 件、複数件をまとめて作れる
 - 子を外すときは、子の行の × で、その子の `parent` を消す
 - 保存されるのは子の `parent` だけ（`children` は保存しない。ADR-0002）
 - 自分自身や自分の子孫は親に選べない（循環を作らない）。閉じた issue も候補に出すが、後ろに並べる

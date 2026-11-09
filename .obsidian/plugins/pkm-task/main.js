@@ -127,7 +127,7 @@ async function openInNotePane(workspace, file, options) {
 }
 
 // src/header/extension.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -574,7 +574,7 @@ function installHeaderMount(options) {
 }
 
 // src/header/IssueHeader.tsx
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
@@ -2526,6 +2526,87 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
+// src/obsidian/capture.tsx
+var import_obsidian4 = require("obsidian");
+
+// src/core/capture.ts
+var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
+function parseCaptureText(text) {
+  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
+}
+
+// src/obsidian/capture.tsx
+var NOTICE_MS = 5e3;
+function CaptureForm(props) {
+  const [text, setText] = d2("");
+  const ref = A2(null);
+  h2(() => ref.current?.focus(), []);
+  const summaries = parseCaptureText(text);
+  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
+  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
+    /* @__PURE__ */ u3(
+      "textarea",
+      {
+        ref,
+        rows: 6,
+        placeholder: "One summary per line\n- You can paste a bulleted list",
+        value: text,
+        onInput: (e3) => setText(e3.currentTarget.value),
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
+            e3.preventDefault();
+            submit();
+          }
+        }
+      }
+    ),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        "Create ",
+        summaries.length,
+        import_obsidian4.Platform.isMobile ? "" : " (Mod+Enter)"
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
+    ] })
+  ] });
+}
+async function openAll(ctx, files) {
+  let first = null;
+  for (const file of files) {
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian4.Platform.isPhone });
+    first ??= leaf;
+  }
+  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
+}
+function showCreatedNotice(ctx, created, failed) {
+  const fragment = document.createDocumentFragment();
+  const ids = created.map((f4) => f4.basename);
+  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
+  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
+  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
+  let notice = null;
+  if (created.length > 0) {
+    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
+    button.addEventListener("click", (e3) => {
+      e3.stopPropagation();
+      notice?.hide();
+      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
+    });
+  }
+  notice = new import_obsidian4.Notice(fragment, NOTICE_MS);
+}
+function openCaptureModal(ctx, parent = null) {
+  new PreactModal(ctx.app, parent === null ? "Capture issues" : "Capture child issues", (close) => /* @__PURE__ */ u3(
+    CaptureForm,
+    {
+      onSubmit: (summaries) => {
+        close();
+        void ctx.writer.createIssues(summaries, parent).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
+}
+
 // src/ui/StatusIcon.tsx
 var SHAPES = {
   open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
@@ -2724,7 +2805,7 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian4.Menu();
+    const m3 = new import_obsidian5.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -2831,7 +2912,7 @@ function DueFields(props) {
 function IssueLink(props) {
   return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
     /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian4.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
+    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
     props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Remove", title: "Remove", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
   ] });
 }
@@ -2844,7 +2925,7 @@ function Relations(props) {
     new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "Search for a parent issue").open();
   };
   const addChild = (e3) => {
-    const m3 = new import_obsidian4.Menu();
+    const m3 = new import_obsidian5.Menu();
     m3.addItem(
       (item) => item.setTitle("Make an existing issue a child").onClick(() => {
         const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
@@ -2852,19 +2933,7 @@ function Relations(props) {
       })
     );
     m3.addItem(
-      (item) => item.setTitle("Create new").onClick(
-        () => new PreactModal(ctx.app, "Child issue summary", (close) => /* @__PURE__ */ u3(
-          TextForm,
-          {
-            initial: "",
-            onSubmit: (summary) => {
-              close();
-              if (!summary) return;
-              void ctx.writer.createIssues([summary], issue.id).then((r3) => r3.failed.length > 0 && ctx.report("\u5B50 issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F")).catch((err) => ctx.report("\u5B50 issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err));
-            }
-          }
-        )).open()
-      )
+      (item) => item.setTitle("Create new").onClick(() => openCaptureModal(ctx, issue.id))
     );
     m3.showAtMouseEvent(e3);
   };
@@ -2996,7 +3065,7 @@ function Worklog(props) {
 }
 
 // src/header/MemberHeader.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 function MemberField(props) {
   const { label, field, value, required, save } = props;
   const [draft, setDraft] = d2(value);
@@ -3039,7 +3108,7 @@ function DelegatedIssues(props) {
     active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
       /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
-      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
     ] }, issue.id)),
     done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
       "Finished (closed / canceled) ",
@@ -3093,7 +3162,7 @@ function MemberHeader(props) {
 }
 
 // src/header/RoutineHeader.tsx
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
@@ -3288,7 +3357,7 @@ function RoutineHeader(props) {
     }
   )).open();
   const groupMenu = (e3) => {
-    const m3 = new import_obsidian6.Menu();
+    const m3 = new import_obsidian7.Menu();
     for (const key of ["", ...groupKeys(index.data.groups)]) {
       m3.addItem(
         (item) => item.setTitle(key || "Unsorted").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
@@ -3394,11 +3463,11 @@ function installTaskHeaders(ctx, plugin) {
     views: () => {
       const views = [];
       app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof import_obsidian7.MarkdownView) views.push(leaf.view);
+        if (leaf.view instanceof import_obsidian8.MarkdownView) views.push(leaf.view);
       });
       return views;
     },
-    activeView: () => app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView),
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView),
     model: (view) => {
       const path = view.file?.path ?? null;
       return path !== null && isTaskNotePath(path) ? path : null;
@@ -3408,87 +3477,6 @@ function installTaskHeaders(ctx, plugin) {
     clear: (host) => R(null, host),
     resized: remeasureEditor
   });
-}
-
-// src/obsidian/capture.tsx
-var import_obsidian8 = require("obsidian");
-
-// src/core/capture.ts
-var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
-function parseCaptureText(text) {
-  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
-}
-
-// src/obsidian/capture.tsx
-var NOTICE_MS = 5e3;
-function CaptureForm(props) {
-  const [text, setText] = d2("");
-  const ref = A2(null);
-  h2(() => ref.current?.focus(), []);
-  const summaries = parseCaptureText(text);
-  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
-  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
-    /* @__PURE__ */ u3(
-      "textarea",
-      {
-        ref,
-        rows: 6,
-        placeholder: "One summary per line\n- You can paste a bulleted list",
-        value: text,
-        onInput: (e3) => setText(e3.currentTarget.value),
-        onKeyDown: (e3) => {
-          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
-            e3.preventDefault();
-            submit();
-          }
-        }
-      }
-    ),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        "Create ",
-        summaries.length,
-        import_obsidian8.Platform.isMobile ? "" : " (Mod+Enter)"
-      ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
-    ] })
-  ] });
-}
-async function openAll(ctx, files) {
-  let first = null;
-  for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian8.Platform.isPhone });
-    first ??= leaf;
-  }
-  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
-}
-function showCreatedNotice(ctx, created, failed) {
-  const fragment = document.createDocumentFragment();
-  const ids = created.map((f4) => f4.basename);
-  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
-  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
-  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
-  let notice = null;
-  if (created.length > 0) {
-    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
-    button.addEventListener("click", (e3) => {
-      e3.stopPropagation();
-      notice?.hide();
-      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
-    });
-  }
-  notice = new import_obsidian8.Notice(fragment, NOTICE_MS);
-}
-function openCaptureModal(ctx) {
-  new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
-    CaptureForm,
-    {
-      onSubmit: (summaries) => {
-        close();
-        void ctx.writer.createIssues(summaries).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-      }
-    }
-  )).open();
 }
 
 // src/obsidian/settings.ts
