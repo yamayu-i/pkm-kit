@@ -52,7 +52,7 @@ description: 技術選定・フィジビリティ調査・コードベースの�
 | html | 比較の表・図・件の一覧が主で、人が画面で読む。ほかの人に見せる。重さや判定を色で見分けたい |
 
 - **描き方**: write-for-reader の[形式への渡し方](../write-for-reader/formats.md)に従う。md は [ノートの書式](../../docs/vault-conventions.md) のリンクと図の書き方に従う（`tmp/` は frontmatter の対象外なので、frontmatter は付けない）。html は 1 ファイルに閉じ、デザインルール（`.kit/src/docs/design.md`）の「HTML のページ」に従う（値は `var(--vt-…)`、スクリプトと外部の読み込みを使わない）
-- **書いた後**: `node .kit/bin/drawio.mjs check tmp/` を通す。外部に渡すものは `node .kit/bin/drawio.mjs export <元のファイル>` を通す（[ノートの書式](../../docs/vault-conventions.md#編集するとき)）
+- **書いた後**: `node .kit/bin/diagram.mjs check tmp/` を通す。外部に渡すものは `node .kit/bin/diagram.mjs export <元のファイル>` を通す（[ノートの書式](../../docs/vault-conventions.md#編集するとき)）
 - **残すとき**: `tmp/` は git で管理せず、端末間で同期しない。残したい報告は [wiki-ingest](../wiki-ingest/SKILL.md) で取り込む。`tmp/` の外のノートから `tmp/` の報告へリンクしない
 
 ## ファイル

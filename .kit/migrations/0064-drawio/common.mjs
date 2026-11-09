@@ -15,6 +15,9 @@ export function readJson(root, path) {
 	}
 }
 
+/** 後継の ID（0102 で pkm-drawio を pkm-diagram に改名した）。後継があれば、0064 は終わっているものとする */
+export const SUCCESSOR = "pkm-diagram";
+
 export function hasDrawio(value) {
-	return Array.isArray(value) && value.includes(DRAWIO);
+	return Array.isArray(value) && (value.includes(DRAWIO) || value.includes(SUCCESSOR));
 }

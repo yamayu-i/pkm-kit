@@ -1,6 +1,7 @@
 /** トークンから生成物（プラグインの CSS、Obsidian のスニペット、一覧の文書、TS の定数）を作る */
 import { formatRatio, toHex } from "./color.ts";
 import { checkContrast, worstContrast } from "./contrast.ts";
+import { diagramTs, mermaidCss } from "./diagram.ts";
 import { aliasTarget, colorValue, cssVarOf, MODES, resolveColor, resolveValue, type Mode, type Token } from "./tokens.ts";
 
 const GENERATED = "生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す）";
@@ -95,7 +96,7 @@ export function obsidianSnippet(tokens: readonly Token[]): string {
 		}
 		lines.push("}");
 	}
-	lines.push("");
+	lines.push(mermaidCss(tokens));
 	return lines.join("\n");
 }
 
@@ -106,7 +107,7 @@ export function tsModule(tokens: readonly Token[]): string {
 			.filter((t) => t.type === "color")
 			.map((t) => `\t\t${JSON.stringify(t.path)}: ${JSON.stringify(toHex(resolveColor(tokens, t.path, mode)))},`)
 			.join("\n");
-	return `// ${GENERATED}\n\nexport const colors = {\n\tlight: {\n${colors("light")}\n\t},\n\tdark: {\n${colors("dark")}\n\t},\n} as const;\n\nexport type ColorToken = keyof typeof colors.light;\n`;
+	return `// ${GENERATED}\n\nexport const colors = {\n\tlight: {\n${colors("light")}\n\t},\n\tdark: {\n${colors("dark")}\n\t},\n} as const;\n\nexport type ColorToken = keyof typeof colors.light;\n${diagramTs(tokens)}`;
 }
 
 function displayValue(tokens: readonly Token[], t: Token, mode: Mode): string {

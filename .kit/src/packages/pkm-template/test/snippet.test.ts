@@ -43,16 +43,16 @@ describe("parseSnippet", () => {
 	});
 
 	it("command があれば読む（ADR-0094）。なければ command の項目を持たない", () => {
-		const text = "---\nname: new-drawio\nalias: drawio\ncommand: pkm-drawio:create-diagram\n---\n";
+		const text = "---\nname: new-drawio\nalias: drawio\ncommand: pkm-diagram:create-diagram\n---\n";
 		expect(parseSnippet("new-drawio.md", text)).toEqual({
-			snippet: { file: "new-drawio.md", name: "new-drawio", alias: "drawio", body: "", command: "pkm-drawio:create-diagram" },
+			snippet: { file: "new-drawio.md", name: "new-drawio", alias: "drawio", body: "", command: "pkm-diagram:create-diagram" },
 			problem: null,
 		});
 		expect(parseSnippet("a.md", "---\nname: a\nalias: a\n---\nx").snippet).not.toHaveProperty("command");
 	});
 
 	it("command がコマンドの ID の形（<プラグイン>:<コマンド>）でなければ問題として返す", () => {
-		for (const bad of ["create-diagram", "pkm drawio:x", "pkm-drawio:", ":x", ""]) {
+		for (const bad of ["create-diagram", "pkm drawio:x", "pkm-diagram:", ":x", ""]) {
 			const r = parseSnippet("a.md", `---\nname: a\nalias: a\ncommand: ${bad}\n---\n`);
 			expect(r.snippet).toBeNull();
 			expect(r.problem).toMatch(/command/);

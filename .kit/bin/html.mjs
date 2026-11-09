@@ -19736,7 +19736,7 @@ function Document4() {
 }
 setPrototypeOf(Document4, Document2).prototype = Document2.prototype;
 
-// ../pkm-drawio/src/core/svg.ts
+// ../pkm-diagram/src/core/svg.ts
 var MAX_SVG_BYTES = 10 * 1024 * 1024;
 var MAX_XML_CHARS = 20 * 1024 * 1024;
 var DrawioFormatError = class extends Error {
@@ -19804,7 +19804,7 @@ function toSharingSvg(svg) {
   return svg.slice(0, content.start) + svg.slice(content.end);
 }
 
-// ../pkm-drawio/src/core/names.ts
+// ../pkm-diagram/src/core/names.ts
 var TMP_FOLDER = "tmp";
 function freePath(folder, stem, ext, taken) {
   for (let n = 1; ; n++) {

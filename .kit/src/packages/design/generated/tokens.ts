@@ -112,3 +112,11 @@ export const colors = {
 } as const;
 
 export type ColorToken = keyof typeof colors.light;
+
+/** 図の配色（ADR-0102。design/src/diagram.ts） */
+export const diagram = {
+	light: {"neutral":{"text":"#2b2a28","muted":"#57564f","nodeFill":"#f6f5f2","nodeStroke":"#7f7e76","groupFill":"#efeeea","groupStroke":"#7f7e76","edge":"#57564f","labelBg":"#f6f5f2"},"colors":{"blue":{"fill":"#d3e3fd","stroke":"#0b57d0","text":"#041e49"},"green":{"fill":"#c4eed0","stroke":"#1e8e3e","text":"#072711"},"purple":{"fill":"#eaddff","stroke":"#6750a4","text":"#21005d"},"gray":{"fill":"#e3e3e3","stroke":"#747775","text":"#1f1f1f"},"sky":{"fill":"#c2e7ff","stroke":"#00639b","text":"#001d35"},"pink":{"fill":"#ffd8e4","stroke":"#c2185b","text":"#3e001d"},"red":{"fill":"#f9dedc","stroke":"#d93025","text":"#410e0b"},"amber":{"fill":"#ffecb3","stroke":"#b06d00","text":"#3a2a00"}}},
+	dark: {"neutral":{"text":"#d0d0d0","muted":"#b3b3b3","nodeFill":"#1e1e1e","nodeStroke":"#7a7a7a","groupFill":"#242424","groupStroke":"#7a7a7a","edge":"#b3b3b3","labelBg":"#1e1e1e"},"colors":{"blue":{"fill":"#0842a0","stroke":"#a8c7fa","text":"#d3e3fd"},"green":{"fill":"#0f5223","stroke":"#6dd58c","text":"#c4eed0"},"purple":{"fill":"#4f378b","stroke":"#d0bcff","text":"#eaddff"},"gray":{"fill":"#444746","stroke":"#c4c7c5","text":"#e3e3e3"},"sky":{"fill":"#004a77","stroke":"#7fcfff","text":"#c2e7ff"},"pink":{"fill":"#8c1d4f","stroke":"#ffb0c8","text":"#ffd8e4"},"red":{"fill":"#8c1d18","stroke":"#f2b8b5","text":"#f9dedc"},"amber":{"fill":"#5c4300","stroke":"#ffd54f","text":"#ffecb3"}}},
+} as const;
+
+export const diagramColors = ["blue","green","purple","gray","sky","pink","red","amber"] as const;

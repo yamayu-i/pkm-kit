@@ -28,3 +28,425 @@ body.theme-dark {
 	--text-error: #f2b8b5;
 	--text-faint: #949494;
 }
+
+/* Mermaid の図の色を、図の配色（ADR-0102）に揃える。色は A:::blue か class A blue で付ける */
+
+body.theme-light .mermaid .node rect,
+body.theme-light .mermaid .node circle,
+body.theme-light .mermaid .node ellipse,
+body.theme-light .mermaid .node polygon,
+body.theme-light .mermaid .node path.basic,
+body.theme-light .mermaid .node .label-container {
+	fill: #f6f5f2 !important;
+	stroke: #7f7e76 !important;
+}
+body.theme-light .mermaid .node .nodeLabel,
+body.theme-light .mermaid .node .label,
+body.theme-light .mermaid .node text {
+	color: #2b2a28 !important;
+	fill: #2b2a28 !important;
+}
+body.theme-light .mermaid .cluster rect,
+body.theme-light .mermaid .cluster polygon {
+	fill: #efeeea !important;
+	stroke: #7f7e76 !important;
+}
+body.theme-light .mermaid .cluster .nodeLabel,
+body.theme-light .mermaid .cluster-label,
+body.theme-light .mermaid .cluster text {
+	color: #2b2a28 !important;
+	fill: #2b2a28 !important;
+}
+body.theme-light .mermaid .flowchart-link,
+body.theme-light .mermaid .edgePath .path,
+body.theme-light .mermaid .messageLine0,
+body.theme-light .mermaid .messageLine1,
+body.theme-light .mermaid .transition {
+	stroke: #57564f !important;
+}
+body.theme-light .mermaid marker path,
+body.theme-light .mermaid .arrowheadPath,
+body.theme-light .mermaid .arrowMarkerPath,
+body.theme-light .mermaid #arrowhead path {
+	fill: #57564f !important;
+	stroke: #57564f !important;
+}
+body.theme-light .mermaid .edgeLabel,
+body.theme-light .mermaid .edgeLabel p,
+body.theme-light .mermaid .edgeLabel span,
+body.theme-light .mermaid .labelBkg {
+	color: #57564f !important;
+	background-color: #f6f5f2 !important;
+}
+body.theme-light .mermaid .edgeLabel rect {
+	fill: #f6f5f2 !important;
+}
+body.theme-light .mermaid .actor,
+body.theme-light .mermaid .statediagram-state rect,
+body.theme-light .mermaid .stateGroup rect {
+	fill: #f6f5f2 !important;
+	stroke: #7f7e76 !important;
+}
+body.theme-light .mermaid .messageText,
+body.theme-light .mermaid text.actor > tspan,
+body.theme-light .mermaid .noteText {
+	fill: #2b2a28 !important;
+}
+body.theme-light .mermaid .note {
+	fill: #ffecb3 !important;
+	stroke: #b06d00 !important;
+}
+body.theme-light .mermaid .node.blue rect,
+body.theme-light .mermaid .node.blue circle,
+body.theme-light .mermaid .node.blue ellipse,
+body.theme-light .mermaid .node.blue polygon,
+body.theme-light .mermaid .node.blue path.basic,
+body.theme-light .mermaid .node.blue .label-container,
+body.theme-light .mermaid .cluster.blue rect,
+body.theme-light .mermaid .cluster.blue polygon {
+	fill: #d3e3fd !important;
+	stroke: #0b57d0 !important;
+}
+body.theme-light .mermaid .node.blue .nodeLabel,
+body.theme-light .mermaid .node.blue text,
+body.theme-light .mermaid .cluster.blue .nodeLabel,
+body.theme-light .mermaid .cluster.blue text {
+	color: #041e49 !important;
+	fill: #041e49 !important;
+}
+body.theme-light .mermaid .node.green rect,
+body.theme-light .mermaid .node.green circle,
+body.theme-light .mermaid .node.green ellipse,
+body.theme-light .mermaid .node.green polygon,
+body.theme-light .mermaid .node.green path.basic,
+body.theme-light .mermaid .node.green .label-container,
+body.theme-light .mermaid .cluster.green rect,
+body.theme-light .mermaid .cluster.green polygon {
+	fill: #c4eed0 !important;
+	stroke: #1e8e3e !important;
+}
+body.theme-light .mermaid .node.green .nodeLabel,
+body.theme-light .mermaid .node.green text,
+body.theme-light .mermaid .cluster.green .nodeLabel,
+body.theme-light .mermaid .cluster.green text {
+	color: #072711 !important;
+	fill: #072711 !important;
+}
+body.theme-light .mermaid .node.purple rect,
+body.theme-light .mermaid .node.purple circle,
+body.theme-light .mermaid .node.purple ellipse,
+body.theme-light .mermaid .node.purple polygon,
+body.theme-light .mermaid .node.purple path.basic,
+body.theme-light .mermaid .node.purple .label-container,
+body.theme-light .mermaid .cluster.purple rect,
+body.theme-light .mermaid .cluster.purple polygon {
+	fill: #eaddff !important;
+	stroke: #6750a4 !important;
+}
+body.theme-light .mermaid .node.purple .nodeLabel,
+body.theme-light .mermaid .node.purple text,
+body.theme-light .mermaid .cluster.purple .nodeLabel,
+body.theme-light .mermaid .cluster.purple text {
+	color: #21005d !important;
+	fill: #21005d !important;
+}
+body.theme-light .mermaid .node.gray rect,
+body.theme-light .mermaid .node.gray circle,
+body.theme-light .mermaid .node.gray ellipse,
+body.theme-light .mermaid .node.gray polygon,
+body.theme-light .mermaid .node.gray path.basic,
+body.theme-light .mermaid .node.gray .label-container,
+body.theme-light .mermaid .cluster.gray rect,
+body.theme-light .mermaid .cluster.gray polygon {
+	fill: #e3e3e3 !important;
+	stroke: #747775 !important;
+}
+body.theme-light .mermaid .node.gray .nodeLabel,
+body.theme-light .mermaid .node.gray text,
+body.theme-light .mermaid .cluster.gray .nodeLabel,
+body.theme-light .mermaid .cluster.gray text {
+	color: #1f1f1f !important;
+	fill: #1f1f1f !important;
+}
+body.theme-light .mermaid .node.sky rect,
+body.theme-light .mermaid .node.sky circle,
+body.theme-light .mermaid .node.sky ellipse,
+body.theme-light .mermaid .node.sky polygon,
+body.theme-light .mermaid .node.sky path.basic,
+body.theme-light .mermaid .node.sky .label-container,
+body.theme-light .mermaid .cluster.sky rect,
+body.theme-light .mermaid .cluster.sky polygon {
+	fill: #c2e7ff !important;
+	stroke: #00639b !important;
+}
+body.theme-light .mermaid .node.sky .nodeLabel,
+body.theme-light .mermaid .node.sky text,
+body.theme-light .mermaid .cluster.sky .nodeLabel,
+body.theme-light .mermaid .cluster.sky text {
+	color: #001d35 !important;
+	fill: #001d35 !important;
+}
+body.theme-light .mermaid .node.pink rect,
+body.theme-light .mermaid .node.pink circle,
+body.theme-light .mermaid .node.pink ellipse,
+body.theme-light .mermaid .node.pink polygon,
+body.theme-light .mermaid .node.pink path.basic,
+body.theme-light .mermaid .node.pink .label-container,
+body.theme-light .mermaid .cluster.pink rect,
+body.theme-light .mermaid .cluster.pink polygon {
+	fill: #ffd8e4 !important;
+	stroke: #c2185b !important;
+}
+body.theme-light .mermaid .node.pink .nodeLabel,
+body.theme-light .mermaid .node.pink text,
+body.theme-light .mermaid .cluster.pink .nodeLabel,
+body.theme-light .mermaid .cluster.pink text {
+	color: #3e001d !important;
+	fill: #3e001d !important;
+}
+body.theme-light .mermaid .node.red rect,
+body.theme-light .mermaid .node.red circle,
+body.theme-light .mermaid .node.red ellipse,
+body.theme-light .mermaid .node.red polygon,
+body.theme-light .mermaid .node.red path.basic,
+body.theme-light .mermaid .node.red .label-container,
+body.theme-light .mermaid .cluster.red rect,
+body.theme-light .mermaid .cluster.red polygon {
+	fill: #f9dedc !important;
+	stroke: #d93025 !important;
+}
+body.theme-light .mermaid .node.red .nodeLabel,
+body.theme-light .mermaid .node.red text,
+body.theme-light .mermaid .cluster.red .nodeLabel,
+body.theme-light .mermaid .cluster.red text {
+	color: #410e0b !important;
+	fill: #410e0b !important;
+}
+body.theme-light .mermaid .node.amber rect,
+body.theme-light .mermaid .node.amber circle,
+body.theme-light .mermaid .node.amber ellipse,
+body.theme-light .mermaid .node.amber polygon,
+body.theme-light .mermaid .node.amber path.basic,
+body.theme-light .mermaid .node.amber .label-container,
+body.theme-light .mermaid .cluster.amber rect,
+body.theme-light .mermaid .cluster.amber polygon {
+	fill: #ffecb3 !important;
+	stroke: #b06d00 !important;
+}
+body.theme-light .mermaid .node.amber .nodeLabel,
+body.theme-light .mermaid .node.amber text,
+body.theme-light .mermaid .cluster.amber .nodeLabel,
+body.theme-light .mermaid .cluster.amber text {
+	color: #3a2a00 !important;
+	fill: #3a2a00 !important;
+}
+
+body.theme-dark .mermaid .node rect,
+body.theme-dark .mermaid .node circle,
+body.theme-dark .mermaid .node ellipse,
+body.theme-dark .mermaid .node polygon,
+body.theme-dark .mermaid .node path.basic,
+body.theme-dark .mermaid .node .label-container {
+	fill: #1e1e1e !important;
+	stroke: #7a7a7a !important;
+}
+body.theme-dark .mermaid .node .nodeLabel,
+body.theme-dark .mermaid .node .label,
+body.theme-dark .mermaid .node text {
+	color: #d0d0d0 !important;
+	fill: #d0d0d0 !important;
+}
+body.theme-dark .mermaid .cluster rect,
+body.theme-dark .mermaid .cluster polygon {
+	fill: #242424 !important;
+	stroke: #7a7a7a !important;
+}
+body.theme-dark .mermaid .cluster .nodeLabel,
+body.theme-dark .mermaid .cluster-label,
+body.theme-dark .mermaid .cluster text {
+	color: #d0d0d0 !important;
+	fill: #d0d0d0 !important;
+}
+body.theme-dark .mermaid .flowchart-link,
+body.theme-dark .mermaid .edgePath .path,
+body.theme-dark .mermaid .messageLine0,
+body.theme-dark .mermaid .messageLine1,
+body.theme-dark .mermaid .transition {
+	stroke: #b3b3b3 !important;
+}
+body.theme-dark .mermaid marker path,
+body.theme-dark .mermaid .arrowheadPath,
+body.theme-dark .mermaid .arrowMarkerPath,
+body.theme-dark .mermaid #arrowhead path {
+	fill: #b3b3b3 !important;
+	stroke: #b3b3b3 !important;
+}
+body.theme-dark .mermaid .edgeLabel,
+body.theme-dark .mermaid .edgeLabel p,
+body.theme-dark .mermaid .edgeLabel span,
+body.theme-dark .mermaid .labelBkg {
+	color: #b3b3b3 !important;
+	background-color: #1e1e1e !important;
+}
+body.theme-dark .mermaid .edgeLabel rect {
+	fill: #1e1e1e !important;
+}
+body.theme-dark .mermaid .actor,
+body.theme-dark .mermaid .statediagram-state rect,
+body.theme-dark .mermaid .stateGroup rect {
+	fill: #1e1e1e !important;
+	stroke: #7a7a7a !important;
+}
+body.theme-dark .mermaid .messageText,
+body.theme-dark .mermaid text.actor > tspan,
+body.theme-dark .mermaid .noteText {
+	fill: #d0d0d0 !important;
+}
+body.theme-dark .mermaid .note {
+	fill: #5c4300 !important;
+	stroke: #ffd54f !important;
+}
+body.theme-dark .mermaid .node.blue rect,
+body.theme-dark .mermaid .node.blue circle,
+body.theme-dark .mermaid .node.blue ellipse,
+body.theme-dark .mermaid .node.blue polygon,
+body.theme-dark .mermaid .node.blue path.basic,
+body.theme-dark .mermaid .node.blue .label-container,
+body.theme-dark .mermaid .cluster.blue rect,
+body.theme-dark .mermaid .cluster.blue polygon {
+	fill: #0842a0 !important;
+	stroke: #a8c7fa !important;
+}
+body.theme-dark .mermaid .node.blue .nodeLabel,
+body.theme-dark .mermaid .node.blue text,
+body.theme-dark .mermaid .cluster.blue .nodeLabel,
+body.theme-dark .mermaid .cluster.blue text {
+	color: #d3e3fd !important;
+	fill: #d3e3fd !important;
+}
+body.theme-dark .mermaid .node.green rect,
+body.theme-dark .mermaid .node.green circle,
+body.theme-dark .mermaid .node.green ellipse,
+body.theme-dark .mermaid .node.green polygon,
+body.theme-dark .mermaid .node.green path.basic,
+body.theme-dark .mermaid .node.green .label-container,
+body.theme-dark .mermaid .cluster.green rect,
+body.theme-dark .mermaid .cluster.green polygon {
+	fill: #0f5223 !important;
+	stroke: #6dd58c !important;
+}
+body.theme-dark .mermaid .node.green .nodeLabel,
+body.theme-dark .mermaid .node.green text,
+body.theme-dark .mermaid .cluster.green .nodeLabel,
+body.theme-dark .mermaid .cluster.green text {
+	color: #c4eed0 !important;
+	fill: #c4eed0 !important;
+}
+body.theme-dark .mermaid .node.purple rect,
+body.theme-dark .mermaid .node.purple circle,
+body.theme-dark .mermaid .node.purple ellipse,
+body.theme-dark .mermaid .node.purple polygon,
+body.theme-dark .mermaid .node.purple path.basic,
+body.theme-dark .mermaid .node.purple .label-container,
+body.theme-dark .mermaid .cluster.purple rect,
+body.theme-dark .mermaid .cluster.purple polygon {
+	fill: #4f378b !important;
+	stroke: #d0bcff !important;
+}
+body.theme-dark .mermaid .node.purple .nodeLabel,
+body.theme-dark .mermaid .node.purple text,
+body.theme-dark .mermaid .cluster.purple .nodeLabel,
+body.theme-dark .mermaid .cluster.purple text {
+	color: #eaddff !important;
+	fill: #eaddff !important;
+}
+body.theme-dark .mermaid .node.gray rect,
+body.theme-dark .mermaid .node.gray circle,
+body.theme-dark .mermaid .node.gray ellipse,
+body.theme-dark .mermaid .node.gray polygon,
+body.theme-dark .mermaid .node.gray path.basic,
+body.theme-dark .mermaid .node.gray .label-container,
+body.theme-dark .mermaid .cluster.gray rect,
+body.theme-dark .mermaid .cluster.gray polygon {
+	fill: #444746 !important;
+	stroke: #c4c7c5 !important;
+}
+body.theme-dark .mermaid .node.gray .nodeLabel,
+body.theme-dark .mermaid .node.gray text,
+body.theme-dark .mermaid .cluster.gray .nodeLabel,
+body.theme-dark .mermaid .cluster.gray text {
+	color: #e3e3e3 !important;
+	fill: #e3e3e3 !important;
+}
+body.theme-dark .mermaid .node.sky rect,
+body.theme-dark .mermaid .node.sky circle,
+body.theme-dark .mermaid .node.sky ellipse,
+body.theme-dark .mermaid .node.sky polygon,
+body.theme-dark .mermaid .node.sky path.basic,
+body.theme-dark .mermaid .node.sky .label-container,
+body.theme-dark .mermaid .cluster.sky rect,
+body.theme-dark .mermaid .cluster.sky polygon {
+	fill: #004a77 !important;
+	stroke: #7fcfff !important;
+}
+body.theme-dark .mermaid .node.sky .nodeLabel,
+body.theme-dark .mermaid .node.sky text,
+body.theme-dark .mermaid .cluster.sky .nodeLabel,
+body.theme-dark .mermaid .cluster.sky text {
+	color: #c2e7ff !important;
+	fill: #c2e7ff !important;
+}
+body.theme-dark .mermaid .node.pink rect,
+body.theme-dark .mermaid .node.pink circle,
+body.theme-dark .mermaid .node.pink ellipse,
+body.theme-dark .mermaid .node.pink polygon,
+body.theme-dark .mermaid .node.pink path.basic,
+body.theme-dark .mermaid .node.pink .label-container,
+body.theme-dark .mermaid .cluster.pink rect,
+body.theme-dark .mermaid .cluster.pink polygon {
+	fill: #8c1d4f !important;
+	stroke: #ffb0c8 !important;
+}
+body.theme-dark .mermaid .node.pink .nodeLabel,
+body.theme-dark .mermaid .node.pink text,
+body.theme-dark .mermaid .cluster.pink .nodeLabel,
+body.theme-dark .mermaid .cluster.pink text {
+	color: #ffd8e4 !important;
+	fill: #ffd8e4 !important;
+}
+body.theme-dark .mermaid .node.red rect,
+body.theme-dark .mermaid .node.red circle,
+body.theme-dark .mermaid .node.red ellipse,
+body.theme-dark .mermaid .node.red polygon,
+body.theme-dark .mermaid .node.red path.basic,
+body.theme-dark .mermaid .node.red .label-container,
+body.theme-dark .mermaid .cluster.red rect,
+body.theme-dark .mermaid .cluster.red polygon {
+	fill: #8c1d18 !important;
+	stroke: #f2b8b5 !important;
+}
+body.theme-dark .mermaid .node.red .nodeLabel,
+body.theme-dark .mermaid .node.red text,
+body.theme-dark .mermaid .cluster.red .nodeLabel,
+body.theme-dark .mermaid .cluster.red text {
+	color: #f9dedc !important;
+	fill: #f9dedc !important;
+}
+body.theme-dark .mermaid .node.amber rect,
+body.theme-dark .mermaid .node.amber circle,
+body.theme-dark .mermaid .node.amber ellipse,
+body.theme-dark .mermaid .node.amber polygon,
+body.theme-dark .mermaid .node.amber path.basic,
+body.theme-dark .mermaid .node.amber .label-container,
+body.theme-dark .mermaid .cluster.amber rect,
+body.theme-dark .mermaid .cluster.amber polygon {
+	fill: #5c4300 !important;
+	stroke: #ffd54f !important;
+}
+body.theme-dark .mermaid .node.amber .nodeLabel,
+body.theme-dark .mermaid .node.amber text,
+body.theme-dark .mermaid .cluster.amber .nodeLabel,
+body.theme-dark .mermaid .cluster.amber text {
+	color: #ffecb3 !important;
+	fill: #ffecb3 !important;
+}

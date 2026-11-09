@@ -92,8 +92,8 @@ check("危険な API を使っていない", () => {
 	// ADR-0037: srcdoc に入れてよいのは、sandbox と CSP を付ける pkm-html の 1 ファイルだけ
 	const allowed = {
 		"srcdoc への HTML 文字列の挿入": [".kit/src/packages/pkm-html/src/ui/frame.ts"],
-		// ADR-0064: スクリプトを動かす iframe は、固定の外部 origin（Draw.io）を読む pkm-drawio の編集画面だけ
-		"iframe の sandbox の allow-scripts": [".kit/src/packages/pkm-drawio/src/obsidian/frame.ts"],
+		// ADR-0064: スクリプトを動かす iframe は、固定の外部 origin（Draw.io）を読む pkm-diagram の編集画面だけ
+		"iframe の sandbox の allow-scripts": [".kit/src/packages/pkm-diagram/src/obsidian/frame.ts"],
 	};
 	const problems = [];
 	for (const pkg of packages) {
@@ -152,7 +152,7 @@ const plugins = [
 	// ADR-0037: HTML を sandbox の iframe に出す
 	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["html.mjs"], allowedRequires: ["obsidian"] },
 	// ADR-0064: Draw.io の図。編集画面は embed.diagrams.net の iframe
-	{ id: "pkm-drawio", outdirEnv: "PKM_DRAWIO_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["drawio.mjs"], allowedRequires: ["obsidian"] },
+	{ id: "pkm-diagram", outdirEnv: "PKM_DIAGRAM_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["diagram.mjs", "drawio.mjs"], allowedRequires: ["obsidian"] },
 	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
 	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ

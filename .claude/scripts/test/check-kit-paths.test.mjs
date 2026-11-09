@@ -29,7 +29,7 @@ test("! で始まるパターンは除外。後に書いたものが勝つ", () 
 
 test("上流が持つのは上流のプラグインの成果物だけ。子が足した自分のプラグインは子のもの（yamayu-i/pkm-kit#19）", () => {
 	const patterns = readOwnedPaths(fileURLToPath(new URL("../../..", import.meta.url)));
-	for (const id of ["pkm-drawio", "pkm-git", "pkm-html", "pkm-ribbon", "pkm-task", "pkm-template", "pkm-updates"]) {
+	for (const id of ["pkm-diagram", "pkm-git", "pkm-html", "pkm-ribbon", "pkm-task", "pkm-template", "pkm-updates"]) {
 		for (const f of ["main.js", "manifest.json", "styles.css"]) assert.ok(isUpstreamPath(`.obsidian/plugins/${id}/${f}`, patterns), `${id}/${f}`);
 	}
 	for (const p of [".obsidian/plugins/my-plugin/main.js", ".obsidian/plugins/my-plugin/manifest.json", ".obsidian/plugins/my-plugin/styles.css", ".obsidian/plugins/pkm-mine/main.js", ".obsidian/plugins/pkm-git/data.json"]) {

@@ -176,7 +176,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - `srcdoc` への代入は `src/ui/frame.ts` だけ（security-scan が検査する）
 - Vault の中の画像は `vault.readBinary` で読み、`data:` に置き換える。CSP を緩めない
 - テーマ: `tokens.css` を文字列として束ね（esbuild の `loader`）、iframe に差し込む。`css-change` で `<body>` のクラスと `color-scheme` を付け直す
-- `tmp/` への書き出し（ADR-0044）: コマンド・ファイルのメニューと CLI（`.kit/bin/html.mjs export`）が、同じ `src/core/standalone.ts` を使う。解析はプラグインでは `DOMParser`、CLI では linkedom（解析後に `<head>` / `<body>` を整える）。トークンは design が生成する `tokens-standalone.css`（`prefers-color-scheme` 版）を埋め込む。図の共有用の SVG と書き出し先の名前は pkm-drawio の `src/core/` を束ねて使う
+- `tmp/` への書き出し（ADR-0044）: コマンド・ファイルのメニューと CLI（`.kit/bin/html.mjs export`）が、同じ `src/core/standalone.ts` を使う。解析はプラグインでは `DOMParser`、CLI では linkedom（解析後に `<head>` / `<body>` を整える）。トークンは design が生成する `tokens-standalone.css`（`prefers-color-scheme` 版）を埋め込む。図の共有用の SVG と書き出し先の名前は pkm-diagram の `src/core/` を束ねて使う
 
 ### コードの構成（`.kit/src/packages/pkm-html`）
 
@@ -193,7 +193,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - `test/` は policy の単体テスト、書き出しの変換のテスト（linkedom で解析）、ビルド済み `main.js` と `.kit/bin/html.mjs` のテスト。iframe の表示は preview で確かめる
 - Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
 
-## pkm-drawio（Draw.io の図）
+## pkm-diagram（図。旧 pkm-drawio）
 
 `asset/*.drawio.svg`（Draw.io の編集可能 SVG。ルートの `<svg>` の `content` 属性に全ページの編集用 XML を持つ）を、ノートからコピー・編集し、`tmp/` への書き出しで埋め込むプラグイン（ADR-0064）。表示は Obsidian の標準の画像の表示のまま（`.svg` の拡張子を View に登録しない）。
 
@@ -203,7 +203,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - 共有用の SVG は、ルートの開始タグから `content` 属性だけを除いた文字列（`toSharingSvg`）。DOM を使わないので CLI でも同じ結果になる
 - パスの解決と base64 は pkm-html の `src/core/policy.ts` を相対パスで読む
 
-### コードの構成（`.kit/src/packages/pkm-drawio`）
+### コードの構成（`.kit/src/packages/pkm-diagram`）
 
 | パス | 役割 | Obsidian 依存 |
 |---|---|---|
@@ -211,9 +211,10 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `src/core/document.ts` | md / html の図の参照を探し、data URI に置き換える。書き出したものの検査 | なし（DOM もなし） |
 | `src/core/protocol.ts` | embed の URL・メッセージの読み取り・保存の流れの状態 | なし（DOM もなし） |
 | `src/core/names.ts` / `encoding.ts` | 図と書き出しのファイル名、data URI | なし |
+| `src/core/plain-svg.ts` / `d2.ts` | AI が書く SVG へのスタイルの差し込み、D2 の SVG のダークの色、SVG の検査（安全性・色・ノートの幅での文字の大きさ）、D2 の前に付けるテーマ。配色は `design/generated/tokens.ts` の `diagram`（ADR-0102） | なし（DOM もなし） |
 | `src/obsidian/` | 編集の Modal と iframe、操作バー、コピー（PNG は Canvas）、tmp/ への書き出し、ダイアログ | あり（`frame.ts` と `toolbar.ts` は DOM と `setIcon` だけ） |
-| `cli/drawio.ts` | `.kit/bin/drawio.mjs`（`export` / `check` / `extract` / `strip`）。Node の API を使う | なし |
-| `preview/` | `pnpm --filter pkm-drawio preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バーの位置と描画した画面の検査、PNG を Chromium で確かめる。CI では動かない | なし |
+| `cli/diagram.ts` | `.kit/bin/diagram.mjs`（`export` / `check` / `extract` / `strip` / `build` / `render` / `inspect` / `svg-style` / `svg-check` / `d2`。`d2` は外部の d2 コマンドを呼ぶ。旧名の `drawio.mjs` も同じものを動かす）。Node の API を使う | なし |
+| `preview/` | `pnpm --filter pkm-diagram preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バーの位置と描画した画面の検査、PNG を Chromium で確かめる。CI では動かない | なし |
 
 - 本物の Draw.io との往復と、Obsidian の中の操作バーの位置、クリップボードは、実機で確かめる（自動の検査ではできない）
 
@@ -255,7 +256,7 @@ mise がなく、Node や pnpm の版が `mise.toml` と違う環境（Claude Co
 
 - Node: 公式の配布物（`https://nodejs.org/dist/v<版>/`）の tar と `SHASUMS256.txt` を取り、`sha256sum -c` で照合してから、Vault の外の作業用のフォルダに展開し、`PATH` の先頭に足す
 - pnpm: その Node で `npm install -g pnpm@<mise.toml の版>`
-- Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-drawio` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
+- Chromium: Playwright の求める版がなく、別の版の Chromium が入っているなら、その実行ファイルを `CHROMIUM_PATH` に渡す（`pkm-task`・`pkm-html`・`pkm-diagram` の `preview:ui`）。例: `CHROMIUM_PATH=$(find / -path '*chrome-linux64/chrome' -type f 2>/dev/null | head -1) pnpm --filter pkm-task preview:ui`
 
 ### Obsidian の実機で確かめる
 
