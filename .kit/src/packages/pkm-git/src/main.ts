@@ -1,8 +1,9 @@
 import { Errors } from "isomorphic-git";
-import { MarkdownView, Notice, Platform, Plugin, requestUrl, type TAbstractFile } from "obsidian";
+import { MarkdownView, Notice, Platform, Plugin, requestUrl, TFile, type TAbstractFile } from "obsidian";
 import { AuthTargetError } from "./git/auth-target";
 import { ApplyJournalError, PkmGit, type SyncResult, type Transfer } from "./git/engine";
 import { createHttpClient, redactSecrets } from "./git/http";
+import { listConflictRecords, removeConflictRecord, type ConflictRecord } from "./git/conflict-records";
 import { SyncLog } from "./git/sync-log";
 import type { MergeConflict } from "./merge/tree-merge";
 import { hasConflictMarkers } from "./merge/text-merge";
@@ -27,6 +28,12 @@ function reportTransfer(phase: string, t: Transfer): void {
 }
 
 const CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
+
+function keptModifiedNote(record: ConflictRecord): string {
+	return record.deleted === "local"
+		? `${record.device} で削除し、ほかの端末で編集されていたので、編集側を残しました`
+		: `ほかの端末で削除し、${record.device} で編集されていたので、編集側を残しました`;
+}
 
 const CONFLICT_NOTES: Record<MergeConflict["kind"], string> = {
 	markers: "コンフリクトマーカー入り",
@@ -59,6 +66,8 @@ export default class PkmGitPlugin extends Plugin {
 	private authNoticeShown = false;
 	private controller!: SyncController;
 	private log!: SyncLog;
+	/** 読めない衝突の記録のうち、この起動で同期の記録に残したもの（数え直すたびに残さない） */
+	private readonly loggedUnreadable = new Set<string>();
 
 	override async onload(): Promise<void> {
 		await this.loadSettings();
@@ -267,7 +276,9 @@ export default class PkmGitPlugin extends Plugin {
 					"コンフリクトがありました",
 					res.conflicts.map((c) => ({
 						path: c.copyPath ?? c.path,
-						note: c.copyPath ? `${c.path} の${CONFLICT_NOTES[c.kind]}` : CONFLICT_NOTES[c.kind],
+						note: c.copyPath
+							? `${c.path} の${CONFLICT_NOTES[c.kind]}`
+							: `${CONFLICT_NOTES[c.kind]}${c.recordPath ? "（「List unresolved conflicts」で残すか削除するかを選べます）" : ""}`,
 					})),
 				).open();
 			}
@@ -361,9 +372,14 @@ export default class PkmGitPlugin extends Plugin {
 		}
 	}
 
-	/** マーカー入りのノートと、コンフリクト版ファイルを探す */
+	/** マーカー入りのノートと、コンフリクト版ファイルを探し、衝突の記録を足す（ADR-0103） */
 	private async findUnresolved(): Promise<ConflictItem[]> {
 		const items: ConflictItem[] = [];
+		try {
+			items.push(...(await this.recordItems()));
+		} catch (error) {
+			await this.log.write({ level: "error", event: "conflict-records-failed", phase: "conflict-records", error });
+		}
 		for (const file of this.app.vault.getFiles()) {
 			if (CONFLICT_COPY_NAME.test(file.path)) {
 				items.push({ path: file.path, note: "コンフリクト版（不要なら削除）" });
@@ -374,6 +390,83 @@ export default class PkmGitPlugin extends Plugin {
 			}
 		}
 		return items;
+	}
+
+	/**
+	 * 衝突の記録の行（ADR-0103 の 3）。ファイルがもうない記録は解決済みとして消す。
+	 * 読めない記録は自動では消さず、「Delete record」だけを付ける
+	 */
+	private async recordItems(): Promise<ConflictItem[]> {
+		const store = new VaultFileStore(this.app);
+		const items: ConflictItem[] = [];
+		for (const loaded of await listConflictRecords(store)) {
+			if ("error" in loaded) {
+				if (!this.loggedUnreadable.has(loaded.file)) {
+					this.loggedUnreadable.add(loaded.file);
+					await this.log.write({
+						level: "warn", event: "conflict-record-unreadable", phase: "conflict-records", detail: loaded.error, paths: [loaded.file],
+					});
+				}
+				items.push({
+					path: loaded.file,
+					note: `読めない衝突の記録（${loaded.error}）。新しい版のプラグインが書いたものかもしれません`,
+					openable: false,
+					actions: [{ label: "Delete record", run: () => this.resolveRecord(loaded.file) }],
+				});
+				continue;
+			}
+			const { file, record } = loaded;
+			if (!(await store.stat(record.path))) {
+				await removeConflictRecord(store, file);
+				this.controller.noteChange(file);
+				continue;
+			}
+			items.push({
+				path: record.path,
+				note: keptModifiedNote(record),
+				actions: [
+					{ label: "Keep", run: () => this.resolveRecord(file) },
+					{ label: "Delete", run: () => this.confirmDeleteKept(record.path, file) },
+				],
+			});
+		}
+		return items;
+	}
+
+	/** 記録を消して（解決）、同期する。解決は次の同期でほかの端末にも届く */
+	private async resolveRecord(file: string): Promise<void> {
+		try {
+			await removeConflictRecord(new VaultFileStore(this.app), file);
+			this.controller.noteChange(file);
+		} catch (e) {
+			new Notice(`Git: 記録を消せませんでした\n${e instanceof Error ? e.message : String(e)}`, 8_000);
+			return;
+		} finally {
+			await this.refreshUnresolved();
+		}
+		await this.sync();
+	}
+
+	private confirmDeleteKept(path: string, file: string): void {
+		new ConfirmModal(
+			this.app,
+			"Delete file",
+			`${path} を削除します（Obsidian の「削除したファイル」の設定に従います）。衝突の記録も消します。`,
+			() => void this.deleteKept(path, file),
+		).open();
+	}
+
+	private async deleteKept(path: string, file: string): Promise<void> {
+		try {
+			const target = this.app.vault.getAbstractFileByPath(path);
+			if (target instanceof TFile) await this.app.fileManager.trashFile(target);
+			else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
+			this.controller.noteChange(path);
+		} catch (e) {
+			new Notice(`Git: 削除できませんでした\n${e instanceof Error ? e.message : String(e)}`, 8_000);
+			return;
+		}
+		await this.resolveRecord(file);
 	}
 
 	/** 未解決の件数を数え直す（全ノートを読むので、起動時と取り込んだときだけ。ADR-0089 の 6） */

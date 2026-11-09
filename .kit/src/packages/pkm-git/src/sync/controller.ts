@@ -259,6 +259,14 @@ export class SyncController {
 				state: { ...(await engine.refsState().catch(() => ({}))), attempt: result.attempts },
 			});
 		}
+		// 共通祖先が 1 つでないマージ（ADR-0103 の 4）。まれなので、起きたら毎回残す
+		for (const count of result.mergeBases ?? []) {
+			if (count === 1) continue;
+			await this.safeLog({
+				...base, level: "warn", event: count === 0 ? "no-merge-base" : "multiple-merge-bases", phase: "merge-base",
+				detail: `bases: ${count}`,
+			});
+		}
 		// オフラインと接続の確認は、状態が変わったときだけ残す
 		if ((view === "offline" || view === "auth") && previous !== view) {
 			await this.safeLog({ ...base, level: "warn", event: view, phase: engine.lastPhase, error: result.error });

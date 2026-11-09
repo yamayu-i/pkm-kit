@@ -23,6 +23,10 @@ export interface MergeConflict {
 	kind: ConflictKind;
 	/** kind === "copy" のときのローカル版の保存先 */
 	copyPath?: string;
+	/** kind === "kept-modified" のとき、削除したのがローカル（ours）かリモート（theirs）か */
+	deleted?: "local" | "remote";
+	/** kind === "kept-modified" のとき、記録のパス（ADR-0103） */
+	recordPath?: string;
 }
 
 export interface TreeMergeInput {
@@ -97,6 +101,21 @@ export function conflictCopyPath(path: string, suffix: string, taken: (p: string
 }
 
 /**
+ * 共通祖先が複数あるときの祖先のツリー（ADR-0103 の 4）。
+ * すべての祖先で同じ内容（またはすべてにない）パスだけを残し、祖先によって違うパスは祖先にないものとする。
+ * どの祖先を選んでも片方の変更を黙って戻すことがあるので、違うパスは衝突として両方を残す側に倒す。
+ */
+export function commonBaseTree(bases: ReadonlyArray<ReadonlyMap<string, TreeEntry>>): Map<string, TreeEntry> {
+	const out = new Map<string, TreeEntry>();
+	if (bases.length === 0) return out;
+	const [first, ...rest] = bases as [ReadonlyMap<string, TreeEntry>, ...ReadonlyMap<string, TreeEntry>[]];
+	for (const [path, entry] of first) {
+		if (rest.every((b) => sameEntry(b.get(path), entry))) out.set(path, entry);
+	}
+	return out;
+}
+
+/**
  * ファイル単位の 3-way マージ。どのケースでもデータを捨てない。
  * - 片側だけの変更 → その変更を採用
  * - 両側で変更 → 行単位でマージ。重なったら md/txt はマーカー、それ以外はリモート優先＋ローカル版を別名保存
@@ -132,7 +151,7 @@ export async function mergeTrees(input: TreeMergeInput): Promise<TreeMergeResult
 		if (!o || !t) {
 			const kept = (o ?? t) as TreeEntry;
 			entries.set(path, kept);
-			conflicts.push({ path, kind: "kept-modified" });
+			conflicts.push({ path, kind: "kept-modified", deleted: o ? "remote" : "local" });
 			continue;
 		}
 
