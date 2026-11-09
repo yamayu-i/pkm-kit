@@ -33,6 +33,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
 | `tmp/` | 一時ファイル（外部共有用の書き出し、自分が一時的に見るだけのファイル）。git で管理せず、端末間で同期しない。この規約（frontmatter、リンクの書式）の対象外。サブフォルダを作ってよい（[ADR-0038](../../.kit/src/docs/adr/0038-tmp-folder.md)） |
+| `.pkm-git/conflicts/` | PKM Git の衝突の記録（削除と編集が衝突して編集側を残したもの。1 件 1 ファイル）。PKM Git が作り、未解決の一覧で解決すると消える。手で書き換えない（[ADR-0103](../../.kit/src/docs/adr/0103-git-conflict-records.md)） |
 | それ以外 | 通常のノート。新規ノートの既定の作成先は Vault ルート |
 
 `sources/` と `wiki/` の書式と、LLM がどのノートを変えてよいか（所有の区分）は [LLM wiki の仕組み](llm-wiki.md) にある。

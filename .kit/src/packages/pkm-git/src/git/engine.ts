@@ -4,7 +4,8 @@ import { AuthTargetError, assertAuthTarget } from "./auth-target";
 import { createGitFs, GIT_DIR_ROOT } from "../fs/git-fs";
 import { assertSafeWorktreePath } from "../merge/path-safety";
 import { formatIso, isTargetPath, setUpdated, shouldStamp } from "../stamp/updated";
-import { mergeTrees, type MergeConflict, type TreeEntry } from "../merge/tree-merge";
+import { commonBaseTree, mergeTrees, type MergeConflict, type ResultEntry, type TreeEntry } from "../merge/tree-merge";
+import { conflictRecordPath, encodeConflictRecord, isPkmGitPath, newConflictRecord } from "./conflict-records";
 import { readTreeMap, writeTreeMap } from "./tree";
 
 export interface Author {
@@ -74,6 +75,8 @@ export interface SyncResult {
 	/** push を試みた回数 */
 	attempts: number;
 	recovery: RecoveryResult | null;
+	/** この同期のマージごとの共通祖先の数（1 以外は同期の記録に残す。ADR-0103 の 4） */
+	mergeBases: number[];
 	reason?: PendingReason;
 	/** pending の理由に関わるパス、offline / auth の元のエラー */
 	paths?: string[];
@@ -419,9 +422,10 @@ export class PkmGit {
 		}
 	}
 
-	private async mergeBase(a: string, b: string): Promise<string | null> {
+	/** 共通祖先をすべて返す（ADR-0103 の 4）。ふつうは 1 つ */
+	private async mergeBases(a: string, b: string): Promise<string[]> {
 		const bases: string[] = await git.findMergeBase({ ...this.ctx, oids: [a, b] });
-		return bases[0] ?? null;
+		return [...new Set(bases)].sort();
 	}
 
 	async pull(): Promise<PullResult> {
@@ -445,22 +449,23 @@ export class PkmGit {
 	private async integrate(branch: string, local: string, remote: string | null): Promise<
 		| { kind: "up-to-date" | "ahead" }
 		| { kind: "fast-forward"; changed: string[] }
-		| { kind: "merged"; changed: string[]; conflicts: MergeConflict[] }
+		| { kind: "merged"; changed: string[]; conflicts: MergeConflict[]; bases: number }
 	> {
 		if (!remote || remote === local) return { kind: "up-to-date" };
 
-		const base = await this.measure("merge-base", () => this.mergeBase(local, remote));
-		if (base === remote) return { kind: "ahead" };
-		if (base === local) {
+		const bases = await this.measure("merge-base", () => this.mergeBases(local, remote));
+		if (bases.includes(remote)) return { kind: "ahead" };
+		if (bases.includes(local)) {
 			const changed = await this.measure("moveTo", () => this.moveTo(branch, local, remote));
 			return { kind: "fast-forward", changed };
 		}
 
-		const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
-			base ? readTreeMap(this.ctx, base) : Promise.resolve(new Map<string, TreeEntry>()),
+		const [baseMaps, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
+			Promise.all(bases.map((b) => readTreeMap(this.ctx, b))),
 			readTreeMap(this.ctx, local),
 			readTreeMap(this.ctx, remote),
 		]));
+		const baseMap = baseMaps.length === 1 ? (baseMaps[0] as Map<string, TreeEntry>) : commonBaseTree(baseMaps);
 		const { entries, conflicts } = await this.measure("merge", () => mergeTrees({
 			base: baseMap,
 			ours: oursMap,
@@ -469,6 +474,7 @@ export class PkmGit {
 			labels: { ours: `local (${this.device})`, theirs: `remote (${this.remote}/${branch})` },
 			copySuffix: `${this.device} ${formatStamp(this.now())}`,
 		}));
+		this.addConflictRecords(entries, conflicts, { local, remote, bases });
 		const tree = await this.measure("write-tree", () => writeTreeMap(this.ctx, entries));
 		const merged = await git.commit({
 			...this.ctx,
@@ -479,7 +485,24 @@ export class PkmGit {
 			noUpdateBranch: true,
 		});
 		const changed = await this.measure("moveTo", () => this.moveTo(branch, local, merged, oursMap));
-		return { kind: "merged", changed, conflicts };
+		return { kind: "merged", changed, conflicts, bases: bases.length };
+	}
+
+	/**
+	 * 削除と編集の衝突を、マージの結果のツリーに記録として入れる（ADR-0103 の 2）。
+	 * マージのコミットと記録が同じコミットになる。.pkm-git/ の中どうしの衝突は記録しない
+	 */
+	private addConflictRecords(
+		entries: Map<string, ResultEntry>, conflicts: MergeConflict[], commits: { local: string; remote: string; bases: string[] },
+	): void {
+		const now = this.now();
+		for (const c of conflicts) {
+			if (c.kind !== "kept-modified" || isPkmGitPath(c.path)) continue;
+			const record = newConflictRecord({ path: c.path, deleted: c.deleted ?? "remote", device: this.device, ...commits }, now);
+			const path = conflictRecordPath(record, now, (p) => entries.has(p));
+			entries.set(path, { mode: "100644", content: encodeConflictRecord(record) });
+			c.recordPath = path;
+		}
 	}
 
 	private mergeMessage(branch: string, conflicts: MergeConflict[]): string {
@@ -651,7 +674,7 @@ export class PkmGit {
 	async sync(opts: { keep?: string } = {}): Promise<SyncResult> {
 		const branch = await this.currentBranch();
 		const recovery = await this.measure("recover", () => this.recover(branch));
-		const result: SyncResult = { status: "shared", snapshot: false, changed: [], conflicts: [], attempts: 0, recovery };
+		const result: SyncResult = { status: "shared", snapshot: false, changed: [], conflicts: [], attempts: 0, recovery, mergeBases: [] };
 		const changed = new Set<string>();
 		const finish = (patch: Partial<SyncResult>): SyncResult => ({ ...result, ...patch, changed: [...changed].sort() });
 
@@ -672,7 +695,10 @@ export class PkmGit {
 				const local = await git.resolveRef({ ...this.ctx, ref: branch });
 				const res = await this.integrate(branch, local, remote);
 				if (res.kind === "fast-forward" || res.kind === "merged") for (const p of res.changed) changed.add(p);
-				if (res.kind === "merged") result.conflicts.push(...res.conflicts);
+				if (res.kind === "merged") {
+					result.conflicts.push(...res.conflicts);
+					result.mergeBases.push(res.bases);
+				}
 				const head = await git.resolveRef({ ...this.ctx, ref: branch });
 				if (head === remote) return finish({ status: "shared" });
 
@@ -737,7 +763,7 @@ export class PkmGit {
 		const branch = await this.currentBranch();
 		const remote = await this.measure("fetch", () => this.fetch(branch));
 		const before = await git.resolveRef({ ...this.ctx, ref: branch });
-		if (remote && remote !== before && (await this.measure("merge-base", () => this.mergeBase(before, remote))) !== remote) {
+		if (remote && remote !== before && !(await this.measure("merge-base", () => this.mergeBases(before, remote))).includes(remote)) {
 			return { kind: "behind" };
 		}
 		const snapshot = await this.measure("snapshot", () => this.snapshot());

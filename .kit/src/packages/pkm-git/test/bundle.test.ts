@@ -117,6 +117,30 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		expect(server.remoteFile("draft.md")).toBe("d\n");
 	});
 
+	it("衝突の記録を未解決の件数に入れ、ファイルのない記録は自動で消す（ADR-0103 の 3）", async () => {
+		const dir = join(phoneRoot, ".pkm-git/conflicts");
+		mkdirSync(dir, { recursive: true });
+		const oid = "a".repeat(40);
+		const record = (path: string) => JSON.stringify({
+			schemaVersion: 1, kind: "kept-modified", path, deleted: "remote", device: "pc",
+			at: "2026-10-31T12:00:00+09:00", local: oid, remote: oid, bases: [oid],
+		});
+		writeFileSync(join(dir, "20261031T030000Z-00000001.json"), record("note.md"));
+		writeFileSync(join(dir, "20261031T030000Z-00000002.json"), record("gone.md"));
+		writeFileSync(join(dir, "20261031T030000Z-00000003.json"), '{"schemaVersion":99}');
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))();
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1", autoSyncMinutes: 0 };
+		await plugin.onload();
+		await plugin.sync();
+		// note.md の記録と、読めない記録の 2 件。gone.md の記録は消えて、同期でリモートからも消える
+		expect(mock.statusTexts.at(-1)).toMatch(/ · ⚠ 2$/);
+		expect(existsSync(join(dir, "20261031T030000Z-00000002.json"))).toBe(false);
+		expect(existsSync(join(dir, "20261031T030000Z-00000001.json"))).toBe(true);
+		const log = readFileSync(join(phoneRoot, ".git/pkm-git/log.jsonl"), "utf8");
+		expect(log).toContain('"event":"conflict-record-unreadable"');
+	});
+
 	it("同期できないときは記録に残し、トークンを書かない（ADR-0089 の 8）", async () => {
 		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
 		const plugin = new (loadBundle(mock.obsidian))();

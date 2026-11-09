@@ -21479,6 +21479,15 @@ function conflictCopyPath(path, suffix, taken) {
     if (!taken(full)) return full;
   }
 }
+function commonBaseTree(bases) {
+  const out = /* @__PURE__ */ new Map();
+  if (bases.length === 0) return out;
+  const [first, ...rest] = bases;
+  for (const [path, entry] of first) {
+    if (rest.every((b) => sameEntry(b.get(path), entry))) out.set(path, entry);
+  }
+  return out;
+}
 async function mergeTrees(input) {
   const { base, ours, theirs } = input;
   const entries = /* @__PURE__ */ new Map();
@@ -21504,7 +21513,7 @@ async function mergeTrees(input) {
     if (!o || !t) {
       const kept = o ?? t;
       entries.set(path, kept);
-      conflicts.push({ path, kind: "kept-modified" });
+      conflicts.push({ path, kind: "kept-modified", deleted: o ? "remote" : "local" });
       continue;
     }
     const special = [o.mode, t.mode].some((m) => m === SUBMODULE_MODE || m === SYMLINK_MODE);
@@ -21545,6 +21554,96 @@ function assertNoFileDirCollision(entries) {
         throw new Error(`\u30DE\u30FC\u30B8\u3067\u304D\u307E\u305B\u3093: "${dir}" \u304C\u30D5\u30A1\u30A4\u30EB\u3068\u30D5\u30A9\u30EB\u30C0\u306E\u4E21\u65B9\u3068\u3057\u3066\u5B58\u5728\u3057\u307E\u3059`);
       }
     }
+  }
+}
+
+// src/git/conflict-records.ts
+init_buffer();
+var CONFLICT_RECORD_ROOT = ".pkm-git";
+var CONFLICT_RECORD_DIR = `${CONFLICT_RECORD_ROOT}/conflicts`;
+function isPkmGitPath(path) {
+  return path === CONFLICT_RECORD_ROOT || path.startsWith(`${CONFLICT_RECORD_ROOT}/`);
+}
+function fnv1a(text) {
+  let h = 2166136261;
+  for (const b of new TextEncoder().encode(text)) {
+    h ^= b;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+function utcStamp(d) {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+function conflictRecordPath(record, now, taken) {
+  const id = `${utcStamp(now)}-${fnv1a(`${record.path}\0${record.device}\0${now.toISOString()}`)}`;
+  for (let n = 1; ; n++) {
+    const candidate = `${CONFLICT_RECORD_DIR}/${id}${n > 1 ? `-${n}` : ""}.json`;
+    if (!taken(candidate)) return candidate;
+  }
+}
+function newConflictRecord(input, now) {
+  return { schemaVersion: 1, kind: "kept-modified", ...input, at: formatIso(now) };
+}
+function encodeConflictRecord(record) {
+  return new TextEncoder().encode(`${JSON.stringify(record, null, 2)}
+`);
+}
+function isOid(v) {
+  return typeof v === "string" && /^[0-9a-f]{40}$/.test(v);
+}
+function parseConflictRecord(text) {
+  let v;
+  try {
+    v = JSON.parse(text);
+  } catch {
+    throw new Error("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof v !== "object" || v === null) throw new Error("JSON \u306E\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+  const r = v;
+  if (r.schemaVersion !== 1) throw new Error(`\u77E5\u3089\u306A\u3044 schemaVersion \u3067\u3059: ${JSON.stringify(r.schemaVersion)}`);
+  if (r.kind !== "kept-modified") throw new Error(`\u77E5\u3089\u306A\u3044 kind \u3067\u3059: ${JSON.stringify(r.kind)}`);
+  if (typeof r.path !== "string" || !isSafeWorktreePath(r.path) || isPkmGitPath(r.path)) throw new Error("path \u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093");
+  if (r.deleted !== "local" && r.deleted !== "remote") throw new Error("deleted \u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093");
+  if (typeof r.device !== "string" || typeof r.at !== "string") throw new Error("device \u304B at \u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093");
+  if (!isOid(r.local) || !isOid(r.remote) || !Array.isArray(r.bases) || !r.bases.every(isOid)) {
+    throw new Error("\u30B3\u30DF\u30C3\u30C8\u306E\u6307\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093");
+  }
+  return {
+    schemaVersion: 1,
+    kind: "kept-modified",
+    path: r.path,
+    deleted: r.deleted,
+    device: r.device,
+    at: r.at,
+    local: r.local,
+    remote: r.remote,
+    bases: [...r.bases]
+  };
+}
+async function listConflictRecords(store) {
+  if ((await store.stat(CONFLICT_RECORD_DIR))?.type !== "folder") return [];
+  const out = [];
+  for (const name of (await store.list(CONFLICT_RECORD_DIR)).sort()) {
+    const file = `${CONFLICT_RECORD_DIR}/${name}`;
+    if (!name.endsWith(".json") || (await store.stat(file))?.type !== "file") continue;
+    try {
+      out.push({ file, record: parseConflictRecord(new TextDecoder().decode(await store.read(file))) });
+    } catch (e) {
+      out.push({ file, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return out;
+}
+async function removeConflictRecord(store, file) {
+  if (dirname2(file) !== CONFLICT_RECORD_DIR || !file.endsWith(".json") || !isSafeWorktreePath(file)) {
+    throw new Error(`\u885D\u7A81\u306E\u8A18\u9332\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${JSON.stringify(file)}`);
+  }
+  if (await store.stat(file)) await store.remove(file);
+  for (const dir of [CONFLICT_RECORD_DIR, CONFLICT_RECORD_ROOT]) {
+    const stat = await store.stat(dir);
+    if (!stat || stat.type !== "folder" || (await store.list(dir)).length > 0) return;
+    await store.rmdir(dir);
   }
 }
 
@@ -21876,9 +21975,10 @@ var PkmGit = class {
       throw e;
     }
   }
-  async mergeBase(a, b) {
+  /** 共通祖先をすべて返す（ADR-0103 の 4）。ふつうは 1 つ */
+  async mergeBases(a, b) {
     const bases = await isomorphic_git_default.findMergeBase({ ...this.ctx, oids: [a, b] });
-    return bases[0] ?? null;
+    return [...new Set(bases)].sort();
   }
   async pull() {
     const branch2 = await this.currentBranch();
@@ -21899,17 +21999,18 @@ var PkmGit = class {
   /** fetch した remote を local に取り込む（作業ツリーとブランチを進める） */
   async integrate(branch2, local, remote) {
     if (!remote || remote === local) return { kind: "up-to-date" };
-    const base = await this.measure("merge-base", () => this.mergeBase(local, remote));
-    if (base === remote) return { kind: "ahead" };
-    if (base === local) {
+    const bases = await this.measure("merge-base", () => this.mergeBases(local, remote));
+    if (bases.includes(remote)) return { kind: "ahead" };
+    if (bases.includes(local)) {
       const changed2 = await this.measure("moveTo", () => this.moveTo(branch2, local, remote));
       return { kind: "fast-forward", changed: changed2 };
     }
-    const [baseMap, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
-      base ? readTreeMap(this.ctx, base) : Promise.resolve(/* @__PURE__ */ new Map()),
+    const [baseMaps, oursMap, theirsMap] = await this.measure("read-trees", () => Promise.all([
+      Promise.all(bases.map((b) => readTreeMap(this.ctx, b))),
       readTreeMap(this.ctx, local),
       readTreeMap(this.ctx, remote)
     ]));
+    const baseMap = baseMaps.length === 1 ? baseMaps[0] : commonBaseTree(baseMaps);
     const { entries, conflicts } = await this.measure("merge", () => mergeTrees({
       base: baseMap,
       ours: oursMap,
@@ -21918,6 +22019,7 @@ var PkmGit = class {
       labels: { ours: `local (${this.device})`, theirs: `remote (${this.remote}/${branch2})` },
       copySuffix: `${this.device} ${formatStamp(this.now())}`
     }));
+    this.addConflictRecords(entries, conflicts, { local, remote, bases });
     const tree = await this.measure("write-tree", () => writeTreeMap(this.ctx, entries));
     const merged = await isomorphic_git_default.commit({
       ...this.ctx,
@@ -21928,7 +22030,21 @@ var PkmGit = class {
       noUpdateBranch: true
     });
     const changed = await this.measure("moveTo", () => this.moveTo(branch2, local, merged, oursMap));
-    return { kind: "merged", changed, conflicts };
+    return { kind: "merged", changed, conflicts, bases: bases.length };
+  }
+  /**
+   * 削除と編集の衝突を、マージの結果のツリーに記録として入れる（ADR-0103 の 2）。
+   * マージのコミットと記録が同じコミットになる。.pkm-git/ の中どうしの衝突は記録しない
+   */
+  addConflictRecords(entries, conflicts, commits) {
+    const now = this.now();
+    for (const c of conflicts) {
+      if (c.kind !== "kept-modified" || isPkmGitPath(c.path)) continue;
+      const record = newConflictRecord({ path: c.path, deleted: c.deleted ?? "remote", device: this.device, ...commits }, now);
+      const path = conflictRecordPath(record, now, (p) => entries.has(p));
+      entries.set(path, { mode: "100644", content: encodeConflictRecord(record) });
+      c.recordPath = path;
+    }
   }
   mergeMessage(branch2, conflicts) {
     let msg = `vault: merge ${this.remote}/${branch2} (${this.device})
@@ -22081,7 +22197,7 @@ var PkmGit = class {
   async sync(opts = {}) {
     const branch2 = await this.currentBranch();
     const recovery = await this.measure("recover", () => this.recover(branch2));
-    const result = { status: "shared", snapshot: false, changed: [], conflicts: [], attempts: 0, recovery };
+    const result = { status: "shared", snapshot: false, changed: [], conflicts: [], attempts: 0, recovery, mergeBases: [] };
     const changed = /* @__PURE__ */ new Set();
     const finish = (patch) => ({ ...result, ...patch, changed: [...changed].sort() });
     if (opts.keep !== void 0) {
@@ -22101,7 +22217,10 @@ var PkmGit = class {
         const local = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
         const res = await this.integrate(branch2, local, remote);
         if (res.kind === "fast-forward" || res.kind === "merged") for (const p of res.changed) changed.add(p);
-        if (res.kind === "merged") result.conflicts.push(...res.conflicts);
+        if (res.kind === "merged") {
+          result.conflicts.push(...res.conflicts);
+          result.mergeBases.push(res.bases);
+        }
         const head = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
         if (head === remote) return finish({ status: "shared" });
         result.attempts = attempt;
@@ -22162,7 +22281,7 @@ var PkmGit = class {
     const branch2 = await this.currentBranch();
     const remote = await this.measure("fetch", () => this.fetch(branch2));
     const before = await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 });
-    if (remote && remote !== before && await this.measure("merge-base", () => this.mergeBase(before, remote)) !== remote) {
+    if (remote && remote !== before && !(await this.measure("merge-base", () => this.mergeBases(before, remote))).includes(remote)) {
       return { kind: "behind" };
     }
     const snapshot = await this.measure("snapshot", () => this.snapshot());
@@ -22349,13 +22468,24 @@ var ConflictsModal = class extends import_obsidian.Modal {
     const list = this.contentEl.createEl("ul");
     for (const item of this.items) {
       const li = list.createEl("li");
-      const link = li.createEl("a", { text: item.path, href: "#" });
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        this.close();
-        void this.app.workspace.openLinkText(item.path, "", false);
-      });
+      if (item.openable === false) {
+        li.createEl("code", { text: item.path });
+      } else {
+        const link = li.createEl("a", { text: item.path, href: "#" });
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.close();
+          void this.app.workspace.openLinkText(item.path, "", false);
+        });
+      }
       li.appendText(` \u2014 ${item.note}`);
+      for (const action of item.actions ?? []) {
+        const button = li.createEl("button", { text: action.label });
+        button.addEventListener("click", () => {
+          this.close();
+          void action.run();
+        });
+      }
     }
   }
   onClose() {
@@ -22738,6 +22868,16 @@ var SyncController = class {
         state: { ...await engine.refsState().catch(() => ({})), attempt: result.attempts }
       });
     }
+    for (const count of result.mergeBases ?? []) {
+      if (count === 1) continue;
+      await this.safeLog({
+        ...base,
+        level: "warn",
+        event: count === 0 ? "no-merge-base" : "multiple-merge-bases",
+        phase: "merge-base",
+        detail: `bases: ${count}`
+      });
+    }
     if ((view === "offline" || view === "auth") && previous !== view) {
       await this.safeLog({ ...base, level: "warn", event: view, phase: engine.lastPhase, error: result.error });
     }
@@ -22858,6 +22998,9 @@ function reportTransfer(phase, t) {
   }
 }
 var CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
+function keptModifiedNote(record) {
+  return record.deleted === "local" ? `${record.device} \u3067\u524A\u9664\u3057\u3001\u307B\u304B\u306E\u7AEF\u672B\u3067\u7DE8\u96C6\u3055\u308C\u3066\u3044\u305F\u306E\u3067\u3001\u7DE8\u96C6\u5074\u3092\u6B8B\u3057\u307E\u3057\u305F` : `\u307B\u304B\u306E\u7AEF\u672B\u3067\u524A\u9664\u3057\u3001${record.device} \u3067\u7DE8\u96C6\u3055\u308C\u3066\u3044\u305F\u306E\u3067\u3001\u7DE8\u96C6\u5074\u3092\u6B8B\u3057\u307E\u3057\u305F`;
+}
 var CONFLICT_NOTES = {
   markers: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u5165\u308A",
   copy: "\u30EA\u30E2\u30FC\u30C8\u7248\u3092\u63A1\u7528\u3001\u30ED\u30FC\u30AB\u30EB\u7248\u306F\u5225\u540D\u3067\u4FDD\u5B58",
@@ -22884,6 +23027,8 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
   authNoticeShown = false;
   controller;
   log;
+  /** 読めない衝突の記録のうち、この起動で同期の記録に残したもの（数え直すたびに残さない） */
+  loggedUnreadable = /* @__PURE__ */ new Set();
   async onload() {
     await this.loadSettings();
     this.addSettingTab(new PkmGitSettingTab(this.app, this));
@@ -23065,7 +23210,7 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
           "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u304C\u3042\u308A\u307E\u3057\u305F",
           res.conflicts.map((c) => ({
             path: c.copyPath ?? c.path,
-            note: c.copyPath ? `${c.path} \u306E${CONFLICT_NOTES[c.kind]}` : CONFLICT_NOTES[c.kind]
+            note: c.copyPath ? `${c.path} \u306E${CONFLICT_NOTES[c.kind]}` : `${CONFLICT_NOTES[c.kind]}${c.recordPath ? "\uFF08\u300CList unresolved conflicts\u300D\u3067\u6B8B\u3059\u304B\u524A\u9664\u3059\u308B\u304B\u3092\u9078\u3079\u307E\u3059\uFF09" : ""}`
           }))
         ).open();
       }
@@ -23157,9 +23302,14 @@ ${message}`, 1e4);
       await this.handle(this.controller.start());
     }
   }
-  /** マーカー入りのノートと、コンフリクト版ファイルを探す */
+  /** マーカー入りのノートと、コンフリクト版ファイルを探し、衝突の記録を足す（ADR-0103） */
   async findUnresolved() {
     const items = [];
+    try {
+      items.push(...await this.recordItems());
+    } catch (error) {
+      await this.log.write({ level: "error", event: "conflict-records-failed", phase: "conflict-records", error });
+    }
     for (const file of this.app.vault.getFiles()) {
       if (CONFLICT_COPY_NAME.test(file.path)) {
         items.push({ path: file.path, note: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u7248\uFF08\u4E0D\u8981\u306A\u3089\u524A\u9664\uFF09" });
@@ -23170,6 +23320,85 @@ ${message}`, 1e4);
       }
     }
     return items;
+  }
+  /**
+   * 衝突の記録の行（ADR-0103 の 3）。ファイルがもうない記録は解決済みとして消す。
+   * 読めない記録は自動では消さず、「Delete record」だけを付ける
+   */
+  async recordItems() {
+    const store = new VaultFileStore(this.app);
+    const items = [];
+    for (const loaded of await listConflictRecords(store)) {
+      if ("error" in loaded) {
+        if (!this.loggedUnreadable.has(loaded.file)) {
+          this.loggedUnreadable.add(loaded.file);
+          await this.log.write({
+            level: "warn",
+            event: "conflict-record-unreadable",
+            phase: "conflict-records",
+            detail: loaded.error,
+            paths: [loaded.file]
+          });
+        }
+        items.push({
+          path: loaded.file,
+          note: `\u8AAD\u3081\u306A\u3044\u885D\u7A81\u306E\u8A18\u9332\uFF08${loaded.error}\uFF09\u3002\u65B0\u3057\u3044\u7248\u306E\u30D7\u30E9\u30B0\u30A4\u30F3\u304C\u66F8\u3044\u305F\u3082\u306E\u304B\u3082\u3057\u308C\u307E\u305B\u3093`,
+          openable: false,
+          actions: [{ label: "Delete record", run: () => this.resolveRecord(loaded.file) }]
+        });
+        continue;
+      }
+      const { file, record } = loaded;
+      if (!await store.stat(record.path)) {
+        await removeConflictRecord(store, file);
+        this.controller.noteChange(file);
+        continue;
+      }
+      items.push({
+        path: record.path,
+        note: keptModifiedNote(record),
+        actions: [
+          { label: "Keep", run: () => this.resolveRecord(file) },
+          { label: "Delete", run: () => this.confirmDeleteKept(record.path, file) }
+        ]
+      });
+    }
+    return items;
+  }
+  /** 記録を消して（解決）、同期する。解決は次の同期でほかの端末にも届く */
+  async resolveRecord(file) {
+    try {
+      await removeConflictRecord(new VaultFileStore(this.app), file);
+      this.controller.noteChange(file);
+    } catch (e) {
+      new import_obsidian3.Notice(`Git: \u8A18\u9332\u3092\u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F
+${e instanceof Error ? e.message : String(e)}`, 8e3);
+      return;
+    } finally {
+      await this.refreshUnresolved();
+    }
+    await this.sync();
+  }
+  confirmDeleteKept(path, file) {
+    new ConfirmModal(
+      this.app,
+      "Delete file",
+      `${path} \u3092\u524A\u9664\u3057\u307E\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002\u885D\u7A81\u306E\u8A18\u9332\u3082\u6D88\u3057\u307E\u3059\u3002`,
+      () => void this.deleteKept(path, file)
+    ).open();
+  }
+  async deleteKept(path, file) {
+    try {
+      const target = this.app.vault.getAbstractFileByPath(path);
+      if (target instanceof import_obsidian3.TFile) await this.app.fileManager.trashFile(target);
+      else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
+      this.controller.noteChange(path);
+    } catch (e) {
+      new import_obsidian3.Notice(`Git: \u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F
+${e instanceof Error ? e.message : String(e)}`, 8e3);
+      return;
+    }
+    await this.resolveRecord(file);
   }
   /** 未解決の件数を数え直す（全ノートを読むので、起動時と取り込んだときだけ。ADR-0089 の 6） */
   async refreshUnresolved() {
