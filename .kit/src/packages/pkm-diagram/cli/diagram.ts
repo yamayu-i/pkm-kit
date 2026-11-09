@@ -16,13 +16,25 @@
  *       編集用 XML から描画を作り直す（--output がなければ、図の SVG をその場で書き直す）
  *   node .kit/bin/diagram.mjs inspect <図.drawio.svg|.drawio|.xml>
  *       ページ・セル（ID・形・ラベル・位置）・辺・描けない書式を出す
+ *
+ * AI が描く SVG と D2 の図（ADR-0102）
+ *   node .kit/bin/diagram.mjs svg-style <図.svg> [--output <図.svg>]
+ *       決まったクラス（node / group / edge / label / 色の名前）に図の配色のスタイルと矢印を差し込み、検査を通ったら書く
+ *   node .kit/bin/diagram.mjs svg-check <図.svg…> [--allow-colors]
+ *       安全性・色（クラスだけを使っているか）・ノートの幅での文字の大きさを検査する
+ *   node .kit/bin/diagram.mjs d2 <図.d2> [--output <図.svg>] [--layout elk|dagre] [--d2 <d2 コマンド>]
+ *       図の配色のテーマを付けて外部の d2 コマンドで描き、ダークの色を足し、検査を通ったら書く（既定 同じ名前の .svg）
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { buildDiagram, inspectDiagram, renderDiagram, xmlFromInput } from "../src/core/author.ts";
 import { checkExported, documentKind, embedDiagrams } from "../src/core/document.ts";
 import { decompressDiagramFile } from "../src/core/model.ts";
+import { d2Preamble, D2_DARK_THEME_ID } from "../src/core/d2.ts";
 import { exportPath } from "../src/core/names.ts";
+import { checkPlainSvg, darkenSvg, styleSvg } from "../src/core/plain-svg.ts";
 import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
 
 export interface Io {
@@ -40,10 +52,13 @@ const USAGE = `使い方:
   diagram.mjs strip <図.drawio.svg> [--output <パス>]
   diagram.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
   diagram.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
-  diagram.mjs inspect <図.drawio.svg|.drawio|.xml>`;
+  diagram.mjs inspect <図.drawio.svg|.drawio|.xml>
+  diagram.mjs svg-style <図.svg> [--output <図.svg>]
+  diagram.mjs svg-check <図.svg…> [--allow-colors]
+  diagram.mjs d2 <図.d2> [--output <図.svg>] [--layout elk|dagre] [--d2 <d2 コマンド>]`;
 
 /** 値をとらない指定 */
-const FLAGS = new Set(["force", "plain"]);
+const FLAGS = new Set(["force", "plain", "allow-colors"]);
 
 function parseArgs(args: string[]): { positional: string[]; options: Map<string, string> } {
 	const positional: string[] = [];
@@ -270,6 +285,95 @@ async function runInspect(positional: string[], io: Io): Promise<number> {
 	return 0;
 }
 
+function report(io: Io, name: string, r: { errors: string[]; warnings: string[] }): boolean {
+	for (const e of r.errors) io.err(`${name}: 誤り: ${e}`);
+	for (const w of r.warnings) io.err(`${name}: 警告: ${w}`);
+	return r.errors.length === 0;
+}
+
+function writeIfChanged(outFull: string, text: string, io: Io, note: string): void {
+	const before = existsSync(outFull) ? readFileSync(outFull, "utf8") : null;
+	const shown = relative(io.cwd, outFull) || outFull;
+	if (before === text) {
+		io.out(`${shown}（変わらない）`);
+		return;
+	}
+	mkdirSync(dirname(outFull), { recursive: true });
+	writeFileSync(outFull, text);
+	io.out(`${shown}${note}`);
+}
+
+function runSvgStyle(positional: string[], options: Map<string, string>, io: Io): number {
+	const [input] = positional;
+	if (!input || positional.length > 1 || !input.endsWith(".svg") || input.endsWith(".drawio.svg")) {
+		io.err(`${USAGE}\n（svg-style は AI が書いた .svg に使う。.drawio.svg は render）`);
+		return 2;
+	}
+	const inputFull = resolve(io.cwd, input);
+	const styled = styleSvg(readFileSync(inputFull, "utf8"));
+	const r = checkPlainSvg(styled);
+	if (!report(io, input, r)) return 1;
+	writeIfChanged(resolve(io.cwd, options.get("output") ?? input), styled, io, r.minTextPx === null ? "" : `（幅 ${r.width}px、ノートでの最小の文字 ${r.minTextPx.toFixed(1)}px）`);
+	return 0;
+}
+
+function runSvgCheck(positional: string[], options: Map<string, string>, io: Io): number {
+	if (positional.length === 0) {
+		io.err(USAGE);
+		return 2;
+	}
+	let ok = true;
+	for (const input of positional) {
+		const r = checkPlainSvg(readFileSync(resolve(io.cwd, input), "utf8"), { allowColors: options.has("allow-colors") });
+		if (report(io, input, r)) io.out(`${input}: OK${r.minTextPx === null ? "" : `（ノートでの最小の文字 ${r.minTextPx.toFixed(1)}px）`}`);
+		else ok = false;
+	}
+	return ok ? 0 : 1;
+}
+
+const D2_INSTALL = "d2 コマンドが見つからない。入れ方: go install oss.terrastruct.com/d2@v0.7.1（または https://d2lang.com の手順）。場所は --d2 か環境変数 D2_BIN で渡せる";
+
+function runD2(positional: string[], options: Map<string, string>, io: Io): number {
+	const [input] = positional;
+	if (!input || positional.length > 1 || !input.endsWith(".d2")) {
+		io.err(USAGE);
+		return 2;
+	}
+	const layout = options.get("layout") ?? "elk";
+	if (layout !== "elk" && layout !== "dagre") {
+		io.err("--layout は elk か dagre");
+		return 2;
+	}
+	const output = options.get("output") ?? input.replace(/\.d2$/, ".svg");
+	if (!output.endsWith(".svg") || output.endsWith(".drawio.svg")) {
+		io.err("--output は .svg（.drawio.svg ではない）");
+		return 2;
+	}
+	const bin = options.get("d2") ?? process.env.D2_BIN ?? "d2";
+	const work = mkdtempSync(join(tmpdir(), "pkm-diagram-d2-"));
+	try {
+		const src = join(work, "diagram.d2");
+		const out = join(work, "diagram.svg");
+		writeFileSync(src, `${d2Preamble(layout)}\n${readFileSync(resolve(io.cwd, input), "utf8")}`);
+		const run = spawnSync(bin, ["--pad", "16", "--dark-theme", String(D2_DARK_THEME_ID), src, out], { encoding: "utf8" });
+		if (run.error) {
+			io.err((run.error as NodeJS.ErrnoException).code === "ENOENT" ? D2_INSTALL : `d2 を実行できない: ${run.error.message}`);
+			return 1;
+		}
+		if (run.status !== 0 || !existsSync(out)) {
+			io.err(`d2 が失敗した（行の番号は、前に付けたテーマの分だけずれる）:\n${(run.stderr || run.stdout).trim()}`);
+			return 1;
+		}
+		const svg = darkenSvg(readFileSync(out, "utf8"));
+		const r = checkPlainSvg(svg, { allowColors: true });
+		if (!report(io, output, r)) return 1;
+		writeIfChanged(resolve(io.cwd, output), svg, io, r.minTextPx === null ? "" : `（幅 ${r.width}px、ノートでの最小の文字 ${r.minTextPx.toFixed(1)}px）`);
+		return 0;
+	} finally {
+		rmSync(work, { recursive: true, force: true });
+	}
+}
+
 export async function main(argv: string[], io: Io): Promise<number> {
 	const [command, ...rest] = argv;
 	try {
@@ -288,6 +392,12 @@ export async function main(argv: string[], io: Io): Promise<number> {
 				return await runRender(positional, options, io);
 			case "inspect":
 				return await runInspect(positional, io);
+			case "svg-style":
+				return runSvgStyle(positional, options, io);
+			case "svg-check":
+				return runSvgCheck(positional, options, io);
+			case "d2":
+				return runD2(positional, options, io);
 			default:
 				io.err(USAGE);
 				return 2;

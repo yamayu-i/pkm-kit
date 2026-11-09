@@ -5,7 +5,7 @@
  */
 import { candidatePaths } from "../../../pkm-html/src/core/policy.ts";
 import { decodeDataUri, SVG_MIME, svgDataUri, utf8 } from "./encoding.ts";
-import { DrawioFormatError, extractDiagramXml, findSvgProblems, isDrawioSvgPath, parseRootSvg, toSharingSvg } from "./svg.ts";
+import { DrawioFormatError, extractDiagramXml, findSvgProblems, isDiagramSvgPath, isDrawioSvgPath, parseRootSvg, toSharingSvg } from "./svg.ts";
 
 export type DocumentKind = "markdown" | "html";
 
@@ -226,7 +226,7 @@ function unescapeUrl(ref: Reference): string {
 export function drawioCandidates(sourcePath: string, ref: Reference, kind: DocumentKind): string[] {
 	const url = unescapeUrl(ref);
 	const candidates = kind === "markdown" && ref.syntax === "markdown" ? candidatePaths("", url) : candidatePaths(sourcePath, url);
-	return candidates.filter(isDrawioSvgPath);
+	return candidates.filter(isDiagramSvgPath);
 }
 
 export interface EmbedOptions {
@@ -261,7 +261,7 @@ export async function embedDiagrams(text: string, options: EmbedOptions): Promis
 		if (uris.has(path)) return uris.get(path) ?? null;
 		let uri: string | null = null;
 		try {
-			if (extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: 編集用 XML がない（普通の SVG として埋め込む）`);
+			if (isDrawioSvgPath(path) && extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: 編集用 XML がない（普通の SVG として埋め込む）`);
 			const sharing = toSharingSvg(svg);
 			const problems = findSvgProblems(sharing);
 			for (const p of problems.errors) errors.push(`${path}: ${p}がある`);

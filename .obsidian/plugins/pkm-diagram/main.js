@@ -118,6 +118,10 @@ var MAX_XML_CHARS = 20 * 1024 * 1024;
 function isDrawioSvgPath(path) {
   return path.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX) && path.length > DRAWIO_SVG_SUFFIX.length && !path.endsWith(`/${DRAWIO_SVG_SUFFIX}`);
 }
+function isDiagramSvgPath(path) {
+  const base = path.split("/").pop() ?? "";
+  return base.toLowerCase().endsWith(".svg") && base.length > ".svg".length;
+}
 var DrawioFormatError = class extends Error {
   name = "DrawioFormatError";
 };
@@ -449,7 +453,7 @@ function unescapeUrl(ref) {
 function drawioCandidates(sourcePath, ref, kind) {
   const url = unescapeUrl(ref);
   const candidates = kind === "markdown" && ref.syntax === "markdown" ? candidatePaths("", url) : candidatePaths(sourcePath, url);
-  return candidates.filter(isDrawioSvgPath);
+  return candidates.filter(isDiagramSvgPath);
 }
 async function embedDiagrams(text, options) {
   const errors = [];
@@ -465,7 +469,7 @@ async function embedDiagrams(text, options) {
     if (uris.has(path)) return uris.get(path) ?? null;
     let uri = null;
     try {
-      if (extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: \u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\uFF08\u666E\u901A\u306E SVG \u3068\u3057\u3066\u57CB\u3081\u8FBC\u3080\uFF09`);
+      if (isDrawioSvgPath(path) && extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: \u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\uFF08\u666E\u901A\u306E SVG \u3068\u3057\u3066\u57CB\u3081\u8FBC\u3080\uFF09`);
       const sharing = toSharingSvg(svg);
       const problems = findSvgProblems(sharing);
       for (const p of problems.errors) errors.push(`${path}: ${p}\u304C\u3042\u308B`);

@@ -104,4 +104,36 @@ describe("diagram.mjs", () => {
 		expect(await run("inspect", "asset/sys.drawio.svg")).toBe(0);
 		expect(out[0]).toBe('ページ 2\n[1] ページ1（id p1、セル 1）\n  a  rect  "開始 & 終了"  x=0 y=0 w=120 h=60\n[2] ページ2（id p2、セル 0）');
 	});
+
+	it("svg-style: スタイルを差し込んで書き、svg-check を通る。.drawio.svg には使えない", async () => {
+		writeFileSync(join(root, "asset", "a.svg"), '<svg viewBox="0 0 200 60"><g class="node green"><rect width="100" height="40"/><text x="50" y="20" class="center">あ</text></g></svg>');
+		expect(await run("svg-style", "asset/a.svg")).toBe(0);
+		expect(readFileSync(join(root, "asset", "a.svg"), "utf8")).toContain('<style id="pkm-diagram-style">');
+		expect(await run("svg-check", "asset/a.svg")).toBe(0);
+		expect(await run("svg-style", "asset/sys.drawio.svg")).toBe(2);
+	});
+
+	it("svg-style: 色の値を書いた SVG は書かずに失敗する", async () => {
+		const bad = '<svg viewBox="0 0 10 10"><rect fill="#123456"/></svg>';
+		writeFileSync(join(root, "asset", "b.svg"), bad);
+		expect(await run("svg-style", "asset/b.svg")).toBe(1);
+		expect(readFileSync(join(root, "asset", "b.svg"), "utf8")).toBe(bad);
+		expect(err.join("\n")).toMatch(/色の値を直接書いている/);
+	});
+
+	it("d2: d2 コマンドがなければ、入れ方を添えて失敗し、何も書かない", async () => {
+		writeFileSync(join(root, "asset", "c.d2"), "a -> b\n");
+		expect(await run("d2", "asset/c.d2", "--d2", join(root, "no-such-d2"))).toBe(1);
+		expect(err.join("\n")).toMatch(/go install oss.terrastruct.com\/d2/);
+		expect(() => readFileSync(join(root, "asset", "c.svg"))).toThrow();
+	});
+
+	// d2 コマンドは CI にないので、D2_BIN で渡したときだけ実際に描く（ADR-0102。d2 はリポジトリの依存にしない）
+	it.runIf(process.env.D2_BIN)("d2: テーマを付けて描き、ダークの色を足し、検査を通ったものを書く", async () => {
+		writeFileSync(join(root, "asset", "c.d2"), "a: あ { class: blue }\na -> b: ラベル\n");
+		expect(await run("d2", "asset/c.d2")).toBe(0);
+		const svg = readFileSync(join(root, "asset", "c.svg"), "utf8");
+		expect(svg).toContain('<style id="pkm-diagram-dark">');
+		expect(await run("svg-check", "asset/c.svg", "--allow-colors")).toBe(0);
+	});
 });

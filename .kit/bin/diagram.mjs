@@ -1,5 +1,7 @@
 // cli/diagram.ts
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 // src/core/svg.ts
@@ -8,6 +10,10 @@ var MAX_SVG_BYTES = 10 * 1024 * 1024;
 var MAX_XML_CHARS = 20 * 1024 * 1024;
 function isDrawioSvgPath(path) {
   return path.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX) && path.length > DRAWIO_SVG_SUFFIX.length && !path.endsWith(`/${DRAWIO_SVG_SUFFIX}`);
+}
+function isDiagramSvgPath(path) {
+  const base = path.split("/").pop() ?? "";
+  return base.toLowerCase().endsWith(".svg") && base.length > ".svg".length;
 }
 var DrawioFormatError = class extends Error {
   name = "DrawioFormatError";
@@ -248,16 +254,16 @@ function serializeXml(el) {
 
 // src/core/model.ts
 function parseStyle(style) {
-  const map = /* @__PURE__ */ new Map();
+  const map2 = /* @__PURE__ */ new Map();
   const names = [];
   for (const part of style.split(";")) {
     const p = part.trim();
     if (p === "") continue;
     const eq = p.indexOf("=");
     if (eq < 0) names.push(p);
-    else map.set(p.slice(0, eq).trim(), p.slice(eq + 1).trim());
+    else map2.set(p.slice(0, eq).trim(), p.slice(eq + 1).trim());
   }
-  return { map, names };
+  return { map: map2, names };
 }
 function num(v, fallback = 0) {
   if (v === void 0) return fallback;
@@ -290,13 +296,13 @@ function readGeometry(el) {
 function readCell(el, wrapper) {
   const id = wrapper?.attrs.id ?? el.attrs.id ?? "";
   const value = wrapper ? wrapper.attrs.label ?? "" : el.attrs.value ?? "";
-  const { map, names } = parseStyle(el.attrs.style ?? "");
+  const { map: map2, names } = parseStyle(el.attrs.style ?? "");
   const geo = el.children.find((c) => c.name === "mxGeometry");
   return {
     id,
     parent: el.attrs.parent ?? null,
     value,
-    style: map,
+    style: map2,
     styleNames: names,
     vertex: el.attrs.vertex === "1",
     edge: el.attrs.edge === "1",
@@ -1948,7 +1954,7 @@ function unescapeUrl(ref) {
 function drawioCandidates(sourcePath, ref, kind) {
   const url = unescapeUrl(ref);
   const candidates = kind === "markdown" && ref.syntax === "markdown" ? candidatePaths("", url) : candidatePaths(sourcePath, url);
-  return candidates.filter(isDrawioSvgPath);
+  return candidates.filter(isDiagramSvgPath);
 }
 async function embedDiagrams(text, options) {
   const errors = [];
@@ -1964,7 +1970,7 @@ async function embedDiagrams(text, options) {
     if (uris.has(path)) return uris.get(path) ?? null;
     let uri = null;
     try {
-      if (extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: \u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\uFF08\u666E\u901A\u306E SVG \u3068\u3057\u3066\u57CB\u3081\u8FBC\u3080\uFF09`);
+      if (isDrawioSvgPath(path) && extractDiagramXml(svg).kind === "plain-svg") warnings.push(`${path}: \u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\uFF08\u666E\u901A\u306E SVG \u3068\u3057\u3066\u57CB\u3081\u8FBC\u3080\uFF09`);
       const sharing = toSharingSvg(svg);
       const problems = findSvgProblems(sharing);
       for (const p of problems.errors) errors.push(`${path}: ${p}\u304C\u3042\u308B`);
@@ -2020,6 +2026,240 @@ function checkExported(text, kind, sourcePath = "") {
   return problems;
 }
 
+// ../design/generated/tokens.ts
+var diagram = {
+  light: { "neutral": { "text": "#2b2a28", "muted": "#57564f", "nodeFill": "#f6f5f2", "nodeStroke": "#7f7e76", "groupFill": "#efeeea", "groupStroke": "#7f7e76", "edge": "#57564f", "labelBg": "#f6f5f2" }, "colors": { "blue": { "fill": "#d3e3fd", "stroke": "#0b57d0", "text": "#041e49" }, "green": { "fill": "#c4eed0", "stroke": "#1e8e3e", "text": "#072711" }, "purple": { "fill": "#eaddff", "stroke": "#6750a4", "text": "#21005d" }, "gray": { "fill": "#e3e3e3", "stroke": "#747775", "text": "#1f1f1f" }, "sky": { "fill": "#c2e7ff", "stroke": "#00639b", "text": "#001d35" }, "pink": { "fill": "#ffd8e4", "stroke": "#c2185b", "text": "#3e001d" }, "red": { "fill": "#f9dedc", "stroke": "#d93025", "text": "#410e0b" }, "amber": { "fill": "#ffecb3", "stroke": "#b06d00", "text": "#3a2a00" } } },
+  dark: { "neutral": { "text": "#d0d0d0", "muted": "#b3b3b3", "nodeFill": "#1e1e1e", "nodeStroke": "#7a7a7a", "groupFill": "#242424", "groupStroke": "#7a7a7a", "edge": "#b3b3b3", "labelBg": "#1e1e1e" }, "colors": { "blue": { "fill": "#0842a0", "stroke": "#a8c7fa", "text": "#d3e3fd" }, "green": { "fill": "#0f5223", "stroke": "#6dd58c", "text": "#c4eed0" }, "purple": { "fill": "#4f378b", "stroke": "#d0bcff", "text": "#eaddff" }, "gray": { "fill": "#444746", "stroke": "#c4c7c5", "text": "#e3e3e3" }, "sky": { "fill": "#004a77", "stroke": "#7fcfff", "text": "#c2e7ff" }, "pink": { "fill": "#8c1d4f", "stroke": "#ffb0c8", "text": "#ffd8e4" }, "red": { "fill": "#8c1d18", "stroke": "#f2b8b5", "text": "#f9dedc" }, "amber": { "fill": "#5c4300", "stroke": "#ffd54f", "text": "#ffecb3" } } }
+};
+var diagramColors = ["blue", "green", "purple", "gray", "sky", "pink", "red", "amber"];
+
+// src/core/plain-svg.ts
+var COLOR_NAMES = diagramColors;
+var STYLE_ID = "pkm-diagram-style";
+var DEFS_ID = "pkm-diagram-defs";
+var DARK_ID = "pkm-diagram-dark";
+var NOTE_WIDTH = 700;
+var MIN_TEXT_PX = 9;
+var TEXT_PX = { base: 13, label: 12, small: 11 };
+var FONT2 = 'system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif';
+var SHAPES2 = ["rect", "ellipse", "circle", "polygon", "path"];
+function shapeSel(scope) {
+  return SHAPES2.map((s) => `${scope} > ${s}`).join(", ");
+}
+function rules(p) {
+  const n = p.neutral;
+  const out = [
+    `text { font-family: ${FONT2}; font-size: ${TEXT_PX.base}px; fill: ${n.text}; }`,
+    `.center { text-anchor: middle; dominant-baseline: central; }`,
+    `.title { font-weight: 600; }`,
+    `.muted { fill: ${n.muted}; }`,
+    `.small { font-size: ${TEXT_PX.small}px; }`,
+    `${shapeSel(".node")} { fill: ${n.nodeFill}; stroke: ${n.nodeStroke}; stroke-width: 1.5; }`,
+    `${shapeSel(".group")} { fill: ${n.groupFill}; stroke: ${n.groupStroke}; stroke-width: 1.5; }`,
+    `.edge { fill: none; stroke: ${n.edge}; stroke-width: 1.5; marker-end: url(#pkm-arrow); }`,
+    `.edge.both { marker-start: url(#pkm-arrow); }`,
+    `.edge.plain { marker-start: none; marker-end: none; }`,
+    `.dashed, .dashed > * { stroke-dasharray: 6 4; }`,
+    `.label { font-size: ${TEXT_PX.label}px; fill: ${n.muted}; paint-order: stroke; stroke: ${n.labelBg}; stroke-width: 5px; stroke-linejoin: round; }`,
+    `.pkm-arrowhead { fill: ${n.edge}; stroke: none; }`
+  ];
+  for (const name of COLOR_NAMES) {
+    const c = p.colors[name];
+    out.push(
+      `${shapeSel(`.node.${name}`)} { fill: ${c.fill}; stroke: ${c.stroke}; }`,
+      `.node.${name} text { fill: ${c.text}; }`,
+      `${shapeSel(`.group.${name}`)} { fill: ${c.fill}; fill-opacity: 0.45; stroke: ${c.stroke}; }`,
+      `.group.${name} > text { fill: ${c.text}; }`,
+      `.edge.${name} { stroke: ${c.stroke}; marker-end: url(#pkm-arrow-${name}); }`,
+      `.edge.both.${name} { marker-start: url(#pkm-arrow-${name}); }`,
+      `.edge.plain.${name} { marker-start: none; marker-end: none; }`,
+      `text.${name}, .label.${name} { fill: ${c.text}; }`,
+      `#pkm-arrow-${name} .pkm-arrowhead { fill: ${c.stroke}; }`
+    );
+  }
+  return out;
+}
+function diagramStyle() {
+  const light = rules(diagram.light).join("\n");
+  const dark = rules(diagram.dark).map((r) => `  ${r}`).join("\n");
+  return `<style id="${STYLE_ID}">
+${light}
+@media (prefers-color-scheme: dark) {
+${dark}
+}
+</style>`;
+}
+function marker(id) {
+  return `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pkm-arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>`;
+}
+function diagramDefs() {
+  return `<defs id="${DEFS_ID}">${[marker("pkm-arrow"), ...COLOR_NAMES.map((n) => marker(`pkm-arrow-${n}`))].join("")}</defs>`;
+}
+function rootOpenEnd(svg) {
+  const m = /<svg\b[^>]*>/i.exec(svg);
+  if (!m) throw new Error("\u30EB\u30FC\u30C8\u306E <svg> \u304C\u306A\u3044");
+  return m.index + m[0].length;
+}
+function removeById(svg, tag, id) {
+  return svg.replace(new RegExp(`\\s*<${tag}\\s+id="${id}"[^>]*>[\\s\\S]*?</${tag}>`, "g"), "");
+}
+function styleSvg(svg) {
+  const clean = removeById(removeById(svg, "style", STYLE_ID), "defs", DEFS_ID);
+  const at = rootOpenEnd(clean);
+  return `${clean.slice(0, at)}
+${diagramStyle()}
+${diagramDefs()}${clean.slice(at)}`;
+}
+function darkenSvg(svg) {
+  const clean = removeById(svg, "style", DARK_ID);
+  const map2 = /* @__PURE__ */ new Map();
+  const add = (prop, light, dark) => {
+    if (light.toLowerCase() === dark.toLowerCase()) return;
+    const key = `[${prop}="${light}" i]`;
+    if (!map2.has(key)) map2.set(key, /* @__PURE__ */ new Set());
+    map2.get(key)?.add(`${prop}: ${dark}`);
+  };
+  for (const name of COLOR_NAMES) {
+    const l = diagram.light.colors[name];
+    const d = diagram.dark.colors[name];
+    add("fill", l.fill, d.fill);
+    add("fill", l.text, d.text);
+    add("stroke", l.stroke, d.stroke);
+  }
+  const body = [...map2].map(([sel, decls]) => `  ${sel} { ${[...decls][0]}; }`).join("\n");
+  const style = `<style id="${DARK_ID}">
+@media (prefers-color-scheme: dark) {
+${body}
+}
+</style>`;
+  const at = rootOpenEnd(clean);
+  return `${clean.slice(0, at)}
+${style}${clean.slice(at)}`;
+}
+var COLOR_PROPS = ["fill", "stroke", "color", "stop-color", "flood-color", "lighting-color"];
+var ALLOWED_COLOR = /^(none|transparent|currentcolor|inherit|url\(#[\w.-]+\))$/i;
+function rootWidth(svg) {
+  const m = /<svg\b([^>]*)>/i.exec(svg);
+  if (!m) return null;
+  const attrs = m[1];
+  const vb = /\bviewBox\s*=\s*["']([^"']*)["']/i.exec(attrs);
+  if (vb) {
+    const parts = vb[1].trim().split(/[\s,]+/).map(Number);
+    if (parts.length === 4 && Number.isFinite(parts[2]) && parts[2] > 0) return parts[2];
+  }
+  const w = /\bwidth\s*=\s*["']\s*([\d.]+)(px)?\s*["']/i.exec(attrs);
+  return w ? Number(w[1]) : null;
+}
+function textSizes(body) {
+  const sizes = [];
+  let sawText = false;
+  for (const m of body.matchAll(/<(text|tspan)\b([^>]*)>/gi)) {
+    sawText = true;
+    const attrs = m[2];
+    const fs = /\bfont-size\s*=\s*["']\s*([\d.]+)(px)?\s*["']/i.exec(attrs) ?? /font-size\s*:\s*([\d.]+)px/i.exec(attrs);
+    if (fs) sizes.push(Number(fs[1]));
+    else {
+      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1]?.split(/\s+/) ?? [];
+      if (cls.includes("small")) sizes.push(TEXT_PX.small);
+      else if (cls.includes("label")) sizes.push(TEXT_PX.label);
+      else if (m[1].toLowerCase() === "text") sizes.push(TEXT_PX.base);
+    }
+  }
+  for (const m of body.matchAll(/font-size\s*:\s*([\d.]+)px/gi)) sizes.push(Number(m[1]));
+  return sawText ? sizes : [];
+}
+function checkPlainSvg(svg, options = {}) {
+  const noteWidth = options.noteWidth ?? NOTE_WIDTH;
+  const minPx = options.minTextPx ?? MIN_TEXT_PX;
+  const errors = /* @__PURE__ */ new Set();
+  const warnings = /* @__PURE__ */ new Set();
+  const base = findSvgProblems(svg);
+  for (const e of base.errors) errors.add(e);
+  for (const w of base.warnings) errors.add(w);
+  if (/<foreignObject\b/i.test(svg)) errors.add("<foreignObject>\uFF08PNG \u306B\u3067\u304D\u306A\u3044\u3002\u6587\u5B57\u306F <text> \u3067\u66F8\u304F\uFF09");
+  if (!/<svg\b/i.test(svg)) errors.add("\u30EB\u30FC\u30C8\u306E <svg> \u304C\u306A\u3044");
+  const body = removeById(removeById(removeById(svg, "style", STYLE_ID), "defs", DEFS_ID), "style", DARK_ID);
+  if (!options.allowColors) {
+    if (/<style\b/i.test(body)) errors.add("\u72EC\u81EA\u306E <style>\uFF08\u30B9\u30BF\u30A4\u30EB\u306F svg-style \u304C\u5DEE\u3057\u8FBC\u3080\u3002\u30AF\u30E9\u30B9\u3060\u3051\u3092\u4F7F\u3046\uFF09");
+    const bad = /* @__PURE__ */ new Set();
+    for (const m of body.matchAll(new RegExp(`\\s(${COLOR_PROPS.join("|")})\\s*=\\s*["']([^"']*)["']`, "gi"))) {
+      if (!ALLOWED_COLOR.test(m[2].trim())) bad.add(`${m[1]}="${m[2]}"`);
+    }
+    for (const m of body.matchAll(/\sstyle\s*=\s*["']([^"']*)["']/gi)) {
+      for (const d of m[1].split(";")) {
+        const [k, v] = d.split(":").map((s) => s.trim());
+        if (k && v && COLOR_PROPS.includes(k.toLowerCase()) && !ALLOWED_COLOR.test(v)) bad.add(`style \u306E ${k}: ${v}`);
+      }
+    }
+    if (bad.size > 0) errors.add(`\u8272\u306E\u5024\u3092\u76F4\u63A5\u66F8\u3044\u3066\u3044\u308B\uFF08\u30AF\u30E9\u30B9\u306E\u8272\u306E\u540D\u524D\u3092\u4F7F\u3046: ${COLOR_NAMES.join(" / ")}\uFF09: ${[...bad].slice(0, 5).join(", ")}${bad.size > 5 ? " \u307B\u304B" : ""}`);
+  }
+  const width = rootWidth(svg);
+  if (width === null) errors.add("\u56F3\u306E\u5E45\u304C\u306A\u3044\uFF08\u30EB\u30FC\u30C8\u306E <svg> \u306B viewBox \u304B width \u3092\u66F8\u304F\uFF09");
+  const sizes = textSizes(body);
+  let minTextPx = null;
+  if (width !== null && sizes.length > 0) {
+    minTextPx = Math.min(...sizes) * Math.min(1, noteWidth / width);
+    if (minTextPx < minPx) {
+      warnings.add(
+        `\u30CE\u30FC\u30C8\u306E\u5E45\uFF08${noteWidth}px\uFF09\u306B\u7E2E\u3081\u308B\u3068\u3001\u3044\u3061\u3070\u3093\u5C0F\u3055\u3044\u6587\u5B57\u304C ${minTextPx.toFixed(1)}px \u306B\u306A\u308B\uFF08${minPx}px \u672A\u6E80\uFF09\u3002\u56F3\u3092\u5206\u3051\u308B\u304B\u3001\u5411\u304D\u3092\u5909\u3048\u3066\u5E45\u3092 ${Math.floor(Math.min(...sizes) / minPx * noteWidth)}px \u4EE5\u4E0B\u306B\u3059\u308B`
+      );
+    }
+  }
+  return { errors: [...errors], warnings: [...warnings], minTextPx, width };
+}
+
+// src/core/d2.ts
+function themeOverrides(p) {
+  const n = p.neutral;
+  return {
+    N1: n.text,
+    N2: n.muted,
+    N3: n.muted,
+    // N4〜N6 は、ひし形・六角形などの面に使われる
+    N4: n.groupFill,
+    N5: n.groupFill,
+    N6: n.groupFill,
+    N7: n.nodeFill,
+    B1: n.nodeStroke,
+    B2: n.edge,
+    // B3 は人（person）の面
+    B3: n.groupFill,
+    B4: n.groupFill,
+    B5: n.groupFill,
+    B6: n.nodeFill,
+    AA2: n.nodeStroke,
+    AA4: n.groupFill,
+    AA5: n.nodeFill,
+    AB4: n.groupFill,
+    AB5: n.nodeFill
+  };
+}
+function map(entries) {
+  return Object.entries(entries).map(([k, v]) => `${k}: "${v}"`).join("; ");
+}
+var D2_DARK_THEME_ID = 200;
+function d2Preamble(layout = "elk") {
+  const classes = COLOR_NAMES.map((name) => {
+    const c = diagram.light.colors[name];
+    return `  ${name}: { style: { fill: "${c.fill}"; stroke: "${c.stroke}"; font-color: "${c.text}" } }`;
+  }).join("\n");
+  return [
+    "# pkm-diagram \u304C\u4ED8\u3051\u305F\u30C6\u30FC\u30DE\uFF08ADR-0102\uFF09",
+    "vars: {",
+    "  d2-config: {",
+    `    layout-engine: ${layout}`,
+    `    dark-theme-id: ${D2_DARK_THEME_ID}`,
+    `    theme-overrides: { ${map(themeOverrides(diagram.light))} }`,
+    `    dark-theme-overrides: { ${map(themeOverrides(diagram.dark))} }`,
+    "  }",
+    "}",
+    "classes: {",
+    classes,
+    "}",
+    ""
+  ].join("\n");
+}
+
 // src/core/names.ts
 var TMP_FOLDER = "tmp";
 function freePath(folder, stem, ext, taken) {
@@ -2042,8 +2282,11 @@ var USAGE = `\u4F7F\u3044\u65B9:
   diagram.mjs strip <\u56F3.drawio.svg> [--output <\u30D1\u30B9>]
   diagram.mjs build <spec.json|-> --output <asset/\u540D\u524D.drawio.svg> [--force]
   diagram.mjs render <\u56F3.drawio.svg|.drawio|.xml> [--output <\u56F3.drawio.svg>] [--page <N>]
-  diagram.mjs inspect <\u56F3.drawio.svg|.drawio|.xml>`;
-var FLAGS = /* @__PURE__ */ new Set(["force", "plain"]);
+  diagram.mjs inspect <\u56F3.drawio.svg|.drawio|.xml>
+  diagram.mjs svg-style <\u56F3.svg> [--output <\u56F3.svg>]
+  diagram.mjs svg-check <\u56F3.svg\u2026> [--allow-colors]
+  diagram.mjs d2 <\u56F3.d2> [--output <\u56F3.svg>] [--layout elk|dagre] [--d2 <d2 \u30B3\u30DE\u30F3\u30C9>]`;
+var FLAGS = /* @__PURE__ */ new Set(["force", "plain", "allow-colors"]);
 function parseArgs(args) {
   const positional = [];
   const options = /* @__PURE__ */ new Map();
@@ -2251,6 +2494,92 @@ async function runInspect(positional, io) {
   io.out(await inspectDiagram(xmlFromInput(readFileSync(resolve(io.cwd, input), "utf8"))));
   return 0;
 }
+function report(io, name, r) {
+  for (const e of r.errors) io.err(`${name}: \u8AA4\u308A: ${e}`);
+  for (const w of r.warnings) io.err(`${name}: \u8B66\u544A: ${w}`);
+  return r.errors.length === 0;
+}
+function writeIfChanged(outFull, text, io, note) {
+  const before = existsSync(outFull) ? readFileSync(outFull, "utf8") : null;
+  const shown = relative(io.cwd, outFull) || outFull;
+  if (before === text) {
+    io.out(`${shown}\uFF08\u5909\u308F\u3089\u306A\u3044\uFF09`);
+    return;
+  }
+  mkdirSync(dirname(outFull), { recursive: true });
+  writeFileSync(outFull, text);
+  io.out(`${shown}${note}`);
+}
+function runSvgStyle(positional, options, io) {
+  const [input] = positional;
+  if (!input || positional.length > 1 || !input.endsWith(".svg") || input.endsWith(".drawio.svg")) {
+    io.err(`${USAGE}
+\uFF08svg-style \u306F AI \u304C\u66F8\u3044\u305F .svg \u306B\u4F7F\u3046\u3002.drawio.svg \u306F render\uFF09`);
+    return 2;
+  }
+  const inputFull = resolve(io.cwd, input);
+  const styled = styleSvg(readFileSync(inputFull, "utf8"));
+  const r = checkPlainSvg(styled);
+  if (!report(io, input, r)) return 1;
+  writeIfChanged(resolve(io.cwd, options.get("output") ?? input), styled, io, r.minTextPx === null ? "" : `\uFF08\u5E45 ${r.width}px\u3001\u30CE\u30FC\u30C8\u3067\u306E\u6700\u5C0F\u306E\u6587\u5B57 ${r.minTextPx.toFixed(1)}px\uFF09`);
+  return 0;
+}
+function runSvgCheck(positional, options, io) {
+  if (positional.length === 0) {
+    io.err(USAGE);
+    return 2;
+  }
+  let ok = true;
+  for (const input of positional) {
+    const r = checkPlainSvg(readFileSync(resolve(io.cwd, input), "utf8"), { allowColors: options.has("allow-colors") });
+    if (report(io, input, r)) io.out(`${input}: OK${r.minTextPx === null ? "" : `\uFF08\u30CE\u30FC\u30C8\u3067\u306E\u6700\u5C0F\u306E\u6587\u5B57 ${r.minTextPx.toFixed(1)}px\uFF09`}`);
+    else ok = false;
+  }
+  return ok ? 0 : 1;
+}
+var D2_INSTALL = "d2 \u30B3\u30DE\u30F3\u30C9\u304C\u898B\u3064\u304B\u3089\u306A\u3044\u3002\u5165\u308C\u65B9: go install oss.terrastruct.com/d2@v0.7.1\uFF08\u307E\u305F\u306F https://d2lang.com \u306E\u624B\u9806\uFF09\u3002\u5834\u6240\u306F --d2 \u304B\u74B0\u5883\u5909\u6570 D2_BIN \u3067\u6E21\u305B\u308B";
+function runD2(positional, options, io) {
+  const [input] = positional;
+  if (!input || positional.length > 1 || !input.endsWith(".d2")) {
+    io.err(USAGE);
+    return 2;
+  }
+  const layout = options.get("layout") ?? "elk";
+  if (layout !== "elk" && layout !== "dagre") {
+    io.err("--layout \u306F elk \u304B dagre");
+    return 2;
+  }
+  const output = options.get("output") ?? input.replace(/\.d2$/, ".svg");
+  if (!output.endsWith(".svg") || output.endsWith(".drawio.svg")) {
+    io.err("--output \u306F .svg\uFF08.drawio.svg \u3067\u306F\u306A\u3044\uFF09");
+    return 2;
+  }
+  const bin = options.get("d2") ?? process.env.D2_BIN ?? "d2";
+  const work = mkdtempSync(join(tmpdir(), "pkm-diagram-d2-"));
+  try {
+    const src = join(work, "diagram.d2");
+    const out = join(work, "diagram.svg");
+    writeFileSync(src, `${d2Preamble(layout)}
+${readFileSync(resolve(io.cwd, input), "utf8")}`);
+    const run = spawnSync(bin, ["--pad", "16", "--dark-theme", String(D2_DARK_THEME_ID), src, out], { encoding: "utf8" });
+    if (run.error) {
+      io.err(run.error.code === "ENOENT" ? D2_INSTALL : `d2 \u3092\u5B9F\u884C\u3067\u304D\u306A\u3044: ${run.error.message}`);
+      return 1;
+    }
+    if (run.status !== 0 || !existsSync(out)) {
+      io.err(`d2 \u304C\u5931\u6557\u3057\u305F\uFF08\u884C\u306E\u756A\u53F7\u306F\u3001\u524D\u306B\u4ED8\u3051\u305F\u30C6\u30FC\u30DE\u306E\u5206\u3060\u3051\u305A\u308C\u308B\uFF09:
+${(run.stderr || run.stdout).trim()}`);
+      return 1;
+    }
+    const svg = darkenSvg(readFileSync(out, "utf8"));
+    const r = checkPlainSvg(svg, { allowColors: true });
+    if (!report(io, output, r)) return 1;
+    writeIfChanged(resolve(io.cwd, output), svg, io, r.minTextPx === null ? "" : `\uFF08\u5E45 ${r.width}px\u3001\u30CE\u30FC\u30C8\u3067\u306E\u6700\u5C0F\u306E\u6587\u5B57 ${r.minTextPx.toFixed(1)}px\uFF09`);
+    return 0;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
 async function main(argv, io) {
   const [command, ...rest] = argv;
   try {
@@ -2269,6 +2598,12 @@ async function main(argv, io) {
         return await runRender(positional, options, io);
       case "inspect":
         return await runInspect(positional, io);
+      case "svg-style":
+        return runSvgStyle(positional, options, io);
+      case "svg-check":
+        return runSvgCheck(positional, options, io);
+      case "d2":
+        return runD2(positional, options, io);
       default:
         io.err(USAGE);
         return 2;

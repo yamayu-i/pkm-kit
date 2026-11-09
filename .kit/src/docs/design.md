@@ -30,9 +30,9 @@ packages/design/tokens.json（正本）
   │    ├─ packages/pkm-template/tokens.css    … プラグインの CSS 変数。ビルドで styles.css の前に連結する
   │    ├─ packages/pkm-html/tokens.css        … プラグインの CSS 変数。styles.css の前に連結し、表示する HTML の iframe にも差し込む
   │    ├─ packages/pkm-diagram/tokens.css      … プラグインの CSS 変数。ビルドで styles.css の前に連結する
-  │    ├─ .obsidian/snippets/pkm-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット
+  │    ├─ .obsidian/snippets/pkm-theme.css    … Obsidian 本体の色を同じ値に固定するスニペット。Mermaid の図の配色も入る（ADR-0102）
   │    ├─ docs/design-tokens.md                 … 値とコントラスト比の一覧
-  │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）
+  │    └─ packages/design/generated/tokens.ts   … TS から使う色（label の検査）と図の配色（pkm-diagram の CLI が SVG・D2 のスタイルを作る。ADR-0102）
   └─ 検査
        ├─ pnpm check（packages/design の test）  … トークン・生成物・CSS・Obsidian の設定・このファイル
        ├─ pnpm task:lint                          … labels.json の色

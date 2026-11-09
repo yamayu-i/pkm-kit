@@ -210,8 +210,9 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `src/core/document.ts` | md / html の図の参照を探し、data URI に置き換える。書き出したものの検査 | なし（DOM もなし） |
 | `src/core/protocol.ts` | embed の URL・メッセージの読み取り・保存の流れの状態 | なし（DOM もなし） |
 | `src/core/names.ts` / `encoding.ts` | 図と書き出しのファイル名、data URI | なし |
+| `src/core/plain-svg.ts` / `d2.ts` | AI が書く SVG へのスタイルの差し込み、D2 の SVG のダークの色、SVG の検査（安全性・色・ノートの幅での文字の大きさ）、D2 の前に付けるテーマ。配色は `design/generated/tokens.ts` の `diagram`（ADR-0102） | なし（DOM もなし） |
 | `src/obsidian/` | 編集の Modal と iframe、操作バー、コピー（PNG は Canvas）、tmp/ への書き出し、ダイアログ | あり（`frame.ts` と `toolbar.ts` は DOM と `setIcon` だけ） |
-| `cli/diagram.ts` | `.kit/bin/diagram.mjs`（`export` / `check` / `extract` / `strip` / `build` / `render` / `inspect`。旧名の `drawio.mjs` も同じものを動かす）。Node の API を使う | なし |
+| `cli/diagram.ts` | `.kit/bin/diagram.mjs`（`export` / `check` / `extract` / `strip` / `build` / `render` / `inspect` / `svg-style` / `svg-check` / `d2`。`d2` は外部の d2 コマンドを呼ぶ。旧名の `drawio.mjs` も同じものを動かす）。Node の API を使う | なし |
 | `preview/` | `pnpm --filter pkm-diagram preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バーの位置と描画した画面の検査、PNG を Chromium で確かめる。CI では動かない | なし |
 
 - 本物の Draw.io との往復と、Obsidian の中の操作バーの位置、クリップボードは、実機で確かめる（自動の検査ではできない）

@@ -15,6 +15,12 @@ export function isDrawioSvgPath(path: string): boolean {
 	return path.toLowerCase().endsWith(DRAWIO_SVG_SUFFIX) && path.length > DRAWIO_SVG_SUFFIX.length && !path.endsWith(`/${DRAWIO_SVG_SUFFIX}`);
 }
 
+/** 図の SVG（.drawio.svg と、AI が書く / D2 で描く .svg。ADR-0102） */
+export function isDiagramSvgPath(path: string): boolean {
+	const base = path.split("/").pop() ?? "";
+	return base.toLowerCase().endsWith(".svg") && base.length > ".svg".length;
+}
+
 export class DrawioFormatError extends Error {
 	override name = "DrawioFormatError";
 }
