@@ -571,6 +571,47 @@ var diagram = {
   dark: { "neutral": { "text": "#d0d0d0", "muted": "#b3b3b3", "nodeFill": "#1e1e1e", "nodeStroke": "#7a7a7a", "groupFill": "#242424", "groupStroke": "#7a7a7a", "edge": "#b3b3b3", "labelBg": "#1e1e1e" }, "colors": { "blue": { "fill": "#0842a0", "stroke": "#a8c7fa", "text": "#d3e3fd" }, "green": { "fill": "#0f5223", "stroke": "#6dd58c", "text": "#c4eed0" }, "purple": { "fill": "#4f378b", "stroke": "#d0bcff", "text": "#eaddff" }, "gray": { "fill": "#444746", "stroke": "#c4c7c5", "text": "#e3e3e3" }, "sky": { "fill": "#004a77", "stroke": "#7fcfff", "text": "#c2e7ff" }, "pink": { "fill": "#8c1d4f", "stroke": "#ffb0c8", "text": "#ffd8e4" }, "red": { "fill": "#8c1d18", "stroke": "#f2b8b5", "text": "#f9dedc" }, "amber": { "fill": "#5c4300", "stroke": "#ffd54f", "text": "#ffecb3" } } }
 };
 
+// src/core/plain-svg.ts
+var STYLE_ID = "pkm-diagram-style";
+var DEFS_ID = "pkm-diagram-defs";
+var DARK_ID = "pkm-diagram-dark";
+var MIN_TEXT_PX = 9;
+var TEXT_PX = { base: 13, label: 12, small: 11 };
+function removeById(svg, tag, id) {
+  return svg.replace(new RegExp(`\\s*<${tag}\\s+id="${id}"[^>]*>[\\s\\S]*?</${tag}>`, "g"), "");
+}
+function textSizes(body) {
+  const sizes = [];
+  let sawText = false;
+  for (const m of body.matchAll(/<(text|tspan)\b([^>]*)>/gi)) {
+    sawText = true;
+    const attrs = m[2];
+    const fs = /\bfont-size\s*=\s*["']\s*([\d.]+)(px)?\s*["']/i.exec(attrs) ?? /font-size\s*:\s*([\d.]+)px/i.exec(attrs);
+    if (fs) sizes.push(Number(fs[1]));
+    else {
+      const cls = /\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1]?.split(/\s+/) ?? [];
+      if (cls.includes("small")) sizes.push(TEXT_PX.small);
+      else if (cls.includes("label")) sizes.push(TEXT_PX.label);
+      else if (m[1].toLowerCase() === "text") sizes.push(TEXT_PX.base);
+    }
+  }
+  for (const m of body.matchAll(/font-size\s*:\s*([\d.]+)px/gi)) sizes.push(Number(m[1]));
+  return sawText ? sizes : [];
+}
+function minTextSize(svg) {
+  const body = removeById(removeById(removeById(svg, "style", STYLE_ID), "defs", DEFS_ID), "style", DARK_ID);
+  const sizes = textSizes(body).filter((n) => n > 0);
+  return sizes.length > 0 ? Math.min(...sizes) : null;
+}
+function shownTextPx(minText, natural, shown) {
+  if (natural <= 0 || shown <= 0) return minText;
+  return minText * shown / natural;
+}
+function tooSmallToRead(minText, natural, shown, minPx = MIN_TEXT_PX) {
+  if (minText === null || shown >= natural) return false;
+  return shownTextPx(minText, natural, shown) < minPx;
+}
+
 // src/core/png.ts
 var PNG_BACKGROUND = diagram.light.neutral.labelBg;
 function blockEnd(css, open) {
@@ -1403,6 +1444,119 @@ async function savePng(app, png, name, doc) {
   }
 }
 
+// src/obsidian/shrink-marker.ts
+var SHRUNK_CLASS = "vt-diagram-shrunk";
+var CANDIDATES = ":is(.markdown-preview-view, .markdown-source-view) :is(img, .mermaid > svg)";
+var SCAN_DELAY = 300;
+function naturalWidth(el) {
+  if (el.tagName === "IMG") return el.naturalWidth;
+  const vb = (el.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
+  return vb.length === 4 && vb[2] > 0 ? vb[2] : 0;
+}
+function boxOf(el) {
+  if (el.tagName === "IMG") return el.closest(".image-embed, .internal-embed") ?? el.parentElement ?? el;
+  return el.closest(".mermaid") ?? el;
+}
+var DocMarker = class {
+  constructor(doc, host) {
+    this.doc = doc;
+    this.host = host;
+    const win = doc.defaultView;
+    this.resizes = win && "ResizeObserver" in win ? new win.ResizeObserver((entries) => entries.forEach((e) => this.evaluate(e.target))) : null;
+    this.mutations = win && "MutationObserver" in win ? new win.MutationObserver(() => this.schedule()) : null;
+    if (!this.mutations) return;
+    this.mutations.observe(doc.body, { childList: true, subtree: true });
+    this.schedule();
+  }
+  doc;
+  host;
+  tracked = /* @__PURE__ */ new Map();
+  mutations;
+  resizes;
+  timer = null;
+  schedule() {
+    if (this.timer !== null) return;
+    this.timer = this.doc.defaultView?.setTimeout(() => {
+      this.timer = null;
+      this.scan();
+    }, SCAN_DELAY) ?? null;
+  }
+  /** 新しく出た図を見張り始め、消えた図をやめる */
+  scan() {
+    for (const [el, t] of this.tracked) {
+      if (!el.isConnected) {
+        this.resizes?.unobserve(el);
+        t.box.classList.remove(SHRUNK_CLASS);
+        this.tracked.delete(el);
+      }
+    }
+    for (const el of this.doc.querySelectorAll(CANDIDATES)) {
+      if (this.tracked.has(el)) continue;
+      const found = this.host.resolve(el);
+      if (!found) continue;
+      const t = { target: found.target, box: boxOf(el), minText: void 0 };
+      this.tracked.set(el, t);
+      this.resizes?.observe(el);
+      if (el.tagName === "IMG" && !el.complete) el.addEventListener("load", () => this.evaluate(el), { once: true });
+      void this.host.minTextSize(found.target).then(
+        (n) => {
+          t.minText = n;
+          this.evaluate(el);
+        },
+        () => t.minText = null
+      );
+    }
+  }
+  evaluate(el) {
+    const t = this.tracked.get(el);
+    if (!t || t.minText === void 0) return;
+    const shown = el.getBoundingClientRect().width;
+    const small = shown > 0 && tooSmallToRead(t.minText, naturalWidth(el), shown);
+    t.box.classList.toggle(SHRUNK_CLASS, small);
+  }
+  destroy() {
+    if (this.timer !== null) this.doc.defaultView?.clearTimeout(this.timer);
+    this.mutations?.disconnect();
+    this.resizes?.disconnect();
+    for (const t of this.tracked.values()) t.box.classList.remove(SHRUNK_CLASS);
+    this.tracked.clear();
+  }
+};
+var ShrinkMarker = class {
+  constructor(host) {
+    this.host = host;
+  }
+  host;
+  docs = /* @__PURE__ */ new Map();
+  /** 文書（本体とポップアウトのウィンドウ）ごとに 1 つ */
+  attach(doc) {
+    if (!this.docs.has(doc)) this.docs.set(doc, new DocMarker(doc, this.host));
+  }
+  detach(doc) {
+    this.docs.get(doc)?.destroy();
+    this.docs.delete(doc);
+  }
+  /** すぐに探し直す（テストと、レイアウトが変わったとき） */
+  rescan() {
+    for (const m of this.docs.values()) m.scan();
+  }
+  destroy() {
+    for (const m of this.docs.values()) m.destroy();
+    this.docs.clear();
+  }
+};
+function mermaidMinTextSize(svg) {
+  const win = svg.ownerDocument.defaultView ?? window;
+  let min = Number.POSITIVE_INFINITY;
+  const labels = svg.querySelectorAll(".nodeLabel, .edgeLabel, .cluster-label, text");
+  for (const el of [...labels].slice(0, 300)) {
+    if (!(el.textContent ?? "").trim()) continue;
+    const px = Number.parseFloat(win.getComputedStyle(el).fontSize);
+    if (px > 0) min = Math.min(min, px);
+  }
+  return Number.isFinite(min) ? min : null;
+}
+
 // src/obsidian/toolbar.ts
 var import_obsidian6 = require("obsidian");
 var HIDE_DELAY = 300;
@@ -1753,6 +1907,7 @@ function resourceKey(url) {
 }
 var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   toolbar = null;
+  shrink = null;
   /** getResourcePath() の値（? を除く）→ 図のファイル。ファイルが増減・改名したら作り直す */
   resources = null;
   async onload() {
@@ -1766,9 +1921,30 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
     this.toolbar = toolbar;
     const register = (doc, type, cb, capture = false) => this.registerDomEvent(doc, type, cb, { capture });
     toolbar.attach(document, register);
-    this.registerEvent(this.app.workspace.on("window-open", (win) => toolbar.attach(win.doc, register)));
-    this.registerEvent(this.app.workspace.on("window-close", (win) => toolbar.detach(win.doc)));
-    this.registerEvent(this.app.workspace.on("layout-change", () => toolbar.hideAll()));
+    const shrink = new ShrinkMarker({
+      resolve: (el) => this.resolveDiagram(el),
+      minTextSize: async (target) => target.kind === "mermaid" ? mermaidMinTextSize(target.svg) : minTextSize(await this.app.vault.cachedRead(target.file))
+    });
+    this.shrink = shrink;
+    shrink.attach(document);
+    this.registerEvent(
+      this.app.workspace.on("window-open", (win) => {
+        toolbar.attach(win.doc, register);
+        shrink.attach(win.doc);
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("window-close", (win) => {
+        toolbar.detach(win.doc);
+        shrink.detach(win.doc);
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        toolbar.hideAll();
+        shrink.rescan();
+      })
+    );
     for (const event of ["create", "delete", "rename"]) {
       this.registerEvent(this.app.vault.on(event, () => this.resources = null));
     }
@@ -1824,6 +2000,8 @@ var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   onunload() {
     this.toolbar?.destroy();
     this.toolbar = null;
+    this.shrink?.destroy();
+    this.shrink = null;
   }
   fileTarget(file) {
     return { kind: "file", file, drawio: isDrawioSvgPath(file.path) };

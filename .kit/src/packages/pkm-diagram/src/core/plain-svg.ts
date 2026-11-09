@@ -147,7 +147,8 @@ export interface CheckOptions {
 const COLOR_PROPS = ["fill", "stroke", "color", "stop-color", "flood-color", "lighting-color"];
 const ALLOWED_COLOR = /^(none|transparent|currentcolor|inherit|url\(#[\w.-]+\))$/i;
 
-function rootWidth(svg: string): number | null {
+/** 図の幅（ルートの viewBox、なければ width。px）。読めなければ null */
+export function rootWidth(svg: string): number | null {
 	const m = /<svg\b([^>]*)>/i.exec(svg);
 	if (!m) return null;
 	const attrs = m[1] as string;
@@ -222,4 +223,26 @@ export function checkPlainSvg(svg: string, options: CheckOptions = {}): PlainSvg
 		}
 	}
 	return { errors: [...errors], warnings: [...warnings], minTextPx, width };
+}
+
+/** 図の中のいちばん小さい文字の大きさ（図の座標での px）。文字がなければ null */
+export function minTextSize(svg: string): number | null {
+	const body = removeById(removeById(removeById(svg, "style", STYLE_ID), "defs", DEFS_ID), "style", DARK_ID);
+	const sizes = textSizes(body).filter((n) => n > 0);
+	return sizes.length > 0 ? Math.min(...sizes) : null;
+}
+
+/** 幅 natural の図を幅 shown で出したときの、いちばん小さい文字の大きさ（px） */
+export function shownTextPx(minText: number, natural: number, shown: number): number {
+	if (natural <= 0 || shown <= 0) return minText;
+	return (minText * shown) / natural;
+}
+
+/**
+ * ノートの中で縮めすぎて文字が読めないか（ADR-0102 の「拡大して見る」の印）。
+ * 拡大して出している図（shown >= natural）は読めるものとする
+ */
+export function tooSmallToRead(minText: number | null, natural: number, shown: number, minPx = MIN_TEXT_PX): boolean {
+	if (minText === null || shown >= natural) return false;
+	return shownTextPx(minText, natural, shown) < minPx;
 }

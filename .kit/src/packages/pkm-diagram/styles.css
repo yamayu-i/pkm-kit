@@ -203,3 +203,32 @@
 	user-select: none;
 	-webkit-user-drag: none;
 }
+
+/* ---------- 縮めすぎて読めない図の印（ADR-0102） ---------- */
+
+.vt-diagram-shrunk {
+	position: relative;
+}
+
+.image-embed.vt-diagram-shrunk,
+.internal-embed.vt-diagram-shrunk {
+	display: inline-block;
+}
+
+.vt-diagram-shrunk::after {
+	content: "Expand to read";
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	padding: 2px 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	box-shadow: var(--vt-elevation-1);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	/* 印は飾り。押すと下の図に届く（操作バーの「Expand」で拡大する） */
+	pointer-events: none;
+}
