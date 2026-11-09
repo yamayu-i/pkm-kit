@@ -45,24 +45,24 @@ function load() {
 	return { plugin: new module.exports.default(), commands, workspaceEvents, vaultEvents, domEvents, required };
 }
 
-describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0064）", () => {
+describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0102、ADR-0111）", () => {
 	it("obsidian 以外を require せず、コマンドとイベントを登録する", async () => {
 		const r = load();
 		await r.plugin.onload();
 		expect([...r.required]).toEqual(["obsidian"]);
-		expect(r.commands).toEqual(["create-diagram", "edit-diagram", "copy-diagram", "save-diagram-png", "expand-diagram", "export-to-tmp"]);
+		expect(r.commands).toEqual(["copy-diagram", "save-diagram-png", "expand-diagram", "export-to-tmp"]);
 		expect(r.workspaceEvents).toEqual(["window-open", "window-close", "layout-change", "file-menu"]);
 		expect(r.vaultEvents).toEqual(["create", "delete", "rename"]);
 		expect(r.domEvents).toEqual(["pointerover", "pointerdown", "scroll", "keydown"]);
 		r.plugin.onunload();
 	});
 
-	it("編集画面は固定の origin の iframe。.svg の拡張子を View に登録しない（標準の画像の表示のまま）", () => {
+	it("外部の origin・iframe・Draw.io を持たない（ADR-0111）。.svg の拡張子を View に登録しない（標準の画像の表示のまま）", () => {
 		const bundle = readFileSync(bundlePath, "utf8");
-		expect(bundle).toContain('"https://embed.diagrams.net"');
-		expect(bundle).toContain('"allow-scripts allow-same-origin allow-forms"');
-		expect(bundle).not.toContain("allow-popups");
-		expect(bundle).not.toContain("allow-top-navigation");
+		expect(bundle).not.toContain("diagrams.net");
+		expect(bundle).not.toContain("allow-scripts");
+		// 「iframe」は SVG の検査の禁止の一覧にだけ出る。iframe を作らない
+		expect(bundle).not.toMatch(/create(El|Element)\("iframe"/);
 		expect(bundle).not.toContain("registerExtensions");
 		expect(bundle).not.toMatch(/postMessage\([^)]*"\*"\)/);
 		// トークンは styles.css に連結する（main.js には束ねない）

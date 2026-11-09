@@ -1,29 +1,19 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { decodeDataUri, svgDataUri, utf8 } from "../src/core/encoding.ts";
-import {
-	countPages,
-	decodeXmlEntities,
-	DrawioFormatError,
-	extractDiagramXml,
-	findSvgProblems,
-	isDrawioSvgPath,
-	parseRootSvg,
-	toSharingSvg,
-} from "../src/core/svg.ts";
+import { findSvgProblems, isDiagramSvgPath, parseRootSvg, SvgFormatError, toSharingSvg } from "../src/core/svg.ts";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
+/** 以前の Draw.io の図（ルートの content に編集用 XML を持つ。ADR-0111 で普通の SVG の図として扱う） */
 const DIAGRAM = fixture("two-pages.drawio.svg");
-const XML = fixture("two-pages.drawio");
 
-describe("isDrawioSvgPath", () => {
-	it("二重の拡張子だけを図とする", () => {
-		expect(isDrawioSvgPath("asset/a.drawio.svg")).toBe(true);
-		expect(isDrawioSvgPath("asset/A.DRAWIO.SVG")).toBe(true);
-		expect(isDrawioSvgPath("asset/a.svg")).toBe(false);
-		expect(isDrawioSvgPath("asset/a.drawio")).toBe(false);
-		expect(isDrawioSvgPath("asset/.drawio.svg")).toBe(false);
-		expect(isDrawioSvgPath(".drawio.svg")).toBe(false);
+describe("isDiagramSvgPath", () => {
+	it(".svg（以前の .drawio.svg を含む）を図とする。名前のない .svg と、ほかの拡張子は図としない", () => {
+		expect(isDiagramSvgPath("asset/a.svg")).toBe(true);
+		expect(isDiagramSvgPath("asset/A.SVG")).toBe(true);
+		expect(isDiagramSvgPath("asset/a.drawio.svg")).toBe(true);
+		expect(isDiagramSvgPath("asset/a.png")).toBe(false);
+		expect(isDiagramSvgPath("asset/.svg")).toBe(false);
 	});
 });
 
@@ -50,42 +40,7 @@ describe("parseRootSvg", () => {
 		["重複した属性", '<svg a="1" a="2">'],
 		["空白のない属性", '<svg a="1"b="2">'],
 	])("%s はエラー", (_, text) => {
-		expect(() => parseRootSvg(text)).toThrow(DrawioFormatError);
-	});
-});
-
-describe("decodeXmlEntities", () => {
-	it("定義済みの実体と文字参照を戻す", () => {
-		expect(decodeXmlEntities("&lt;a b=&quot;&#x27;&#39;&amp;amp;&quot;&gt;&#10;")).toBe("<a b=\"''&amp;\">\n");
-	});
-	it("知らない実体と裸の & はエラー", () => {
-		expect(() => decodeXmlEntities("&nbsp;")).toThrow(DrawioFormatError);
-		expect(() => decodeXmlEntities("a & b")).toThrow(DrawioFormatError);
-	});
-});
-
-describe("extractDiagramXml", () => {
-	it("content 属性から全ページの XML を取り出す", () => {
-		const r = extractDiagramXml(DIAGRAM);
-		expect(r).toEqual({ kind: "diagram", xml: XML });
-		if (r.kind === "diagram") expect(countPages(r.xml)).toBe(2);
-	});
-
-	it("content のない SVG は普通の SVG", () => {
-		expect(extractDiagramXml(fixture("plain.svg"))).toEqual({ kind: "plain-svg" });
-	});
-
-	it("古い版の base64 の content も読む", () => {
-		const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(XML)));
-		expect(extractDiagramXml(`<svg content="${b64}"></svg>`)).toEqual({ kind: "diagram", xml: XML });
-	});
-
-	it.each([
-		["mxfile ではない", '<svg content="&lt;html&gt;"></svg>'],
-		["読めない形式", '<svg content="not-xml"></svg>'],
-		["実体の宣言", '<svg content="&lt;mxfile&gt;&lt;!ENTITY x &quot;y&quot;&gt;&lt;/mxfile&gt;"></svg>'],
-	])("%s はエラー", (_, svg) => {
-		expect(() => extractDiagramXml(svg)).toThrow(DrawioFormatError);
+		expect(() => parseRootSvg(text)).toThrow(SvgFormatError);
 	});
 });
 
@@ -98,7 +53,7 @@ describe("toSharingSvg", () => {
 		const content = root.attributes.find((a) => a.name === "content");
 		expect(content).toBeDefined();
 		expect(sharing).toBe(DIAGRAM.slice(0, content?.start) + DIAGRAM.slice(content?.end));
-		expect(extractDiagramXml(sharing)).toEqual({ kind: "plain-svg" });
+		expect(parseRootSvg(sharing).attributes.some((a) => a.name === "content")).toBe(false);
 	});
 
 	it("同じ図からは同じバイト列（決定的）、2 回かけても同じ", () => {
@@ -112,7 +67,7 @@ describe("toSharingSvg", () => {
 });
 
 describe("findSvgProblems", () => {
-	it("Draw.io の SVG（foreignObject、図の中のリンク、名前空間の URL）は問題なし", () => {
+	it("以前の Draw.io の SVG（foreignObject、図の中のリンク、名前空間の URL）は問題なし", () => {
 		expect(findSvgProblems(toSharingSvg(DIAGRAM))).toEqual({ errors: [], warnings: [] });
 	});
 
