@@ -70,4 +70,5 @@
 | [0085](0085-drawio-cli-build-render.md) | 承認 | Claude Code が図を作る・直せるように、CLI に build / render / inspect を足し、描画を XML から自前で作る |
 | [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
 | [0094](0094-snippet-command.md) | 承認 | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
+| [0103](0103-git-conflict-records.md) | 提案 | PKM Git は、中身から分からない衝突を記録に残し、共通祖先が複数あっても変更を黙って戻さない |
 <!-- adr-index:end -->
