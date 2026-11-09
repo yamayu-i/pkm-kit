@@ -9,7 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { DOMParser } from "linkedom";
-import { exportPath } from "../../pkm-drawio/src/core/names.ts";
+import { exportPath } from "../../pkm-diagram/src/core/names.ts";
 import { HTML_EXTENSIONS, MAX_IMAGE_BYTES } from "../src/core/policy.ts";
 import { buildStandalone } from "../src/core/standalone.ts";
 import standaloneCss from "../tokens-standalone.css";

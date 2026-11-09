@@ -1,0 +1,103 @@
+/*
+ * pkm-diagram（ADR-0064）
+ * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-diagram/styles.css にする。
+ */
+
+:is([class*="vt-drawio-"], [class*="vt-drawio-"] *):focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[class*="vt-drawio-"],
+	[class*="vt-drawio-"] * {
+		transition: none;
+		animation: none;
+	}
+}
+
+/* ---------- 図に浮かべる操作バー ---------- */
+
+.vt-drawio-toolbar {
+	position: fixed;
+	/* Obsidian の --layer-popover と同じ。Modal とメニューより下 */
+	z-index: 30;
+	display: flex;
+	gap: 4px;
+	padding: 4px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	box-shadow: var(--vt-elevation-4);
+}
+
+.vt-drawio-toolbar[hidden] {
+	display: none;
+}
+
+.vt-drawio-tool {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 32px;
+	padding: 0 12px 0 8px;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-drawio-tool:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-drawio-tool:active {
+	background-image: linear-gradient(var(--vt-state-press), var(--vt-state-press));
+	transform: scale(var(--vt-scale-press-medium));
+}
+
+.vt-drawio-tool .svg-icon {
+	width: 16px;
+	height: 16px;
+	color: var(--vt-on-surface-variant);
+}
+
+/* ---------- 編集画面 ---------- */
+
+.modal.vt-drawio-modal {
+	width: 100%;
+	max-width: 1600px;
+	height: 100%;
+	max-height: 1200px;
+	display: flex;
+	flex-direction: column;
+}
+
+.vt-drawio-modal-content {
+	flex: 1;
+	min-height: 0;
+	padding: 0;
+}
+
+.vt-drawio-frame {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: none;
+	background: var(--vt-surface);
+}
+
+.vt-drawio-error {
+	min-height: 20px;
+	margin: 0;
+	color: var(--vt-error);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}

@@ -14,7 +14,7 @@ export const OUTPUTS = {
 	htmlPluginCss: at("../../pkm-html/tokens.css"),
 	/** 書き出した HTML に埋め込むもの（ADR-0044） */
 	htmlStandaloneCss: at("../../pkm-html/tokens-standalone.css"),
-	drawioPluginCss: at("../../pkm-drawio/tokens.css"),
+	drawioPluginCss: at("../../pkm-diagram/tokens.css"),
 	ribbonPluginCss: at("../../pkm-ribbon/tokens.css"),
 	updatesPluginCss: at("../../pkm-updates/tokens.css"),
 	obsidianSnippet: at("../../../../../.obsidian/snippets/pkm-theme.css"),
@@ -23,7 +23,7 @@ export const OUTPUTS = {
 } as const;
 
 /** 検査する CSS（プラグインごと） */
-export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-drawio/styles.css"), at("../../pkm-ribbon/styles.css"), at("../../pkm-updates/styles.css"), at("../../shared/src/month-calendar.css")];
+export const PLUGIN_CSS = [at("../../pkm-task/styles.css"), at("../../pkm-template/styles.css"), at("../../pkm-html/styles.css"), at("../../pkm-diagram/styles.css"), at("../../pkm-ribbon/styles.css"), at("../../pkm-updates/styles.css"), at("../../shared/src/month-calendar.css")];
 
 export const DESIGN_DOC = at("../../../docs/design.md");
 /** 子の Obsidian の設定に必要なキーと値（ADR-0009）。ここの "appearance.json" をデザインルールと照らす */
