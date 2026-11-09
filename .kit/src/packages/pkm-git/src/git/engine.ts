@@ -283,7 +283,8 @@ export class PkmGit {
 
 	async clone(url: string, branch: string): Promise<void> {
 		await this.countTransfer("clone", () =>
-			git.clone({ ...this.ctx, ...this.net, url, ref: branch, singleBranch: true, noCheckout: true }));
+			// 最新の版だけを取る（ADR-0106）。その後の fetch は差分だけを足す
+			git.clone({ ...this.ctx, ...this.net, url, ref: branch, singleBranch: true, noCheckout: true, depth: 1 }));
 		// 展開する前に、Vault の外や .git に書くパスがないか確かめる
 		const tree = await readTreeMap(this.ctx, await git.resolveRef({ ...this.ctx, ref: branch }));
 		for (const path of tree.keys()) assertSafeWorktreePath(path);

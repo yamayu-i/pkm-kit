@@ -72,4 +72,5 @@
 | [0094](0094-snippet-command.md) | 承認 | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
 | [0102](0102-diagram-three-methods.md) | 承認 | AI が描く図を Mermaid / D2 / SVG の 3 方式にし、デザイン規約・PNG のコピーと保存・大きい図の拡大を共通にする |
 | [0103](0103-git-conflict-records.md) | 承認 | PKM Git は、中身から分からない衝突を記録に残し、共通祖先が複数あっても変更を黙って戻さない |
+| [0106](0106-git-shallow-clone.md) | 承認 | PKM Git の clone は最新の版だけを取る（shallow clone） |
 <!-- adr-index:end -->

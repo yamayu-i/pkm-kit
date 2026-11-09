@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import git from "isomorphic-git";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createGitFs, GIT_DIR_ROOT } from "../src/fs/git-fs";
 import type { Transfer } from "../src/git/engine";
 import { createDevice, type Device } from "./helpers/device";
@@ -22,6 +22,20 @@ function growHistory(server: GitServer, branch = "main"): void {
 	}
 }
 
+/**
+ * 全履歴で clone する（clone は最新の版だけを取る。ADR-0106）。
+ * 長く使った端末（全履歴を持つ）で、fetch が取り直さないことを確かめるため
+ */
+async function fullClone(device: Device, url: string): Promise<void> {
+	const clone = git.clone.bind(git);
+	const spy = vi.spyOn(git, "clone").mockImplementationOnce(({ depth: _depth, ...args }) => clone(args));
+	try {
+		await device.git.clone(url, "main");
+	} finally {
+		spy.mockRestore();
+	}
+}
+
 async function listRefs(device: Device, filepath: string): Promise<string[]> {
 	const fs = createGitFs(device.store);
 	return git.listRefs({ fs, dir: GIT_DIR_ROOT, filepath });
@@ -39,8 +53,8 @@ describe("fetch の転送量（全履歴を取り直さない）", () => {
 		await server.start();
 		pc = createDevice("pc");
 		phone = createDevice("phone");
-		await pc.git.clone(server.url, "main");
-		await phone.git.clone(server.url, "main");
+		await fullClone(pc, server.url);
+		await fullClone(phone, server.url);
 	});
 
 	afterEach(async () => {
@@ -49,9 +63,22 @@ describe("fetch の転送量（全履歴を取り直さない）", () => {
 		await server.stop();
 	});
 
-	it("clone では全履歴を取得する（比較の基準）", async () => {
+	it("全履歴の clone は全版を取る（比較の基準）", async () => {
 		// beforeEach の 2 台分。1 台あたり全版のアセットを含む
 		expect(server.uploadPackBytes).toBeGreaterThan(2 * VERSIONS * ASSET_SIZE * 0.9);
+	});
+
+	it("clone は最新の版だけを取る（ADR-0106）", async () => {
+		const fresh = createDevice("fresh");
+		try {
+			server.uploadPackBytes = 0;
+			await fresh.git.clone(server.url, "main");
+			expect(server.uploadPackBytes).toBeGreaterThan(ASSET_SIZE * 0.9);
+			expect(server.uploadPackBytes).toBeLessThan(ASSET_SIZE * 2);
+			expect(await fresh.read("note.md")).toBe("line1\nline2\nline3\n");
+		} finally {
+			fresh.cleanup();
+		}
 	});
 
 	it("F1: 未公開のローカルコミットがあり、リモートが変わっていないとき、pack を取り直さない", async () => {
@@ -175,7 +202,9 @@ describe("転送量の通知（onTransfer）", () => {
 		await pc.git.clone(server.url, "main");
 		expect(events.map(([phase]) => phase)).toEqual(["clone"]);
 		const [, cloned] = events[0] as [string, Transfer];
-		expect(cloned.receivedBytes).toBeGreaterThan(VERSIONS * ASSET_SIZE * 0.9);
+		// 最新の版だけ（ADR-0106）
+		expect(cloned.receivedBytes).toBeGreaterThan(ASSET_SIZE * 0.9);
+		expect(cloned.receivedBytes).toBeLessThan(ASSET_SIZE * 2);
 		expect(cloned.requests).toBeGreaterThanOrEqual(2); // ref の確認と pack の取得（認証の再試行を含むことがある）
 
 		events.length = 0;

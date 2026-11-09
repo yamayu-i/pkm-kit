@@ -21850,7 +21850,10 @@ var PkmGit = class {
     return await this.store.stat(".git/HEAD") !== null;
   }
   async clone(url, branch2) {
-    await this.countTransfer("clone", () => isomorphic_git_default.clone({ ...this.ctx, ...this.net, url, ref: branch2, singleBranch: true, noCheckout: true }));
+    await this.countTransfer("clone", () => (
+      // 最新の版だけを取る（ADR-0106）。その後の fetch は差分だけを足す
+      isomorphic_git_default.clone({ ...this.ctx, ...this.net, url, ref: branch2, singleBranch: true, noCheckout: true, depth: 1 })
+    ));
     const tree = await readTreeMap(this.ctx, await isomorphic_git_default.resolveRef({ ...this.ctx, ref: branch2 }));
     for (const path of tree.keys()) assertSafeWorktreePath(path);
     await isomorphic_git_default.checkout({ ...this.ctx, ref: branch2, force: true });
