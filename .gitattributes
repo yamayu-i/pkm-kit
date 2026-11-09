@@ -7,7 +7,6 @@
 .kit/harness/docs/adr/README.md merge=union
 .kit/src/docs/adr/README.md merge=union
 
-# Draw.io の図（編集用 XML と描画を 1 ファイルに持つ）は、行単位でマージしない。
-# 別々の変更から XML と描画を混ぜると、行が重ならなくても図が壊れる（.kit/src/docs/adr/0064-drawio-diagrams.md）
-*.drawio.svg merge=binary
-*.drawio merge=binary
+# SVG の図（CLI が作るスタイルと描画、D2 の出力）は、行単位でマージしない。
+# 別々の変更から行を混ぜると、行が重ならなくても図が壊れる（.kit/src/docs/adr/0111-remove-drawio.md。PKM Git も同じ扱い）
+*.svg merge=binary

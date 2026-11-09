@@ -180,19 +180,17 @@ body.theme-dark {
 }
 
 /*
- * pkm-diagram（ADR-0064）
+ * pkm-diagram（ADR-0102）
  * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
  * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-diagram/styles.css にする。
  */
 
-:is([class*="vt-drawio-"], [class*="vt-drawio-"] *, [class*="vt-diagram-"], [class*="vt-diagram-"] *):focus-visible {
+:is([class*="vt-diagram-"], [class*="vt-diagram-"] *):focus-visible {
 	outline: 2px solid var(--vt-focus-ring);
 	outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	[class*="vt-drawio-"],
-	[class*="vt-drawio-"] *,
 	[class*="vt-diagram-"],
 	[class*="vt-diagram-"] * {
 		transition: none;
@@ -202,7 +200,7 @@ body.theme-dark {
 
 /* ---------- 図に浮かべる操作バー ---------- */
 
-.vt-drawio-toolbar {
+.vt-diagram-toolbar {
 	position: fixed;
 	/* Obsidian の --layer-popover と同じ。Modal とメニューより下 */
 	z-index: 30;
@@ -214,11 +212,11 @@ body.theme-dark {
 	box-shadow: var(--vt-elevation-4);
 }
 
-.vt-drawio-toolbar[hidden] {
+.vt-diagram-toolbar[hidden] {
 	display: none;
 }
 
-.vt-drawio-tool {
+.vt-diagram-tool {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
@@ -237,56 +235,19 @@ body.theme-dark {
 	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
 }
 
-.vt-drawio-tool:hover {
+.vt-diagram-tool:hover {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
-.vt-drawio-tool:active {
+.vt-diagram-tool:active {
 	background-image: linear-gradient(var(--vt-state-press), var(--vt-state-press));
 	transform: scale(var(--vt-scale-press-medium));
 }
 
-.vt-drawio-tool[hidden] {
-	display: none;
-}
-
-.vt-drawio-tool .svg-icon {
+.vt-diagram-tool .svg-icon {
 	width: 16px;
 	height: 16px;
 	color: var(--vt-on-surface-variant);
-}
-
-/* ---------- 編集画面 ---------- */
-
-.modal.vt-drawio-modal {
-	width: 100%;
-	max-width: 1600px;
-	height: 100%;
-	max-height: 1200px;
-	display: flex;
-	flex-direction: column;
-}
-
-.vt-drawio-modal-content {
-	flex: 1;
-	min-height: 0;
-	padding: 0;
-}
-
-.vt-drawio-frame {
-	display: block;
-	width: 100%;
-	height: 100%;
-	border: none;
-	background: var(--vt-surface);
-}
-
-.vt-drawio-error {
-	min-height: 20px;
-	margin: 0;
-	color: var(--vt-error);
-	font-size: var(--vt-type-body-small-size);
-	line-height: var(--vt-type-body-small-line-height);
 }
 
 /* ---------- 拡大表示（ADR-0102） ---------- */
@@ -383,4 +344,33 @@ body.theme-dark {
 	transform-origin: 0 0;
 	user-select: none;
 	-webkit-user-drag: none;
+}
+
+/* ---------- 縮めすぎて読めない図の印（ADR-0102） ---------- */
+
+.vt-diagram-shrunk {
+	position: relative;
+}
+
+.image-embed.vt-diagram-shrunk,
+.internal-embed.vt-diagram-shrunk {
+	display: inline-block;
+}
+
+.vt-diagram-shrunk::after {
+	content: "Expand to read";
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	padding: 2px 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	box-shadow: var(--vt-elevation-1);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	/* 印は飾り。押すと下の図に届く（操作バーの「Expand」で拡大する） */
+	pointer-events: none;
 }

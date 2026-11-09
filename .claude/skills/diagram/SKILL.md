@@ -1,6 +1,6 @@
 ---
 name: diagram
-description: ノートや wiki のページに載せる図を Claude Code が作る・直す・読み取る手順。内容に合わせて Mermaid（ノートのコードブロック）・D2（asset/*.d2 から SVG を描く）・SVG を直接書く（asset/*.svg）の 3 つから選び、色はデザイン規約の色の名前だけで付け、CLI（node .kit/bin/diagram.mjs）で検査する。既存の Draw.io の図（asset/*.drawio.svg）を直すときもこれを使う。ユーザーが「図を描いて」「構成図・フロー図・関係図・シーケンス図を作って」「この図を直して」「図に〇〇を足して」「この図は何を表している？」と言ったとき、ノートや wiki のページに図があると分かりやすいときに使う。
+description: ノートや wiki のページに載せる図を Claude Code が作る・直す・読み取る手順。内容に合わせて Mermaid（ノートのコードブロック）・D2（asset/*.d2 から SVG を描く）・SVG を直接書く（asset/*.svg）の 3 つから選び、色はデザイン規約の色の名前だけで付け、CLI（node .kit/bin/diagram.mjs）で検査する。以前の Draw.io の図（asset/*.drawio.svg）を直したいとき（描き直す）もこれを使う。ユーザーが「図を描いて」「構成図・フロー図・関係図・シーケンス図を作って」「この図を直して」「図に〇〇を足して」「この図は何を表している？」と言ったとき、ノートや wiki のページに図があると分かりやすいときに使う。
 ---
 
 # 図を作る・直す
@@ -17,7 +17,7 @@ description: ノートや wiki のページに載せる図を Claude Code が作
 
 - 迷ったら a → b → c の順に検討する（作る手間と、直しやすさの順）
 - 1 枚に詰め込まない。ノードが 15 を超えそうなら図を分ける
-- 既存の `.drawio.svg` は Draw.io の図のまま直す（下の「既存の Draw.io の図」）。新しい図を Draw.io で作らない
+- 以前の Draw.io の図（`.drawio.svg`）は直す手段がない。直すなら、中身を読み取って a〜c で描き直す（下の「以前の Draw.io の図」）
 
 ## 2. どの方式でも守ること
 
@@ -147,20 +147,12 @@ node .kit/bin/diagram.mjs svg-check asset/<名前>.svg            # c
 node .kit/bin/diagram.mjs svg-check asset/<名前>.svg --allow-colors   # b（D2 の SVG は色の値を持つ）
 ```
 
-## 既存の Draw.io の図（asset/*.drawio.svg）
+## 以前の Draw.io の図（asset/*.drawio.svg）
 
-正本は SVG の中の編集用 XML（[ADR-0064](../../../.kit/src/docs/adr/0064-drawio-diagrams.md)）。XML だけを書き換えて終わりにしない（描画と食い違う）。必ず `render` を通す（[ADR-0085](../../../.kit/src/docs/adr/0085-drawio-cli-build-render.md)）。
+Draw.io 関連は除いた（[ADR-0111](../../../.kit/src/docs/adr/0111-remove-drawio.md)）。以前の図は普通の SVG の図として表示・コピーできるが、編集の手段はない。
 
-1. `node .kit/bin/diagram.mjs inspect asset/<名前>.drawio.svg` で、ページ・セルの ID・位置を把握する
-2. `node .kit/bin/diagram.mjs extract asset/<名前>.drawio.svg --plain > tmp/<名前>.xml`（圧縮したページを展開する）
-3. `tmp/<名前>.xml` を書き換える
-   - 既存のセルの `id` は変えない。新しいセルの `id` は重ならないものにする
-   - ラベルは `value`（`html=1` なら HTML。改行は `&lt;br&gt;`）。位置は `<mxGeometry x y width height>`（グループの子は親からの相対の座標。`inspect` は絶対の座標を出す）
-   - 辺は `edge="1" source="…" target="…"`。経路は `<Array as="points">` の経由点
-4. `node .kit/bin/diagram.mjs render tmp/<名前>.xml --output asset/<名前>.drawio.svg`
-5. `inspect` で確かめる
-
-描画は Draw.io と細部が違うことがある。ユーザーが pkm-diagram の編集（Draw.io）で開いて保存すれば、Draw.io の描画に置き換わる。直したら、そう伝える。大きく組み替えるなら、ユーザーに確かめてから a〜c で描き直す。
+- 直すよう頼まれたら、図の `<text>` の並びから中身（ノード・つながり・グループ）を読み取り、ユーザーに確かめてから a〜c で描き直す
+- 新しい図の名前は `asset/<名前>.svg`（`.drawio.svg` にしない）。参照を新しい図に書き換え、古い図を消すかはユーザーに確かめる（DailyNote の本文の参照は、許可なく書き換えない）
 
 ## 図を読み取る
 
@@ -168,7 +160,6 @@ node .kit/bin/diagram.mjs svg-check asset/<名前>.svg --allow-colors   # b（D2
 
 - Mermaid・D2: ソース（コードブロック、`.d2`）を読む
 - SVG: `<text>` と `node` / `edge` の並びから読む。差し込まれたスタイルは読まない
-- Draw.io: `inspect` の出力（ラベルと辺）から読む。XML の全文を読まない（長い）
 
 ## コミット
 
@@ -178,7 +169,7 @@ node .kit/bin/diagram.mjs svg-check asset/<名前>.svg --allow-colors   # b（D2
 
 ## 外に共有する
 
-図を含むノートを外に渡すときは `node .kit/bin/diagram.mjs export <ノート>` で `tmp/` に書き出す（`asset/` の図を SVG の data URI にして埋め込む。Draw.io の図は編集用 XML を除く）。HTML は `node .kit/bin/html.mjs export <ファイル>` を使う（[ノートの書式と配置](../../docs/vault-conventions.md)）。Mermaid はコードブロックのまま残る（貼り付け先で画像が要るなら、Obsidian で図の PNG をコピーする）。
+図を含むノートを外に渡すときは `node .kit/bin/diagram.mjs export <ノート>` で `tmp/` に書き出す（`asset/` の図を SVG の data URI にして埋め込む。以前の Draw.io の図は編集用 XML を除く）。HTML は `node .kit/bin/html.mjs export <ファイル>` を使う（[ノートの書式と配置](../../docs/vault-conventions.md)）。Mermaid はコードブロックのまま残る（貼り付け先で画像が要るなら、Obsidian で図の PNG をコピーする）。
 
 ## 出力の段階
 

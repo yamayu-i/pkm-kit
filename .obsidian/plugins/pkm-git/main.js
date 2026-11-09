@@ -21495,8 +21495,7 @@ function resolveConflicts(segments, choices) {
 
 // src/merge/tree-merge.ts
 var MARKER_EXTENSIONS = /* @__PURE__ */ new Set(["md", "markdown", "txt"]);
-var WHOLE_FILE_SUFFIXES = [".drawio.svg", ".drawio"];
-var COMPOUND_EXTENSIONS = [".drawio.svg"];
+var WHOLE_FILE_SUFFIXES = [".svg"];
 var SUBMODULE_MODE = "160000";
 var SYMLINK_MODE = "120000";
 function extension(path) {
@@ -21536,8 +21535,7 @@ function originalOfConflictCopy(path) {
 function conflictCopyPath(path, suffix, taken) {
   const dir = dirname2(path);
   const name = basename2(path);
-  const compound = hasSuffix(name, COMPOUND_EXTENSIONS);
-  const dot = compound !== null ? name.length - compound.length : name.lastIndexOf(".");
+  const dot = name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const ext = dot > 0 ? name.slice(dot) : "";
   for (let n = 1; ; n++) {

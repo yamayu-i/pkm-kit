@@ -110,11 +110,12 @@ describe("embedDiagrams", () => {
 		expect(r.errors[2]).toContain("イベント属性");
 	});
 
-	it("編集用 XML のない SVG と外部の読み込みは警告", async () => {
+	it("外部の読み込みは警告。編集用 XML のない .drawio.svg は警告しない（普通の SVG の図。ADR-0111）", async () => {
 		const v = vault({ "asset/p.drawio.svg": '<svg><image href="https://example.com/a.png"/></svg>' });
 		const r = await embedDiagrams("![](asset/p.drawio.svg)", { sourcePath: "n.md", kind: "markdown", readText: v.readText });
 		expect(r.errors).toEqual([]);
-		expect(r.warnings).toHaveLength(2);
+		expect(r.warnings).toHaveLength(1);
+		expect(r.warnings[0]).toContain("外部");
 	});
 
 	it("Vault の外を指す参照・外部の URL は対象外", async () => {

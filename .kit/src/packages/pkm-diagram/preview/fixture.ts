@@ -1,15 +1,16 @@
 /**
- * preview の画面: pkm-diagram の操作バー・編集画面・PNG を、Obsidian なしで Chromium に出す。
+ * preview の画面: pkm-diagram の操作バー・印・拡大表示・PNG を、Obsidian なしで Chromium に出す。
  * obsidian はモック（preview/obsidian-mock.ts）。Vault は Map
  */
 import { Notice, TFile } from "obsidian";
 import { svgDataUri } from "../src/core/encoding.ts";
-import { extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
+import { toSharingSvg } from "../src/core/svg.ts";
 import { renderPng } from "../src/obsidian/copy.ts";
-import { DrawioEditorModal } from "../src/obsidian/editor-modal.ts";
 import { findMermaidSvg, mermaidSvgText } from "../src/obsidian/mermaid.ts";
 import { DiagramToolbar, type DiagramTarget } from "../src/obsidian/toolbar.ts";
 import { DiagramZoomModal } from "../src/obsidian/zoom-modal.ts";
+import { minTextSize } from "../src/core/plain-svg.ts";
+import { mermaidMinTextSize, ShrinkMarker } from "../src/obsidian/shrink-marker.ts";
 import diagram from "../test/fixtures/two-pages.drawio.svg";
 import plain from "../test/fixtures/plain.svg";
 
@@ -25,41 +26,25 @@ const MERMAID = `<svg id="mermaid-1" width="100%" viewBox="0 0 300 120" style="m
 const files = new Map<string, string>([
 	["asset/sys.drawio.svg", diagram],
 	["asset/plain.svg", plain],
+	// 横に長い図（ノートの幅に縮めると文字が読めない）
+	["asset/wide.svg", '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 200" width="2000" height="200"><rect x="0" y="0" width="2000" height="200" fill="none" stroke="currentColor"/><text x="1000" y="100" font-size="13" text-anchor="middle">横に長い図</text></svg>'],
 ]);
 /** モックの TFile はパスを受け取る（本物の型は引数なし） */
 const makeFile = (path: string): TFile => new (TFile as unknown as new (p: string) => TFile)(path);
 const fileOf = (path: string) => (files.has(path) ? makeFile(path) : null);
 
-const app = {
-	vault: {
-		getAbstractFileByPath: fileOf,
-		read: async (f: TFile) => files.get(f.path) ?? "",
-		cachedRead: async (f: TFile) => files.get(f.path) ?? "",
-		process: async (f: TFile, fn: (current: string) => string) => {
-			const next = fn(files.get(f.path) ?? "");
-			files.set(f.path, next);
-			return next;
-		},
-		modify: async (f: TFile, data: string) => void files.set(f.path, data),
-		create: async (path: string, data: string) => {
-			if (files.has(path)) throw new Error(`exists: ${path}`);
-			files.set(path, data);
-			return makeFile(path);
-		},
-		createFolder: async () => {},
-	},
-};
+/** 拡大表示のモーダルが受け取る app（使わない） */
+const app = {};
 
 declare global {
 	interface Window {
 		__notices?: string[];
 		__actions: string[];
-		__modal?: DrawioEditorModal;
+		__shrink?: ShrinkMarker;
 		dv: {
 			files(): Record<string, string>;
 			setFile(path: string, text: string): void;
 			mountToolbar(): void;
-			openEditor(path: string | null): void;
 			openZoom(path: string): void;
 			pngSize(): Promise<{ width: number; height: number; bytes: number }>;
 			mermaidPng(): Promise<{ width: number; height: number; bytes: number; foreignObjects: number; hasText: boolean; dataUrl: string }>;
@@ -76,10 +61,12 @@ window.dv = {
 		for (const [id, path] of [
 			["img-drawio", "asset/sys.drawio.svg"],
 			["img-plain", "asset/plain.svg"],
+			["img-wide", "asset/wide.svg"],
 		] as const) {
 			const span = root.createSpan({ cls: "internal-embed image-embed", attr: { src: path } });
 			const img = span.createEl("img", { attr: { id, alt: id, src: svgDataUri(files.get(path) ?? "") } });
 			img.style.width = id === "img-plain" ? "160px" : "360px";
+			if (id === "img-wide") img.style.height = "auto";
 			root.createEl("p", { text: "本文の段落。図の下に続く文章。" });
 		}
 		// Obsidian が描く Mermaid の図と同じ形（ラベルは foreignObject の HTML）
@@ -92,7 +79,7 @@ window.dv = {
 			resolve: (el) => {
 				if (el.tagName === "IMG") {
 					const file = fileOf(el.closest(".internal-embed")?.getAttribute("src") ?? "");
-					return file ? { el, target: { kind: "file", file, drawio: file.path.endsWith(".drawio.svg") } } : null;
+					return file ? { el, target: { kind: "file", file } } : null;
 				}
 				const svg = findMermaidSvg(el);
 				return svg ? { el: svg, target: { kind: "mermaid", svg } } : null;
@@ -100,21 +87,21 @@ window.dv = {
 			copy: (t) => window.__actions.push(`copy:${name(t)}`),
 			save: (t) => window.__actions.push(`save:${name(t)}`),
 			expand: (t) => window.__actions.push(`expand:${name(t)}`),
-			edit: (file) => window.__actions.push(`edit:${file.path}`),
 		});
 		toolbar.attach(document, (doc, type, cb, capture) => doc.addEventListener(type, cb as EventListener, { capture }));
-	},
-	openEditor(path) {
-		if (path === null) {
-			window.__modal = new DrawioEditorModal(app as never, { kind: "new", path: "asset/new.drawio.svg", onCreated: (f) => window.__actions.push(`created:${f.path}`) });
-			window.__modal.open();
-			return;
-		}
-		const svg = files.get(path) ?? "";
-		const r = extractDiagramXml(svg);
-		if (r.kind !== "diagram") throw new Error("not a diagram");
-		window.__modal = new DrawioEditorModal(app as never, { kind: "existing", file: makeFile(path), base: svg, xml: r.xml });
-		window.__modal.open();
+		const resolve = (el: Element) => {
+			if (el.tagName === "IMG") {
+				const file = fileOf(el.closest(".internal-embed")?.getAttribute("src") ?? "");
+				return file ? { el, target: { kind: "file" as const, file } } : null;
+			}
+			const svg = findMermaidSvg(el);
+			return svg ? { el: svg, target: { kind: "mermaid" as const, svg } } : null;
+		};
+		window.__shrink = new ShrinkMarker({
+			resolve,
+			minTextSize: async (t) => (t.kind === "mermaid" ? mermaidMinTextSize(t.svg) : minTextSize(files.get(t.file.path) ?? "")),
+		});
+		window.__shrink.attach(document);
 	},
 	openZoom(path) {
 		new DiagramZoomModal(app as never, { src: svgDataUri(files.get(path) ?? ""), title: path }).open();

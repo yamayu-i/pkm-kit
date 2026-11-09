@@ -1,21 +1,11 @@
 /**
- * 図の CLI（ADR-0064、ADR-0102）。PC の Claude Code とスキルが使う。プラグインと同じ src/core/ の処理を使う。
+ * 図の CLI（ADR-0102、ADR-0111）。PC の Claude Code とスキルが使う。プラグインと同じ src/core/ の処理を使う。
  * ビルドして .kit/bin/diagram.mjs に置く（子の Vault はビルドせずに使う）。
  *
  *   node .kit/bin/diagram.mjs export <ノート.md|.html> [--output <tmp/…>] [--vault <ルート>]
- *       図の参照を、編集用 XML を除いた SVG の data URI に置き換えて書き出す（既定 tmp/<ファイル名>。あれば番号を付ける）
+ *       図の参照を、SVG の data URI に置き換えて書き出す（以前の Draw.io の図は編集用 XML を除く）。（既定 tmp/<ファイル名>。あれば番号を付ける）
  *   node .kit/bin/diagram.mjs check <ファイルかフォルダ…> [--vault <ルート>]
  *       書き出したものに、図のファイルへの参照・編集用 XML が残っていないかを見る
- *   node .kit/bin/diagram.mjs extract <図.drawio.svg> [--plain]   編集用 XML（全ページ）を標準出力に出す（--plain は圧縮したページを展開する）
- *   node .kit/bin/diagram.mjs strip <図.drawio.svg> [--output <…>]   共有用の SVG（編集用 XML を除く）
- *
- * Claude Code が図を作る・直す（ADR-0085）。描画は自前で、Draw.io で開いて保存すれば描き直される
- *   node .kit/bin/diagram.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
- *       短い JSON から配置を計算し、編集用 XML と描画を作る（- は標準入力。既存のファイルは --force で上書き）
- *   node .kit/bin/diagram.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
- *       編集用 XML から描画を作り直す（--output がなければ、図の SVG をその場で書き直す）
- *   node .kit/bin/diagram.mjs inspect <図.drawio.svg|.drawio|.xml>
- *       ページ・セル（ID・形・ラベル・位置）・辺・描けない書式を出す
  *
  * AI が描く SVG と D2 の図（ADR-0102）
  *   node .kit/bin/diagram.mjs svg-style <図.svg> [--output <図.svg>]
@@ -29,36 +19,27 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { buildDiagram, inspectDiagram, renderDiagram, xmlFromInput } from "../src/core/author.ts";
 import { checkExported, documentKind, embedDiagrams } from "../src/core/document.ts";
-import { decompressDiagramFile } from "../src/core/model.ts";
 import { d2Preamble, D2_DARK_THEME_ID } from "../src/core/d2.ts";
 import { exportPath } from "../src/core/names.ts";
 import { checkPlainSvg, darkenSvg, styleSvg } from "../src/core/plain-svg.ts";
-import { DrawioFormatError, extractDiagramXml, toSharingSvg } from "../src/core/svg.ts";
+import { SvgFormatError } from "../src/core/svg.ts";
 
 export interface Io {
 	cwd: string;
 	out(text: string): void;
 	err(text: string): void;
-	/** 標準入力（build -） */
-	stdin?: () => Promise<string>;
 }
 
 const USAGE = `使い方:
   diagram.mjs export <ノート.md|.html> [--output <パス>] [--vault <ルート>]
   diagram.mjs check <ファイルかフォルダ…> [--vault <ルート>]
-  diagram.mjs extract <図.drawio.svg> [--plain]
-  diagram.mjs strip <図.drawio.svg> [--output <パス>]
-  diagram.mjs build <spec.json|-> --output <asset/名前.drawio.svg> [--force]
-  diagram.mjs render <図.drawio.svg|.drawio|.xml> [--output <図.drawio.svg>] [--page <N>]
-  diagram.mjs inspect <図.drawio.svg|.drawio|.xml>
   diagram.mjs svg-style <図.svg> [--output <図.svg>]
   diagram.mjs svg-check <図.svg…> [--allow-colors]
   diagram.mjs d2 <図.d2> [--output <図.svg>] [--layout elk|dagre] [--d2 <d2 コマンド>]`;
 
 /** 値をとらない指定 */
-const FLAGS = new Set(["force", "plain", "allow-colors"]);
+const FLAGS = new Set(["allow-colors"]);
 
 function parseArgs(args: string[]): { positional: string[]; options: Map<string, string> } {
 	const positional: string[] = [];
@@ -168,123 +149,6 @@ function runCheck(positional: string[], options: Map<string, string>, io: Io): n
 	return 0;
 }
 
-async function runSvg(command: "extract" | "strip", positional: string[], options: Map<string, string>, io: Io): Promise<number> {
-	const [input] = positional;
-	if (!input || positional.length > 1) {
-		io.err(USAGE);
-		return 2;
-	}
-	const svg = readFileSync(resolve(io.cwd, input), "utf8");
-	if (command === "extract") {
-		const r = extractDiagramXml(svg);
-		if (r.kind !== "diagram") {
-			io.err(`${input}: 編集用 XML がない（普通の SVG）`);
-			return 1;
-		}
-		io.out(options.has("plain") ? await decompressDiagramFile(r.xml) : r.xml);
-		return 0;
-	}
-	const sharing = toSharingSvg(svg);
-	const output = options.get("output");
-	if (output === undefined) {
-		io.out(sharing);
-		return 0;
-	}
-	const full = resolve(io.cwd, output);
-	if (existsSync(full)) {
-		io.err(`${output} は既にあります（上書きしません）`);
-		return 1;
-	}
-	mkdirSync(dirname(full), { recursive: true });
-	writeFileSync(full, sharing);
-	return 0;
-}
-
-function warn(io: Io, warnings: string[]): void {
-	for (const w of warnings) io.err(`警告: ${w}`);
-}
-
-function checkDiagramOutput(output: string, io: Io): boolean {
-	if (!output.toLowerCase().endsWith(".drawio.svg")) {
-		io.err(`${output}: 書き出し先は .drawio.svg にしてください`);
-		return false;
-	}
-	return true;
-}
-
-async function runBuild(positional: string[], options: Map<string, string>, io: Io): Promise<number> {
-	const [input] = positional;
-	const output = options.get("output");
-	if (!input || positional.length > 1 || output === undefined) {
-		io.err(USAGE);
-		return 2;
-	}
-	if (!checkDiagramOutput(output, io)) return 2;
-	const full = resolve(io.cwd, output);
-	if (existsSync(full) && !options.has("force")) {
-		io.err(`${output} は既にあります（上書きするなら --force。今の図を直すなら extract → render）`);
-		return 1;
-	}
-	let text: string;
-	if (input === "-") {
-		if (!io.stdin) throw new Error("標準入力を読めない");
-		text = await io.stdin();
-	} else {
-		text = readFileSync(resolve(io.cwd, input), "utf8");
-	}
-	let spec: unknown;
-	try {
-		spec = JSON.parse(text);
-	} catch (e) {
-		io.err(`エラー: spec を JSON として読めない（${e instanceof Error ? e.message : String(e)}）`);
-		return 1;
-	}
-	const r = await buildDiagram(spec);
-	warn(io, r.warnings);
-	mkdirSync(dirname(full), { recursive: true });
-	writeFileSync(full, r.svg);
-	io.out(`${relative(io.cwd, full) || full}（ページ ${r.pages}）`);
-	return 0;
-}
-
-async function runRender(positional: string[], options: Map<string, string>, io: Io): Promise<number> {
-	const [input] = positional;
-	if (!input || positional.length > 1) {
-		io.err(USAGE);
-		return 2;
-	}
-	const inputFull = resolve(io.cwd, input);
-	const output = options.get("output");
-	const outFull = output === undefined ? inputFull : resolve(io.cwd, output);
-	if (!checkDiagramOutput(output ?? input, io)) return 2;
-	const page = options.has("page") ? Number(options.get("page")) : 1;
-	if (!Number.isInteger(page) || page < 1) {
-		io.err("--page は 1 以上の整数");
-		return 2;
-	}
-	const r = await renderDiagram(xmlFromInput(readFileSync(inputFull, "utf8")), page);
-	warn(io, r.warnings);
-	const before = existsSync(outFull) ? readFileSync(outFull, "utf8") : null;
-	if (before === r.svg) {
-		io.out(`${relative(io.cwd, outFull) || outFull}（変わらない）`);
-		return 0;
-	}
-	mkdirSync(dirname(outFull), { recursive: true });
-	writeFileSync(outFull, r.svg);
-	io.out(`${relative(io.cwd, outFull) || outFull}（ページ ${r.pages}、描いたのは ${page} ページ目）`);
-	return 0;
-}
-
-async function runInspect(positional: string[], io: Io): Promise<number> {
-	const [input] = positional;
-	if (!input || positional.length > 1) {
-		io.err(USAGE);
-		return 2;
-	}
-	io.out(await inspectDiagram(xmlFromInput(readFileSync(resolve(io.cwd, input), "utf8"))));
-	return 0;
-}
-
 function report(io: Io, name: string, r: { errors: string[]; warnings: string[] }): boolean {
 	for (const e of r.errors) io.err(`${name}: 誤り: ${e}`);
 	for (const w of r.warnings) io.err(`${name}: 警告: ${w}`);
@@ -306,7 +170,7 @@ function writeIfChanged(outFull: string, text: string, io: Io, note: string): vo
 function runSvgStyle(positional: string[], options: Map<string, string>, io: Io): number {
 	const [input] = positional;
 	if (!input || positional.length > 1 || !input.endsWith(".svg") || input.endsWith(".drawio.svg")) {
-		io.err(`${USAGE}\n（svg-style は AI が書いた .svg に使う。.drawio.svg は render）`);
+		io.err(`${USAGE}\n（svg-style は AI が書いた .svg に使う。.drawio.svg は以前の Draw.io の図で、直すなら描き直す）`);
 		return 2;
 	}
 	const inputFull = resolve(io.cwd, input);
@@ -346,7 +210,7 @@ function runD2(positional: string[], options: Map<string, string>, io: Io): numb
 	}
 	const output = options.get("output") ?? input.replace(/\.d2$/, ".svg");
 	if (!output.endsWith(".svg") || output.endsWith(".drawio.svg")) {
-		io.err("--output は .svg（.drawio.svg ではない）");
+		io.err("--output は .svg（.drawio.svg は使わない）");
 		return 2;
 	}
 	const bin = options.get("d2") ?? process.env.D2_BIN ?? "d2";
@@ -383,15 +247,6 @@ export async function main(argv: string[], io: Io): Promise<number> {
 				return await runExport(positional, options, io);
 			case "check":
 				return runCheck(positional, options, io);
-			case "extract":
-			case "strip":
-				return await runSvg(command, positional, options, io);
-			case "build":
-				return await runBuild(positional, options, io);
-			case "render":
-				return await runRender(positional, options, io);
-			case "inspect":
-				return await runInspect(positional, io);
 			case "svg-style":
 				return runSvgStyle(positional, options, io);
 			case "svg-check":
@@ -403,22 +258,17 @@ export async function main(argv: string[], io: Io): Promise<number> {
 				return 2;
 		}
 	} catch (e) {
-		io.err(`エラー: ${e instanceof DrawioFormatError ? e.message : e instanceof Error ? e.message : String(e)}`);
+		io.err(`エラー: ${e instanceof SvgFormatError ? e.message : e instanceof Error ? e.message : String(e)}`);
 		return 1;
 	}
 }
 
 // テストから import したときは動かさない
 const invoked = process.argv[1] ?? "";
-if (/(diagram|drawio)\.(mjs|ts)$/.test(invoked)) {
+if (/diagram\.(mjs|ts)$/.test(invoked)) {
 	process.exitCode = await main(process.argv.slice(2), {
 		cwd: process.cwd(),
 		out: (t) => process.stdout.write(`${t}\n`),
 		err: (t) => process.stderr.write(`${t}\n`),
-		stdin: async () => {
-			const chunks: Buffer[] = [];
-			for await (const c of process.stdin) chunks.push(c as Buffer);
-			return Buffer.concat(chunks).toString("utf8");
-		},
 	});
 }

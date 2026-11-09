@@ -14,7 +14,7 @@ export const OUTPUTS = {
 	htmlPluginCss: at("../../pkm-html/tokens.css"),
 	/** 書き出した HTML に埋め込むもの（ADR-0044） */
 	htmlStandaloneCss: at("../../pkm-html/tokens-standalone.css"),
-	drawioPluginCss: at("../../pkm-diagram/tokens.css"),
+	diagramPluginCss: at("../../pkm-diagram/tokens.css"),
 	ribbonPluginCss: at("../../pkm-ribbon/tokens.css"),
 	updatesPluginCss: at("../../pkm-updates/tokens.css"),
 	obsidianSnippet: at("../../../../../.obsidian/snippets/pkm-theme.css"),

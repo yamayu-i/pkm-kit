@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { diagram } from "../../design/generated/tokens.ts";
 import { d2Preamble } from "../src/core/d2.ts";
-import { checkPlainSvg, COLOR_NAMES, DARK_ID, darkenSvg, DEFS_ID, STYLE_ID, styleSvg } from "../src/core/plain-svg.ts";
+import { checkPlainSvg, COLOR_NAMES, DARK_ID, darkenSvg, DEFS_ID, minTextSize, shownTextPx, STYLE_ID, styleSvg, tooSmallToRead } from "../src/core/plain-svg.ts";
 
 const SIMPLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
   <g class="node blue"><rect x="10" y="10" width="120" height="40" rx="8"/><text x="70" y="30" class="center">あ</text></g>
@@ -86,5 +86,22 @@ describe("darkenSvg と D2 のテーマ", () => {
 		expect(pre).toContain(`N1: "${diagram.light.neutral.text}"`);
 		expect(pre).toContain(`N1: "${diagram.dark.neutral.text}"`);
 		expect(d2Preamble("dagre")).toContain("layout-engine: dagre");
+	});
+});
+
+describe("縮めすぎて読めない図（ADR-0102 の段階 3）", () => {
+	it("いちばん小さい文字の大きさを、font-size・クラス・既定から出す。文字がなければ null", () => {
+		expect(minTextSize(styleSvg(SIMPLE))).toBe(12);
+		expect(minTextSize('<svg viewBox="0 0 10 10"><text font-size="20">a</text><text class="small">b</text></svg>')).toBe(11);
+		expect(minTextSize('<svg viewBox="0 0 10 10"><rect/></svg>')).toBeNull();
+	});
+
+	it("縮めた幅に比例して文字が小さくなり、9px 未満なら読めない。拡大して出す図と文字のない図は読める", () => {
+		expect(shownTextPx(13, 2000, 700)).toBeCloseTo(4.55);
+		expect(tooSmallToRead(13, 2000, 700)).toBe(true);
+		expect(tooSmallToRead(13, 1000, 700)).toBe(false);
+		expect(tooSmallToRead(13, 500, 700)).toBe(false);
+		expect(tooSmallToRead(null, 2000, 100)).toBe(false);
+		expect(tooSmallToRead(13, 0, 100)).toBe(false);
 	});
 });

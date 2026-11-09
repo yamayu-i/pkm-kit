@@ -49,6 +49,4 @@ if (watch) {
 	await (await esbuild.context(plugin)).watch();
 } else {
 	await Promise.all([esbuild.build(plugin), esbuild.build(cli)]);
-	// 旧名（ADR-0102 で pkm-drawio を pkm-diagram にした）。子の Vault の手順やメモが呼んでも動くように残す
-	await writeFile(`${bindir}drawio.mjs`, '// 旧名。.kit/bin/diagram.mjs を使う（ADR-0102）\nimport "./diagram.mjs";\n');
 }
