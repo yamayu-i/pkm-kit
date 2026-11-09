@@ -205,7 +205,7 @@ packages/design/tokens.json（正本）
 | 図の印（縮めすぎて読めない） | `.vt-diagram-shrunk` | ノートの中で縮めて出した図のいちばん小さい文字が 9px 未満のとき、図の右下に出す丸い印「Expand to read」（`::after`。`--vt-surface-container-high` + `--vt-elevation-1`、label-medium の文字）。押せない飾りで、拡大は操作バーの Expand で行う。pkm-diagram（ADR-0102） |
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
-| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠 |
+| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠。別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。未分類では左、グループでは上。ADR-0114） |
 | 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
 | グループ | `.vt-group` | ボードの枠。1 階層目は横に等分（`.vt-board-columns`、狭いペインでは縦）、サブグループは中に縦に積む。カードを落とせるときは primary の枠 + secondary-container の面 |
 | 未分類 | `.vt-group.is-ungrouped` | グループと並べず、ボードの上に横長に置く（点線の枠、カードは横に並ぶ）。カードがすべてグループに入ったら出さない |

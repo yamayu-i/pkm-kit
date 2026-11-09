@@ -11,7 +11,9 @@ export type BoardOp =
 	| { op: "routine"; task: string; result: RoutineResult | null }
 	| { op: "carry"; task: string }
 	| { op: "close"; tasks: string[] }
-	| { op: "reopen" };
+	| { op: "reopen" }
+	/** グループの中の並び全体（ADR-0114）。group が null なら未分類。BoardState は変えず、並びの履歴から決める */
+	| { op: "order"; group: string | null; tasks: string[] };
 
 /** 操作ログの 1 行 */
 export interface BoardLogEntry {
@@ -56,6 +58,10 @@ function parseOp(o: Record<string, unknown>): BoardOp | null {
 			return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o.tasks as string[] } : null;
 		case "reopen":
 			return { op: "reopen" };
+		case "order":
+			return (o.group === null || (typeof o.group === "string" && o.group)) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id)
+				? { op: "order", group: o.group as string | null, tasks: o.tasks as string[] }
+				: null;
 		default:
 			return null;
 	}
@@ -138,6 +144,8 @@ function apply(board: BoardState, op: BoardOp): void {
 		case "reopen":
 			board.closed = op.op === "close";
 			break;
+		case "order":
+			break;
 	}
 }
 
@@ -193,6 +201,33 @@ export function lastPlacement(history: readonly PlacementRecord[], task: string,
 	for (const r of history) {
 		if (r.date > date) break;
 		if (r.task === task) found = r.group;
+	}
+	return found;
+}
+
+/** グループの中を並べた記録（ADR-0114）。group は鍵（未分類は ""） */
+export interface OrderRecord {
+	group: string;
+	date: LocalDate;
+	atMs: number;
+	tasks: string[];
+}
+
+/** 並べた記録をボードの日付 → 時刻の順に並べる */
+export function orderHistory(entries: BoardLogEntry[]): OrderRecord[] {
+	const records: OrderRecord[] = [];
+	for (const e of [...entries].sort(compareEntries)) {
+		if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+	}
+	return records.sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs));
+}
+
+/** その日までで最後のそのグループの並び。並べたことがなければ undefined */
+export function lastOrder(history: readonly OrderRecord[], group: string, date: LocalDate): string[] | undefined {
+	let found: string[] | undefined;
+	for (const r of history) {
+		if (r.date > date) break;
+		if (r.group === group) found = r.tasks;
 	}
 	return found;
 }

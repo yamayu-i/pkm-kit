@@ -1,5 +1,6 @@
 import { inboxPatch, reschedulePatch } from "../core/actions";
-import type { RoutineResult } from "../core/board";
+import { nextOrder, reorder, type RoutineResult } from "../core/board";
+import type { BoardOp } from "../core/board-log";
 import type { LocalDate } from "../core/dates";
 import { UNGROUPED } from "../core/groups";
 import type { Issue } from "../core/schema";
@@ -41,6 +42,18 @@ export const setPlacement = (ctx: TaskContext, date: LocalDate, id: string, grou
 		"グループを変えられませんでした",
 		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }]),
 	);
+
+/**
+ * カードをグループ（鍵）の中の before の前（null なら末尾）へ動かす（ADR-0114）。visible はそのグループの今の画面の並び。
+ * 別のグループから来たなら（from が違うか分からないとき）place も書く。並びには、前の並びにあって画面にない ID の位置を残す
+ */
+export function moveCard(ctx: TaskContext, date: LocalDate, id: string, group: string, from: string | null, visible: string[], before: string | null): Promise<void> {
+	const ops: BoardOp[] = [];
+	if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
+	const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
+	ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
+	return guard(ctx, "カードを動かせませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
+}
 
 /** routine のその日の結果を変える。変わったら取り消しのトーストを出す（record が false のときは出さない。ADR-0031） */
 export async function setRoutineResult(ctx: TaskContext, date: LocalDate, id: string, result: RoutineResult | null, record = true): Promise<void> {

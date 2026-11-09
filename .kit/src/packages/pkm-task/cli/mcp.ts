@@ -6,10 +6,10 @@
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { boardItems, emptyBoard, pendingBoards, routineResults, unfinished, type RoutineResult } from "../src/core/board";
+import { boardItems, emptyBoard, pendingBoards, routineResults, sortByOrder, unfinished, type RoutineResult } from "../src/core/board";
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
 import { prorateEffort } from "../src/core/effort";
-import { groupKeys } from "../src/core/groups";
+import { UNGROUPED, groupKeys } from "../src/core/groups";
 import { isInbox, TaskIndex } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../src/core/list";
@@ -79,7 +79,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "get_board",
-		description: "指定日（既定は今日）のタスクボードの状態（issue / routine、グループごとの並び、未完了、記録中のタイマー、締めたか）を取得する",
+		description: "指定日（既定は今日）のタスクボードの状態（issue / routine、グループごとの並び（byGroup の cards が画面の順）、未完了、記録中のタイマー、締めたか）を取得する",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -361,10 +361,14 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				group: index.placement(date, board, r.id, r.group, keys),
 				result: board.routines[r.id] ?? null,
 			}));
-			const byGroup: Record<string, { issues: string[]; routines: string[] }> = { "": { issues: [], routines: [] } };
-			for (const k of keys) byGroup[k] = { issues: [], routines: [] };
-			for (const i of issuesWithGroup) byGroup[i.group]!.issues.push(i.id);
-			for (const r of routinesWithGroup) byGroup[r.group]!.routines.push(r.id);
+			// グループの中は手で並べた順（ADR-0114）。cards は issue と routine を合わせた画面の並び
+			const byGroup: Record<string, { issues: string[]; routines: string[]; cards: string[] }> = {};
+			for (const k of [UNGROUPED, ...keys]) {
+				const ids = [...issuesWithGroup.filter((i) => i.group === k).map((i) => i.id), ...routinesWithGroup.filter((r) => r.group === k).map((r) => r.id)];
+				const cards = sortByOrder(ids, (id) => id, index.order(date, k));
+				const issueIds = new Set(issuesWithGroup.map((i) => i.id));
+				byGroup[k] = { issues: cards.filter((id) => issueIds.has(id)), routines: cards.filter((id) => !issueIds.has(id)), cards };
+			}
 
 			return {
 				date,

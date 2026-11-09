@@ -74,4 +74,5 @@
 | [0103](0103-git-conflict-records.md) | 承認 | PKM Git は、中身から分からない衝突を記録に残し、共通祖先が複数あっても変更を黙って戻さない |
 | [0106](0106-git-shallow-clone.md) | 承認 | PKM Git の clone は最新の版だけを取る（shallow clone） |
 | [0111](0111-remove-drawio.md) | 承認 | Draw.io 関連をすべて除き、既存の .drawio.svg は普通の SVG の図として扱う |
+| [0114](0114-board-manual-order.md) | 承認 | task board のグループの中でカードを手で並べ替える |
 <!-- adr-index:end -->

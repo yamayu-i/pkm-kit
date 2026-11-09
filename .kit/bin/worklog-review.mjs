@@ -7521,6 +7521,8 @@ function parseOp(o) {
       return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o.tasks } : null;
     case "reopen":
       return { op: "reopen" };
+    case "order":
+      return (o.group === null || typeof o.group === "string" && o.group) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o.group, tasks: o.tasks } : null;
     default:
       return null;
   }
@@ -7586,6 +7588,8 @@ function apply(board, op) {
     case "reopen":
       board.closed = op.op === "close";
       break;
+    case "order":
+      break;
   }
 }
 function replayBoard(initial, entries) {
@@ -7621,6 +7625,21 @@ function lastPlacement(history, task, date) {
   for (const r of history) {
     if (r.date > date) break;
     if (r.task === task) found = r.group;
+  }
+  return found;
+}
+function orderHistory(entries) {
+  const records = [];
+  for (const e of [...entries].sort(compareEntries)) {
+    if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+  }
+  return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
+}
+function lastOrder(history, group, date) {
+  let found;
+  for (const r of history) {
+    if (r.date > date) break;
+    if (r.group === group) found = r.tasks;
   }
   return found;
 }
@@ -8090,6 +8109,10 @@ var TaskIndex = class {
   placement(date, board, id, fallback, keys) {
     return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
   }
+  /** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
+  order(date, group) {
+    return lastOrder(this.data.orders, group, date);
+  }
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
@@ -8262,7 +8285,7 @@ function fileKind(path) {
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8317,6 +8340,7 @@ function collectVault(input) {
     });
   }
   data2.placements = placementHistory(initialBoards, allLogs);
+  data2.orders = orderHistory(allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseStatusLog(path, text);
     problems.push(...r.problems);

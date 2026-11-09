@@ -119,3 +119,38 @@ export function placementOf(board: BoardState, id: string, fallback: string | nu
 	const key = board.groups[id] ?? (remembered !== undefined ? (remembered ?? "") : (fallback ?? ""));
 	return key !== "" && keys.includes(key) ? key : "";
 }
+
+/** 並び（ADR-0114）にあるものはその順に、ないものは元の順で末尾に出す */
+export function sortByOrder<T>(items: readonly T[], idOf: (item: T) => string, order: readonly string[] | undefined): T[] {
+	if (!order || order.length === 0) return [...items];
+	const rank = new Map(order.map((id, i) => [id, i]));
+	const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a, b) => (rank.get(idOf(a)) ?? 0) - (rank.get(idOf(b)) ?? 0));
+	return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
+}
+
+/** 画面の並び（visible）から id を抜き、before の前（null か見つからなければ末尾）に入れる */
+export function reorder(visible: readonly string[], id: string, before: string | null): string[] {
+	const rest = visible.filter((x) => x !== id);
+	const at = before === null ? -1 : rest.indexOf(before);
+	return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+/**
+ * 書く並び（ADR-0114）。画面の並びに、前の並びにあって画面にない ID を、前の並びで直前にあった ID の後ろに差し込む
+ * （直前がなければ先頭）。今日は出ていない routine などの位置を失わないため
+ */
+export function nextOrder(visible: readonly string[], previous: readonly string[] | undefined): string[] {
+	const result = [...visible];
+	if (!previous) return result;
+	const shown = new Set(visible);
+	let prev: string | null = null;
+	let headAt = 0;
+	for (const id of previous) {
+		if (!shown.has(id) && !result.includes(id)) {
+			if (prev === null) result.splice(headAt++, 0, id);
+			else result.splice(result.indexOf(prev) + 1, 0, id);
+		}
+		prev = id;
+	}
+	return result;
+}
