@@ -39,6 +39,9 @@ const boardLog = [
 	boardOp(t, { op: "place", task: "i-12", group: "午前" }),
 	boardOp(t, { op: "place", task: "i-6", group: "午前/集中" }),
 	boardOp(t, { op: "place", task: "i-2", group: "午後" }),
+	// 午前の中は手で並べた順（ADR-0114）: routine の r-1 を i-13 の前に
+	boardOp(t, { op: "place", task: "i-13", group: "午前" }),
+	boardOp(t, { op: "order", group: "午前", tasks: ["r-1", "i-13", "i-12"] }),
 	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
 	boardOp(addDays(t, -2), { op: "routine", task: "r-1", result: "canceled" }),
 ];

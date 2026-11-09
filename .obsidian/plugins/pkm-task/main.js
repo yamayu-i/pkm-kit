@@ -840,6 +840,32 @@ function placementOf(board, id, fallback, keys, remembered) {
   const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
   return key !== "" && keys.includes(key) ? key : "";
 }
+function sortByOrder(items, idOf, order) {
+  if (!order || order.length === 0) return [...items];
+  const rank = new Map(order.map((id, i3) => [id, i3]));
+  const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a3, b2) => (rank.get(idOf(a3)) ?? 0) - (rank.get(idOf(b2)) ?? 0));
+  return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
+}
+function reorder(visible, id, before) {
+  const rest = visible.filter((x2) => x2 !== id);
+  const at = before === null ? -1 : rest.indexOf(before);
+  return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+function nextOrder(visible, previous) {
+  const result = [...visible];
+  if (!previous) return result;
+  const shown = new Set(visible);
+  let prev = null;
+  let headAt = 0;
+  for (const id of previous) {
+    if (!shown.has(id) && !result.includes(id)) {
+      if (prev === null) result.splice(headAt++, 0, id);
+      else result.splice(result.indexOf(prev) + 1, 0, id);
+    }
+    prev = id;
+  }
+  return result;
+}
 
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -951,6 +977,8 @@ function parseOp(o3) {
       return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
     case "reopen":
       return { op: "reopen" };
+    case "order":
+      return (o3.group === null || typeof o3.group === "string" && o3.group) && Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o3.group, tasks: o3.tasks } : null;
     default:
       return null;
   }
@@ -1023,6 +1051,8 @@ function apply(board, op) {
     case "reopen":
       board.closed = op.op === "close";
       break;
+    case "order":
+      break;
   }
 }
 function replayBoard(initial, entries) {
@@ -1058,6 +1088,21 @@ function lastPlacement(history, task, date) {
   for (const r3 of history) {
     if (r3.date > date) break;
     if (r3.task === task) found = r3.group;
+  }
+  return found;
+}
+function orderHistory(entries) {
+  const records = [];
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "order") records.push({ group: e3.op.group ?? "", date: e3.date, atMs: e3.atMs, tasks: e3.op.tasks });
+  }
+  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
+}
+function lastOrder(history, group, date) {
+  let found;
+  for (const r3 of history) {
+    if (r3.date > date) break;
+    if (r3.group === group) found = r3.tasks;
   }
   return found;
 }
@@ -1553,7 +1598,7 @@ function isDoneStatus(status) {
 
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -1671,6 +1716,10 @@ var TaskIndex = class {
    */
   placement(date, board, id, fallback, keys) {
     return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
+  }
+  /** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
+  order(date, group) {
+    return lastOrder(this.data.orders, group, date);
   }
   /** 記録中（to が空）の worklog */
   running(taskId) {
@@ -3704,7 +3753,7 @@ function fileKind(path) {
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -3759,6 +3808,7 @@ function collectVault(input) {
     });
   }
   data.placements = placementHistory(initialBoards, allLogs);
+  data.orders = orderHistory(allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a3, b2) => a3.path.localeCompare(b2.path))) {
     const r3 = parseStatusLog(path, text);
     problems.push(...r3.problems);
@@ -4567,6 +4617,13 @@ var setPlacement = (ctx, date, id, group) => guard(
   "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
   ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
 );
+function moveCard(ctx, date, id, group, from, visible, before) {
+  const ops = [];
+  if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
+  const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
+  ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
+  return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
+}
 async function setRoutineResult(ctx, date, id, result, record2 = true) {
   const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
   try {
@@ -4745,8 +4802,21 @@ function NextButtons(props) {
     }
   )) });
 }
+var DRAG_TYPE = "text/plain";
+var dragValue = (id, from) => JSON.stringify({ id, from });
+function readDrag(e3) {
+  const raw = e3.dataTransfer?.getData(DRAG_TYPE);
+  if (!raw) return null;
+  try {
+    const v3 = JSON.parse(raw);
+    if (typeof v3.id === "string" && v3.id) return { id: v3.id, from: typeof v3.from === "string" ? v3.from : null };
+  } catch {
+  }
+  return { id: raw, from: null };
+}
 function TaskCard(props) {
-  const { ctx, date, board, item, now } = props;
+  const { ctx, date, board, item, now, order } = props;
+  const [dropBefore, setDropBefore] = d2(false);
   const id = itemId(item);
   const running = ctx.store.index.running(id);
   const elapsed = running.reduce((m3, l3) => Math.max(m3, now - l3.fromMs), 0);
@@ -4777,6 +4847,14 @@ function TaskCard(props) {
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 Unsorted" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
       );
     }
+    if (order) {
+      const at = order.siblings.indexOf(id);
+      const up = at > 0 ? order.siblings[at - 1] : void 0;
+      const down = at >= 0 && at < order.siblings.length - 1 ? order.siblings[at + 2] ?? null : void 0;
+      if (up !== void 0 || down !== void 0) m3.addSeparator();
+      if (up !== void 0) m3.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void moveCard(ctx, date, id, order.groupKey, order.groupKey, order.siblings, up)));
+      if (down !== void 0) m3.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void moveCard(ctx, date, id, order.groupKey, order.groupKey, order.siblings, down)));
+    }
     m3.addSeparator();
     m3.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
     if (issue) m3.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
@@ -4785,9 +4863,26 @@ function TaskCard(props) {
   return /* @__PURE__ */ u3(
     "div",
     {
-      class: `vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}`,
+      class: `vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`,
       draggable: true,
-      onDragStart: (e3) => e3.dataTransfer?.setData("text/plain", id),
+      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, dragValue(id, props.placed)),
+      ...order ? {
+        // 別のカードの上に落とすと、そのカードの前に入る（ADR-0114）
+        onDragOver: (e3) => {
+          e3.preventDefault();
+          e3.stopPropagation();
+          setDropBefore(true);
+        },
+        onDragLeave: () => setDropBefore(false),
+        onDrop: (e3) => {
+          e3.preventDefault();
+          e3.stopPropagation();
+          setDropBefore(false);
+          const drag = readDrag(e3);
+          if (!drag || drag.id === id) return;
+          void moveCard(ctx, date, drag.id, order.groupKey, drag.from, order.siblings, id);
+        }
+      } : {},
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
           /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: summary }),
@@ -4821,7 +4916,12 @@ function GroupBox(props) {
   const { ctx, date, groupKey } = props;
   const [over2, setOver] = d2(false);
   const all = props.items.filter((it) => groupKey === UNGROUPED ? props.placement(it) === UNGROUPED : inGroup(props.placement(it), groupKey));
-  const own = props.items.filter((it) => props.placement(it) === groupKey);
+  const own = sortByOrder(
+    props.items.filter((it) => props.placement(it) === groupKey),
+    itemId,
+    ctx.store.index.order(date, groupKey)
+  );
+  const siblings = own.map(itemId);
   const ids = all.filter((it) => it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open").map(itemId);
   const runningIds = ctx.store.index.running().map((l3) => l3.taskId).filter((id) => all.some((it) => itemId(it) === id));
   return /* @__PURE__ */ u3(
@@ -4838,8 +4938,8 @@ function GroupBox(props) {
         e3.preventDefault();
         e3.stopPropagation();
         setOver(false);
-        const id = e3.dataTransfer?.getData("text/plain");
-        if (id) void setPlacement(ctx, date, id, groupKey);
+        const drag = readDrag(e3);
+        if (drag) void moveCard(ctx, date, drag.id, groupKey, drag.from, siblings, null);
       },
       children: [
         /* @__PURE__ */ u3("header", { class: "vt-group-head", children: [
@@ -4849,7 +4949,20 @@ function GroupBox(props) {
           runningIds.length > 0 ? /* @__PURE__ */ u3("button", { class: "vt-play is-running", title: "Stop all timers in this group", onClick: () => void stopTimer(ctx, runningIds), children: /* @__PURE__ */ u3(Icon, { name: "square" }) }) : /* @__PURE__ */ u3("button", { class: "vt-play", title: "Start timers for this group", disabled: ids.length === 0, onClick: () => void startTimer(ctx, ids), children: /* @__PURE__ */ u3(Icon, { name: "play" }) })
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-group-cards", children: [
-          own.map((it) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board: props.board, item: it, keys: props.keys, placed: props.placement(it), now: props.now }, itemId(it))),
+          own.map((it) => /* @__PURE__ */ u3(
+            TaskCard,
+            {
+              ctx,
+              date,
+              board: props.board,
+              item: it,
+              keys: props.keys,
+              placed: props.placement(it),
+              now: props.now,
+              order: { groupKey, siblings }
+            },
+            itemId(it)
+          )),
           own.length === 0 && !props.children && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: "Drop cards here" })
         ] }),
         props.children && /* @__PURE__ */ u3("div", { class: "vt-subgroups", children: props.children })

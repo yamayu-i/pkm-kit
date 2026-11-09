@@ -1,5 +1,5 @@
 import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type BoardState } from "./board";
-import { BOARD_LOG_PATH_RE, parseBoardLog, placementHistory, removedTasks, replayBoard, type BoardLogEntry } from "./board-log";
+import { BOARD_LOG_PATH_RE, orderHistory, parseBoardLog, placementHistory, removedTasks, replayBoard, type BoardLogEntry } from "./board-log";
 import { GROUPS_PATH, parseGroups } from "./groups";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
@@ -39,7 +39,7 @@ export interface VaultInput {
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -95,6 +95,7 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		});
 	}
 	data.placements = placementHistory(initialBoards, allLogs);
+	data.orders = orderHistory(allLogs);
 	for (const { path, text } of [...(input.statusLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
 		const r = parseStatusLog(path, text);
 		problems.push(...r.problems);

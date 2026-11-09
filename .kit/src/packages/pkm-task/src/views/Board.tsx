@@ -1,7 +1,7 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { statusPatch } from "../core/actions";
-import { boardItems, unfinished, type BoardState } from "../core/board";
+import { boardItems, sortByOrder, unfinished, type BoardState } from "../core/board";
 import { addDays, formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { UNGROUPED, groupKeys, inGroup, type GroupDef } from "../core/groups";
@@ -18,6 +18,7 @@ import {
 	setRoutineResult,
 	startTimer,
 	createOnBoard,
+	moveCard,
 	stopTimer,
 } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
@@ -107,9 +108,31 @@ function NextButtons(props: { ctx: TaskContext; date: LocalDate; item: Item; sta
 	);
 }
 
-/** カード 1 枚（ADR-0009）。summary・priority・status・再生ボタン */
-function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; item: Item; keys: string[]; placed: string; now: number }) {
-	const { ctx, date, board, item, now } = props;
+/** グループの中の並び（ADR-0114）。siblings はそのグループの画面の並び（ID） */
+interface CardOrder {
+	groupKey: string;
+	siblings: string[];
+}
+
+/** ドラッグで運ぶ値（ID と元の置き場所） */
+const DRAG_TYPE = "text/plain";
+const dragValue = (id: string, from: string) => JSON.stringify({ id, from });
+function readDrag(e: DragEvent): { id: string; from: string | null } | null {
+	const raw = e.dataTransfer?.getData(DRAG_TYPE);
+	if (!raw) return null;
+	try {
+		const v = JSON.parse(raw) as { id?: unknown; from?: unknown };
+		if (typeof v.id === "string" && v.id) return { id: v.id, from: typeof v.from === "string" ? v.from : null };
+	} catch {
+		// ほかから来た文字列は ID とみなす
+	}
+	return { id: raw, from: null };
+}
+
+/** カード 1 枚（ADR-0009）。summary・priority・status・再生ボタン。order があればグループの中で並べ替えられる（ADR-0114） */
+function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; item: Item; keys: string[]; placed: string; now: number; order?: CardOrder }) {
+	const { ctx, date, board, item, now, order } = props;
+	const [dropBefore, setDropBefore] = useState(false);
 	const id = itemId(item);
 	const running = ctx.store.index.running(id);
 	const elapsed = running.reduce((m, l) => Math.max(m, now - l.fromMs), 0);
@@ -149,6 +172,14 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 					.onClick(() => void setPlacement(ctx, date, id, key)),
 			);
 		}
+		if (order) {
+			const at = order.siblings.indexOf(id);
+			const up = at > 0 ? order.siblings[at - 1] : undefined;
+			const down = at >= 0 && at < order.siblings.length - 1 ? order.siblings[at + 2] ?? null : undefined;
+			if (up !== undefined || down !== undefined) m.addSeparator();
+			if (up !== undefined) m.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void moveCard(ctx, date, id, order.groupKey, order.groupKey, order.siblings, up)));
+			if (down !== undefined) m.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void moveCard(ctx, date, id, order.groupKey, order.groupKey, order.siblings, down)));
+		}
 		m.addSeparator();
 		m.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
 		if (issue) m.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, id)));
@@ -156,9 +187,28 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 	};
 	return (
 		<div
-			class={`vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}`}
+			class={`vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`}
 			draggable
-			onDragStart={(e) => e.dataTransfer?.setData("text/plain", id)}
+			onDragStart={(e) => e.dataTransfer?.setData(DRAG_TYPE, dragValue(id, props.placed))}
+			{...(order
+				? {
+						// 別のカードの上に落とすと、そのカードの前に入る（ADR-0114）
+						onDragOver: (e: DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+							setDropBefore(true);
+						},
+						onDragLeave: () => setDropBefore(false),
+						onDrop: (e: DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+							setDropBefore(false);
+							const drag = readDrag(e);
+							if (!drag || drag.id === id) return;
+							void moveCard(ctx, date, drag.id, order.groupKey, drag.from, order.siblings, id);
+						},
+					}
+				: {})}
 		>
 			<div class="vt-task-top">
 				<span class="vt-task-summary" title={`${id} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
@@ -207,7 +257,13 @@ function GroupBox(props: {
 	const { ctx, date, groupKey } = props;
 	const [over, setOver] = useState(false);
 	const all = props.items.filter((it) => groupKey === UNGROUPED ? props.placement(it) === UNGROUPED : inGroup(props.placement(it), groupKey));
-	const own = props.items.filter((it) => props.placement(it) === groupKey);
+	// グループの中は手で並べた順（ADR-0114）。並べていないものはこれまでの順で末尾
+	const own = sortByOrder(
+		props.items.filter((it) => props.placement(it) === groupKey),
+		itemId,
+		ctx.store.index.order(date, groupKey),
+	);
+	const siblings = own.map(itemId);
 	const ids = all.filter((it) => (it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open")).map(itemId);
 	const runningIds = ctx.store.index.running().map((l) => l.taskId).filter((id) => all.some((it) => itemId(it) === id));
 	return (
@@ -223,8 +279,9 @@ function GroupBox(props: {
 				e.preventDefault();
 				e.stopPropagation();
 				setOver(false);
-				const id = e.dataTransfer?.getData("text/plain");
-				if (id) void setPlacement(ctx, date, id, groupKey);
+				// 空いているところに落とすと末尾に入る（ADR-0114）
+				const drag = readDrag(e);
+				if (drag) void moveCard(ctx, date, drag.id, groupKey, drag.from, siblings, null);
 			}}
 		>
 			<header class="vt-group-head">
@@ -243,7 +300,17 @@ function GroupBox(props: {
 			</header>
 			<div class="vt-group-cards">
 				{own.map((it) => (
-					<TaskCard ctx={ctx} date={date} board={props.board} item={it} keys={props.keys} placed={props.placement(it)} now={props.now} key={itemId(it)} />
+					<TaskCard
+						ctx={ctx}
+						date={date}
+						board={props.board}
+						item={it}
+						keys={props.keys}
+						placed={props.placement(it)}
+						now={props.now}
+						order={{ groupKey, siblings }}
+						key={itemId(it)}
+					/>
 				))}
 				{own.length === 0 && !props.children && <div class="vt-drop-hint">Drop cards here</div>}
 			</div>

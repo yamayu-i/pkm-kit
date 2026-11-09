@@ -1842,6 +1842,29 @@ button.vt-badge:disabled::after {
 	gap: 8px;
 }
 
+/* カードの上に落とすと、その前に入る（ADR-0114）。入る位置を、カードの間の primary の線で出す */
+.vt-task.is-drop-before {
+	position: relative;
+}
+
+.vt-task.is-drop-before::before {
+	content: "";
+	position: absolute;
+	top: -4px;
+	right: 0;
+	left: 0;
+	border-top: 2px solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-group.is-ungrouped .vt-task.is-drop-before::before {
+	top: 0;
+	bottom: 0;
+	left: -4px;
+	border-top: none;
+	border-left: 2px solid var(--vt-primary);
+}
+
 .vt-drop-hint {
 	padding: 12px;
 	border: 1px dashed var(--vt-outline);

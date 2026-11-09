@@ -7538,6 +7538,8 @@ function parseOp(o) {
       return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o.tasks } : null;
     case "reopen":
       return { op: "reopen" };
+    case "order":
+      return (o.group === null || typeof o.group === "string" && o.group) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o.group, tasks: o.tasks } : null;
     default:
       return null;
   }
@@ -7610,6 +7612,8 @@ function apply(board, op) {
     case "reopen":
       board.closed = op.op === "close";
       break;
+    case "order":
+      break;
   }
 }
 function replayBoard(initial, entries) {
@@ -7645,6 +7649,21 @@ function lastPlacement(history, task, date) {
   for (const r of history) {
     if (r.date > date) break;
     if (r.task === task) found = r.group;
+  }
+  return found;
+}
+function orderHistory(entries) {
+  const records = [];
+  for (const e of [...entries].sort(compareEntries)) {
+    if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+  }
+  return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
+}
+function lastOrder(history, group, date) {
+  let found;
+  for (const r of history) {
+    if (r.date > date) break;
+    if (r.group === group) found = r.tasks;
   }
   return found;
 }
@@ -8172,6 +8191,10 @@ var TaskIndex = class {
   placement(date, board, id, fallback, keys) {
     return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
   }
+  /** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
+  order(date, group) {
+    return lastOrder(this.data.orders, group, date);
+  }
   /** 記録中（to が空）の worklog */
   running(taskId) {
     return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
@@ -8253,6 +8276,12 @@ function pendingBoards(index, boards, today) {
 function placementOf(board, id, fallback, keys, remembered) {
   const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
   return key !== "" && keys.includes(key) ? key : "";
+}
+function sortByOrder(items, idOf, order) {
+  if (!order || order.length === 0) return [...items];
+  const rank = new Map(order.map((id, i) => [id, i]));
+  const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a, b) => (rank.get(idOf(a)) ?? 0) - (rank.get(idOf(b)) ?? 0));
+  return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
 }
 
 // src/core/groups.ts
@@ -8859,7 +8888,7 @@ function fileKind(path) {
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8914,6 +8943,7 @@ function collectVault(input) {
     });
   }
   data.placements = placementHistory(initialBoards, allLogs);
+  data.orders = orderHistory(allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseStatusLog(path, text);
     problems.push(...r.problems);
@@ -9491,7 +9521,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\uFF08issue / routine\u3001\u30B0\u30EB\u30FC\u30D7\u3054\u3068\u306E\u4E26\u3073\u3001\u672A\u5B8C\u4E86\u3001\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3001\u7DE0\u3081\u305F\u304B\uFF09\u3092\u53D6\u5F97\u3059\u308B",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\uFF08issue / routine\u3001\u30B0\u30EB\u30FC\u30D7\u3054\u3068\u306E\u4E26\u3073\uFF08byGroup \u306E cards \u304C\u753B\u9762\u306E\u9806\uFF09\u3001\u672A\u5B8C\u4E86\u3001\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3001\u7DE0\u3081\u305F\u304B\uFF09\u3092\u53D6\u5F97\u3059\u308B",
     inputSchema: {
       type: "object",
       properties: {
@@ -9769,10 +9799,13 @@ function callMcpTool(ctx, name, args = {}) {
         group: index.placement(date, board, r.id, r.group, keys),
         result: board.routines[r.id] ?? null
       }));
-      const byGroup = { "": { issues: [], routines: [] } };
-      for (const k of keys) byGroup[k] = { issues: [], routines: [] };
-      for (const i of issuesWithGroup) byGroup[i.group].issues.push(i.id);
-      for (const r of routinesWithGroup) byGroup[r.group].routines.push(r.id);
+      const byGroup = {};
+      for (const k of [UNGROUPED, ...keys]) {
+        const ids = [...issuesWithGroup.filter((i) => i.group === k).map((i) => i.id), ...routinesWithGroup.filter((r) => r.group === k).map((r) => r.id)];
+        const cards = sortByOrder(ids, (id) => id, index.order(date, k));
+        const issueIds = new Set(issuesWithGroup.map((i) => i.id));
+        byGroup[k] = { issues: cards.filter((id) => issueIds.has(id)), routines: cards.filter((id) => !issueIds.has(id)), cards };
+      }
       return {
         date,
         closed: board.closed,

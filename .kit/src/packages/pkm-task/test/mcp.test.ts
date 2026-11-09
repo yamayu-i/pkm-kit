@@ -79,6 +79,24 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(index.board(date)?.board.groups["i-1"]).toBe("午前/集中");
 	});
 
+	it("get_board はグループの中を手で並べた順で返す（ADR-0114）", () => {
+		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
+		callMcpTool(ctx, "move_card", { date, id: "i-1", group: "午前" });
+		callMcpTool(ctx, "move_card", { date, id: "i-2", group: "午前" });
+		mkdirSync(join(root, "board/pc"), { recursive: true });
+		writeFileSync(
+			join(root, "board/pc/2026-11.jsonl"),
+			`${JSON.stringify({ id: "bo_order00001", at: "2026-11-01T11:00:00.000Z", date, op: "order", group: "午前", tasks: ["i-2", "r-1", "i-1"] })}\n`,
+		);
+		const board = callMcpTool(ctx, "get_board", { date }) as {
+			items: { issues: { id: string }[] };
+			byGroup: Record<string, { issues: string[]; routines: string[]; cards: string[] }>;
+		};
+		expect(board.byGroup["午前"]).toEqual({ issues: ["i-2", "i-1"], routines: ["r-1"], cards: ["i-2", "r-1", "i-1"] });
+		expect(board.byGroup[""]!.cards).toEqual([]);
+		expect(readVault(root).problems).toEqual([]);
+	});
+
 	it("不正な操作（存在しない issue、未定義のグループ、未完了がある状態での close、親子の循環）を拒否して書き込まない", () => {
 		expect(() => callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-999"] })).toThrow(/i-999/);
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1"] });

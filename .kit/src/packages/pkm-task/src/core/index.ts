@@ -1,6 +1,6 @@
 import { diffDays, localToday, type LocalDate } from "./dates";
 import { emptyBoard, pendingBoards, placementOf, unfinished, type BoardState, type DailyBoard } from "./board";
-import { lastPlacement, type PlacementRecord } from "./board-log";
+import { lastOrder, lastPlacement, type OrderRecord, type PlacementRecord } from "./board-log";
 import { deadIssues, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { GroupDef } from "./groups";
@@ -24,10 +24,12 @@ export interface VaultData {
 	statusLogs: StatusLogEntry[];
 	/** カードを置いた記録（ボードの日付 → 時刻の順。ADR-0034） */
 	placements: PlacementRecord[];
+	/** グループの中を並べた記録（ボードの日付 → 時刻の順。ADR-0114） */
+	orders: OrderRecord[];
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [] };
+	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -169,6 +171,11 @@ export class TaskIndex {
 	 */
 	placement(date: LocalDate, board: BoardState, id: string, fallback: string | null, keys: readonly string[]): string {
 		return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
+	}
+
+	/** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
+	order(date: LocalDate, group: string): string[] | undefined {
+		return lastOrder(this.data.orders, group, date);
 	}
 
 	/** 記録中（to が空）の worklog */
