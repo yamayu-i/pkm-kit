@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,6 +32,31 @@ function loadBundle(obsidian: unknown): new () => PluginInstance {
 	};
 	new Function("module", "exports", "require", "Buffer", src)(module, module.exports, req, undefined);
 	return module.exports.default;
+}
+
+interface Internals {
+	openResolve(path: string): Promise<void>;
+	useCopy(copy: string, original: string): Promise<void>;
+	discardCopy(copy: string): Promise<void>;
+	showHistory(path: string): Promise<void>;
+}
+
+/** 最後に開いたモーダル（mark の後に作ったボタン）で、同じ名前のボタンのうち index 番目を押す（塊・行の順） */
+let mark = 0;
+async function pick(mock: ReturnType<typeof createObsidianMock>, label: string, index: number): Promise<void> {
+	const b = mock.buttons.slice(mark).filter((x) => x.label === label).at(index);
+	if (!b?.handler) throw new Error(`no button: ${label} #${index}`);
+	await b.handler();
+}
+
+async function until(done: () => boolean): Promise<void> {
+	for (let i = 0; i < 200; i++) {
+		try {
+			if (done()) return;
+		} catch { /* まだない */ }
+		await new Promise((r) => setTimeout(r, 25));
+	}
+	throw new Error("timed out");
 }
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API モック上）", () => {
@@ -139,6 +165,87 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（Obsidian API
 		expect(existsSync(join(dir, "20261031T030000Z-00000001.json"))).toBe(true);
 		const log = readFileSync(join(phoneRoot, ".git/pkm-git/log.jsonl"), "utf8");
 		expect(log).toContain('"event":"conflict-record-unreadable"');
+	});
+
+	it("マーカーを塊ごとに選んで解き、開いた後に本文が変わっていたら書かない（ADR-0110 の 1）", async () => {
+		const marked = "head\n<<<<<<< local (iphone)\na-local\n=======\na-remote\n>>>>>>> remote (origin/main)\nmid\n"
+			+ "<<<<<<< local (iphone)\nb-local\n=======\nb-remote\n>>>>>>> remote (origin/main)\n";
+		writeFileSync(join(phoneRoot, "c.md"), marked);
+		writeFileSync(join(phoneRoot, "d.md"), marked);
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))() as unknown as PluginInstance & Internals;
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1", autoSyncMinutes: 0 };
+		await plugin.onload();
+
+		mark = mock.buttons.length;
+		await plugin.openResolve("c.md");
+		expect(mock.modals.at(-1)).toBe("Resolve conflicts");
+		// すべて選ぶまで Apply は押せない
+		await expect(mock.click("Apply")).rejects.toThrow();
+		await pick(mock, "Use local", 0);
+		await pick(mock, "Use both", 1);
+		await mock.click("Apply");
+		await until(() => server.remoteFile("c.md") === "head\na-local\nmid\nb-local\nb-remote\n");
+		expect(readFileSync(join(phoneRoot, "c.md"), "utf8")).toBe("head\na-local\nmid\nb-local\nb-remote\n");
+
+		mark = mock.buttons.length;
+		await plugin.openResolve("d.md");
+		await pick(mock, "Use remote", 0);
+		await pick(mock, "Use remote", 1);
+		writeFileSync(join(phoneRoot, "d.md"), `${marked}edited\n`);
+		await mock.click("Apply");
+		await until(() => mock.notices.some((n) => n.includes("本文が変わった")));
+		expect(readFileSync(join(phoneRoot, "d.md"), "utf8")).toBe(`${marked}edited\n`);
+	});
+
+	it("別名の版を Use this version と Discard で解く（ADR-0110 の 2）", async () => {
+		const copy = (name: string) => `${name} (conflict pc 2026-10-31 1200).md`;
+		writeFileSync(join(phoneRoot, "a.md"), "original\n");
+		writeFileSync(join(phoneRoot, copy("a")), "from copy\n");
+		writeFileSync(join(phoneRoot, copy("b")), "only copy\n");
+		writeFileSync(join(phoneRoot, copy("c")), "discard me\n");
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))() as unknown as PluginInstance & Internals;
+		plugin.data = { tokenSecretId: "gh", authHost: "127.0.0.1", autoSyncMinutes: 0 };
+		await plugin.onload();
+
+		await plugin.useCopy(copy("a"), "a.md");
+		expect(readFileSync(join(phoneRoot, "a.md"), "utf8")).toBe("from copy\n");
+		expect(existsSync(join(phoneRoot, copy("a")))).toBe(false);
+		// 元のファイルがなければ、別名の版を元の名前に改名する
+		await plugin.useCopy(copy("b"), "b.md");
+		expect(readFileSync(join(phoneRoot, "b.md"), "utf8")).toBe("only copy\n");
+		expect(existsSync(join(phoneRoot, copy("b")))).toBe(false);
+		await plugin.discardCopy(copy("c"));
+		expect(existsSync(join(phoneRoot, copy("c")))).toBe(false);
+		expect(server.remoteFile("a.md")).toBe("from copy\n");
+		expect(server.remoteFile("b.md")).toBe("only copy\n");
+	});
+
+	it("前の版に戻す前に今の内容をコミットし、戻した内容を送る（ADR-0110 の 3）", async () => {
+		const mock = createObsidianMock(phoneRoot, { gh: TEST_TOKEN });
+		const plugin = new (loadBundle(mock.obsidian))() as unknown as PluginInstance & Internals;
+		plugin.data = { tokenSecretId: "gh", deviceName: "iphone", authHost: "127.0.0.1", autoSyncMinutes: 0 };
+		await plugin.onload();
+		for (const text of ["v1\n", "v2\n"]) {
+			writeFileSync(join(phoneRoot, "note.md"), text);
+			await plugin.sync();
+		}
+		writeFileSync(join(phoneRoot, "note.md"), "not synced\n");
+
+		mark = mock.buttons.length;
+		await plugin.showHistory("note.md");
+		expect(mock.modals.at(-1)).toBe("File history");
+		// 新しい順: v2、v1、clone の版
+		await pick(mock, "Restore", 1);
+		expect(mock.modals.at(-1)).toBe("Restore");
+		await mock.click("Run");
+		await until(() => server.remoteFile("note.md") === "v1\n");
+		expect(readFileSync(join(phoneRoot, "note.md"), "utf8")).toBe("v1\n");
+		const log = execFileSync("git", ["-C", phoneRoot, "log", "--format=%s", "-3"], { encoding: "utf8" });
+		expect(log).toContain("vault: keep before restore note.md (iphone)");
+		const kept = execFileSync("git", ["-C", phoneRoot, "show", "HEAD~1:note.md"], { encoding: "utf8" });
+		expect(kept).toBe("not synced\n");
 	});
 
 	it("同期できないときは記録に残し、トークンを書かない（ADR-0089 の 8）", async () => {
