@@ -1,13 +1,16 @@
 import { Errors } from "isomorphic-git";
 import { MarkdownView, Notice, Platform, Plugin, requestUrl, TFile, type TAbstractFile } from "obsidian";
 import { AuthTargetError } from "./git/auth-target";
-import { ApplyJournalError, PkmGit, type SyncResult, type Transfer } from "./git/engine";
+import { ApplyJournalError, PkmGit, type FileHistory, type FileVersion, type SyncResult, type Transfer } from "./git/engine";
 import { createHttpClient, redactSecrets } from "./git/http";
 import { listConflictRecords, removeConflictRecord, type ConflictRecord } from "./git/conflict-records";
 import { SyncLog } from "./git/sync-log";
 import type { MergeConflict } from "./merge/tree-merge";
-import { hasConflictMarkers } from "./merge/text-merge";
-import { ConfirmModal, ConflictsModal, KeepVersionModal, SyncLogModal, type ConflictItem } from "./obsidian/modals";
+import { hasConflictMarkers, parseConflicts, resolveConflicts, type ConflictChoice, type ConflictSegment } from "./merge/text-merge";
+import { originalOfConflictCopy } from "./merge/tree-merge";
+import {
+	ConfirmModal, ConflictsModal, FileHistoryModal, KeepVersionModal, PreviewModal, ResolveConflictsModal, SyncLogModal, type ConflictItem,
+} from "./obsidian/modals";
 import { DEFAULT_SETTINGS, normalizeMinutes, PkmGitSettingTab, type PkmGitSettings } from "./obsidian/settings";
 import { SyncController, type RunOutcome, type ShareView, type Trigger } from "./sync/controller";
 import { VaultFileStore } from "./obsidian/vault-store";
@@ -27,7 +30,6 @@ function reportTransfer(phase: string, t: Transfer): void {
 	} catch { /* diagnostic only */ }
 }
 
-const CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
 
 function keptModifiedNote(record: ConflictRecord): string {
 	return record.deleted === "local"
@@ -104,6 +106,30 @@ export default class PkmGitPlugin extends Plugin {
 			name: "List unresolved conflicts",
 			callback: () => void this.showUnresolved(),
 		});
+		this.addCommand({
+			id: "resolve-conflicts",
+			name: "Resolve conflicts in this note",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file || !["md", "markdown", "txt"].includes(file.extension)) return false;
+				if (!checking) void this.openResolve(file.path);
+				return true;
+			},
+		});
+		this.addCommand({
+			id: "file-history",
+			name: "Show file history",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) return false;
+				if (!checking) void this.showHistory(file.path);
+				return true;
+			},
+		});
+		this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+			if (!(file instanceof TFile)) return;
+			menu.addItem((item) => item.setTitle("Git: File history").setIcon("history").onClick(() => void this.showHistory(file.path)));
+		}));
 		this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
 
 		this.registerTriggers();
@@ -381,11 +407,21 @@ export default class PkmGitPlugin extends Plugin {
 			await this.log.write({ level: "error", event: "conflict-records-failed", phase: "conflict-records", error });
 		}
 		for (const file of this.app.vault.getFiles()) {
-			if (CONFLICT_COPY_NAME.test(file.path)) {
-				items.push({ path: file.path, note: "コンフリクト版（不要なら削除）" });
+			const original = originalOfConflictCopy(file.path);
+			if (original !== null) {
+				const copy = file.path;
+				items.push({
+					path: copy,
+					note: `${original} のコンフリクト版`,
+					actions: [
+						{ label: "Use this version", run: () => this.confirmUseCopy(copy, original) },
+						{ label: "Discard", run: () => this.confirmDiscardCopy(copy) },
+					],
+				});
 			} else if (["md", "markdown", "txt"].includes(file.extension)) {
 				if (hasConflictMarkers(await this.app.vault.cachedRead(file))) {
-					items.push({ path: file.path, note: "コンフリクトマーカー入り" });
+					const path = file.path;
+					items.push({ path, note: "コンフリクトマーカー入り", actions: [{ label: "Resolve", run: () => this.openResolve(path) }] });
 				}
 			}
 		}
@@ -456,17 +492,207 @@ export default class PkmGitPlugin extends Plugin {
 		).open();
 	}
 
+	/** Obsidian の「削除したファイル」の設定に従って消す */
+	private async trashPath(path: string): Promise<void> {
+		const target = this.app.vault.getAbstractFileByPath(path);
+		if (target instanceof TFile) await this.app.fileManager.trashFile(target);
+		else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
+		this.controller.noteChange(path);
+	}
+
 	private async deleteKept(path: string, file: string): Promise<void> {
 		try {
-			const target = this.app.vault.getAbstractFileByPath(path);
-			if (target instanceof TFile) await this.app.fileManager.trashFile(target);
-			else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
-			this.controller.noteChange(path);
+			await this.trashPath(path);
 		} catch (e) {
 			new Notice(`Git: 削除できませんでした\n${e instanceof Error ? e.message : String(e)}`, 8_000);
 			return;
 		}
 		await this.resolveRecord(file);
+	}
+
+	/** マーカー入りのノートを、塊ごとに選んで解く（ADR-0110 の 1） */
+	private async openResolve(path: string): Promise<void> {
+		const file = this.app.vault.getFileByPath(path);
+		if (!file) return;
+		const original = await this.app.vault.read(file);
+		const segments = parseConflicts(original);
+		if (!segments?.some((s) => s.type === "conflict")) {
+			new Notice(segments
+				? "Git: このノートにコンフリクトマーカーはありません"
+				: "Git: マーカーの形が崩れているので、ここでは解けません。ノートを開いて、手でマーカーを消してください", 8_000);
+			if (!segments) void this.app.workspace.openLinkText(path, "", false);
+			return;
+		}
+		new ResolveConflictsModal(this.app, path, segments, (choices) => void this.applyResolve(path, original, segments, choices)).open();
+	}
+
+	private async applyResolve(path: string, original: string, segments: ConflictSegment[], choices: ConflictChoice[]): Promise<void> {
+		const file = this.app.vault.getFileByPath(path);
+		if (!file) return;
+		const resolved = resolveConflicts(segments, choices);
+		let changed = false;
+		await this.app.vault.process(file, (current) => {
+			if (current !== original) {
+				changed = true;
+				return current;
+			}
+			return resolved;
+		});
+		if (changed) {
+			new Notice("Git: 開いた後に本文が変わったので、書きませんでした。もう一度開いてください", 8_000);
+			return;
+		}
+		this.controller.noteChange(path);
+		new Notice("Git: 解決しました。次の同期で共有します");
+		await this.refreshUnresolved();
+		await this.sync();
+	}
+
+	/** 別名の版の中身を元のファイルに書き、別名の版を消す（ADR-0110 の 2） */
+	private confirmUseCopy(copy: string, original: string): void {
+		new ConfirmModal(
+			this.app,
+			"Use this version",
+			`${original} を ${copy} の内容で置き換え、${copy} を消します（Obsidian の「削除したファイル」の設定に従います）。`,
+			() => void this.useCopy(copy, original),
+		).open();
+	}
+
+	private async useCopy(copy: string, original: string): Promise<void> {
+		try {
+			const store = new VaultFileStore(this.app);
+			const copyFile = this.app.vault.getFileByPath(copy);
+			if (!copyFile) return;
+			if (await store.stat(original)) {
+				await store.write(original, await store.read(copy));
+				await this.trashPath(copy);
+			} else {
+				await this.app.fileManager.renameFile(copyFile, original);
+				this.controller.noteChange(copy);
+			}
+			this.controller.noteChange(original);
+		} catch (e) {
+			new Notice(`Git: 置き換えられませんでした\n${e instanceof Error ? e.message : String(e)}`, 8_000);
+			return;
+		}
+		await this.refreshUnresolved();
+		await this.sync();
+	}
+
+	private confirmDiscardCopy(copy: string): void {
+		new ConfirmModal(
+			this.app,
+			"Discard",
+			`${copy} を消します。元のファイルはそのままです（Obsidian の「削除したファイル」の設定に従います）。`,
+			() => void this.discardCopy(copy),
+		).open();
+	}
+
+	private async discardCopy(copy: string): Promise<void> {
+		try {
+			await this.trashPath(copy);
+		} catch (e) {
+			new Notice(`Git: 消せませんでした\n${e instanceof Error ? e.message : String(e)}`, 8_000);
+			return;
+		}
+		await this.refreshUnresolved();
+		await this.sync();
+	}
+
+	/** ファイルの履歴（ADR-0110 の 3・4） */
+	private async showHistory(path: string): Promise<void> {
+		let first: FileHistory;
+		try {
+			if (!(await this.engine().isRepo())) {
+				new Notice("Git: この Vault はまだ git リポジトリではありません");
+				return;
+			}
+			first = await this.engine().fileHistory(path);
+		} catch (e) {
+			await this.historyFailed(e);
+			return;
+		}
+		new FileHistoryModal(this.app, path, first, {
+			loadMore: (skip, deepen) => this.loadOlder(path, skip, deepen),
+			preview: (v) => void this.previewVersion(path, v),
+			restore: (v) => this.confirmRestore(path, v),
+		}).open();
+	}
+
+	private async loadOlder(path: string, skip: number, deepen: boolean): Promise<FileHistory | null> {
+		const engine = this.engine();
+		try {
+			if (deepen) {
+				const res = await this.controller.exclusive(() => engine.deepen(30));
+				if (res === "offline" || res === "auth") {
+					new Notice("Git: リモートにつながらないので、より前の履歴を取れませんでした");
+					return null;
+				}
+				const next = await engine.fileHistory(path, { skip });
+				return res === "complete" ? { ...next, canDeepen: false } : next;
+			}
+			return await engine.fileHistory(path, { skip });
+		} catch (e) {
+			await this.historyFailed(e);
+			return null;
+		}
+	}
+
+	private async historyFailed(error: unknown): Promise<void> {
+		const message = redactSecrets(error instanceof Error ? error.message : String(error), [this.token()]);
+		new Notice(`Git: 履歴を読めませんでした\n${message}`, 8_000);
+		await this.log.write({ level: "warn", event: "file-history-failed", phase: "file-history", error });
+	}
+
+	private async previewVersion(path: string, v: FileVersion): Promise<void> {
+		try {
+			const data = await this.engine().readVersion(v.commit, path);
+			if (!data) {
+				new Notice("Git: この版にはファイルがありません");
+				return;
+			}
+			let text: string | null = null;
+			if (!data.subarray(0, 8000).includes(0)) {
+				try {
+					text = new TextDecoder("utf-8", { fatal: true }).decode(data);
+				} catch { /* テキストではない */ }
+			}
+			new PreviewModal(this.app, `${path} · ${new Date(v.time).toLocaleString()} · ${v.author}`, text, data.byteLength).open();
+		} catch (e) {
+			await this.historyFailed(e);
+		}
+	}
+
+	private confirmRestore(path: string, v: FileVersion): void {
+		new ConfirmModal(
+			this.app,
+			"Restore",
+			`${path} を ${new Date(v.time).toLocaleString()}（${v.author}）の版に戻します。今の内容は先にコミットして残すので、後から戻せます。`,
+			() => void this.restoreVersion(path, v),
+		).open();
+	}
+
+	/** 戻す前に今の内容をコミットしてから、その版の中身を書く。共有は次の同期で行う */
+	private async restoreVersion(path: string, v: FileVersion): Promise<void> {
+		const engine = this.engine();
+		try {
+			const data = await engine.readVersion(v.commit, path);
+			if (!data) {
+				new Notice("Git: この版にはファイルがありません");
+				return;
+			}
+			await this.saveOpenEditors();
+			await this.controller.exclusive(() => engine.snapshotBeforeRestore(path));
+			await new VaultFileStore(this.app).write(path, data);
+			this.controller.noteChange(path);
+		} catch (e) {
+			const message = redactSecrets(e instanceof Error ? e.message : String(e), [this.token()]);
+			new Notice(`Git: 戻せませんでした\n${message}`, 8_000);
+			await this.log.write({ level: "error", event: "restore-failed", phase: "restore", error: e, paths: [path] });
+			return;
+		}
+		new Notice("Git: 前の版に戻しました。次の同期で共有します");
+		await this.sync();
 	}
 
 	/** 未解決の件数を数え直す（全ノートを読むので、起動時と取り込んだときだけ。ADR-0089 の 6） */

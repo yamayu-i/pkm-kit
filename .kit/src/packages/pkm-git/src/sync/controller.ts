@@ -77,6 +77,8 @@ export class SyncController {
 	private failures = 0;
 	private lastFailure = Number.NEGATIVE_INFINITY;
 	private paused = false;
+	/** 同期と exclusive の操作を 1 つずつ実行する */
+	private mutex: Promise<void> = Promise.resolve();
 
 	constructor(private readonly deps: ControllerDeps) {}
 
@@ -148,6 +150,20 @@ export class SyncController {
 		});
 	}
 
+	/**
+	 * 同期と重ねずに実行する（戻す前の snapshot、履歴の取り足し。ADR-0110 の 3・4）。
+	 * 実行中の同期が終わってから始まり、その間に来た同期は終わった後に実行する
+	 */
+	exclusive<T>(run: () => Promise<T>): Promise<T> {
+		return this.serial(run);
+	}
+
+	private serial<T>(run: () => Promise<T>): Promise<T> {
+		const result = this.mutex.then(run, run);
+		this.mutex = result.then(() => undefined, () => undefined);
+		return result;
+	}
+
 	/** 終わるのを待つ（テストと終了時に使う） */
 	async idle(): Promise<void> {
 		while (this.active && this.loop) await this.loop;
@@ -175,7 +191,7 @@ export class SyncController {
 			const keep = keeps.length > 0 ? keeps.filter((k) => k).join(" / ") : undefined;
 			let outcome: RunOutcome;
 			try {
-				outcome = await this.runOnce(lead.trigger, keep);
+				outcome = await this.serial(() => this.runOnce(lead.trigger, keep));
 			} catch (error) {
 				outcome = { trigger: lead.trigger, error, previous: this.view, view: this.view };
 			}

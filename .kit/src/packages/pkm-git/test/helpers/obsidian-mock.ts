@@ -10,6 +10,13 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 	const statusTexts: string[] = [];
 	const vaultHandlers: Record<string, Array<(file: { path: string }, oldPath?: string) => void>> = {};
 	const modals: string[] = [];
+	/** モーダルと Setting のボタン。click で押す（押せないものは押さない） */
+	const buttons: Array<{ label: string; disabled: boolean; handler?: () => unknown }> = [];
+	const click = async (label: string) => {
+		const b = [...buttons].reverse().find((x) => x.label === label);
+		if (!b || b.disabled || !b.handler) throw new Error(`button not clickable: ${label}`);
+		await b.handler();
+	};
 	const vaultWrites: string[] = [];
 	const adapterWrites: string[] = [];
 	const abs = (p: string) => join(root, p === "/" ? "" : p);
@@ -66,6 +73,9 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		async remove(p: string) {
 			await fsp.rm(abs(p));
 		},
+		async trashLocal(p: string) {
+			await fsp.rm(abs(p));
+		},
 		async rmdir(p: string) {
 			await fsp.rmdir(abs(p));
 		},
@@ -115,6 +125,18 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		async cachedRead(f: TFile) {
 			return fsp.readFile(abs(f.path), "utf8");
 		},
+		async read(f: TFile) {
+			return fsp.readFile(abs(f.path), "utf8");
+		},
+		async process(f: TFile, fn: (text: string) => string) {
+			const next = fn(await fsp.readFile(abs(f.path), "utf8"));
+			vaultWrites.push(f.path);
+			await fsp.writeFile(abs(f.path), next);
+			return next;
+		},
+		getAbstractFileByPath(p: string) {
+			return vault.getFileByPath(p);
+		},
 		on(name: string, cb: (file: { path: string }, oldPath?: string) => void) {
 			(vaultHandlers[name] ??= []).push(cb);
 			return { name };
@@ -131,8 +153,18 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 			getLeavesOfType: () => [],
 			onLayoutReady: (cb: () => void) => cb(),
 			openLinkText: async () => {},
+			getActiveFile: () => null,
+			on: () => ({}),
 		},
 		secretStorage: { getSecret: (id: string) => secrets[id] ?? null },
+		fileManager: {
+			async trashFile(f: TAbstractFile) {
+				await fsp.rm(abs(f.path));
+			},
+			async renameFile(f: TAbstractFile, to: string) {
+				await fsp.rename(abs(f.path), abs(to));
+			},
+		},
 	};
 
 	const el = () => ({ setText() {}, addClass() {}, addEventListener() {}, empty() {}, createEl: () => el(), appendText() {} });
@@ -190,7 +222,15 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 			return this;
 		}
 		addButton(cb: (b: unknown) => void) {
-			const b = { setButtonText: () => b, setCta: () => b, onClick: () => b };
+			const entry: { label: string; disabled: boolean; handler?: () => unknown } = { label: "", disabled: false };
+			buttons.push(entry);
+			const b = {
+				setButtonText: (t: string) => { entry.label = t; return b; },
+				setCta: () => b,
+				removeCta: () => b,
+				setDisabled: (v: boolean) => { entry.disabled = v; return b; },
+				onClick: (fn: () => unknown) => { entry.handler = fn; return b; },
+			};
 			cb(b);
 			return this;
 		}
@@ -223,5 +263,5 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 		},
 	};
 
-	return { obsidian, app, vault, notices, modals, vaultWrites, adapterWrites, statusTexts, emit };
+	return { obsidian, app, vault, notices, modals, buttons, click, vaultWrites, adapterWrites, statusTexts, emit };
 }
