@@ -21434,6 +21434,64 @@ var MARKER_END = /^>{7} /m;
 function hasConflictMarkers(text) {
   return MARKER_START.test(text) && MARKER_END.test(text);
 }
+function parseConflicts(text) {
+  const lines = splitLines2(text);
+  const out = [];
+  let plain = "";
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.startsWith("<<<<<<< ")) {
+      plain += line;
+      i++;
+      continue;
+    }
+    if (plain) out.push({ type: "text", text: plain });
+    plain = "";
+    const localLabel = line.slice(8).replace(/\r?\n$/, "");
+    let local = "";
+    let remote = "";
+    let part = "local";
+    let closed = false;
+    for (i++; i < lines.length; i++) {
+      const l = lines[i];
+      if (l.startsWith("<<<<<<< ")) return null;
+      if (/^={7}\r?\n?$/.test(l)) {
+        if (part === "remote") return null;
+        part = "remote";
+        continue;
+      }
+      if (l.startsWith(">>>>>>> ")) {
+        if (part !== "remote") return null;
+        out.push({ type: "conflict", localLabel, remoteLabel: l.slice(8).replace(/\r?\n$/, ""), local, remote });
+        closed = true;
+        i++;
+        break;
+      }
+      if (part === "local") local += l;
+      else remote += l;
+    }
+    if (!closed) return null;
+  }
+  if (plain) out.push({ type: "text", text: plain });
+  return out;
+}
+function resolveConflicts(segments, choices) {
+  let n = 0;
+  let out = "";
+  for (const s of segments) {
+    if (s.type === "text") {
+      out += s.text;
+      continue;
+    }
+    const choice = choices[n++];
+    if (choice === void 0) throw new Error("\u9078\u3093\u3067\u3044\u306A\u3044\u584A\u304C\u3042\u308A\u307E\u3059");
+    const both = s.local + (s.local && !s.local.endsWith("\n") ? "\n" : "") + s.remote;
+    out += choice === "local" ? s.local : choice === "remote" ? s.remote : both;
+  }
+  if (n !== choices.length) throw new Error("\u584A\u306E\u6570\u3068\u9078\u3093\u3060\u6570\u304C\u9055\u3044\u307E\u3059");
+  return out;
+}
 
 // src/merge/tree-merge.ts
 var MARKER_EXTENSIONS = /* @__PURE__ */ new Set(["md", "markdown", "txt"]);
@@ -21465,6 +21523,15 @@ function withUpdated(merged, line) {
 function sameEntry(a, b) {
   if (!a || !b) return a === b;
   return a.oid === b.oid && a.mode === b.mode;
+}
+var COPY_NAME = / \(conflict [^)/]+\)((?:\.[^/.]+)*)$/;
+function originalOfConflictCopy(path) {
+  const dir = dirname2(path);
+  const name = basename2(path);
+  if (!COPY_NAME.test(name)) return null;
+  const original = name.replace(COPY_NAME, "$1");
+  if (original === "" || original.startsWith(".")) return null;
+  return dir ? `${dir}/${original}` : original;
 }
 function conflictCopyPath(path, suffix, taken) {
   const dir = dirname2(path);
@@ -21740,6 +21807,15 @@ var WorktreeChangedError = class extends Error {
 };
 function pad2(n) {
   return String(n).padStart(2, "0");
+}
+function describeCommit(oid, commit2) {
+  const subject = commit2.message.split("\n")[0] ?? "";
+  const base = { commit: oid, time: commit2.author.timestamp * 1e3, author: commit2.author.name };
+  if (/^vault: snapshot \(/.test(subject)) return { ...base, kind: "synced" };
+  if (/^vault: merge /.test(subject)) return { ...base, kind: "merged" };
+  const keep = /^vault: keep(?: (.*))? \([^()]*\)$/.exec(subject);
+  if (keep) return { ...base, kind: "kept", name: keep[1] ?? "" };
+  return { ...base, kind: "other" };
 }
 function formatStamp(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}${pad2(d.getMinutes())}`;
@@ -22244,6 +22320,74 @@ var PkmGit = class {
       throw e;
     }
   }
+  /**
+   * ファイルを変えたコミットを新しい順に返す（ADR-0110 の 3）。skip 件を飛ばして limit 件まで。
+   * 手元の履歴の始まりに着いたら atStart。shallow の端末では、その先を deepen で取り足せる（canDeepen）
+   */
+  async fileHistory(path, opts = {}) {
+    assertSafeWorktreePath(path);
+    const skip = opts.skip ?? 0;
+    const limit = opts.limit ?? 30;
+    const branch2 = await this.currentBranch();
+    let commits;
+    try {
+      commits = await this.measure("file-history", () => isomorphic_git_default.log({ ...this.ctx, ref: branch2, filepath: path, depth: skip + limit + 1, follow: false }));
+    } catch (e) {
+      if (e instanceof Errors.NotFoundError) commits = [];
+      else throw e;
+    }
+    const versions = commits.slice(skip, skip + limit).map((c) => describeCommit(c.oid, c.commit));
+    const atStart = commits.length <= skip + limit;
+    return { versions, atStart, canDeepen: atStart && (await this.shallowCommits()).length > 0 };
+  }
+  /** コミットにあるファイルの中身。なければ null */
+  async readVersion(commit2, path) {
+    assertSafeWorktreePath(path);
+    try {
+      return (await isomorphic_git_default.readBlob({ ...this.ctx, oid: commit2, filepath: path })).blob;
+    } catch (e) {
+      if (e instanceof Errors.NotFoundError) return null;
+      throw e;
+    }
+  }
+  /**
+   * shallow の端末の履歴を、commits 個のコミット分だけ取り足す（ADR-0110 の 4）。
+   * 増えたら "deepened"、リモートにもそれより前がなければ "complete"。つながらなければ offline / auth
+   */
+  async deepen(commits) {
+    const branch2 = await this.currentBranch();
+    const before = (await this.shallowCommits()).join("\n");
+    if (before === "") return "complete";
+    try {
+      await this.measure("deepen", () => this.countTransfer("deepen", () => isomorphic_git_default.fetch({
+        ...this.ctx,
+        ...this.net,
+        remote: this.remote,
+        ref: `refs/remotes/${this.remote}/${branch2}`,
+        remoteRef: branch2,
+        singleBranch: true,
+        tags: false,
+        depth: commits,
+        relative: true
+      })));
+    } catch (e) {
+      const status2 = classifyNetworkError(e);
+      if (status2) return status2;
+      throw e;
+    }
+    const after = (await this.shallowCommits()).join("\n");
+    return after === before ? "complete" : "deepened";
+  }
+  /** .git/shallow のコミット（shallow でなければ空） */
+  async shallowCommits() {
+    if (!await this.store.stat(".git/shallow")) return [];
+    const text = new TextDecoder().decode(await this.store.read(".git/shallow"));
+    return text.split("\n").map((l) => l.trim()).filter((l) => /^[0-9a-f]{40}$/.test(l)).sort();
+  }
+  /** 戻す前に、今の内容をコミットする（ADR-0110 の 3）。変更がなければコミットしない */
+  async snapshotBeforeRestore(path) {
+    return this.measure("snapshot", () => this.snapshot(this.keepMessage(`before restore ${path}`)));
+  }
   keepMessage(name) {
     const clean = name.replace(/\s+/g, " ").trim().slice(0, 100);
     return `vault: keep${clean ? ` ${clean}` : ""} (${this.device})
@@ -22584,6 +22728,137 @@ var SyncLogModal = class extends import_obsidian.Modal {
     this.contentEl.empty();
   }
 };
+var ResolveConflictsModal = class extends import_obsidian.Modal {
+  constructor(app, path, segments, onApply) {
+    super(app);
+    this.path = path;
+    this.segments = segments;
+    this.onApply = onApply;
+    this.choices = segments.filter((s) => s.type === "conflict").map(() => void 0);
+  }
+  path;
+  segments;
+  onApply;
+  choices;
+  onOpen() {
+    this.setTitle("Resolve conflicts");
+    this.contentEl.addClass("pkm-git-resolve");
+    this.contentEl.createEl("p", { text: `${this.path} \u306E\u3001\u4E21\u65B9\u306E\u7AEF\u672B\u3067\u5909\u3048\u305F\u7B87\u6240\u3067\u3059\u3002\u7B87\u6240\u3054\u3068\u306B\u3001\u3069\u3061\u3089\u3092\u6B8B\u3059\u304B\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044\u3002` });
+    let apply;
+    const refresh = () => apply?.setDisabled(this.choices.some((c) => c === void 0));
+    let n = 0;
+    for (const seg of this.segments) {
+      if (seg.type !== "conflict") continue;
+      const index2 = n++;
+      const block = this.contentEl.createEl("div", { cls: "pkm-git-conflict" });
+      block.createEl("h4", { text: `Conflict ${index2 + 1} / ${this.choices.length}` });
+      for (const [label, text] of [[seg.localLabel, seg.local], [seg.remoteLabel, seg.remote]]) {
+        block.createEl("div", { cls: "pkm-git-conflict-label", text: label });
+        block.createEl("pre", { cls: "pkm-git-conflict-text", text: text === "" ? "(empty)" : text });
+      }
+      const buttons = [];
+      const setting = new import_obsidian.Setting(block);
+      for (const [choice, label] of [["local", "Use local"], ["remote", "Use remote"], ["both", "Use both"]]) {
+        setting.addButton((b) => {
+          buttons.push(b);
+          b.setButtonText(label).onClick(() => {
+            this.choices[index2] = choice;
+            for (const other of buttons) other.removeCta();
+            b.setCta();
+            refresh();
+          });
+        });
+      }
+    }
+    new import_obsidian.Setting(this.contentEl).addButton((b) => {
+      apply = b;
+      b.setButtonText("Apply").setCta().onClick(() => {
+        if (this.choices.some((c) => c === void 0)) return;
+        this.close();
+        this.onApply(this.choices);
+      });
+    }).addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+    refresh();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var KIND_TEXT = {
+  synced: "Synced",
+  kept: "Kept",
+  merged: "Merged",
+  other: "Other"
+};
+var FileHistoryModal = class extends import_obsidian.Modal {
+  constructor(app, path, first, actions) {
+    super(app);
+    this.path = path;
+    this.first = first;
+    this.actions = actions;
+  }
+  path;
+  first;
+  actions;
+  shown = 0;
+  onOpen() {
+    this.setTitle("File history");
+    this.contentEl.createEl("p", { text: this.path });
+    if (this.first.versions.length === 0 && !this.first.canDeepen) {
+      this.contentEl.createEl("p", { text: "No versions" });
+    }
+    const list = this.contentEl.createEl("ul", { cls: "pkm-git-history" });
+    const more = this.contentEl.createEl("div");
+    this.contentEl.createEl("p", {
+      cls: "setting-item-description",
+      text: "\u540C\u671F\u306E\u533A\u5207\u308A\u3068\u300CKeep this version\u300D\u306E\u7248\u3067\u3059\u3002\u4FDD\u5B58\u306E\u305F\u3073\u306E\u7D30\u304B\u306A\u7248\u306F\u3001Obsidian \u306E\u30D5\u30A1\u30A4\u30EB\u56DE\u5FA9\uFF08\u8A2D\u5B9A \u2192 \u30D5\u30A1\u30A4\u30EB\u56DE\u5FA9\uFF09\u306B\u3042\u308A\u307E\u3059\u3002"
+    });
+    const render = (history) => {
+      for (const v of history.versions) {
+        const li = list.createEl("li");
+        const name = v.kind === "kept" && v.name ? ` ${v.name}` : "";
+        li.createEl("div", { text: `${new Date(v.time).toLocaleString()} \xB7 ${v.author} \xB7 ${KIND_TEXT[v.kind]}${name}` });
+        new import_obsidian.Setting(li).addButton((b) => b.setButtonText("Preview").onClick(() => this.actions.preview(v))).addButton((b) => b.setButtonText("Restore").onClick(() => {
+          this.close();
+          this.actions.restore(v);
+        }));
+      }
+      this.shown += history.versions.length;
+      more.empty();
+      if (history.atStart && !history.canDeepen) return;
+      new import_obsidian.Setting(more).addButton((b) => b.setButtonText("Load older").onClick(async () => {
+        b.setDisabled(true);
+        const next = await this.actions.loadMore(this.shown, history.atStart);
+        if (next) render(next);
+        else b.setDisabled(false);
+      }));
+    };
+    render(this.first);
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var PreviewModal = class extends import_obsidian.Modal {
+  constructor(app, heading, text, size) {
+    super(app);
+    this.heading = heading;
+    this.text = text;
+    this.size = size;
+  }
+  heading;
+  text;
+  size;
+  onOpen() {
+    this.setTitle("Preview");
+    this.contentEl.createEl("p", { text: this.heading });
+    if (this.text === null) this.contentEl.createEl("p", { text: `\u30C6\u30AD\u30B9\u30C8\u3067\u306F\u306A\u3044\u30D5\u30A1\u30A4\u30EB\u3067\u3059\uFF08${this.size} \u30D0\u30A4\u30C8\uFF09` });
+    else this.contentEl.createEl("pre", { cls: "pkm-git-preview", text: this.text });
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
 
 // src/obsidian/settings.ts
 init_buffer();
@@ -22704,6 +22979,8 @@ var SyncController = class {
   failures = 0;
   lastFailure = Number.NEGATIVE_INFINITY;
   paused = false;
+  /** 同期と exclusive の操作を 1 つずつ実行する */
+  mutex = Promise.resolve();
   get current() {
     return this.view;
   }
@@ -22764,6 +23041,18 @@ var SyncController = class {
       }
     });
   }
+  /**
+   * 同期と重ねずに実行する（戻す前の snapshot、履歴の取り足し。ADR-0110 の 3・4）。
+   * 実行中の同期が終わってから始まり、その間に来た同期は終わった後に実行する
+   */
+  exclusive(run) {
+    return this.serial(run);
+  }
+  serial(run) {
+    const result = this.mutex.then(run, run);
+    this.mutex = result.then(() => void 0, () => void 0);
+    return result;
+  }
   /** 終わるのを待つ（テストと終了時に使う） */
   async idle() {
     while (this.active && this.loop) await this.loop;
@@ -22786,7 +23075,7 @@ var SyncController = class {
       const keep = keeps.length > 0 ? keeps.filter((k) => k).join(" / ") : void 0;
       let outcome;
       try {
-        outcome = await this.runOnce(lead.trigger, keep);
+        outcome = await this.serial(() => this.runOnce(lead.trigger, keep));
       } catch (error) {
         outcome = { trigger: lead.trigger, error, previous: this.view, view: this.view };
       }
@@ -23000,7 +23289,6 @@ function reportTransfer(phase, t) {
   } catch {
   }
 }
-var CONFLICT_COPY_NAME = / \(conflict [^)]+\)(\.[^/]*)?$/;
 function keptModifiedNote(record) {
   return record.deleted === "local" ? `${record.device} \u3067\u524A\u9664\u3057\u3001\u307B\u304B\u306E\u7AEF\u672B\u3067\u7DE8\u96C6\u3055\u308C\u3066\u3044\u305F\u306E\u3067\u3001\u7DE8\u96C6\u5074\u3092\u6B8B\u3057\u307E\u3057\u305F` : `\u307B\u304B\u306E\u7AEF\u672B\u3067\u524A\u9664\u3057\u3001${record.device} \u3067\u7DE8\u96C6\u3055\u308C\u3066\u3044\u305F\u306E\u3067\u3001\u7DE8\u96C6\u5074\u3092\u6B8B\u3057\u307E\u3057\u305F`;
 }
@@ -23062,6 +23350,30 @@ var PkmGitPlugin = class extends import_obsidian3.Plugin {
       name: "List unresolved conflicts",
       callback: () => void this.showUnresolved()
     });
+    this.addCommand({
+      id: "resolve-conflicts",
+      name: "Resolve conflicts in this note",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || !["md", "markdown", "txt"].includes(file.extension)) return false;
+        if (!checking) void this.openResolve(file.path);
+        return true;
+      }
+    });
+    this.addCommand({
+      id: "file-history",
+      name: "Show file history",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file) return false;
+        if (!checking) void this.showHistory(file.path);
+        return true;
+      }
+    });
+    this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
+      if (!(file instanceof import_obsidian3.TFile)) return;
+      menu.addItem((item) => item.setTitle("Git: File history").setIcon("history").onClick(() => void this.showHistory(file.path)));
+    }));
     this.addCommand({ id: "clone", name: "Clone the remote into this vault (first time only)", callback: () => void this.clone() });
     this.registerTriggers();
     this.app.workspace.onLayoutReady(() => {
@@ -23314,11 +23626,21 @@ ${message}`, 1e4);
       await this.log.write({ level: "error", event: "conflict-records-failed", phase: "conflict-records", error });
     }
     for (const file of this.app.vault.getFiles()) {
-      if (CONFLICT_COPY_NAME.test(file.path)) {
-        items.push({ path: file.path, note: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u7248\uFF08\u4E0D\u8981\u306A\u3089\u524A\u9664\uFF09" });
+      const original = originalOfConflictCopy(file.path);
+      if (original !== null) {
+        const copy = file.path;
+        items.push({
+          path: copy,
+          note: `${original} \u306E\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u7248`,
+          actions: [
+            { label: "Use this version", run: () => this.confirmUseCopy(copy, original) },
+            { label: "Discard", run: () => this.confirmDiscardCopy(copy) }
+          ]
+        });
       } else if (["md", "markdown", "txt"].includes(file.extension)) {
         if (hasConflictMarkers(await this.app.vault.cachedRead(file))) {
-          items.push({ path: file.path, note: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u5165\u308A" });
+          const path = file.path;
+          items.push({ path, note: "\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u5165\u308A", actions: [{ label: "Resolve", run: () => this.openResolve(path) }] });
         }
       }
     }
@@ -23390,18 +23712,198 @@ ${e instanceof Error ? e.message : String(e)}`, 8e3);
       () => void this.deleteKept(path, file)
     ).open();
   }
+  /** Obsidian の「削除したファイル」の設定に従って消す */
+  async trashPath(path) {
+    const target = this.app.vault.getAbstractFileByPath(path);
+    if (target instanceof import_obsidian3.TFile) await this.app.fileManager.trashFile(target);
+    else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
+    this.controller.noteChange(path);
+  }
   async deleteKept(path, file) {
     try {
-      const target = this.app.vault.getAbstractFileByPath(path);
-      if (target instanceof import_obsidian3.TFile) await this.app.fileManager.trashFile(target);
-      else if (await this.app.vault.adapter.exists(path)) await this.app.vault.adapter.trashLocal(path);
-      this.controller.noteChange(path);
+      await this.trashPath(path);
     } catch (e) {
       new import_obsidian3.Notice(`Git: \u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F
 ${e instanceof Error ? e.message : String(e)}`, 8e3);
       return;
     }
     await this.resolveRecord(file);
+  }
+  /** マーカー入りのノートを、塊ごとに選んで解く（ADR-0110 の 1） */
+  async openResolve(path) {
+    const file = this.app.vault.getFileByPath(path);
+    if (!file) return;
+    const original = await this.app.vault.read(file);
+    const segments = parseConflicts(original);
+    if (!segments?.some((s) => s.type === "conflict")) {
+      new import_obsidian3.Notice(segments ? "Git: \u3053\u306E\u30CE\u30FC\u30C8\u306B\u30B3\u30F3\u30D5\u30EA\u30AF\u30C8\u30DE\u30FC\u30AB\u30FC\u306F\u3042\u308A\u307E\u305B\u3093" : "Git: \u30DE\u30FC\u30AB\u30FC\u306E\u5F62\u304C\u5D29\u308C\u3066\u3044\u308B\u306E\u3067\u3001\u3053\u3053\u3067\u306F\u89E3\u3051\u307E\u305B\u3093\u3002\u30CE\u30FC\u30C8\u3092\u958B\u3044\u3066\u3001\u624B\u3067\u30DE\u30FC\u30AB\u30FC\u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044", 8e3);
+      if (!segments) void this.app.workspace.openLinkText(path, "", false);
+      return;
+    }
+    new ResolveConflictsModal(this.app, path, segments, (choices) => void this.applyResolve(path, original, segments, choices)).open();
+  }
+  async applyResolve(path, original, segments, choices) {
+    const file = this.app.vault.getFileByPath(path);
+    if (!file) return;
+    const resolved = resolveConflicts(segments, choices);
+    let changed = false;
+    await this.app.vault.process(file, (current) => {
+      if (current !== original) {
+        changed = true;
+        return current;
+      }
+      return resolved;
+    });
+    if (changed) {
+      new import_obsidian3.Notice("Git: \u958B\u3044\u305F\u5F8C\u306B\u672C\u6587\u304C\u5909\u308F\u3063\u305F\u306E\u3067\u3001\u66F8\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u958B\u3044\u3066\u304F\u3060\u3055\u3044", 8e3);
+      return;
+    }
+    this.controller.noteChange(path);
+    new import_obsidian3.Notice("Git: \u89E3\u6C7A\u3057\u307E\u3057\u305F\u3002\u6B21\u306E\u540C\u671F\u3067\u5171\u6709\u3057\u307E\u3059");
+    await this.refreshUnresolved();
+    await this.sync();
+  }
+  /** 別名の版の中身を元のファイルに書き、別名の版を消す（ADR-0110 の 2） */
+  confirmUseCopy(copy, original) {
+    new ConfirmModal(
+      this.app,
+      "Use this version",
+      `${original} \u3092 ${copy} \u306E\u5185\u5BB9\u3067\u7F6E\u304D\u63DB\u3048\u3001${copy} \u3092\u6D88\u3057\u307E\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002`,
+      () => void this.useCopy(copy, original)
+    ).open();
+  }
+  async useCopy(copy, original) {
+    try {
+      const store = new VaultFileStore(this.app);
+      const copyFile = this.app.vault.getFileByPath(copy);
+      if (!copyFile) return;
+      if (await store.stat(original)) {
+        await store.write(original, await store.read(copy));
+        await this.trashPath(copy);
+      } else {
+        await this.app.fileManager.renameFile(copyFile, original);
+        this.controller.noteChange(copy);
+      }
+      this.controller.noteChange(original);
+    } catch (e) {
+      new import_obsidian3.Notice(`Git: \u7F6E\u304D\u63DB\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F
+${e instanceof Error ? e.message : String(e)}`, 8e3);
+      return;
+    }
+    await this.refreshUnresolved();
+    await this.sync();
+  }
+  confirmDiscardCopy(copy) {
+    new ConfirmModal(
+      this.app,
+      "Discard",
+      `${copy} \u3092\u6D88\u3057\u307E\u3059\u3002\u5143\u306E\u30D5\u30A1\u30A4\u30EB\u306F\u305D\u306E\u307E\u307E\u3067\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002`,
+      () => void this.discardCopy(copy)
+    ).open();
+  }
+  async discardCopy(copy) {
+    try {
+      await this.trashPath(copy);
+    } catch (e) {
+      new import_obsidian3.Notice(`Git: \u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F
+${e instanceof Error ? e.message : String(e)}`, 8e3);
+      return;
+    }
+    await this.refreshUnresolved();
+    await this.sync();
+  }
+  /** ファイルの履歴（ADR-0110 の 3・4） */
+  async showHistory(path) {
+    let first;
+    try {
+      if (!await this.engine().isRepo()) {
+        new import_obsidian3.Notice("Git: \u3053\u306E Vault \u306F\u307E\u3060 git \u30EA\u30DD\u30B8\u30C8\u30EA\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+        return;
+      }
+      first = await this.engine().fileHistory(path);
+    } catch (e) {
+      await this.historyFailed(e);
+      return;
+    }
+    new FileHistoryModal(this.app, path, first, {
+      loadMore: (skip, deepen) => this.loadOlder(path, skip, deepen),
+      preview: (v) => void this.previewVersion(path, v),
+      restore: (v) => this.confirmRestore(path, v)
+    }).open();
+  }
+  async loadOlder(path, skip, deepen) {
+    const engine = this.engine();
+    try {
+      if (deepen) {
+        const res = await this.controller.exclusive(() => engine.deepen(30));
+        if (res === "offline" || res === "auth") {
+          new import_obsidian3.Notice("Git: \u30EA\u30E2\u30FC\u30C8\u306B\u3064\u306A\u304C\u3089\u306A\u3044\u306E\u3067\u3001\u3088\u308A\u524D\u306E\u5C65\u6B74\u3092\u53D6\u308C\u307E\u305B\u3093\u3067\u3057\u305F");
+          return null;
+        }
+        const next = await engine.fileHistory(path, { skip });
+        return res === "complete" ? { ...next, canDeepen: false } : next;
+      }
+      return await engine.fileHistory(path, { skip });
+    } catch (e) {
+      await this.historyFailed(e);
+      return null;
+    }
+  }
+  async historyFailed(error) {
+    const message = redactSecrets(error instanceof Error ? error.message : String(error), [this.token()]);
+    new import_obsidian3.Notice(`Git: \u5C65\u6B74\u3092\u8AAD\u3081\u307E\u305B\u3093\u3067\u3057\u305F
+${message}`, 8e3);
+    await this.log.write({ level: "warn", event: "file-history-failed", phase: "file-history", error });
+  }
+  async previewVersion(path, v) {
+    try {
+      const data = await this.engine().readVersion(v.commit, path);
+      if (!data) {
+        new import_obsidian3.Notice("Git: \u3053\u306E\u7248\u306B\u306F\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093");
+        return;
+      }
+      let text = null;
+      if (!data.subarray(0, 8e3).includes(0)) {
+        try {
+          text = new TextDecoder("utf-8", { fatal: true }).decode(data);
+        } catch {
+        }
+      }
+      new PreviewModal(this.app, `${path} \xB7 ${new Date(v.time).toLocaleString()} \xB7 ${v.author}`, text, data.byteLength).open();
+    } catch (e) {
+      await this.historyFailed(e);
+    }
+  }
+  confirmRestore(path, v) {
+    new ConfirmModal(
+      this.app,
+      "Restore",
+      `${path} \u3092 ${new Date(v.time).toLocaleString()}\uFF08${v.author}\uFF09\u306E\u7248\u306B\u623B\u3057\u307E\u3059\u3002\u4ECA\u306E\u5185\u5BB9\u306F\u5148\u306B\u30B3\u30DF\u30C3\u30C8\u3057\u3066\u6B8B\u3059\u306E\u3067\u3001\u5F8C\u304B\u3089\u623B\u305B\u307E\u3059\u3002`,
+      () => void this.restoreVersion(path, v)
+    ).open();
+  }
+  /** 戻す前に今の内容をコミットしてから、その版の中身を書く。共有は次の同期で行う */
+  async restoreVersion(path, v) {
+    const engine = this.engine();
+    try {
+      const data = await engine.readVersion(v.commit, path);
+      if (!data) {
+        new import_obsidian3.Notice("Git: \u3053\u306E\u7248\u306B\u306F\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u305B\u3093");
+        return;
+      }
+      await this.saveOpenEditors();
+      await this.controller.exclusive(() => engine.snapshotBeforeRestore(path));
+      await new VaultFileStore(this.app).write(path, data);
+      this.controller.noteChange(path);
+    } catch (e) {
+      const message = redactSecrets(e instanceof Error ? e.message : String(e), [this.token()]);
+      new import_obsidian3.Notice(`Git: \u623B\u305B\u307E\u305B\u3093\u3067\u3057\u305F
+${message}`, 8e3);
+      await this.log.write({ level: "error", event: "restore-failed", phase: "restore", error: e, paths: [path] });
+      return;
+    }
+    new import_obsidian3.Notice("Git: \u524D\u306E\u7248\u306B\u623B\u3057\u307E\u3057\u305F\u3002\u6B21\u306E\u540C\u671F\u3067\u5171\u6709\u3057\u307E\u3059");
+    await this.sync();
   }
   /** 未解決の件数を数え直す（全ノートを読むので、起動時と取り込んだときだけ。ADR-0089 の 6） */
   async refreshUnresolved() {

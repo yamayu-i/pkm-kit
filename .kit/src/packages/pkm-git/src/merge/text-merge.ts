@@ -66,3 +66,76 @@ const MARKER_END = /^>{7} /m;
 export function hasConflictMarkers(text: string): boolean {
 	return MARKER_START.test(text) && MARKER_END.test(text);
 }
+
+/** 本文の一部。マーカーの外の本文か、マーカーの塊（ADR-0110 の 1） */
+export type ConflictSegment =
+	| { type: "text"; text: string }
+	| { type: "conflict"; localLabel: string; remoteLabel: string; local: string; remote: string };
+
+export type ConflictChoice = "local" | "remote" | "both";
+
+/**
+ * 本文をマーカーの塊とその外に分ける。塊は `<<<<<<< ` / `=======` / `>>>>>>> ` の行（行頭）で区切る。
+ * 塊の形が崩れている（閉じていない・入れ子・区切りがない・区切りが 2 つ）ときは null（手で直してもらう）
+ */
+export function parseConflicts(text: string): ConflictSegment[] | null {
+	const lines = splitLines(text);
+	const out: ConflictSegment[] = [];
+	let plain = "";
+	let i = 0;
+	while (i < lines.length) {
+		const line = lines[i] as string;
+		if (!line.startsWith("<<<<<<< ")) {
+			// 塊の外の `=======`（Setext の見出しの下線）と `>>>>>>> ` は本文として扱う
+			plain += line;
+			i++;
+			continue;
+		}
+		if (plain) out.push({ type: "text", text: plain });
+		plain = "";
+		const localLabel = line.slice(8).replace(/\r?\n$/, "");
+		let local = "";
+		let remote = "";
+		let part: "local" | "remote" = "local";
+		let closed = false;
+		for (i++; i < lines.length; i++) {
+			const l = lines[i] as string;
+			if (l.startsWith("<<<<<<< ")) return null;
+			if (/^={7}\r?\n?$/.test(l)) {
+				if (part === "remote") return null;
+				part = "remote";
+				continue;
+			}
+			if (l.startsWith(">>>>>>> ")) {
+				if (part !== "remote") return null;
+				out.push({ type: "conflict", localLabel, remoteLabel: l.slice(8).replace(/\r?\n$/, ""), local, remote });
+				closed = true;
+				i++;
+				break;
+			}
+			if (part === "local") local += l;
+			else remote += l;
+		}
+		if (!closed) return null;
+	}
+	if (plain) out.push({ type: "text", text: plain });
+	return out;
+}
+
+/** 塊ごとに選んだ本文で置き換える。choices は塊の順。塊の外の本文は変えない */
+export function resolveConflicts(segments: readonly ConflictSegment[], choices: readonly ConflictChoice[]): string {
+	let n = 0;
+	let out = "";
+	for (const s of segments) {
+		if (s.type === "text") {
+			out += s.text;
+			continue;
+		}
+		const choice = choices[n++];
+		if (choice === undefined) throw new Error("選んでいない塊があります");
+		const both = s.local + (s.local && !s.local.endsWith("\n") ? "\n" : "") + s.remote;
+		out += choice === "local" ? s.local : choice === "remote" ? s.remote : both;
+	}
+	if (n !== choices.length) throw new Error("塊の数と選んだ数が違います");
+	return out;
+}

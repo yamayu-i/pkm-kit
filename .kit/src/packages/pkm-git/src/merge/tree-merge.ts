@@ -86,6 +86,18 @@ function sameEntry(a: TreeEntry | undefined, b: TreeEntry | undefined): boolean 
 	return a.oid === b.oid && a.mode === b.mode;
 }
 
+const COPY_NAME = / \(conflict [^)/]+\)((?:\.[^/.]+)*)$/;
+
+/** 別名の版（`<名前> (conflict <端末> <日時>).ext`）なら元のファイルのパス、そうでなければ null（ADR-0110 の 2） */
+export function originalOfConflictCopy(path: string): string | null {
+	const dir = dirname(path);
+	const name = basename(path);
+	if (!COPY_NAME.test(name)) return null;
+	const original = name.replace(COPY_NAME, "$1");
+	if (original === "" || original.startsWith(".")) return null;
+	return dir ? `${dir}/${original}` : original;
+}
+
 export function conflictCopyPath(path: string, suffix: string, taken: (p: string) => boolean): string {
 	const dir = dirname(path);
 	const name = basename(path);

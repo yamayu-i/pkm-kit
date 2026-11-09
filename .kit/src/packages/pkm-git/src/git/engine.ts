@@ -159,6 +159,38 @@ function pad(n: number): string {
 	return String(n).padStart(2, "0");
 }
 
+export type VersionKind = "synced" | "kept" | "merged" | "other";
+
+export interface FileVersion {
+	commit: string;
+	/** コミットの時刻（ミリ秒） */
+	time: number;
+	/** コミットの author の名前（既定は端末名） */
+	author: string;
+	kind: VersionKind;
+	/** kind === "kept" のときの名前（空でもよい） */
+	name?: string;
+}
+
+export interface FileHistory {
+	versions: FileVersion[];
+	/** 手元の履歴の始まりに着いた */
+	atStart: boolean;
+	/** 手元の履歴の始まりに着き、shallow なので取り足せる */
+	canDeepen: boolean;
+}
+
+/** PKM Git のコミットメッセージから、版の種類を読む（ほかのツールのコミットは other） */
+export function describeCommit(oid: string, commit: { message: string; author: { name: string; timestamp: number } }): FileVersion {
+	const subject = commit.message.split("\n")[0] ?? "";
+	const base = { commit: oid, time: commit.author.timestamp * 1000, author: commit.author.name };
+	if (/^vault: snapshot \(/.test(subject)) return { ...base, kind: "synced" };
+	if (/^vault: merge /.test(subject)) return { ...base, kind: "merged" };
+	const keep = /^vault: keep(?: (.*))? \([^()]*\)$/.exec(subject);
+	if (keep) return { ...base, kind: "kept", name: keep[1] ?? "" };
+	return { ...base, kind: "other" };
+}
+
 export function formatStamp(d: Date): string {
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
@@ -720,6 +752,81 @@ export class PkmGit {
 			if (e instanceof BranchMovedError) return finish({ status: "pending", reason: "branch-moved" });
 			throw e;
 		}
+	}
+
+	/**
+	 * ファイルを変えたコミットを新しい順に返す（ADR-0110 の 3）。skip 件を飛ばして limit 件まで。
+	 * 手元の履歴の始まりに着いたら atStart。shallow の端末では、その先を deepen で取り足せる（canDeepen）
+	 */
+	async fileHistory(path: string, opts: { skip?: number; limit?: number } = {}): Promise<FileHistory> {
+		assertSafeWorktreePath(path);
+		const skip = opts.skip ?? 0;
+		const limit = opts.limit ?? 30;
+		const branch = await this.currentBranch();
+		let commits: Awaited<ReturnType<typeof git.log>>;
+		try {
+			commits = await this.measure("file-history", () =>
+				git.log({ ...this.ctx, ref: branch, filepath: path, depth: skip + limit + 1, follow: false }));
+		} catch (e) {
+			// 一度もコミットされていないファイル
+			if (e instanceof Errors.NotFoundError) commits = [];
+			else throw e;
+		}
+		const versions = commits.slice(skip, skip + limit).map((c) => describeCommit(c.oid, c.commit));
+		const atStart = commits.length <= skip + limit;
+		return { versions, atStart, canDeepen: atStart && (await this.shallowCommits()).length > 0 };
+	}
+
+	/** コミットにあるファイルの中身。なければ null */
+	async readVersion(commit: string, path: string): Promise<Uint8Array | null> {
+		assertSafeWorktreePath(path);
+		try {
+			return (await git.readBlob({ ...this.ctx, oid: commit, filepath: path })).blob;
+		} catch (e) {
+			if (e instanceof Errors.NotFoundError) return null;
+			throw e;
+		}
+	}
+
+	/**
+	 * shallow の端末の履歴を、commits 個のコミット分だけ取り足す（ADR-0110 の 4）。
+	 * 増えたら "deepened"、リモートにもそれより前がなければ "complete"。つながらなければ offline / auth
+	 */
+	async deepen(commits: number): Promise<"deepened" | "complete" | "offline" | "auth"> {
+		const branch = await this.currentBranch();
+		const before = (await this.shallowCommits()).join("\n");
+		if (before === "") return "complete";
+		try {
+			await this.measure("deepen", () => this.countTransfer("deepen", () => git.fetch({
+				...this.ctx,
+				...this.net,
+				remote: this.remote,
+				ref: `refs/remotes/${this.remote}/${branch}`,
+				remoteRef: branch,
+				singleBranch: true,
+				tags: false,
+				depth: commits,
+				relative: true,
+			})));
+		} catch (e) {
+			const status = classifyNetworkError(e);
+			if (status) return status;
+			throw e;
+		}
+		const after = (await this.shallowCommits()).join("\n");
+		return after === before ? "complete" : "deepened";
+	}
+
+	/** .git/shallow のコミット（shallow でなければ空） */
+	private async shallowCommits(): Promise<string[]> {
+		if (!(await this.store.stat(".git/shallow"))) return [];
+		const text = new TextDecoder().decode(await this.store.read(".git/shallow"));
+		return text.split("\n").map((l) => l.trim()).filter((l) => /^[0-9a-f]{40}$/.test(l)).sort();
+	}
+
+	/** 戻す前に、今の内容をコミットする（ADR-0110 の 3）。変更がなければコミットしない */
+	async snapshotBeforeRestore(path: string): Promise<boolean> {
+		return this.measure("snapshot", () => this.snapshot(this.keepMessage(`before restore ${path}`)));
 	}
 
 	private keepMessage(name: string): string {

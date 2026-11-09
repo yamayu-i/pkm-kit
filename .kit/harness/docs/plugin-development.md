@@ -31,6 +31,13 @@
 
 `pull()` と `push()` はエンジンに残っている（テストと CLI 用）。プラグインのコマンドの Pull と Push は、どちらも `sync()` を呼ぶ。
 
+### 解決と履歴（ADR-0110）
+
+- マーカーの塊の読み取りと置き換えは `src/merge/text-merge.ts` の `parseConflicts` / `resolveConflicts`（純粋な関数）。塊の外の `=======` は本文（Setext の見出し）として扱い、塊の形が崩れていたら null を返して手で直してもらう。書くときは `vault.process` で、開いたときの本文と同じときだけ置き換える
+- 別名の版の元のファイルは `originalOfConflictCopy`（`src/merge/tree-merge.ts`）
+- ファイルの履歴は `PkmGit.fileHistory`（`git.log` の `filepath`）、版の中身は `readVersion`、shallow の端末の取り足しは `deepen`（`fetch` の `depth` と `relative: true`）。戻す前の snapshot（`snapshotBeforeRestore`）と取り足しは、`SyncController.exclusive` で同期と重ねずに実行する
+- テストの Obsidian のモック（`test/helpers/obsidian-mock.ts`）は、Setting のボタンを `click(label)` で押せる。同じ名前のボタンが並ぶモーダルは、`bundle.test.ts` の `pick` で順に押す
+
 ### きっかけと状態（`src/sync/controller.ts`）
 
 - 一定の間隔（前景のみ。既定 5 分）、再フォーカス（前回から 1 分以上）、起動、手動を、1 つの直列のキューで実行する。実行中に来たきっかけは、終わった後の 1 回にまとめる
