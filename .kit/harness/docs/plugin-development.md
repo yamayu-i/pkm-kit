@@ -195,7 +195,12 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 ## pkm-diagram（図。旧 pkm-drawio）
 
-`asset/*.drawio.svg`（Draw.io の編集可能 SVG。ルートの `<svg>` の `content` 属性に全ページの編集用 XML を持つ）を、ノートからコピー・編集し、`tmp/` への書き出しで埋め込むプラグイン（ADR-0064）。表示は Obsidian の標準の画像の表示のまま（`.svg` の拡張子を View に登録しない）。
+ノートの図（`asset/` の SVG の画像と、ノートの Mermaid の図）を、コピー・PNG で保存・拡大表示するプラグイン（ADR-0102）。`asset/*.drawio.svg`（Draw.io の編集可能 SVG。ルートの `<svg>` の `content` 属性に全ページの編集用 XML を持つ）は編集もでき、`tmp/` への書き出しで埋め込む（ADR-0064）。表示は Obsidian の標準の画像の表示のまま（`.svg` の拡張子を View に登録しない）。
+
+- PNG は常にライトの色で、ライトの面の色を背景にする（`core/png.ts` の `forceLightSvg` がダークの `@media` を除く）
+- Mermaid の図は、Obsidian が描いた SVG を写して使う（`obsidian/mermaid.ts`）。計算済みの色を要素に書き込み、ラベルの `foreignObject` を `<text>` に置き換え、ダークの配色の値をライトの値に戻す。ADR-0102 では `loadMermaid` で描き直すとしたが、描き直すにはノートの中の元のコードを特定する必要があり、Reading view と Live Preview で手段が違い Obsidian の内部に依存するので、写す方法にした
+- PNG の保存（`obsidian/save.ts`）は、保存のダイアログ（`showSaveFilePicker`）→ 共有シート（`navigator.share` の files）→ `tmp/` の順。保存のダイアログは押した操作の有効期間のうちに開くため、PNG は描き終わるのを待たずに Promise のまま渡す
+- 拡大表示（`obsidian/zoom-modal.ts`）の拡大率と位置の計算は `core/viewport.ts`（DOM なしでテストする）
 
 - 操作バーは `document.body` に置く 1 つの要素を画像に重ねる。Reading view・Live Preview の DOM（CodeMirror の widget を含む）を書き換えない。画像からファイルへは、埋め込みの `src` か `vault.getResourcePath()` の値で引く
 - 編集は Modal の iframe（`https://embed.diagrams.net/`、JSON protocol）。保存は save → その XML を指定して `export`（`xmlsvg`）→ 検査 → `vault.process()` で、編集を始めたときの中身と同じときだけ書く。状態は `src/core/protocol.ts` の `EditSession`（DOM なしでテストする）
@@ -212,11 +217,12 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `src/core/protocol.ts` | embed の URL・メッセージの読み取り・保存の流れの状態 | なし（DOM もなし） |
 | `src/core/names.ts` / `encoding.ts` | 図と書き出しのファイル名、data URI | なし |
 | `src/core/plain-svg.ts` / `d2.ts` | AI が書く SVG へのスタイルの差し込み、D2 の SVG のダークの色、SVG の検査（安全性・色・ノートの幅での文字の大きさ）、D2 の前に付けるテーマ。配色は `design/generated/tokens.ts` の `diagram`（ADR-0102） | なし（DOM もなし） |
-| `src/obsidian/` | 編集の Modal と iframe、操作バー、コピー（PNG は Canvas）、tmp/ への書き出し、ダイアログ | あり（`frame.ts` と `toolbar.ts` は DOM と `setIcon` だけ） |
+| `src/core/viewport.ts` / `png.ts` | 拡大表示の計算（全体を表示・100%・拡大・ピンチ・ホイール）、PNG をライトの色にする処理、保存の方法の選び方、PNG のファイル名 | なし（DOM もなし） |
+| `src/obsidian/` | 編集の Modal と iframe、操作バー（Draw.io の図・SVG の図・Mermaid の図）、コピー（PNG は Canvas）、PNG の保存、拡大表示、Mermaid の図の写し、tmp/ への書き出し、ダイアログ | あり（`frame.ts` と `toolbar.ts` は DOM と `setIcon` だけ） |
 | `cli/diagram.ts` | `.kit/bin/diagram.mjs`（`export` / `check` / `extract` / `strip` / `build` / `render` / `inspect` / `svg-style` / `svg-check` / `d2`。`d2` は外部の d2 コマンドを呼ぶ。旧名の `drawio.mjs` も同じものを動かす）。Node の API を使う | なし |
-| `preview/` | `pnpm --filter pkm-diagram preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バーの位置と描画した画面の検査、PNG を Chromium で確かめる。CI では動かない | なし |
+| `preview/` | `pnpm --filter pkm-diagram preview:ui`。embed を偽の Draw.io（`fake-drawio.html`）に差し替えて、保存の往復・別の origin の無視・衝突・新しい図・未保存で閉じるときの確認、操作バー（3 種類の図）の位置と描画した画面の検査、拡大表示、PNG、Mermaid の図の PNG を Chromium で確かめる。CI では動かない | なし |
 
-- 本物の Draw.io との往復と、Obsidian の中の操作バーの位置、クリップボードは、実機で確かめる（自動の検査ではできない）
+- 本物の Draw.io との往復と、Obsidian の中の操作バーの位置、クリップボード、保存のダイアログと共有シート、本物の Mermaid の DOM の写しは、実機で確かめる（自動の検査ではできない）
 
 ## shared（プラグインの共通の処理）
 

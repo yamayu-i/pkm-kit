@@ -1,17 +1,23 @@
 /**
- * pkm-diagram: asset/*.drawio.svg（編集用 XML を内包した SVG）の図を、ノートからコピー・編集し、
- * tmp/ への書き出しで埋め込む（ADR-0064）。表示は Obsidian の標準の画像の表示のまま。ほかのプラグインには依存しない
+ * pkm-diagram: ノートの図（asset/ の SVG と Mermaid）を、コピー・PNG で保存・拡大表示する（ADR-0102）。
+ * Draw.io の図（asset/*.drawio.svg）は編集もでき、tmp/ への書き出しで埋め込む（ADR-0064）。
+ * 表示は Obsidian の標準の画像の表示のまま。ほかのプラグインには依存しない
  */
 import { MarkdownView, Menu, Notice, Plugin, TFile, type Editor } from "obsidian";
 import { candidatePaths } from "../../pkm-html/src/core/policy.ts";
 import { documentKind, drawioCandidates, findImageReferences } from "./core/document.ts";
 import { diagramName, diagramPath, markdownImage } from "./core/names.ts";
-import { DrawioFormatError, extractDiagramXml, isDrawioSvgPath } from "./core/svg.ts";
-import { COPY_FORMATS, copyDiagram } from "./obsidian/copy.ts";
+import { svgDataUri } from "./core/encoding.ts";
+import { pngFileName } from "./core/png.ts";
+import { DrawioFormatError, extractDiagramXml, isDiagramSvgPath, isDrawioSvgPath, toSharingSvg } from "./core/svg.ts";
+import { COPY_FORMATS, copyDiagram, copyFormatsFor, renderPng } from "./obsidian/copy.ts";
 import { askDiagramName, pick } from "./obsidian/dialogs.ts";
 import { DrawioEditorModal } from "./obsidian/editor-modal.ts";
 import { exportToTmp } from "./obsidian/export.ts";
-import { DiagramToolbar } from "./obsidian/toolbar.ts";
+import { findMermaidSvg, mermaidSvgText } from "./obsidian/mermaid.ts";
+import { savePng } from "./obsidian/save.ts";
+import { DiagramToolbar, type DiagramTarget, type FoundDiagram } from "./obsidian/toolbar.ts";
+import { DiagramZoomModal } from "./obsidian/zoom-modal.ts";
 
 /** URL の ? と # を除き、エスケープを戻して比べられる形にする */
 function resourceKey(url: string): string {
@@ -30,8 +36,10 @@ export default class PkmDrawioPlugin extends Plugin {
 
 	override async onload(): Promise<void> {
 		const toolbar = new DiagramToolbar({
-			resolve: (img) => this.resolveImage(img),
-			copy: (file, anchor) => this.showCopyMenu(file, anchor),
+			resolve: (el) => this.resolveDiagram(el),
+			copy: (target, anchor) => this.showCopyMenu(target, anchor),
+			save: (target) => this.save(target, activeDocument),
+			expand: (target) => this.expand(target),
 			edit: (file) => void this.edit(file),
 		});
 		this.toolbar = toolbar;
@@ -56,10 +64,20 @@ export default class PkmDrawioPlugin extends Plugin {
 			name: "Copy a diagram in this note (PNG / SVG / XML)",
 			checkCallback: (checking) =>
 				this.withDiagramsInActive(checking, (file) => {
-					void pick(this.app, "Copy as", COPY_FORMATS, (f) => f.label).then((choice) => {
+					void pick(this.app, "Copy as", copyFormatsFor(isDrawioSvgPath(file.path)), (f) => f.label).then((choice) => {
 						if (choice) void this.copy(file, choice.format);
 					});
 				}),
+		});
+		this.addCommand({
+			id: "save-diagram-png",
+			name: "Save a diagram in this note as PNG",
+			checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => this.save(this.fileTarget(file), activeDocument)),
+		});
+		this.addCommand({
+			id: "expand-diagram",
+			name: "Expand a diagram in this note",
+			checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => this.expand(this.fileTarget(file))),
 		});
 		this.addCommand({
 			id: "export-to-tmp",
@@ -75,9 +93,11 @@ export default class PkmDrawioPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
 				if (!(file instanceof TFile)) return;
-				if (isDrawioSvgPath(file.path)) {
-					menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
-					for (const f of COPY_FORMATS) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
+				if (isDiagramSvgPath(file.path)) {
+					const drawio = isDrawioSvgPath(file.path);
+					if (drawio) menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
+					for (const f of copyFormatsFor(drawio)) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
+					menu.addItem((i) => i.setTitle("Save as PNG").setIcon("download").onClick(() => this.save(this.fileTarget(file), activeDocument)));
 				} else if (documentKind(file.path)) {
 					menu.addItem((i) => i.setTitle("Export to tmp/ (embed diagrams)").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
 				}
@@ -88,6 +108,49 @@ export default class PkmDrawioPlugin extends Plugin {
 	override onunload(): void {
 		this.toolbar?.destroy();
 		this.toolbar = null;
+	}
+
+	private fileTarget(file: TFile): DiagramTarget {
+		return { kind: "file", file, drawio: isDrawioSvgPath(file.path) };
+	}
+
+	/** 要素が図なら、その図。画像は Vault の SVG の図を指すもの、それ以外は Mermaid の図の中の要素 */
+	private resolveDiagram(el: Element): FoundDiagram | null {
+		if (el.tagName === "IMG") {
+			const file = this.resolveImage(el as HTMLImageElement);
+			return file ? { el, target: this.fileTarget(file) } : null;
+		}
+		const svg = findMermaidSvg(el);
+		return svg ? { el: svg, target: { kind: "mermaid", svg } } : null;
+	}
+
+	/** 図の SVG の文字列。light なら PNG 用（ライトの色。Draw.io の図は編集用 XML を除く） */
+	private async svgText(target: DiagramTarget, light: boolean): Promise<string> {
+		if (target.kind === "mermaid") return mermaidSvgText(target.svg, light);
+		const svg = await this.app.vault.cachedRead(target.file);
+		return light ? toSharingSvg(svg) : svg;
+	}
+
+	private diagramFileName(target: DiagramTarget): string {
+		if (target.kind === "file") return pngFileName(target.file.name);
+		return pngFileName(`${this.app.workspace.getActiveFile()?.basename ?? "note"}-diagram`);
+	}
+
+	private save(target: DiagramTarget, doc: Document): void {
+		// 描き終わるのを待たずに保存を始める（保存のダイアログを、押した操作の有効期間のうちに開く）
+		const png = this.svgText(target, true).then((svg) => renderPng(svg, doc));
+		png.catch(() => undefined);
+		void savePng(this.app, png, this.diagramFileName(target), doc);
+	}
+
+	private expand(target: DiagramTarget): void {
+		try {
+			const src = target.kind === "file" ? this.app.vault.getResourcePath(target.file) : svgDataUri(mermaidSvgText(target.svg, false));
+			const title = target.kind === "file" ? target.file.basename.replace(/\.drawio$/i, "") : (this.app.workspace.getActiveFile()?.basename ?? "Mermaid");
+			new DiagramZoomModal(this.app, { src, title }).open();
+		} catch (e) {
+			new Notice(`図を拡大できませんでした: ${e instanceof Error ? e.message : String(e)}`, 8000);
+		}
 	}
 
 	/** 画像（Reading view・Live Preview・画像の View）が指す図のファイル */
@@ -108,18 +171,18 @@ export default class PkmDrawioPlugin extends Plugin {
 	private fileFromLink(link: string): TFile | null {
 		for (const path of candidatePaths("", link)) {
 			const f = this.app.vault.getAbstractFileByPath(path);
-			if (f instanceof TFile && isDrawioSvgPath(f.path)) return f;
+			if (f instanceof TFile && isDiagramSvgPath(f.path)) return f;
 		}
 		const linkpath = resourceKey(link);
 		const dest = this.app.metadataCache.getFirstLinkpathDest(linkpath, this.app.workspace.getActiveFile()?.path ?? "");
-		return dest && isDrawioSvgPath(dest.path) ? dest : null;
+		return dest && isDiagramSvgPath(dest.path) ? dest : null;
 	}
 
 	private fileFromResource(url: string): TFile | null {
 		if (!this.resources) {
 			this.resources = new Map();
 			for (const f of this.app.vault.getFiles()) {
-				if (isDrawioSvgPath(f.path)) this.resources.set(resourceKey(this.app.vault.getResourcePath(f)), f);
+				if (isDiagramSvgPath(f.path)) this.resources.set(resourceKey(this.app.vault.getResourcePath(f)), f);
 			}
 		}
 		return this.resources.get(resourceKey(url)) ?? null;
@@ -129,7 +192,7 @@ export default class PkmDrawioPlugin extends Plugin {
 	private async diagramsInActive(): Promise<TFile[]> {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) return [];
-		if (isDrawioSvgPath(file.path)) return [file];
+		if (isDiagramSvgPath(file.path)) return [file];
 		const kind = documentKind(file.path);
 		if (!kind) return [];
 		const text = await this.app.vault.cachedRead(file);
@@ -148,11 +211,11 @@ export default class PkmDrawioPlugin extends Plugin {
 
 	private withDiagramsInActive(checking: boolean, run: (file: TFile) => void): boolean {
 		const active = this.app.workspace.getActiveFile();
-		if (!active || !(isDrawioSvgPath(active.path) || documentKind(active.path))) return false;
+		if (!active || !(isDiagramSvgPath(active.path) || documentKind(active.path))) return false;
 		if (checking) return true;
 		void this.diagramsInActive().then(async (files) => {
 			if (files.length === 0) {
-				new Notice("このノートに図（asset/*.drawio.svg）がありません");
+				new Notice("このノートに図（asset/ の SVG）がありません。Mermaid の図は、図の右上の操作バーを使ってください");
 				return;
 			}
 			const file = files.length === 1 ? files[0] : await pick(this.app, "Choose a diagram", files, (f) => f.path);
@@ -161,11 +224,11 @@ export default class PkmDrawioPlugin extends Plugin {
 		return true;
 	}
 
-	private showCopyMenu(file: TFile, anchor: HTMLElement): void {
-		// 選ぶ前に読み始める（押した操作からクリップボードに書くまでを短くする）
-		const content = this.app.vault.cachedRead(file);
+	private showCopyMenu(target: DiagramTarget, anchor: HTMLElement): void {
+		// 選ぶ前に読み始める（押した操作からクリップボードに書くまでを短くする）。Mermaid は PNG と同じライトの色
+		const content = target.kind === "file" ? this.app.vault.cachedRead(target.file) : Promise.resolve(mermaidSvgText(target.svg, true));
 		const menu = new Menu();
-		for (const f of COPY_FORMATS) {
+		for (const f of copyFormatsFor(target.kind === "file" && target.drawio)) {
 			menu.addItem((i) =>
 				i
 					.setTitle(f.label)

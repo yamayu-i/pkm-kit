@@ -1,14 +1,17 @@
-# Draw.io の図
+# 図（Draw.io・SVG・Mermaid）
 
 - 種類: 画面（図に浮かべる操作バー・編集画面）・コマンド
-- 開き方: ノートの図（`asset/*.drawio.svg`）にマウスを載せる（タッチでは押す）。コマンド「New diagram」「Edit a diagram in this note」「Copy a diagram in this note」「Export this note to tmp/ (embed diagrams)」。ファイルエクスプローラーの `.drawio.svg` の右クリック
+- 開き方: ノートの図（`asset/` の SVG の画像と、Mermaid の図）にマウスを載せる（タッチでは押す）。コマンド「New diagram」「Edit a diagram in this note」「Copy a diagram in this note」「Save a diagram in this note as PNG」「Expand a diagram in this note」「Export this note to tmp/ (embed diagrams)」。ファイルエクスプローラーの `.svg` の右クリック
 - 場面: [ノートを書く](../jobs/note-write.md)
 
 ## 今の振る舞い
 
 - 図は `asset/<名前>.drawio.svg` に置き、`![説明](asset/<名前>.drawio.svg)` で参照する。表示は Obsidian の普通の画像の表示（プラグインを無効にしても見える）。1 ファイルに描画と編集用 XML（全ページ）を持つ。Draw.io 単体でも開ける
-- 図の画像にマウスを載せると、右上に「コピー」「編集」が出る（Reading view と Live Preview の両方）。タッチでは画像を押すと出て、ほかの場所を押すと消える。普通の画像には出ない
-- 「コピー」は PNG / SVG / XML を選ぶ。SVG は編集用 XML を除いたもの。画像として書けない環境ではテキストとしてコピーし、そう知らせる。XML は Draw.io に貼れば編集できる形（全ページ）
+- 図にマウスを載せると、右上に「コピー」「PNG で保存」「拡大」が出る（Reading view と Live Preview の両方）。Draw.io の図には「編集」も出る。タッチでは図を押すと出て、ほかの場所を押すと消える。対象は Vault の SVG の図（`.drawio.svg` と、AI が書く / D2 で描く `.svg`）と、ノートの Mermaid の図。PNG・JPEG などの普通の画像には出ない
+- 「コピー」は PNG / SVG を選ぶ（Draw.io の図は XML も）。SVG は編集用 XML を除いたもの。画像として書けない環境ではテキストとしてコピーし、そう知らせる。XML は Draw.io に貼れば編集できる形（全ページ）
+- PNG（コピーと保存）は、ノートをダークテーマで見ていても常にライトの色で、ライトの面の色を背景にする（貼り付け先の多くは白い背景）。2 倍の大きさ
+- 「PNG で保存」は、PC では保存のダイアログ、モバイルでは共有シート（画像を保存・ファイルに保存など）を開く。どちらも使えなければ `tmp/<図の名前>.png` に書いて知らせる
+- 「拡大」は全画面に図を出す。ホイール・ピンチで拡大・縮小し、ドラッグで動かす。ボタンで縮小・拡大・全体を表示・100%。キーは 0（全体）・1（100%）・+ / -。ダブルクリックで 2 倍。画面の大きさが変わると全体を表示し直す
 - 「編集」は Obsidian の中に Draw.io（embed.diagrams.net）を開く。ネットワークが要る。保存すると `.drawio.svg` 全体を書き換える。編集中にファイルが変わっていたら（同期など）、上書きせずに「自分の版を別名で保存」「上書きする」「編集に戻る」を選ぶ。保存していない変更があるまま閉じると、確かめる（XML をコピーして閉じることもできる）
 - 「New diagram」は名前を聞いて Draw.io を開き、最初の保存で `asset/<名前>.drawio.svg` を作り、開いていたノートのカーソルの位置に参照を入れる
 - 「このノートを tmp/ に書き出す」は、md / html の図の参照を、編集用 XML を除いた SVG の data URI に置き換えて `tmp/<ファイル名>` に書く（あれば番号を付けた別名）。元のノートと図は変えない。見つからない図・壊れた図があれば何も書かない。コードブロックの中の例は変えない。data URI の画像を出せるかは、渡した先の表示による

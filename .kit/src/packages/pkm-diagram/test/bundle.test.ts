@@ -50,7 +50,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0064）"
 		const r = load();
 		await r.plugin.onload();
 		expect([...r.required]).toEqual(["obsidian"]);
-		expect(r.commands).toEqual(["create-diagram", "edit-diagram", "copy-diagram", "export-to-tmp"]);
+		expect(r.commands).toEqual(["create-diagram", "edit-diagram", "copy-diagram", "save-diagram-png", "expand-diagram", "export-to-tmp"]);
 		expect(r.workspaceEvents).toEqual(["window-open", "window-close", "layout-change", "file-menu"]);
 		expect(r.vaultEvents).toEqual(["create", "delete", "rename"]);
 		expect(r.domEvents).toEqual(["pointerover", "pointerdown", "scroll", "keydown"]);

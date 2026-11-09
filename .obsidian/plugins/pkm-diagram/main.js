@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmDrawioPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // ../pkm-html/src/core/policy.ts
 var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -565,6 +565,83 @@ function editedCopyPath(path, now, taken) {
   return freePath(folder, `${diagramName(path)} (\u7DE8\u96C6 ${stamp})`, DRAWIO_SVG_SUFFIX, taken);
 }
 
+// ../design/generated/tokens.ts
+var diagram = {
+  light: { "neutral": { "text": "#2b2a28", "muted": "#57564f", "nodeFill": "#f6f5f2", "nodeStroke": "#7f7e76", "groupFill": "#efeeea", "groupStroke": "#7f7e76", "edge": "#57564f", "labelBg": "#f6f5f2" }, "colors": { "blue": { "fill": "#d3e3fd", "stroke": "#0b57d0", "text": "#041e49" }, "green": { "fill": "#c4eed0", "stroke": "#1e8e3e", "text": "#072711" }, "purple": { "fill": "#eaddff", "stroke": "#6750a4", "text": "#21005d" }, "gray": { "fill": "#e3e3e3", "stroke": "#747775", "text": "#1f1f1f" }, "sky": { "fill": "#c2e7ff", "stroke": "#00639b", "text": "#001d35" }, "pink": { "fill": "#ffd8e4", "stroke": "#c2185b", "text": "#3e001d" }, "red": { "fill": "#f9dedc", "stroke": "#d93025", "text": "#410e0b" }, "amber": { "fill": "#ffecb3", "stroke": "#b06d00", "text": "#3a2a00" } } },
+  dark: { "neutral": { "text": "#d0d0d0", "muted": "#b3b3b3", "nodeFill": "#1e1e1e", "nodeStroke": "#7a7a7a", "groupFill": "#242424", "groupStroke": "#7a7a7a", "edge": "#b3b3b3", "labelBg": "#1e1e1e" }, "colors": { "blue": { "fill": "#0842a0", "stroke": "#a8c7fa", "text": "#d3e3fd" }, "green": { "fill": "#0f5223", "stroke": "#6dd58c", "text": "#c4eed0" }, "purple": { "fill": "#4f378b", "stroke": "#d0bcff", "text": "#eaddff" }, "gray": { "fill": "#444746", "stroke": "#c4c7c5", "text": "#e3e3e3" }, "sky": { "fill": "#004a77", "stroke": "#7fcfff", "text": "#c2e7ff" }, "pink": { "fill": "#8c1d4f", "stroke": "#ffb0c8", "text": "#ffd8e4" }, "red": { "fill": "#8c1d18", "stroke": "#f2b8b5", "text": "#f9dedc" }, "amber": { "fill": "#5c4300", "stroke": "#ffd54f", "text": "#ffecb3" } } }
+};
+
+// src/core/png.ts
+var PNG_BACKGROUND = diagram.light.neutral.labelBg;
+function blockEnd(css, open) {
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return css.length;
+}
+function stripDarkMedia(css) {
+  let out = "";
+  let pos = 0;
+  const re = /@media[^{]*prefers-color-scheme\s*:\s*dark[^{]*\{/gi;
+  for (let m = re.exec(css); m; m = re.exec(css)) {
+    const open = m.index + m[0].length - 1;
+    out += css.slice(pos, m.index);
+    pos = blockEnd(css, open);
+    re.lastIndex = pos;
+  }
+  return out + css.slice(pos);
+}
+function forceLightSvg(svg) {
+  return svg.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_, open, body, close) => `${open}${stripDarkMedia(body)}${close}`);
+}
+function darkToLightColors() {
+  const map = /* @__PURE__ */ new Map();
+  const add = (dark, light) => {
+    const key = dark.toLowerCase();
+    if (!map.has(key)) map.set(key, light.toLowerCase());
+  };
+  for (const role of Object.keys(diagram.dark.neutral)) add(diagram.dark.neutral[role], diagram.light.neutral[role]);
+  for (const name of Object.keys(diagram.dark.colors)) {
+    const d = diagram.dark.colors[name];
+    const l = diagram.light.colors[name];
+    add(d.fill, l.fill);
+    add(d.stroke, l.stroke);
+    add(d.text, l.text);
+  }
+  return map;
+}
+function cssColorToHex(value) {
+  const v = value.trim().toLowerCase();
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(v);
+  if (hex) {
+    const h = hex[1];
+    return h.length === 3 ? `#${[...h].map((c) => c + c).join("")}` : `#${h}`;
+  }
+  const rgb = /^rgba?\(\s*(\d+(?:\.\d+)?)[\s,]+(\d+(?:\.\d+)?)[\s,]+(\d+(?:\.\d+)?)(?:[\s,/]+([\d.]+%?))?\s*\)$/.exec(v);
+  if (!rgb) return null;
+  if (rgb[4] !== void 0) {
+    const a = rgb[4].endsWith("%") ? Number(rgb[4].slice(0, -1)) / 100 : Number(rgb[4]);
+    if (a === 0) return null;
+  }
+  return `#${[rgb[1], rgb[2], rgb[3]].map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("")}`;
+}
+function saveMethods(env) {
+  const out = [];
+  if (env.picker) out.push("picker");
+  if (env.share) out.push("share");
+  out.push("tmp");
+  return out;
+}
+function pngFileName(base) {
+  const stem = base.replace(/\.drawio\.svg$/i, "").replace(/\.(svg|md|html?)$/i, "").replace(/[\\/:*?"<>|#^[\]\u0000-\u001f]+/g, "-").trim();
+  return `${stem || "diagram"}.png`;
+}
+
 // src/obsidian/copy.ts
 var import_obsidian = require("obsidian");
 var COPY_FORMATS = [
@@ -572,6 +649,9 @@ var COPY_FORMATS = [
   { format: "svg", label: "Copy as SVG (without editable XML)", icon: "file-image" },
   { format: "xml", label: "Copy as XML (editable in Draw.io)", icon: "file-code" }
 ];
+function copyFormatsFor(drawio) {
+  return drawio ? COPY_FORMATS : COPY_FORMATS.filter((f) => f.format !== "xml");
+}
 var PNG_SCALE = 2;
 var MAX_PNG_SIDE = 8192;
 function clipboardItemCtor() {
@@ -645,6 +725,8 @@ async function draw(svgText, doc, size) {
   canvas.height = Math.max(1, Math.round(size.height * scale));
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas \u3092\u4F7F\u3048\u306A\u3044");
+  ctx.fillStyle = PNG_BACKGROUND;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   return await new Promise((resolve, reject) => {
     try {
@@ -654,7 +736,8 @@ async function draw(svgText, doc, size) {
     }
   });
 }
-async function renderPng(sharingSvg, doc) {
+async function renderPng(svg, doc) {
+  const sharingSvg = forceLightSvg(svg);
   const parsed = new DOMParser().parseFromString(sharingSvg, SVG_MIME);
   if (parsed.getElementsByTagName("parsererror").length > 0) throw new DrawioFormatError("SVG \u3092\u8AAD\u3081\u306A\u3044");
   const size = svgSize(parsed);
@@ -1158,12 +1241,174 @@ ${result.errors.join("\n")}`, 12e3);
   return created;
 }
 
-// src/obsidian/toolbar.ts
+// src/obsidian/mermaid.ts
+var SVG_NS = "http://www.w3.org/2000/svg";
+var PROPS = ["fill", "stroke", "stroke-width", "stroke-dasharray", "fill-opacity", "stroke-opacity", "opacity", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "dominant-baseline", "visibility"];
+var COLOR_PROPS = /* @__PURE__ */ new Set(["fill", "stroke"]);
+function findMermaidSvg(el) {
+  const box = el?.closest(".mermaid");
+  return box?.querySelector("svg") ?? null;
+}
+function viewBoxSize(svg) {
+  const vb = (svg.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
+  if (vb.length === 4 && vb[2] > 0 && vb[3] > 0) return { width: vb[2], height: vb[3] };
+  const r = svg.getBoundingClientRect();
+  return { width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) };
+}
+function textFromForeignObject(fo, win, mapColor) {
+  const doc = fo.ownerDocument;
+  const x = Number(fo.getAttribute("x") ?? 0) || 0;
+  const y = Number(fo.getAttribute("y") ?? 0) || 0;
+  const w = Number(fo.getAttribute("width") ?? 0) || 0;
+  const h = Number(fo.getAttribute("height") ?? 0) || 0;
+  const inner = fo.querySelector("span, p, div") ?? fo;
+  const style = win.getComputedStyle(inner);
+  const lines = (inner.innerText ?? inner.textContent ?? "").split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  const out = [];
+  const bgEl = fo.querySelector(".labelBkg, .edgeLabel, span") ?? inner;
+  const bg = cssColorToHex(win.getComputedStyle(bgEl).backgroundColor);
+  if (bg && w > 0 && h > 0 && lines.length > 0) {
+    const rect = doc.createElementNS(SVG_NS, "rect");
+    for (const [k, v] of Object.entries({ x, y, width: w, height: h })) rect.setAttribute(k, String(v));
+    rect.setAttribute("fill", mapColor(bg));
+    out.push(rect);
+  }
+  if (lines.length === 0) return out;
+  const size = Number.parseFloat(style.fontSize) || 14;
+  const lineHeight = size * 1.25;
+  const text = doc.createElementNS(SVG_NS, "text");
+  text.setAttribute("x", String(x + w / 2));
+  text.setAttribute("y", String(y + h / 2 - (lines.length - 1) * lineHeight / 2));
+  text.setAttribute("text-anchor", "middle");
+  text.setAttribute("dominant-baseline", "central");
+  text.setAttribute("font-size", String(size));
+  text.setAttribute("font-family", style.fontFamily);
+  if (style.fontWeight && style.fontWeight !== "400" && style.fontWeight !== "normal") text.setAttribute("font-weight", style.fontWeight);
+  const color = cssColorToHex(style.color);
+  if (color) text.setAttribute("fill", mapColor(color));
+  lines.forEach((line, i) => {
+    const t = doc.createElementNS(SVG_NS, "tspan");
+    t.setAttribute("x", String(x + w / 2));
+    if (i > 0) t.setAttribute("dy", String(lineHeight));
+    t.textContent = line;
+    text.appendChild(t);
+  });
+  out.push(text);
+  return out;
+}
+function mermaidSvgText(svg, light) {
+  const win = svg.ownerDocument.defaultView ?? window;
+  const toLight = light && svg.ownerDocument.body.classList.contains("theme-dark") ? darkToLightColors() : null;
+  const mapColor = (hex) => toLight?.get(hex) ?? hex;
+  const clone = svg.cloneNode(true);
+  const originals = [svg, ...svg.querySelectorAll("*")];
+  const copies = [clone, ...clone.querySelectorAll("*")];
+  const replace = [];
+  originals.forEach((orig, i) => {
+    const copy = copies[i];
+    if (!copy || copy.namespaceURI !== SVG_NS) return;
+    if (orig.localName === "foreignObject") {
+      replace.push([copy, textFromForeignObject(orig, win, mapColor)]);
+      return;
+    }
+    if (orig.closest("foreignObject")) return;
+    const cs = win.getComputedStyle(orig);
+    const decls = [];
+    for (const p of PROPS) {
+      let v = cs.getPropertyValue(p);
+      if (!v) continue;
+      if (COLOR_PROPS.has(p)) {
+        const hex = cssColorToHex(v);
+        if (hex) v = mapColor(hex);
+        else if (!/^(none|url\()/.test(v)) continue;
+      }
+      decls.push(`${p}:${v}`);
+    }
+    if (decls.length > 0) copy.setAttribute("style", decls.join(";"));
+  });
+  for (const [fo, items] of replace) {
+    for (const item of items) fo.parentNode?.insertBefore(item, fo);
+    fo.remove();
+  }
+  for (const s of [...clone.querySelectorAll("style")]) s.remove();
+  const size = viewBoxSize(svg);
+  clone.setAttribute("width", String(size.width));
+  clone.setAttribute("height", String(size.height));
+  clone.removeAttribute("id");
+  clone.setAttribute("xmlns", SVG_NS);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+// src/obsidian/save.ts
 var import_obsidian5 = require("obsidian");
+var TMP = "tmp";
+function isAbort(e) {
+  return e instanceof Error && e.name === "AbortError";
+}
+async function freeTmpPath(app, name) {
+  const stem = name.replace(/\.png$/i, "");
+  for (let n = 1; ; n++) {
+    const path = (0, import_obsidian5.normalizePath)(`${TMP}/${n === 1 ? stem : `${stem} ${n}`}.png`);
+    if (!await app.vault.adapter.exists(path)) return path;
+  }
+}
+async function saveToTmp(app, png, name) {
+  if (!await app.vault.adapter.exists(TMP)) await app.vault.adapter.mkdir(TMP);
+  const path = await freeTmpPath(app, name);
+  await app.vault.adapter.writeBinary(path, await png.arrayBuffer());
+  new import_obsidian5.Notice(`PNG \u3092 ${path} \u306B\u4FDD\u5B58\u3057\u307E\u3057\u305F`);
+}
+async function savePng(app, png, name, doc) {
+  const win = doc.defaultView ?? window;
+  const nav = (doc.defaultView ?? window).navigator;
+  const methods = saveMethods({
+    picker: typeof win.showSaveFilePicker === "function",
+    share: typeof nav.share === "function" && typeof nav.canShare === "function"
+  });
+  try {
+    for (const method of methods) {
+      if (method === "picker") {
+        let handle;
+        try {
+          handle = await win.showSaveFilePicker({
+            suggestedName: name,
+            types: [{ description: "PNG", accept: { "image/png": [".png"] } }]
+          });
+        } catch (e) {
+          if (isAbort(e)) return;
+          continue;
+        }
+        const writable = await handle.createWritable();
+        await writable.write(await png);
+        await writable.close();
+        new import_obsidian5.Notice("PNG \u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F");
+        return;
+      }
+      if (method === "share") {
+        const file = new File([await png], name, { type: "image/png" });
+        if (!nav.canShare({ files: [file] })) continue;
+        try {
+          await nav.share({ files: [file], title: name });
+          return;
+        } catch (e) {
+          if (isAbort(e)) return;
+          continue;
+        }
+      }
+      await saveToTmp(app, await png, name);
+      return;
+    }
+  } catch (e) {
+    new import_obsidian5.Notice(`PNG \u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
+  }
+}
+
+// src/obsidian/toolbar.ts
+var import_obsidian6 = require("obsidian");
 var HIDE_DELAY = 300;
 var INSET = 8;
-function isImg(el) {
-  return !!el && el.tagName === "IMG";
+function asElement(el) {
+  return el && typeof el.closest === "function" ? el : null;
 }
 var DocToolbar = class {
   constructor(doc, host) {
@@ -1173,19 +1418,26 @@ var DocToolbar = class {
     this.el.hidden = true;
     const button = (icon, label, onClick) => {
       const b = this.el.createEl("button", { cls: "vt-drawio-tool", attr: { type: "button", "aria-label": label, title: label } });
-      (0, import_obsidian5.setIcon)(b, icon);
+      (0, import_obsidian6.setIcon)(b, icon);
       b.createSpan({ cls: "vt-drawio-tool-label", text: label });
       b.addEventListener("mousedown", (e) => e.preventDefault());
       b.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (this.current) onClick(this.current.file, b);
+        if (this.current) onClick(this.current.target, b);
       });
+      return b;
     };
-    button("copy", "Copy", (file, anchor) => this.host.copy(file, anchor));
-    button("pencil", "Edit", (file) => {
+    button("copy", "Copy", (target, anchor) => this.host.copy(target, anchor));
+    button("download", "Save PNG", (target) => this.host.save(target));
+    button("maximize-2", "Expand", (target) => {
       this.hide();
-      this.host.edit(file);
+      this.host.expand(target);
+    });
+    this.editButton = button("pencil", "Edit", (target) => {
+      if (target.kind !== "file") return;
+      this.hide();
+      this.host.edit(target.file);
     });
     this.el.addEventListener("pointerenter", () => this.cancelHide());
     this.el.addEventListener("pointerleave", (e) => {
@@ -1199,12 +1451,14 @@ var DocToolbar = class {
   host;
   el;
   current = null;
+  editButton;
   hideTimer = null;
   pinned = false;
-  show(img, file, pinned) {
+  show(found, pinned) {
     this.cancelHide();
-    this.current = { img, file };
+    this.current = found;
     this.pinned = pinned;
+    this.editButton.hidden = !(found.target.kind === "file" && found.target.drawio);
     this.el.hidden = false;
     this.place();
   }
@@ -1225,7 +1479,7 @@ var DocToolbar = class {
   /** 画像の右上の内側に置く。画像が小さければ画像の上に出す */
   place() {
     if (!this.current) return;
-    const rect = this.current.img.getBoundingClientRect();
+    const rect = this.current.el.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) {
       this.hide();
       return;
@@ -1243,26 +1497,26 @@ var DocToolbar = class {
       this.cancelHide();
       return;
     }
-    if (isImg(target)) {
-      if (this.current?.img === target) {
+    const el = asElement(target);
+    const found = el ? this.host.resolve(el) : null;
+    if (found) {
+      if (this.current?.el === found.el) {
         this.cancelHide();
         return;
       }
-      const file = this.host.resolve(target);
-      if (file) {
-        this.show(target, file, false);
-        return;
-      }
+      this.show(found, false);
+      return;
     }
     if (this.current) this.scheduleHide();
   }
   onPointerDown(e) {
     const target = e.target;
     if (this.el.contains(target)) return;
-    if (e.pointerType !== "mouse" && isImg(target)) {
-      const file = this.host.resolve(target);
-      if (file) {
-        this.show(target, file, true);
+    const el = asElement(target);
+    if (e.pointerType !== "mouse" && el) {
+      const found = this.host.resolve(el);
+      if (found) {
+        this.show(found, true);
         return;
       }
     }
@@ -1307,6 +1561,187 @@ var DiagramToolbar = class {
   }
 };
 
+// src/obsidian/zoom-modal.ts
+var import_obsidian7 = require("obsidian");
+
+// src/core/viewport.ts
+var MIN_SCALE = 0.05;
+var MAX_SCALE = 8;
+var FIT_MAX_SCALE = 2;
+var FIT_PADDING = 16;
+var ZOOM_STEP = 1.25;
+function clampScale(scale) {
+  if (!Number.isFinite(scale) || scale <= 0) return MIN_SCALE;
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+}
+function centered(content, stage, scale) {
+  return { scale, x: (stage.width - content.width * scale) / 2, y: (stage.height - content.height * scale) / 2 };
+}
+function fit(content, stage, padding = FIT_PADDING) {
+  if (content.width <= 0 || content.height <= 0) return { scale: 1, x: 0, y: 0 };
+  const w = Math.max(1, stage.width - 2 * padding);
+  const h = Math.max(1, stage.height - 2 * padding);
+  return centered(content, stage, clampScale(Math.min(w / content.width, h / content.height, FIT_MAX_SCALE)));
+}
+function actualSize(content, stage, padding = FIT_PADDING) {
+  const v = centered(content, stage, 1);
+  return { scale: 1, x: content.width > stage.width ? padding : v.x, y: content.height > stage.height ? padding : v.y };
+}
+function zoomAt(view, factor, at) {
+  const scale = clampScale(view.scale * factor);
+  const k = scale / view.scale;
+  return { scale, x: at.x - (at.x - view.x) * k, y: at.y - (at.y - view.y) * k };
+}
+function pan(view, dx, dy) {
+  return { scale: view.scale, x: view.x + dx, y: view.y + dy };
+}
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+function middle(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+function pinch(start, a0, b0, a, b) {
+  const d0 = distance(a0, b0);
+  if (d0 === 0) return start;
+  const m0 = middle(a0, b0);
+  const m = middle(a, b);
+  const zoomed = zoomAt(start, distance(a, b) / d0, m0);
+  return pan(zoomed, m.x - m0.x, m.y - m0.y);
+}
+function wheelFactor(deltaY, deltaMode = 0) {
+  const px = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * 400 : deltaY;
+  return Math.exp(-Math.max(-200, Math.min(200, px)) * 2e-3);
+}
+
+// src/obsidian/zoom-modal.ts
+var FALLBACK = { width: 800, height: 600 };
+var DiagramZoomModal = class extends import_obsidian7.Modal {
+  constructor(app, source) {
+    super(app);
+    this.source = source;
+  }
+  source;
+  view = { scale: 1, x: 0, y: 0 };
+  content = FALLBACK;
+  img = null;
+  stage = null;
+  percent = null;
+  /** 画面に触れている指（pointerId → 位置） */
+  pointers = /* @__PURE__ */ new Map();
+  gesture = null;
+  resizeObserver = null;
+  onOpen() {
+    this.modalEl.addClass("vt-diagram-zoom");
+    this.titleEl.setText(this.source.title);
+    const bar = this.contentEl.createDiv({ cls: "vt-diagram-zoom-bar", attr: { role: "toolbar", "aria-label": "Zoom" } });
+    const button = (icon, label, onClick) => {
+      const b = bar.createEl("button", { cls: "vt-diagram-zoom-button", attr: { type: "button", "aria-label": label, title: label } });
+      (0, import_obsidian7.setIcon)(b, icon);
+      b.addEventListener("click", onClick);
+    };
+    button("zoom-out", "Zoom out", () => this.zoomBy(1 / ZOOM_STEP));
+    this.percent = bar.createSpan({ cls: "vt-diagram-zoom-percent", attr: { "aria-live": "polite" } });
+    button("zoom-in", "Zoom in", () => this.zoomBy(ZOOM_STEP));
+    button("maximize", "Fit", () => this.fit());
+    button("scan", "100%", () => this.actual());
+    const stage = this.contentEl.createDiv({ cls: "vt-diagram-zoom-stage" });
+    this.stage = stage;
+    const img = stage.createEl("img", { cls: "vt-diagram-zoom-image", attr: { alt: this.source.title, draggable: "false" } });
+    this.img = img;
+    img.src = this.source.src;
+    void img.decode().catch(() => void 0).then(() => {
+      this.content = img.naturalWidth > 0 && img.naturalHeight > 0 ? { width: img.naturalWidth, height: img.naturalHeight } : FALLBACK;
+      img.style.width = `${this.content.width}px`;
+      img.style.height = `${this.content.height}px`;
+      this.fit();
+    });
+    stage.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
+    stage.addEventListener("pointerdown", (e) => this.onPointerDown(e));
+    stage.addEventListener("pointermove", (e) => this.onPointerMove(e));
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) stage.addEventListener(type, (e) => this.onPointerUp(e));
+    stage.addEventListener("dblclick", (e) => this.apply(zoomAt(this.view, 2, this.local(e))));
+    this.scope.register([], "0", () => (this.fit(), false));
+    this.scope.register([], "1", () => (this.actual(), false));
+    for (const key of ["+", "="]) this.scope.register([], key, () => (this.zoomBy(ZOOM_STEP), false));
+    this.scope.register([], "-", () => (this.zoomBy(1 / ZOOM_STEP), false));
+    const win = this.modalEl.ownerDocument.defaultView;
+    if (win && "ResizeObserver" in win) {
+      let first = true;
+      this.resizeObserver = new win.ResizeObserver(() => {
+        if (first) {
+          first = false;
+          return;
+        }
+        this.fit();
+      });
+      this.resizeObserver.observe(stage);
+    }
+  }
+  onClose() {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.pointers.clear();
+    this.contentEl.empty();
+  }
+  stageSize() {
+    const r = this.stage?.getBoundingClientRect();
+    return { width: r?.width ?? 0, height: r?.height ?? 0 };
+  }
+  local(e) {
+    const r = this.stage?.getBoundingClientRect();
+    return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
+  }
+  apply(view) {
+    this.view = view;
+    if (this.img) this.img.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+    if (this.percent) this.percent.setText(`${Math.round(view.scale * 100)}%`);
+  }
+  fit() {
+    this.apply(fit(this.content, this.stageSize()));
+  }
+  actual() {
+    this.apply(actualSize(this.content, this.stageSize()));
+  }
+  zoomBy(factor) {
+    const s = this.stageSize();
+    this.apply(zoomAt(this.view, factor, { x: s.width / 2, y: s.height / 2 }));
+  }
+  onWheel(e) {
+    e.preventDefault();
+    if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      this.apply(pan(this.view, -e.deltaX, -e.deltaY));
+      return;
+    }
+    this.apply(zoomAt(this.view, wheelFactor(e.deltaY, e.deltaMode), this.local(e)));
+  }
+  onPointerDown(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    this.stage?.setPointerCapture(e.pointerId);
+    this.pointers.set(e.pointerId, this.local(e));
+    this.stage?.addClass("is-dragging");
+    this.startGesture();
+  }
+  /** 指の数が変わるたびに、そのときの表示と指の位置を起点にする */
+  startGesture() {
+    const [a, b] = [...this.pointers.values()];
+    this.gesture = a ? { view: this.view, a, b: b ?? a } : null;
+  }
+  onPointerMove(e) {
+    if (!this.pointers.has(e.pointerId) || !this.gesture) return;
+    this.pointers.set(e.pointerId, this.local(e));
+    const [a, b] = [...this.pointers.values()];
+    if (!a) return;
+    if (b) this.apply(pinch(this.gesture.view, this.gesture.a, this.gesture.b, a, b));
+    else this.apply(pan(this.gesture.view, a.x - this.gesture.a.x, a.y - this.gesture.a.y));
+  }
+  onPointerUp(e) {
+    if (!this.pointers.delete(e.pointerId)) return;
+    if (this.pointers.size === 0) this.stage?.removeClass("is-dragging");
+    this.startGesture();
+  }
+};
+
 // src/main.ts
 function resourceKey(url) {
   const cut = url.split(/[?#]/)[0] ?? "";
@@ -1316,14 +1751,16 @@ function resourceKey(url) {
     return cut;
   }
 }
-var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
+var PkmDrawioPlugin = class extends import_obsidian8.Plugin {
   toolbar = null;
   /** getResourcePath() の値（? を除く）→ 図のファイル。ファイルが増減・改名したら作り直す */
   resources = null;
   async onload() {
     const toolbar = new DiagramToolbar({
-      resolve: (img) => this.resolveImage(img),
-      copy: (file, anchor) => this.showCopyMenu(file, anchor),
+      resolve: (el) => this.resolveDiagram(el),
+      copy: (target, anchor) => this.showCopyMenu(target, anchor),
+      save: (target) => this.save(target, activeDocument),
+      expand: (target) => this.expand(target),
       edit: (file) => void this.edit(file)
     });
     this.toolbar = toolbar;
@@ -1345,10 +1782,20 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
       id: "copy-diagram",
       name: "Copy a diagram in this note (PNG / SVG / XML)",
       checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => {
-        void pick(this.app, "Copy as", COPY_FORMATS, (f) => f.label).then((choice) => {
+        void pick(this.app, "Copy as", copyFormatsFor(isDrawioSvgPath(file.path)), (f) => f.label).then((choice) => {
           if (choice) void this.copy(file, choice.format);
         });
       })
+    });
+    this.addCommand({
+      id: "save-diagram-png",
+      name: "Save a diagram in this note as PNG",
+      checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => this.save(this.fileTarget(file), activeDocument))
+    });
+    this.addCommand({
+      id: "expand-diagram",
+      name: "Expand a diagram in this note",
+      checkCallback: (checking) => this.withDiagramsInActive(checking, (file) => this.expand(this.fileTarget(file)))
     });
     this.addCommand({
       id: "export-to-tmp",
@@ -1362,10 +1809,12 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     });
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof import_obsidian6.TFile)) return;
-        if (isDrawioSvgPath(file.path)) {
-          menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
-          for (const f of COPY_FORMATS) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
+        if (!(file instanceof import_obsidian8.TFile)) return;
+        if (isDiagramSvgPath(file.path)) {
+          const drawio = isDrawioSvgPath(file.path);
+          if (drawio) menu.addItem((i) => i.setTitle("Edit in Draw.io").setIcon("pencil").onClick(() => void this.edit(file)));
+          for (const f of copyFormatsFor(drawio)) menu.addItem((i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void this.copy(file, f.format)));
+          menu.addItem((i) => i.setTitle("Save as PNG").setIcon("download").onClick(() => this.save(this.fileTarget(file), activeDocument)));
         } else if (documentKind(file.path)) {
           menu.addItem((i) => i.setTitle("Export to tmp/ (embed diagrams)").setIcon("file-output").onClick(() => void exportToTmp(this.app, file)));
         }
@@ -1375,6 +1824,42 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
   onunload() {
     this.toolbar?.destroy();
     this.toolbar = null;
+  }
+  fileTarget(file) {
+    return { kind: "file", file, drawio: isDrawioSvgPath(file.path) };
+  }
+  /** 要素が図なら、その図。画像は Vault の SVG の図を指すもの、それ以外は Mermaid の図の中の要素 */
+  resolveDiagram(el) {
+    if (el.tagName === "IMG") {
+      const file = this.resolveImage(el);
+      return file ? { el, target: this.fileTarget(file) } : null;
+    }
+    const svg = findMermaidSvg(el);
+    return svg ? { el: svg, target: { kind: "mermaid", svg } } : null;
+  }
+  /** 図の SVG の文字列。light なら PNG 用（ライトの色。Draw.io の図は編集用 XML を除く） */
+  async svgText(target, light) {
+    if (target.kind === "mermaid") return mermaidSvgText(target.svg, light);
+    const svg = await this.app.vault.cachedRead(target.file);
+    return light ? toSharingSvg(svg) : svg;
+  }
+  diagramFileName(target) {
+    if (target.kind === "file") return pngFileName(target.file.name);
+    return pngFileName(`${this.app.workspace.getActiveFile()?.basename ?? "note"}-diagram`);
+  }
+  save(target, doc) {
+    const png = this.svgText(target, true).then((svg) => renderPng(svg, doc));
+    png.catch(() => void 0);
+    void savePng(this.app, png, this.diagramFileName(target), doc);
+  }
+  expand(target) {
+    try {
+      const src = target.kind === "file" ? this.app.vault.getResourcePath(target.file) : svgDataUri(mermaidSvgText(target.svg, false));
+      const title = target.kind === "file" ? target.file.basename.replace(/\.drawio$/i, "") : this.app.workspace.getActiveFile()?.basename ?? "Mermaid";
+      new DiagramZoomModal(this.app, { src, title }).open();
+    } catch (e) {
+      new import_obsidian8.Notice(`\u56F3\u3092\u62E1\u5927\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`, 8e3);
+    }
   }
   /** 画像（Reading view・Live Preview・画像の View）が指す図のファイル */
   resolveImage(img) {
@@ -1392,17 +1877,17 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
   fileFromLink(link) {
     for (const path of candidatePaths("", link)) {
       const f = this.app.vault.getAbstractFileByPath(path);
-      if (f instanceof import_obsidian6.TFile && isDrawioSvgPath(f.path)) return f;
+      if (f instanceof import_obsidian8.TFile && isDiagramSvgPath(f.path)) return f;
     }
     const linkpath = resourceKey(link);
     const dest = this.app.metadataCache.getFirstLinkpathDest(linkpath, this.app.workspace.getActiveFile()?.path ?? "");
-    return dest && isDrawioSvgPath(dest.path) ? dest : null;
+    return dest && isDiagramSvgPath(dest.path) ? dest : null;
   }
   fileFromResource(url) {
     if (!this.resources) {
       this.resources = /* @__PURE__ */ new Map();
       for (const f of this.app.vault.getFiles()) {
-        if (isDrawioSvgPath(f.path)) this.resources.set(resourceKey(this.app.vault.getResourcePath(f)), f);
+        if (isDiagramSvgPath(f.path)) this.resources.set(resourceKey(this.app.vault.getResourcePath(f)), f);
       }
     }
     return this.resources.get(resourceKey(url)) ?? null;
@@ -1411,7 +1896,7 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
   async diagramsInActive() {
     const file = this.app.workspace.getActiveFile();
     if (!file) return [];
-    if (isDrawioSvgPath(file.path)) return [file];
+    if (isDiagramSvgPath(file.path)) return [file];
     const kind = documentKind(file.path);
     if (!kind) return [];
     const text = await this.app.vault.cachedRead(file);
@@ -1419,7 +1904,7 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     for (const ref of findImageReferences(text, kind)) {
       for (const path of drawioCandidates(file.path, ref, kind)) {
         const f = this.app.vault.getAbstractFileByPath(path);
-        if (f instanceof import_obsidian6.TFile) {
+        if (f instanceof import_obsidian8.TFile) {
           found.set(f.path, f);
           break;
         }
@@ -1429,11 +1914,11 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
   }
   withDiagramsInActive(checking, run) {
     const active = this.app.workspace.getActiveFile();
-    if (!active || !(isDrawioSvgPath(active.path) || documentKind(active.path))) return false;
+    if (!active || !(isDiagramSvgPath(active.path) || documentKind(active.path))) return false;
     if (checking) return true;
     void this.diagramsInActive().then(async (files) => {
       if (files.length === 0) {
-        new import_obsidian6.Notice("\u3053\u306E\u30CE\u30FC\u30C8\u306B\u56F3\uFF08asset/*.drawio.svg\uFF09\u304C\u3042\u308A\u307E\u305B\u3093");
+        new import_obsidian8.Notice("\u3053\u306E\u30CE\u30FC\u30C8\u306B\u56F3\uFF08asset/ \u306E SVG\uFF09\u304C\u3042\u308A\u307E\u305B\u3093\u3002Mermaid \u306E\u56F3\u306F\u3001\u56F3\u306E\u53F3\u4E0A\u306E\u64CD\u4F5C\u30D0\u30FC\u3092\u4F7F\u3063\u3066\u304F\u3060\u3055\u3044");
         return;
       }
       const file = files.length === 1 ? files[0] : await pick(this.app, "Choose a diagram", files, (f) => f.path);
@@ -1441,10 +1926,10 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     });
     return true;
   }
-  showCopyMenu(file, anchor) {
-    const content = this.app.vault.cachedRead(file);
-    const menu = new import_obsidian6.Menu();
-    for (const f of COPY_FORMATS) {
+  showCopyMenu(target, anchor) {
+    const content = target.kind === "file" ? this.app.vault.cachedRead(target.file) : Promise.resolve(mermaidSvgText(target.svg, true));
+    const menu = new import_obsidian8.Menu();
+    for (const f of copyFormatsFor(target.kind === "file" && target.drawio)) {
       menu.addItem(
         (i) => i.setTitle(f.label).setIcon(f.icon).onClick(() => void content.then((svg) => copyDiagram(svg, f.format, anchor.ownerDocument)))
       );
@@ -1461,19 +1946,19 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     try {
       const r = extractDiagramXml(svg);
       if (r.kind !== "diagram") {
-        new import_obsidian6.Notice(`${file.path} \u306B\u306F\u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\u306E\u3067\u3001Draw.io \u306E\u56F3\u3068\u3057\u3066\u7DE8\u96C6\u3067\u304D\u307E\u305B\u3093\uFF08\u666E\u901A\u306E SVG\uFF09`, 8e3);
+        new import_obsidian8.Notice(`${file.path} \u306B\u306F\u7DE8\u96C6\u7528 XML \u304C\u306A\u3044\u306E\u3067\u3001Draw.io \u306E\u56F3\u3068\u3057\u3066\u7DE8\u96C6\u3067\u304D\u307E\u305B\u3093\uFF08\u666E\u901A\u306E SVG\uFF09`, 8e3);
         return;
       }
       xml = r.xml;
     } catch (e) {
-      new import_obsidian6.Notice(`${file.path} \u3092\u8AAD\u3081\u307E\u305B\u3093: ${e instanceof DrawioFormatError ? e.message : String(e)}`, 8e3);
+      new import_obsidian8.Notice(`${file.path} \u3092\u8AAD\u3081\u307E\u305B\u3093: ${e instanceof DrawioFormatError ? e.message : String(e)}`, 8e3);
       return;
     }
     new DrawioEditorModal(this.app, { kind: "existing", file, base: svg, xml }).open();
   }
   /** 新しい図を作る。開いていたノートのカーソルの位置に、図の参照を入れる */
   async create() {
-    const view = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
     const notePath = view?.file?.path ?? null;
     const editor = view?.editor ?? null;
     const cursor = editor?.getCursor() ?? null;
@@ -1481,7 +1966,7 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
     if (name === null) return;
     const path = diagramPath(name);
     if (this.app.vault.getAbstractFileByPath(path)) {
-      new import_obsidian6.Notice(`${path} \u306F\u65E2\u306B\u3042\u308A\u307E\u3059\u3002\u5225\u306E\u540D\u524D\u306B\u3059\u308B\u304B\u3001\u305D\u306E\u56F3\u3092\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044`);
+      new import_obsidian8.Notice(`${path} \u306F\u65E2\u306B\u3042\u308A\u307E\u3059\u3002\u5225\u306E\u540D\u524D\u306B\u3059\u308B\u304B\u3001\u305D\u306E\u56F3\u3092\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044`);
       return;
     }
     new DrawioEditorModal(this.app, {
@@ -1492,7 +1977,7 @@ var PkmDrawioPlugin = class extends import_obsidian6.Plugin {
         if (view && editor && cursor && view.file?.path === notePath && view.editor === editor) {
           editor.replaceRange(link, cursor);
         } else {
-          void navigator.clipboard.writeText(link).then(() => new import_obsidian6.Notice("\u56F3\u306E\u53C2\u7167\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002\u30CE\u30FC\u30C8\u306B\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044"));
+          void navigator.clipboard.writeText(link).then(() => new import_obsidian8.Notice("\u56F3\u306E\u53C2\u7167\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002\u30CE\u30FC\u30C8\u306B\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044"));
         }
       }
     }).open();

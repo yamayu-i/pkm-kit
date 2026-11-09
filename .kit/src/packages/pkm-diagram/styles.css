@@ -4,14 +4,16 @@
  * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-diagram/styles.css にする。
  */
 
-:is([class*="vt-drawio-"], [class*="vt-drawio-"] *):focus-visible {
+:is([class*="vt-drawio-"], [class*="vt-drawio-"] *, [class*="vt-diagram-"], [class*="vt-diagram-"] *):focus-visible {
 	outline: 2px solid var(--vt-focus-ring);
 	outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
 	[class*="vt-drawio-"],
-	[class*="vt-drawio-"] * {
+	[class*="vt-drawio-"] *,
+	[class*="vt-diagram-"],
+	[class*="vt-diagram-"] * {
 		transition: none;
 		animation: none;
 	}
@@ -63,6 +65,10 @@
 	transform: scale(var(--vt-scale-press-medium));
 }
 
+.vt-drawio-tool[hidden] {
+	display: none;
+}
+
 .vt-drawio-tool .svg-icon {
 	width: 16px;
 	height: 16px;
@@ -100,4 +106,100 @@
 	color: var(--vt-error);
 	font-size: var(--vt-type-body-small-size);
 	line-height: var(--vt-type-body-small-line-height);
+}
+
+/* ---------- 拡大表示（ADR-0102） ---------- */
+
+.modal.vt-diagram-zoom {
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	max-height: none;
+	display: flex;
+	flex-direction: column;
+}
+
+.vt-diagram-zoom .modal-content {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-diagram-zoom-bar {
+	align-self: flex-end;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+}
+
+.vt-diagram-zoom-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-diagram-zoom-button:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-diagram-zoom-button:active {
+	background-image: linear-gradient(var(--vt-state-press), var(--vt-state-press));
+	transform: scale(var(--vt-scale-press-medium));
+}
+
+.vt-diagram-zoom-button .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-diagram-zoom-percent {
+	min-width: 48px;
+	text-align: center;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-diagram-zoom-stage {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface-container);
+	/* ピンチとドラッグをブラウザのスクロール・拡大に渡さない */
+	touch-action: none;
+	cursor: grab;
+}
+
+.vt-diagram-zoom-stage.is-dragging {
+	cursor: grabbing;
+}
+
+.vt-diagram-zoom-image {
+	position: absolute;
+	top: 0;
+	left: 0;
+	max-width: none;
+	transform-origin: 0 0;
+	user-select: none;
+	-webkit-user-drag: none;
 }
