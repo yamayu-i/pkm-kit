@@ -1,0 +1,535 @@
+/*
+ * スライドの面と部品（ADR-0117）。長さは「u」で書く（キャンバスの幅 1920 の 1 単位。ビルドで calc(N * var(--u)) になる）。
+ * 色・角丸・動きはトークン（--vt-*）。文字は M3 の役割の大きさ × 密度の倍率（--k）。
+ */
+@property --u {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 1px;
+}
+
+.sl-frame {
+	container-type: inline-size;
+}
+
+.slide {
+	--u: calc(100cqw / 1920);
+	/* 密度の倍率（design.md「スライド」）。present: 本文 24pt 相当（キャンバスの高さ 1080 = 540pt） */
+	--k: 3;
+	--display-l: calc(57u * var(--k));
+	--display-m: calc(45u * var(--k));
+	--display-s: calc(36u * var(--k));
+	--headline-m: calc(28u * var(--k));
+	--headline-s: calc(24u * var(--k));
+	--title-l: calc(22u * var(--k));
+	--body-l: calc(16u * var(--k));
+	--body-m: calc(14u * var(--k));
+	--label-m: calc(12u * var(--k));
+	--label-s: calc(11u * var(--k));
+	--gap: 40u;
+	--pad: 80u;
+	/* 役割の色。デッキの primary の差し替えは、ビルドがこの 4 つを上書きする */
+	--sl-primary: var(--vt-primary);
+	--sl-on-primary: var(--vt-on-primary);
+	--sl-primary-container: var(--vt-secondary-container);
+	--sl-on-primary-container: var(--vt-on-secondary-container);
+	/* 部品の色（色のクラスが上書きする） */
+	--c: var(--vt-surface-container);
+	--on-c: var(--vt-on-surface);
+	--ink: var(--vt-on-surface-variant);
+
+	box-sizing: border-box;
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	gap: var(--gap);
+	padding: 64u var(--pad) 40u;
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-family: var(--font-interface);
+	font-size: var(--body-l);
+	line-height: 1.45;
+	font-weight: var(--vt-weight-regular);
+	text-align: left;
+	overflow-wrap: anywhere;
+	line-break: strict;
+	/* 日本語を文節で折り返す（対応していないブラウザでは、ふつうの折り返し） */
+	word-break: auto-phrase;
+	position: relative;
+}
+
+:root[data-density="read"] .slide {
+	--k: 2;
+	--gap: 32u;
+}
+
+.slide *,
+.slide *::before,
+.slide *::after {
+	box-sizing: border-box;
+}
+
+/* ---- 見出し・本文・フッター ---- */
+.slide .sl-head {
+	display: grid;
+	gap: 8u;
+}
+.slide .kicker {
+	margin: 0;
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--sl-primary);
+	letter-spacing: 0.02em;
+}
+.slide h1,
+.slide h2,
+.slide h3,
+.slide p,
+.slide ul,
+.slide ol,
+.slide dl,
+.slide dd,
+.slide figure,
+.slide blockquote,
+.slide pre,
+.slide table {
+	margin: 0;
+}
+.slide h1,
+.slide h2,
+.slide .lead,
+.slide blockquote p {
+	text-wrap: balance;
+}
+.slide p,
+.slide li {
+	text-wrap: pretty;
+}
+.slide h1 {
+	font-size: var(--display-s);
+	line-height: 1.2;
+	font-weight: var(--vt-weight-bold);
+	letter-spacing: -0.01em;
+}
+.slide h2 {
+	font-size: var(--title-l);
+	line-height: 1.3;
+	font-weight: var(--vt-weight-bold);
+}
+.slide h3 {
+	font-size: var(--body-l);
+	line-height: 1.35;
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .lead {
+	font-size: var(--body-l);
+	color: var(--vt-on-surface-variant);
+}
+.slide .sl-body {
+	min-height: 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--gap);
+}
+.slide .sl-body > * {
+	min-height: 0;
+}
+.slide .sl-foot {
+	display: flex;
+	align-items: end;
+	justify-content: space-between;
+	gap: 40u;
+	min-height: 40u;
+	font-size: var(--label-s);
+	line-height: 1.3;
+	color: var(--vt-on-surface-variant);
+}
+.slide .source {
+	margin: 0;
+	max-width: 85%;
+}
+.slide .sl-page {
+	margin-left: auto;
+	font-variant-numeric: tabular-nums;
+}
+.slide a {
+	color: var(--sl-primary);
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
+/* ---- 強調 ---- */
+.slide strong {
+	font-weight: var(--vt-weight-bold);
+}
+.slide mark {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	padding: 0 0.2em;
+	border-radius: 6u;
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .muted {
+	color: var(--vt-on-surface-variant);
+}
+
+/* ---- 色のクラス（役割の名前。値は書かない） ---- */
+.slide .primary {
+	--c: var(--sl-primary-container);
+	--on-c: var(--sl-on-primary-container);
+	--ink: var(--sl-primary);
+}
+.slide .green {
+	--c: var(--vt-green-container);
+	--on-c: var(--vt-on-green-container);
+	--ink: var(--vt-green);
+}
+.slide .blue {
+	--c: var(--vt-blue-container);
+	--on-c: var(--vt-on-blue-container);
+	--ink: var(--vt-blue);
+}
+.slide .purple {
+	--c: var(--vt-purple-container);
+	--on-c: var(--vt-on-purple-container);
+	--ink: var(--vt-purple);
+}
+.slide .gray {
+	--c: var(--vt-gray-container);
+	--on-c: var(--vt-on-gray-container);
+	--ink: var(--vt-gray);
+}
+.slide .sky {
+	--c: var(--vt-sky-container);
+	--on-c: var(--vt-on-sky-container);
+	--ink: var(--vt-sky);
+}
+.slide .pink {
+	--c: var(--vt-pink-container);
+	--on-c: var(--vt-on-pink-container);
+	--ink: var(--vt-pink);
+}
+.slide .red {
+	--c: var(--vt-red-container);
+	--on-c: var(--vt-on-red-container);
+	--ink: var(--vt-red);
+}
+.slide .amber {
+	--c: var(--vt-amber-container);
+	--on-c: var(--vt-on-amber-container);
+	--ink: var(--vt-amber);
+}
+
+/* ---- リスト ---- */
+.slide ul,
+.slide ol {
+	padding-left: 1.2em;
+	display: grid;
+	gap: 0.5em;
+}
+.slide li {
+	padding-left: 0.2em;
+}
+.slide li::marker {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-semibold);
+}
+.slide li > ul,
+.slide li > ol {
+	margin-top: 0.35em;
+	font-size: var(--body-m);
+	color: var(--vt-on-surface-variant);
+}
+
+/* ---- 列とカード ---- */
+.slide .cols {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: var(--gap);
+	align-items: stretch;
+}
+.slide .card {
+	background: var(--c);
+	color: var(--on-c);
+	border-radius: var(--vt-radius-xl);
+	padding: 40u;
+	display: flex;
+	flex-direction: column;
+	gap: 16u;
+	font-size: var(--body-m);
+	min-width: 0;
+}
+.slide .card > ul,
+.slide .card > ol {
+	gap: 0.35em;
+}
+.slide .card li::marker {
+	color: var(--ink);
+}
+.slide .chip {
+	align-self: start;
+	display: inline-block;
+	width: fit-content;
+	padding: 4u 20u;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1.4;
+}
+
+/* ---- 大きい数字 ---- */
+.slide .big {
+	font-size: var(--display-l);
+	line-height: 1;
+	font-weight: var(--vt-weight-bold);
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+	color: var(--sl-primary);
+}
+.slide .big .unit {
+	font-size: 0.4em;
+	margin-left: 0.15em;
+	letter-spacing: 0;
+}
+.slide .label {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+
+/* ---- 図・画像 ---- */
+.slide figure {
+	display: flex;
+	flex-direction: column;
+	gap: 16u;
+	min-height: 0;
+	min-width: 0;
+	flex: 1 1 0;
+	position: relative;
+}
+.slide figure > img,
+.slide figure > svg {
+	flex: 1 1 0;
+	min-height: 0;
+	width: 100%;
+	object-fit: contain;
+	border-radius: var(--vt-radius-l);
+}
+.slide figcaption {
+	font-size: var(--label-m);
+	color: var(--vt-on-surface-variant);
+}
+.slide img {
+	max-width: 100%;
+}
+
+/* 図の上に置く説明（位置は --x / --y を % で） */
+.slide .callout {
+	position: absolute;
+	left: calc(var(--x, 50) * 1%);
+	top: calc(var(--y, 50) * 1%);
+	transform: translate(-50%, -50%);
+	width: max-content;
+	max-width: 520u;
+	padding: 12u 24u;
+	border-radius: var(--vt-radius-l);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1.35;
+	box-shadow: var(--vt-elevation-2);
+}
+
+/* ---- SVG の図とグラフ（長さは viewBox の単位。幅 1600 の viewBox を全幅に置くと、ほぼ 1u） ---- */
+.slide svg text {
+	font-family: var(--font-interface);
+	font-size: 36px;
+	fill: var(--vt-on-surface);
+}
+:root[data-density="read"] .slide svg text {
+	font-size: 28px;
+}
+:root[data-density="read"] .slide svg .small {
+	font-size: 24px;
+}
+.slide svg .small {
+	font-size: 32px;
+	fill: var(--vt-on-surface-variant);
+}
+.slide svg .box {
+	fill: var(--c);
+	stroke: var(--vt-outline);
+	stroke-width: 2;
+}
+.slide svg .box.primary,
+.slide svg .box.green,
+.slide svg .box.blue,
+.slide svg .box.purple,
+.slide svg .box.gray,
+.slide svg .box.sky,
+.slide svg .box.pink,
+.slide svg .box.red,
+.slide svg .box.amber {
+	stroke: var(--ink);
+}
+.slide svg .edge,
+.slide svg .axis {
+	fill: none;
+	stroke: var(--vt-outline);
+	stroke-width: 3;
+}
+.slide svg .grid {
+	fill: none;
+	stroke: var(--vt-outline-variant);
+	stroke-width: 2;
+}
+.slide svg .line {
+	fill: none;
+	stroke: var(--vt-outline);
+	stroke-width: 5;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+.slide svg .dot {
+	fill: var(--vt-outline);
+}
+.slide svg .hl.line,
+.slide svg .hl.edge {
+	stroke: var(--sl-primary);
+	stroke-width: 8;
+}
+.slide svg .hl.dot,
+.slide svg .hl.bar {
+	fill: var(--sl-primary);
+}
+.slide svg .bar {
+	fill: var(--vt-outline);
+}
+.slide svg text.hl {
+	fill: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+.slide svg .arrowhead {
+	fill: var(--vt-outline);
+}
+
+/* ---- 表 ---- */
+.slide table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--body-m);
+	font-variant-numeric: tabular-nums;
+}
+.slide th,
+.slide td {
+	padding: 16u 24u;
+	text-align: left;
+	vertical-align: top;
+	border-bottom: 2u solid var(--vt-outline-variant);
+}
+.slide thead th {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+	border-bottom: 3u solid var(--vt-outline);
+}
+.slide tbody th {
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .num {
+	text-align: right;
+}
+.slide tr.hl > *,
+.slide td.hl,
+.slide th.hl {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	font-weight: var(--vt-weight-semibold);
+}
+
+/* ---- 引用・コード・定義 ---- */
+.slide blockquote {
+	padding-left: 40u;
+	border-left: 8u solid var(--sl-primary);
+	display: grid;
+	gap: 24u;
+	font-size: var(--headline-s);
+	line-height: 1.4;
+	font-weight: var(--vt-weight-medium);
+}
+.slide cite {
+	font-size: var(--label-m);
+	font-style: normal;
+	font-weight: var(--vt-weight-regular);
+	color: var(--vt-on-surface-variant);
+}
+.slide pre {
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 32u 40u;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container-high);
+	font-family: var(--font-monospace);
+	font-size: var(--label-m);
+	line-height: 1.5;
+	overflow: hidden;
+	white-space: pre-wrap;
+	tab-size: 2;
+}
+.slide code {
+	font-family: var(--font-monospace);
+}
+.slide :not(pre) > code {
+	padding: 0 0.25em;
+	border-radius: 6u;
+	background: var(--vt-surface-container-high);
+	font-size: 0.9em;
+}
+.slide pre mark {
+	display: inline-block;
+	width: 100%;
+	padding: 0;
+	border-radius: 0;
+	font-weight: inherit;
+	box-shadow: -40u 0 0 var(--sl-primary-container), 40u 0 0 var(--sl-primary-container);
+}
+.slide dl {
+	display: grid;
+	gap: 12u;
+}
+.slide dt {
+	font-size: var(--headline-s);
+	font-weight: var(--vt-weight-bold);
+	color: var(--sl-primary);
+}
+.slide dd {
+	font-size: var(--body-l);
+}
+
+/* ---- ステップ（Slide Show のときだけ隠す。一覧・印刷・スクリプトなしでは全部見える） ---- */
+.sl-show .slide [data-step] {
+	transition:
+		opacity var(--vt-duration-short4) var(--vt-easing-standard),
+		transform var(--vt-duration-short4) var(--vt-easing-standard);
+}
+.sl-show .slide [data-step]:not(.sl-on) {
+	opacity: 0;
+	transform: translateY(16u);
+	pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.sl-show .slide [data-step] {
+		transition: none;
+	}
+	.sl-show .slide [data-step]:not(.sl-on) {
+		transform: none;
+	}
+}

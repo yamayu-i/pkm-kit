@@ -17,6 +17,8 @@ export const OUTPUTS = {
 	diagramPluginCss: at("../../pkm-diagram/tokens.css"),
 	ribbonPluginCss: at("../../pkm-ribbon/tokens.css"),
 	updatesPluginCss: at("../../pkm-updates/tokens.css"),
+	/** スライドに埋め込むもの（ADR-0117） */
+	slideCss: at("../../slide/tokens.css"),
 	obsidianSnippet: at("../../../../../.obsidian/snippets/pkm-theme.css"),
 	doc: at("../../../docs/design-tokens.md"),
 	ts: at("../generated/tokens.ts"),
