@@ -72,7 +72,7 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 </section>
 ```
 
-- 1 枚は `<section data-pattern="…">`。`data-pattern` はパターンの id（下の 6）
+- 1 枚は `<section data-pattern="…">`。`data-pattern` はパターンの id（下の 7）
 - `data-step` を付けた要素は、Slide Show で 1 つずつ出る（数を書けば順番を決められる）
 - `<aside class="notes">` は発表者ノート
 - 色は役割の名前のクラス（`blue` など、トークンの色の名前）で付け、値を書かない。図は SVG を直接書くか、D2 で描いた SVG をデッキのフォルダに置く（[ADR-0102](0102-diagram-three-methods.md) の b・c。Mermaid はスクリプトが要るので使わない）
@@ -87,6 +87,7 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 | `build <フォルダ> \| --all` | `deck.html` を検査し、共通の CSS とスクリプトを入れた `index.html` を書く |
 | `check [<フォルダ>] ` | `index.html` が今の `deck.html` と今の CLI から作ったものと同じかを確かめる（手で編集していない、ビルドし忘れていない）。規約の検査も行う |
 | `export <フォルダ>` | 添付を `data:` に埋め込んだ 1 ファイルを `tmp/` に書く（外部に渡す用。[ADR-0044](0044-html-standalone-export.md) と同じ名前の付け方） |
+| `pdf <フォルダ>` | PC に入っている Chrome 系のブラウザをヘッドレスで動かし、印刷用の表示を PDF にして `tmp/` に書く。ブラウザが見つからなければ、その旨と、画面のボタンでの作り方を出して終わる（依存は足さない） |
 
 - `index.html` は、同じ `deck.html` からは同じバイト列になる（日時を入れない）。`check` はビルドし直して比べる
 - `verify.mjs` に `slide.mjs check` を足す（子の Vault と CI で、古い・手で直した `index.html` を止める）
@@ -106,6 +107,7 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 | PDF | ボタンを押すと印刷用の表示（1 枚 1 ページ、ステップはすべて出した状態、背景色つき）にして、ブラウザの印刷を開く。「PDF に保存」を選ぶと、文字がテキストのまま入った PDF になる |
 | レビューコメント | Review を押すと、一覧で部品（見出し・カード・図・項目など）を選べる。選んでコメントを書く。コメントはブラウザに保存する（`localStorage`）。「Copy review」で、AI が読めるレポート（Markdown）をクリップボードにコピーする |
 | 発表者ノート | 一覧で各スライドの下に出せる（切り替え）。Slide Show では出さない |
+| 発表者ビュー | 「Presenter」のボタン（Slide Show 中は P）で別ウィンドウを開き、今のスライド・次のスライド・発表者ノート・経過時間と時刻を出す。どちらのウィンドウで送っても同期する |
 | テーマ | ライト / ダーク（既定はライト。デッキで決め、一覧で切り替えられる） |
 
 レビューのレポートは、デッキのパス、スライドの番号と見出し、部品の位置（`deck.html` の行番号と、部品の種類・文の冒頭）、コメントを並べる。受け取った AI は、スキルの手順で `deck.html` を直してビルドし直す。
@@ -121,8 +123,13 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 | `read` | 画面や PDF で読ませる資料 | 1.75 | 28px | 19px |
 
 - フォントは端末のもの（外部から読み込まない）。日本語はゴシック体
+- デッキごとに primary の色を差し替えられる（`<meta name="deck-primary" content="#RRGGBB">`。ダーク用は `deck-primary-dark`）。値を書いてよいのはここだけ。ビルドが、その色と面の色のコントラスト（文字として 4.5:1、ライトとダークの両方）を確かめ、足りなければ失敗にする。primary の上の文字の色と container の色は、ビルドがその色から作る
 
-### 6. スキル（.claude/skills/slide/）
+### 6. Obsidian から開く
+
+Obsidian の中（pkm-html）ではスクリプトが動かないので、pkm-html に、`slide/` の `index.html` を OS の既定のブラウザで開くコマンドと、ファイルのメニューの項目を足す（PC。スマホで使えるかは実機で確かめ、使えなければ PC だけにする）。pkm-html の表示の上にも、同じボタンを出す。
+
+### 7. スキル（.claude/skills/slide/）
 
 | ファイル | 内容 |
 |---|---|
@@ -147,12 +154,11 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 | 物を見せる | `image`、`screenshot`、`code`、`diagram` |
 | 話の型 | `problem-solution`、`scqa` |
 
-### 7. 最初の版に入れないもの
+### 8. 最初の版に入れないもの
 
-- 発表者ビュー（別ウィンドウに次のスライド・ノート・タイマー）
-- ボタン 1 つでの PDF のファイル保存（ブラウザの印刷を経由しない方法）。CLI での PDF 化（ブラウザの実行環境が要る）
-- Obsidian の中からブラウザで開くコマンド、スライドの一覧の View
-- デッキごとの色の差し替え（ブランドの色）、16:9 以外の比率
+- 画面のボタン 1 つでの PDF のファイル保存（ブラウザの印刷を経由しない方法）
+- Obsidian の中のスライドの一覧の View
+- primary 以外の色の差し替え、16:9 以外の比率
 
 ## 理由
 
@@ -179,9 +185,9 @@ HTML の断片で書く。スクリプトとスタイルの値を持たず、決
 ## 影響
 
 - 追加: `.kit/src/packages/slide/`（ソース、テスト、プレビュー）、`.kit/bin/slide.mjs`、`.claude/skills/slide/`、design の生成（スライド用の CSS）
-- 変更: `.claude/docs/vault-conventions.md`（`slide/` の配置、添付の例外）、`.claude/CLAUDE.md`（スキルの表）、`verify.mjs`（`slide.mjs check`）、`design.md`（スライドの節）、security-scan（ビルドの再現の確認に `slide.mjs` を足す）
+- 変更: pkm-html（ブラウザで開くコマンドとメニュー。`main.js` をビルドする）、`.claude/docs/vault-conventions.md`（`slide/` の配置、添付の例外）、`.claude/CLAUDE.md`（スキルの表）、`verify.mjs`（`slide.mjs check`）、`design.md`（スライドの節）、security-scan（ビルドの再現の確認に `slide.mjs` を足す）
 - 依存: 新しいパッケージの devDependencies に、ほかのパッケージと同じ版の `esbuild`・`typescript`・`vitest`・`playwright`・`linkedom`・`@types/node`（新しい種類の依存は増えない）
-- テスト: ビルドが決定論的であること、取り除く処理、規約の検査、`check` が古い・手で直した `index.html` を見つけること。プレビュー（Playwright）で、矢印キーでの送りとステップ、印刷した PDF から文字を取り出せること、レビューのレポートがコピーされること、スクリプトなしで全スライドが読めること
+- テスト: ビルドが決定論的であること、取り除く処理、規約の検査、`check` が古い・手で直した `index.html` を見つけること。プレビュー（Playwright）で、矢印キーでの送りとステップ、印刷した PDF から文字を取り出せること、レビューのレポートがコピーされること、発表者ビューが同期すること、スクリプトなしで全スライドが読めること
 - セキュリティチェック: スクリプトを含む HTML を Vault に置く初めての仕組みなので、チェックの範囲に足す（CSP、取り除く処理、`localStorage` に置くのはコメントだけ）
 - 子の Vault: 新しいフォルダ・CLI・スキルが増えるだけで、子のものは変えない（移行なし）。`.kit/changes/` に書く
 - 実機で確かめること: Chrome・Safari・Firefox での Slide Show と印刷、スマホの Obsidian の中での静的な表示
