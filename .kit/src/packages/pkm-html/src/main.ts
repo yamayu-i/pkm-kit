@@ -1,11 +1,12 @@
 /**
  * pkm-html: Vault の中の HTML を、読み取り専用で表示する（ADR-0037）。
- * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）を持つ。ほかのプラグインには依存しない
+ * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）と、スライドをブラウザで開くコマンド（ADR-0117）を持つ。ほかのプラグインには依存しない
  */
 import { Notice, Plugin, TFile, type TAbstractFile } from "obsidian";
-import { HTML_EXTENSIONS } from "./core/policy.ts";
+import { HTML_EXTENSIONS, isSlideDeck } from "./core/policy.ts";
 import { exportHtmlToTmp } from "./obsidian/export.ts";
 import { HtmlView, VIEW_TYPE } from "./obsidian/html-view.ts";
+import { openSlideInBrowser } from "./obsidian/open-external.ts";
 
 export default class PkmHtmlPlugin extends Plugin {
 	override async onload(): Promise<void> {
@@ -28,9 +29,22 @@ export default class PkmHtmlPlugin extends Plugin {
 				return true;
 			},
 		});
+		// スライド（ADR-0117）は共通のスクリプトで動くので、OS のブラウザで開く
+		this.addCommand({
+			id: "open-slide-in-browser",
+			name: "Open slide in browser",
+			icon: "presentation",
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!isHtml(file) || !isSlideDeck(file.path)) return false;
+				if (!checking) openSlideInBrowser(this.app, file);
+				return true;
+			},
+		});
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
 				if (!isHtml(file)) return;
+				if (isSlideDeck(file.path)) menu.addItem((item) => item.setTitle("Open in browser").setIcon("presentation").onClick(() => openSlideInBrowser(this.app, file)));
 				menu.addItem((item) => item.setTitle("Export HTML to tmp/").setIcon("file-output").onClick(() => void exportHtmlToTmp(this.app, file)));
 			}),
 		);

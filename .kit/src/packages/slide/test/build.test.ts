@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 import { buildDeck, stampLines, textWidth, type Assets, type BuildResult } from "../src/core/build.ts";
 
 const assets: Assets = { tokensCss: "/*tokens*/", css: "/*css*/", runtime: "console.log('runtime');" };
+const sha256 = (text: string, encoding: "hex" | "base64") => createHash("sha256").update(text).digest(encoding);
 const parse = (html: string) => new DOMParser().parseFromString(html, "text/html") as unknown as Document;
 
 function build(source: string, files: string[] = []): BuildResult {
-	return buildDeck({ source, deckPath: "slide/demo", assets, parse, exists: (p) => files.includes(p) });
+	return buildDeck({ source, deckPath: "slide/demo", assets, parse, sha256, exists: (p) => files.includes(p) });
 }
 const deck = (body: string, head = "") => `<title>題</title>\n${head}\n${body}`;
 const slide = (inner: string, pattern = "statement") => `<section data-pattern="${pattern}">\n${inner}\n</section>`;

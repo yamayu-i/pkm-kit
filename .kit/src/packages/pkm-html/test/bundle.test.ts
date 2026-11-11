@@ -40,7 +40,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）"
 		expect([...required]).toEqual(["obsidian"]);
 		expect(views).toEqual(["pkm-html"]);
 		expect(extensions).toEqual([[["html", "htm"], "pkm-html"]]);
-		expect(commands).toEqual(["export-to-tmp"]);
+		expect(commands).toEqual(["export-to-tmp", "open-slide-in-browser"]);
 	});
 
 	it("iframe の sandbox に allow-scripts を付けない。CSP とトークンを束ねている", () => {

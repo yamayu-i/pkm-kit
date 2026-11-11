@@ -97,16 +97,21 @@ function prev(): void {
 
 // ---- 発表者ビューとの同期（file:// でも動くように、開いたウィンドウどうしで postMessage する）
 let peer: Window | null = presenter ? window.opener : null;
+/** file:// で開くと origin で送り先を絞れない（窓ごとに別の origin になる）。送るのはスライドの番号だけで、受ける側はビルドの ID が合うものだけを使う */
+const peerOrigin = location.protocol === "file:" || location.origin === "null" ? "*" : location.origin;
 function send(message: Record<string, unknown>): void {
 	try {
-		if (peer && !peer.closed) peer.postMessage({ pkmSlide: build, ...message }, "*");
+		if (peer && !peer.closed) peer.postMessage({ pkmSlide: build, ...message }, peerOrigin);
 	} catch {
 		// 相手がいなければ何もしない
 	}
 }
 window.addEventListener("message", (e) => {
 	const data = e.data as { pkmSlide?: string; type?: string; index?: number; step?: number } | null;
+	// 受けるのは、同じビルドの ID を持つメッセージの、スライドの番号だけ（file:// どうしは別の origin になり、送り元の窓を同一性で確かめられない）
 	if (!data || data.pkmSlide !== build) return;
+	if (data.index !== undefined && !Number.isInteger(data.index)) return;
+	if (data.step !== undefined && !Number.isInteger(data.step)) return;
 	if (data.type === "go") go(data.index ?? 0, data.step ?? 0, false);
 	if (data.type === "hello") {
 		peer = e.source as Window;

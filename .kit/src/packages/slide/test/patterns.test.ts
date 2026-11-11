@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +30,7 @@ describe("パターン（ADR-0117 の 7）", () => {
 			const template = templateOf(p.id) as string;
 			expect(template).toContain(`data-pattern="${p.id}"`);
 			const files = assetsOf(template) as string[];
-			const r = buildDeck({ source: `<title>t</title>\n${template}`, deckPath: "slide/t", assets: { tokensCss: "", css: "", runtime: "" }, parse, exists: (f) => files.includes(f) });
+			const r = buildDeck({ source: `<title>t</title>\n${template}`, deckPath: "slide/t", assets: { tokensCss: "", css: "", runtime: "" }, parse, sha256: (t, e) => createHash("sha256").update(t).digest(e), exists: (f) => files.includes(f) });
 			expect(r.problems).toEqual([]);
 			const doc = readFileSync(join(PATTERN_DOCS, `${p.id}.md`), "utf8");
 			for (const heading of ["## 使う場面", "## 使わない場面", "## ひな形", "## 書くときの指示", "## よくある失敗", "## 根拠"]) expect(doc).toContain(heading);

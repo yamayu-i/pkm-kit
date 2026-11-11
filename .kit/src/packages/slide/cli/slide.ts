@@ -11,6 +11,7 @@
  * Vault のルートは --vault <パス>（既定は今のフォルダ）。フォルダは今のフォルダからのパスで書く
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, watch, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -99,6 +100,7 @@ function buildOne(root: string, deck: string): BuildResult {
 		deckPath: deck,
 		assets,
 		parse,
+		sha256: (text, encoding) => createHash("sha256").update(text).digest(encoding),
 		exists: (rel) => {
 			const full = resolve(folder, ...rel.split("/"));
 			// シンボリックリンクでデッキの外を指すものは、ないものとして扱う

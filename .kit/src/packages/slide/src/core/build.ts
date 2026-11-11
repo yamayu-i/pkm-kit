@@ -1,8 +1,7 @@
 /**
  * deck.html（ソース）から index.html（共通の CSS とスクリプトを入れた、ブラウザで開くもの）を作る（ADR-0117）。
- * 同じ入力からは同じバイト列になる（日時を入れない）。ファイルの読み書きは呼ぶ側（cli/slide.ts）が行う
+ * 同じ入力からは同じバイト列になる（日時を入れない）。ファイルの読み書きとハッシュの計算（Node の API）は呼ぶ側（cli/slide.ts）が渡す
  */
-import { createHash } from "node:crypto";
 import { stripDangerous } from "../../../pkm-html/src/core/sanitize.ts";
 import { derivePrimary, isColorValue, lightenForDark, type Mode, type PrimaryColors } from "./color.ts";
 import { findPattern, PATTERN_IDS, type Pattern } from "./patterns.ts";
@@ -32,7 +31,11 @@ export interface BuildInput {
 	/** デッキのフォルダから見たパスに、ファイルがあるか */
 	exists: (relativePath: string) => boolean;
 	parse: (html: string) => Document;
+	/** SHA-256（スライドのハッシュは hex、CSP は base64） */
+	sha256: Sha256;
 }
+
+export type Sha256 = (text: string, encoding: "hex" | "base64") => string;
 
 export interface BuildResult {
 	/** エラーがあれば null */
@@ -91,10 +94,6 @@ export function textWidth(text: string): number {
 	let w = 0;
 	for (const ch of text.replace(/\s+/g, " ").trim()) w += (ch.codePointAt(0) as number) < 0x2000 ? 0.5 : 1;
 	return w;
-}
-
-function sha(text: string): string {
-	return createHash("sha256").update(text).digest("hex");
 }
 
 function lineOf(el: Element | null): number {
@@ -190,7 +189,7 @@ export function buildDeck(input: BuildInput): BuildResult {
 
 	if (problems.some((p) => p.level === "error")) return { html: null, problems, title, slides: slides.length };
 
-	const html = page({ title, lang, theme, density, deckPath: input.deckPath, author: meta.get("deck-author") ?? "", date: meta.get("deck-date") ?? "", primaryCss, slides, assets: input.assets });
+	const html = page({ title, lang, theme, density, deckPath: input.deckPath, author: meta.get("deck-author") ?? "", date: meta.get("deck-date") ?? "", primaryCss, slides, assets: input.assets, sha256: input.sha256 });
 	return { html, problems, title, slides: slides.length };
 }
 
@@ -299,7 +298,7 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 	const line = lineOf(section);
 	const html = `<section class="slide" data-pattern="${escapeHtml(id)}" ${LINE_ATTR}="${line}">\n${inner}\n</section>`;
 	// 変わったスライドを見分けるハッシュ。行がずれただけでは変えない
-	const hash = sha(`${id}\n${inner.replace(new RegExp(` ${LINE_ATTR}="\\d+"`, "g"), "")}\n${notes.join("\n")}`).slice(0, 10);
+	const hash = input.sha256(`${id}\n${inner.replace(new RegExp(` ${LINE_ATTR}="\\d+"`, "g"), "")}\n${notes.join("\n")}`, "hex").slice(0, 10);
 	return { n, pattern: id, line, title: headTitle, html, notes: notes.join("\n"), hash };
 }
 
@@ -363,11 +362,12 @@ interface PageInput {
 	primaryCss: string;
 	slides: Slide[];
 	assets: Assets;
+	sha256: Sha256;
 }
 
 /** 共通のスクリプトだけをハッシュで許し、外部への通信を止める */
-export function contentSecurityPolicy(runtime: string): string {
-	const hash = createHash("sha256").update(runtime).digest("base64");
+export function contentSecurityPolicy(runtime: string, sha256: Sha256): string {
+	const hash = sha256(runtime, "base64");
 	return `default-src 'none'; img-src 'self' data: blob:; style-src 'unsafe-inline'; script-src 'sha256-${hash}'; font-src data:; form-action 'none'; base-uri 'none'`;
 }
 
@@ -389,12 +389,12 @@ function page(p: PageInput): string {
 		)
 		.join("\n");
 	const info = [p.author, p.date, `${p.slides.length} slides`].filter((t) => t !== "").map(escapeHtml).join(" · ");
-	const build = sha(`${style}\n${cells}\n${p.assets.runtime}`).slice(0, 12);
+	const build = p.sha256(`${style}\n${cells}\n${p.assets.runtime}`, "hex").slice(0, 12);
 	return `<!DOCTYPE html>
 <html lang="${escapeHtml(p.lang)}" data-theme="${p.theme}" data-density="${p.density}" data-deck="${escapeHtml(p.deckPath)}" data-build="${build}">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy(p.assets.runtime)}">
+<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy(p.assets.runtime, p.sha256)}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="pkm-kit slide">
 <!-- 生成物。手で編集しない。ソースは同じフォルダの deck.html（node .kit/bin/slide.mjs build で作り直す） -->

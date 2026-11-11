@@ -38,6 +38,7 @@
 | タスク状況を把握し、計画・助言・振り返りを行う | [task-coach](skills/task-coach/SKILL.md) |
 | 間違っていそうな worklog を一緒に直す | [worklog-review](skills/worklog-review/SKILL.md) |
 | 図を作る・直す・読み取る（Mermaid / D2 / SVG から選ぶ。色はデザイン規約の名前で） | [diagram](skills/diagram/SKILL.md) |
+| スライドを話し合いながら slide/ に HTML で作り、ブラウザでのレビューを受けて直す | [slide](skills/slide/SKILL.md) |
 | 調査報告・回答・計画などの成果物を、読み手と段階に合わせて書き、記録する | [write-for-reader](skills/write-for-reader/SKILL.md) |
 | 調査報告を、調査の型（技術選定・原因調査など）に合わせて tmp/ に md か html で書く | [research-report](skills/research-report/SKILL.md) |
 | 気づきを記録する（直す先が子か上流かも書く） | [harness-note](skills/harness-note/SKILL.md) |

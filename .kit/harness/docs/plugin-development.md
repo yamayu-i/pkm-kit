@@ -201,6 +201,33 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 - `test/` は policy の単体テスト、書き出しの変換のテスト（linkedom で解析）、ビルド済み `main.js` と `.kit/bin/html.mjs` のテスト。iframe の表示は preview で確かめる
 - Playwright と違う版の Chromium しかない環境では、`CHROMIUM_PATH` に実行ファイルを渡す
 
+## slide（スライドの CLI）
+
+`slide/<…>/<デッキ>/deck.html` から、共通の CSS とスクリプトを入れた `index.html` を作る CLI（ADR-0117）。Obsidian のプラグインではない（`.obsidian/plugins/` に出さない。`.kit/bin/slide.mjs` だけ）。デザインの規約とパターンは、子向けのスキル `.claude/skills/slide/` にある。
+
+- **同じ入力から同じバイト列**: `index.html` に日時を入れない。`check` はビルドし直して比べ、古い・手で直した `index.html` を見つける（`verify.mjs` が呼ぶ）
+- **動くスクリプトは共通のものだけ**: `deck.html` からスクリプト・イベントの属性・外部の読み込みを取り除き（pkm-html の `stripDangerous`）、CSP の `script-src` を共通のスクリプトの sha256 だけにする。`default-src 'none'` で外部に通信しない
+- **値はソースに書かせない**: `<style>`、`style` の値（部品のつまみ `--v` / `--x` / `--y` を除く）、色の属性はエラー。添付はデッキのフォルダの中だけ
+- 共通の CSS とスクリプトは、`esbuild.config.mjs` が文字列にして CLI に束ねる（`virtual:slide-assets`）。CSS の `48u` は `calc(48 * var(--u))` に展開する
+- ブラウザのスクリプト（`src/runtime/`）は 1 つの即時関数。保存するのは `localStorage` のレビューのコメント・見たビルド・テーマだけ。発表者ビューは、開いたウィンドウどうしの `postMessage`。`file://` では窓ごとに別の origin になるので、送り先を origin で絞れず、送り元の窓の同一性も確かめられない。送るのはスライドとステップの番号だけにし、受ける側はビルドの ID が合い、番号が整数のものだけを使う
+- スクリプトなしでも読める形にする（Obsidian の中の pkm-html はスクリプトを取り除く）。ボタンはスクリプトが作る
+- パターンの id の正本は `src/core/patterns.ts`。ひな形の正本はスキルの `patterns/<id>.md`（テストと見本は、そこから作る）
+
+### コードの構成（`.kit/src/packages/slide`）
+
+| パス | 役割 |
+|---|---|
+| `src/core/build.ts` | 解析、取り除く処理、規約の検査、見出し・本文・出典の組み立て、CSP、`index.html` の文字列 |
+| `src/core/patterns.ts` | パターンの一覧（id、分類、逆引きの 1 文、要る部品） |
+| `src/core/color.ts` | デッキごとの primary のコントラストの検査と、色の導出（design の色の計算を使う） |
+| `src/runtime/main.ts`・`report.ts` | 一覧、Slide Show、印刷、レビュー、発表者ビュー。レポートの文字列（DOM なしでテストする） |
+| `src/style/viewer.css`・`slide.css`・`patterns.css` | 閲覧の画面、スライドの面と部品、パターンごとの配置 |
+| `cli/slide.ts` | `.kit/bin/slide.mjs`（`new` / `build` / `check` / `export` / `pdf` / `patterns`）。解析は linkedom |
+| `preview/` | `pnpm --filter slide preview:ui`。全パターンの見本の描画（はみ出し）、外部への要求、Slide Show、PDF の文字、レビュー、発表者ビュー、スクリプトなしを Chromium で確かめる。CI では動かない |
+
+- `test/` は、ビルドの変換、レポートの形、パターンの一覧・文書・逆引き・CSS の照合（ひな形がエラーも警告もなくビルドできること）、ビルド済みの CLI
+- pkm-html は、`slide/` の `index.html` を OS のブラウザで開くコマンドを持つ（`src/obsidian/open-external.ts`。開けるのは `isSlideDeck` に当たるパスだけ）
+
 ## pkm-diagram（図）
 
 ノートの図（`asset/` の SVG の画像と、ノートの Mermaid の図）を、コピー・PNG で保存・拡大表示し、`tmp/` への書き出しで埋め込むプラグイン（ADR-0102）。以前の Draw.io の図（`asset/*.drawio.svg`。ルートの `<svg>` の `content` 属性に編集用 XML を持つ）も普通の SVG の図として扱い、編集の手段は持たない（ADR-0111）。表示は Obsidian の標準の画像の表示のまま（`.svg` の拡張子を View に登録しない）。

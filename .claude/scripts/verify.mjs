@@ -40,6 +40,10 @@ const steps = [
 	["wiki の lint", node, [join(scripts, "wiki-lint.mjs")]],
 	["Obsidian の設定", node, [join(scripts, "check-obsidian-config.mjs")]],
 	["所有の境界", node, [join(scripts, "check-kit-paths.mjs"), ...(process.argv.includes("--fetch") ? ["--fetch"] : [])]],
+	// スライド（ADR-0117）: index.html が deck.html と今の CLI から作ったものと同じか。slide/ がなければ何もしない
+	existsSync(join(root, "slide")) && existsSync(join(root, ".kit/bin/slide.mjs"))
+		? ["スライド（index.html が deck.html から作ったものと同じか）", node, [join(root, ".kit/bin/slide.mjs"), "check"]]
+		: ["スライド（slide/ がないので省略）", null, []],
 	["移行（子の Vault で未適用のものがないか）", node, [join(root, ".kit/migrate.mjs"), "--status"]],
 	appendOnly
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), ...appendOnly]]
