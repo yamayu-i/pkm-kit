@@ -101,11 +101,12 @@ const file = (path: string) => ({ path }) as unknown as TFile;
 const index = (ws: FakeWorkspace, l: FakeLeaf) => ws.groups.indexOf(l.parent);
 
 describe("isListViewType", () => {
-	it("pkm-task・pkm-template・pkm-updates の View は一覧。サイドバーとノートは違う", () => {
+	it("pkm-task・pkm-template・pkm-updates・pkm-slide の View は一覧。サイドバーとノートは違う", () => {
 		expect(isListViewType("pkm-task-daily")).toBe(true);
 		expect(isListViewType("pkm-task-issues")).toBe(true);
 		expect(isListViewType("pkm-template-note-list")).toBe(true);
 		expect(isListViewType("pkm-updates-view")).toBe(true);
+		expect(isListViewType("pkm-slide-list")).toBe(true);
 		expect(isListViewType("pkm-task-sidebar")).toBe(false);
 		expect(isListViewType("markdown")).toBe(false);
 		expect(isListViewType("empty")).toBe(false);

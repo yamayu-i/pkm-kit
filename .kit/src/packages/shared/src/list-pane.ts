@@ -6,7 +6,7 @@ import type { PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent } from 
  * Obsidian の値は import しない（型だけ）。スマホかどうかは呼ぶ側が Platform.isPhone を渡す
  */
 
-const LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
+const LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
 /** 一覧の接頭辞を持つが、左サイドバーに常駐するもの（ADR-0021） */
 const NOT_LIST_VIEWS = new Set(["pkm-task-sidebar"]);
 

@@ -4,7 +4,7 @@
  */
 
 /** 候補を出すプラグイン。View の種類は `<プラグイン>-<名前>`、開くコマンドは `<プラグイン>:open-<名前>` */
-export const SOURCE_PLUGINS = ["pkm-task", "pkm-template", "pkm-updates"] as const;
+export const SOURCE_PLUGINS = ["pkm-task", "pkm-template", "pkm-updates", "pkm-slide"] as const;
 
 /** 集めるのに使うコマンドの形（Obsidian の Command のうち、使う項目だけ） */
 export interface CommandLike {

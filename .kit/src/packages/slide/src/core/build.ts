@@ -450,6 +450,7 @@ function page(p: PageInput): string {
 ${style}</style>
 </head>
 <body>
+<span id="thumb" hidden></span>
 <header class="sl-bar">
 <h1>${escapeHtml(p.title)}</h1>
 <p class="sl-info">${info}</p>

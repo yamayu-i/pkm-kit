@@ -161,6 +161,8 @@ const plugins = [
 	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
 	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ
+	// ADR-0120: スライドの一覧。縮小は index.html をスクリプトを許さない sandbox の iframe で開く
+	{ id: "pkm-slide", outdirEnv: "PKM_SLIDE_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	{ id: "pkm-view-selector", outdirEnv: "PKM_VIEW_SELECTOR_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
 ];
 
