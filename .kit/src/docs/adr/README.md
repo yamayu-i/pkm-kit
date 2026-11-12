@@ -81,4 +81,5 @@
 | [0121](0121-vault-theme.md) | 承認（一部置換: 0125） | 子の Vault ごとに基本の色を変えられるようにする |
 | [0124](0124-slide-list-tree.md) | 承認 | Slides の一覧を、フォルダを展開する木とデッキの行にする |
 | [0125](0125-slide-vault-primary.md) | 承認 | 子の基本の色の primary を、スライドの既定の primary にする |
+| [0128](0128-markdown-view.md) | 提案 | ノートの表示を自作プラグイン pkm-markdown で整える（インラインコードのコピー、本文のタグを文字に、見出しと箇条書き） |
 <!-- adr-index:end -->
