@@ -120,6 +120,12 @@ export function renameTarget(source: string, name: string, exists: (path: string
 	return { path };
 }
 
+/** 木の 1 段: フォルダの直下にある整理のフォルダ（名前の順）とデッキのパス（ADR-0124） */
+export function childrenOf(folders: readonly string[], decks: readonly string[], parent: string): { folders: string[]; decks: string[] } {
+	const direct = (p: string) => p !== parent && parentOf(p) === parent;
+	return { folders: folders.filter(direct).sort(), decks: decks.filter(direct) };
+}
+
 /** フォルダの表示名（slide/ は All） */
 export function folderLabel(path: string): string {
 	return path === SLIDE_ROOT ? "All" : baseName(path);
