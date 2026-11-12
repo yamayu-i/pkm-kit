@@ -1,4 +1,4 @@
-import { MarkdownView, normalizePath, Platform, type App, type TFile } from "obsidian";
+import { MarkdownView, normalizePath, parseYaml, Platform, type App, type Editor, type TFile } from "obsidian";
 import { openInNotePane } from "../../../shared/src/list-pane.ts";
 import {
 	parseTemplateConfig,
@@ -8,6 +8,7 @@ import {
 	UPSTREAM_TEMPLATE_DIR,
 	type TemplateEntry,
 } from "../core/config";
+import { noteLink } from "../core/note-link";
 import {
 	INLINE_DIR,
 	layerSnippets,
@@ -202,6 +203,8 @@ export class TemplateManager {
 		dates?: Record<string, string>;
 		now?: Date;
 		newTab?: boolean;
+		/** 指定すると、作ったノートを開かず、このエディタのカーソル位置にそのノートへのリンクを入れる */
+		linkInto?: Editor;
 	}): Promise<TFile> {
 		const now = params.now ?? new Date();
 		const takenNames = this.takenNames();
@@ -234,6 +237,12 @@ export class TemplateManager {
 		await this.ensureFolder(normalized);
 		const created = await this.app.vault.create(normalized, rendered.content);
 
+		if (params.linkInto) {
+			params.linkInto.replaceSelection(noteLink(created.path, frontmatterOf(rendered.content)));
+			params.linkInto.focus();
+			return created;
+		}
+
 		const leaf = await openInNotePane(this.app.workspace, created, { newTab: params.newTab === true, phone: Platform.isPhone });
 
 		const view =
@@ -256,5 +265,17 @@ export class TemplateManager {
 				await this.app.vault.createFolder(folder);
 			}
 		}
+	}
+}
+
+/** 先頭の frontmatter を読む（作った直後は metadataCache にまだない） */
+function frontmatterOf(content: string): Record<string, unknown> | undefined {
+	const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+	if (!m) return undefined;
+	try {
+		const parsed: unknown = parseYaml(m[1]!);
+		return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : undefined;
+	} catch {
+		return undefined;
 	}
 }

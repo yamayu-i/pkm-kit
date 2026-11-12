@@ -1,4 +1,4 @@
-import { Modal, Platform, type App } from "obsidian";
+import { Modal, Platform, type App, type Editor } from "obsidian";
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { formatDateTime } from "../core/date-format";
@@ -14,10 +14,12 @@ function CreateNoteForm(props: {
 	app: App;
 	templates: LoadedTemplate[];
 	manager: TemplateManager;
+	/** カーソルが出ているエディタ。あれば「作ってリンクを入れる」が使える */
+	linkEditor: Editor | null;
 	onCreated: () => void;
 	onReport: (msg: string, err?: unknown) => void;
 }) {
-	const { templates, manager, onCreated, onReport } = props;
+	const { templates, manager, linkEditor, onCreated, onReport } = props;
 	const [selectedIdx, setSelectedIdx] = useState(0);
 	const [titleInput, setTitleInput] = useState("");
 	const [promptValues, setPromptValues] = useState<Record<string, string>>({});
@@ -57,7 +59,7 @@ function CreateNoteForm(props: {
 	const errorMessage = resolved.error ?? (alreadyExists ? `すでに同じ名前のファイルがあります: ${resolved.path}` : null);
 	const canSubmit = !submitting && !errorMessage && Boolean(resolved.path);
 
-	const submit = (newTab: boolean) => {
+	const submit = (newTab: boolean, link = false) => {
 		if (!canSubmit) return;
 		setSubmitting(true);
 		// {{prompt-date}} があれば、ファイルを作る前に日付を尋ねる。キャンセルなら作らない（ADR-0065）
@@ -74,6 +76,7 @@ function CreateNoteForm(props: {
 					dates,
 					now,
 					newTab,
+					...(link && linkEditor ? { linkInto: linkEditor } : {}),
 				});
 				onCreated();
 			})
@@ -93,6 +96,11 @@ function CreateNoteForm(props: {
 		}
 		if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
+			// Mod+Alt+Enter: 作って、カーソル位置にリンクを入れる（開かない）
+			if (e.altKey) {
+				if (linkEditor) submit(false, true);
+				return;
+			}
 			submit(e.shiftKey);
 		}
 	};
@@ -183,7 +191,14 @@ function CreateNoteForm(props: {
 					{errorMessage ? errorMessage : `Creates: ${resolved.path}`}
 				</div>
 				<div class="vt-tpl-actions">
-					{!Platform.isMobile && <span class="vt-tpl-hint">Enter / Mod+Enter to create</span>}
+					{!Platform.isMobile && (
+						<span class="vt-tpl-hint">Enter / Mod+Enter to create{linkEditor ? " / Mod+Alt+Enter to create and link" : ""}</span>
+					)}
+					{linkEditor && (
+						<button type="button" class="vt-tpl-button" disabled={!canSubmit} onClick={() => submit(false, true)}>
+							Create and link
+						</button>
+					)}
 					<button type="button" class="vt-tpl-button" disabled={!canSubmit} onClick={() => submit(true)}>
 						Open in new tab
 					</button>
@@ -202,6 +217,7 @@ export class CreateNoteModal extends Modal {
 		private readonly manager: TemplateManager,
 		private readonly templates: LoadedTemplate[],
 		private readonly onReport: (msg: string, err?: unknown) => void,
+		private readonly linkEditor: Editor | null = null,
 	) {
 		super(app);
 	}
@@ -213,6 +229,7 @@ export class CreateNoteModal extends Modal {
 				app={this.app}
 				templates={this.templates}
 				manager={this.manager}
+				linkEditor={this.linkEditor}
 				onCreated={() => this.close()}
 				onReport={this.onReport}
 			/>,
