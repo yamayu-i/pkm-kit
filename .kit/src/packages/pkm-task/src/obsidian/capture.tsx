@@ -68,14 +68,14 @@ function showCreatedNotice(ctx: TaskContext, created: TFile[], failed: string[])
 	notice = new Notice(fragment, NOTICE_MS);
 }
 
-/** issue の一括登録（ADR-0011） */
-export function openCaptureModal(ctx: TaskContext): void {
-	new PreactModal(ctx.app, "Capture issues", (close) => (
+/** issue の一括登録（ADR-0011）。`parent` を渡すと、その issue の子として作る（ADR-0012） */
+export function openCaptureModal(ctx: TaskContext, parent: string | null = null): void {
+	new PreactModal(ctx.app, parent === null ? "Capture issues" : "Capture child issues", (close) => (
 		<CaptureForm
 			onSubmit={(summaries) => {
 				close();
 				void ctx.writer
-					.createIssues(summaries)
+					.createIssues(summaries, parent)
 					.then(({ created, failed }) => showCreatedNotice(ctx, created, failed))
 					.catch((e) => ctx.report("issue を作成できませんでした", e));
 			}}

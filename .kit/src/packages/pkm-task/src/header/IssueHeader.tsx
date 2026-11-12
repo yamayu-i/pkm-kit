@@ -8,10 +8,11 @@ import { isActive, type TaskIndex } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
+import { openCaptureModal } from "../obsidian/capture";
 import { IssueSuggestModal, PreactModal } from "../obsidian/modals";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
-import { CalendarForm, DateForm, DayCell, TextForm, WorklogForm } from "../ui/forms";
+import { CalendarForm, DateForm, DayCell, WorklogForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
@@ -285,21 +286,7 @@ function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; sa
 			}),
 		);
 		m.addItem((item) =>
-			item.setTitle("Create new").onClick(() =>
-				new PreactModal(ctx.app, "Child issue summary", (close) => (
-					<TextForm
-						initial=""
-						onSubmit={(summary) => {
-							close();
-							if (!summary) return;
-							void ctx.writer
-								.createIssues([summary], issue.id)
-								.then((r) => r.failed.length > 0 && ctx.report("子 issue を作れませんでした"))
-								.catch((err) => ctx.report("子 issue を作れませんでした", err));
-						}}
-					/>
-				)).open(),
-			),
+			item.setTitle("Create new").onClick(() => openCaptureModal(ctx, issue.id)),
 		);
 		m.showAtMouseEvent(e);
 	};
