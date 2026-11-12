@@ -13,7 +13,8 @@
 		"erasableSyntaxOnly": true,
 		"allowImportingTsExtensions": true,
 		"skipLibCheck": true,
+		"resolveJsonModule": true,
 		"noEmit": true
 	},
-	"include": ["src", "node", "scripts", "test", "generated"]
+	"include": ["src", "node", "scripts", "test", "generated", "cli"]
 }

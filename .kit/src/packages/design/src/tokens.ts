@@ -9,8 +9,10 @@
  * - `obsidian`: Obsidian 側で同じ値に固定する CSS 変数（スニペットに出す）
  * - `plugin`: false ならプラグインの CSS には出さない（Obsidian のためだけの値）
  * - `source`: 値の根拠
+ * - `vault`: true なら子の Vault が `.kit-local/theme.json` で上書きできる（ADR-0121）
+ * - `derive`: 元の色のパス（`{color.on-surface}`）。色相は元の色と同じで、透明度だけを持つ。上書きで元の色が変わると追従する
  */
-import { isHex, parseHex, type Rgba } from "./color.ts";
+import { isHex, parseHex, toHex, type Rgba } from "./color.ts";
 
 export const EXT = "com.yamayu-pkm";
 export const PREFIX = "--vt-";
@@ -44,6 +46,10 @@ export interface Token {
 	obsidian: string[];
 	plugin: boolean;
 	source?: string;
+	/** 子の Vault が上書きできる（ADR-0121） */
+	vault: boolean;
+	/** 色相を合わせる元の色のパス（ADR-0121） */
+	derive?: string;
 }
 
 export class TokenError extends Error {}
@@ -133,7 +139,26 @@ export function loadTokens(json: unknown): Token[] {
 			}
 		}
 	}
+	for (const t of tokens) {
+		if (t.derive === undefined) continue;
+		const ref = byPath.get(t.derive);
+		if (!ref || ref.type !== "color") {
+			errors.push(`${t.path}: derive の参照先 ${t.derive} がありません（または色ではありません）`);
+			continue;
+		}
+		if (ref.derive !== undefined) errors.push(`${t.path}: derive の参照先 ${t.derive} も derive です（元の色を指してください）`);
+	}
 	if (errors.length > 0) throw new TokenError(errors.join("\n"));
+	for (const t of tokens) {
+		if (t.derive === undefined) continue;
+		for (const mode of MODES) {
+			const own = resolveColor(tokens, t.path, mode);
+			const from = resolveColor(tokens, t.derive, mode);
+			if (own.r !== from.r || own.g !== from.g || own.b !== from.b) {
+				errors.push(`${t.path}: derive の元 ${t.derive}（${mode}）と色相が合いません（${toHex({ ...from, a: 1 })} にする）`);
+			}
+		}
+	}
 	// contrast.on の一番下は不透明な色（半透明だと下に何があるかで比が変わる）
 	for (const t of tokens) {
 		for (const layers of t.contrast?.on ?? []) {
@@ -160,7 +185,7 @@ function readToken(
 	const e = isObject(ext) ? ext : {};
 	if (ext !== undefined && !isObject(ext)) errors.push(`${p}: $extensions.${EXT} はオブジェクトにしてください`);
 	for (const key of Object.keys(e)) {
-		if (!["dark", "role", "contrast", "obsidian", "plugin", "source"].includes(key)) errors.push(`${p}: 知らない拡張「${key}」`);
+		if (!["dark", "role", "contrast", "obsidian", "plugin", "source", "vault", "derive"].includes(key)) errors.push(`${p}: 知らない拡張「${key}」`);
 	}
 	const light = node.$value;
 	const dark = "dark" in e ? e.dark : light;
@@ -176,7 +201,19 @@ function readToken(
 		raw: { light, dark },
 		obsidian: [],
 		plugin: e.plugin !== false,
+		vault: e.vault === true,
 	};
+	if ("vault" in e) {
+		if (typeof e.vault !== "boolean") errors.push(`${p}: vault は true / false にしてください`);
+		else if (e.vault && (t !== "color" || aliasTarget(light) !== null || aliasTarget(dark) !== null || "derive" in e)) {
+			errors.push(`${p}: vault は、別名でも derive でもない色だけに付けられます`);
+		}
+	}
+	if ("derive" in e) {
+		const target = aliasTarget(e.derive);
+		if (t !== "color" || target === null) errors.push(`${p}: derive は色に、{path} の別名で書いてください`);
+		else token.derive = target;
+	}
 	if (typeof e.source === "string") token.source = e.source;
 	else if (group.source !== undefined) token.source = group.source;
 	if ("role" in e) {
