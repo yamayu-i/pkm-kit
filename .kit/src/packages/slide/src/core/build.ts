@@ -265,14 +265,14 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 	const head: Element[] = [];
 	const main: Element[] = [];
 	const foot: Element[] = [];
-	// .kicker は見出しの前、.lead は見出しのすぐ後にあるときだけ、見出しのまとまりに入れる（本文の中の .lead はその場に残す）
+	// .kicker は見出しの前、.lead・.meta は見出しのすぐ後にあるときだけ、見出しのまとまりに入れる（本文の中の .lead はその場に残す）
 	let afterHeading = false;
 	for (const c of children) {
 		const inHead =
 			c === heading ||
 			pattern?.headOnly === true ||
 			(hasClass(c, "kicker") && !afterHeading && main.length === 0) ||
-			(hasClass(c, "lead") && afterHeading && main.length === 0);
+			((hasClass(c, "lead") || hasClass(c, "meta")) && afterHeading && main.length === 0);
 		if (hasClass(c, "source")) foot.push(c);
 		else if (inHead) head.push(c);
 		else main.push(c);
@@ -361,7 +361,8 @@ function lintSlide(section: Element, n: number, heading: Element | null, pattern
 		// 木は、入れ子そのものが図になる
 		if (closestClass(list, "tree", section)) continue;
 		const items = [...list.children].filter((c) => c.tagName.toLowerCase() === "li");
-		if (!dense && items.length > MAX_ITEMS) report("warning", "too-many-items", list, n, `1 つのリストに ${items.length} 項目ある（${MAX_ITEMS} 項目まで。分けるか、まとめる。C4）`);
+		const max = pattern?.maxItems ?? MAX_ITEMS;
+		if (!dense && items.length > max) report("warning", "too-many-items", list, n, `1 つのリストに ${items.length} 項目ある（${max} 項目まで。分けるか、まとめる。C4）`);
 		let depth = 1;
 		for (let p = list.parentElement; p !== null && p !== section; p = p.parentElement) if (/^(ul|ol)$/i.test(p.tagName)) depth++;
 		if (depth > MAX_LIST_DEPTH) report("warning", "list-deep", list, n, `リストの入れ子が ${depth} 段ある（${MAX_LIST_DEPTH} 段まで。C4）`);

@@ -354,6 +354,10 @@
 	object-fit: contain;
 	border-radius: var(--sl-radius);
 }
+/* 説明があるときは、画像を説明のすぐ上に寄せる（枠の下の端に説明だけが離れて出ないように） */
+.slide figure > img:has(+ figcaption) {
+	align-self: end;
+}
 .slide figure > svg {
 	width: 100%;
 	height: 100%;

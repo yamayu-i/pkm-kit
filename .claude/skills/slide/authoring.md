@@ -67,7 +67,21 @@
 | コード | `<pre><code>…</code></pre>`。強調する行を `<mark>` で囲む |
 | 定義 | `<dl><dt>言葉</dt><dd>意味</dd></dl>` |
 
-パターン専用の部品（`.agenda`、`.takeaways`、`.actions`、`.matrix`、`.layers`、`.tree`、`.steps`、`.timeline`、`.cycle`、`.funnel`、`.bars`、`.share`、`.kpi`）は、各パターンのひな形にある。
+パターン専用の部品（`.agenda`、`.takeaways`、`.actions`、`.matrix`、`.layers`、`.tree`、`.steps`、`.timeline`、`.cycle`、`.funnel`、`.bars`、`.share`、`.kpi`、`.pairs`、`.spectrum`、`.venn`、`.grid`、`.hub`、`.pyramid`、`.roadmap`、`.journey`、`.flow`、`.columns`、`.progress`、`.waterfall`、`table.heat`、`.gallery`、`.risks`、`.asks`、`.retro`、`.faq`）は、各パターンのひな形にある。
+
+### 部品の変種（ADR-0120）
+
+どのパターンでも同じ書き方で効く。パターンを増やさずに配置を変えたいときに使う。
+
+| 変種 | 書き方 | 見た目 |
+|---|---|---|
+| 全面の写真 | `<figure class="bleed"><img …></figure>`（スライドの最後に置く） | 写真をスライド全面に敷き、見出しのまとまりを左下の面の板に載せる。**全面に敷くので写真の端が切れる**（ほかの画像は切れない）。[cover-image](patterns/cover-image.md)、[image-statement](patterns/image-statement.md) |
+| 半分の写真 | `<figure class="right">` / `class="left"`（最後に置く） | 写真をスライドの右半分（左半分）に、切り取らずに収める。文は残りの半分。[split-image](patterns/split-image.md) |
+| 線だけのカード | `<div class="card outline">` | 面の色を付けず、枠の線だけ。`primary` を足すと枠が強調の色 |
+| 番号のカード | `<div class="card numbered">` | 左上に 1 から順の番号（角丸の四角）。同じ `.cols` の中で数える |
+| 推すカード | `<div class="card pick">` | 枠と面を強調の色にする。1 枚に 1 つ。[options](patterns/options.md) |
+| カードの上の写真 | `<div class="card"><img class="cover-img" src="…" alt="…">…</div>` | カードの上に 16:9 の枠で写真を置く。切り取らずに収める |
+| 人の写真 | `<img class="avatar" src="…" alt="…">` | 角丸の四角の顔写真。[profile](patterns/profile.md) |
 
 ### 色
 

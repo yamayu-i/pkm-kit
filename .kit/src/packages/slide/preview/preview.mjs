@@ -7,6 +7,7 @@
  * - レビュー: 部品を選んでコメントし、レポートがクリップボードに入る。作り直すと Updated が出る
  * - 発表者ビュー: どちらで送っても同期する
  * - スクリプトなし: 全スライドが読める
+ * - 縮小（#thumb）: スクリプトなしで 1 枚目だけを出す（ADR-0120）
  *
  * 使い方: pnpm --filter slide preview:ui  → preview/out/*.png（目で確かめる一覧は sheet-*.png）
  * 初回だけ Chromium を入れる: pnpm --filter slide exec playwright install chromium（入れられない環境では CHROMIUM_PATH）
@@ -290,6 +291,19 @@ check(
 	const stepOpacity = await page.evaluate(() => getComputedStyle(document.querySelector("[data-step]")).opacity);
 	check(stepOpacity === "1", "スクリプトなしでステップが隠れている");
 	await page.screenshot({ path: join(out, "no-script.png") });
+	await context.close();
+}
+
+// ---- 縮小（ADR-0120。pkm-slide の一覧がスクリプトを許さない iframe で開く）: index.html#thumb は 1 枚目だけを枠いっぱいに出す
+{
+	const context = await browser.newContext({ viewport: { width: 320, height: 180 }, javaScriptEnabled: false });
+	const page = await context.newPage();
+	await page.goto(`${urlOf("light-present")}#thumb`);
+	check((await page.locator(".sl-cell:visible").count()) === 1, "#thumb で 1 枚目だけにならない");
+	check(!(await page.locator(".sl-bar").isVisible()), "#thumb で上のバーが出ている");
+	const box = await page.locator(".slide").first().boundingBox();
+	check(box !== null && Math.abs(box.width - 320) <= 1 && box.y <= 1, `#thumb で 1 枚目が枠いっぱいにならない: ${JSON.stringify(box)}`);
+	await page.screenshot({ path: join(out, "thumb.png") });
 	await context.close();
 }
 
