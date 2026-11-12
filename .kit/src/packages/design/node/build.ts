@@ -19,6 +19,7 @@ export function buildOutputs(tokens: readonly Token[]): Record<keyof typeof OUTP
 		ribbonPluginCss: css,
 		updatesPluginCss: css,
 		slidePluginCss: css,
+		markdownPluginCss: css,
 		slideCss: slideCss(tokens),
 		obsidianSnippet: obsidianSnippet(tokens),
 		doc: tokensDoc(tokens),

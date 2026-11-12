@@ -15,3 +15,8 @@
 
 - 起きたこと: 移行が上流の CLI（`.kit/bin/theme.mjs`）を使うのは初めてで、`migrations.test.mjs` の `childFrom` は `.kit/migrate.mjs` と `.kit/migrations/` しか写さなかった。`theme.mjs` を写す行を足した。移行から CLI を呼んでよいかは、移行の書き方に書かれていない
 - 改善案: 移行の書き方に「移行は `.kit/bin/` の CLI を `process.execPath` で呼んでよい（子には上流から届いている）。テストで使うなら `childFrom` で写す」と書く
+
+## つまずき
+
+- 起きたこと: main を取り込んだ後の `verify.mjs --plugin` で、`pkm-git` と `design` のテストが始まる前に `ENOTEMPTY: directory not empty, rmdir '.kit/src/node_modules/.vitest-cache'` で失敗した。テストの結果ではなく、並行して動くパッケージのテストが同じキャッシュのフォルダを消し合ったように見える。1 回目の出力を残してから `pnpm check` をやり直すと通った。直前に `pnpm install` と `pnpm build` を実行していた
+- 改善案: 再び起きたら、vitest のキャッシュのフォルダをパッケージごとに分ける（`cacheDir`）か、`pnpm check` のテストを並行させない

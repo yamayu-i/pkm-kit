@@ -4,5 +4,6 @@
   "canvas": false,
   "bases": false,
   "templates": false,
-  "file-recovery": true
+  "file-recovery": true,
+  "tag-pane": false
 }

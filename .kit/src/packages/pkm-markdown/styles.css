@@ -1,0 +1,250 @@
+/* pkm-markdown: ノートの表示（ADR-0128）。閲覧モード（.markdown-rendered）とライブプレビュー（.markdown-source-view.mod-cm6）の両方に効かせる */
+/* 見出しの大きさと本文の行の高さは Obsidian の既定のまま（利用者の文字の大きさの設定に追従させるため。px のトークンで固定しない） */
+
+/* ───── 見出し: 線や帯を使わず、太さと余白で階層を見せる ───── */
+
+.markdown-rendered h1,
+.markdown-source-view.mod-cm6 .cm-header-1 {
+	font-weight: var(--vt-weight-bold);
+}
+
+/* H1 の下にだけ、primary の短い線 */
+.markdown-rendered h1::after,
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-header-1::after {
+	content: "";
+	display: block;
+	width: 40px;
+	height: 4px;
+	margin-top: var(--vt-space-8);
+	border-radius: var(--vt-radius-full);
+	background-color: var(--vt-primary);
+}
+
+.markdown-rendered h2 {
+	margin-block-start: var(--vt-space-32);
+}
+
+.markdown-rendered h2,
+.markdown-source-view.mod-cm6 .cm-header-2,
+.markdown-rendered h3,
+.markdown-source-view.mod-cm6 .cm-header-3 {
+	font-weight: var(--vt-weight-semibold);
+}
+
+.markdown-rendered h3,
+.markdown-source-view.mod-cm6 .cm-header-3 {
+	color: var(--vt-on-surface-variant);
+}
+
+/* ───── 箇条書きの記号: 小さく薄く、深さで ●（塗り）→ ○（白抜き）→ –（短い線）の 3 段をくり返す ───── */
+
+/* ● */
+.markdown-rendered ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul > li > .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-1 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-4 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-7 .list-bullet::after {
+	width: 0.3em;
+	height: 0.3em;
+	border: 0;
+	border-radius: var(--vt-radius-full);
+	background-color: var(--vt-outline);
+	box-sizing: border-box;
+}
+
+/* ○ */
+.markdown-rendered ul ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul ul > li > .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-2 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-5 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-8 .list-bullet::after {
+	width: 0.36em;
+	height: 0.36em;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background-color: transparent;
+	box-sizing: border-box;
+}
+
+/* – */
+.markdown-rendered ul ul ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul ul ul > li > .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-3 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-6 .list-bullet::after,
+.markdown-source-view.mod-cm6 .HyperMD-list-line-9 .list-bullet::after {
+	width: 0.45em;
+	height: 0;
+	border: 0;
+	border-top: 1px solid var(--vt-outline);
+	border-radius: 0;
+	background-color: transparent;
+	box-sizing: border-box;
+}
+
+/* ───── 閲覧モードの箇条書き: 記号の位置を決め、同じ深さの記号どうしを薄い線でつなぐ ───── */
+/*
+ * 線は、項目の記号の真ん中から、次の同じ深さの項目の記号の真ん中まで。両端の記号との隙間は同じ 4px。
+ * 記号は項目の 1 行目の行の高さ（1lh）の中央に置くので、線の始まりは「上の余白 + 0.5lh + 記号の半分 + 隙間」、
+ * 長さは「項目の高さ - 記号の大きさ - 隙間 × 2」になる（次の項目の記号も同じ位置にあるため）
+ */
+.markdown-rendered ul > li,
+.markdown-rendered ol > li {
+	position: relative;
+	margin-block: 0;
+	padding-block: var(--vt-space-2);
+}
+
+.markdown-rendered ul > li > .list-bullet {
+	position: absolute;
+	top: var(--vt-space-2);
+	left: -16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 0;
+	height: 1lh;
+	margin: 0;
+	padding: 0;
+	float: none;
+}
+
+.markdown-rendered ul > li > .list-bullet::after {
+	position: static;
+	display: block;
+	margin: 0;
+	flex: none;
+}
+
+.markdown-rendered ul > li:not(:last-child):not(.task-list-item)::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: -16px;
+	width: 0;
+	height: calc(100% - 0.36em - 8px);
+	border-left: 1px solid var(--vt-outline-variant);
+	transform: translate(-0.5px, calc(var(--vt-space-2) + 0.5lh + 0.18em + 4px));
+	pointer-events: none;
+}
+
+/* Obsidian 自身のネストの線（親の記号から下へ伸びる線）は、上の線と重なるので出さない */
+.markdown-rendered li > ul::before {
+	display: none;
+}
+
+/* ライブプレビューは行ごとの要素で入れ子の形を持たないので、Obsidian 自身のネストの線を薄い色にする */
+.markdown-source-view.mod-cm6 .cm-indent::before {
+	border-color: var(--vt-outline-variant);
+}
+
+/* ───── 番号付きリスト: 番号を薄く、桁をそろえる ───── */
+
+.markdown-rendered ol > li::marker,
+.markdown-source-view.mod-cm6 .cm-formatting-list-ol {
+	color: var(--vt-outline);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ───── チェックボックス: 角丸の枠。チェックすると primary で塗り、on-primary のチェックを描く ───── */
+
+.markdown-rendered .task-list-item-checkbox,
+.markdown-source-view.mod-cm6 .task-list-item-checkbox {
+	border-color: var(--vt-outline);
+	border-radius: var(--vt-radius-xs);
+}
+
+.markdown-rendered .task-list-item-checkbox:checked,
+.markdown-source-view.mod-cm6 .task-list-item-checkbox:checked {
+	border-color: var(--vt-primary);
+	background-color: var(--vt-primary);
+}
+
+.markdown-rendered .task-list-item-checkbox:checked::after,
+.markdown-source-view.mod-cm6 .task-list-item-checkbox:checked::after {
+	background-color: var(--vt-on-primary);
+}
+
+.markdown-rendered .task-list-item-checkbox:focus-visible,
+.markdown-source-view.mod-cm6 .task-list-item-checkbox:focus-visible {
+	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+/* ───── 本文の # で始まる語: タグの色・札をやめ、本文と同じ見た目にする（閲覧モードは文字に置き換える） ───── */
+
+.markdown-source-view.mod-cm6 .cm-hashtag {
+	padding: 0;
+	border-radius: 0;
+	background-color: transparent;
+	color: inherit;
+	font-size: inherit;
+	text-decoration: none;
+	cursor: text;
+}
+
+/* ───── インラインコードのコピーボタン ───── */
+
+.vt-md-code {
+	position: relative;
+}
+
+.vt-md-copy {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--vt-radius-xs);
+	background-color: var(--vt-surface);
+	color: var(--vt-on-surface-variant);
+	box-shadow: none;
+	cursor: pointer;
+	z-index: 1;
+}
+
+/*
+ * 枠のないアイコンボタン。面はノートの面と同じ色にして、透明に見せる（コードの右上の、上の行の文字に重なる位置に出るので、
+ * 本当に透明にすると文字と重なって読めない）。ホバーと押したときだけ、一段濃い面を出す
+ */
+.vt-md-copy:hover,
+.vt-md-copy:active {
+	background-color: var(--vt-surface-container-high);
+	color: var(--vt-on-surface);
+}
+
+.vt-md-copy:focus-visible {
+	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+.vt-md-copy svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* 閲覧モード: コードの右上に出す。ホバーかフォーカス、ホバーのない端末ではタップ（is-active）で出す */
+.vt-md-code > .vt-md-copy {
+	position: absolute;
+	top: 0;
+	right: 0;
+	display: none;
+	transform: translateY(-100%);
+}
+
+.vt-md-code:hover > .vt-md-copy,
+.vt-md-code:focus-within > .vt-md-copy,
+.vt-md-code.is-active > .vt-md-copy {
+	display: inline-flex;
+}
+
+/* ライブプレビュー: エディタの外枠に 1 つだけ置き、コードの右上に動かす（位置はスクリプトが入れる） */
+.vt-md-copy-floating {
+	position: absolute;
+	transform: translate(-100%, -100%);
+}
+
+.vt-md-copy-floating[hidden] {
+	display: none;
+}

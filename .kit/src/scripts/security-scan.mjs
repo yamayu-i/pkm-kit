@@ -166,6 +166,8 @@ const plugins = [
 	// ADR-0120: スライドの一覧。縮小は index.html をスクリプトを許さない sandbox の iframe で開く
 	{ id: "pkm-slide", outdirEnv: "PKM_SLIDE_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	{ id: "pkm-view-selector", outdirEnv: "PKM_VIEW_SELECTOR_OUTDIR", files: ["main.js", "manifest.json"], bins: [], allowedRequires: ["obsidian"] },
+	// ADR-0128: ノートの表示。ライブプレビューの拡張に CodeMirror（Obsidian が持つもの）を使う
+	{ id: "pkm-markdown", outdirEnv: "PKM_MARKDOWN_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian", "@codemirror/view"] },
 ];
 
 check("コミット済みの main.js と .kit/bin の CLI がソースから再現できる", () => {

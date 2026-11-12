@@ -29,7 +29,8 @@
     "pkm-diagram",
     "pkm-updates",
     "pkm-view-selector",
-    "pkm-slide"
+    "pkm-slide",
+    "pkm-markdown"
   ],
   "core-plugins.json": {
     "daily-notes": false,
@@ -37,7 +38,8 @@
     "canvas": false,
     "bases": false,
     "templates": false,
-    "file-recovery": true
+    "file-recovery": true,
+    "tag-pane": false
   },
   "hotkeys.json": {
     "editor:insert-link": []
