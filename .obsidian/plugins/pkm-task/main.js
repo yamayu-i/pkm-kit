@@ -56,7 +56,7 @@ function loadPluginDataOrLegacy(plugin, legacyId) {
 }
 
 // ../shared/src/list-pane.ts
-var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-"];
+var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
 var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar"]);
 function isListViewType(type) {
   return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));

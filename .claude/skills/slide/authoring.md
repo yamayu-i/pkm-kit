@@ -53,21 +53,35 @@
 
 | 部品 | 書き方 |
 |---|---|
-| 列 | `<div class="cols">` の直下の要素が、同じ幅で横に並ぶ。`cols arrow` は間に矢印 |
-| カード | `<div class="card">`。中に `<h3>`、`<p>`、`<ul>`。色のクラスを足せる |
+| 列 | `<div class="cols">` の直下の要素が、同じ幅で横に並ぶ。5〜6 個は 3 列、7〜8 個は 4 列の段に分かれる。`cols arrow` は間に矢印（1 段だけ） |
+| カード | `<div class="card">`。中に `<h3>`、`<p>`、`<ul>`、`<img>`。色のクラスを足せる。どのカードも同じ角丸の四角。`<h3>` はカードの幅に合わせて小さくなり、語の途中で折り返さない（ビルドが語の長さを測る） |
 | ラベル | `<p class="chip">`（カードの上の短い札） |
 | 大きい数字 | `<p class="big">72<span class="unit">%</span></p>` |
 | 強調 | `<strong>`（太字）、`<mark>`（色の面。1 枚に 1 か所） |
 | 弱い文字 | `class="muted"` |
 | リスト | `<ul>` / `<ol>`。4 項目・2 段まで |
-| 図 | `<figure>` に `<img>` か `<svg>`、任意で `<figcaption>` |
+| 図 | `<figure>` に `<img>` か `<svg>`、任意で `<figcaption>`。画像は切り取らず、縦横の比を保って枠に全部入る |
 | 図の上の説明 | `<aside class="callout" style="--x:40;--y:25">`（`<figure>` の中。位置は左上からの %） |
 | 表 | `<table>`。数は `class="num"`、強調は `class="hl"`（行かセル） |
 | 引用 | `<blockquote><p>…</p><cite>…</cite></blockquote>` |
 | コード | `<pre><code>…</code></pre>`。強調する行を `<mark>` で囲む |
 | 定義 | `<dl><dt>言葉</dt><dd>意味</dd></dl>` |
 
-パターン専用の部品（`.agenda`、`.takeaways`、`.actions`、`.matrix`、`.layers`、`.tree`、`.steps`、`.timeline`、`.cycle`、`.funnel`、`.bars`、`.share`、`.kpi`）は、各パターンのひな形にある。
+パターン専用の部品（`.agenda`、`.takeaways`、`.actions`、`.matrix`、`.layers`、`.tree`、`.steps`、`.timeline`、`.cycle`、`.funnel`、`.bars`、`.share`、`.kpi`、`.pairs`、`.spectrum`、`.venn`、`.grid`、`.hub`、`.pyramid`、`.roadmap`、`.journey`、`.flow`、`.columns`、`.progress`、`.waterfall`、`table.heat`、`.gallery`、`.risks`、`.asks`、`.retro`、`.faq`）は、各パターンのひな形にある。
+
+### 部品の変種（ADR-0120）
+
+どのパターンでも同じ書き方で効く。パターンを増やさずに配置を変えたいときに使う。
+
+| 変種 | 書き方 | 見た目 |
+|---|---|---|
+| 全面の写真 | `<figure class="bleed"><img …></figure>`（スライドの最後に置く） | 写真をスライド全面に敷き、見出しのまとまりを左下の面の板に載せる。**全面に敷くので写真の端が切れる**（ほかの画像は切れない）。[cover-image](patterns/cover-image.md)、[image-statement](patterns/image-statement.md) |
+| 半分の写真 | `<figure class="right">` / `class="left"`（最後に置く） | 写真をスライドの右半分（左半分）に、切り取らずに収める。文は残りの半分。[split-image](patterns/split-image.md) |
+| 線だけのカード | `<div class="card outline">` | 面の色を付けず、枠の線だけ。`primary` を足すと枠が強調の色 |
+| 番号のカード | `<div class="card numbered">` | 左上に 1 から順の番号（角丸の四角）。同じ `.cols` の中で数える |
+| 推すカード | `<div class="card pick">` | 枠と面を強調の色にする。1 枚に 1 つ。[options](patterns/options.md) |
+| カードの上の写真 | `<div class="card"><img class="cover-img" src="…" alt="…">…</div>` | カードの上に 16:9 の枠で写真を置く。切り取らずに収める |
+| 人の写真 | `<img class="avatar" src="…" alt="…">` | 角丸の四角の顔写真。[profile](patterns/profile.md) |
 
 ### 色
 

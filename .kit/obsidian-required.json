@@ -28,7 +28,8 @@
     "pkm-html",
     "pkm-diagram",
     "pkm-updates",
-    "pkm-view-selector"
+    "pkm-view-selector",
+    "pkm-slide"
   ],
   "core-plugins.json": {
     "daily-notes": false,

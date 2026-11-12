@@ -1,0 +1,551 @@
+/* 生成物。手で編集しない。正本は .kit/src/packages/design/tokens.json（pnpm --filter design build で作り直す） */
+
+/* モーダルでも使うので body に置く */
+body {
+	--vt-surface: #f6f5f2;
+	--vt-surface-container: #efeeea;
+	--vt-surface-container-high: #e8e7e2;
+	--vt-on-surface: #2b2a28;
+	--vt-on-surface-variant: #57564f;
+	--vt-outline: #7f7e76;
+	--vt-outline-variant: #2b2a2824;
+	--vt-state-hover: #2b2a2814;
+	--vt-state-press: #2b2a281f;
+	--vt-primary: #6750a4;
+	--vt-on-primary: #ffffff;
+	--vt-primary-state-hover: #6750a414;
+	--vt-on-primary-state-hover: #ffffff14;
+	--vt-secondary-container: #e8def8;
+	--vt-on-secondary-container: #1d192b;
+	--vt-error: #b3261e;
+	--vt-focus-ring: var(--vt-primary);
+	--vt-green-container: #c4eed0;
+	--vt-on-green-container: #072711;
+	--vt-green: #1e8e3e;
+	--vt-blue-container: #d3e3fd;
+	--vt-on-blue-container: #041e49;
+	--vt-blue: #0b57d0;
+	--vt-purple-container: #eaddff;
+	--vt-on-purple-container: #21005d;
+	--vt-purple: #6750a4;
+	--vt-gray-container: #e3e3e3;
+	--vt-on-gray-container: #1f1f1f;
+	--vt-gray: #747775;
+	--vt-sky-container: #c2e7ff;
+	--vt-on-sky-container: #001d35;
+	--vt-sky: #00639b;
+	--vt-pink-container: #ffd8e4;
+	--vt-on-pink-container: #3e001d;
+	--vt-pink: #c2185b;
+	--vt-red-container: #f9dedc;
+	--vt-on-red-container: #410e0b;
+	--vt-red: #d93025;
+	--vt-amber-container: #ffecb3;
+	--vt-on-amber-container: #3a2a00;
+	--vt-amber: #b06d00;
+	--vt-scheduled: #188038;
+	--vt-scheduled-hover: #137333;
+	--vt-on-scheduled: #ffffff;
+	--vt-due-3: #fff8e1;
+	--vt-due-2: #ffe082;
+	--vt-due-1: #ffb74d;
+	--vt-on-due: #3a2a00;
+	--vt-due-0: #d93025;
+	--vt-on-due-0: #ffffff;
+	--vt-on-label: #1f1f1f;
+	--vt-radius-xs: 4px;
+	--vt-radius-s: 8px;
+	--vt-radius-m: 12px;
+	--vt-radius-l: 16px;
+	--vt-radius-xl: 28px;
+	--vt-radius-full: 9999px;
+	--vt-space-2: 2px;
+	--vt-space-4: 4px;
+	--vt-space-8: 8px;
+	--vt-space-12: 12px;
+	--vt-space-16: 16px;
+	--vt-space-20: 20px;
+	--vt-space-24: 24px;
+	--vt-space-32: 32px;
+	--vt-space-40: 40px;
+	--vt-space-48: 48px;
+	--vt-space-64: 64px;
+	--vt-space-96: 96px;
+	--vt-size-grid: 4px;
+	--vt-size-target-min: 24px;
+	--vt-border-width-thin: 1px;
+	--vt-border-width-thick: 2px;
+	--vt-breakpoint-pane-narrow: 480px;
+	--vt-breakpoint-pane-compact: 300px;
+	--vt-breakpoint-pane-medium: 720px;
+	--vt-weight-regular: 400;
+	--vt-weight-medium: 500;
+	--vt-weight-semibold: 600;
+	--vt-weight-bold: 700;
+	--vt-type-headline-small-size: 24px;
+	--vt-type-headline-small-line-height: 1.3333;
+	--vt-type-headline-small-weight: var(--vt-weight-semibold);
+	--vt-type-headline-small-tracking: -0.24px;
+	--vt-type-title-large-size: 20px;
+	--vt-type-title-large-line-height: 1.4;
+	--vt-type-title-large-weight: var(--vt-weight-semibold);
+	--vt-type-title-large-tracking: 0;
+	--vt-type-title-medium-size: 16px;
+	--vt-type-title-medium-line-height: 1.5;
+	--vt-type-title-medium-weight: var(--vt-weight-semibold);
+	--vt-type-title-medium-tracking: 0.15px;
+	--vt-type-body-medium-size: 15px;
+	--vt-type-body-medium-line-height: 1.5;
+	--vt-type-body-medium-weight: var(--vt-weight-regular);
+	--vt-type-body-medium-tracking: 0;
+	--vt-type-body-small-size: 13px;
+	--vt-type-body-small-line-height: 1.5;
+	--vt-type-body-small-weight: var(--vt-weight-regular);
+	--vt-type-body-small-tracking: 0;
+	--vt-type-label-medium-size: 12px;
+	--vt-type-label-medium-line-height: 1.3333;
+	--vt-type-label-medium-weight: var(--vt-weight-medium);
+	--vt-type-label-medium-tracking: 0.5px;
+	--vt-type-label-small-size: 11px;
+	--vt-type-label-small-line-height: 1.4545;
+	--vt-type-label-small-weight: var(--vt-weight-medium);
+	--vt-type-label-small-tracking: 0.5px;
+	--vt-duration-short2: 100ms;
+	--vt-duration-short3: 150ms;
+	--vt-duration-short4: 200ms;
+	--vt-duration-pulse: 1400ms;
+	--vt-duration-spin: 4200ms;
+	--vt-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+	--vt-elevation-1: 0 1px 2px 0 #0000000f;
+	--vt-elevation-2: 0 1px 3px 0 #0000001f;
+	--vt-elevation-3: 0 2px 8px 0 #0000001f;
+	--vt-elevation-4: 0 4px 16px 0 #00000029;
+	--vt-elevation-5: 0 6px 24px 0 #00000024;
+	--vt-opacity-disabled: 0.38;
+	--vt-opacity-state-hover: 0.08;
+	--vt-opacity-state-press: 0.12;
+	--vt-scale-press-small: 0.92;
+	--vt-scale-press-medium: 0.97;
+	--vt-scale-press-large: 0.99;
+}
+
+body.theme-dark {
+	--vt-surface: #1e1e1e;
+	--vt-surface-container: #242424;
+	--vt-surface-container-high: #2b2b2b;
+	--vt-on-surface: #d0d0d0;
+	--vt-on-surface-variant: #b3b3b3;
+	--vt-outline: #7a7a7a;
+	--vt-outline-variant: #d0d0d024;
+	--vt-state-hover: #d0d0d014;
+	--vt-state-press: #d0d0d01f;
+	--vt-primary: #d0bcff;
+	--vt-on-primary: #381e72;
+	--vt-primary-state-hover: #d0bcff14;
+	--vt-on-primary-state-hover: #381e7214;
+	--vt-secondary-container: #3d3749;
+	--vt-on-secondary-container: #e8def8;
+	--vt-error: #f2b8b5;
+	--vt-green-container: #0f5223;
+	--vt-on-green-container: #c4eed0;
+	--vt-green: #6dd58c;
+	--vt-blue-container: #0842a0;
+	--vt-on-blue-container: #d3e3fd;
+	--vt-blue: #a8c7fa;
+	--vt-purple-container: #4f378b;
+	--vt-on-purple-container: #eaddff;
+	--vt-purple: #d0bcff;
+	--vt-gray-container: #444746;
+	--vt-on-gray-container: #e3e3e3;
+	--vt-gray: #c4c7c5;
+	--vt-sky-container: #004a77;
+	--vt-on-sky-container: #c2e7ff;
+	--vt-sky: #7fcfff;
+	--vt-pink-container: #8c1d4f;
+	--vt-on-pink-container: #ffd8e4;
+	--vt-pink: #ffb0c8;
+	--vt-red-container: #8c1d18;
+	--vt-on-red-container: #f9dedc;
+	--vt-red: #f2b8b5;
+	--vt-amber-container: #5c4300;
+	--vt-on-amber-container: #ffecb3;
+	--vt-amber: #ffd54f;
+	--vt-scheduled: #2e7d32;
+	--vt-scheduled-hover: #296e2c;
+	--vt-due-3: #4a3f14;
+	--vt-due-2: #6b5300;
+	--vt-due-1: #8a4b00;
+	--vt-on-due: #fff3d6;
+	--vt-due-0: #b3261e;
+}
+
+/*
+ * pkm-slide（ADR-0120）
+ * ルールは .kit/src/docs/design.md。値はすべてトークン（tokens.css。正本は packages/design/tokens.json）から取る。
+ * ビルドで tokens.css の後ろに連結して .obsidian/plugins/pkm-slide/styles.css にする。
+ */
+
+:is([class*="vt-sl-"], [class*="vt-sl-"] *):focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[class*="vt-sl-"],
+	[class*="vt-sl-"] * {
+		transition: none;
+		animation: none;
+	}
+}
+
+.vt-sl-view {
+	container-type: inline-size;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-sl-page {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-16);
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: var(--vt-space-8) var(--vt-space-16) var(--vt-space-24);
+}
+
+/* ---- 見出しと操作 ---- */
+.vt-sl-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--vt-space-8) var(--vt-space-12);
+}
+.vt-sl-title {
+	margin: 0;
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	font-weight: var(--vt-type-headline-small-weight);
+}
+.vt-sl-count {
+	padding: 0 var(--vt-space-8);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-variant-numeric: tabular-nums;
+}
+.vt-sl-tools {
+	margin-left: auto;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--vt-space-8);
+}
+.vt-sl-search {
+	display: flex;
+	align-items: center;
+	gap: var(--vt-space-8);
+	color: var(--vt-on-surface-variant);
+}
+.vt-sl-search input {
+	width: 180px;
+	min-width: 0;
+	height: 36px;
+	padding: 0 var(--vt-space-12);
+	border-radius: var(--vt-radius-full);
+	font-size: var(--vt-type-body-medium-size);
+}
+.vt-sl-sort {
+	height: 36px;
+	border-radius: var(--vt-radius-full);
+}
+
+/*
+ * Obsidian は input に影と自分の面・枠の色を付ける。View とダイアログの根の中では、
+ * より詳細度の高いこのルールで、面・枠・文字をトークンにして影を消す（pkm-template と同じ）
+ */
+.vt-sl-view input[type="text"],
+.vt-sl-view input[type="search"],
+.vt-sl-view textarea,
+.vt-sl-view select,
+.vt-sl-modal input[type="text"] {
+	border: 1px solid var(--vt-outline);
+	background-color: var(--vt-surface);
+	color: var(--vt-on-surface);
+	box-shadow: none;
+}
+.vt-sl-view input[type="text"]:hover,
+.vt-sl-view input[type="search"]:hover,
+.vt-sl-view textarea:hover,
+.vt-sl-view select:hover,
+.vt-sl-modal input[type="text"]:hover {
+	border-color: var(--vt-on-surface);
+	box-shadow: none;
+}
+/* M3: フォーカスで primary の 2px の枠（1px の枠 + 内側の 1px の輪） */
+.vt-sl-view input[type="text"]:focus,
+.vt-sl-view input[type="search"]:focus,
+.vt-sl-view textarea:focus,
+.vt-sl-view select:focus,
+.vt-sl-modal input[type="text"]:focus {
+	border-color: var(--vt-primary);
+	box-shadow: inset 0 0 0 1px var(--vt-primary);
+}
+.vt-sl-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--vt-space-8);
+	height: 36px;
+	padding: 0 var(--vt-space-16);
+	border-radius: var(--vt-radius-full);
+	border: var(--vt-border-width-thin) solid var(--vt-outline);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-primary);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+	font-weight: var(--vt-weight-semibold);
+	cursor: pointer;
+}
+.vt-sl-btn:hover {
+	background-image: linear-gradient(var(--vt-primary-state-hover), var(--vt-primary-state-hover));
+}
+.vt-sl-icon {
+	display: inline-flex;
+	flex: none;
+}
+.vt-sl-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* ---- 本体: 左にフォルダの木、右にデッキ ---- */
+.vt-sl-body {
+	display: grid;
+	grid-template-columns: 240px minmax(0, 1fr);
+	align-items: start;
+	gap: var(--vt-space-24);
+}
+
+.vt-sl-tree {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-2);
+	position: sticky;
+	top: 0;
+}
+.vt-sl-folder {
+	display: flex;
+	align-items: center;
+	border-radius: var(--vt-radius-full);
+	transition: background-color var(--vt-duration-short2) var(--vt-easing-standard);
+}
+/* 木の深さ（4 段より深いものは 4 段と同じ字下げ） */
+.vt-sl-folder[data-depth="1"] {
+	padding-left: var(--vt-space-16);
+}
+.vt-sl-folder[data-depth="2"] {
+	padding-left: var(--vt-space-32);
+}
+.vt-sl-folder[data-depth="3"] {
+	padding-left: var(--vt-space-48);
+}
+.vt-sl-folder[data-depth="4"] {
+	padding-left: var(--vt-space-64);
+}
+.vt-sl-folder.is-selected {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+.vt-sl-folder.is-drop {
+	background: var(--vt-secondary-container);
+	box-shadow: 0 0 0 2px var(--vt-primary);
+}
+.vt-sl-folder-main {
+	flex: 1 1 0;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--vt-space-8);
+	height: 40px;
+	padding: 0 var(--vt-space-12);
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font-size: var(--vt-type-body-medium-size);
+	text-align: left;
+	cursor: pointer;
+}
+.vt-sl-folder-main:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+.vt-sl-folder-name {
+	flex: 1 1 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.vt-sl-folder.is-selected .vt-sl-folder-name {
+	font-weight: var(--vt-weight-semibold);
+}
+.vt-sl-folder-count {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-variant-numeric: tabular-nums;
+}
+.vt-sl-more {
+	flex: none;
+	display: inline-grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+}
+.vt-sl-more:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+/* ---- デッキのカード ---- */
+.vt-sl-grid {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+	gap: var(--vt-space-16);
+}
+.vt-sl-card {
+	position: relative;
+	min-width: 0;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container);
+	box-shadow: var(--vt-elevation-1);
+	transition: box-shadow var(--vt-duration-short2) var(--vt-easing-standard);
+}
+.vt-sl-card:hover {
+	box-shadow: var(--vt-elevation-3);
+}
+.vt-sl-card-main {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--vt-space-4);
+	width: 100%;
+	height: auto;
+	padding: 0 0 var(--vt-space-12);
+	border: none;
+	border-radius: var(--vt-radius-l);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	overflow: hidden;
+}
+.vt-sl-card-main:active {
+	transform: scale(var(--vt-scale-press-large));
+}
+.vt-sl-thumb {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	margin-bottom: var(--vt-space-8);
+	background: var(--vt-surface);
+	border-bottom: var(--vt-border-width-thin) solid var(--vt-outline-variant);
+}
+.vt-sl-thumb iframe {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	border: none;
+	pointer-events: none;
+}
+.vt-sl-unbuilt {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	line-height: var(--vt-type-label-medium-line-height);
+}
+.vt-sl-card-title {
+	padding: 0 var(--vt-space-48) 0 var(--vt-space-12);
+	font-size: var(--vt-type-title-medium-size);
+	line-height: var(--vt-type-title-medium-line-height);
+	font-weight: var(--vt-type-title-medium-weight);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.vt-sl-card-meta {
+	padding: 0 var(--vt-space-12);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-variant-numeric: tabular-nums;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.vt-sl-card-more {
+	position: absolute;
+	right: var(--vt-space-8);
+	bottom: var(--vt-space-12);
+}
+
+.vt-sl-empty {
+	padding: var(--vt-space-24);
+	border-radius: var(--vt-radius-m);
+	border: 1px dashed var(--vt-outline-variant);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+.vt-sl-empty p {
+	margin: 0;
+}
+
+/* ---- 名前のダイアログ ---- */
+.vt-sl-hint {
+	margin: 0;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+.vt-sl-hint.is-error {
+	color: var(--vt-error);
+}
+
+/* 狭いペイン: フォルダを上に横並び */
+@container (max-width: 480px) {
+	.vt-sl-body {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.vt-sl-tree {
+		position: static;
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+	.vt-sl-folder[data-depth] {
+		padding-left: 0;
+	}
+	.vt-sl-tools {
+		margin-left: 0;
+	}
+	.vt-sl-search input {
+		width: 120px;
+	}
+}

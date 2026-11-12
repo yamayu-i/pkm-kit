@@ -550,3 +550,27 @@ button {
 		outline: none !important;
 	}
 }
+
+/*
+ * 縮小（ADR-0120）: pkm-slide の一覧が index.html#thumb を、スクリプトを許さない iframe で開く。
+ * :target はスクリプトなしで効くので、そのときだけ 1 枚目を枠いっぱいに出し、ほかを隠す
+ */
+html:has(#thumb:target) {
+	overflow: hidden;
+	background: var(--vt-surface);
+}
+html:has(#thumb:target) .sl-bar,
+html:has(#thumb:target) .sl-caption,
+html:has(#thumb:target) .sl-notes,
+html:has(#thumb:target) .sl-cell:not(:first-child) {
+	display: none;
+}
+html:has(#thumb:target) .sl-deck {
+	display: block;
+	padding: 0;
+}
+html:has(#thumb:target) .sl-frame {
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+}

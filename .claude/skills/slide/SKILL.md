@@ -52,40 +52,67 @@ description: スライド（発表・共有の資料）を、ユーザーと話�
 | 誰が何をいつまでにするかを決める | [next-steps](patterns/next-steps.md) |
 | 最後の 1 文と連絡先 | [closing](patterns/closing.md) |
 | 聞かれたら見せる細かい資料 | [appendix](patterns/appendix.md) |
+| 写真を全面に敷いた表紙 | [cover-image](patterns/cover-image.md) |
+| 話し手・チームの人の紹介 | [profile](patterns/profile.md) |
 | **主張する** | |
 | 主張を、図・写真・グラフで支える（迷ったらこれ） | [assertion-evidence](patterns/assertion-evidence.md) |
 | 1 つの文だけを強く残す | [statement](patterns/statement.md) |
 | 1 つの数字で納得させる | [big-number](patterns/big-number.md) |
 | 誰かの言葉で裏付ける | [quote](patterns/quote.md) |
+| 写真の上に 1 文を載せて印象で残す | [image-statement](patterns/image-statement.md) |
+| 2 つの数字の差（前と後、目標と実績） | [two-numbers](patterns/two-numbers.md) |
+| 問いを投げて考えさせる | [question](patterns/question.md) |
+| よくある思い込みを正す | [myth-fact](patterns/myth-fact.md) |
 | **比べる** | |
 | 2 つの違いを並べる | [comparison](patterns/comparison.md) |
 | 変える前と後 | [before-after](patterns/before-after.md) |
 | 1 つの案の良い点と悪い点 | [pros-cons](patterns/pros-cons.md) |
 | 3 つ以上の案から選んだ理由 | [decision-table](patterns/decision-table.md) |
 | 2 つの軸で位置づける | [matrix-2x2](patterns/matrix-2x2.md) |
+| 2〜3 つの案から勧める 1 つを示す | [options](patterns/options.md) |
+| 2 つの極の間のどこにいるか | [spectrum](patterns/spectrum.md) |
+| 2〜3 つの条件の重なり | [venn](patterns/venn.md) |
 | **構造を見せる** | |
 | 同じ重さの 2〜4 個の要素（柱・理由・特長） | [cards](patterns/cards.md) |
 | 上下に重なる層 | [layers](patterns/layers.md) |
 | 全体を部分に分ける | [tree](patterns/tree.md) |
 | 言葉の意味を決める | [definition](patterns/definition.md) |
+| 写真と文を左右に並べる | [split-image](patterns/split-image.md) |
+| 5〜9 個の要素を見渡させる | [grid](patterns/grid.md) |
+| 中心と、それを囲むもの | [hub](patterns/hub.md) |
+| 土台から積み上がる段 | [pyramid](patterns/pyramid.md) |
 | **流れを見せる** | |
 | 順に進む手順 | [process](patterns/process.md) |
 | いつ何が起きるか | [timeline](patterns/timeline.md) |
 | 回り続ける段階 | [cycle](patterns/cycle.md) |
 | 段階ごとに減る量 | [funnel](patterns/funnel.md) |
+| 期間 × 流れの予定（ロードマップ） | [roadmap](patterns/roadmap.md) |
+| 利用者の段階ごとの行動と気持ち | [journey](patterns/journey.md) |
+| はい / いいえで分かれる判断 | [flow](patterns/flow.md) |
 | **データを見せる** | |
 | 項目どうしの量を比べる | [chart-bar](patterns/chart-bar.md) |
 | 時間に沿った変化 | [chart-line](patterns/chart-line.md) |
 | 全体に占める割合 | [chart-share](patterns/chart-share.md) |
 | 正確な値を引けるようにする | [table](patterns/table.md) |
 | 2〜4 個の指標の今の値と変化 | [kpi](patterns/kpi.md) |
+| 期間ごとの量の移り変わり（縦棒） | [chart-column](patterns/chart-column.md) |
+| 目標に対する進み具合 | [progress](patterns/progress.md) |
+| 始まりから終わりまでの増減の内訳 | [chart-waterfall](patterns/chart-waterfall.md) |
+| 2 つの軸の交わりの多い少ない | [heatmap](patterns/heatmap.md) |
 | **物を見せる** | |
 | 実物・現場の写真 | [image](patterns/image.md) |
 | 画面のどこを見るか | [screenshot](patterns/screenshot.md) |
 | 短いコードの見てほしい行 | [code](patterns/code.md) |
 | 仕組み・構成・関係の図 | [diagram](patterns/diagram.md) |
+| 2〜6 枚の写真を見比べる | [gallery](patterns/gallery.md) |
+| 変える前と後の画面 | [screenshot-compare](patterns/screenshot-compare.md) |
 | **話の型** | |
 | 課題と、その解き方 | [problem-solution](patterns/problem-solution.md) |
+| リスクと対策 | [risks](patterns/risks.md) |
+| 聞き手に決めてほしいこと・お願い | [ask](patterns/ask.md) |
+| 振り返り（続ける・困った・次に試す） | [retro](patterns/retro.md) |
+| 状況・問題・解決で話の全体を 1 枚に | [scr](patterns/scr.md) |
+| よく聞かれる問いと答え | [faq](patterns/faq.md) |
 
 どれにも当たらないときは、最も近いパターンの部品を組み合わせ（[部品の一覧](authoring.md#部品)）、気づきに記録する（足すかどうかは [パターンの保守](maintaining.md)）。
 

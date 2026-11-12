@@ -11,6 +11,7 @@
 .obsidian/plugins/pkm-html/data.json
 .obsidian/plugins/pkm-updates/data.json
 .obsidian/plugins/pkm-view-selector/data.json
+.obsidian/plugins/pkm-slide/data.json
 # 改名前の名前（ADR-0058）。移行が届かない端末に古い data.json が残っても、コミットしない
 .obsidian/plugins/vault-git/data.json
 .obsidian/plugins/vault-task/data.json

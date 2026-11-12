@@ -39,6 +39,9 @@
     ".obsidian/plugins/pkm-updates/styles.css",
     ".obsidian/plugins/pkm-view-selector/main.js",
     ".obsidian/plugins/pkm-view-selector/manifest.json",
+    ".obsidian/plugins/pkm-slide/main.js",
+    ".obsidian/plugins/pkm-slide/manifest.json",
+    ".obsidian/plugins/pkm-slide/styles.css",
     ".obsidian/snippets/pkm-theme.css"
   ]
 }

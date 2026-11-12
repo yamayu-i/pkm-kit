@@ -24,10 +24,11 @@ const COMMANDS: CommandLike[] = [
 	{ id: "pkm-task:open-sidebar", name: "PKM Task: Open Tasks sidebar", icon: "check-square" },
 	{ id: "pkm-task:capture-issues", name: "PKM Task: Capture issues" },
 	{ id: "pkm-updates:open-view", name: "PKM Updates: Open PKM Updates", icon: "bell" },
+	{ id: "pkm-slide:open-list", name: "PKM Slide: Open Slides", icon: "presentation" },
 	{ id: "other:open-foo", name: "Other: Open Foo" },
 ];
 
-const VIEW_TYPES = new Set([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view", "other-foo", "markdown"]);
+const VIEW_TYPES = new Set([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view", "pkm-slide-list", "other-foo", "markdown"]);
 
 const collect = (commands = COMMANDS, types = VIEW_TYPES, open = new Set<string>()) =>
 	collectViews(
@@ -37,9 +38,9 @@ const collect = (commands = COMMANDS, types = VIEW_TYPES, open = new Set<string>
 	);
 
 describe("collectViews（ADR-0072）", () => {
-	it("pkm-task の 11 個、pkm-template の 3 個、pkm-updates の 1 個を、View を開くコマンドだけ集める", () => {
+	it("pkm-task の 11 個、pkm-template の 3 個、pkm-updates の 1 個、pkm-slide の 1 個を、View を開くコマンドだけ集める", () => {
 		const entries = collect();
-		expect(entries.map((e) => e.viewType)).toEqual([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view"]);
+		expect(entries.map((e) => e.viewType)).toEqual([...TASK_VIEWS.map((v) => `pkm-task-${v}`), ...TEMPLATE_VIEWS.map((v) => `pkm-template-${v}`), "pkm-updates-view", "pkm-slide-list"]);
 		expect(entries.map((e) => e.commandId)).not.toContain("pkm-template:open-todays-daily");
 		expect(entries.map((e) => e.commandId)).not.toContain("other:open-foo");
 	});
@@ -50,12 +51,13 @@ describe("collectViews（ADR-0072）", () => {
 		expect(entries.find((e) => e.viewType === "pkm-task-sidebar")?.name).toBe("Tasks sidebar");
 		expect(entries.find((e) => e.viewType === "pkm-template-note-list")?.name).toBe("Notes");
 		expect(entries.find((e) => e.viewType === "pkm-updates-view")).toMatchObject({ name: "PKM Updates", icon: "bell" });
+		expect(entries.find((e) => e.viewType === "pkm-slide-list")).toMatchObject({ name: "Slides", plugin: "pkm-slide", icon: "presentation" });
 	});
 
 	it("片方のプラグインが無効（コマンドも View もない）なら、その分は出ない", () => {
 		const noTask = COMMANDS.filter((c) => !c.id.startsWith("pkm-task:"));
 		const entries = collect(noTask, new Set([...VIEW_TYPES].filter((t) => !t.startsWith("pkm-task-"))));
-		expect(entries.map((e) => e.plugin)).toEqual(["pkm-template", "pkm-template", "pkm-template", "pkm-updates"]);
+		expect(entries.map((e) => e.plugin)).toEqual(["pkm-template", "pkm-template", "pkm-template", "pkm-updates", "pkm-slide"]);
 	});
 
 	it("コマンドがあっても View が登録されていなければ出さない。新しい View は open-<名前> を登録すれば出る", () => {
@@ -90,7 +92,7 @@ describe("matchViews", () => {
 	});
 
 	it("名前の先頭で当たるものを上にする", () => {
-		expect(names("s").slice(0, 3)).toEqual(["Someday", "Sources", "Scheduled"]);
+		expect(names("s").slice(0, 4)).toEqual(["Slides", "Someday", "Sources", "Scheduled"]);
 		// タスクの View は Today（#38）。daily ではデイリーノートの一覧が先頭に出る
 		expect(names("daily")[0]).toBe("Daily notes");
 		expect(names("today")[0]).toBe("Today");

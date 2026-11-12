@@ -6,5 +6,6 @@
   "pkm-html",
   "pkm-diagram",
   "pkm-updates",
-  "pkm-view-selector"
+  "pkm-view-selector",
+  "pkm-slide"
 ]

@@ -73,7 +73,7 @@
 	align-items: center;
 	gap: 32u;
 	padding: 24u 40u 24u 24u;
-	border-radius: var(--vt-radius-xl);
+	border-radius: var(--sl-radius);
 	background: var(--vt-surface-container);
 }
 .slide .agenda > li::before,
@@ -109,7 +109,7 @@
 	align-items: center;
 	gap: 32u;
 	padding: 24u 40u;
-	border-radius: var(--vt-radius-xl);
+	border-radius: var(--sl-radius);
 	background: var(--vt-surface-container);
 }
 .slide .actions .who,
@@ -182,7 +182,7 @@
 	color: var(--sl-on-primary-container);
 }
 .slide thead th.pick {
-	border-radius: var(--vt-radius-l) var(--vt-radius-l) 0 0;
+	border-radius: var(--sl-radius) var(--sl-radius) 0 0;
 	font-weight: var(--vt-weight-bold);
 }
 .slide td.good::before,
@@ -249,7 +249,7 @@
 	align-items: center;
 	gap: 40u;
 	padding: 24u 40u;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
 	background: var(--c);
 	color: var(--on-c);
 	font-size: var(--body-m);
@@ -275,7 +275,7 @@
 .slide .tree span {
 	display: block;
 	padding: 16u 32u;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
 	background: var(--vt-surface-container);
 	font-size: var(--body-m);
 	line-height: 1.3;
@@ -382,7 +382,7 @@
 	flex-direction: column;
 	gap: 12u;
 	padding: 32u;
-	border-radius: var(--vt-radius-xl);
+	border-radius: var(--sl-radius);
 	background: var(--c);
 	color: var(--on-c);
 	font-size: var(--body-m);
@@ -476,7 +476,7 @@
 	justify-content: center;
 	gap: 8u;
 	padding: 28u 40u;
-	border-radius: var(--vt-radius-xl);
+	border-radius: var(--sl-radius);
 	background: var(--c);
 	color: var(--on-c);
 	font-size: var(--body-m);
@@ -543,7 +543,7 @@
 	justify-content: space-between;
 	gap: 32u;
 	padding: 20u 48u;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
 	background: var(--c);
 	color: var(--on-c);
 	font-size: var(--body-m);
@@ -593,7 +593,7 @@
 	width: calc(var(--v, 0) * 0.82%);
 	min-width: 4u;
 	height: 64u;
-	border-radius: 0 var(--vt-radius-s) var(--vt-radius-s) 0;
+	border-radius: 0 var(--sl-radius-s) var(--sl-radius-s) 0;
 	background: var(--vt-outline);
 }
 .slide .bars > li.hl .label,
@@ -625,10 +625,10 @@
 	line-height: 1.3;
 }
 .slide .share > li:first-child {
-	border-radius: var(--vt-radius-xl) 0 0 var(--vt-radius-xl);
+	border-radius: var(--sl-radius) 0 0 var(--sl-radius);
 }
 .slide .share > li:last-child {
-	border-radius: 0 var(--vt-radius-xl) var(--vt-radius-xl) 0;
+	border-radius: 0 var(--sl-radius) var(--sl-radius) 0;
 }
 .slide .share .label {
 	color: inherit;
@@ -644,7 +644,7 @@
 	gap: 8u;
 }
 .slide .kpi .big {
-	font-size: var(--display-s);
+	font-size: clamp(var(--headline-s), calc(100cqi / var(--fit, 1)), var(--display-s));
 	color: inherit;
 }
 .slide .delta {
@@ -660,9 +660,6 @@
 }
 
 /* ---- 物を見せる ---- */
-.slide[data-pattern="image"] figure > img {
-	object-fit: cover;
-}
 /* 画面は図の枠を画像に合わせる（.callout の --x / --y を、画像の左上からの % にするため） */
 .slide[data-pattern="screenshot"] .sl-body {
 	align-items: center;
@@ -682,4 +679,1083 @@
 .slide[data-pattern="screenshot"] figure > img {
 	box-shadow: var(--vt-elevation-2);
 	border: 2u solid var(--vt-outline-variant);
+}
+
+/* ======================================================================
+ * ADR-0120 で足したパターンと、部品の変種
+ * ====================================================================== */
+
+/* ---- 変種: 写真の置き方 ---- */
+/* 全面に敷く。枠いっぱいに広げるので、ここだけは端が切れる（スキルの cover-image.md に書いた） */
+.slide figure.bleed {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	display: block;
+	gap: 0;
+}
+.slide figure.bleed > img {
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	max-height: none;
+	object-fit: cover;
+	border-radius: 0;
+}
+.slide figure.bleed > figcaption {
+	display: none;
+}
+/* 写真の上の文字は、面の色の板に載せる（写真の明るさによらずコントラストを保つ） */
+.slide:has(figure.bleed) .sl-head,
+.slide:has(figure.bleed) .sl-foot {
+	position: relative;
+	z-index: 1;
+}
+.slide:has(figure.bleed) .sl-head {
+	align-self: end;
+	justify-self: start;
+	max-width: 1300u;
+	padding: 48u 56u;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface);
+	box-shadow: var(--vt-elevation-2);
+}
+.slide:has(figure.bleed) {
+	grid-template-rows: minmax(0, 1fr) 0 auto;
+	padding-bottom: 64u;
+}
+.slide:has(figure.bleed) .sl-foot {
+	display: none;
+}
+
+/* 左右の半分。写真は切り取らずに、半分の枠に全部入れる */
+.slide:has(> .sl-body > figure.right) {
+	padding-right: calc(50% + var(--pad));
+}
+.slide:has(> .sl-body > figure.left) {
+	padding-left: calc(50% + var(--pad));
+}
+/* ページ番号は写真の上に、右下へ */
+.slide:has(> .sl-body > figure.right) .sl-page,
+.slide:has(> .sl-body > figure.left) .sl-page {
+	position: absolute;
+	right: var(--pad);
+	bottom: 40u;
+	z-index: 1;
+}
+.slide figure.left,
+.slide figure.right {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 50%;
+	padding: 64u;
+	background: var(--vt-surface-container);
+}
+.slide figure.right {
+	right: 0;
+}
+.slide figure.left {
+	left: 0;
+}
+
+/* ---- 変種: カードの見た目 ---- */
+.slide .card.outline {
+	background: transparent;
+	box-shadow: inset 0 0 0 3u var(--vt-outline-variant);
+}
+.slide .card.outline.primary {
+	box-shadow: inset 0 0 0 4u var(--sl-primary);
+	color: var(--vt-on-surface);
+}
+.slide .cols:has(> .card.numbered) {
+	counter-reset: card;
+}
+.slide .card.numbered {
+	counter-increment: card;
+}
+.slide .card.numbered::before {
+	content: counter(card);
+	display: grid;
+	place-items: center;
+	width: 72u;
+	height: 72u;
+	border-radius: var(--sl-radius-s);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-bold);
+	font-variant-numeric: tabular-nums;
+}
+/* カードの上の写真。カードの幅いっぱい、切り取らずに収める */
+.slide .card > img.cover-img {
+	align-self: stretch;
+	width: calc(100% + 80u);
+	max-width: none;
+	margin: -40u -40u 8u;
+	aspect-ratio: 16 / 9;
+	height: auto;
+	flex: 0 1 auto;
+	border-radius: var(--sl-radius) var(--sl-radius) 0 0;
+	background: var(--vt-surface-container-high);
+}
+
+/* ---- 構成 ---- */
+.slide[data-pattern="cover-image"] h1 {
+	font-size: var(--display-s);
+}
+.slide[data-pattern="cover-image"] .lead {
+	font-size: var(--title-l);
+}
+
+.slide img.avatar {
+	width: 240u;
+	height: 240u;
+	object-fit: cover;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface-container-high);
+}
+.slide[data-pattern="profile"] .card {
+	align-items: center;
+	text-align: center;
+	gap: 8u;
+}
+.slide[data-pattern="profile"] .card > img.avatar {
+	margin-bottom: 16u;
+}
+
+/* ---- 主張する ---- */
+.slide[data-pattern="image-statement"] h2 {
+	font-size: var(--headline-m);
+	line-height: 1.3;
+}
+
+.slide[data-pattern="two-numbers"] .cols {
+	align-self: center;
+	width: 100%;
+	max-width: 1500u;
+}
+.slide[data-pattern="two-numbers"] .kpi {
+	padding: 56u 64u;
+}
+.slide[data-pattern="two-numbers"] .kpi .big {
+	font-size: clamp(var(--headline-s), calc(100cqi / var(--fit, 1)), var(--display-l));
+}
+.slide[data-pattern="two-numbers"] .kpi:not(.primary) .big {
+	color: var(--vt-on-surface-variant);
+}
+
+.slide[data-pattern="question"] {
+	grid-template-rows: minmax(0, 1fr) auto;
+}
+.slide[data-pattern="question"] .sl-head {
+	align-content: center;
+	gap: 32u;
+	max-width: 1500u;
+}
+.slide[data-pattern="question"] .sl-body {
+	display: none;
+}
+.slide[data-pattern="question"] h2 {
+	font-size: var(--display-s);
+	line-height: 1.3;
+}
+.slide[data-pattern="question"] .kicker {
+	font-size: var(--title-l);
+}
+
+.slide .pairs {
+	list-style: none;
+	padding: 0;
+	gap: 32u;
+}
+.slide .pairs > li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 120u minmax(0, 1fr);
+	align-items: stretch;
+	padding: 0;
+}
+.slide .pairs > li::after {
+	content: "→";
+	grid-column: 2;
+	grid-row: 1;
+	align-self: center;
+	text-align: center;
+	font-size: var(--headline-m);
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .pairs .myth,
+.slide .pairs .fact {
+	grid-row: 1;
+	display: flex;
+	align-items: center;
+	gap: 24u;
+	padding: 32u 40u;
+	border-radius: var(--sl-radius);
+	font-size: var(--body-m);
+}
+.slide .pairs .myth {
+	grid-column: 1;
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface-variant);
+}
+.slide .pairs .fact {
+	grid-column: 3;
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .pairs .myth::before,
+.slide .pairs .fact::before {
+	flex: none;
+	padding: 4u 20u;
+	border-radius: var(--sl-radius-s);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .pairs .myth::before {
+	content: "思い込み";
+	background: var(--vt-surface);
+	color: var(--vt-on-surface-variant);
+}
+.slide .pairs .fact::before {
+	content: "実際";
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+:root[lang]:not([lang|="ja"]) .slide .pairs .myth::before {
+	content: "Myth";
+}
+:root[lang]:not([lang|="ja"]) .slide .pairs .fact::before {
+	content: "Fact";
+}
+
+/* ---- 比べる ---- */
+.slide .card.pick {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	box-shadow:
+		inset 0 0 0 4u var(--sl-primary),
+		var(--vt-elevation-2);
+}
+.slide .card.pick .chip {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+.slide[data-pattern="options"] .cols {
+	align-items: stretch;
+}
+
+.slide .spectrum {
+	display: grid;
+	grid-template-columns: 280u minmax(0, 1fr) 280u;
+	align-items: center;
+	gap: 32u;
+}
+.slide .spectrum .end {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .spectrum .end:last-child {
+	text-align: right;
+}
+.slide .spectrum .track {
+	list-style: none;
+	position: relative;
+	height: 280u;
+	padding: 0;
+	display: block;
+}
+.slide .spectrum .track::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 50%;
+	height: 12u;
+	transform: translateY(-50%);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-outline-variant);
+}
+.slide .spectrum .track > li {
+	position: absolute;
+	left: calc(var(--v, 50) * 1%);
+	top: 50%;
+	transform: translate(-50%, 24u);
+	padding: 52u 0 0;
+	white-space: nowrap;
+	font-size: var(--body-m);
+	text-align: center;
+}
+.slide .spectrum .track > li::before {
+	content: "";
+	position: absolute;
+	top: -44u;
+	left: 50%;
+	width: 40u;
+	height: 40u;
+	transform: translateX(-50%);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	border: 6u solid var(--vt-outline);
+}
+.slide .spectrum .track > li.hl {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .spectrum .track > li.hl::before {
+	background: var(--sl-primary);
+	border-color: var(--sl-primary);
+}
+
+/* 円は量を表さない。2 つは左右、3 つは三角に置く */
+.slide .venn {
+	position: relative;
+	align-self: center;
+	width: 1000u;
+	height: 640u;
+	flex: none;
+}
+.slide .venn > .set {
+	position: absolute;
+	width: 520u;
+	height: 520u;
+	display: grid;
+	padding: 72u;
+	border-radius: var(--vt-radius-full);
+	border: 6u solid var(--vt-outline);
+	background: color-mix(in srgb, var(--vt-surface-container) 55%, transparent);
+	font-size: var(--body-m);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1.3;
+	text-align: center;
+}
+.slide .venn > .set:nth-of-type(1) {
+	left: 120u;
+	top: 60u;
+	place-items: center start;
+}
+.slide .venn > .set:nth-of-type(2) {
+	right: 120u;
+	top: 60u;
+	place-items: center end;
+}
+.slide .venn:has(> .set:nth-of-type(3)) > .set {
+	width: 460u;
+	height: 460u;
+	padding: 64u;
+}
+.slide .venn:has(> .set:nth-of-type(3)) > .set:nth-of-type(1) {
+	left: 160u;
+	top: 0;
+	place-items: center start;
+	padding: 0 0 120u 40u;
+}
+.slide .venn:has(> .set:nth-of-type(3)) > .set:nth-of-type(2) {
+	right: 160u;
+	top: 0;
+	place-items: center end;
+	padding: 0 40u 120u 0;
+	text-align: right;
+}
+.slide .venn:has(> .set:nth-of-type(3)) > .set {
+	font-size: var(--label-m);
+}
+.slide .venn > .set:nth-of-type(3) {
+	left: 270u;
+	bottom: 0;
+	place-items: end center;
+	padding-bottom: 80u;
+}
+.slide .venn > .center {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1;
+	padding: 12u 28u;
+	border-radius: var(--sl-radius-s);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-bold);
+	white-space: nowrap;
+}
+.slide .venn:has(> .set:nth-of-type(3)) > .center {
+	top: 56%;
+}
+
+/* ---- 構造を見せる ---- */
+.slide .grid {
+	list-style: none;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-auto-rows: minmax(0, 1fr);
+	gap: 24u;
+}
+.slide .grid:has(> li:nth-child(7)):not(:has(> li:nth-child(10))) {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.slide .grid:has(> li:nth-child(9)):not(:has(> li:nth-child(10))) {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.slide .grid > li {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4u;
+	padding: 28u 36u;
+	border-radius: var(--sl-radius);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--label-m);
+}
+.slide .grid > li p {
+	color: inherit;
+	opacity: 0.85;
+}
+
+.slide .hub {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 520u minmax(0, 1fr);
+	align-items: center;
+	gap: 0;
+}
+.slide .hub > .core {
+	grid-column: 2;
+	grid-row: 1;
+	display: grid;
+	place-items: center;
+	min-height: 320u;
+	padding: 40u;
+	border-radius: var(--sl-radius);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-size: var(--title-l);
+	font-weight: var(--vt-weight-bold);
+	text-align: center;
+	z-index: 1;
+}
+/* 周りは ul を左右の 2 列に割る（前半が左、後半が右） */
+.slide .hub > ul {
+	display: contents;
+	list-style: none;
+}
+.slide .hub > ul > li {
+	position: relative;
+	grid-column: 1;
+	margin: 12u 96u 12u 0;
+	padding: 28u 36u;
+	border-radius: var(--sl-radius);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+	text-align: center;
+}
+.slide .hub > ul > li:nth-child(even) {
+	grid-column: 3;
+	margin: 12u 0 12u 96u;
+}
+.slide .hub > ul > li:nth-child(1),
+.slide .hub > ul > li:nth-child(2) {
+	grid-row: 1;
+	align-self: start;
+}
+.slide .hub > ul > li:nth-child(3),
+.slide .hub > ul > li:nth-child(4) {
+	grid-row: 1;
+	align-self: end;
+}
+.slide .hub > ul > li:nth-child(5),
+.slide .hub > ul > li:nth-child(6) {
+	grid-row: 1;
+	align-self: center;
+}
+.slide .hub > ul > li::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	width: 96u;
+	border-top: 4u solid var(--vt-outline);
+}
+.slide .hub > ul > li:nth-child(odd)::after {
+	left: 100%;
+}
+.slide .hub > ul > li:nth-child(even)::after {
+	right: 100%;
+}
+.slide .hub:has(> ul > li:nth-child(5)) > .core {
+	min-height: 460u;
+}
+.slide .hub > ul > li:only-child,
+.slide .hub > ul > li:nth-child(1):nth-last-child(2),
+.slide .hub > ul > li:nth-child(2):nth-last-child(1) {
+	align-self: center;
+}
+
+.slide .pyramid {
+	list-style: none;
+	padding: 0;
+	display: grid;
+	justify-items: center;
+	gap: 12u;
+}
+.slide .pyramid > li {
+	display: grid;
+	place-items: center;
+	width: 40%;
+	min-height: 120u;
+	padding: 16u 40u;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface-container-high);
+	text-align: center;
+}
+.slide .pyramid > li:nth-child(2) {
+	width: 60%;
+}
+.slide .pyramid > li:nth-child(3) {
+	width: 80%;
+}
+.slide .pyramid > li:nth-child(4) {
+	width: 100%;
+}
+.slide .pyramid > li:first-child {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+.slide .pyramid > li:nth-child(2):not(:last-child) {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+}
+
+/* ---- 流れを見せる ---- */
+.slide .roadmap {
+	display: grid;
+	gap: 16u;
+	--track: 260u;
+}
+.slide .roadmap .periods {
+	list-style: none;
+	display: grid;
+	grid-template-columns: var(--track) repeat(var(--cols, 4), minmax(0, 1fr));
+	gap: 0;
+	padding: 0 0 12u;
+	border-bottom: 3u solid var(--vt-outline);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .roadmap .periods > li {
+	padding: 0 0 0 16u;
+}
+.slide .roadmap .periods > li:first-child {
+	grid-column: 2;
+}
+.slide .roadmap .lane {
+	display: grid;
+	grid-template-columns: var(--track) repeat(var(--cols, 4), minmax(0, 1fr));
+	grid-auto-flow: dense;
+	align-items: center;
+	gap: 0;
+	min-height: 112u;
+	border-bottom: 2u solid var(--vt-outline-variant);
+}
+.slide .roadmap .track {
+	grid-column: 1;
+	font-size: var(--body-m);
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .roadmap .bar {
+	grid-row: 1;
+	grid-column: calc(var(--s, 1) + 1) / calc(var(--e, 1) + 2);
+	margin: 0 8u;
+	padding: 12u 24u;
+	border-radius: var(--sl-radius-s);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.slide .roadmap .bar.primary {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+
+.slide .journey {
+	list-style: none;
+	padding: 0;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: 24u;
+}
+.slide .journey > li {
+	container-type: inline-size;
+	position: relative;
+	display: grid;
+	grid-template-rows: auto auto 280u;
+	align-content: start;
+	gap: 8u;
+	padding: 0;
+	font-size: var(--body-m);
+}
+.slide .journey > li > p {
+	font-size: var(--label-m);
+	color: var(--vt-on-surface-variant);
+}
+/* 気持ちの帯: 下の 280u の中で、--v の高さに点を置く */
+.slide .journey > li::before {
+	content: "";
+	grid-row: 3;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface-container);
+}
+.slide .journey > li::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: calc(var(--v, 50) * 2.2u + 20u);
+	width: 48u;
+	height: 48u;
+	transform: translateX(-50%);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-outline);
+}
+.slide .journey > li.low::after {
+	background: var(--vt-red);
+}
+.slide .journey > li.low h3 {
+	color: var(--vt-red);
+}
+
+.slide .flow {
+	display: grid;
+	justify-items: center;
+	gap: 56u;
+}
+.slide .flow .node {
+	position: relative;
+	min-width: 560u;
+	padding: 20u 40u;
+	border-radius: var(--sl-radius);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+	text-align: center;
+}
+.slide .flow .node.q {
+	background: var(--vt-surface);
+	box-shadow: inset 0 0 0 4u var(--vt-outline);
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .flow > .node:not(:last-child)::after {
+	content: "↓";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	height: 56u;
+	display: grid;
+	place-items: center;
+	transform: translateX(-50%);
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .flow .branches {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 80u;
+	width: 100%;
+	margin-top: -32u;
+}
+.slide .flow .branches > div {
+	display: grid;
+	justify-items: center;
+	gap: 8u;
+}
+.slide .flow .edge {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .flow .edge::after {
+	content: " ↓";
+}
+.slide .flow .node.primary {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+
+/* ---- データを見せる ---- */
+.slide .columns,
+.slide .progress,
+.slide .waterfall {
+	list-style: none;
+	padding: 0;
+}
+/* 縦棒。--v は 0〜100（最大の棒を 100 にする） */
+.slide .columns,
+.slide .waterfall {
+	flex: 1 1 0;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: 32u;
+	align-items: stretch;
+	min-height: 0;
+	padding-top: 56u;
+	border-bottom: 3u solid var(--vt-outline);
+}
+.slide .columns > li,
+.slide .waterfall > li {
+	position: relative;
+	padding: 0;
+	font-size: var(--label-m);
+}
+.slide .columns > li::before {
+	content: "";
+	position: absolute;
+	left: 10%;
+	right: 10%;
+	bottom: 0;
+	height: calc(var(--v, 0) * 1%);
+	min-height: 4u;
+	border-radius: var(--sl-radius-s) var(--sl-radius-s) 0 0;
+	background: var(--vt-outline);
+}
+.slide .columns .value,
+.slide .waterfall .value {
+	position: absolute;
+	left: 0;
+	right: 0;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: var(--vt-on-surface-variant);
+	white-space: nowrap;
+}
+.slide .columns .value {
+	bottom: calc(var(--v, 0) * 1% + 8u);
+}
+.slide .columns .label,
+.slide .waterfall .label {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 100%;
+	padding-top: 12u;
+	text-align: center;
+	white-space: nowrap;
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-regular);
+	color: var(--vt-on-surface);
+}
+.slide .columns,
+.slide .waterfall {
+	margin-bottom: 72u;
+}
+.slide .columns > li.hl::before {
+	background: var(--sl-primary);
+}
+.slide .columns > li.hl .value,
+.slide .columns > li.hl .label {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+
+.slide .waterfall > li::before {
+	content: "";
+	position: absolute;
+	left: 10%;
+	right: 10%;
+	bottom: calc(var(--b, 0) * 1%);
+	height: calc(var(--h, 0) * 1%);
+	min-height: 4u;
+	border-radius: var(--sl-radius-s);
+	background: var(--vt-outline-variant);
+}
+.slide .waterfall > li.total::before {
+	background: var(--vt-outline);
+}
+.slide .waterfall > li.up::before {
+	background: var(--vt-green-container);
+	box-shadow: inset 0 0 0 3u var(--vt-green);
+}
+.slide .waterfall > li.down::before {
+	background: var(--vt-surface-container-high);
+	box-shadow: inset 0 0 0 3u var(--vt-outline);
+}
+.slide .waterfall > li.hl::before {
+	background: var(--sl-primary);
+	box-shadow: none;
+}
+.slide .waterfall .value {
+	bottom: calc((var(--b, 0) + var(--h, 0)) * 1% + 8u);
+}
+.slide .waterfall > li.hl .value,
+.slide .waterfall > li.hl .label {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+
+.slide .progress {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr) max-content;
+	gap: 28u 32u;
+	align-items: center;
+}
+.slide .progress > li {
+	display: grid;
+	grid-template-columns: subgrid;
+	grid-column: 1 / -1;
+	align-items: center;
+	padding: 0;
+	font-size: var(--body-m);
+}
+.slide .progress > li::before {
+	content: "";
+	grid-column: 2;
+	grid-row: 1;
+	height: 48u;
+	border-radius: var(--vt-radius-full);
+	background:
+		linear-gradient(var(--vt-outline), var(--vt-outline)) left / calc(var(--v, 0) * 1%) 100% no-repeat,
+		var(--vt-surface-container-high);
+}
+.slide .progress .label {
+	grid-column: 1;
+	grid-row: 1;
+	font-size: var(--body-m);
+	font-weight: var(--vt-weight-regular);
+	color: var(--vt-on-surface);
+}
+.slide .progress .value {
+	grid-column: 3;
+	grid-row: 1;
+	font-variant-numeric: tabular-nums;
+	color: var(--vt-on-surface-variant);
+}
+.slide .progress > li.hl::before {
+	background:
+		linear-gradient(var(--sl-primary), var(--sl-primary)) left / calc(var(--v, 0) * 1%) 100% no-repeat,
+		var(--vt-surface-container-high);
+}
+.slide .progress > li.hl .label,
+.slide .progress > li.hl .value {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+
+/* 濃淡の表。--v は 0〜100。面は primary-container の濃さ、文字はいつも on-surface（どの濃さでも読める） */
+.slide table.heat {
+	border-collapse: separate;
+	border-spacing: 8u;
+	table-layout: fixed;
+}
+.slide table.heat th,
+.slide table.heat td {
+	border: 0;
+	text-align: center;
+	vertical-align: middle;
+}
+.slide table.heat tbody th {
+	text-align: right;
+	white-space: nowrap;
+	font-size: var(--label-m);
+	color: var(--vt-on-surface-variant);
+}
+.slide table.heat td {
+	padding: 20u 8u;
+	border-radius: var(--sl-radius-s);
+	background: color-mix(in srgb, var(--sl-primary-container) calc(var(--v, 0) * 1%), var(--vt-surface-container));
+	color: var(--vt-on-surface);
+}
+.slide table.heat td.hl {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-weight: var(--vt-weight-bold);
+}
+
+/* ---- 物を見せる ---- */
+.slide .gallery {
+	flex: 1 1 0;
+	min-height: 0;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr);
+	gap: 32u;
+}
+.slide .gallery:has(> figure:nth-child(4)) {
+	grid-auto-flow: row;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-rows: none;
+	grid-auto-rows: minmax(0, 1fr);
+}
+.slide .gallery:has(> figure:nth-child(4)):not(:has(> figure:nth-child(5))) {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.slide .gallery > figure,
+.slide[data-pattern="screenshot-compare"] .cols > figure {
+	min-height: 0;
+	height: 100%;
+}
+.slide[data-pattern="screenshot-compare"] .cols {
+	flex: 1 1 0;
+	min-height: 0;
+	grid-template-rows: minmax(0, 1fr);
+}
+.slide[data-pattern="screenshot-compare"] figure > img {
+	box-shadow: var(--vt-elevation-2);
+	border: 2u solid var(--vt-outline-variant);
+}
+.slide .gallery figcaption,
+.slide[data-pattern="screenshot-compare"] figcaption {
+	justify-self: center;
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface);
+}
+
+/* ---- 話の型 ---- */
+.slide .risks {
+	list-style: none;
+	padding: 0;
+	gap: 20u;
+}
+.slide .risks > li {
+	display: grid;
+	grid-template-columns: 120u minmax(0, 1fr) 96u minmax(0, 1fr);
+	align-items: center;
+	gap: 24u;
+	padding: 20u 32u;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface-container);
+	font-size: var(--body-m);
+}
+.slide .risks .level {
+	display: grid;
+	place-items: center;
+	height: 72u;
+	border-radius: var(--sl-radius-s);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .risks .level.high {
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+}
+.slide .risks .level.mid {
+	background: var(--vt-amber-container);
+	color: var(--vt-on-amber-container);
+}
+.slide .risks .level.low {
+	background: var(--vt-gray-container);
+	color: var(--vt-on-gray-container);
+}
+.slide .risks .fix {
+	grid-column: 4;
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .risks .risk::after {
+	content: "→";
+	position: absolute;
+}
+.slide .risks .risk {
+	position: relative;
+	grid-column: 2;
+}
+.slide .risks .risk::after {
+	left: calc(100% + 24u);
+	width: 96u;
+	top: 50%;
+	transform: translateY(-50%);
+	text-align: center;
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+}
+
+.slide[data-pattern="ask"] .kicker {
+	font-size: var(--title-l);
+}
+.slide[data-pattern="ask"] h2 {
+	font-size: var(--headline-m);
+}
+.slide .asks {
+	list-style: none;
+	padding: 0;
+	counter-reset: ask;
+	gap: 24u;
+}
+.slide .asks > li {
+	counter-increment: ask;
+	display: grid;
+	grid-template-columns: 88u minmax(0, 1fr) max-content;
+	align-items: center;
+	gap: 32u;
+	padding: 28u 40u 28u 28u;
+	border-radius: var(--sl-radius);
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+}
+.slide .asks > li::before {
+	content: counter(ask);
+	display: grid;
+	place-items: center;
+	width: 88u;
+	height: 88u;
+	border-radius: var(--sl-radius-s);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .asks > li > p {
+	font-size: var(--body-m);
+	font-weight: var(--vt-weight-semibold);
+	font-variant-numeric: tabular-nums;
+}
+
+.slide .retro .chip.green {
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+}
+.slide .retro .chip.red {
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+}
+.slide .retro .card.primary .chip {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+}
+
+.slide .faq {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--gap);
+}
+.slide .faq > div {
+	container-type: inline-size;
+	display: grid;
+	align-content: start;
+	gap: 12u;
+	padding: 36u 40u;
+	border-radius: var(--sl-radius);
+	background: var(--vt-surface-container);
+}
+.slide .faq dt {
+	font-size: var(--body-l);
+	color: var(--vt-on-surface);
+}
+.slide .faq dt::before {
+	content: "Q. ";
+	color: var(--sl-primary);
+}
+.slide .faq dd {
+	font-size: var(--body-m);
+	color: var(--vt-on-surface-variant);
 }

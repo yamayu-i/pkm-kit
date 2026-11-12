@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
-import { buildDeck, stampLines, textWidth, type Assets, type BuildResult } from "../src/core/build.ts";
+import { buildDeck, longestWordEm, stampLines, textWidth, type Assets, type BuildResult } from "../src/core/build.ts";
 
 const assets: Assets = { tokensCss: "/*tokens*/", css: "/*css*/", runtime: "console.log('runtime');" };
 const sha256 = (text: string, encoding: "hex" | "base64") => createHash("sha256").update(text).digest(encoding);
@@ -132,5 +132,18 @@ describe("buildDeck（ADR-0117）", () => {
 	it("textWidth は全角を 1、半角を 0.5 で数える", () => {
 		expect(textWidth("あい")).toBe(2);
 		expect(textWidth("ab 12")).toBe(2.5);
+	});
+
+	it("longestWordEm は、漢字・カタカナ・英数字の続きを 1 語として、いちばん長い語の幅を返す", () => {
+		expect(longestWordEm("アイリッシュ")).toBe(6);
+		expect(longestWordEm("問い合わせの種類")).toBe(2);
+		expect(longestWordEm("ab cd")).toBeCloseTo(1.2);
+		expect(longestWordEm("")).toBe(0);
+	});
+
+	it("狭い箱の見出しと指標の数字に --fit を入れ、部品のつまみは残す（カードで語の途中から折り返さない）", () => {
+		const html = build(deck(slide('<h2>見出し</h2><div class="cols"><div class="card"><h3 style="--v:3">アイリッシュ</h3></div><div class="card kpi"><p class="big">50<span class="unit">分</span></p></div></div>', "cards"))).html as string;
+		expect(html).toMatch(/<h3[^>]*style="--v:3;--fit:6\.4"/);
+		expect(html).toMatch(/<p (?=[^>]*class="big")[^>]*style="--fit:1\.7"/);
 	});
 });
