@@ -1,0 +1,9 @@
+{
+	"id": "pkm-markdown",
+	"name": "PKM Markdown",
+	"version": "0.1.0",
+	"minAppVersion": "1.11.4",
+	"description": "ノートの表示を整える自作プラグイン。インラインコードのコピーボタン、本文の # で始まる語を普通の文字で表示、見出しと箇条書きのスタイル。モバイル対応。",
+	"author": "yamayu-i",
+	"isDesktopOnly": false
+}
