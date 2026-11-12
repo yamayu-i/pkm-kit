@@ -44,6 +44,10 @@ const steps = [
 	existsSync(join(root, "slide")) && existsSync(join(root, ".kit/bin/slide.mjs"))
 		? ["スライド（index.html が deck.html から作ったものと同じか）", node, [join(root, ".kit/bin/slide.mjs"), "check"]]
 		: ["スライド（slide/ がないので省略）", null, []],
+	// 基本の色（ADR-0121）: theme.json が規約を満たし、スニペットと appearance.json が合っているか。theme.json もスニペットもなければ何もしない
+	existsSync(join(root, ".kit-local/theme.json")) || existsSync(join(root, ".obsidian/snippets/pkm-theme-local.css"))
+		? ["基本の色（theme.json が規約を満たし、スニペットが theme.json から作ったものと同じか）", node, [join(root, ".kit/bin/theme.mjs"), "check"]]
+		: ["基本の色（.kit-local/theme.json がないので省略）", null, []],
 	["移行（子の Vault で未適用のものがないか）", node, [join(root, ".kit/migrate.mjs"), "--status"]],
 	appendOnly
 		? ["wiki の操作が追記だけか", node, [join(scripts, "check-append-only.mjs"), ...appendOnly]]

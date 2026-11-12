@@ -77,4 +77,5 @@
 | [0111](0111-remove-drawio.md) | 承認 | Draw.io 関連をすべて除き、既存の .drawio.svg は普通の SVG の図として扱う |
 | [0114](0114-board-manual-order.md) | 承認 | task board のグループの中でカードを手で並べ替える |
 | [0117](0117-slides.md) | 承認 | スライドを slide/ に HTML で作り、共通の閲覧機能をビルドで入れ、デザインは規約とパターンのスキルで決める |
+| [0121](0121-vault-theme.md) | 承認 | 子の Vault ごとに基本の色を変えられるようにする |
 <!-- adr-index:end -->
