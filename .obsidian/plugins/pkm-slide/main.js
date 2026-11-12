@@ -194,6 +194,10 @@ function renameTarget(source, name, exists) {
   if (exists(path)) return { error: `${path} \u304C\u3059\u3067\u306B\u3042\u308A\u307E\u3059` };
   return { path };
 }
+function childrenOf(folders, decks, parent) {
+  const direct = (p3) => p3 !== parent && parentOf(p3) === parent;
+  return { folders: folders.filter(direct).sort(), decks: decks.filter(direct) };
+}
 function folderLabel(path) {
   return path === SLIDE_ROOT ? "All" : baseName(path);
 }
@@ -892,6 +896,10 @@ function u3(e3, t3, n2, o3, i3, u4) {
 
 // src/views/SlidesView.tsx
 var DRAG_TYPE = "text/x-pkm-slide";
+var OPEN_KEY = "pkm-slide-open-folders";
+var PREVIEW_DELAY_MS = 350;
+var PREVIEW_WIDTH = 288;
+var PREVIEW_HEIGHT = 228;
 function Icon({ name }) {
   const ref = A2(null);
   h2(() => {
@@ -910,38 +918,89 @@ function formatTime(ms) {
   const p3 = (n2) => String(n2).padStart(2, "0");
   return `${d3.getFullYear()}-${p3(d3.getMonth() + 1)}-${p3(d3.getDate())} ${p3(d3.getHours())}:${p3(d3.getMinutes())}`;
 }
+function location(path) {
+  const parent = parentOf(path);
+  return parent === SLIDE_ROOT ? "" : parent.slice(SLIDE_ROOT.length + 1);
+}
+function loadOpen(app) {
+  try {
+    const v3 = app.loadLocalStorage(OPEN_KEY);
+    return new Set(Array.isArray(v3) ? v3.filter((x2) => typeof x2 === "string") : []);
+  } catch {
+    return /* @__PURE__ */ new Set();
+  }
+}
 function SlidesView({ app, model, actions }) {
   const { tree, decks } = useSnapshot(model);
-  const [folder, setFolder] = d2(SLIDE_ROOT);
   const [query, setQuery] = d2("");
   const [sort, setSort] = d2("updated");
+  const [open, setOpen] = d2(() => loadOpen(app));
   const [dropOn, setDropOn] = d2(null);
-  const current = tree.folders.includes(folder) ? folder : SLIDE_ROOT;
+  const [preview, setPreview] = d2(null);
+  const pageRef = A2(null);
+  const timer = A2(null);
   const canDrag = !import_obsidian5.Platform.isMobile;
-  const shown = T2(() => {
-    const q2 = query.trim().toLowerCase();
-    const list = decks.filter((d3) => isWithin(d3.path, current) && (q2 === "" || d3.title.toLowerCase().includes(q2) || d3.path.toLowerCase().includes(q2)));
-    return list.sort((a3, b2) => sort === "updated" ? b2.mtime - a3.mtime : a3.title.localeCompare(b2.title, "ja"));
-  }, [decks, current, query, sort]);
+  const canHover = !import_obsidian5.Platform.isMobile;
+  const byPath = T2(() => new Map(decks.map((d3) => [d3.path, d3])), [decks]);
+  const deckPaths = T2(() => decks.map((d3) => d3.path), [decks]);
+  const order = (list) => list.sort((a3, b2) => sort === "updated" ? b2.mtime - a3.mtime : baseName(a3.path).localeCompare(baseName(b2.path), "ja"));
   const countIn = (f4) => decks.filter((d3) => isWithin(d3.path, f4)).length;
+  const q2 = query.trim().toLowerCase();
+  const found = q2 === "" ? [] : order(decks.filter((d3) => baseName(d3.path).includes(q2) || d3.title.toLowerCase().includes(q2) || d3.path.toLowerCase().includes(q2)));
+  h2(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
+  const toggle = (f4) => {
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (next.has(f4)) next.delete(f4);
+      else next.add(f4);
+      try {
+        app.saveLocalStorage(OPEN_KEY, [...next]);
+      } catch {
+      }
+      return next;
+    });
+  };
+  const hidePreview = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    setPreview(null);
+  };
+  const showPreview = (e3, d3) => {
+    if (!canHover) return;
+    const row = e3.currentTarget;
+    hidePreview();
+    timer.current = window.setTimeout(() => {
+      const page = pageRef.current;
+      const name = row.querySelector(".vt-sl-name");
+      if (!page || !name) return;
+      const p3 = page.getBoundingClientRect();
+      const r3 = row.getBoundingClientRect();
+      const n2 = name.getBoundingClientRect();
+      const below = r3.bottom + PREVIEW_HEIGHT + 8 <= window.innerHeight;
+      const top = below ? r3.bottom - p3.top + 4 : r3.top - p3.top - PREVIEW_HEIGHT - 4;
+      const left = Math.max(0, Math.min(n2.left - p3.left, p3.width - PREVIEW_WIDTH));
+      setPreview({ deck: d3, top, left });
+    }, PREVIEW_DELAY_MS);
+  };
   const folderMenu = (e3, f4) => {
     e3.preventDefault();
     e3.stopPropagation();
     const menu = new import_obsidian5.Menu();
     menu.addItem((i3) => i3.setTitle("New folder").setIcon("folder-plus").onClick(() => actions.newFolder(f4)));
-    if (f4 !== SLIDE_ROOT) {
-      menu.addItem((i3) => i3.setTitle("Rename").setIcon("pencil").onClick(() => actions.rename(f4)));
-      menu.addItem((i3) => i3.setTitle("Move to\u2026").setIcon("folder-input").onClick(() => actions.moveTo(f4)));
-      menu.addSeparator();
-      menu.addItem(
-        (i3) => i3.setTitle("Delete").setIcon("trash-2").setDisabled(countIn(f4) > 0).onClick(() => void actions.deleteFolder(f4))
-      );
-    }
+    menu.addItem((i3) => i3.setTitle("Rename").setIcon("pencil").onClick(() => actions.rename(f4)));
+    menu.addItem((i3) => i3.setTitle("Move to\u2026").setIcon("folder-input").onClick(() => actions.moveTo(f4)));
+    menu.addSeparator();
+    menu.addItem(
+      (i3) => i3.setTitle("Delete").setIcon("trash-2").setDisabled(countIn(f4) > 0).onClick(() => void actions.deleteFolder(f4))
+    );
     menu.showAtMouseEvent(e3);
   };
   const deckMenu = (e3, d3) => {
     e3.preventDefault();
     e3.stopPropagation();
+    hidePreview();
     const menu = new import_obsidian5.Menu();
     menu.addItem((i3) => i3.setTitle("Open in new tab").setIcon("file-plus").onClick(() => void actions.open(d3, true)));
     menu.addItem((i3) => i3.setTitle("Open in browser").setIcon("presentation").onClick(() => actions.openInBrowser(d3)));
@@ -954,6 +1013,7 @@ function SlidesView({ app, model, actions }) {
   const dragProps = (path) => canDrag ? {
     draggable: true,
     onDragStart: (e3) => {
+      hidePreview();
       e3.dataTransfer?.setData(DRAG_TYPE, path);
       if (e3.dataTransfer) e3.dataTransfer.effectAllowed = "move";
     }
@@ -962,19 +1022,62 @@ function SlidesView({ app, model, actions }) {
     onDragOver: (e3) => {
       if (!e3.dataTransfer?.types.includes(DRAG_TYPE)) return;
       e3.preventDefault();
+      e3.stopPropagation();
       e3.dataTransfer.dropEffect = "move";
       setDropOn(f4);
     },
-    onDragLeave: () => setDropOn((cur) => cur === f4 ? null : cur),
+    onDragLeave: (e3) => {
+      if (e3.currentTarget instanceof Node && e3.relatedTarget instanceof Node && e3.currentTarget.contains(e3.relatedTarget)) return;
+      setDropOn((cur) => cur === f4 ? null : cur);
+    },
     onDrop: (e3) => {
       const path = e3.dataTransfer?.getData(DRAG_TYPE);
       setDropOn(null);
       if (!path) return;
       e3.preventDefault();
+      e3.stopPropagation();
       void actions.move(path, f4);
     }
   });
-  return /* @__PURE__ */ u3("div", { class: "vt-sl-page", children: [
+  const deckRow = (d3, where) => /* @__PURE__ */ u3("li", { class: "vt-sl-item", role: "none", children: /* @__PURE__ */ u3("div", { class: "vt-sl-row", onContextMenu: (e3) => deckMenu(e3, d3), onMouseEnter: (e3) => showPreview(e3, d3), onMouseLeave: hidePreview, ...dragProps(d3.path), children: [
+    /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-row-main", role: "treeitem", onClick: (e3) => void actions.open(d3, e3.ctrlKey || e3.metaKey), onFocus: hidePreview, children: [
+      /* @__PURE__ */ u3("span", { class: "vt-sl-twisty", "aria-hidden": "true" }),
+      /* @__PURE__ */ u3(Icon, { name: "presentation" }),
+      /* @__PURE__ */ u3("span", { class: "vt-sl-name", children: baseName(d3.path) }),
+      where ? /* @__PURE__ */ u3("span", { class: "vt-sl-where", children: where }) : null,
+      /* @__PURE__ */ u3("span", { class: "vt-sl-meta", children: [
+        d3.index ? `${d3.slides} slides` : "Not built",
+        /* @__PURE__ */ u3("span", { class: "vt-sl-time", children: formatTime(d3.mtime) })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-more", "aria-label": `More for ${baseName(d3.path)}`, onClick: (e3) => deckMenu(e3, d3), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+  ] }) }, d3.path);
+  const level = (parent) => {
+    const kids = childrenOf(tree.folders, deckPaths, parent);
+    const items = order(kids.decks.map((p3) => byPath.get(p3)).filter((d3) => d3 !== void 0));
+    return /* @__PURE__ */ u3(S, { children: [
+      kids.folders.map((f4) => {
+        const isOpen = open.has(f4);
+        return /* @__PURE__ */ u3("li", { class: "vt-sl-item", role: "none", children: [
+          /* @__PURE__ */ u3("div", { class: `vt-sl-row is-folder${dropOn === f4 ? " is-drop" : ""}`, ...dropProps(f4), onContextMenu: (e3) => folderMenu(e3, f4), ...dragProps(f4), children: [
+            /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-row-main", role: "treeitem", "aria-expanded": isOpen, onClick: () => toggle(f4), children: [
+              /* @__PURE__ */ u3("span", { class: "vt-sl-twisty", children: /* @__PURE__ */ u3(Icon, { name: isOpen ? "chevron-down" : "chevron-right" }) }),
+              /* @__PURE__ */ u3(Icon, { name: isOpen ? "folder-open" : "folder" }),
+              /* @__PURE__ */ u3("span", { class: "vt-sl-name", children: baseName(f4) }),
+              /* @__PURE__ */ u3("span", { class: "vt-sl-count-in", children: countIn(f4) })
+            ] }),
+            /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-more", "aria-label": `More for ${baseName(f4)}`, onClick: (e3) => folderMenu(e3, f4), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+          ] }),
+          isOpen ? /* @__PURE__ */ u3("ul", { class: "vt-sl-group", role: "group", children: [
+            level(f4),
+            countIn(f4) === 0 && childrenOf(tree.folders, deckPaths, f4).folders.length === 0 ? /* @__PURE__ */ u3("li", { class: "vt-sl-item vt-sl-blank", role: "none", children: "Empty. Drag a slide here, or use Move to\u2026." }) : null
+          ] }) : null
+        ] }, f4);
+      }),
+      items.map((d3) => deckRow(d3))
+    ] });
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-sl-page", ref: pageRef, children: [
     /* @__PURE__ */ u3("header", { class: "vt-sl-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-sl-title", children: "Slides" }),
       /* @__PURE__ */ u3("span", { class: "vt-sl-count", children: decks.length }),
@@ -985,44 +1088,27 @@ function SlidesView({ app, model, actions }) {
         ] }),
         /* @__PURE__ */ u3("select", { class: "vt-sl-sort", "aria-label": "Sort", value: sort, onChange: (e3) => setSort(e3.target.value), children: [
           /* @__PURE__ */ u3("option", { value: "updated", children: "Updated" }),
-          /* @__PURE__ */ u3("option", { value: "title", children: "Title" })
+          /* @__PURE__ */ u3("option", { value: "name", children: "Name" })
         ] }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-btn", onClick: () => actions.newFolder(current), children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-btn", onClick: () => actions.newFolder(SLIDE_ROOT), children: [
           /* @__PURE__ */ u3(Icon, { name: "folder-plus" }),
           "New folder"
         ] })
       ] })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-sl-body", children: [
-      /* @__PURE__ */ u3("nav", { class: "vt-sl-tree", "aria-label": "Folders", children: tree.folders.map((f4) => {
-        const depth = f4 === SLIDE_ROOT ? 0 : f4.split("/").length - 1;
-        return /* @__PURE__ */ u3("div", { class: `vt-sl-folder${f4 === current ? " is-selected" : ""}${dropOn === f4 ? " is-drop" : ""}`, "data-depth": Math.min(depth, 4), ...dropProps(f4), onContextMenu: (e3) => folderMenu(e3, f4), children: [
-          /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-folder-main", "aria-current": f4 === current ? "true" : void 0, onClick: () => setFolder(f4), ...f4 === SLIDE_ROOT ? {} : dragProps(f4), children: [
-            /* @__PURE__ */ u3(Icon, { name: f4 === SLIDE_ROOT ? "layers" : "folder" }),
-            /* @__PURE__ */ u3("span", { class: "vt-sl-folder-name", children: folderLabel(f4) }),
-            /* @__PURE__ */ u3("span", { class: "vt-sl-folder-count", children: countIn(f4) })
-          ] }),
-          /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-more", "aria-label": `More for ${folderLabel(f4)}`, onClick: (e3) => folderMenu(e3, f4), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
-        ] }, f4);
-      }) }),
-      /* @__PURE__ */ u3("section", { class: "vt-sl-main", "aria-label": current === SLIDE_ROOT ? "All slides" : `Slides in ${baseName(current)}`, children: shown.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-sl-empty", children: decks.length === 0 ? /* @__PURE__ */ u3(S, { children: [
-        /* @__PURE__ */ u3("p", { children: "No slides yet." }),
-        /* @__PURE__ */ u3("p", { children: "Ask Claude Code to make a slide deck. Decks are created under slide/." })
-      ] }) : /* @__PURE__ */ u3("p", { children: query ? "No matching slides" : "No slides in this folder. Drag a slide here, or use Move to\u2026 on a slide." }) }) : /* @__PURE__ */ u3("ul", { class: "vt-sl-grid", children: shown.map((d3) => /* @__PURE__ */ u3("li", { class: "vt-sl-card", onContextMenu: (e3) => deckMenu(e3, d3), ...dragProps(d3.path), children: [
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-card-main", onClick: (e3) => void actions.open(d3, e3.ctrlKey || e3.metaKey), children: [
-          /* @__PURE__ */ u3("div", { class: "vt-sl-thumb", children: d3.index ? /* @__PURE__ */ u3("iframe", { sandbox: "", loading: "lazy", tabIndex: -1, "aria-hidden": "true", title: "", src: `${app.vault.getResourcePath(d3.index)}#thumb` }) : /* @__PURE__ */ u3("span", { class: "vt-sl-unbuilt", children: "Not built" }) }),
-          /* @__PURE__ */ u3("span", { class: "vt-sl-card-title", children: d3.title }),
-          /* @__PURE__ */ u3("span", { class: "vt-sl-card-meta", children: [
-            d3.slides,
-            " slides \xB7 ",
-            parentOf(d3.path) === SLIDE_ROOT ? "slide/" : baseName(parentOf(d3.path)),
-            " \xB7 ",
-            formatTime(d3.mtime)
-          ] })
-        ] }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-sl-more vt-sl-card-more", "aria-label": `More for ${d3.title}`, onClick: (e3) => deckMenu(e3, d3), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
-      ] }, d3.path)) }) })
-    ] })
+    decks.length === 0 && tree.folders.length <= 1 ? /* @__PURE__ */ u3("div", { class: "vt-sl-empty", children: [
+      /* @__PURE__ */ u3("p", { children: "No slides yet." }),
+      /* @__PURE__ */ u3("p", { children: "Ask Claude Code to make a slide deck. Decks are created under slide/." })
+    ] }) : q2 !== "" ? found.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-sl-empty", children: /* @__PURE__ */ u3("p", { children: "No matching slides" }) }) : /* @__PURE__ */ u3("ul", { class: "vt-sl-tree", role: "tree", "aria-label": "Matching slides", children: found.map((d3) => deckRow(d3, location(d3.path))) }) : /* @__PURE__ */ u3("ul", { class: `vt-sl-tree${dropOn === SLIDE_ROOT ? " is-drop" : ""}`, role: "tree", "aria-label": "Slides", ...dropProps(SLIDE_ROOT), children: level(SLIDE_ROOT) }),
+    preview ? /* @__PURE__ */ u3("div", { class: "vt-sl-preview", style: { top: `${preview.top}px`, left: `${preview.left}px` }, "aria-hidden": "true", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-sl-thumb", children: preview.deck.index ? /* @__PURE__ */ u3("iframe", { sandbox: "", loading: "lazy", tabIndex: -1, title: "", src: `${app.vault.getResourcePath(preview.deck.index)}#thumb` }) : /* @__PURE__ */ u3("span", { class: "vt-sl-unbuilt", children: "Not built" }) }),
+      /* @__PURE__ */ u3("span", { class: "vt-sl-preview-title", children: preview.deck.title }),
+      /* @__PURE__ */ u3("span", { class: "vt-sl-preview-meta", children: [
+        preview.deck.slides,
+        " slides \xB7 ",
+        preview.deck.path
+      ] })
+    ] }) : null
   ] });
 }
 

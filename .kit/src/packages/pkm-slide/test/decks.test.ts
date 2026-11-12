@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
 import { buildDeck } from "../../slide/src/core/build.ts";
-import { classify, deckTitle, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, slideCount } from "../src/core/decks.ts";
+import { childrenOf, classify, deckTitle, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, slideCount } from "../src/core/decks.ts";
 
 const tree = classify(
 	["slide/a/deck.html", "slide/a/index.html", "slide/team/b/deck.html", "slide/team/b/img/x.png", "slide/a/inner/deck.html", "slide/deck.html", "note.md"],
@@ -20,6 +20,16 @@ describe("classify（ADR-0120）", () => {
 
 	it("slide/ がなくても、slide/ を整理のフォルダの根として持つ", () => {
 		expect(classify([], [])).toEqual({ decks: [], folders: ["slide"] });
+	});
+});
+
+describe("childrenOf（ADR-0124）", () => {
+	it("直下の整理のフォルダとデッキだけを返し、孫は返さない", () => {
+		const folders = ["slide", "slide/team", "slide/team/sub", "slide/empty"];
+		const decks = ["slide/a", "slide/team/b", "slide/team/sub/c"];
+		expect(childrenOf(folders, decks, "slide")).toEqual({ folders: ["slide/empty", "slide/team"], decks: ["slide/a"] });
+		expect(childrenOf(folders, decks, "slide/team")).toEqual({ folders: ["slide/team/sub"], decks: ["slide/team/b"] });
+		expect(childrenOf(folders, decks, "slide/empty")).toEqual({ folders: [], decks: [] });
 	});
 });
 
