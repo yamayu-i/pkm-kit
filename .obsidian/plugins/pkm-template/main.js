@@ -1031,7 +1031,7 @@ function templateLabel(file) {
   return file.replace(/\.md$/i, "");
 }
 function CreateNoteForm(props) {
-  const { templates, manager, onCreated, onReport } = props;
+  const { templates, manager, linkEditor, onCreated, onReport } = props;
   const [selectedIdx, setSelectedIdx] = d2(0);
   const [titleInput, setTitleInput] = d2("");
   const [promptValues, setPromptValues] = d2({});
@@ -1059,7 +1059,7 @@ function CreateNoteForm(props) {
   const alreadyExists = !resolved.error && resolved.path ? manager.fileExists(resolved.path) : false;
   const errorMessage = resolved.error ?? (alreadyExists ? `\u3059\u3067\u306B\u540C\u3058\u540D\u524D\u306E\u30D5\u30A1\u30A4\u30EB\u304C\u3042\u308A\u307E\u3059: ${resolved.path}` : null);
   const canSubmit = !submitting && !errorMessage && Boolean(resolved.path);
-  const submit = (newTab) => {
+  const submit = (newTab, link = false) => {
     if (!canSubmit) return;
     setSubmitting(true);
     void askDates(props.app, current.datePrompts).then(async (dates) => {
@@ -1073,7 +1073,8 @@ function CreateNoteForm(props) {
         prompts: promptValues,
         dates,
         now,
-        newTab
+        newTab,
+        ...link && linkEditor ? { linkInto: linkEditor } : {}
       });
       onCreated();
     }).catch((err) => {
@@ -1091,6 +1092,10 @@ function CreateNoteForm(props) {
     }
     if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey)) {
       e3.preventDefault();
+      if (e3.altKey) {
+        if (linkEditor) submit(false, true);
+        return;
+      }
       submit(e3.shiftKey);
     }
   };
@@ -1164,7 +1169,11 @@ function CreateNoteForm(props) {
     /* @__PURE__ */ u3("div", { class: "vt-tpl-footer", children: [
       /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${errorMessage ? " is-error" : ""}`, children: errorMessage ? errorMessage : `Creates: ${resolved.path}` }),
       /* @__PURE__ */ u3("div", { class: "vt-tpl-actions", children: [
-        !import_obsidian2.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: "Enter / Mod+Enter to create" }),
+        !import_obsidian2.Platform.isMobile && /* @__PURE__ */ u3("span", { class: "vt-tpl-hint", children: [
+          "Enter / Mod+Enter to create",
+          linkEditor ? " / Mod+Alt+Enter to create and link" : ""
+        ] }),
+        linkEditor && /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button", disabled: !canSubmit, onClick: () => submit(false, true), children: "Create and link" }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button", disabled: !canSubmit, onClick: () => submit(true), children: "Open in new tab" }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-button is-primary", disabled: !canSubmit, onClick: () => submit(false), children: "Create" })
       ] })
@@ -1172,15 +1181,17 @@ function CreateNoteForm(props) {
   ] });
 }
 var CreateNoteModal = class extends import_obsidian2.Modal {
-  constructor(app, manager, templates, onReport) {
+  constructor(app, manager, templates, onReport, linkEditor = null) {
     super(app);
     this.manager = manager;
     this.templates = templates;
     this.onReport = onReport;
+    this.linkEditor = linkEditor;
   }
   manager;
   templates;
   onReport;
+  linkEditor;
   onOpen() {
     this.setTitle("Create new file from template");
     R(
@@ -1190,6 +1201,7 @@ var CreateNoteModal = class extends import_obsidian2.Modal {
           app: this.app,
           templates: this.templates,
           manager: this.manager,
+          linkEditor: this.linkEditor,
           onCreated: () => this.close(),
           onReport: this.onReport
         }
@@ -1254,6 +1266,38 @@ function resolveTemplateEntries(params) {
   const listedFiles = new Set(listed.map((e3) => e3.file));
   const rest = [...actual].filter((f4) => !listedFiles.has(f4)).sort((a3, b2) => a3.localeCompare(b2));
   return [...listed.map((e3) => ({ ...e3 })), ...rest.map(defaultEntry)];
+}
+
+// src/core/note-title.ts
+var WEEKDAYS2 = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+function text(value) {
+  const s3 = typeof value === "string" ? value : typeof value === "number" && Number.isFinite(value) ? String(value) : "";
+  const t3 = s3.trim();
+  return t3 === "" ? null : t3;
+}
+function noteTitle(frontmatter, basename) {
+  return text(frontmatter?.title) ?? text(frontmatter?.name) ?? basename;
+}
+function dailyDate(basename) {
+  const m3 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(basename);
+  if (!m3) return null;
+  const [year, month, day] = [Number(m3[1]), Number(m3[2]), Number(m3[3])];
+  const d3 = new Date(Date.UTC(year, month - 1, day));
+  if (d3.getUTCFullYear() !== year || d3.getUTCMonth() !== month - 1 || d3.getUTCDate() !== day) return null;
+  const weekday = d3.getUTCDay();
+  return { date: basename, weekday, label: `${basename} ${WEEKDAYS2[weekday]}` };
+}
+
+// src/core/note-link.ts
+function escapeLabel(label) {
+  return label.replace(/([\\[\]])/g, "\\$1");
+}
+function encodePath(path) {
+  return path.replace(/[ ()<>%]/g, (c3) => `%${c3.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+}
+function noteLink(path, frontmatter) {
+  const basename = (path.split("/").pop() ?? path).replace(/\.md$/i, "");
+  return `[${escapeLabel(noteTitle(frontmatter, basename))}](${encodePath(path)})`;
 }
 
 // src/core/snippet.ts
@@ -1506,6 +1550,11 @@ var TemplateManager = class {
     });
     await this.ensureFolder(normalized);
     const created2 = await this.app.vault.create(normalized, rendered.content);
+    if (params.linkInto) {
+      params.linkInto.replaceSelection(noteLink(created2.path, frontmatterOf(rendered.content)));
+      params.linkInto.focus();
+      return created2;
+    }
     const leaf = await openInNotePane(this.app.workspace, created2, { newTab: params.newTab === true, phone: import_obsidian3.Platform.isPhone });
     const view = this.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView) ?? leaf.view;
     const editor = view?.editor;
@@ -1526,6 +1575,16 @@ var TemplateManager = class {
     }
   }
 };
+function frontmatterOf(content) {
+  const m3 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+  if (!m3) return void 0;
+  try {
+    const parsed = (0, import_obsidian3.parseYaml)(m3[1]);
+    return parsed && typeof parsed === "object" ? parsed : void 0;
+  } catch {
+    return void 0;
+  }
+}
 
 // src/obsidian/header-mount.ts
 var import_obsidian5 = require("obsidian");
@@ -1732,26 +1791,6 @@ function tagList(value) {
     if (tag !== "") out.push(tag);
   }
   return out;
-}
-
-// src/core/note-title.ts
-var WEEKDAYS2 = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-function text(value) {
-  const s3 = typeof value === "string" ? value : typeof value === "number" && Number.isFinite(value) ? String(value) : "";
-  const t3 = s3.trim();
-  return t3 === "" ? null : t3;
-}
-function noteTitle(frontmatter, basename) {
-  return text(frontmatter?.title) ?? text(frontmatter?.name) ?? basename;
-}
-function dailyDate(basename) {
-  const m3 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(basename);
-  if (!m3) return null;
-  const [year, month, day] = [Number(m3[1]), Number(m3[2]), Number(m3[3])];
-  const d3 = new Date(Date.UTC(year, month - 1, day));
-  if (d3.getUTCFullYear() !== year || d3.getUTCMonth() !== month - 1 || d3.getUTCDate() !== day) return null;
-  const weekday = d3.getUTCDay();
-  return { date: basename, weekday, label: `${basename} ${WEEKDAYS2[weekday]}` };
 }
 
 // src/core/tmp-list.ts
@@ -2320,9 +2359,11 @@ var PkmTemplatePlugin = class extends import_obsidian11.Plugin {
   async onload() {
     this.manager = new TemplateManager(this.app);
     const openCreateModal = async () => {
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian11.MarkdownView);
+      const linkEditor = view && view.getMode() === "source" && view.editor.hasFocus() ? view.editor : null;
       try {
         const templates = await this.manager.loadEnabledTemplates();
-        new CreateNoteModal(this.app, this.manager, templates, (msg, err) => this.report(msg, err)).open();
+        new CreateNoteModal(this.app, this.manager, templates, (msg, err) => this.report(msg, err), linkEditor).open();
       } catch (err) {
         this.report("\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F", err);
       }

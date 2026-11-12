@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from "obsidian";
+import { MarkdownView, Notice, Platform, Plugin, type Editor } from "obsidian";
 import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
@@ -25,9 +25,12 @@ export default class PkmTemplatePlugin extends Plugin {
 		this.manager = new TemplateManager(this.app);
 
 		const openCreateModal = async () => {
+			// モーダルを開く前に、カーソルが出ている編集中のエディタを控える（リンクの挿入先）
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			const linkEditor: Editor | null = view && view.getMode() === "source" && view.editor.hasFocus() ? view.editor : null;
 			try {
 				const templates = await this.manager.loadEnabledTemplates();
-				new CreateNoteModal(this.app, this.manager, templates, (msg, err) => this.report(msg, err)).open();
+				new CreateNoteModal(this.app, this.manager, templates, (msg, err) => this.report(msg, err), linkEditor).open();
 			} catch (err) {
 				this.report("テンプレートを読み込めませんでした", err);
 			}
