@@ -3,7 +3,7 @@
  * - pre の外の code に、コピーボタンを付ける。ホバーのない端末では、コードをタップすると出す
  * - 本文のタグ（a.tag）を、同じ文字の普通のテキストに置き換える。プロパティ欄のタグは変えない
  */
-import type { MarkdownPostProcessor } from "obsidian";
+import { Platform, type MarkdownPostProcessor } from "obsidian";
 import { isBodyTag, isInlineCode } from "../core/targets.ts";
 import { createCopyButton } from "./copy-button.ts";
 
@@ -19,7 +19,8 @@ function addCopyButtons(root: HTMLElement): void {
 		wrap.className = WRAP_CLASS;
 		code.replaceWith(wrap);
 		wrap.append(code, createCopyButton(doc, () => code.textContent ?? ""));
-		// タップでボタンを出す（ホバーのある端末では CSS の :hover が出すので、付いても見た目は同じ）
+		// ホバーのない端末では、タップでボタンを出す（ホバーのある端末では CSS の :hover が出す）
+		if (!Platform.isMobile) continue;
 		code.addEventListener("click", () => {
 			for (const other of Array.from(doc.querySelectorAll(`.${WRAP_CLASS}.${ACTIVE_CLASS}`))) if (other !== wrap) other.classList.remove(ACTIVE_CLASS);
 			wrap.classList.toggle(ACTIVE_CLASS);

@@ -26,7 +26,11 @@ class InlineCodeCopy {
 		this.button.addEventListener("mouseenter", () => this.cancelHide());
 		this.button.addEventListener("mouseleave", () => this.scheduleHide());
 		view.dom.appendChild(this.button);
+		// 文書をスクロールするとボタンだけが元の位置に残るので隠す
+		view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
 	}
+
+	private readonly onScroll = (): void => this.hide();
 
 	update(update: ViewUpdate): void {
 		if (update.docChanged || update.selectionSet || update.viewportChanged || update.geometryChanged) this.hide();
@@ -34,6 +38,7 @@ class InlineCodeCopy {
 
 	destroy(): void {
 		this.cancelHide();
+		this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
 		this.button.remove();
 	}
 

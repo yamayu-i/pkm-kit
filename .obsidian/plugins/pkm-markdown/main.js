@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmMarkdownPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/obsidian/live-preview.ts
 var import_view = require("@codemirror/view");
@@ -129,16 +129,19 @@ var InlineCodeCopy = class {
     this.button.addEventListener("mouseenter", () => this.cancelHide());
     this.button.addEventListener("mouseleave", () => this.scheduleHide());
     view.dom.appendChild(this.button);
+    view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
   }
   view;
   button;
   current = null;
   hideTimer = null;
+  onScroll = () => this.hide();
   update(update) {
     if (update.docChanged || update.selectionSet || update.viewportChanged || update.geometryChanged) this.hide();
   }
   destroy() {
     this.cancelHide();
+    this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
     this.button.remove();
   }
   onPointer(target) {
@@ -200,6 +203,9 @@ var livePreviewCopy = import_view.ViewPlugin.fromClass(InlineCodeCopy, {
   }
 });
 
+// src/obsidian/reading.ts
+var import_obsidian2 = require("obsidian");
+
 // src/core/targets.ts
 function isInlineCode(el) {
   return el.matches("code") && el.closest("pre") === null;
@@ -220,6 +226,7 @@ function addCopyButtons(root) {
     wrap.className = WRAP_CLASS;
     code.replaceWith(wrap);
     wrap.append(code, createCopyButton(doc, () => code.textContent ?? ""));
+    if (!import_obsidian2.Platform.isMobile) continue;
     code.addEventListener("click", () => {
       for (const other of Array.from(doc.querySelectorAll(`.${WRAP_CLASS}.${ACTIVE_CLASS}`))) if (other !== wrap) other.classList.remove(ACTIVE_CLASS);
       wrap.classList.toggle(ACTIVE_CLASS);
@@ -238,10 +245,10 @@ var readingProcessor = (el) => {
 
 // src/main.ts
 var LIVE_TAG = ".markdown-source-view .cm-hashtag";
-var PkmMarkdownPlugin = class extends import_obsidian2.Plugin {
+var PkmMarkdownPlugin = class extends import_obsidian3.Plugin {
   onload() {
     this.registerMarkdownPostProcessor(readingProcessor);
-    if (!import_obsidian2.Platform.isMobile) this.registerEditorExtension(livePreviewCopy);
+    if (!import_obsidian3.Platform.isMobile) this.registerEditorExtension(livePreviewCopy);
     this.guardTagClicks(activeDocument);
     this.registerEvent(this.app.workspace.on("window-open", (win) => this.guardTagClicks(win.doc)));
   }
