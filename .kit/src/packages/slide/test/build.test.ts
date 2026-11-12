@@ -7,8 +7,8 @@ const assets: Assets = { tokensCss: "/*tokens*/", css: "/*css*/", runtime: "cons
 const sha256 = (text: string, encoding: "hex" | "base64") => createHash("sha256").update(text).digest(encoding);
 const parse = (html: string) => new DOMParser().parseFromString(html, "text/html") as unknown as Document;
 
-function build(source: string, files: string[] = []): BuildResult {
-	return buildDeck({ source, deckPath: "slide/demo", assets, parse, sha256, exists: (p) => files.includes(p) });
+function build(source: string, files: string[] = [], vaultPrimary?: { light?: string; dark?: string }): BuildResult {
+	return buildDeck({ source, deckPath: "slide/demo", assets, parse, sha256, exists: (p) => files.includes(p), vaultPrimary });
 }
 const deck = (body: string, head = "") => `<title>題</title>\n${head}\n${body}`;
 const slide = (inner: string, pattern = "statement") => `<section data-pattern="${pattern}">\n${inner}\n</section>`;
@@ -127,6 +127,23 @@ describe("buildDeck（ADR-0117）", () => {
 		expect(rules(build(deck(slide("<h2>見出し</h2>"), '<meta name="deck-primary" content="#ffe082">')), "error")).toEqual(["primary-contrast"]);
 		expect(rules(build(deck(slide("<h2>見出し</h2>"), '<meta name="deck-primary" content="blue">')), "error")).toEqual(["primary-contrast"]);
 		expect(rules(build(deck(slide("<h2>見出し</h2>"), '<meta name="deck-density" content="dense">')), "error")).toEqual(["bad-meta"]);
+	});
+
+	it("子の基本の色の primary を、deck-primary のないデッキの既定にし、閲覧の画面にも効かせる（ADR-0125）", () => {
+		const green = build(deck(slide("<h2>見出し</h2>")), [], { light: "#1e5b3a" });
+		expect(green.problems).toEqual([]);
+		expect(green.html).toContain(":root{--vt-primary:#1e5b3a;--vt-on-primary:#ffffff;--vt-primary-state-hover:#1e5b3a14;");
+		expect(green.html).toContain(".slide{--sl-primary:#1e5b3a;--sl-on-primary:#ffffff;");
+		// ダークを書かなければ、ライトから作る
+		expect(green.html).toMatch(/:root\[data-theme="dark"\] \.slide\{--sl-primary:#[0-9a-f]{6};/);
+		// デッキの deck-primary が先
+		const own = build(deck(slide("<h2>見出し</h2>"), '<meta name="deck-primary" content="#0b57d0">'), [], { light: "#1e5b3a" });
+		expect(own.html).toContain(".slide{--sl-primary:#0b57d0;");
+		expect(own.html).not.toContain("#1e5b3a");
+		// 上流の面との比が足りなければ止める
+		expect(rules(build(deck(slide("<h2>見出し</h2>")), [], { light: "#ffe082" }), "error")).toEqual(["vault-primary"]);
+		// theme.json がなければ何も足さない
+		expect(build(deck(slide("<h2>見出し</h2>"))).html).not.toContain("--sl-primary:");
 	});
 
 	it("textWidth は全角を 1、半角を 0.5 で数える", () => {

@@ -20133,7 +20133,7 @@ function buildDeck(input) {
   const theme = meta.get("deck-theme") ?? "light";
   if (theme !== "light" && theme !== "dark") report("error", "bad-meta", null, 0, `deck-theme \u306F light \u304B dark: ${theme}`);
   const lang = meta.get("deck-lang") ?? "ja";
-  const primaryCss = primaryOverride(meta, (message) => report("error", "primary-contrast", null, 0, message));
+  const primaryCss = primaryOverride(meta, input.vaultPrimary, (rule, message) => report("error", rule, null, 0, message));
   const limits = LIMITS[DENSITIES.includes(density) ? density : "present"];
   for (const el of [...body.querySelectorAll("script")]) report("warning", "script-removed", el, 0, "<script> \u306F\u53D6\u308A\u9664\u304F\uFF08\u52D5\u304F\u306E\u306F\u5171\u901A\u306E\u30B9\u30AF\u30EA\u30D7\u30C8\u3060\u3051\uFF09");
   for (const el of [...body.querySelectorAll("style")]) {
@@ -20163,28 +20163,62 @@ function buildDeck(input) {
   const html = page({ title, lang, theme, density, deckPath: input.deckPath, author: meta.get("deck-author") ?? "", date: meta.get("deck-date") ?? "", primaryCss, slides, assets: input.assets, sha256: input.sha256 });
   return { html, problems, title, slides: slides.length };
 }
-function primaryOverride(meta, fail) {
+var primaryRule = (selector, c) => `${selector}{--sl-primary:${c.primary};--sl-on-primary:${c.onPrimary};--sl-primary-container:${c.container};--sl-on-primary-container:${c.onContainer}}`;
+var chromeRule = (selector, c, mode) => {
+  const alpha = (path) => colors[mode][path].slice(7);
+  return `${selector}{--vt-primary:${c.primary};--vt-on-primary:${c.onPrimary};--vt-primary-state-hover:${c.primary}${alpha("color.primary-state-hover")};--vt-on-primary-state-hover:${c.onPrimary}${alpha("color.on-primary-state-hover")}}`;
+};
+var LIGHT_ROOT = ":root";
+var DARK_ROOT = ':root[data-theme="dark"]';
+var LIGHT_SLIDE = ".slide";
+var DARK_SLIDE = ':root[data-theme="dark"] .slide';
+function primaryOverride(meta, vault, fail) {
   const light = meta.get("deck-primary");
   const darkGiven = meta.get("deck-primary-dark");
   if (light === void 0) {
-    if (darkGiven !== void 0) fail("deck-primary-dark \u306F deck-primary \u3068\u4E00\u7DD2\u306B\u66F8\u304F");
-    return "";
+    if (darkGiven !== void 0) {
+      fail("primary-contrast", "deck-primary-dark \u306F deck-primary \u3068\u4E00\u7DD2\u306B\u66F8\u304F");
+      return "";
+    }
+    return vaultOverride(vault, (message) => fail("vault-primary", message));
   }
   for (const [name, value] of [["deck-primary", light], ["deck-primary-dark", darkGiven]]) {
     if (value !== void 0 && !isColorValue(value)) {
-      fail(`${name} \u306F #RRGGBB \u3067\u66F8\u304F: ${value}`);
+      fail("primary-contrast", `${name} \u306F #RRGGBB \u3067\u66F8\u304F: ${value}`);
       return "";
     }
   }
-  const rule = (selector, c) => `${selector}{--sl-primary:${c.primary};--sl-on-primary:${c.onPrimary};--sl-primary-container:${c.container};--sl-on-primary-container:${c.onContainer}}`;
   const l = derivePrimary(light, "light");
   const d = derivePrimary(darkGiven ?? lightenForDark(light), "dark");
-  if ("error" in l) fail(`deck-primary: ${l.error}`);
-  if ("error" in d) fail(`deck-primary-dark: ${d.error}`);
+  if ("error" in l) fail("primary-contrast", `deck-primary: ${l.error}`);
+  if ("error" in d) fail("primary-contrast", `deck-primary-dark: ${d.error}`);
   if ("error" in l || "error" in d) return "";
-  return `${rule(".slide", l)}
-${rule(':root[data-theme="dark"] .slide', d)}
+  return `${primaryRule(LIGHT_SLIDE, l)}
+${primaryRule(DARK_SLIDE, d)}
 `;
+}
+function vaultOverride(vault, fail) {
+  const light = vault?.light;
+  const darkGiven = vault?.dark;
+  if (light === void 0 && darkGiven === void 0) return "";
+  const hint = '\uFF08\u3053\u306E\u30C7\u30C3\u30AD\u3060\u3051\u5225\u306E\u8272\u306B\u3059\u308B\u306A\u3089 <meta name="deck-primary"> \u3092\u66F8\u304F\uFF09';
+  for (const [mode, value] of [["light", light], ["dark", darkGiven]]) {
+    if (value !== void 0 && !isColorValue(value)) {
+      fail(`.kit-local/theme.json \u306E ${mode}.primary \u306F #RRGGBB \u3067\u66F8\u304F: ${value}`);
+      return "";
+    }
+  }
+  const dark = darkGiven ?? (light === void 0 ? void 0 : lightenForDark(light));
+  const l = light === void 0 ? null : derivePrimary(light, "light");
+  const d = dark === void 0 ? null : derivePrimary(dark, "dark");
+  if (l && "error" in l) fail(`.kit-local/theme.json \u306E light.primary: ${l.error}\u3002\u30B9\u30E9\u30A4\u30C9\u306E\u9762\u306F\u4E0A\u6D41\u306E\u8272\u306E\u307E\u307E${hint}`);
+  if (d && "error" in d) fail(`.kit-local/theme.json \u306E dark.primary: ${d.error}\u3002\u30B9\u30E9\u30A4\u30C9\u306E\u9762\u306F\u4E0A\u6D41\u306E\u8272\u306E\u307E\u307E${hint}`);
+  if (l && "error" in l || d && "error" in d) return "";
+  const lines = [];
+  if (l) lines.push(chromeRule(LIGHT_ROOT, l, "light"), primaryRule(LIGHT_SLIDE, l));
+  if (d) lines.push(chromeRule(DARK_ROOT, d, "dark"), primaryRule(DARK_SLIDE, d));
+  return lines.map((x) => `${x}
+`).join("");
 }
 function buildSlide(section, n, limits, input, report) {
   const id = section.getAttribute("data-pattern") ?? "";
@@ -20390,6 +20424,11 @@ ${cells}
 `;
 }
 
+// ../design/src/theme.ts
+var THEME_FILE = ".kit-local/theme.json";
+var LOCAL_SNIPPET_NAME = "pkm-theme-local";
+var LOCAL_SNIPPET_FILE = `.obsidian/snippets/${LOCAL_SNIPPET_NAME}.css`;
+
 // cli/slide.ts
 var SLIDE_FOLDER = "slide";
 var SOURCE = "deck.html";
@@ -20444,10 +20483,29 @@ function findDecks(root) {
   walk(SLIDE_FOLDER);
   return found.sort();
 }
+function readVaultPrimary(root) {
+  const path = join(root, THEME_FILE);
+  if (!existsSync(path)) return void 0;
+  let json;
+  try {
+    json = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return void 0;
+  }
+  const pick = (mode) => {
+    const v = json?.[mode];
+    const p = typeof v === "object" && v !== null ? v.primary : void 0;
+    return typeof p === "string" ? p.toLowerCase() : void 0;
+  };
+  const light = pick("light");
+  const dark = pick("dark");
+  return light === void 0 && dark === void 0 ? void 0 : { ...light ? { light } : {}, ...dark ? { dark } : {} };
+}
 function buildOne(root, deck) {
   const folder = join(root, ...deck.split("/"));
   const realFolder = realpathSync(folder);
   return buildDeck({
+    vaultPrimary: readVaultPrimary(root),
     source: readFileSync(join(folder, SOURCE), "utf8"),
     deckPath: deck,
     assets: slide_assets_default,
@@ -20702,7 +20760,8 @@ export {
   SOURCE,
   findBrowser,
   findDecks,
-  main
+  main,
+  readVaultPrimary
 };
 /*! Bundled license information:
 

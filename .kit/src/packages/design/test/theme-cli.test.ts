@@ -37,6 +37,13 @@ describe("theme.mjs", () => {
 		expect(run("check")).toMatchObject({ code: 0 });
 	});
 
+	it("slide/ があれば、build はスライドのビルドし直しを知らせる（ADR-0125）", () => {
+		write(".kit-local/theme.json", JSON.stringify({ light: { primary: "#00639b" } }));
+		expect(run("build").out.join("\n")).not.toContain("slide.mjs build --all");
+		mkdirSync(join(root, "slide"));
+		expect(run("build").out.join("\n")).toContain("slide.mjs build --all");
+	});
+
 	it("規約に合わなければ、build は何も書かずに止まる", () => {
 		write(".kit-local/theme.json", JSON.stringify({ light: { primary: "#d0bcff" } }));
 		const r = run("build");
