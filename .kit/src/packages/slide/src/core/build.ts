@@ -288,6 +288,7 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 
 	lintSlide(section, n, heading, pattern, limits, report);
 	normalizeSteps(section);
+	stampFit(section);
 
 	const outer = (els: Element[]) => els.map((e) => e.outerHTML).join("\n");
 	const inner = [
@@ -300,6 +301,52 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 	// 変わったスライドを見分けるハッシュ。行がずれただけでは変えない
 	const hash = input.sha256(`${id}\n${inner.replace(new RegExp(` ${LINE_ATTR}="\\d+"`, "g"), "")}\n${notes.join("\n")}`, "hex").slice(0, 10);
 	return { n, pattern: id, line, title: headTitle, html, notes: notes.join("\n"), hash };
+}
+
+/** 語の途中で折り返さない（ここで切らない）ひとまとまり: 漢字・カタカナ・英数字の続き */
+const WORD = /[\p{Script=Han}\p{Script=Katakana}ー・々〆A-Za-z0-9.,:%&+\-/'’]+/gu;
+/** 太字の幅と、測り違いの余裕 */
+const FIT_SLACK = 1.06;
+
+/** 1 文字の幅（em）。全角 1、半角は平均 0.6 */
+function charEm(ch: string): number {
+	return (ch.codePointAt(0) as number) < 0x2000 ? 0.6 : 1;
+}
+
+/** いちばん長い語の幅（em） */
+export function longestWordEm(text: string): number {
+	let max = 0;
+	for (const m of text.matchAll(WORD)) {
+		let w = 0;
+		for (const ch of m[0]) w += charEm(ch);
+		max = Math.max(max, w);
+	}
+	return max;
+}
+
+/**
+ * 狭い箱の見出し（h3）と指標の数字（.kpi .big）に、いちばん長い語の幅（--fit）を入れる。
+ * CSS が「箱の幅 ÷ --fit」を文字の大きさの上限にするので、カードが細くても「アイリッ / シュ」のように語の途中で折り返さない
+ */
+function stampFit(section: Element): void {
+	const targets: [Element, number][] = [];
+	for (const h of [...section.querySelectorAll("h3")]) targets.push([h, longestWordEm(h.textContent ?? "")]);
+	for (const big of [...section.querySelectorAll(".kpi .big")]) {
+		// 数字と単位は 1 つのまとまり。単位は 0.4em で小さく出る
+		let w = 0;
+		const walk = (node: Node, scale: number) => {
+			if (node.nodeType === 3) for (const ch of (node.textContent ?? "").replace(/\s+/g, "")) w += charEm(ch) * scale;
+			else if (node.nodeType === 1) for (const c of [...node.childNodes]) walk(c, hasClass(node as Element, "unit") ? 0.4 : scale);
+		};
+		walk(big, 1);
+		targets.push([big, w]);
+	}
+	for (const [el, em] of targets) {
+		if (em <= 0) continue;
+		const fit = `--fit:${(Math.ceil(em * FIT_SLACK * 10) / 10).toString()}`;
+		const style = (el.getAttribute("style") ?? "").trim();
+		el.setAttribute("style", style === "" ? fit : `${style.replace(/;?$/, ";")}${fit}`);
+	}
 }
 
 /** 機械的に分かる規約の検査（スキルの conventions.md の ID を添える） */

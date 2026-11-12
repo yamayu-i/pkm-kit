@@ -28,6 +28,10 @@
 	--label-s: calc(11u * var(--k));
 	--gap: 40u;
 	--pad: 80u;
+	/* 角丸。キャンバスに合わせて拡大縮小する（px のトークンのままだと、一覧の縮小表示でカードが錠剤の形になる）。
+	   カード・手順・層など箱の形の部品は、すべて --sl-radius の角丸の四角にそろえる */
+	--sl-radius: 24u;
+	--sl-radius-s: 12u;
 	/* 役割の色。デッキの primary の差し替えは、ビルドがこの 4 つを上書きする */
 	--sl-primary: var(--vt-primary);
 	--sl-on-primary: var(--vt-on-primary);
@@ -119,7 +123,6 @@
 	font-weight: var(--vt-weight-bold);
 }
 .slide h3 {
-	font-size: var(--body-l);
 	line-height: 1.35;
 	font-weight: var(--vt-weight-semibold);
 }
@@ -250,19 +253,42 @@
 	display: grid;
 	grid-auto-flow: column;
 	grid-auto-columns: minmax(0, 1fr);
+	grid-auto-rows: minmax(0, 1fr);
 	gap: var(--gap);
 	align-items: stretch;
 }
 .slide .card {
 	background: var(--c);
 	color: var(--on-c);
-	border-radius: var(--vt-radius-xl);
+	border-radius: var(--sl-radius);
 	padding: 40u;
 	display: flex;
 	flex-direction: column;
 	gap: 16u;
 	font-size: var(--body-m);
 	min-width: 0;
+	min-height: 0;
+}
+.slide .cols:not(.arrow):has(> :nth-child(5)) {
+	/* 5 つ以上は 1 列に詰めず、段に分ける（細い列で語の途中から折り返さないように） */
+	grid-auto-flow: row;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.slide .cols:not(.arrow):has(> :nth-child(7)) {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/*
+ * 狭い箱の見出しは、語の途中で折り返さない大きさまで縮める。
+ * --fit はビルドが入れる「いちばん長い語の幅（em）」。箱の幅（cqi）÷ --fit を上限にし、label-m より小さくはしない
+ */
+.slide .card,
+.slide .steps > li,
+.slide .cycle > li,
+.slide .timeline > li {
+	container-type: inline-size;
+}
+.slide h3 {
+	font-size: clamp(var(--label-m), calc(100cqi / var(--fit, 1)), var(--body-l));
 }
 .slide .card > ul,
 .slide .card > ol {
@@ -306,21 +332,35 @@
 
 /* ---- 図・画像 ---- */
 .slide figure {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr);
+	grid-auto-rows: auto;
+	justify-items: center;
+	align-items: center;
 	gap: 16u;
 	min-height: 0;
 	min-width: 0;
 	flex: 1 1 0;
 	position: relative;
 }
-.slide figure > img,
-.slide figure > svg {
-	flex: 1 1 0;
+/* 画像は切り取らず、縦横の比を保って枠に全部入れる（角丸は画像そのものに付く） */
+.slide figure > img {
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
 	min-height: 0;
-	width: 100%;
 	object-fit: contain;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
+}
+.slide figure > svg {
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+}
+.slide figure > figcaption {
+	justify-self: stretch;
 }
 .slide figcaption {
 	font-size: var(--label-m);
@@ -328,6 +368,15 @@
 }
 .slide img {
 	max-width: 100%;
+	max-height: 100%;
+	min-height: 0;
+	object-fit: contain;
+}
+/* カードの中の画像は、文字に場所を譲って縮む（切り取らない） */
+.slide .card > img {
+	flex: 0 1 auto;
+	align-self: center;
+	border-radius: var(--sl-radius-s);
 }
 
 /* 図の上に置く説明（位置は --x / --y を % で） */
@@ -339,7 +388,7 @@
 	width: max-content;
 	max-width: 520u;
 	padding: 12u 24u;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
 	background: var(--sl-primary);
 	color: var(--sl-on-primary);
 	font-size: var(--label-m);
@@ -475,7 +524,7 @@
 	flex: 1 1 0;
 	min-width: 0;
 	padding: 32u 40u;
-	border-radius: var(--vt-radius-l);
+	border-radius: var(--sl-radius);
 	background: var(--vt-surface-container-high);
 	font-family: var(--font-monospace);
 	font-size: var(--label-m);
