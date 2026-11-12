@@ -160,8 +160,10 @@ export function tokensDoc(tokens: readonly Token[]): string {
 		"",
 		"## 色",
 		"",
-		"| CSS 変数 | 役割 | ライト | ダーク | 基準 | 最低の比（ライト / ダーク） | 用途 | 根拠 |",
-		"|---|---|---|---|---|---|---|---|",
+		"「Vault」の列: ○ は子の Vault が `.kit-local/theme.json` で上書きできる色、「追従」は上書きした元の色に合わせて変わる色（ADR-0121）。",
+		"",
+		"| CSS 変数 | 役割 | Vault | ライト | ダーク | 基準 | 最低の比（ライト / ダーク） | 用途 | 根拠 |",
+		"|---|---|---|---|---|---|---|---|---|",
 	];
 	for (const t of tokens.filter((x) => x.type === "color")) {
 		const req = t.contrast ? `${t.contrast.min}:1` : "—";
@@ -174,8 +176,10 @@ export function tokensDoc(tokens: readonly Token[]): string {
 		const usage = [t.description, t.plugin ? "" : "（プラグインでは使わない）", t.obsidian.length ? `Obsidian: ${t.obsidian.map((v) => `\`${v}\``).join(" ")}` : ""]
 			.filter(Boolean)
 			.join(" ");
+		const follows = t.derive ?? aliasTarget(t.raw.light);
+		const vault = t.vault ? "○" : follows !== null && tokens.find((x) => x.path === follows)?.vault ? `追従（${cssVarOf(follows)}）` : "—";
 		out.push(
-			`| \`${t.cssVar}\` | ${ROLE_TEXT[t.role ?? ""] ?? "—"} | ${displayValue(tokens, t, "light")} | ${displayValue(tokens, t, "dark")} | ${req} | ${worst} | ${usage} | ${t.source ?? ""} |`,
+			`| \`${t.cssVar}\` | ${ROLE_TEXT[t.role ?? ""] ?? "—"} | ${vault} | ${displayValue(tokens, t, "light")} | ${displayValue(tokens, t, "dark")} | ${req} | ${worst} | ${usage} | ${t.source ?? ""} |`,
 		);
 	}
 	const groups = new Map<string, Token[]>();

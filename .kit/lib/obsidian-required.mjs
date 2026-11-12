@@ -9,7 +9,30 @@ import { dirname, join } from "node:path";
 export function readRequired(root) {
 	const json = JSON.parse(readFileSync(join(root, ".kit/obsidian-required.json"), "utf8"));
 	delete json.$comment;
-	return json;
+	return withVaultTheme(json, root);
+}
+
+/**
+ * 子の基本の色（.kit-local/theme.json。.kit/src/docs/adr/0121-vault-theme.md）があれば、
+ * accentColor をそのライトの primary にし、子のスニペット pkm-theme-local を必要なものに足す。
+ * theme.json の中身の検査は node .kit/bin/theme.mjs check が行うので、ここでは読めた値だけを使う
+ */
+function withVaultTheme(required, root) {
+	const path = join(root, ".kit-local/theme.json");
+	const appearance = required["appearance.json"];
+	if (!existsSync(path) || !appearance) return required;
+	let theme;
+	try {
+		theme = JSON.parse(readFileSync(path, "utf8"));
+	} catch {
+		return required;
+	}
+	const primary = theme?.light?.primary;
+	const next = { ...appearance };
+	if (typeof primary === "string" && /^#[0-9a-f]{6}$/i.test(primary)) next.accentColor = primary.toLowerCase();
+	const snippets = Array.isArray(next.enabledCssSnippets) ? next.enabledCssSnippets : [];
+	if (!snippets.includes("pkm-theme-local")) next.enabledCssSnippets = [...snippets, "pkm-theme-local"];
+	return { ...required, "appearance.json": next };
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);

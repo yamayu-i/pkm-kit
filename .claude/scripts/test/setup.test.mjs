@@ -127,3 +127,21 @@ test("子の検査: Obsidian の必要なキーが外れていたら失敗する
 	assert.match(r.stderr, /app\.json: useMarkdownLinks/);
 	assert.deepEqual(checkObsidianRequired(join(root, ".obsidian"), { "app.json": { useMarkdownLinks: true } }).length, 1);
 });
+
+test("子の検査: 基本の色（.kit-local/theme.json）があれば、accentColor と子のスニペットをその色に合わせる（ADR-0121）", () => {
+	const root = childVault();
+	assert.equal(node(root, ".kit/setup.mjs", "--escalation=file").status, 0);
+	write(root, { ".kit-local/theme.json": JSON.stringify({ light: { primary: "#00639B" } }) });
+	const r = node(root, ".claude/scripts/check-obsidian-config.mjs");
+	assert.equal(r.status, 1);
+	assert.match(r.stderr, /accentColor が "#6750a4"（"#00639b" にする/);
+	assert.match(r.stderr, /enabledCssSnippets が \["pkm-theme"\]（\["pkm-theme","pkm-theme-local"\] にする/);
+	assert.equal(node(root, ".kit/setup.mjs", "--escalation=file").status, 0);
+	const appearance = json(root, ".obsidian/appearance.json");
+	assert.equal(appearance.accentColor, "#00639b");
+	assert.deepEqual(appearance.enabledCssSnippets, ["pkm-theme", "pkm-theme-local"]);
+	assert.equal(node(root, ".claude/scripts/check-obsidian-config.mjs").status, 0);
+	// primary を書いていなければ accentColor は上流の値のまま
+	write(root, { ".kit-local/theme.json": JSON.stringify({ dark: { primary: "#8fcdff" } }) });
+	assert.match(node(root, ".claude/scripts/check-obsidian-config.mjs").stderr, /accentColor が "#00639b"（"#6750a4" にする/);
+});

@@ -158,6 +158,8 @@ const plugins = [
 	{ id: "pkm-diagram", outdirEnv: "PKM_DIAGRAM_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["diagram.mjs"], allowedRequires: ["obsidian"] },
 	// ADR-0117: スライドの CLI だけ（Obsidian のプラグインではない。main.js を持たない）
 	{ id: "slide", outdirEnv: "SLIDE_OUTDIR", files: [], bins: ["slide.mjs"], allowedRequires: [] },
+	// ADR-0121: 子の Vault の基本の色の CLI だけ（Obsidian のプラグインではない。main.js を持たない）
+	{ id: "design", outdirEnv: "DESIGN_OUTDIR", files: [], bins: ["theme.mjs"], allowedRequires: [] },
 	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
 	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ

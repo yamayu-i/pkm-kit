@@ -68,6 +68,7 @@ node .claude/scripts/wiki-lint.mjs    # ノートの書式
 node .kit/bin/lint.mjs .              # タスク管理データ（issue/ routine/ member/ worklog/ board/ statuslog/）の整合性検査
 node .kit/setup.mjs --dry-run         # セットアップ（エスカレーションの方法、Obsidian の設定）。何をするかだけを表示
 node .kit/migrate.mjs --status        # 未適用の移行（取り込みは vault-upgrade）
+node .kit/bin/theme.mjs build         # この Vault の基本の色（.kit-local/theme.json）を反映する（docs/harness.md「基本の色」）
 ```
 
 ## このファイルを変えるとき

@@ -39,6 +39,8 @@
 | `.kit-local/config.json` | エスカレーションの方法（`setup.mjs` が書く） |
 | `.kit-local/upstream.json` | 取り込んだ上流のコミットと、適用済みの移行 |
 | `.kit-local/escalations.json` / `escalations/` | 送ったエスカレーションの記録 / `file` の方法で書いたもの |
+| `.kit-local/theme.json` | この Vault の基本の色（任意。下の「基本の色」） |
+| `.obsidian/snippets/pkm-theme-local.css` | `theme.json` から CLI が作るスニペット。手で直さない |
 
 `notes/`、`reviews/` は作業の記録なので、目次から辿れなくてよい。
 
@@ -59,7 +61,19 @@
 | Obsidian の設定 | `check-obsidian-config.mjs` | `.obsidian/` の JSON に末尾改行がないか。上流が求める必要なキーが入っているか |
 | 所有の境界 | `check-kit-paths.mjs` | 取り込んだ上流のコミット（`.kit-local/upstream.json`）から、上流のものが変わっていないか |
 | 移行 | `.kit/migrate.mjs --status` | 未適用の移行がないか |
+| 基本の色 | `.kit/bin/theme.mjs check` | `theme.json` が規約を満たすか、スニペットと `appearance.json` が `theme.json` と合っているか（`theme.json` がなければ省略） |
 | ADR の一覧 | `adr-index.mjs` | 上流のものの ADR の一覧が、各 ADR の見出しと状態と合っているか |
+
+## 基本の色
+
+全プラグインと Obsidian 本体の基本の色（面・その上の文字・枠・アクセント）は、この Vault だけ変えられる（[ADR-0121](../../.kit/src/docs/adr/0121-vault-theme.md)）。状態の色（status・期限・エラーの色相）は変えられない。
+
+1. `node .kit/bin/theme.mjs list` で、変えられる色と上流の値を見る
+2. `.kit-local/theme.json` に、変えたい色だけを書く: `{ "light": { "primary": "#00639b" }, "dark": { "primary": "#8fcdff", "on-primary": "#00344f" } }`。値は不透明な `#rrggbb`
+3. `node .kit/bin/theme.mjs build` で反映する。デザイン規約（コントラスト比、面の段差）に合わない組み合わせなら、何も書かずに外れた組み合わせと比を出す。面の色を変えて状態の色の印が見えにくくなるときも止まるので、面の側を直す
+4. `theme.json`、`pkm-theme-local.css`、`appearance.json` をコミットする（設定の変更なので、ブランチで行い PR にする）
+
+元の色に戻すときは、`theme.json` と `pkm-theme-local.css` を消し、`node .kit/setup.mjs` で `appearance.json` を戻す。生成済みのスライド、書き出した html、図は上流の色のまま。
 
 ## 上流の更新の取り込み
 
