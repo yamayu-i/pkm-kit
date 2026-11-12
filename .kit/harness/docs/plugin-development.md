@@ -175,6 +175,23 @@ pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイア�
 - 「Markdown リンクを挿入」（`editor:insert-link`）の Mod+K は、`.kit/obsidian-required.json` の `hotkeys.json` で外している
 - `src/views.ts` が候補の集め方とあいまい検索（大文字と小文字を区別しない）の純粋な関数で、`test/views.test.ts` が確かめる
 
+## pkm-markdown（ノートの表示）
+
+ノートの本文の表示を整えるプラグイン（ADR-0128）。ほかのプラグインに依存しない。ノートのファイルは書き換えない（表示の DOM と CSS だけ）。
+
+- **インラインコードのコピー**: 閲覧モードは `registerMarkdownPostProcessor` で、`pre` の外の `code` を `span.vt-md-code` で包み、ボタンを足す。ホバーのない端末ではコードのタップで出す（`is-active`）。ライブプレビューは `registerEditorExtension` の `ViewPlugin` で、マウスの下の `.cm-inline-code` の行を読み、前後の `` ` `` までを取る（`core/inline-code.ts`。構文木は使わない）。ボタンは `.cm-editor` に 1 つだけ置く。カーソルがコードの中にある間と、スマホでは出さない
+- **本文のタグ**: 閲覧モードは本文の `a.tag` を同じ文字のテキストに置き換える（プロパティ欄のタグは変えない）。ライブプレビューは `.cm-hashtag` の見た目を CSS で本文と同じにし、`click` を capture で止めて検索を開かせない（カーソルは `mousedown` で置かれる）。Obsidian の中でタグとして数えられることは止められない。タグの一覧の画面（コアプラグイン `tag-pane`）は `.kit/obsidian-required.json` で無効にしている
+- **見出しと箇条書き**: `styles.css` だけ。規則は [design.md](../../src/docs/design.md) の「ノートの本文」。閲覧モードの同じ深さの記号をつなぐ線は `li::after`。ライブプレビューは行ごとの要素で入れ子の形がないので、Obsidian 自身のネストの線（`.cm-indent::before`）の色だけを変える
+
+| パス | 役割 | Obsidian 依存 |
+|---|---|---|
+| `src/core/inline-code.ts` | 行の中のインラインコードの範囲と中身、カーソルがその中にあるか | なし |
+| `src/core/copy.ts` | クリップボードに書いて結果を知らせる（失敗も知らせる） | なし |
+| `src/core/targets.ts` | コピーボタンを付ける `code`、文字に置き換える本文のタグの見分け | なし |
+| `src/obsidian/reading.ts` | 閲覧モードの post processor | あり |
+| `src/obsidian/live-preview.ts` | ライブプレビューの `ViewPlugin`（浮かせるコピーボタン） | あり |
+| `src/main.ts` | 登録と、ライブプレビューのタグのクリックを止める処理 | あり |
+
 ## pkm-html（HTML の読み取り専用の表示）
 
 Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`）で出し、トークンと画像を埋め込んだ 1 ファイルとして `tmp/` に書き出すプラグイン（ADR-0037、ADR-0044）。実行時には、ほかのプラグインに依存しない。
