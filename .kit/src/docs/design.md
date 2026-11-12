@@ -82,7 +82,8 @@ packages/design/tokens.json（正本）
 - **必須**: 上書きを重ねた全トークンで、`contrast` の条件と面の段差（ライトでは surface → surface-container → surface-container-high の順に暗く、ダークでは明るく）を満たす。満たさなければ `node .kit/bin/theme.mjs build` は何も書かず、`verify.mjs` も止まる
 - 元の色の半透明（`derive` を付けた色）と別名は、上書きした元の色に追従する。`derive` の色は、色相を元の色と同じにして透明度だけを持つ
 - 子のスニペット `pkm-theme-local.css` は CLI が作る。`html body.theme-*` のセレクタで、プラグインの `--vt-*` と Obsidian 本体の変数の両方を上書きする。子の `enabledCssSnippets` は `["pkm-theme", "pkm-theme-local"]`、`accentColor` は上書き後の primary（ライト）。上流そのものは `["pkm-theme"]` だけのまま
-- 生成済みのスライド、書き出した html、図（pkm-diagram）は上流の値のまま
+- スライドは、`theme.json` の primary（ライト / ダーク）だけを、`deck-primary` のないデッキの既定にする。スライドと閲覧の画面（バー・ボタン）の primary に効き、面と文字は上流の値のまま。値は `index.html` に埋め込む（[ADR-0125](adr/0125-slide-vault-primary.md)）
+- 書き出した html、図（pkm-diagram）は上流の値のまま
 - **必須**: 入力欄（`input` / `textarea` / `select`）の面・枠・文字・影は Obsidian の既定に任せない。Obsidian は入力欄に浮いて見える影（`--input-shadow`）と自分の色を付けるので、プラグインの根（pkm-task は `.vt-ui`、pkm-template は `.vt-tpl-view` / `.vt-tpl-modal`）で範囲を決めた共通のルールで、面 `--vt-surface`・枠 `--vt-outline`・文字 `--vt-on-surface`・`box-shadow: none` にし、ホバーで枠を `--vt-on-surface`、フォーカスで `--vt-primary` の 2px の枠にする（M3 の outlined text field。`input/outlined` の検査）。プレビュー（`preview:ui`）はブラウザの既定で描くので、Obsidian 任せの見た目はプレビューと実機で食い違う
 - フォントは端末（Windows / macOS / iOS / Android）ごとに違うので固定しない。`--font-interface` / `--font-text` / `--font-monospace` だけは Obsidian の変数を使ってよい
 

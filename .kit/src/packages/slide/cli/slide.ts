@@ -21,6 +21,7 @@ import { freePath, TMP_FOLDER } from "../../pkm-diagram/src/core/names.ts";
 import { bytesToBase64, imageType, MAX_IMAGE_BYTES } from "../../pkm-html/src/core/policy.ts";
 import { buildDeck, type BuildResult, type Problem } from "../src/core/build.ts";
 import { PATTERNS } from "../src/core/patterns.ts";
+import { THEME_FILE } from "../../design/src/theme.ts";
 
 export interface Io {
 	cwd: string;
@@ -92,10 +93,34 @@ export function findDecks(root: string): string[] {
 	return found.sort();
 }
 
+/**
+ * 子の Vault の基本の色の primary（ADR-0125）。theme.json がなければ undefined（上流の primary）。
+ * 値の形と規約は theme.mjs check が確かめる。ここでは読めた文字列をそのまま渡し、ビルドが色として確かめる
+ */
+export function readVaultPrimary(root: string): { light?: string; dark?: string } | undefined {
+	const path = join(root, THEME_FILE);
+	if (!existsSync(path)) return undefined;
+	let json: unknown;
+	try {
+		json = JSON.parse(readFileSync(path, "utf8"));
+	} catch {
+		return undefined;
+	}
+	const pick = (mode: string): string | undefined => {
+		const v = (json as Record<string, unknown> | null)?.[mode];
+		const p = typeof v === "object" && v !== null ? (v as Record<string, unknown>).primary : undefined;
+		return typeof p === "string" ? p.toLowerCase() : undefined;
+	};
+	const light = pick("light");
+	const dark = pick("dark");
+	return light === undefined && dark === undefined ? undefined : { ...(light ? { light } : {}), ...(dark ? { dark } : {}) };
+}
+
 function buildOne(root: string, deck: string): BuildResult {
 	const folder = join(root, ...deck.split("/"));
 	const realFolder = realpathSync(folder);
 	return buildDeck({
+		vaultPrimary: readVaultPrimary(root),
 		source: readFileSync(join(folder, SOURCE), "utf8"),
 		deckPath: deck,
 		assets,

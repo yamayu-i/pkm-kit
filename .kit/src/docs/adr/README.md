@@ -78,5 +78,6 @@
 | [0114](0114-board-manual-order.md) | 承認 | task board のグループの中でカードを手で並べ替える |
 | [0117](0117-slides.md) | 承認 | スライドを slide/ に HTML で作り、共通の閲覧機能をビルドで入れ、デザインは規約とパターンのスキルで決める |
 | [0120](0120-slide-list-view-and-patterns.md) | 承認 | スライドのプラグイン pkm-slide の一覧の View でフォルダを作ってデッキを動かし、パターンを増やす |
-| [0121](0121-vault-theme.md) | 承認 | 子の Vault ごとに基本の色を変えられるようにする |
+| [0121](0121-vault-theme.md) | 承認（一部置換: 0125） | 子の Vault ごとに基本の色を変えられるようにする |
+| [0125](0125-slide-vault-primary.md) | 承認 | 子の基本の色の primary を、スライドの既定の primary にする |
 <!-- adr-index:end -->

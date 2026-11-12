@@ -4,6 +4,7 @@
  */
 import { stripDangerous } from "../../../pkm-html/src/core/sanitize.ts";
 import { derivePrimary, isColorValue, lightenForDark, type Mode, type PrimaryColors } from "./color.ts";
+import { colors } from "../../../design/generated/tokens.ts";
 import { findPattern, PATTERN_IDS, type Pattern } from "./patterns.ts";
 
 /** index.html に入れる共通のもの（esbuild.config.mjs が作る） */
@@ -33,6 +34,11 @@ export interface BuildInput {
 	parse: (html: string) => Document;
 	/** SHA-256（スライドのハッシュは hex、CSP は base64） */
 	sha256: Sha256;
+	/**
+	 * 子の Vault の基本の色の primary（.kit-local/theme.json の light.primary / dark.primary。ADR-0125）。
+	 * deck-primary を書いていないデッキの既定にする。なければ上流の primary
+	 */
+	vaultPrimary?: { light?: string; dark?: string };
 }
 
 export type Sha256 = (text: string, encoding: "hex" | "base64") => string;
@@ -156,7 +162,7 @@ export function buildDeck(input: BuildInput): BuildResult {
 	const theme = (meta.get("deck-theme") ?? "light") as Mode;
 	if (theme !== "light" && theme !== "dark") report("error", "bad-meta", null, 0, `deck-theme は light か dark: ${theme}`);
 	const lang = meta.get("deck-lang") ?? "ja";
-	const primaryCss = primaryOverride(meta, (message) => report("error", "primary-contrast", null, 0, message));
+	const primaryCss = primaryOverride(meta, input.vaultPrimary, (rule, message) => report("error", rule, null, 0, message));
 	const limits = LIMITS[DENSITIES.includes(density) ? density : "present"];
 
 	// ---- 書いてはいけないもの。スクリプトなどは取り除く（pkm-html と同じ処理）
@@ -193,27 +199,66 @@ export function buildDeck(input: BuildInput): BuildResult {
 	return { html, problems, title, slides: slides.length };
 }
 
-function primaryOverride(meta: ReadonlyMap<string, string>, fail: (message: string) => void): string {
+const primaryRule = (selector: string, c: PrimaryColors) =>
+	`${selector}{--sl-primary:${c.primary};--sl-on-primary:${c.onPrimary};--sl-primary-container:${c.container};--sl-on-primary-container:${c.onContainer}}`;
+/** 閲覧の画面（バー・ボタン）の primary。半透明の色は、上流のトークンと同じ透明度にする */
+const chromeRule = (selector: string, c: PrimaryColors, mode: Mode) => {
+	const alpha = (path: "color.primary-state-hover" | "color.on-primary-state-hover") => colors[mode][path].slice(7);
+	return `${selector}{--vt-primary:${c.primary};--vt-on-primary:${c.onPrimary};--vt-primary-state-hover:${c.primary}${alpha("color.primary-state-hover")};--vt-on-primary-state-hover:${c.onPrimary}${alpha("color.on-primary-state-hover")}}`;
+};
+const LIGHT_ROOT = ":root";
+const DARK_ROOT = ':root[data-theme="dark"]';
+const LIGHT_SLIDE = ".slide";
+const DARK_SLIDE = ':root[data-theme="dark"] .slide';
+
+/** primary の上書き。デッキの deck-primary が先、なければ子の Vault の基本の色（ADR-0125） */
+function primaryOverride(meta: ReadonlyMap<string, string>, vault: BuildInput["vaultPrimary"], fail: (rule: string, message: string) => void): string {
 	const light = meta.get("deck-primary");
 	const darkGiven = meta.get("deck-primary-dark");
 	if (light === undefined) {
-		if (darkGiven !== undefined) fail("deck-primary-dark は deck-primary と一緒に書く");
-		return "";
+		if (darkGiven !== undefined) {
+			fail("primary-contrast", "deck-primary-dark は deck-primary と一緒に書く");
+			return "";
+		}
+		return vaultOverride(vault, (message) => fail("vault-primary", message));
 	}
 	for (const [name, value] of [["deck-primary", light], ["deck-primary-dark", darkGiven]] as const) {
 		if (value !== undefined && !isColorValue(value)) {
-			fail(`${name} は #RRGGBB で書く: ${value}`);
+			fail("primary-contrast", `${name} は #RRGGBB で書く: ${value}`);
 			return "";
 		}
 	}
-	const rule = (selector: string, c: PrimaryColors) =>
-		`${selector}{--sl-primary:${c.primary};--sl-on-primary:${c.onPrimary};--sl-primary-container:${c.container};--sl-on-primary-container:${c.onContainer}}`;
 	const l = derivePrimary(light, "light");
 	const d = derivePrimary(darkGiven ?? lightenForDark(light), "dark");
-	if ("error" in l) fail(`deck-primary: ${l.error}`);
-	if ("error" in d) fail(`deck-primary-dark: ${d.error}`);
+	if ("error" in l) fail("primary-contrast", `deck-primary: ${l.error}`);
+	if ("error" in d) fail("primary-contrast", `deck-primary-dark: ${d.error}`);
 	if ("error" in l || "error" in d) return "";
-	return `${rule(".slide", l)}\n${rule(':root[data-theme="dark"] .slide', d)}\n`;
+	return `${primaryRule(LIGHT_SLIDE, l)}\n${primaryRule(DARK_SLIDE, d)}\n`;
+}
+
+/** 子の基本の色の primary。ダークだけがなければ、ライトから作る（deck-primary と同じ） */
+function vaultOverride(vault: BuildInput["vaultPrimary"], fail: (message: string) => void): string {
+	const light = vault?.light;
+	const darkGiven = vault?.dark;
+	if (light === undefined && darkGiven === undefined) return "";
+	const hint = "（このデッキだけ別の色にするなら <meta name=\"deck-primary\"> を書く）";
+	for (const [mode, value] of [["light", light], ["dark", darkGiven]] as const) {
+		if (value !== undefined && !isColorValue(value)) {
+			fail(`.kit-local/theme.json の ${mode}.primary は #RRGGBB で書く: ${value}`);
+			return "";
+		}
+	}
+	const dark = darkGiven ?? (light === undefined ? undefined : lightenForDark(light));
+	const l = light === undefined ? null : derivePrimary(light, "light");
+	const d = dark === undefined ? null : derivePrimary(dark, "dark");
+	if (l && "error" in l) fail(`.kit-local/theme.json の light.primary: ${l.error}。スライドの面は上流の色のまま${hint}`);
+	if (d && "error" in d) fail(`.kit-local/theme.json の dark.primary: ${d.error}。スライドの面は上流の色のまま${hint}`);
+	if ((l && "error" in l) || (d && "error" in d)) return "";
+	// Vault の色は、スライドに加えて閲覧の画面（バー・ボタン）にも効かせる（Obsidian の中の色とそろえる）
+	const lines: string[] = [];
+	if (l) lines.push(chromeRule(LIGHT_ROOT, l, "light"), primaryRule(LIGHT_SLIDE, l));
+	if (d) lines.push(chromeRule(DARK_ROOT, d, "dark"), primaryRule(DARK_SLIDE, d));
+	return lines.map((x) => `${x}\n`).join("");
 }
 
 type Report = (level: Problem["level"], rule: string, el: Element | null, slide: number, message: string) => void;

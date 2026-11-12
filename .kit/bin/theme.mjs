@@ -1612,6 +1612,7 @@ function runTheme(args, root2, tokens) {
     writeFileSync(path, themeSnippet(tokens, themed));
     writeAppearance(root2, themeAccent(themed));
     out.push(`${LOCAL_SNIPPET_FILE} \u3068 ${APPEARANCE} \u3092\u66F8\u304D\u307E\u3057\u305F\u3002Obsidian \u3092\u958B\u304D\u76F4\u3059\u3068\u53CD\u6620\u3055\u308C\u307E\u3059`);
+    if (existsSync(join(root2, "slide"))) out.push("\u30B9\u30E9\u30A4\u30C9\u306E primary \u3082\u5909\u308F\u308A\u307E\u3059\u3002node .kit/bin/slide.mjs build --all \u3067\u30D3\u30EB\u30C9\u3057\u76F4\u3057\u3001index.html \u3082\u4E00\u7DD2\u306B\u30B3\u30DF\u30C3\u30C8\u3057\u3066\u304F\u3060\u3055\u3044");
     return { code: 0, out, err };
   }
   err.push("\u4F7F\u3044\u65B9: node .kit/bin/theme.mjs <list | check | build>");

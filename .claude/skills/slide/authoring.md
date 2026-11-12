@@ -27,7 +27,7 @@
 |---|---|---|
 | `deck-density` | `present`（話して投影する）/ `read`（読んでもらう） | `present` |
 | `deck-theme` | `light` / `dark`（開いたときのテーマ。画面で切り替えられる） | `light` |
-| `deck-primary` | アクセントの色（`#RRGGBB`）。値を書いてよいのはここだけ。面との比が 4.5:1 に足りないとビルドが失敗する | トークンの primary |
+| `deck-primary` | アクセントの色（`#RRGGBB`）。値を書いてよいのはここだけ。面との比が 4.5:1 に足りないとビルドが失敗する | この Vault の基本の色の primary（`.kit-local/theme.json`）。なければトークンの primary |
 | `deck-primary-dark` | ダークのときのアクセントの色。省くと `deck-primary` から作る | — |
 | `deck-author`、`deck-date` | 一覧の上に出す | — |
 | `deck-lang` | `<html lang>` | `ja` |
