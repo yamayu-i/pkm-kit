@@ -3,6 +3,7 @@
  * DOMParser で解析し、危険なものを取り除き、Vault の中の画像を data: に置き換え、
  * CSP・トークン・テーマを入れる。Obsidian に依存しない（tmp/ への書き出しでも使う。Issue #44）
  */
+import { liveVarsCss } from "./live-vars.ts";
 import { bytesToBase64, candidatePaths, CSP, firstSrcsetUrl, imageType, isScriptUrl, MAX_IMAGE_BYTES } from "./policy.ts";
 
 export type Theme = "light" | "dark";
@@ -18,6 +19,8 @@ export interface BuildOptions {
 	tokensCss: string;
 	/** Obsidian のフォントの変数（--font-interface など）。トークンがこれを参照する */
 	fontVars?: Readonly<Record<string, string>>;
+	/** Obsidian で今効いているトークンの値（--vt-*）。子の基本の色に追従させる（ADR-0129） */
+	liveVars?: Readonly<Record<string, string>>;
 	readImage: ReadImage;
 }
 
@@ -80,7 +83,7 @@ function fontCss(fontVars: Readonly<Record<string, string>>): string {
 }
 
 /** CSP・トークン・テーマを入れる。CSP は <head> の最初 */
-export function addGuards(doc: Document, { theme, tokensCss, fontVars = {} }: Pick<BuildOptions, "theme" | "tokensCss" | "fontVars">): void {
+export function addGuards(doc: Document, { theme, tokensCss, fontVars = {}, liveVars = {} }: Pick<BuildOptions, "theme" | "tokensCss" | "fontVars" | "liveVars">): void {
 	const head = doc.head;
 	const style = (kind: string, css: string) => {
 		const el = doc.createElement("style");
@@ -92,7 +95,7 @@ export function addGuards(doc: Document, { theme, tokensCss, fontVars = {} }: Pi
 	meta.setAttribute("http-equiv", "Content-Security-Policy");
 	meta.setAttribute("content", CSP);
 	// HTML の側のスタイルが後に来て勝つように、差し込むものは先頭に置く
-	head.prepend(meta, style("scheme", schemeCss(theme)), style("tokens", `${tokensCss}\n${fontCss(fontVars)}`));
+	head.prepend(meta, style("scheme", schemeCss(theme)), style("tokens", `${tokensCss}\n${fontCss(fontVars)}`), style("live", liveVarsCss(liveVars)));
 	doc.body.classList.remove("theme-light", "theme-dark");
 	doc.body.classList.add(`theme-${theme}`);
 }

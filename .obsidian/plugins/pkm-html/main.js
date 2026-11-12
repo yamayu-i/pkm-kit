@@ -214,6 +214,29 @@ function toSharingSvg(svg) {
   return svg.slice(0, content.start) + svg.slice(content.end);
 }
 
+// src/core/live-vars.ts
+var NAME = /^--vt-[a-z0-9-]+$/;
+var VALUE = /^[#a-zA-Z0-9 .,%()+\-*/]+$/;
+var LOADS = /\b(url|image-set|image|src|element|cross-fade)\s*\(/i;
+var MAX_LENGTH = 200;
+function tokenVarNames(tokensCss) {
+  return [...new Set([...tokensCss.matchAll(/(--vt-[a-z0-9-]+)\s*:/g)].map((m) => m[1]))];
+}
+function safe(name, value) {
+  return NAME.test(name) && value.length <= MAX_LENGTH && VALUE.test(value) && !LOADS.test(value);
+}
+function liveVarsCss(vars) {
+  const decls = Object.entries(vars).map(([name, value]) => [name, value.trim()]).filter(([name, value]) => value !== "" && safe(name, value)).map(([name, value]) => `	${name}: ${value};`);
+  return decls.length === 0 ? "" : `body.theme-light,
+body.theme-dark {
+${decls.join("\n")}
+}`;
+}
+var SLIDE_VARS = /* @__PURE__ */ new Set(["--vt-primary", "--vt-on-primary", "--vt-primary-state-hover", "--vt-on-primary-state-hover", "--vt-secondary-container", "--vt-on-secondary-container", "--vt-focus-ring"]);
+function slideLiveVars(vars) {
+  return Object.fromEntries(Object.entries(vars).filter(([name]) => SLIDE_VARS.has(name)));
+}
+
 // src/core/sanitize.ts
 var REMOVED_ELEMENTS = ["script", "noscript", "base", "meta[http-equiv]", "link", "iframe", "frame", "frameset", "object", "embed", "portal", "applet"];
 var URL_ATTRIBUTES = /* @__PURE__ */ new Set(["href", "src", "action", "formaction", "data", "poster", "background", "xlink:href", "srcset", "ping", "cite", "longdesc", "to", "from", "values", "by"]);
@@ -258,7 +281,7 @@ function fontCss(fontVars2) {
 ${decls.join("\n")}
 }`;
 }
-function addGuards(doc, { theme, tokensCss, fontVars: fontVars2 = {} }) {
+function addGuards(doc, { theme, tokensCss, fontVars: fontVars2 = {}, liveVars: liveVars2 = {} }) {
   const head = doc.head;
   const style = (kind, css) => {
     const el = doc.createElement("style");
@@ -270,7 +293,7 @@ function addGuards(doc, { theme, tokensCss, fontVars: fontVars2 = {} }) {
   meta.setAttribute("http-equiv", "Content-Security-Policy");
   meta.setAttribute("content", CSP);
   head.prepend(meta, style("scheme", schemeCss(theme)), style("tokens", `${tokensCss}
-${fontCss(fontVars2)}`));
+${fontCss(fontVars2)}`), style("live", liveVarsCss(liveVars2)));
   doc.body.classList.remove("theme-light", "theme-dark");
   doc.body.classList.add(`theme-${theme}`);
 }
@@ -442,13 +465,15 @@ function mountFrame(container, srcdoc, handlers) {
   container.appendChild(iframe);
   return {
     iframe,
-    setTheme(theme) {
+    setTheme(theme, liveVars2) {
       const d = iframe.contentDocument;
       if (!d?.body) return;
       d.body.classList.remove("theme-light", "theme-dark");
       d.body.classList.add(`theme-${theme}`);
       const scheme = d.querySelector(`style[${MARK_ATTRIBUTE}="scheme"]`);
       if (scheme) scheme.textContent = schemeCss(theme);
+      const live = d.querySelector(`style[${MARK_ATTRIBUTE}="live"]`);
+      if (live && liveVars2) live.textContent = liveVarsCss(liveVars2);
     },
     destroy() {
       iframe.removeEventListener("load", onLoad);
@@ -475,6 +500,12 @@ function fontVars() {
   const style = getComputedStyle(document.body);
   return Object.fromEntries(FONT_VARS.map((name) => [name, style.getPropertyValue(name)]));
 }
+var TOKEN_VARS = tokenVarNames(tokens_default);
+function liveVars(path) {
+  const style = getComputedStyle(document.body);
+  const vars = Object.fromEntries(TOKEN_VARS.map((name) => [name, style.getPropertyValue(name)]));
+  return isSlideDeck(path) ? slideLiveVars(vars) : vars;
+}
 var HtmlView = class extends import_obsidian3.FileView {
   allowNoFile = false;
   frame = null;
@@ -497,7 +528,7 @@ var HtmlView = class extends import_obsidian3.FileView {
     return HTML_EXTENSIONS.includes(extension.toLowerCase());
   }
   async onOpen() {
-    this.registerEvent(this.app.workspace.on("css-change", () => this.frame?.setTheme(currentTheme())));
+    this.registerEvent(this.app.workspace.on("css-change", () => this.frame?.setTheme(currentTheme(), liveVars(this.file?.path ?? ""))));
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
         if (file instanceof import_obsidian3.TFile && file === this.file) void this.render(file);
@@ -539,6 +570,7 @@ var HtmlView = class extends import_obsidian3.FileView {
       theme: currentTheme(),
       tokensCss: tokens_default,
       fontVars: fontVars(),
+      liveVars: liveVars(file.path),
       readImage: async (candidates) => {
         const image = this.findFile(candidates);
         if (!image || image.stat.size > MAX_IMAGE_BYTES) return null;
