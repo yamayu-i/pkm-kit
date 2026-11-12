@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -167,9 +167,9 @@ test("0002: コアプラグインのデイリーノートを無効にし、vault
 	const root = childFrom("legacy");
 	const core = readJsonFile(root, ".obsidian/core-plugins.json");
 	await runMigrations(root);
-	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false });
-	// 0005 が後ろに vault-html を足し、0058 がすべてを pkm-* に改名し、0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "pkm-task", "pkm-template", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide"]);
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false, "tag-pane": false });
+	// 0005 が後ろに vault-html を足し、0058 がすべてを pkm-* に改名し、0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "pkm-task", "pkm-template", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!existsSync(join(root, ".obsidian/daily-notes.json")));
 	// Obsidian と同じく末尾に改行を付けない
 	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
@@ -197,8 +197,8 @@ test("0005: community-plugins.json に vault-html を足す。ほかの要素と
 	const before = readJsonFile(root, ".obsidian/community-plugins.json");
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足し、0058 が pkm-* に改名し、0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before.map((id) => id.replace(/^vault-/, "pkm-")), "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide"]);
+	// 0002 が vault-ribbon を、0005 が vault-html を後ろに足し、0058 が pkm-* に改名し、0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), [...before.map((id) => id.replace(/^vault-/, "pkm-")), "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 });
 
@@ -326,8 +326,8 @@ test("0058: 新旧の両方があれば、新しい方を残して古い方を�
 	});
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を後ろに足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide"]);
+	// 0064 が pkm-drawio を（0102 が pkm-diagram に改名）、0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を後ろに足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/hotkeys.json"), { "pkm-task:open-daily": [], "editor:insert-link": [] });
 });
 
@@ -407,8 +407,8 @@ test("0064: community-plugins.json に pkm-drawio を足す（0102 が pkm-diagr
 	write(root, { ".obsidian/community-plugins.json": JSON.stringify(["pkm-git", "other", "pkm-ribbon", "pkm-html"], null, 2) });
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を後ろに足す
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide"]);
+	// 0070 が pkm-updates を、0072 が pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を後ろに足す
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-ribbon", "pkm-html", "pkm-diagram", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.deepEqual((await runMigrations(root)).done.flatMap((d) => d.changes), []);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 });
@@ -439,9 +439,9 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を足す。0089 は core-plugins.json だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide"]);
-	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown"]);
+	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
 	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
@@ -501,7 +501,7 @@ test("0089: コアプラグインのファイル回復を有効にする。ほ�
 	write(root, { ".obsidian/core-plugins.json": JSON.stringify(core, null, 2) });
 	const { failed } = await runMigrations(root);
 	assert.equal(failed, null);
-	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false, "file-recovery": true });
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false, "file-recovery": true, "tag-pane": false });
 });
 
 test("0089: 読めない core-plugins.json は変えずに、check が失敗して止まる", async () => {
@@ -550,3 +550,44 @@ test("0102: 新旧の両方があれば新しい方を残し、この端末の d
 	assert.equal(readFileSync(join(root, ".obsidian/plugins/pkm-diagram/data.json"), "utf8"), '{"a":1}');
 	assert.ok(!existsSync(join(root, ".obsidian/plugins/pkm-drawio")));
 });
+
+/** 0128 より前の移行（0128 だけを実行するときに、適用済みとして記録する） */
+const before0128 = (root) => listMigrations(root).filter((m) => m < "0128");
+
+test("0128: pkm-markdown を有効にし、コアプラグインのタグを無効にする。ほかの要素とキーは残し、2 回目は何も変えない", async () => {
+	const root = childFrom("customized");
+	const core = readJsonFile(root, ".obsidian/core-plugins.json");
+	assert.equal(core["tag-pane"], true);
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.equal(readJsonFile(root, ".obsidian/community-plugins.json").at(-1), "pkm-markdown");
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { ...core, "daily-notes": false, "tag-pane": false });
+	assert.deepEqual((await runMigrations(root)).done.flatMap((d) => d.changes), []);
+	assert.ok(!readFileSync(join(root, ".obsidian/core-plugins.json"), "utf8").endsWith("\n"));
+	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
+});
+
+test("0128: core-plugins.json がなければ作る", async () => {
+	const root = childFrom("fresh");
+	const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+	write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0128(root) }) });
+	rmSync(join(root, ".obsidian/core-plugins.json"));
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null);
+	assert.deepEqual(readJsonFile(root, ".obsidian/core-plugins.json"), { "tag-pane": false });
+});
+
+for (const [path, broken] of [
+	[".obsidian/community-plugins.json", "[壊れている"],
+	[".obsidian/core-plugins.json", "{壊れている"],
+]) {
+	test(`0128: 読めない ${path} は変えずに、check が失敗して止まる`, async () => {
+		const root = childFrom("fresh");
+		const record = JSON.parse(readFileSync(join(root, ".kit-local/upstream.json"), "utf8"));
+		write(root, { ".kit-local/upstream.json": JSON.stringify({ ...record, migrations: before0128(root) }), [path]: broken });
+		const { failed } = await runMigrations(root);
+		assert.equal(failed?.name, "0128-pkm-markdown");
+		assert.match(failed.problems.join(), /JSON として読めない/);
+		assert.equal(readFileSync(join(root, path), "utf8"), broken);
+	});
+}

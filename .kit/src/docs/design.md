@@ -271,6 +271,16 @@ pkm-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し�
 - 見本: `packages/pkm-html/preview/fixtures/sample.html`。`pnpm --filter pkm-html preview:ui` で描画して検査する
 - Vault の外に共有するときは、トークンの値と画像を埋め込んで `tmp/` に書き出す（Issue #44）。Vault の中の HTML には埋め込まない
 
+### ノートの本文（pkm-markdown。[ADR-0128](adr/0128-markdown-view.md)）
+
+pkm-markdown の `styles.css` は、Obsidian が描くノートの本文（閲覧モードの `.markdown-rendered` と、ライブプレビューの `.markdown-source-view.mod-cm6`）に効く。プラグインの UI と同じ検査を通す。
+
+- **必須**: 見出しの大きさと本文の行の高さは変えない（Obsidian の既定のまま）。利用者が設定で本文の文字を大きくしたときに追従させるため。文字の大きさのトークンは px で、ノートの本文には使わない
+- 箇条書きの記号の大きさは `em` で書く（本文の文字に追従する）。位置は 1 行目の行の高さ（`1lh`）の中央に置く。行の高さに沿った位置は `transform` の `calc()` で書く（余白の検査は px の 4 刻みだけを許すため）
+- 色は、記号と番号が `--vt-outline`、同じ深さの記号をつなぐ線と、ライブプレビューのネストの線が `--vt-outline-variant`、H1 の下の短い線とチェックしたチェックボックスが `--vt-primary`
+- チェックボックスは `input` の要素名ではなく `.task-list-item-checkbox` で指す（`input/outlined` の対象は入力欄で、チェックボックスは Obsidian の形を使う）
+- 確かめ方: CSS が Obsidian 本体の規則とぶつかっていないかは、自動の検査では分からない。実機で、閲覧モードとライブプレビューの両方を見る
+
 ### スライド（`slide/` の HTML。ブラウザで開く）
 
 スライド（[ADR-0117](adr/0117-slides.md)）は、Obsidian の外のブラウザで開く。CLI（`.kit/bin/slide.mjs`）が、トークンの値と共通の CSS・スクリプトを `index.html` に埋め込む。CSS の正本は `packages/slide/src/style/`。
