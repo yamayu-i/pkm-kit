@@ -30,19 +30,21 @@ pkm-slide の一覧では、選んだ行の薄紫をやめて primary から作�
 - 上流の値（M3 の基本の値）は変えない。`theme.json` のない子と、primary を変えていない子は、見た目が変わらない
 - 作り方は `tokens.json` に新しい拡張 `follow`（`{ "from": "{color.primary}", "rule": "container" | "on-container" | "on-color" }`）で書く。上流が色を足したときにも、どの色が primary に追従するかを同じ場所で決めるため。`derive`（同じ色の半透明。上流の値でも成り立つ）とは別にする。`follow` は上流の値では成り立たなくてよく、子が元の色を変えたときにだけ使う
 - 作った色も、これまでどおり規約の検査（`contrast` と面の段差）を通す。外れたら、何も書かずに止まる。直し方として、その色を `theme.json` に書けばよいことを出す
-- `derivePrimary` と `lightenForDark` は design パッケージの関数にまとめ、スライドと `theme.mjs` で共有する。スライドの閲覧画面とスライドが作る色は、`theme.json` に書いていない子では Obsidian と同じ値になる
+- 作り方（面に混ぜる・上の文字を選ぶ・白に寄せる）は design パッケージの関数（`primary.ts`）にまとめ、スライドと `theme.mjs` で共有する。スライドは、子の primary から作る色（ダークの primary と閲覧画面の色）を、`theme.mjs` と同じ関数（`applyTheme`）で作る。`theme.json` に primary だけを書いた子では、スライドと Obsidian が同じ値になる
 
 ### 2. ダークの primary がなければ、ライトから作る
 
-`theme.json` にライトの `primary` だけが書かれていたら、ダークの `primary` は `lightenForDark`（ADR-0125 のスライドと同じ）で作る。そのあと 1. でダークの色を作る。
+`theme.json` にライトの `primary` だけが書かれていたら、ダークの `primary` は、ライトの primary を白に 5% ずつ寄せ、ダークの `primary` と、1. で作る `on-primary` が規約（`contrast`）を満たす最初の色にする。ADR-0125 の `lightenForDark` はダークの面との比だけを見るので、`surface-container-high` とホバーを重ねた面で 4.5:1 を割ることがあるため。スライドの子の primary も、この色を使う（デッキの `deck-primary` は、これまでどおり `lightenForDark`）。
 
 ### 3. スライドの閲覧画面の押したボタンも追従させる
 
-ADR-0125 の閲覧画面の上書き（`chromeRule`）に、`--vt-secondary-container` と `--vt-on-secondary-container` を足す。値は、スライドの `primary-container` と同じ作り方の色。
+ADR-0125 の閲覧画面の上書き（`chromeRule`）に、`--vt-secondary-container` と `--vt-on-secondary-container` を足す。値は、`theme.mjs` と同じ関数で作った色。
 
 ### 4. pkm-html の閲覧画面は、Obsidian で今効いている色を使う
 
 iframe に入れる `--vt-*` の値を、Obsidian の `body` の計算済みの値（`getComputedStyle`）から作り、上流の `tokens.css` の後に重ねる。子のスニペットの色にも、ライト / ダークの切り替え（`css-change`）にも追従する。値は `--vt-*` の名前と、CSS の値として安全な文字だけを通す。書き出し（`tmp/` に共有用に書く html）は、これまでどおり上流の値（ADR-0121）。
+
+スライド（`slide/` の `index.html`）は面と文字を上流の値で埋め込むので（ADR-0125）、閲覧画面では primary の系統（primary・on-primary・その半透明・secondary-container・on-secondary-container・focus-ring）だけを今の値にする。
 
 ### 5. Mermaid も子のスニペットで上書きする
 
