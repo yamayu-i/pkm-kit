@@ -376,7 +376,7 @@ body.theme-dark {
 	width: 24px;
 	height: 24px;
 	padding: 0;
-	border: 1px solid var(--vt-outline);
+	border: 0;
 	border-radius: var(--vt-radius-xs);
 	background-color: var(--vt-surface);
 	color: var(--vt-on-surface-variant);
@@ -385,7 +385,12 @@ body.theme-dark {
 	z-index: 1;
 }
 
-.vt-md-copy:hover {
+/*
+ * 枠のないアイコンボタン。面はノートの面と同じ色にして、透明に見せる（コードの右上の、上の行の文字に重なる位置に出るので、
+ * 本当に透明にすると文字と重なって読めない）。ホバーと押したときだけ、一段濃い面を出す
+ */
+.vt-md-copy:hover,
+.vt-md-copy:active {
 	background-color: var(--vt-surface-container-high);
 	color: var(--vt-on-surface);
 }
