@@ -43,7 +43,19 @@ node .kit/migrate.mjs --upstream=upstream/main        # 実行し、取り込ん
 - 直すのに判断が要る（ユーザーのノートの内容を変える、どちらを残すか決める）ときは、止めてユーザーに確かめる
 - AI でも直せないときは、ここで止める。上流に [escalate](../escalate/SKILL.md) する（移行の名前、`check.mjs` の出力、汎用にした再現の手順）
 
-## 3. 検査を通す
+## 3. スライドをビルドし直す
+
+`slide/` があれば、取り込んだ CLI で全デッキの `index.html` を作り直す（上流がスライドの CSS やスクリプトを変えると、前の `index.html` は検査で「古い」と止まる。[ADR-0120](../../../.kit/src/docs/adr/0120-slide-list-view-and-patterns.md)）。
+
+```sh
+node .kit/bin/slide.mjs build --all      # slide/ がなければ不要
+git add slide/ && git commit -m "build(slide): 取り込んだ CLI でスライドをビルドし直す"
+```
+
+- 同じ入力からは同じバイト列になるので、上流がスライドを変えていなければ差分は出ない（コミットしない）
+- エラーで書けないデッキ（取り込んだ規約の検査に当たった）は、`deck.html` を直してからビルドする。直し方に判断が要るなら、ユーザーに確かめる
+
+## 4. 検査を通す
 
 ```sh
 node .claude/scripts/verify.mjs
@@ -51,7 +63,7 @@ node .claude/scripts/verify.mjs
 
 すべて通るまで直す。上流のものを変えて通すことはしない（境界の検査が止める）。
 
-## 4. PR にする
+## 5. PR にする
 
 - コミット: `vault(upgrade): 上流 <短い commit> を取り込む`。マージコミットと、移行による変更のコミットに分けてよい
 - PR の本文:

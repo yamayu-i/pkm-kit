@@ -1,7 +1,7 @@
 # スライド
 
 - 種類: 画面（ブラウザで開く `index.html`）・手順（スキル slide）
-- 開き方: Claude Code に「スライドを作って」と頼む。できた `slide/<…>/<デッキ>/index.html` をブラウザで開く（Obsidian では、ファイルのメニューかタブの右上の「Open in browser」）
+- 開き方: Claude Code に「スライドを作って」と頼む。できた `slide/<…>/<デッキ>/index.html` をブラウザで開く（Obsidian では、ファイルのメニューかタブの右上の「Open in browser」）。Obsidian の一覧は、コマンド「Open Slides」（pkm-slide）
 - 場面: まだない（発表や共有の資料を作る場面は、使い方が見えてから jobs/ に足す）
 
 ## 今の振る舞い
@@ -23,6 +23,15 @@
 - 「Notes」は、一覧の各スライドの下に発表者ノートを出す。「Theme」はライト / ダークを切り替える
 - 外部に通信しない。スクリプトが動かない場所（Obsidian の中）では、全スライドとノートが縦に並んだページとして読める
 
+### 一覧と整理（Obsidian の pkm-slide）
+
+- 「Slides」の View（一覧ペイン）。左に整理のフォルダの木（All と、`slide/` の下のフォルダ。デッキの数）、右に選んだフォルダの下のデッキのカード（1 枚目の縮小、題、枚数、フォルダ、更新日時）。検索と、更新日時 / 題の並べ替え
+- カードを押すと Obsidian の中（pkm-html）で開く。Ctrl / Cmd を押しながらで新しいタブ。メニュー（右クリックか「…」）に「Open in new tab」「Open in browser」「Copy link」（ノートに貼る Markdown のリンク）「Rename」「Move to…」
+- 「New folder」で整理のフォルダを作る（名前は英小文字・数字・ハイフン。空のフォルダも同期されるよう `.gitkeep` を置く）。フォルダのメニューに「New folder」「Rename」「Move to…」「Delete」（デッキが入っていないときだけ）
+- PC ではカードやフォルダを、左のフォルダにドラッグして動かせる
+- 動かすと、ノートからのリンクは Obsidian が書き換え、デッキの `index.html` のパスも直す（ビルドし直さなくてよい）。ブラウザに残したレビューのコメントは、前の場所のものとして残り、新しい場所では見えない
+- まだビルドしていないデッキは、縮小の代わりに「Not built」と出る
+
 ### CLI（PC の Claude Code）
 
 - `node .kit/bin/slide.mjs new` / `build` / `check` / `export`（添付を埋め込んだ 1 ファイルを `tmp/` に）/ `pdf`（PC の Chrome 系のブラウザで PDF にして `tmp/` に）/ `patterns`
@@ -34,4 +43,4 @@
 
 ## 根拠
 
-[ADR-0117](../../../../src/docs/adr/0117-slides.md)。デザインの規約とパターンは、スキル [slide](../../../../../.claude/skills/slide/SKILL.md)
+[ADR-0117](../../../../src/docs/adr/0117-slides.md)、[ADR-0120](../../../../src/docs/adr/0120-slide-list-view-and-patterns.md)（一覧と整理、パターンの追加）。デザインの規約とパターンは、スキル [slide](../../../../../.claude/skills/slide/SKILL.md)

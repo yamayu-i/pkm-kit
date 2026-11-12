@@ -264,7 +264,7 @@ pkm-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し�
 
 スライド（[ADR-0117](adr/0117-slides.md)）は、Obsidian の外のブラウザで開く。CLI（`.kit/bin/slide.mjs`）が、トークンの値と共通の CSS・スクリプトを `index.html` に埋め込む。CSS の正本は `packages/slide/src/style/`。
 
-- **必須**: 色・角丸・動き・影はトークン（`var(--vt-…)`）を使う。design の生成（`packages/slide/tokens.css`）は、ライトを `:root`、ダークを `:root[data-theme="dark"]` に置く（Obsidian のテーマのクラスがないため）
+- **必須**: 色・動き・影はトークン（`var(--vt-…)`）を使う。スライドの中の角丸は、キャンバスとともに拡大縮小する `--sl-radius`（24u。カード・手順・層など箱の形の部品はすべてこれ）と `--sl-radius-s`（12u。小さい札や棒の端）。丸い印だけ `--vt-radius-full`（[ADR-0120](adr/0120-slide-list-view-and-patterns.md)）。design の生成（`packages/slide/tokens.css`）は、ライトを `:root`、ダークを `:root[data-theme="dark"]` に置く（Obsidian のテーマのクラスがないため）
 - **必須**: デッキのソース（`deck.html`）には値を書かない。色は名前のクラス（`primary`、`green`、`blue` など、トークンの色相の名前）で付ける。ビルドが、値の直書きをエラーにする
 - スライドの中の長さは、キャンバス（1920×1080）の 1 単位 `u` で書く（ビルドで `calc(N * var(--u))` になる。`--u` は枠の幅の 1/1920）。一覧・Slide Show・印刷のどの大きさでも、同じ比で描かれる。閲覧の画面（バー、ボタン、レビューの欄）は、プラグインと同じ px のトークンで書く
 - スライドの文字は、Material 3 の文字の役割の大きさ（display 57 / 45 / 36、headline 28 / 24、title 22、body 16 / 14、label 12 / 11）に、密度の倍率を掛ける。`present`（話して投影する）は 3、`read`（読んでもらう）は 2。キャンバスの高さ 1080 を 540pt として、`present` の本文（body-large）は 24pt 相当、最小（label-medium）は 18pt 相当になる。倍率の根拠と注意は、スキルの [conventions.md](../../../.claude/skills/slide/conventions.md) と [evidence.md](../../../.claude/skills/slide/evidence.md)

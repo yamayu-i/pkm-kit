@@ -227,6 +227,24 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 
 - `test/` は、ビルドの変換、レポートの形、パターンの一覧・文書・逆引き・CSS の照合（ひな形がエラーも警告もなくビルドできること）、ビルド済みの CLI
 - pkm-html は、`slide/` の `index.html` を OS のブラウザで開くコマンドを持つ（`src/obsidian/open-external.ts`。開けるのは `isSlideDeck` に当たるパスだけ）
+- `index.html#thumb` は、スクリプトなしで 1 枚目だけを枠いっぱいに出す（`viewer.css` の `:target`）。pkm-slide の一覧の縮小が使う（ADR-0120）
+- 角丸と長さは `u`（キャンバスの単位）で書く。px のトークンは縮小表示で大きすぎる（`--sl-radius` / `--sl-radius-s`）。狭い箱の `h3` と `.kpi .big` には、ビルドがいちばん長い語の幅（`--fit`）を入れ、CSS が箱の幅（`cqi`）で文字を縮める
+
+## pkm-slide（スライドの一覧）
+
+`slide/` のデッキを一覧し、整理のフォルダを作ってデッキを動かすプラグイン（ADR-0120）。デッキを書く・ビルドするのは Claude Code と CLI（`slide`）で、プラグインはビルドしない。
+
+- **デッキと整理のフォルダ**: `deck.html` があるフォルダがデッキ。デッキでもデッキの中でもない `slide/` の下のフォルダが整理のフォルダ（`src/core/decks.ts` の `classify`）
+- **動かしても壊れない**: `FileManager.renameFile` で動かした後、動いた範囲のデッキの `index.html` の `data-deck` だけを書き換える（`retargetDeck`）。`data-deck` はビルドの出力のうちデッキのパスが入る唯一の場所で、ハッシュにも入らないので、結果はビルドし直したものと同じバイト列になる（`test/decks.test.ts` が slide のビルドと照らす）。ビルドの出力を変えて `data-deck` を増やす・ハッシュに入れるときは、ここも直す
+- **縮小**: `index.html#thumb` を `sandbox=""`（スクリプトなし）の iframe で開く。リソースのパス（`getResourcePath`）なので、デッキのフォルダの画像も出る
+- View の型は `pkm-slide-list`、開くコマンドは `pkm-slide:open-list`（一覧ペインの接頭辞と pkm-view-selector の候補に入れている）
+
+| パス | 役割 |
+|---|---|
+| `src/core/decks.ts` | デッキと整理のフォルダの見分け、題と枚数、名前と行き先の規則、`data-deck` の書き換え、リンクの文字列 |
+| `src/obsidian/model.ts` | Vault から一覧を作り、`slide/` の変化で作り直す |
+| `src/obsidian/actions.ts` | フォルダを作る・名前を変える・動かす・消す、開く。名前のダイアログ、行き先のダイアログ |
+| `src/views/SlidesView.tsx` | View（preact）。フォルダの木、デッキのカード、メニュー、ドラッグ |
 
 ## pkm-diagram（図）
 
