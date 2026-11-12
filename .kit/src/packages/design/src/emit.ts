@@ -83,6 +83,23 @@ export function standaloneCss(tokens: readonly Token[]): string {
 	return lines.join("\n");
 }
 
+/**
+ * スライド（ADR-0117）に埋め込むトークン。ブラウザで開くのでテーマのクラスがない。
+ * ライトを :root に置き、ダークは <html data-theme="dark"> で切り替える（デッキが決め、閲覧の画面で切り替える）
+ */
+export function slideCss(tokens: readonly Token[]): string {
+	const own = tokens.filter((t) => t.plugin);
+	const lines = [`/* ${GENERATED} */`, ":root {", "\tcolor-scheme: light;"];
+	for (const [name, value] of Object.entries(STANDALONE_FONTS)) lines.push(`\t${name}: ${value};`);
+	for (const t of own) lines.push(`\t${t.cssVar}: ${cssValue(t, t.raw.light)};`);
+	lines.push("}", "", ':root[data-theme="dark"] {', "\tcolor-scheme: dark;");
+	for (const t of own) {
+		if (JSON.stringify(t.raw.dark) !== JSON.stringify(t.raw.light)) lines.push(`\t${t.cssVar}: ${cssValue(t, t.raw.dark)};`);
+	}
+	lines.push("}", "");
+	return lines.join("\n");
+}
+
 /** Obsidian 本体の CSS 変数を同じ値に固定するスニペット（.obsidian/snippets/pkm-theme.css） */
 export function obsidianSnippet(tokens: readonly Token[]): string {
 	const lines = [

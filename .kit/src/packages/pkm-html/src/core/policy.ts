@@ -141,3 +141,11 @@ export function firstSrcsetUrl(srcset: string): string | null {
 	if (!first) return null;
 	return first.endsWith(",") ? first.slice(0, -1) : first;
 }
+
+/**
+ * ビルドしたスライド（ADR-0117）か。slide/ の下の index.html だけ。
+ * スライドは共通のスクリプトで動くので、この View（スクリプトを取り除く）ではなく OS のブラウザで開く
+ */
+export function isSlideDeck(path: string): boolean {
+	return /^slide\/(?:[^/]+\/)+index\.html$/.test(path);
+}

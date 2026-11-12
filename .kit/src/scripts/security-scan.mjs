@@ -94,6 +94,9 @@ check("危険な API を使っていない", () => {
 		"srcdoc への HTML 文字列の挿入": [".kit/src/packages/pkm-html/src/ui/frame.ts"],
 		// スクリプトを動かす iframe を許すファイルはない（ADR-0111 で Draw.io の編集画面を除いた）
 		"iframe の sandbox の allow-scripts": [],
+		// ADR-0117: スライドの閲覧の画面は、Obsidian の外のブラウザで動くページ（SecretStorage がない）。
+		// 置くのはレビューのコメント・見たビルド・テーマだけで、秘密情報を扱わない
+		"Web Storage（秘密情報は SecretStorage に置く）": [".kit/src/packages/slide/src/runtime/main.ts"],
 	};
 	const problems = [];
 	for (const pkg of packages) {
@@ -153,6 +156,8 @@ const plugins = [
 	{ id: "pkm-html", outdirEnv: "PKM_HTML_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["html.mjs"], allowedRequires: ["obsidian"] },
 	// ADR-0102: 図の操作バー・PNG・拡大表示と、図の CLI（ADR-0111 で Draw.io を除いた）
 	{ id: "pkm-diagram", outdirEnv: "PKM_DIAGRAM_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: ["diagram.mjs"], allowedRequires: ["obsidian"] },
+	// ADR-0117: スライドの CLI だけ（Obsidian のプラグインではない。main.js を持たない）
+	{ id: "slide", outdirEnv: "SLIDE_OUTDIR", files: [], bins: ["slide.mjs"], allowedRequires: [] },
 	// ADR-0070: 一覧 View の前回からの変更。pkm-task と pkm-template の core を束ねる
 	{ id: "pkm-updates", outdirEnv: "PKM_UPDATES_OUTDIR", files: ["main.js", "manifest.json", "styles.css"], bins: [], allowedRequires: ["obsidian"] },
 	// ADR-0072: 一覧の View を探すダイアログ。ほかのプラグインのコマンドを ID で呼ぶ
@@ -193,6 +198,7 @@ check("コミット済みの main.js と .kit/bin の CLI がソースから再�
 check("バンドルが Obsidian の提供するもの以外を require しない", () => {
 	const problems = [];
 	for (const plugin of plugins) {
+		if (!plugin.files.includes("main.js")) continue;
 		const bundle = readFileSync(join(repo, ".obsidian/plugins", plugin.id, "main.js"), "utf8");
 		const requires = new Set([...bundle.matchAll(/require\(["']([^"']+)["']\)/g)].map((m) => m[1]));
 		for (const r of requires) if (!plugin.allowedRequires.includes(r)) problems.push(`${plugin.id}: require("${r}")`);

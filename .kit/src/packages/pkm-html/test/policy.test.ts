@@ -68,3 +68,15 @@ describe("そのほか", () => {
 		expect(CSP).not.toMatch(/https?:|\*|'unsafe-eval'|script-src/);
 	});
 });
+
+describe("isSlideDeck（ADR-0117）", () => {
+	it("slide/ の下のデッキの index.html だけを、ブラウザで開く対象にする", async () => {
+		const { isSlideDeck } = await import("../src/core/policy.ts");
+		expect(isSlideDeck("slide/roadmap/index.html")).toBe(true);
+		expect(isSlideDeck("slide/team/onboarding/index.html")).toBe(true);
+		expect(isSlideDeck("slide/index.html")).toBe(false);
+		expect(isSlideDeck("slide/roadmap/deck.html")).toBe(false);
+		expect(isSlideDeck("tmp/slide/roadmap/index.html")).toBe(false);
+		expect(isSlideDeck("notes/index.html")).toBe(false);
+	});
+});

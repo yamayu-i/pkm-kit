@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmHtmlPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/core/policy.ts
 var HTML_EXTENSIONS = ["html", "htm"];
@@ -125,6 +125,9 @@ function firstSrcsetUrl(srcset) {
   const first = srcset.trim().split(/\s+/)[0];
   if (!first) return null;
   return first.endsWith(",") ? first.slice(0, -1) : first;
+}
+function isSlideDeck(path) {
+  return /^slide\/(?:[^/]+\/)+index\.html$/.test(path);
 }
 
 // src/obsidian/export.ts
@@ -379,7 +382,24 @@ async function exportHtmlToTmp(app, file) {
 }
 
 // src/obsidian/html-view.ts
+var import_obsidian3 = require("obsidian");
+
+// src/obsidian/open-external.ts
 var import_obsidian2 = require("obsidian");
+function openSlideInBrowser(app, file) {
+  if (!isSlideDeck(file.path)) return;
+  const open = app.openWithDefaultApp;
+  if (typeof open !== "function") {
+    new import_obsidian2.Notice("\u3053\u306E\u7AEF\u672B\u3067\u306F\u3001\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3002PC \u3067\u30B9\u30E9\u30A4\u30C9\u306E index.html \u3092\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3044\u3066\u304F\u3060\u3055\u3044");
+    return;
+  }
+  try {
+    open.call(app, file.path);
+  } catch (e) {
+    console.error("pkm-html: \u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e);
+    new import_obsidian2.Notice(`\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
 
 // src/ui/frame.ts
 var SANDBOX = "allow-same-origin";
@@ -455,7 +475,7 @@ function fontVars() {
   const style = getComputedStyle(document.body);
   return Object.fromEntries(FONT_VARS.map((name) => [name, style.getPropertyValue(name)]));
 }
-var HtmlView = class extends import_obsidian2.FileView {
+var HtmlView = class extends import_obsidian3.FileView {
   allowNoFile = false;
   frame = null;
   /** 読み込みの途中で別のファイルに変わったら、古い結果を捨てる */
@@ -480,11 +500,15 @@ var HtmlView = class extends import_obsidian2.FileView {
     this.registerEvent(this.app.workspace.on("css-change", () => this.frame?.setTheme(currentTheme())));
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian2.TFile && file === this.file) void this.render(file);
+        if (file instanceof import_obsidian3.TFile && file === this.file) void this.render(file);
       })
     );
   }
+  /** スライド（ADR-0117）を開いている間だけ出す、ブラウザで開くボタン */
+  slideAction = null;
   async onLoadFile(file) {
+    this.slideAction?.remove();
+    this.slideAction = isSlideDeck(file.path) ? this.addAction("presentation", "Open in browser", () => openSlideInBrowser(this.app, file)) : null;
     await this.render(file);
   }
   async onUnloadFile() {
@@ -503,7 +527,7 @@ var HtmlView = class extends import_obsidian2.FileView {
   findFile(candidates) {
     for (const path of candidates) {
       const file = this.app.vault.getAbstractFileByPath(path);
-      if (file instanceof import_obsidian2.TFile) return file;
+      if (file instanceof import_obsidian3.TFile) return file;
     }
     return null;
   }
@@ -528,7 +552,7 @@ var HtmlView = class extends import_obsidian2.FileView {
       openVault: ({ candidates, subpath }) => {
         const target = this.findFile(candidates);
         if (!target) {
-          new import_obsidian2.Notice(`\u30D5\u30A1\u30A4\u30EB\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093: ${candidates[0] ?? ""}`);
+          new import_obsidian3.Notice(`\u30D5\u30A1\u30A4\u30EB\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093: ${candidates[0] ?? ""}`);
           return;
         }
         this.app.workspace.setActiveLeaf(this.leaf, { focus: true });
@@ -542,13 +566,13 @@ var HtmlView = class extends import_obsidian2.FileView {
 };
 
 // src/main.ts
-var PkmHtmlPlugin = class extends import_obsidian3.Plugin {
+var PkmHtmlPlugin = class extends import_obsidian4.Plugin {
   async onload() {
     this.registerView(VIEW_TYPE, (leaf) => new HtmlView(leaf));
     try {
       this.registerExtensions([...HTML_EXTENSIONS], VIEW_TYPE);
     } catch (e) {
-      new import_obsidian3.Notice(`pkm-html: .html \u3092\u767B\u9332\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08${e instanceof Error ? e.message : String(e)}\uFF09`);
+      new import_obsidian4.Notice(`pkm-html: .html \u3092\u767B\u9332\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08${e instanceof Error ? e.message : String(e)}\uFF09`);
     }
     this.addCommand({
       id: "export-to-tmp",
@@ -561,14 +585,26 @@ var PkmHtmlPlugin = class extends import_obsidian3.Plugin {
         return true;
       }
     });
+    this.addCommand({
+      id: "open-slide-in-browser",
+      name: "Open slide in browser",
+      icon: "presentation",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!isHtml(file) || !isSlideDeck(file.path)) return false;
+        if (!checking) openSlideInBrowser(this.app, file);
+        return true;
+      }
+    });
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         if (!isHtml(file)) return;
+        if (isSlideDeck(file.path)) menu.addItem((item) => item.setTitle("Open in browser").setIcon("presentation").onClick(() => openSlideInBrowser(this.app, file)));
         menu.addItem((item) => item.setTitle("Export HTML to tmp/").setIcon("file-output").onClick(() => void exportHtmlToTmp(this.app, file)));
       })
     );
   }
 };
 function isHtml(file) {
-  return file instanceof import_obsidian3.TFile && HTML_EXTENSIONS.includes(file.extension.toLowerCase());
+  return file instanceof import_obsidian4.TFile && HTML_EXTENSIONS.includes(file.extension.toLowerCase());
 }

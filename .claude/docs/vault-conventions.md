@@ -9,7 +9,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - リンク先は **Vault ルートからのパス**で、拡張子 `.md` まで書く: `[タイトル](topics/foo.md)`
   - 先頭に `/` を付けない。空白などは `%20` にエンコードするか、ファイル名に空白を使わない
   - 見出しへのリンクは `[…](topics/foo.md#見出し)`
-- 画像・PDF などの添付は `asset/` 直下に置き、`![説明](asset/foo.png)` で参照する
+- 画像・PDF などの添付は `asset/` 直下に置き、`![説明](asset/foo.png)` で参照する（スライドの添付だけは、デッキのフォルダに置く。下の `slide/`）
 - 図は内容に合わせて 3 つの方式から選ぶ（[diagram](../skills/diagram/SKILL.md)、[ADR-0102](../../.kit/src/docs/adr/0102-diagram-three-methods.md)）。色はデザイン規約の色の名前（`blue` など）だけで付け、色の値を書かない
   - Mermaid: ノートの ` ```mermaid ` のコードブロック（手順・分岐・シーケンスなど、小さい図）
   - D2: ソースを `asset/<名前>.d2` に置き、`node .kit/bin/diagram.mjs d2 asset/<名前>.d2` で描いた `asset/<名前>.svg` を `![説明](asset/<名前>.svg)` で参照する。SVG を手で直さない
@@ -36,6 +36,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
+| `slide/<…>/<デッキ>/` | スライド（[slide](../skills/slide/SKILL.md)、[ADR-0117](../../.kit/src/docs/adr/0117-slides.md)）。`deck.html`（ソース）、`index.html`（ビルドしたもの。ブラウザで開く。手で編集しない）、添付を 1 つのフォルダに置く。整理のためにフォルダを入れ子にしてよい。フォルダ名は英小文字・数字・ハイフン。md を置かない。この規約（frontmatter、添付の置き場所）の対象外 |
 | `tmp/` | 一時ファイル（外部共有用の書き出し、自分が一時的に見るだけのファイル）。git で管理せず、端末間で同期しない。この規約（frontmatter、リンクの書式）の対象外。サブフォルダを作ってよい（[ADR-0038](../../.kit/src/docs/adr/0038-tmp-folder.md)） |
 | `.pkm-git/conflicts/` | PKM Git の衝突の記録（削除と編集が衝突して編集側を残したもの。1 件 1 ファイル）。PKM Git が作り、未解決の一覧で解決すると消える。手で書き換えない（[ADR-0103](../../.kit/src/docs/adr/0103-git-conflict-records.md)） |
 | それ以外 | 通常のノート。新規ノートの既定の作成先は Vault ルート |
@@ -47,9 +48,10 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外（[ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)）。ノートの改名にともなうリンク先のパスの書き換えは例外として許す（ADR-0015）
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
-- ファイル名: ノートは日本語のタイトルを入力するだけで作ってよい（入力した文字がファイル名と `title` になる）。あとで頼まれたときに、[note-rename](../skills/note-rename/SKILL.md) でファイル名だけを英語のケバブケース（英小文字・数字・ハイフン）に改名する。`title` は日本語のまま残す。`daily/`・`issue/`・`routine/`・`member/`・`asset/`・`tmp/`・`template/`・`sources/` は、決まった名前のまま改名しない（[ADR-0015](../../.kit/harness/docs/adr/0015-english-file-names.md)）
+- ファイル名: ノートは日本語のタイトルを入力するだけで作ってよい（入力した文字がファイル名と `title` になる）。あとで頼まれたときに、[note-rename](../skills/note-rename/SKILL.md) でファイル名だけを英語のケバブケース（英小文字・数字・ハイフン）に改名する。`title` は日本語のまま残す。`daily/`・`issue/`・`routine/`・`member/`・`asset/`・`tmp/`・`template/`・`sources/`・`slide/` は、決まった名前のまま改名しない（[ADR-0015](../../.kit/harness/docs/adr/0015-english-file-names.md)）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
 - 外部に共有する md を `tmp/` に作るときは、最後に `node .kit/bin/diagram.mjs export <元のファイル>` を通す（`asset/` の図を SVG の data URI にして埋め込み、`tmp/` に書く。以前の Draw.io の図は編集用 XML を除く）。html は `node .kit/bin/html.mjs export <元のファイル>` を通す（図に加えて、Vault の中の画像とデザイントークンの値を埋め込み、スクリプトと外部の読み込みを除く。[ADR-0044](../../.kit/src/docs/adr/0044-html-standalone-export.md)）。既に `tmp/` にあるものは `node .kit/bin/diagram.mjs check tmp/` で、図への参照が残っていないかを確かめる
+- スライドの `deck.html` を変えたら `node .kit/bin/slide.mjs build <フォルダ>` でビルドし、`index.html` と一緒にコミットする（`node .claude/scripts/verify.mjs` が、古い・手で直した `index.html` を止める）。ノートからは `[題](slide/<フォルダ>/index.html)` でリンクしてよい
 - `tmp/` の外のノートから `tmp/` へリンクしない（ほかの端末にはないので、リンク切れになる）。残したいもの・ほかの端末でも見たいものは `tmp/` の外に置く
 
 ## 共通 frontmatter

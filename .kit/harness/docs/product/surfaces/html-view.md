@@ -1,7 +1,7 @@
 # HTML の表示
 
 - 種類: View
-- 開き方: ファイルエクスプローラー、Markdown リンク、クイックスイッチャーから `.html` / `.htm` を開く。書き出しは、コマンド「Export HTML to tmp/」か、ファイルのメニュー
+- 開き方: ファイルエクスプローラー、Markdown リンク、クイックスイッチャーから `.html` / `.htm` を開く。書き出しは、コマンド「Export HTML to tmp/」か、ファイルのメニュー。スライドをブラウザで開くのは、コマンド「Open slide in browser」、ファイルのメニューの「Open in browser」、タブの右上のボタン
 - 場面: まだない（ユーザー体験の定義を子の Vault で読む場面は Issue #42 で足す）
 
 ## 今の振る舞い
@@ -11,6 +11,12 @@
 - Vault の中の画像（HTML からの相対パスか、Vault ルートからのパス）は出る。1 枚 10MB まで。Vault の外を指すものは出ない
 - リンクを押すと、Vault の中のファイルはこのタブで Obsidian で開き、`https:` / `mailto:` は OS のブラウザ（メール）で開く。`#見出し` はその位置までスクロールする。それ以外（`javascript:`、`file:` など）は何もしない。見つからないファイルは通知で知らせる
 - ライト / ダークは Obsidian のテーマに合わせる。トークン（`var(--vt-…)`）で書いた HTML はデザインルールの色と大きさになる。トークンを使わない HTML は、その HTML の色のまま出る
+
+## スライドをブラウザで開く
+
+- [スライド](slide.md)（`slide/` の下のデッキの `index.html`）は、この View ではスクリプトが動かないので、全スライドが縦に並んだ一覧として出る（Slide Show・レビューは使えない）
+- スライドを開いている間は、タブの右上に「Open in browser」のボタンが出る。押すと OS の既定のブラウザで開く。コマンド「Open slide in browser」と、ファイルのメニューの「Open in browser」も同じ。スライド以外の HTML には出ない
+- ブラウザで開けない端末では、通知で知らせる
 
 ## tmp/ への書き出し
 
@@ -24,4 +30,4 @@
 
 ## 根拠
 
-[ADR-0037](../../../../src/docs/adr/0037-html-viewer.md)、[ADR-0044](../../../../src/docs/adr/0044-html-standalone-export.md)
+[ADR-0037](../../../../src/docs/adr/0037-html-viewer.md)、[ADR-0044](../../../../src/docs/adr/0044-html-standalone-export.md)、[ADR-0117](../../../../src/docs/adr/0117-slides.md)

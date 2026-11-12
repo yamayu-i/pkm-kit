@@ -29,6 +29,7 @@
 | Vault のノート（Markdown） | [ノートの書式と配置](../../docs/vault-conventions.md)。wiki のページは [LLM wiki の仕組み](../../docs/llm-wiki.md) と wiki のスキル |
 | GitHub の Issue・PR・コメント | 子は [進め方](../../docs/workflow.md)、上流は [上流の進め方](../../../.kit/harness/docs/workflow.md) |
 | HTML | 上流に専用のスキルはまだない。今は[デザインルール](../../../.kit/src/docs/design.md)の「HTML のページ」と [ADR-0037](../../../.kit/src/docs/adr/0037-html-viewer.md) に従う。実行環境に HTML の成果物を作るスキルがあれば、それも使う |
+| スライド | [slide](../slide/SKILL.md)。`slide/` に HTML で作り、ブラウザで開く |
 | その他（docx、pptx、pdf など） | 実行環境の、その形式のスキル |
 
 形式を受け持つスキルがないときは、部品の意味が保たれる最も素朴な描き方を選ぶ。そのうえで、ないことを記録に残す（子は harness-note、上流は kit-note に「形式のスキルがない」と書く）。

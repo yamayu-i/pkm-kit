@@ -1,0 +1,685 @@
+/* パターンごとの配置（ADR-0117）。部品は slide.css。パターンの id は src/core/patterns.ts と揃える */
+
+/* ---- 構成 ---- */
+.slide[data-pattern="cover"],
+.slide[data-pattern="closing"],
+.slide[data-pattern="section"],
+.slide[data-pattern="statement"] {
+	grid-template-rows: minmax(0, 1fr) auto;
+}
+.slide[data-pattern="cover"] .sl-head,
+.slide[data-pattern="closing"] .sl-head,
+.slide[data-pattern="section"] .sl-head,
+.slide[data-pattern="statement"] .sl-head {
+	align-content: center;
+	gap: 24u;
+	max-width: 1500u;
+}
+.slide[data-pattern="cover"] .sl-body,
+.slide[data-pattern="closing"] .sl-body,
+.slide[data-pattern="section"] .sl-body,
+.slide[data-pattern="statement"] .sl-body {
+	display: none;
+}
+.slide[data-pattern="cover"] {
+	border-left: 32u solid var(--sl-primary);
+}
+.slide[data-pattern="cover"] .lead {
+	font-size: var(--headline-s);
+}
+.slide .meta {
+	font-size: var(--label-m);
+	color: var(--vt-on-surface-variant);
+}
+.slide[data-pattern="section"] {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+}
+.slide[data-pattern="section"] .kicker {
+	font-size: var(--display-m);
+	line-height: 1;
+	font-weight: var(--vt-weight-bold);
+	color: var(--sl-primary);
+}
+.slide[data-pattern="section"] h2,
+.slide[data-pattern="closing"] h2 {
+	font-size: var(--display-s);
+	line-height: 1.2;
+}
+.slide[data-pattern="section"] .lead,
+.slide[data-pattern="section"] .sl-foot {
+	color: var(--sl-on-primary-container);
+}
+.slide[data-pattern="statement"] h2 {
+	font-size: var(--display-s);
+	line-height: 1.3;
+}
+.slide[data-pattern="statement"] .lead {
+	font-size: var(--headline-s);
+}
+
+.slide .agenda,
+.slide .takeaways {
+	list-style: none;
+	padding: 0;
+	counter-reset: item;
+	gap: 24u;
+}
+.slide .agenda > li,
+.slide .takeaways > li {
+	counter-increment: item;
+	display: grid;
+	grid-template-columns: 88u minmax(0, 1fr);
+	align-items: center;
+	gap: 32u;
+	padding: 24u 40u 24u 24u;
+	border-radius: var(--vt-radius-xl);
+	background: var(--vt-surface-container);
+}
+.slide .agenda > li::before,
+.slide .takeaways > li::before {
+	content: counter(item);
+	display: grid;
+	place-items: center;
+	width: 88u;
+	height: 88u;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+	font-variant-numeric: tabular-nums;
+}
+.slide .agenda > li.current {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	font-weight: var(--vt-weight-semibold);
+}
+.slide .takeaways > li::before {
+	content: "✓";
+}
+
+.slide .actions {
+	list-style: none;
+	padding: 0;
+	gap: 20u;
+}
+.slide .actions > li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 360u 300u;
+	align-items: center;
+	gap: 32u;
+	padding: 24u 40u;
+	border-radius: var(--vt-radius-xl);
+	background: var(--vt-surface-container);
+}
+.slide .actions .who,
+.slide .actions time {
+	font-size: var(--body-m);
+	color: var(--vt-on-surface-variant);
+}
+.slide .actions time {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+/* 付録は詰めてよい（話すためではなく、聞かれたときに見せる） */
+.slide[data-pattern="appendix"] {
+	font-size: var(--body-m);
+}
+
+/* ---- 主張する ---- */
+.slide[data-pattern="assertion-evidence"] .sl-body,
+.slide[data-pattern="image"] .sl-body,
+.slide[data-pattern="screenshot"] .sl-body,
+.slide[data-pattern="diagram"] .sl-body,
+.slide[data-pattern="chart-line"] .sl-body,
+.slide[data-pattern="code"] .sl-body {
+	flex-direction: row;
+	align-items: stretch;
+	justify-content: stretch;
+}
+.slide[data-pattern="assertion-evidence"] .sl-body > figure,
+.slide[data-pattern="code"] .sl-body > pre {
+	flex: 3 1 0;
+}
+.slide[data-pattern="assertion-evidence"] .sl-body > :not(figure),
+.slide[data-pattern="code"] .sl-body > :not(pre) {
+	flex: 2 1 0;
+	align-self: center;
+}
+.slide[data-pattern="big-number"] .sl-body {
+	gap: 24u;
+}
+.slide[data-pattern="big-number"] .big {
+	font-size: calc(var(--display-l) * 1.5);
+}
+.slide[data-pattern="quote"] .sl-body {
+	padding: 0 80u;
+}
+
+/* ---- 比べる ---- */
+.slide .cols.arrow {
+	gap: 120u;
+}
+.slide .cols.arrow > :not(:last-child) {
+	position: relative;
+}
+.slide .cols.arrow > :not(:last-child)::after {
+	content: "→";
+	position: absolute;
+	left: 100%;
+	top: 50%;
+	width: 120u;
+	transform: translateY(-50%);
+	text-align: center;
+	font-size: var(--headline-m);
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+}
+.slide th.pick,
+.slide td.pick {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+}
+.slide thead th.pick {
+	border-radius: var(--vt-radius-l) var(--vt-radius-l) 0 0;
+	font-weight: var(--vt-weight-bold);
+}
+.slide td.good::before,
+.slide td.mid::before,
+.slide td.bad::before {
+	display: inline-block;
+	width: 1.4em;
+	font-weight: var(--vt-weight-bold);
+}
+.slide td.good::before {
+	content: "◎";
+	color: var(--vt-green);
+}
+.slide td.mid::before {
+	content: "△";
+	color: var(--vt-amber);
+}
+.slide td.bad::before {
+	content: "×";
+	color: var(--vt-red);
+}
+
+.slide .matrix {
+	flex: 1 1 0;
+	display: grid;
+	grid-template-columns: 72u minmax(0, 1fr) minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) 64u;
+	gap: 20u;
+}
+.slide .matrix > .axis-y {
+	grid-column: 1;
+	grid-row: 1 / 3;
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	text-align: center;
+	align-self: center;
+}
+.slide .matrix > .axis-x {
+	grid-column: 2 / 4;
+	grid-row: 3;
+	text-align: center;
+	align-self: center;
+}
+.slide .matrix > .axis-x,
+.slide .matrix > .axis-y {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+.slide .matrix > .card {
+	padding: 28u 36u;
+	gap: 8u;
+}
+
+/* ---- 構造を見せる ---- */
+.slide .layers {
+	list-style: none;
+	padding: 0;
+	gap: 16u;
+}
+.slide .layers > li {
+	display: grid;
+	grid-template-columns: 420u minmax(0, 1fr);
+	align-items: center;
+	gap: 40u;
+	padding: 24u 40u;
+	border-radius: var(--vt-radius-l);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+}
+
+.slide .tree,
+.slide .tree ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.slide .tree {
+	display: grid;
+	gap: 0;
+	justify-items: center;
+}
+.slide .tree > li {
+	display: grid;
+	justify-items: center;
+	width: 100%;
+	padding: 0;
+}
+.slide .tree span {
+	display: block;
+	padding: 16u 32u;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container);
+	font-size: var(--body-m);
+	line-height: 1.3;
+	text-align: center;
+}
+.slide .tree > li > span {
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-weight: var(--vt-weight-bold);
+	font-size: var(--body-l);
+	padding: 20u 48u;
+}
+/* 1 段目: 横に並べ、上の横線でつなぐ */
+.slide .tree > li > ul {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	width: 100%;
+	position: relative;
+	margin: 40u 0 0;
+	font-size: inherit;
+	color: inherit;
+	gap: 0;
+}
+.slide .tree > li > ul::before {
+	content: "";
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	height: 40u;
+	border-left: 3u solid var(--vt-outline);
+}
+.slide .tree > li > ul > li {
+	position: relative;
+	display: grid;
+	justify-items: center;
+	align-content: start;
+	gap: 16u;
+	padding: 40u 16u 0;
+}
+.slide .tree > li > ul > li::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	border-top: 3u solid var(--vt-outline);
+}
+.slide .tree > li > ul > li:first-child::before {
+	left: 50%;
+}
+.slide .tree > li > ul > li:last-child::before {
+	right: 50%;
+}
+.slide .tree > li > ul > li::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 50%;
+	height: 40u;
+	border-left: 3u solid var(--vt-outline);
+}
+.slide .tree > li > ul > li > span {
+	background: var(--sl-primary-container);
+	color: var(--sl-on-primary-container);
+	font-weight: var(--vt-weight-semibold);
+	width: 100%;
+}
+/* 2 段目: 縦に積む */
+.slide .tree > li > ul > li > ul {
+	display: grid;
+	gap: 12u;
+	width: 100%;
+	margin: 0;
+	font-size: inherit;
+	color: inherit;
+}
+.slide .tree > li > ul > li > ul > li {
+	padding: 0;
+}
+.slide .tree > li > ul > li > ul span {
+	font-size: var(--label-m);
+}
+
+/* ---- 流れを見せる ---- */
+.slide .steps,
+.slide .timeline,
+.slide .cycle,
+.slide .funnel {
+	list-style: none;
+	padding: 0;
+}
+.slide .steps {
+	counter-reset: step;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: 72u;
+}
+.slide .steps > li {
+	counter-increment: step;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 12u;
+	padding: 32u;
+	border-radius: var(--vt-radius-xl);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+}
+.slide .steps > li::before {
+	content: counter(step);
+	display: grid;
+	place-items: center;
+	width: 72u;
+	height: 72u;
+	border-radius: var(--vt-radius-full);
+	background: var(--sl-primary);
+	color: var(--sl-on-primary);
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .steps > li:not(:last-child)::after {
+	content: "→";
+	position: absolute;
+	left: 100%;
+	top: 50%;
+	width: 72u;
+	transform: translateY(-50%);
+	text-align: center;
+	font-size: var(--body-l);
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+}
+
+.slide .timeline {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	gap: 0;
+}
+.slide .timeline > li {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 8u;
+	padding: 64u 24u 0 0;
+	font-size: var(--body-m);
+}
+.slide .timeline > li::before {
+	content: "";
+	position: absolute;
+	top: 14u;
+	left: 0;
+	right: 0;
+	border-top: 4u solid var(--vt-outline);
+}
+.slide .timeline > li::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 32u;
+	height: 32u;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	border: 4u solid var(--vt-outline);
+}
+.slide .timeline > li.now::after {
+	background: var(--sl-primary);
+	border-color: var(--sl-primary);
+}
+.slide .timeline time {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+	font-variant-numeric: tabular-nums;
+}
+.slide .timeline > li.now time,
+.slide .timeline > li.now h3 {
+	color: var(--sl-primary);
+}
+
+/* 時計回りに 4 つ（左上 → 右上 → 右下 → 左下） */
+.slide .cycle {
+	flex: 1 1 0;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 88u 160u;
+	padding: 0 120u;
+}
+.slide .cycle > li {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 8u;
+	padding: 28u 40u;
+	border-radius: var(--vt-radius-xl);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+}
+.slide .cycle > li:nth-child(3) {
+	grid-column: 2;
+	grid-row: 2;
+}
+.slide .cycle > li:nth-child(4) {
+	grid-column: 1;
+	grid-row: 2;
+}
+.slide .cycle > li::after {
+	position: absolute;
+	font-size: var(--headline-s);
+	font-weight: var(--vt-weight-bold);
+	color: var(--vt-on-surface-variant);
+	line-height: 1;
+}
+.slide .cycle > li:nth-child(1)::after {
+	content: "→";
+	left: 100%;
+	top: 50%;
+	width: 160u;
+	text-align: center;
+	transform: translateY(-50%);
+}
+.slide .cycle > li:nth-child(2)::after {
+	content: "↓";
+	top: 100%;
+	left: 50%;
+	height: 88u;
+	display: grid;
+	place-items: center;
+	transform: translateX(-50%);
+}
+.slide .cycle > li:nth-child(3)::after {
+	content: "←";
+	right: 100%;
+	top: 50%;
+	width: 160u;
+	text-align: center;
+	transform: translateY(-50%);
+}
+.slide .cycle > li:nth-child(4)::after {
+	content: "↑";
+	bottom: 100%;
+	left: 50%;
+	height: 88u;
+	display: grid;
+	place-items: center;
+	transform: translateX(-50%);
+}
+
+.slide .funnel {
+	display: grid;
+	gap: 12u;
+	justify-items: center;
+}
+.slide .funnel > li {
+	width: calc(var(--v, 100) * 0.6% + 40%);
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 32u;
+	padding: 20u 48u;
+	border-radius: var(--vt-radius-l);
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--body-m);
+}
+.slide .funnel .value {
+	font-weight: var(--vt-weight-bold);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---- データを見せる ---- */
+.slide .bars,
+.slide .share {
+	list-style: none;
+	padding: 0;
+}
+/* 横棒。--v は 0〜100（最大の棒を 100 にする）。値は棒の端に直接書く */
+.slide .bars {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	gap: 20u 32u;
+	align-items: center;
+}
+.slide .bars > li {
+	display: grid;
+	grid-template-columns: subgrid;
+	grid-column: 1 / -1;
+	align-items: center;
+	padding: 0;
+	font-size: var(--body-m);
+}
+.slide .bars .label {
+	font-size: var(--body-m);
+	font-weight: var(--vt-weight-regular);
+	color: var(--vt-on-surface);
+	text-align: right;
+}
+.slide .bars .value {
+	display: flex;
+	align-items: center;
+	gap: 20u;
+	font-variant-numeric: tabular-nums;
+	color: var(--vt-on-surface-variant);
+}
+.slide .bars .value::before {
+	content: "";
+	flex: none;
+	width: calc(var(--v, 0) * 0.82%);
+	min-width: 4u;
+	height: 64u;
+	border-radius: 0 var(--vt-radius-s) var(--vt-radius-s) 0;
+	background: var(--vt-outline);
+}
+.slide .bars > li.hl .label,
+.slide .bars > li.hl .value {
+	color: var(--sl-primary);
+	font-weight: var(--vt-weight-bold);
+}
+.slide .bars > li.hl .value::before {
+	background: var(--sl-primary);
+}
+
+/* 1 本の帯で内訳を見せる。--v は %（合計 100） */
+.slide .share {
+	display: flex;
+	gap: 6u;
+	height: 280u;
+}
+.slide .share > li {
+	flex: var(--v, 1) 1 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: end;
+	gap: 4u;
+	padding: 24u 28u;
+	background: var(--c);
+	color: var(--on-c);
+	font-size: var(--label-m);
+	line-height: 1.3;
+}
+.slide .share > li:first-child {
+	border-radius: var(--vt-radius-xl) 0 0 var(--vt-radius-xl);
+}
+.slide .share > li:last-child {
+	border-radius: 0 var(--vt-radius-xl) var(--vt-radius-xl) 0;
+}
+.slide .share .label {
+	color: inherit;
+}
+.slide .share .value {
+	font-size: var(--headline-s);
+	font-weight: var(--vt-weight-bold);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.slide .kpi {
+	gap: 8u;
+}
+.slide .kpi .big {
+	font-size: var(--display-s);
+	color: inherit;
+}
+.slide .delta {
+	font-size: var(--label-m);
+	font-weight: var(--vt-weight-semibold);
+	font-variant-numeric: tabular-nums;
+}
+.slide .delta.up::before {
+	content: "▲ ";
+}
+.slide .delta.down::before {
+	content: "▼ ";
+}
+
+/* ---- 物を見せる ---- */
+.slide[data-pattern="image"] figure > img {
+	object-fit: cover;
+}
+/* 画面は図の枠を画像に合わせる（.callout の --x / --y を、画像の左上からの % にするため） */
+.slide[data-pattern="screenshot"] .sl-body {
+	align-items: center;
+	justify-content: center;
+}
+.slide[data-pattern="screenshot"] figure {
+	display: block;
+	flex: none;
+	max-width: 100%;
+}
+.slide[data-pattern="screenshot"] figure > img {
+	display: block;
+	width: auto;
+	max-width: 100%;
+	max-height: 740u;
+}
+.slide[data-pattern="screenshot"] figure > img {
+	box-shadow: var(--vt-elevation-2);
+	border: 2u solid var(--vt-outline-variant);
+}

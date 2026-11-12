@@ -260,6 +260,19 @@ pkm-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し�
 - 見本: `packages/pkm-html/preview/fixtures/sample.html`。`pnpm --filter pkm-html preview:ui` で描画して検査する
 - Vault の外に共有するときは、トークンの値と画像を埋め込んで `tmp/` に書き出す（Issue #44）。Vault の中の HTML には埋め込まない
 
+### スライド（`slide/` の HTML。ブラウザで開く）
+
+スライド（[ADR-0117](adr/0117-slides.md)）は、Obsidian の外のブラウザで開く。CLI（`.kit/bin/slide.mjs`）が、トークンの値と共通の CSS・スクリプトを `index.html` に埋め込む。CSS の正本は `packages/slide/src/style/`。
+
+- **必須**: 色・角丸・動き・影はトークン（`var(--vt-…)`）を使う。design の生成（`packages/slide/tokens.css`）は、ライトを `:root`、ダークを `:root[data-theme="dark"]` に置く（Obsidian のテーマのクラスがないため）
+- **必須**: デッキのソース（`deck.html`）には値を書かない。色は名前のクラス（`primary`、`green`、`blue` など、トークンの色相の名前）で付ける。ビルドが、値の直書きをエラーにする
+- スライドの中の長さは、キャンバス（1920×1080）の 1 単位 `u` で書く（ビルドで `calc(N * var(--u))` になる。`--u` は枠の幅の 1/1920）。一覧・Slide Show・印刷のどの大きさでも、同じ比で描かれる。閲覧の画面（バー、ボタン、レビューの欄）は、プラグインと同じ px のトークンで書く
+- スライドの文字は、Material 3 の文字の役割の大きさ（display 57 / 45 / 36、headline 28 / 24、title 22、body 16 / 14、label 12 / 11）に、密度の倍率を掛ける。`present`（話して投影する）は 3、`read`（読んでもらう）は 2。キャンバスの高さ 1080 を 540pt として、`present` の本文（body-large）は 24pt 相当、最小（label-medium）は 18pt 相当になる。倍率の根拠と注意は、スキルの [conventions.md](../../../.claude/skills/slide/conventions.md) と [evidence.md](../../../.claude/skills/slide/evidence.md)
+- プラグインの文字のトークン（`type.*`。Obsidian の UI に合わせた px）は、スライドの中では使わない。スライドの文字の大きさは `packages/slide/src/style/slide.css` の先頭にだけ書く
+- デッキごとの primary（`<meta name="deck-primary">`）は、ビルドが面との比 4.5:1（ライト / ダーク）を確かめ、primary の上の文字の色と container の色を作る（`packages/slide/src/core/color.ts`）
+- 動きは、ステップの表示（`duration.short4` と `easing.standard`）だけ。`prefers-reduced-motion` では動かさない
+- 確かめ方: `pnpm --filter slide preview:ui`。全パターンの見本を、ライト / ダーク × `present` / `read` で描き、はみ出し・外部への要求・Slide Show・PDF・レビューを確かめる。`preview/out/sheet-*.png` を目で見る
+
 ## 11. M3 との違い
 
 | 項目 | M3 | このリポジトリ | 理由 |
@@ -355,5 +368,6 @@ pnpm preview:ui board inbox  # 画面を絞る（header / routine / daily / boar
 - **必須**: UI を変えたら `pnpm preview:ui` を通し、変えた画面のライト / ダークと狭いペインを見てからコミットする
 - 新しい View を作ったら、fixture に足して同じように確認・検査できるようにする
 - pkm-html は `pnpm --filter pkm-html preview:ui`。見本の HTML の描画の検査に加えて、悪い HTML でスクリプトが動かず外部に通信しないこと、リンクと画像の扱いを確かめる
+- スライドは `pnpm --filter slide preview:ui`（上の「スライド」）
 - pkm-diagram は `pnpm --filter pkm-diagram preview:ui`。図の操作バー・印・拡大表示の描画の検査に加えて、PNG、Mermaid の図の PNG（ダークで描いていてもライトの色）を確かめる
 - 値を変えるときは `tokens.json` を編集して `pnpm build`。ルールを変えるときはこのファイルと検査を一緒に変え、決定が変わるなら ADR を足す
