@@ -86,6 +86,19 @@ describe.skipIf(!existsSync(cli))("ビルド済みの .kit/bin/slide.mjs（ADR-0
 		expect(run(root, "export", "slide/c").out.trim()).toBe("tmp/c 2.html");
 	});
 
+	it("build と check は .kit-local/theme.json の primary を使い、変えたら check が古いと止める（ADR-0125）", () => {
+		const root = vault();
+		mkdirSync(join(root, ".kit-local"), { recursive: true });
+		writeFileSync(join(root, ".kit-local/theme.json"), JSON.stringify({ light: { primary: "#1E5B3A" } }));
+		expect(run(root, "new", "slide/a", "--title", "A").code).toBe(0);
+		expect(readFileSync(join(root, "slide/a/index.html"), "utf8")).toContain("--sl-primary:#1e5b3a;");
+		expect(run(root, "check").code).toBe(0);
+		writeFileSync(join(root, ".kit-local/theme.json"), JSON.stringify({ light: { primary: "#0b57d0" } }));
+		expect(run(root, "check").code).toBe(1);
+		expect(run(root, "build", "--all").code).toBe(0);
+		expect(run(root, "check").code).toBe(0);
+	});
+
 	it("patterns は逆引きの一覧を出す", () => {
 		const r = run(vault(), "patterns");
 		expect(r.code).toBe(0);

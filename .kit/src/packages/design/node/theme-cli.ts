@@ -123,6 +123,8 @@ export function runTheme(args: readonly string[], root: string, tokens: readonly
 		writeFileSync(path, themeSnippet(tokens, themed));
 		writeAppearance(root, themeAccent(themed));
 		out.push(`${LOCAL_SNIPPET_FILE} と ${APPEARANCE} を書きました。Obsidian を開き直すと反映されます`);
+		// スライドは primary を index.html に埋め込むので、ビルドし直すまで前の色のまま（ADR-0125）
+		if (existsSync(join(root, "slide"))) out.push("スライドの primary も変わります。node .kit/bin/slide.mjs build --all でビルドし直し、index.html も一緒にコミットしてください");
 		return { code: 0, out, err };
 	}
 
