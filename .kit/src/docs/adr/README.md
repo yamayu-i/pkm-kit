@@ -81,4 +81,5 @@
 | [0121](0121-vault-theme.md) | 承認（一部置換: 0125） | 子の Vault ごとに基本の色を変えられるようにする |
 | [0124](0124-slide-list-tree.md) | 承認 | Slides の一覧を、フォルダを展開する木とデッキの行にする |
 | [0125](0125-slide-vault-primary.md) | 承認 | 子の基本の色の primary を、スライドの既定の primary にする |
+| [0129](0129-vault-theme-follow-primary.md) | 提案 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 <!-- adr-index:end -->
