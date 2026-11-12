@@ -160,7 +160,7 @@ Obsidian の中（pkm-html）ではスクリプトが動かないので、pkm-ht
 ### 8. 最初の版に入れないもの
 
 - 画面のボタン 1 つでの PDF のファイル保存（ブラウザの印刷を経由しない方法）
-- Obsidian の中のスライドの一覧の View
+- Obsidian の中のスライドの一覧の View（[ADR-0120](0120-slide-list-view-and-patterns.md) で pkm-slide に足した）
 - primary 以外の色の差し替え、16:9 以外の比率
 
 ## 理由

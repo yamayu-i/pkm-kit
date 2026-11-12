@@ -1,6 +1,6 @@
-# ADR-0120: スライドの一覧の View でフォルダを作ってデッキを動かし、パターンを増やす
+# ADR-0120: スライドのプラグイン pkm-slide の一覧の View でフォルダを作ってデッキを動かし、パターンを増やす
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-12
 
 ## 背景
@@ -16,17 +16,20 @@
 
 ## 決定
 
-### 1. 一覧の View は pkm-html に置く
+### 1. 一覧の View を、新しいプラグイン pkm-slide に置く
 
-pkm-html に View「Slides」（種類 `pkm-html-slides`、コマンド「Open slides」、アイコン `presentation`）を足す。pkm-view-selector の候補に pkm-html を足す。
+これまでスライドは、Obsidian のプラグインを持たず、CLI（`.kit/bin/slide.mjs`）と、pkm-html の「Open slide in browser」だけで扱っていた。スライドを Obsidian の中で扱う仕組みを 1 か所に集めるため、新しいプラグイン **pkm-slide** を作り、View「Slides」（種類 `pkm-slide-list`、コマンド「Open Slides」、アイコン `presentation`）を置く。一覧ペイン（ADR-0033）に開き、pkm-view-selector の候補に入れる。
+
+pkm-html の「Open slide in browser」（コマンド・ファイルのメニュー・タブのボタン）は残す（Obsidian の中でデッキを開いているときに使う。ホットキーを変えない）。pkm-slide はブラウザで開く処理を pkm-html と共有する（ソースを import する。実行時には依存しない）。
 
 | 部分 | 内容 |
 |---|---|
 | 左: フォルダ | `slide/` の下の整理のフォルダの木（デッキは木に出さない）。「All」で全部 |
-| 右: デッキ | 選んだフォルダの下のデッキを、カードで並べる。カードは 1 枚目の縮小（`index.html` を pkm-html と同じ sandbox で、スクリプトなしに描く）、題（`deck.html` の `<title>`）、枚数、フォルダ、更新日時 |
+| 右: デッキ | 選んだフォルダの下のデッキを、カードで並べる。カードは 1 枚目の縮小、題（`deck.html` の `<title>`）、枚数、フォルダ、更新日時。`index.html` がない・古いものは印を出す |
+| 縮小 | `index.html#thumb` を、スクリプトを許さない sandbox の iframe で開く。ビルドが `index.html` に、`#thumb` のときだけ 1 枚目を全面に出す CSS（`:target`。スクリプトなしで効く）を入れる |
 | 並び | 更新日時（新しい順）・題。検索（題とフォルダ名） |
-| デッキの操作 | 押すと Obsidian の中（pkm-html の View）で開く。メニューに「Open in browser」「Move to…」「Rename」「Reveal in file explorer」 |
-| フォルダの操作 | 「New folder」、フォルダのメニューに「Rename」「Move to…」「Delete」（空のときだけ） |
+| デッキの操作 | 押すと Obsidian の中（pkm-html の View）で開く。メニューに「Open in browser」「Copy link」（ノートに貼る Markdown のリンク）「Move to…」「Rename」 |
+| フォルダの操作 | 「New folder」、フォルダのメニューに「New folder」「Rename」「Move to…」「Delete」（デッキがないときだけ）。git は空のフォルダを残さないので、作ったフォルダに `.gitkeep` を置く |
 | 動かし方 | 「Move to…」で行き先のフォルダを選ぶ（あいまい検索のダイアログ）。PC ではカードをフォルダにドラッグしても動かせる |
 
 - デッキを作る（`deck.html` を書いてビルドする）のは、これまでどおり Claude Code と CLI。View には作るボタンを置かず、空のときに作り方を出す
@@ -43,9 +46,9 @@ pkm-html に View「Slides」（種類 `pkm-html-slides`、コマンド「Open s
 
 `vault-upgrade` の手順に「`slide/` があれば `node .kit/bin/slide.mjs build --all` を実行して、`index.html` を一緒にコミットする」を足す。CLI を変えるたびに移行を書くのではなく、取り込みの手順で毎回行う（`build` は同じ入力から同じバイト列を作るので、変わらなければ差分は出ない）。今回の PR の CLI の変更（画像・角丸・折り返し）も、これで子に届く。
 
-### 4. パターンを増やす（34 → 下の表で選んだもの）
+### 4. パターンを増やす（34 → 61）
 
-パターンの追加の案。☆ は勧めるもの。
+下の 27 個をすべて足す（ユーザーの判断。☆ は最初の案で勧めていたもの）。
 
 | 目的 | パターン | 伝えたいこと |
 |---|---|---|
@@ -89,7 +92,7 @@ pkm-html に View「Slides」（種類 `pkm-html-slides`、コマンド「Open s
 
 ## 理由
 
-- **pkm-html に置く**: スライドを Obsidian の中で開く View（スクリプトなし）と、ブラウザで開くコマンドがすでにここにある。縮小の描画にも同じ sandbox を使える。新しいプラグインにすると、有効にする手間と設定が増える
+- **新しいプラグインにする**: ユーザーの判断（2026-11-12）。スライドの一覧・整理・これから足す機能を 1 か所に置く。pkm-html は「HTML を安全に見る」に保つ
 - **一覧で作らない**: デッキを作るのは、目的と聞き手を話し合ってから書く流れ（slide スキル）が中心。View で空のデッキを作っても、中身は Claude Code で書くことになる
 - **`data-deck` を書き換える**: 動かすたびにビルドし直す方法は、モバイルで使えない。`data-deck` をなくして実行時に URL から求める方法は、Vault の外のパスと区別できず、レビューのレポートが Vault からのパスを出せなくなる
 - **取り込みの手順で毎回ビルドする**: 移行は 1 回だけ実行されるので、CLI を変えるたびに書く必要がある。書き忘れると、子の検査が理由の分からない失敗をする
@@ -97,7 +100,9 @@ pkm-html に View「Slides」（種類 `pkm-html-slides`、コマンド「Open s
 
 ## 却下した案
 
-- **新しいプラグイン（pkm-slide）にする**: 上の理由。pkm-html のスライドの部分と分ける利点が小さい
+- **pkm-html に View を足す**: 当初の案。HTML を見る仕組みと、スライドを整理する仕組みが混ざる
+- **「Open slide in browser」を pkm-html から pkm-slide に移す**: 子のホットキーの移行が要り、Obsidian の中でデッキを開いているときの操作が pkm-html から消える
+- **縮小を画像（PNG）でビルドに入れる**: ブラウザが要り、モバイルとビルドの環境のない端末で作れない
 - **一覧を `slide/index.html`（ビルドが作る一覧のページ）にする**: ブラウザでは見られるが、Obsidian の中でフォルダを作る・動かす、ができない
 - **デッキのパスを `index.html` に入れない**: 上の理由
 - **CLI を変えたら移行で子をビルドし直す**: 上の理由
@@ -105,8 +110,9 @@ pkm-html に View「Slides」（種類 `pkm-html-slides`、コマンド「Open s
 
 ## 影響
 
-- 変更: pkm-html（View、フォルダの木、デッキのカード、移動と `data-deck` の書き換え。`main.js` をビルドする）、pkm-view-selector（候補に pkm-html）、slide（パターンと変種の CSS、`patterns.ts`）、スキル `slide`（パターンの md、逆引きの表、authoring の変種）、`vault-upgrade` のスキル（ビルドし直す手順）、`design.md`（View）、プロダクトの文書（`surfaces/slide.md`）、ADR-0117 の「最初の版に入れないもの」への注記
+- 追加: `.kit/src/packages/pkm-slide/`（View、フォルダの木、デッキのカード、移動と `data-deck` の書き換え）、`.obsidian/plugins/pkm-slide/`（ビルドの成果物）、移行 `0120-pkm-slide`（`community-plugins.json` に pkm-slide を足す）
+- 変更: pkm-view-selector と一覧ペインの接頭辞（`pkm-slide-`）、`obsidian-required.json`、`owned-paths.json`、security-scan（ビルドの再現）、slide（パターンと変種の CSS、`patterns.ts`）、スキル `slide`（パターンの md、逆引きの表、authoring の変種）、`vault-upgrade` のスキル（ビルドし直す手順）、`design.md`（View）、プロダクトの文書（`surfaces/slide.md`）、ADR-0117 の「最初の版に入れないもの」への注記
 - テスト: 一覧の作り方（フォルダの木、デッキの題と枚数）、行き先の規則、`data-deck` の書き換えがビルドし直したものと同じになること、新しいパターンのひな形がビルドの警告なしに通ること、見本の描画ではみ出しがないこと（preview）
 - セキュリティ: 縮小の描画は、pkm-html と同じ sandbox（スクリプトなし、CSP）で行う。ファイルの書き換えは `slide/` の下の `index.html` の 1 つの属性だけ
-- 子の Vault: 移行なし（`index.html` のビルドし直しは vault-upgrade の手順）。`.kit/changes/` に書く
+- 子の Vault: 移行 `0120-pkm-slide` が pkm-slide を有効にする。`index.html` のビルドし直しは vault-upgrade の手順。`.kit/changes/` に書く
 - 実機で確かめること: PC とスマホでの一覧の表示、フォルダの作成とデッキの移動（ノートからのリンクが書き換わること）、ドラッグでの移動（PC）
