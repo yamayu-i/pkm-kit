@@ -78,8 +78,9 @@
 | [0114](0114-board-manual-order.md) | 承認 | task board のグループの中でカードを手で並べ替える |
 | [0117](0117-slides.md) | 承認 | スライドを slide/ に HTML で作り、共通の閲覧機能をビルドで入れ、デザインは規約とパターンのスキルで決める |
 | [0120](0120-slide-list-view-and-patterns.md) | 承認（一部置換: 0124） | スライドのプラグイン pkm-slide の一覧の View でフォルダを作ってデッキを動かし、パターンを増やす |
-| [0121](0121-vault-theme.md) | 承認（一部置換: 0125） | 子の Vault ごとに基本の色を変えられるようにする |
+| [0121](0121-vault-theme.md) | 承認（一部置換: 0125, 0129） | 子の Vault ごとに基本の色を変えられるようにする |
 | [0124](0124-slide-list-tree.md) | 承認 | Slides の一覧を、フォルダを展開する木とデッキの行にする |
-| [0125](0125-slide-vault-primary.md) | 承認 | 子の基本の色の primary を、スライドの既定の primary にする |
+| [0125](0125-slide-vault-primary.md) | 承認（一部置換: 0129） | 子の基本の色の primary を、スライドの既定の primary にする |
 | [0128](0128-markdown-view.md) | 承認 | ノートの表示を自作プラグイン pkm-markdown で整える（インラインコードのコピー、本文のタグを文字に、見出しと箇条書き） |
+| [0129](0129-vault-theme-follow-primary.md) | 承認 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 <!-- adr-index:end -->

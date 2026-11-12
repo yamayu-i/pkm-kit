@@ -3,8 +3,10 @@
  * 同じ入力からは同じバイト列になる（日時を入れない）。ファイルの読み書きとハッシュの計算（Node の API）は呼ぶ側（cli/slide.ts）が渡す
  */
 import { stripDangerous } from "../../../pkm-html/src/core/sanitize.ts";
-import { derivePrimary, isColorValue, lightenForDark, type Mode, type PrimaryColors } from "./color.ts";
-import { colors } from "../../../design/generated/tokens.ts";
+import { toHex } from "../../../design/src/color.ts";
+import { applyTheme, type VaultTheme } from "../../../design/src/theme.ts";
+import { resolveColor, type Token } from "../../../design/src/tokens.ts";
+import { derivePrimary, isColorValue, lightenForDark, TOKENS, type Mode, type PrimaryColors } from "./color.ts";
 import { findPattern, PATTERN_IDS, type Pattern } from "./patterns.ts";
 
 /** index.html に入れる共通のもの（esbuild.config.mjs が作る） */
@@ -201,11 +203,10 @@ export function buildDeck(input: BuildInput): BuildResult {
 
 const primaryRule = (selector: string, c: PrimaryColors) =>
 	`${selector}{--sl-primary:${c.primary};--sl-on-primary:${c.onPrimary};--sl-primary-container:${c.container};--sl-on-primary-container:${c.onContainer}}`;
-/** 閲覧の画面（バー・ボタン）の primary。半透明の色は、上流のトークンと同じ透明度にする */
-const chromeRule = (selector: string, c: PrimaryColors, mode: Mode) => {
-	const alpha = (path: "color.primary-state-hover" | "color.on-primary-state-hover") => colors[mode][path].slice(7);
-	return `${selector}{--vt-primary:${c.primary};--vt-on-primary:${c.onPrimary};--vt-primary-state-hover:${c.primary}${alpha("color.primary-state-hover")};--vt-on-primary-state-hover:${c.onPrimary}${alpha("color.on-primary-state-hover")}}`;
-};
+/** 閲覧の画面（バー・ボタン）の色。子の基本の色を theme.mjs と同じ作り方で重ねた値（ADR-0125、ADR-0129） */
+const CHROME_COLORS = ["primary", "on-primary", "primary-state-hover", "on-primary-state-hover", "secondary-container", "on-secondary-container"] as const;
+const chromeRule = (selector: string, themed: readonly Token[], mode: Mode) =>
+	`${selector}{${CHROME_COLORS.map((name) => `--vt-${name}:${toHex(resolveColor(themed, `color.${name}`, mode))}`).join(";")}}`;
 const LIGHT_ROOT = ":root";
 const DARK_ROOT = ':root[data-theme="dark"]';
 const LIGHT_SLIDE = ".slide";
@@ -248,7 +249,12 @@ function vaultOverride(vault: BuildInput["vaultPrimary"], fail: (message: string
 			return "";
 		}
 	}
-	const dark = darkGiven ?? (light === undefined ? undefined : lightenForDark(light));
+	// ダークがなければ、theme.mjs と同じくライトから作る（ADR-0129）。閲覧の画面の色も theme.mjs と同じ作り方で作る
+	const theme: VaultTheme = { light: {}, dark: {} };
+	if (light !== undefined) theme.light.primary = light.toLowerCase();
+	if (darkGiven !== undefined) theme.dark.primary = darkGiven.toLowerCase();
+	const themed = applyTheme(TOKENS, theme);
+	const dark = darkGiven ?? (light === undefined ? undefined : toHex(resolveColor(themed, "color.primary", "dark")));
 	const l = light === undefined ? null : derivePrimary(light, "light");
 	const d = dark === undefined ? null : derivePrimary(dark, "dark");
 	if (l && "error" in l) fail(`.kit-local/theme.json の light.primary: ${l.error}。スライドの面は上流の色のまま${hint}`);
@@ -256,8 +262,8 @@ function vaultOverride(vault: BuildInput["vaultPrimary"], fail: (message: string
 	if ((l && "error" in l) || (d && "error" in d)) return "";
 	// Vault の色は、スライドに加えて閲覧の画面（バー・ボタン）にも効かせる（Obsidian の中の色とそろえる）
 	const lines: string[] = [];
-	if (l) lines.push(chromeRule(LIGHT_ROOT, l, "light"), primaryRule(LIGHT_SLIDE, l));
-	if (d) lines.push(chromeRule(DARK_ROOT, d, "dark"), primaryRule(DARK_SLIDE, d));
+	if (l) lines.push(chromeRule(LIGHT_ROOT, themed, "light"), primaryRule(LIGHT_SLIDE, l));
+	if (d) lines.push(chromeRule(DARK_ROOT, themed, "dark"), primaryRule(DARK_SLIDE, d));
 	return lines.map((x) => `${x}\n`).join("");
 }
 

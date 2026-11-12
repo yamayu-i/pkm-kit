@@ -7,7 +7,7 @@
 
 ## 色
 
-「Vault」の列: ○ は子の Vault が `.kit-local/theme.json` で上書きできる色、「追従」は上書きした元の色に合わせて変わる色（ADR-0121）。
+「Vault」の列: ○ は子の Vault が `.kit-local/theme.json` で上書きできる色、「追従」は上書きした元の色に合わせて変わる色（ADR-0121）。「から作る」は、子が元の色を変えてこの色を書かなかったときに、元の色から作る色（ADR-0129）。
 
 | CSS 変数 | 役割 | Vault | ライト | ダーク | 基準 | 最低の比（ライト / ダーク） | 用途 | 根拠 |
 |---|---|---|---|---|---|---|---|---|
@@ -21,11 +21,11 @@
 | `--vt-state-hover` | 状態 | 追従（--vt-on-surface） | `#2b2a2814` | `#d0d0d014` | — | — | ホバーで重ねる色（on-surface の 8%） | M3 hover state layer 0.08 |
 | `--vt-state-press` | 状態 | 追従（--vt-on-surface） | `#2b2a281f` | `#d0d0d01f` | — | — | 押したときに重ねる色（on-surface の 12%） | M3 pressed state layer 0.12 |
 | `--vt-primary` | 文字 | ○ | `#6750a4` | `#d0bcff` | 4.5:1 | 4.52 / 6.69 | アクセント（今のページ、テキストボタン、リンク） Obsidian: `--interactive-accent` `--text-accent` `--color-accent` | M3 baseline primary |
-| `--vt-on-primary` | 文字 | ○ | `#ffffff` | `#381e72` | 4.5:1 | 5.37 / 6.78 | primary の上の文字 Obsidian: `--text-on-accent` | M3 baseline on-primary |
+| `--vt-on-primary` | 文字 | ○（書かなければ --vt-primary から作る） | `#ffffff` | `#381e72` | 4.5:1 | 5.37 / 6.78 | primary の上の文字 Obsidian: `--text-on-accent` | M3 baseline on-primary |
 | `--vt-primary-state-hover` | 状態 | 追従（--vt-primary） | `#6750a414` | `#d0bcff14` | — | — | テキストボタンのホバー（primary の 8%） | M3 hover state layer 0.08 |
 | `--vt-on-primary-state-hover` | 状態 | 追従（--vt-on-primary） | `#ffffff14` | `#381e7214` | — | — | filled ボタンのホバー（on-primary の 8% を primary に重ねる） | M3 hover state layer 0.08 |
-| `--vt-secondary-container` | 面 | ○ | `#e8def8` | `#3d3749` | — | — | 選んでいるものの面（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） | M3 baseline secondary-container。ダークは M3 の #4a4458 では文字が 7:1 に届かないので暗くした |
-| `--vt-on-secondary-container` | 文字 | ○ | `#1d192b` | `#e8def8` | 4.5:1 | 11.52 / 7.34 | secondary-container の上の文字 | M3 baseline on-secondary-container |
+| `--vt-secondary-container` | 面 | ○（書かなければ --vt-primary から作る） | `#e8def8` | `#3d3749` | — | — | 選んでいるものの面（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） | M3 baseline secondary-container。ダークは M3 の #4a4458 では文字が 7:1 に届かないので暗くした |
+| `--vt-on-secondary-container` | 文字 | ○（書かなければ --vt-primary から作る） | `#1d192b` | `#e8def8` | 4.5:1 | 11.52 / 7.34 | secondary-container の上の文字 | M3 baseline on-secondary-container |
 | `--vt-error` | 文字 | — | `#b3261e` | `#f2b8b5` | 4.5:1 | 5.27 / 8.29 | エラーの文字、削除ボタン Obsidian: `--text-error` | M3 baseline error |
 | `--vt-focus-ring` | 印 | 追従（--vt-primary） | `#6750a4`（= --vt-primary） | `#d0bcff`（= --vt-primary） | 3:1 | 5.20 / 8.30 | キーボードで選んだときの枠 |  |
 | `--vt-text-faint` | 文字 | ○ | `#696860` | `#949494` | 4.5:1 | 4.52 / 4.66 | Obsidian 本体の薄い文字。プラグインでは使わない（標準の値は 4.5:1 に届かないので上げる） （プラグインでは使わない） Obsidian: `--text-faint` | WCAG 1.4.3。ノートのコードの面（surface-container-high）にも載るので、ダークはその面で 4.5:1 になるまで上げる |

@@ -71,10 +71,11 @@
 1. `node .kit/bin/theme.mjs list` で、変えられる色と上流の値を見る
 2. `.kit-local/theme.json` に、変えたい色だけを書く: `{ "light": { "primary": "#00639b" }, "dark": { "primary": "#8fcdff", "on-primary": "#00344f" } }`。値は不透明な `#rrggbb`
 3. `node .kit/bin/theme.mjs build` で反映する。デザイン規約（コントラスト比、面の段差）に合わない組み合わせなら、何も書かずに外れた組み合わせと比を出す。面の色を変えて状態の色の印が見えにくくなるときも止まるので、面の側を直す
+   - primary を変えたモードでは、書いていない `secondary-container`（選んだものの面）・`on-secondary-container`・`on-primary` を primary から作る。ライトの primary だけを書けば、ダークの primary もライトから作る（[ADR-0129](../../.kit/src/docs/adr/0129-vault-theme-follow-primary.md)）。作った色が規約に合わなければ、出力の「primary から作った色」のうち合わない色を `theme.json` に書く
 4. `slide/` があれば `node .kit/bin/slide.mjs build --all` でスライドをビルドし直す。スライドは primary を `index.html` に埋め込むので、ビルドし直すまで前の色のまま（`verify.mjs` が古いと止める。[ADR-0125](../../.kit/src/docs/adr/0125-slide-vault-primary.md)）
 5. `theme.json`、`pkm-theme-local.css`、`appearance.json`（と `slide/` の `index.html`）をコミットする（設定の変更なので、ブランチで行い PR にする）
 
-元の色に戻すときは、`theme.json` と `pkm-theme-local.css` を消し、`node .kit/setup.mjs` で `appearance.json` を戻す。スライドは primary だけがこの Vault の色になる（面と文字は上流の色。デッキの `<meta name="deck-primary">` が先）。書き出した html と図は上流の色のまま。
+元の色に戻すときは、`theme.json` と `pkm-theme-local.css` を消し、`node .kit/setup.mjs` で `appearance.json` を戻す。スライドは primary だけがこの Vault の色になる（面と文字は上流の色。デッキの `<meta name="deck-primary">` が先）。Obsidian の中の HTML の閲覧画面と Mermaid の図は、この Vault の色になる。書き出した html と図（pkm-diagram の SVG と PNG）は上流の色のまま。
 
 ## 上流の更新の取り込み
 

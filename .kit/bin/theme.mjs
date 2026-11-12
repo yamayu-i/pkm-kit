@@ -219,7 +219,8 @@ var tokens_default = {
           },
           obsidian: ["--text-on-accent"],
           source: "M3 baseline on-primary",
-          vault: true
+          vault: true,
+          follow: { from: "{color.primary}", rule: "on-color" }
         }
       }
     },
@@ -265,7 +266,8 @@ var tokens_default = {
           role: "surface",
           dark: { colorSpace: "srgb", components: [0.2392, 0.2157, 0.2863], hex: "#3d3749" },
           source: "M3 baseline secondary-container\u3002\u30C0\u30FC\u30AF\u306F M3 \u306E #4a4458 \u3067\u306F\u6587\u5B57\u304C 7:1 \u306B\u5C4A\u304B\u306A\u3044\u306E\u3067\u6697\u304F\u3057\u305F",
-          vault: true
+          vault: true,
+          follow: { from: "{color.primary}", rule: "container" }
         }
       }
     },
@@ -281,7 +283,8 @@ var tokens_default = {
             on: ["{color.secondary-container}", ["{color.secondary-container}", "{color.state-hover}"]]
           },
           source: "M3 baseline on-secondary-container",
-          vault: true
+          vault: true,
+          follow: { from: "{color.primary}", rule: "on-container" }
         }
       }
     },
@@ -1125,6 +1128,7 @@ var PREFIX = "--vt-";
 var MODES = ["light", "dark"];
 var TYPES = ["color", "dimension", "number", "fontWeight", "duration", "cubicBezier", "shadow"];
 var ROLES = ["surface", "text", "graphic", "state", "decorative"];
+var FOLLOW_RULES = ["container", "on-container", "on-color"];
 var FONT_WEIGHTS = { thin: 100, light: 300, normal: 400, regular: 400, medium: 500, bold: 700 };
 var TokenError = class extends Error {
 };
@@ -1208,6 +1212,12 @@ function loadTokens(json) {
     }
     if (ref.derive !== void 0) errors.push(`${t.path}: derive \u306E\u53C2\u7167\u5148 ${t.derive} \u3082 derive \u3067\u3059\uFF08\u5143\u306E\u8272\u3092\u6307\u3057\u3066\u304F\u3060\u3055\u3044\uFF09`);
   }
+  for (const t of tokens) {
+    if (t.follow === void 0) continue;
+    if (!t.vault) errors.push(`${t.path}: follow \u306F vault \u306E\u8272\u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059`);
+    const ref = byPath.get(t.follow.from);
+    if (!ref || ref.type !== "color" || !ref.vault) errors.push(`${t.path}: follow \u306E\u5143 ${t.follow.from} \u306F vault \u306E\u8272\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+  }
   if (errors.length > 0) throw new TokenError(errors.join("\n"));
   for (const t of tokens) {
     if (t.derive === void 0) continue;
@@ -1237,7 +1247,7 @@ function readToken(node, path, type, group, errors) {
   const e = isObject(ext) ? ext : {};
   if (ext !== void 0 && !isObject(ext)) errors.push(`${p}: $extensions.${EXT} \u306F\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
   for (const key of Object.keys(e)) {
-    if (!["dark", "role", "contrast", "obsidian", "plugin", "source", "vault", "derive"].includes(key)) errors.push(`${p}: \u77E5\u3089\u306A\u3044\u62E1\u5F35\u300C${key}\u300D`);
+    if (!["dark", "role", "contrast", "obsidian", "plugin", "source", "vault", "derive", "follow"].includes(key)) errors.push(`${p}: \u77E5\u3089\u306A\u3044\u62E1\u5F35\u300C${key}\u300D`);
   }
   const light = node.$value;
   const dark = "dark" in e ? e.dark : light;
@@ -1264,6 +1274,13 @@ function readToken(node, path, type, group, errors) {
     const target = aliasTarget(e.derive);
     if (t !== "color" || target === null) errors.push(`${p}: derive \u306F\u8272\u306B\u3001{path} \u306E\u5225\u540D\u3067\u66F8\u3044\u3066\u304F\u3060\u3055\u3044`);
     else token.derive = target;
+  }
+  if ("follow" in e) {
+    const f = e.follow;
+    const from = isObject(f) ? aliasTarget(f.from) : null;
+    if (t !== "color" || !isObject(f) || from === null) errors.push(`${p}: follow \u306F\u8272\u306B\u3001{ "from": "{path}", "rule": "..." } \u3067\u66F8\u3044\u3066\u304F\u3060\u3055\u3044`);
+    else if (!FOLLOW_RULES.includes(f.rule)) errors.push(`${p}: follow \u306E rule\u300C${String(f.rule)}\u300D\u3092\u77E5\u308A\u307E\u305B\u3093\uFF08${FOLLOW_RULES.join(" / ")}\uFF09`);
+    else token.follow = { from, rule: f.rule };
   }
   if (typeof e.source === "string") token.source = e.source;
   else if (group.source !== void 0) token.source = group.source;
@@ -1387,6 +1404,88 @@ function resolveColor(tokens, path, mode) {
   return colorValue(resolveValue(tokens, path, mode));
 }
 
+// src/diagram.ts
+var DIAGRAM_COLORS = ["blue", "green", "purple", "gray", "sky", "pink", "red", "amber"];
+var NEUTRAL = {
+  /** 文字 */
+  text: "color.on-surface",
+  /** 補助の文字（辺のラベル） */
+  muted: "color.on-surface-variant",
+  /** ノードの面 */
+  nodeFill: "color.surface",
+  /** ノードの枠 */
+  nodeStroke: "color.outline",
+  /** グループの面 */
+  groupFill: "color.surface-container",
+  /** グループの枠 */
+  groupStroke: "color.outline",
+  /** 辺と矢印 */
+  edge: "color.on-surface-variant",
+  /** ラベルの背景（辺のラベルを線から浮かせる） */
+  labelBg: "color.surface"
+};
+function diagramPalette(tokens, mode) {
+  const hex = (path) => toHex(resolveColor(tokens, path, mode));
+  const neutral = Object.fromEntries(Object.entries(NEUTRAL).map(([role, path]) => [role, hex(path)]));
+  const colors = Object.fromEntries(
+    DIAGRAM_COLORS.map((name) => [name, { fill: hex(`color.${name}-container`), stroke: hex(`color.${name}`), text: hex(`color.on-${name}-container`) }])
+  );
+  return { neutral, colors };
+}
+function mermaidCss(tokens, { root: root2 = "body", modes = MODES } = {}) {
+  const lines = ["", "/* Mermaid \u306E\u56F3\u306E\u8272\u3092\u3001\u56F3\u306E\u914D\u8272\uFF08ADR-0102\uFF09\u306B\u63C3\u3048\u308B\u3002\u8272\u306F A:::blue \u304B class A blue \u3067\u4ED8\u3051\u308B */"];
+  const rule = (selectors, decls) => {
+    lines.push(`${selectors.join(",\n")} {`);
+    for (const [k, v] of Object.entries(decls)) lines.push(`	${k}: ${v} !important;`);
+    lines.push("}");
+  };
+  for (const mode of modes) {
+    const p = diagramPalette(tokens, mode);
+    const at = (s) => `${root2}.theme-${mode} .mermaid ${s}`;
+    const shapes = (scope) => ["rect", "circle", "ellipse", "polygon", "path.basic", ".label-container"].map((s) => at(`${scope} ${s}`));
+    lines.push("");
+    rule(shapes(".node"), { fill: p.neutral.nodeFill, stroke: p.neutral.nodeStroke });
+    rule([at(".node .nodeLabel"), at(".node .label"), at(".node text")], { color: p.neutral.text, fill: p.neutral.text });
+    rule([at(".cluster rect"), at(".cluster polygon")], { fill: p.neutral.groupFill, stroke: p.neutral.groupStroke });
+    rule([at(".cluster .nodeLabel"), at(".cluster-label"), at(".cluster text")], { color: p.neutral.text, fill: p.neutral.text });
+    rule([at(".flowchart-link"), at(".edgePath .path"), at(".messageLine0"), at(".messageLine1"), at(".transition")], { stroke: p.neutral.edge });
+    rule([at("marker path"), at(".arrowheadPath"), at(".arrowMarkerPath"), at("#arrowhead path")], { fill: p.neutral.edge, stroke: p.neutral.edge });
+    rule([at(".edgeLabel"), at(".edgeLabel p"), at(".edgeLabel span"), at(".labelBkg")], { color: p.neutral.muted, "background-color": p.neutral.labelBg });
+    rule([at(".edgeLabel rect")], { fill: p.neutral.labelBg });
+    rule([at(".actor"), at(".statediagram-state rect"), at(".stateGroup rect")], { fill: p.neutral.nodeFill, stroke: p.neutral.nodeStroke });
+    rule([at(".messageText"), at("text.actor > tspan"), at(".noteText")], { fill: p.neutral.text });
+    rule([at(".note")], { fill: p.colors.amber.fill, stroke: p.colors.amber.stroke });
+    for (const name of DIAGRAM_COLORS) {
+      const c = p.colors[name];
+      rule([...shapes(`.node.${name}`), at(`.cluster.${name} rect`), at(`.cluster.${name} polygon`)], { fill: c.fill, stroke: c.stroke });
+      rule([at(`.node.${name} .nodeLabel`), at(`.node.${name} text`), at(`.cluster.${name} .nodeLabel`), at(`.cluster.${name} text`)], { color: c.text, fill: c.text });
+    }
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+// src/primary.ts
+var CONTAINER_MIX = 0.16;
+var WHITE = { r: 255, g: 255, b: 255, a: 1 };
+function mix(a, b, t) {
+  const ch = (x, y) => x + (y - x) * t;
+  return { r: ch(a.r, b.r), g: ch(a.g, b.g), b: ch(a.b, b.b), a: 1 };
+}
+function containerOf(surface, primary) {
+  return mix(surface, primary, CONTAINER_MIX);
+}
+function onColorOf(primary, darkText) {
+  return contrastRatio(WHITE, primary) >= contrastRatio(darkText, primary) ? WHITE : darkText;
+}
+function lightenUntil(base, ok) {
+  for (let t = 0; t <= 1.0001; t += 0.05) {
+    const c = mix(base, WHITE, t);
+    if (ok(c)) return c;
+  }
+  return { ...WHITE };
+}
+
 // src/contrast.ts
 function checkContrast(tokens) {
   const results = [];
@@ -1449,8 +1548,8 @@ function colorJson(hex, alpha) {
   const components = [c.r, c.g, c.b].map((v) => +(v / 255).toFixed(4));
   return { colorSpace: "srgb", components, ...alpha === void 0 || alpha >= 1 ? {} : { alpha }, hex };
 }
-function applyTheme(tokens, theme) {
-  const out = tokens.map((t) => {
+function withOverrides(tokens, theme) {
+  return tokens.map((t) => {
     if (!t.vault) return t;
     const raw = { ...t.raw };
     for (const mode of MODES) {
@@ -1459,6 +1558,8 @@ function applyTheme(tokens, theme) {
     }
     return { ...t, raw };
   });
+}
+function withDerived(out) {
   return out.map((t) => {
     if (t.derive === void 0) return t;
     const raw = { ...t.raw };
@@ -1469,6 +1570,53 @@ function applyTheme(tokens, theme) {
     }
     return { ...t, raw };
   });
+}
+function followValue(tokens, t, mode) {
+  const from = resolveColor(tokens, t.follow.from, mode);
+  switch (t.follow.rule) {
+    case "container":
+      return toHex(containerOf(resolveColor(tokens, "color.surface", mode), from));
+    case "on-container":
+      return toHex(resolveColor(tokens, "color.on-surface", mode));
+    case "on-color":
+      return toHex(onColorOf(from, resolveColor(tokens, "color.on-surface", "light")));
+  }
+}
+var cloneTheme = (theme) => ({ light: { ...theme.light }, dark: { ...theme.dark } });
+function fillFollow(tokens, theme, mode) {
+  const base = withOverrides(tokens, theme);
+  for (const t of tokens) {
+    if (t.follow === void 0) continue;
+    const name = nameOf(t.path);
+    if (theme[mode][nameOf(t.follow.from)] === void 0 || theme[mode][name] !== void 0) continue;
+    theme[mode][name] = followValue(base, t, mode);
+  }
+}
+var PRIMARY = "primary";
+function completeTheme(tokens, theme) {
+  const out = cloneTheme(theme);
+  const light = out.light[PRIMARY];
+  if (light !== void 0 && out.dark[PRIMARY] === void 0) {
+    const dark = lightenUntil(parseHex(light), (c) => {
+      const trial = cloneTheme(out);
+      trial.dark[PRIMARY] = toHex(c);
+      fillFollow(tokens, trial, "dark");
+      const themed = withDerived(withOverrides(tokens, trial));
+      return checkContrast(themed).every((r) => r.ok || r.mode !== "dark" || r.token !== `color.${PRIMARY}` && r.token !== "color.on-primary");
+    });
+    out.dark[PRIMARY] = toHex(dark);
+  }
+  for (const mode of MODES) fillFollow(tokens, out, mode);
+  return out;
+}
+function madeColors(tokens, theme) {
+  const full = completeTheme(tokens, theme);
+  const names = tokens.filter((t) => t.vault).map((t) => nameOf(t.path));
+  const made = (mode) => names.filter((n) => theme[mode][n] === void 0 && full[mode][n] !== void 0);
+  return { light: made("light"), dark: made("dark") };
+}
+function applyTheme(tokens, theme) {
+  return withDerived(withOverrides(tokens, completeTheme(tokens, theme)));
 }
 var SURFACE_STEPS = ["color.surface", "color.surface-container", "color.surface-container-high"];
 function checkTheme(tokens) {
@@ -1511,6 +1659,8 @@ function themeSnippet(base, themed) {
     }
     if (body.length > 0) lines.push("", `html body.theme-${mode} {`, ...body, "}");
   }
+  const mermaidModes = MODES.filter((mode) => JSON.stringify(diagramPalette(base, mode)) !== JSON.stringify(diagramPalette(themed, mode)));
+  if (mermaidModes.length > 0) lines.push(mermaidCss(themed, { root: "html body", modes: mermaidModes }).replace(/\n$/, ""));
   lines.push("");
   return lines.join("\n");
 }
@@ -1556,7 +1706,11 @@ function load(root2, tokens) {
   if (errors.length > 0) return { problems: errors };
   const themed = applyTheme(tokens, theme);
   const problems = checkTheme(themed);
-  return problems.length > 0 ? { problems } : { themed, problems: [] };
+  if (problems.length === 0) return { themed, problems: [] };
+  const made = madeColors(tokens, theme);
+  const list = MODES.flatMap((mode) => made[mode].map((name) => `${mode}.${name}`));
+  if (list.length > 0) problems.push(`primary \u304B\u3089\u4F5C\u3063\u305F\u8272: ${list.join(", ")}\uFF08\u5408\u308F\u306A\u3044\u8272\u306F\u3001\u5024\u3092 ${THEME_FILE} \u306B\u66F8\u304F\u3068\u3001\u4F5C\u3089\u305A\u306B\u305D\u306E\u5024\u3092\u4F7F\u3046\uFF09`);
+  return { problems };
 }
 function runTheme(args, root2, tokens) {
   const out = [];
@@ -1569,7 +1723,8 @@ function runTheme(args, root2, tokens) {
     for (const name of vaultColorNames(tokens)) {
       const t = tokens.find((x) => x.path === `color.${name}`);
       const v = (mode) => toHex(resolveColor(tokens, t.path, mode));
-      out.push(`  ${name}: ${v("light")} / ${v("dark")}  ${t.description}`);
+      const follow = t.follow ? `\uFF08${t.follow.from.replace(/^color\./, "")} \u3092\u5909\u3048\u3066\u3001\u3053\u308C\u3092\u66F8\u304B\u306A\u3051\u308C\u3070\u3001${t.follow.from.replace(/^color\./, "")} \u304B\u3089\u4F5C\u308B\uFF09` : "";
+      out.push(`  ${name}: ${v("light")} / ${v("dark")}  ${t.description}${follow}`);
     }
     return { code: 0, out, err };
   }

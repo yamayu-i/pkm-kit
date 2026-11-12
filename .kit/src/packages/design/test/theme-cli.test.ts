@@ -49,6 +49,8 @@ describe("theme.mjs", () => {
 		const r = run("build");
 		expect(r.code).toBe(1);
 		expect(r.err.join("\n")).toMatch(/何も書きませんでした[\s\S]*primary（ライト）/);
+		// 作った色を知らせ、書けば直せることを出す（ADR-0129）
+		expect(r.err.join("\n")).toMatch(/primary から作った色: .*light\.secondary-container.*dark\.primary/);
 		expect(existsSync(join(root, ".obsidian/snippets/pkm-theme-local.css"))).toBe(false);
 		expect(JSON.parse(read(".obsidian/appearance.json"))).toEqual(appearance);
 	});

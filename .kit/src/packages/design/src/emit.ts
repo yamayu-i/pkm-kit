@@ -160,7 +160,7 @@ export function tokensDoc(tokens: readonly Token[]): string {
 		"",
 		"## 色",
 		"",
-		"「Vault」の列: ○ は子の Vault が `.kit-local/theme.json` で上書きできる色、「追従」は上書きした元の色に合わせて変わる色（ADR-0121）。",
+		"「Vault」の列: ○ は子の Vault が `.kit-local/theme.json` で上書きできる色、「追従」は上書きした元の色に合わせて変わる色（ADR-0121）。「から作る」は、子が元の色を変えてこの色を書かなかったときに、元の色から作る色（ADR-0129）。",
 		"",
 		"| CSS 変数 | 役割 | Vault | ライト | ダーク | 基準 | 最低の比（ライト / ダーク） | 用途 | 根拠 |",
 		"|---|---|---|---|---|---|---|---|---|",
@@ -177,7 +177,7 @@ export function tokensDoc(tokens: readonly Token[]): string {
 			.filter(Boolean)
 			.join(" ");
 		const follows = t.derive ?? aliasTarget(t.raw.light);
-		const vault = t.vault ? "○" : follows !== null && tokens.find((x) => x.path === follows)?.vault ? `追従（${cssVarOf(follows)}）` : "—";
+		const vault = t.vault ? (t.follow ? `○（書かなければ ${cssVarOf(t.follow.from)} から作る）` : "○") : follows !== null && tokens.find((x) => x.path === follows)?.vault ? `追従（${cssVarOf(follows)}）` : "—";
 		out.push(
 			`| \`${t.cssVar}\` | ${ROLE_TEXT[t.role ?? ""] ?? "—"} | ${vault} | ${displayValue(tokens, t, "light")} | ${displayValue(tokens, t, "dark")} | ${req} | ${worst} | ${usage} | ${t.source ?? ""} |`,
 		);

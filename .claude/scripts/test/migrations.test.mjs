@@ -17,6 +17,8 @@ function childFrom(fixture) {
 	cpSync(join(FIXTURES, fixture), root, { recursive: true });
 	cpSync(join(here, ".kit/migrate.mjs"), join(root, ".kit/migrate.mjs"));
 	cpSync(join(here, ".kit/migrations"), join(root, ".kit/migrations"), { recursive: true });
+	// 移行が使う上流の CLI（0129 の theme.mjs）。子の Vault には上流から届いている
+	cpSync(join(here, ".kit/bin/theme.mjs"), join(root, ".kit/bin/theme.mjs"));
 	return root;
 }
 
@@ -439,8 +441,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -591,3 +593,48 @@ for (const [path, broken] of [
 		assert.equal(readFileSync(join(root, path), "utf8"), broken);
 	});
 }
+
+/** ADR-0121 の theme.mjs が作った、ライトの primary だけの子の基本の色（0129 の前の形） */
+const THEME_0121 = {
+	".kit-local/theme.json": JSON.stringify({ light: { primary: "#00639b" } }, null, 2),
+	".obsidian/snippets/pkm-theme-local.css": [
+		"/* 生成物。手で編集しない。正本は .kit-local/theme.json（node .kit/bin/theme.mjs build で作り直す） */",
+		"/* 子の Vault の基本の色（.kit/src/docs/adr/0121-vault-theme.md）。上流の値から変わった色だけを書く */",
+		"",
+		"html body.theme-light {",
+		"\t--vt-primary: #00639b;",
+		"\t--interactive-accent: #00639b;",
+		"\t--text-accent: #00639b;",
+		"\t--color-accent: #00639b;",
+		"\t--vt-primary-state-hover: #00639b14;",
+		"}",
+		"",
+	].join("\n"),
+	".obsidian/appearance.json": JSON.stringify({ accentColor: "#00639b", enabledCssSnippets: ["vault-theme", "my-snippet", "pkm-theme-local"] }, null, 2),
+};
+
+test("0129: theme.json がある Vault は、子のスニペットを作り直し、primary から作る色とダークの primary を足す。2 回目は何も変えない", async () => {
+	const root = childFrom("customized");
+	write(root, THEME_0121);
+	const before = readFileSync(join(root, ".obsidian/snippets/pkm-theme-local.css"), "utf8");
+	assert.ok(!before.includes("--vt-secondary-container"));
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	const css = readFileSync(join(root, ".obsidian/snippets/pkm-theme-local.css"), "utf8");
+	assert.match(css, /html body\.theme-light \{[^}]*--vt-secondary-container: #[0-9a-f]{6};/);
+	assert.match(css, /html body\.theme-dark \{[^}]*--vt-primary: #[0-9a-f]{6};/);
+	assert.ok(!css.includes("#e8def8") && !css.includes("#381e72"));
+	const appearance = readJsonFile(root, ".obsidian/appearance.json");
+	assert.equal(appearance.accentColor, "#00639b");
+	assert.ok(appearance.enabledCssSnippets.includes("pkm-theme-local") && appearance.enabledCssSnippets.includes("my-snippet"));
+	assert.deepEqual((await runMigrations(root)).done.flatMap((d) => d.changes), []);
+});
+
+test("0129: theme.json が規約に合わなければ何も書かずに、check が失敗して止まる", async () => {
+	const root = childFrom("customized");
+	write(root, { ...THEME_0121, ".kit-local/theme.json": JSON.stringify({ light: { primary: "#d0bcff" } }) });
+	const snippet = readFileSync(join(root, ".obsidian/snippets/pkm-theme-local.css"), "utf8");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0129-vault-theme-follow");
+	assert.equal(readFileSync(join(root, ".obsidian/snippets/pkm-theme-local.css"), "utf8"), snippet);
+});

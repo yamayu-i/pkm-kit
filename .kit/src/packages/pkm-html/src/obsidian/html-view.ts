@@ -2,6 +2,7 @@
 import { FileView, Notice, TFile, type WorkspaceLeaf } from "obsidian";
 import { HTML_EXTENSIONS, isSlideDeck, MAX_IMAGE_BYTES } from "../core/policy.ts";
 import { openSlideInBrowser } from "./open-external.ts";
+import { slideLiveVars, tokenVarNames } from "../core/live-vars.ts";
 import { buildSrcdoc, type Theme } from "../core/sanitize.ts";
 import { type MountedFrame, mountFrame } from "../ui/frame.ts";
 import tokensCss from "../../tokens.css";
@@ -18,6 +19,14 @@ function currentTheme(): Theme {
 function fontVars(): Record<string, string> {
 	const style = getComputedStyle(document.body);
 	return Object.fromEntries(FONT_VARS.map((name) => [name, style.getPropertyValue(name)]));
+}
+
+/** トークンの変数の、Obsidian で今効いている値。子の基本の色（pkm-theme-local.css）を含む（ADR-0129） */
+const TOKEN_VARS = tokenVarNames(tokensCss);
+function liveVars(path: string): Record<string, string> {
+	const style = getComputedStyle(document.body);
+	const vars = Object.fromEntries(TOKEN_VARS.map((name) => [name, style.getPropertyValue(name)]));
+	return isSlideDeck(path) ? slideLiveVars(vars) : vars;
 }
 
 export class HtmlView extends FileView {
@@ -48,7 +57,7 @@ export class HtmlView extends FileView {
 	}
 
 	override async onOpen(): Promise<void> {
-		this.registerEvent(this.app.workspace.on("css-change", () => this.frame?.setTheme(currentTheme())));
+		this.registerEvent(this.app.workspace.on("css-change", () => this.frame?.setTheme(currentTheme(), liveVars(this.file?.path ?? ""))));
 		this.registerEvent(
 			this.app.vault.on("modify", (file) => {
 				if (file instanceof TFile && file === this.file) void this.render(file);
@@ -97,6 +106,7 @@ export class HtmlView extends FileView {
 			theme: currentTheme(),
 			tokensCss,
 			fontVars: fontVars(),
+			liveVars: liveVars(file.path),
 			readImage: async (candidates) => {
 				const image = this.findFile(candidates);
 				if (!image || image.stat.size > MAX_IMAGE_BYTES) return null;

@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
+import { toHex } from "../../design/src/color.ts";
+import { applyTheme, parseTheme } from "../../design/src/theme.ts";
+import { resolveColor } from "../../design/src/tokens.ts";
 import { buildDeck, longestWordEm, stampLines, textWidth, type Assets, type BuildResult } from "../src/core/build.ts";
+import { TOKENS } from "../src/core/color.ts";
 
 const assets: Assets = { tokensCss: "/*tokens*/", css: "/*css*/", runtime: "console.log('runtime');" };
 const sha256 = (text: string, encoding: "hex" | "base64") => createHash("sha256").update(text).digest(encoding);
@@ -144,6 +148,21 @@ describe("buildDeck（ADR-0117）", () => {
 		expect(rules(build(deck(slide("<h2>見出し</h2>")), [], { light: "#ffe082" }), "error")).toEqual(["vault-primary"]);
 		// theme.json がなければ何も足さない
 		expect(build(deck(slide("<h2>見出し</h2>"))).html).not.toContain("--sl-primary:");
+	});
+
+	it("子の基本の色の primary から、閲覧の画面の選んだものの面と primary の上の文字も作る。値は theme.mjs と同じ（ADR-0129）", () => {
+		const themed = applyTheme(TOKENS, parseTheme({ light: { primary: "#1e5b3a" } }, TOKENS).theme);
+		const v = (name: string, mode: "light" | "dark") => toHex(resolveColor(themed, `color.${name}`, mode));
+		const html = build(deck(slide("<h2>見出し</h2>")), [], { light: "#1e5b3a" }).html as string;
+		for (const [root, mode] of [[":root{", "light"], [':root[data-theme="dark"]{', "dark"]] as const) {
+			const rule = html.split("\n").find((l) => l.startsWith(root) && l.includes("--vt-primary:")) ?? "";
+			expect(rule).toContain(`--vt-primary:${v("primary", mode)};`);
+			expect(rule).toContain(`--vt-on-primary:${v("on-primary", mode)};`);
+			expect(rule).toContain(`--vt-secondary-container:${v("secondary-container", mode)};`);
+			expect(rule).toContain(`--vt-on-secondary-container:${v("on-secondary-container", mode)}`);
+		}
+		// ダークの primary も theme.mjs と同じ（スライドの面と Obsidian の色がそろう）
+		expect(html).toContain(`:root[data-theme="dark"] .slide{--sl-primary:${v("primary", "dark")};`);
 	});
 
 	it("textWidth は全角を 1、半角を 0.5 で数える", () => {

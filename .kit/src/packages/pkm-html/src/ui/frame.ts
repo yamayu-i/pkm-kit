@@ -4,6 +4,7 @@
  * srcdoc への代入はこのファイルだけで行う（security-scan が検査する）
  */
 import { classifyLink, type LinkTarget } from "../core/policy.ts";
+import { liveVarsCss } from "../core/live-vars.ts";
 import { MARK_ATTRIBUTE, schemeCss, type Theme } from "../core/sanitize.ts";
 
 /**
@@ -21,7 +22,8 @@ export interface FrameHandlers {
 
 export interface MountedFrame {
 	iframe: HTMLIFrameElement;
-	setTheme(theme: Theme): void;
+	/** テーマと、Obsidian で今効いているトークンの値（ADR-0129）を入れ直す */
+	setTheme(theme: Theme, liveVars?: Readonly<Record<string, string>>): void;
 	destroy(): void;
 }
 
@@ -70,13 +72,15 @@ export function mountFrame(container: HTMLElement, srcdoc: string, handlers: Fra
 
 	return {
 		iframe,
-		setTheme(theme) {
+		setTheme(theme, liveVars) {
 			const d = iframe.contentDocument;
 			if (!d?.body) return;
 			d.body.classList.remove("theme-light", "theme-dark");
 			d.body.classList.add(`theme-${theme}`);
 			const scheme = d.querySelector(`style[${MARK_ATTRIBUTE}="scheme"]`);
 			if (scheme) scheme.textContent = schemeCss(theme);
+			const live = d.querySelector(`style[${MARK_ATTRIBUTE}="live"]`);
+			if (live && liveVars) live.textContent = liveVarsCss(liveVars);
 		},
 		destroy() {
 			iframe.removeEventListener("load", onLoad);
