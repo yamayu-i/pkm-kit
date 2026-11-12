@@ -8,8 +8,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { toHex } from "../src/color.ts";
-import { applyTheme, checkTheme, LOCAL_SNIPPET_FILE, LOCAL_SNIPPET_NAME, parseTheme, THEME_FILE, themeAccent, themeSnippet, vaultColorNames } from "../src/theme.ts";
-import { resolveColor, type Token } from "../src/tokens.ts";
+import { applyTheme, checkTheme, madeColors, LOCAL_SNIPPET_FILE, LOCAL_SNIPPET_NAME, parseTheme, THEME_FILE, themeAccent, themeSnippet, vaultColorNames } from "../src/theme.ts";
+import { MODES, resolveColor, type Token } from "../src/tokens.ts";
 
 export interface CliResult {
 	code: number;
@@ -63,7 +63,12 @@ function load(root: string, tokens: readonly Token[]): { themed?: Token[]; probl
 	if (errors.length > 0) return { problems: errors };
 	const themed = applyTheme(tokens, theme);
 	const problems = checkTheme(themed);
-	return problems.length > 0 ? { problems } : { themed, problems: [] };
+	if (problems.length === 0) return { themed, problems: [] };
+	// 書いていない色は primary から作る（ADR-0129）。作った色が合わないなら、その色を書けば直せる
+	const made = madeColors(tokens, theme);
+	const list = MODES.flatMap((mode) => made[mode].map((name) => `${mode}.${name}`));
+	if (list.length > 0) problems.push(`primary から作った色: ${list.join(", ")}（合わない色は、値を ${THEME_FILE} に書くと、作らずにその値を使う）`);
+	return { problems };
 }
 
 export function runTheme(args: readonly string[], root: string, tokens: readonly Token[]): CliResult {
@@ -78,7 +83,8 @@ export function runTheme(args: readonly string[], root: string, tokens: readonly
 		for (const name of vaultColorNames(tokens)) {
 			const t = tokens.find((x) => x.path === `color.${name}`) as Token;
 			const v = (mode: "light" | "dark") => toHex(resolveColor(tokens, t.path, mode));
-			out.push(`  ${name}: ${v("light")} / ${v("dark")}  ${t.description}`);
+			const follow = t.follow ? `（${t.follow.from.replace(/^color\./, "")} を変えて、これを書かなければ、${t.follow.from.replace(/^color\./, "")} から作る）` : "";
+			out.push(`  ${name}: ${v("light")} / ${v("dark")}  ${t.description}${follow}`);
 		}
 		return { code: 0, out, err };
 	}

@@ -33,6 +33,16 @@ describe("loadTokens", () => {
 		expect(tokens.find((t) => t.path === "color.hover")?.derive).toBe("color.fg");
 	});
 
+	it("follow を読む（ADR-0129）", () => {
+		const json = base() as any;
+		json.color.bg.$extensions[X].vault = true;
+		json.color.fg.$extensions[X].vault = true;
+		json.color.fg.$extensions[X].follow = { from: "{color.bg}", rule: "on-color" };
+		const tokens = loadTokens(json);
+		expect(tokens.find((t) => t.path === "color.fg")?.follow).toEqual({ from: "color.bg", rule: "on-color" });
+		expect(tokens.find((t) => t.path === "color.bg")?.follow).toBeUndefined();
+	});
+
 	const broken: [string, (j: any) => void, RegExp][] = [
 		["role がない", (j) => delete j.color.bg.$extensions, /role/],
 		["text の下限より低い min", (j) => (j.color.fg.$extensions[X].contrast.min = 3), /4\.5 以上/],
@@ -49,6 +59,23 @@ describe("loadTokens", () => {
 		["derive の参照先がない", (j) => (j.color.hover = { $value: c("#222222", 0.08), $extensions: { [X]: { role: "state", derive: "{color.none}" } } }), /derive の参照先/],
 		["derive の色が元と合わない", (j) => (j.color.hover = { $value: c("#333333", 0.08), $extensions: { [X]: { role: "state", dark: c("#dddddd", 0.08), derive: "{color.fg}" } } }), /derive の元.*合いません/],
 		["vault を別名に付ける", (j) => (j.color.alias = { $value: "{color.fg}", $extensions: { [X]: { role: "decorative", vault: true } } }), /vault/],
+		["follow の rule を知らない", (j) => {
+			j.color.bg.$extensions[X].vault = true;
+			j.color.fg.$extensions[X].vault = true;
+			j.color.fg.$extensions[X].follow = { from: "{color.bg}", rule: "mix" };
+		}, /follow の rule/],
+		["follow の元が vault でない", (j) => {
+			j.color.fg.$extensions[X].vault = true;
+			j.color.fg.$extensions[X].follow = { from: "{color.bg}", rule: "on-color" };
+		}, /follow の元.*vault/],
+		["follow を vault でない色に付ける", (j) => {
+			j.color.bg.$extensions[X].vault = true;
+			j.color.fg.$extensions[X].follow = { from: "{color.bg}", rule: "on-color" };
+		}, /follow は vault/],
+		["follow の形が違う", (j) => {
+			j.color.fg.$extensions[X].vault = true;
+			j.color.fg.$extensions[X].follow = "{color.bg}";
+		}, /follow は/],
 		["vault が真偽でない", (j) => (j.color.bg.$extensions[X].vault = "yes"), /vault/],
 		["dimension の単位", (j) => (j.size = { $type: "dimension", a: { $value: { value: 1, unit: "em" } } }), /dimension/],
 	];

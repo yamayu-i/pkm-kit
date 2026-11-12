@@ -4,6 +4,8 @@
  * Node の API を使わない（ファイルの読み書きは node/theme-cli.ts）
  */
 import { formatRatio, parseHex, relativeLuminance, toHex } from "./color.ts";
+import { diagramPalette, mermaidCss } from "./diagram.ts";
+import { containerOf, lightenUntil, onColorOf } from "./primary.ts";
 import { checkContrast } from "./contrast.ts";
 import { aliasTarget, MODES, resolveColor, type Mode, type Token } from "./tokens.ts";
 
@@ -66,9 +68,9 @@ function colorJson(hex: string, alpha?: number): Record<string, unknown> {
 	return { colorSpace: "srgb", components, ...(alpha === undefined || alpha >= 1 ? {} : { alpha }), hex };
 }
 
-/** 上流のトークンに上書きを重ねた新しい一覧（元の一覧は変えない）。derive の色は元の色に追従させる */
-export function applyTheme(tokens: readonly Token[], theme: VaultTheme): Token[] {
-	const out = tokens.map((t) => {
+/** 上書きを vault の色に重ねる（derive と follow はまだ） */
+function withOverrides(tokens: readonly Token[], theme: VaultTheme): Token[] {
+	return tokens.map((t) => {
 		if (!t.vault) return t;
 		const raw = { ...t.raw };
 		for (const mode of MODES) {
@@ -77,6 +79,10 @@ export function applyTheme(tokens: readonly Token[], theme: VaultTheme): Token[]
 		}
 		return { ...t, raw };
 	});
+}
+
+/** derive の色を元の色に追従させる（透明度は自分のもの） */
+function withDerived(out: readonly Token[]): Token[] {
 	return out.map((t) => {
 		if (t.derive === undefined) return t;
 		const raw = { ...t.raw };
@@ -87,6 +93,69 @@ export function applyTheme(tokens: readonly Token[], theme: VaultTheme): Token[]
 		}
 		return { ...t, raw };
 	});
+}
+
+/** follow の作り方（tokens.ts の FOLLOW_RULES） */
+function followValue(tokens: readonly Token[], t: Token & { follow: NonNullable<Token["follow"]> }, mode: Mode): string {
+	const from = resolveColor(tokens, t.follow.from, mode);
+	switch (t.follow.rule) {
+		case "container":
+			return toHex(containerOf(resolveColor(tokens, "color.surface", mode), from));
+		case "on-container":
+			return toHex(resolveColor(tokens, "color.on-surface", mode));
+		case "on-color":
+			return toHex(onColorOf(from, resolveColor(tokens, "color.on-surface", "light")));
+	}
+}
+
+const cloneTheme = (theme: VaultTheme): VaultTheme => ({ light: { ...theme.light }, dark: { ...theme.dark } });
+
+/** 元の色を上書きしたモードで、書いていない follow の色を作って足す */
+function fillFollow(tokens: readonly Token[], theme: VaultTheme, mode: Mode): void {
+	const base = withOverrides(tokens, theme);
+	for (const t of tokens) {
+		if (t.follow === undefined) continue;
+		const name = nameOf(t.path);
+		if (theme[mode][nameOf(t.follow.from)] === undefined || theme[mode][name] !== undefined) continue;
+		theme[mode][name] = followValue(base, t as Token & { follow: NonNullable<Token["follow"]> }, mode);
+	}
+}
+
+const PRIMARY = "primary";
+
+/**
+ * theme.json に書いていない色を足した設定（ADR-0129）。
+ * - ライトの primary だけなら、ダークの primary は、ライトを白に寄せて、ダークの primary と on-primary が規約を満たす最初の色
+ * - primary を変えたモードでは、書いていない follow の色（secondary-container など）を primary から作る
+ */
+export function completeTheme(tokens: readonly Token[], theme: VaultTheme): VaultTheme {
+	const out = cloneTheme(theme);
+	const light = out.light[PRIMARY];
+	if (light !== undefined && out.dark[PRIMARY] === undefined) {
+		const dark = lightenUntil(parseHex(light), (c) => {
+			const trial = cloneTheme(out);
+			trial.dark[PRIMARY] = toHex(c);
+			fillFollow(tokens, trial, "dark");
+			const themed = withDerived(withOverrides(tokens, trial));
+			return checkContrast(themed).every((r) => r.ok || r.mode !== "dark" || (r.token !== `color.${PRIMARY}` && r.token !== "color.on-primary"));
+		});
+		out.dark[PRIMARY] = toHex(dark);
+	}
+	for (const mode of MODES) fillFollow(tokens, out, mode);
+	return out;
+}
+
+/** completeTheme が作った色の名前（tokens.json の順） */
+export function madeColors(tokens: readonly Token[], theme: VaultTheme): Record<Mode, string[]> {
+	const full = completeTheme(tokens, theme);
+	const names = tokens.filter((t) => t.vault).map((t) => nameOf(t.path));
+	const made = (mode: Mode) => names.filter((n) => theme[mode][n] === undefined && full[mode][n] !== undefined);
+	return { light: made("light"), dark: made("dark") };
+}
+
+/** 上流のトークンに上書きを重ねた新しい一覧（元の一覧は変えない）。書いていない色を作り（ADR-0129）、derive の色は元の色に追従させる */
+export function applyTheme(tokens: readonly Token[], theme: VaultTheme): Token[] {
+	return withDerived(withOverrides(tokens, completeTheme(tokens, theme)));
 }
 
 /** 面の明るさの段差（design.md の役割）。ライトでは奥ほど暗く、ダークでは奥ほど明るい */
@@ -141,6 +210,9 @@ export function themeSnippet(base: readonly Token[], themed: readonly Token[]): 
 		}
 		if (body.length > 0) lines.push("", `html body.theme-${mode} {`, ...body, "}");
 	}
+	// Mermaid の配色は pkm-theme.css に値で書いてあるので、変わったモードだけ上書き後の値で書き直す（ADR-0129）
+	const mermaidModes = MODES.filter((mode) => JSON.stringify(diagramPalette(base, mode)) !== JSON.stringify(diagramPalette(themed, mode)));
+	if (mermaidModes.length > 0) lines.push(mermaidCss(themed, { root: "html body", modes: mermaidModes }).replace(/\n$/, ""));
 	lines.push("");
 	return lines.join("\n");
 }

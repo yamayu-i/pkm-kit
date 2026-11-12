@@ -61,16 +61,16 @@ export function diagramPalette(tokens: readonly Token[], mode: Mode): DiagramPal
  * Mermaid は SVG の中に id 付きのセレクタで色を書くので、!important で上書きする。
  * 色は `A:::blue` / `class A blue`（classDef は要らない）で付ける
  */
-export function mermaidCss(tokens: readonly Token[]): string {
+export function mermaidCss(tokens: readonly Token[], { root = "body", modes = MODES }: { root?: string; modes?: readonly Mode[] } = {}): string {
 	const lines = ["", "/* Mermaid の図の色を、図の配色（ADR-0102）に揃える。色は A:::blue か class A blue で付ける */"];
 	const rule = (selectors: string[], decls: Record<string, string>) => {
 		lines.push(`${selectors.join(",\n")} {`);
 		for (const [k, v] of Object.entries(decls)) lines.push(`\t${k}: ${v} !important;`);
 		lines.push("}");
 	};
-	for (const mode of MODES) {
+	for (const mode of modes) {
 		const p = diagramPalette(tokens, mode);
-		const at = (s: string) => `body.theme-${mode} .mermaid ${s}`;
+		const at = (s: string) => `${root}.theme-${mode} .mermaid ${s}`;
 		const shapes = (scope: string) => ["rect", "circle", "ellipse", "polygon", "path.basic", ".label-container"].map((s) => at(`${scope} ${s}`));
 		lines.push("");
 		rule(shapes(".node"), { fill: p.neutral.nodeFill, stroke: p.neutral.nodeStroke });

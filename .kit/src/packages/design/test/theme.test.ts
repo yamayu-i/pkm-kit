@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readTokens } from "../node/build.ts";
-import { toHex } from "../src/color.ts";
+import { parseHex, toHex } from "../src/color.ts";
 import { resolveColor } from "../src/tokens.ts";
-import { applyTheme, checkTheme, parseTheme, themeAccent, themeSnippet, vaultColorNames } from "../src/theme.ts";
+import { containerOf, mix, onColorOf } from "../src/primary.ts";
+import { applyTheme, checkTheme, madeColors, parseTheme, themeAccent, themeSnippet, vaultColorNames } from "../src/theme.ts";
 
 const base = readTokens();
 const hex = (tokens: typeof base, name: string, mode: "light" | "dark") => toHex(resolveColor(tokens, `color.${name}`, mode));
@@ -75,6 +76,75 @@ describe("applyTheme", () => {
 	});
 });
 
+describe("primary から作る色（ADR-0129）", () => {
+	const themeOf = (json: unknown) => applyTheme(base, parseTheme(json, base).theme);
+	const green = { light: { primary: "#13612f" }, dark: { primary: "#7fd89a" } };
+
+	it("primary を変えたら、書いていない secondary-container / on-secondary-container / on-primary を primary から作る", () => {
+		const themed = themeOf(green);
+		for (const mode of ["light", "dark"] as const) {
+			const surface = resolveColor(base, "color.surface", mode);
+			const primary = resolveColor(themed, "color.primary", mode);
+			expect(hex(themed, "secondary-container", mode)).toBe(toHex(containerOf(surface, primary)));
+			expect(hex(themed, "on-secondary-container", mode)).toBe(hex(base, "on-surface", mode));
+			expect(hex(themed, "on-primary", mode)).toBe(toHex(onColorOf(primary, resolveColor(base, "color.on-surface", "light"))));
+		}
+		// 上流の紫が残らない
+		expect(hex(themed, "secondary-container", "light")).not.toBe("#e8def8");
+		expect(hex(themed, "on-primary", "dark")).not.toBe("#381e72");
+		// on-primary の半透明も追従する
+		expect(toHex({ ...resolveColor(themed, "color.on-primary-state-hover", "dark"), a: 1 })).toBe(hex(themed, "on-primary", "dark"));
+		expect(checkTheme(themed)).toEqual([]);
+	});
+
+	it("作る色は、上書き後の面と文字から作る", () => {
+		const themed = themeOf({ light: { primary: "#13612f", surface: "#f4f6f8", "surface-container": "#eceff2", "surface-container-high": "#e4e8ec", "on-surface": "#1a2233" } });
+		const surface = resolveColor(themed, "color.surface", "light");
+		expect(hex(themed, "secondary-container", "light")).toBe(toHex(containerOf(surface, resolveColor(themed, "color.primary", "light"))));
+		expect(hex(themed, "on-secondary-container", "light")).toBe("#1a2233");
+	});
+
+	it("書いた値が、作る色より先", () => {
+		const themed = themeOf({ light: { primary: "#13612f", "secondary-container": "#d6eadb", "on-primary": "#ffffff" } });
+		expect(hex(themed, "secondary-container", "light")).toBe("#d6eadb");
+		expect(hex(themed, "on-primary", "light")).toBe("#ffffff");
+		expect(hex(themed, "on-secondary-container", "light")).toBe(hex(base, "on-surface", "light"));
+	});
+
+	it("primary を変えていないモードでは作らない（上流の値のまま）", () => {
+		const themed = themeOf({ dark: { "text-faint": "#9e9e9e" } });
+		for (const name of ["secondary-container", "on-secondary-container", "on-primary"]) {
+			for (const mode of ["light", "dark"] as const) expect(hex(themed, name, mode)).toBe(hex(base, name, mode));
+		}
+	});
+
+	it("ライトの primary だけなら、ダークの primary をライトから作る（白に寄せ、規約を満たす最初の色）", () => {
+		const themed = themeOf({ light: { primary: "#13612f" } });
+		const dark = hex(themed, "primary", "dark");
+		expect(dark).not.toBe("#d0bcff");
+		// ライトの色を白に 5% 刻みで寄せた色のどれか
+		const steps = Array.from({ length: 21 }, (_, i) => toHex(mix(parseHex("#13612f"), parseHex("#ffffff"), i * 0.05)));
+		const at = steps.indexOf(dark);
+		expect(at).toBeGreaterThan(0);
+		// 1 つ手前の色では規約を満たさない（最初の色）
+		const before = themeOf({ light: { primary: "#13612f" }, dark: { primary: steps[at - 1] as string } });
+		expect(checkTheme(before).join("\n")).toMatch(/（ダーク）/);
+		expect(hex(themed, "secondary-container", "dark")).not.toBe(hex(base, "secondary-container", "dark"));
+		expect(checkTheme(themed)).toEqual([]);
+	});
+
+	it("ダークの primary を書いていれば、それを使う", () => {
+		expect(hex(themeOf(green), "primary", "dark")).toBe("#7fd89a");
+	});
+
+	it("madeColors は、作った色の名前をモードごとに返す", () => {
+		const made = madeColors(base, parseTheme({ light: { primary: "#13612f", "on-primary": "#ffffff" } }, base).theme);
+		expect(made.light).toEqual(["secondary-container", "on-secondary-container"]);
+		expect(made.dark).toEqual(["primary", "on-primary", "secondary-container", "on-secondary-container"]);
+		expect(madeColors(base, parseTheme({}, base).theme)).toEqual({ light: [], dark: [] });
+	});
+});
+
 describe("checkTheme", () => {
 	const problems = (json: unknown) => checkTheme(applyTheme(base, parseTheme(json, base).theme));
 
@@ -111,7 +181,6 @@ describe("themeSnippet", () => {
 		const themed = applyTheme(base, parseTheme({ light: { primary: "#00639b" } }, base).theme);
 		const css = themeSnippet(base, themed);
 		expect(css).toContain("html body.theme-light {");
-		expect(css).not.toContain("html body.theme-dark {");
 		expect(css).toMatch(/\t--vt-primary: #00639b;/);
 		expect(css).toMatch(/\t--vt-primary-state-hover: #00639b14;/);
 		expect(css).toMatch(/\t--interactive-accent: #00639b;/);
@@ -128,6 +197,25 @@ describe("themeSnippet", () => {
 		expect(css).toContain("html body.theme-dark {");
 		expect(css).toMatch(/\t--text-faint: #9e9e9e;/);
 		expect(css).not.toContain("--vt-text-faint");
+	});
+
+	it("primary から作った色も書く（ADR-0129）", () => {
+		const themed = applyTheme(base, parseTheme({ light: { primary: "#13612f" }, dark: { primary: "#7fd89a" } }, base).theme);
+		const css = themeSnippet(base, themed);
+		expect(css).toContain(`\t--vt-secondary-container: ${hex(themed, "secondary-container", "light")};`);
+		expect(css).toContain(`\t--vt-on-secondary-container: ${hex(themed, "on-secondary-container", "dark")};`);
+		expect(css).toContain(`\t--vt-on-primary: ${hex(themed, "on-primary", "dark")};`);
+		expect(css).toContain(`\t--text-on-accent: ${hex(themed, "on-primary", "dark")};`);
+	});
+
+	it("Mermaid の配色が変わったモードだけ、Mermaid のルールを上書き後の値で書く", () => {
+		const themed = applyTheme(base, parseTheme({ light: { surface: "#f4f6f8", "surface-container": "#eceff2", "surface-container-high": "#e4e8ec" } }, base).theme);
+		const css = themeSnippet(base, themed);
+		expect(css).toMatch(/html body\.theme-light \.mermaid \.node rect,[\s\S]*?fill: #f4f6f8 !important;/);
+		expect(css).not.toContain("html body.theme-dark .mermaid");
+		// primary だけなら Mermaid は変わらない（図は primary を使わない）
+		const onlyPrimary = themeSnippet(base, applyTheme(base, parseTheme({ light: { primary: "#13612f" } }, base).theme));
+		expect(onlyPrimary).not.toContain(".mermaid");
 	});
 
 	it("何も変えていなければ、規則を書かない", () => {

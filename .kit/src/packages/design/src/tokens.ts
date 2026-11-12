@@ -11,6 +11,8 @@
  * - `source`: 値の根拠
  * - `vault`: true なら子の Vault が `.kit-local/theme.json` で上書きできる（ADR-0121）
  * - `derive`: 元の色のパス（`{color.on-surface}`）。色相は元の色と同じで、透明度だけを持つ。上書きで元の色が変わると追従する
+ * - `follow`: `{ from: "{color.primary}", rule }`。子が元の色を上書きし、この色を書かなかったときに、元の色から作る（ADR-0129）。
+ *   上流の値では成り立たなくてよい。rule は FOLLOW_RULES
  */
 import { isHex, parseHex, toHex, type Rgba } from "./color.ts";
 
@@ -24,6 +26,14 @@ export const MODES: readonly Mode[] = ["light", "dark"];
 
 const TYPES: readonly TokenType[] = ["color", "dimension", "number", "fontWeight", "duration", "cubicBezier", "shadow"];
 const ROLES: readonly ColorRole[] = ["surface", "text", "graphic", "state", "decorative"];
+/**
+ * follow の作り方（ADR-0129。作るのは theme.ts）
+ * - container: 面（surface）に元の色を 16% 混ぜる
+ * - on-container: 文字（on-surface）
+ * - on-color: 白と、ライトの on-surface のうち、元の色との比が高い方
+ */
+export const FOLLOW_RULES = ["container", "on-container", "on-color"] as const;
+export type FollowRule = (typeof FOLLOW_RULES)[number];
 const FONT_WEIGHTS: Record<string, number> = { thin: 100, light: 300, normal: 400, regular: 400, medium: 500, bold: 700 };
 
 export interface ContrastRule {
@@ -50,6 +60,8 @@ export interface Token {
 	vault: boolean;
 	/** 色相を合わせる元の色のパス（ADR-0121） */
 	derive?: string;
+	/** 子が元の色を上書きしたときに作る色（ADR-0129） */
+	follow?: { from: string; rule: FollowRule };
 }
 
 export class TokenError extends Error {}
@@ -148,6 +160,12 @@ export function loadTokens(json: unknown): Token[] {
 		}
 		if (ref.derive !== undefined) errors.push(`${t.path}: derive の参照先 ${t.derive} も derive です（元の色を指してください）`);
 	}
+	for (const t of tokens) {
+		if (t.follow === undefined) continue;
+		if (!t.vault) errors.push(`${t.path}: follow は vault の色だけに付けられます`);
+		const ref = byPath.get(t.follow.from);
+		if (!ref || ref.type !== "color" || !ref.vault) errors.push(`${t.path}: follow の元 ${t.follow.from} は vault の色にしてください`);
+	}
 	if (errors.length > 0) throw new TokenError(errors.join("\n"));
 	for (const t of tokens) {
 		if (t.derive === undefined) continue;
@@ -185,7 +203,7 @@ function readToken(
 	const e = isObject(ext) ? ext : {};
 	if (ext !== undefined && !isObject(ext)) errors.push(`${p}: $extensions.${EXT} はオブジェクトにしてください`);
 	for (const key of Object.keys(e)) {
-		if (!["dark", "role", "contrast", "obsidian", "plugin", "source", "vault", "derive"].includes(key)) errors.push(`${p}: 知らない拡張「${key}」`);
+		if (!["dark", "role", "contrast", "obsidian", "plugin", "source", "vault", "derive", "follow"].includes(key)) errors.push(`${p}: 知らない拡張「${key}」`);
 	}
 	const light = node.$value;
 	const dark = "dark" in e ? e.dark : light;
@@ -213,6 +231,13 @@ function readToken(
 		const target = aliasTarget(e.derive);
 		if (t !== "color" || target === null) errors.push(`${p}: derive は色に、{path} の別名で書いてください`);
 		else token.derive = target;
+	}
+	if ("follow" in e) {
+		const f = e.follow;
+		const from = isObject(f) ? aliasTarget(f.from) : null;
+		if (t !== "color" || !isObject(f) || from === null) errors.push(`${p}: follow は色に、{ "from": "{path}", "rule": "..." } で書いてください`);
+		else if (!(FOLLOW_RULES as readonly unknown[]).includes(f.rule)) errors.push(`${p}: follow の rule「${String(f.rule)}」を知りません（${FOLLOW_RULES.join(" / ")}）`);
+		else token.follow = { from, rule: f.rule as FollowRule };
 	}
 	if (typeof e.source === "string") token.source = e.source;
 	else if (group.source !== undefined) token.source = group.source;
