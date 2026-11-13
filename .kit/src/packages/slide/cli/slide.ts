@@ -21,6 +21,7 @@ import { freePath, TMP_FOLDER } from "../../pkm-diagram/src/core/names.ts";
 import { bytesToBase64, imageType, MAX_IMAGE_BYTES } from "../../pkm-html/src/core/policy.ts";
 import { buildDeck, type BuildResult, type Problem } from "../src/core/build.ts";
 import { PATTERNS } from "../src/core/patterns.ts";
+import { parseVaultPrimary } from "../src/core/vault-primary.ts";
 import { THEME_FILE } from "../../design/src/theme.ts";
 
 export interface Io {
@@ -99,21 +100,7 @@ export function findDecks(root: string): string[] {
  */
 export function readVaultPrimary(root: string): { light?: string; dark?: string } | undefined {
 	const path = join(root, THEME_FILE);
-	if (!existsSync(path)) return undefined;
-	let json: unknown;
-	try {
-		json = JSON.parse(readFileSync(path, "utf8"));
-	} catch {
-		return undefined;
-	}
-	const pick = (mode: string): string | undefined => {
-		const v = (json as Record<string, unknown> | null)?.[mode];
-		const p = typeof v === "object" && v !== null ? (v as Record<string, unknown>).primary : undefined;
-		return typeof p === "string" ? p.toLowerCase() : undefined;
-	};
-	const light = pick("light");
-	const dark = pick("dark");
-	return light === undefined && dark === undefined ? undefined : { ...(light ? { light } : {}), ...(dark ? { dark } : {}) };
+	return existsSync(path) ? parseVaultPrimary(readFileSync(path, "utf8")) : undefined;
 }
 
 function buildOne(root: string, deck: string): BuildResult {

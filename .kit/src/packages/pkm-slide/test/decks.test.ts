@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
 import { buildDeck } from "../../slide/src/core/build.ts";
-import { childrenOf, classify, deckTitle, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, slideCount } from "../src/core/decks.ts";
+import { childrenOf, classify, deckOfFile, deckTitle, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, slideCount } from "../src/core/decks.ts";
 
 const tree = classify(
 	["slide/a/deck.html", "slide/a/index.html", "slide/team/b/deck.html", "slide/team/b/img/x.png", "slide/a/inner/deck.html", "slide/deck.html", "note.md"],
@@ -92,5 +92,15 @@ describe("retargetDeck", () => {
 describe("markdownLink", () => {
 	it("Vault のルートからのパスで index.html を指す", () => {
 		expect(markdownLink("計画 [案]", "slide/team/plan")).toBe("[計画 \\[案\\]](slide/team/plan/index.html)");
+	});
+});
+
+describe("deckOfFile（ADR-0132）", () => {
+	it("デッキの index.html と deck.html から、デッキのフォルダを返す", () => {
+		expect(deckOfFile("slide/a/index.html")).toBe("slide/a");
+		expect(deckOfFile("slide/team/b/deck.html")).toBe("slide/team/b");
+		expect(deckOfFile("slide/index.html")).toBeNull();
+		expect(deckOfFile("slide/a/chart.svg")).toBeNull();
+		expect(deckOfFile("notes/a/index.html")).toBeNull();
 	});
 });

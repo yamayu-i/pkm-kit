@@ -21437,6 +21437,93 @@ function lightenForDark2(hex) {
   return toHex(lightenForDark(parseHex(hex), parseHex(colors.dark["color.surface"])));
 }
 
+// src/core/notes.ts
+var NOTES_CLASS = "notes";
+var MAX_NOTES_DEPTH = 2;
+var LINE_ATTR = "data-l";
+var TEXT = 3;
+var ELEMENT = 1;
+var NOTES_FORMAT_HINT = "\u767A\u8868\u8005\u30CE\u30FC\u30C8\u306B\u66F8\u3051\u308B\u306E\u306F\u3001\u6587\u5B57\u30FB<p>\u30FB<br>\u30FB<ul> / <ol> \u3068 <li>\uFF08\u5165\u308C\u5B50\u306F 2 \u6BB5\u307E\u3067\uFF09\u3060\u3051\u3002\u5C5E\u6027\u30FB\u5F37\u8ABF\u30FB\u30EA\u30F3\u30AF\u306A\u3069\u306F\u4F7F\u308F\u306A\u3044";
+var tagOf = (node) => node.tagName.toLowerCase();
+var isBlank = (node) => node.nodeType === TEXT && (node.textContent ?? "").trim() === "";
+function attributeError(el) {
+  for (const attr of [...el.attributes]) {
+    if (attr.name === LINE_ATTR) continue;
+    return `<${tagOf(el)}> \u306B\u5C5E\u6027\uFF08${attr.name}\uFF09\u3092\u66F8\u304B\u306A\u3044`;
+  }
+  return null;
+}
+function inlineError(el, where) {
+  for (const node of [...el.childNodes]) {
+    if (node.nodeType === TEXT) continue;
+    if (node.nodeType === ELEMENT && tagOf(node) === "br") {
+      const e = attributeError(node);
+      if (e) return e;
+      continue;
+    }
+    return node.nodeType === ELEMENT ? `${where}\u306E\u4E2D\u306B <${tagOf(node)}> \u3092\u66F8\u304B\u306A\u3044` : `${where}\u306E\u4E2D\u306B\u30B3\u30E1\u30F3\u30C8\u306A\u3069\u3092\u66F8\u304B\u306A\u3044`;
+  }
+  return null;
+}
+function listError(list, depth) {
+  if (depth > MAX_NOTES_DEPTH) return `\u7B87\u6761\u66F8\u304D\u306E\u5165\u308C\u5B50\u306F ${MAX_NOTES_DEPTH} \u6BB5\u307E\u3067`;
+  const e = attributeError(list);
+  if (e) return e;
+  for (const node of [...list.childNodes]) {
+    if (isBlank(node)) continue;
+    if (node.nodeType !== ELEMENT || tagOf(node) !== "li") return `<${tagOf(list)}> \u306E\u4E2D\u306F <li> \u3060\u3051\u306B\u3059\u308B`;
+    const li = node;
+    const le = attributeError(li);
+    if (le) return le;
+    let nested = null;
+    for (const child of [...li.childNodes]) {
+      if (child.nodeType === ELEMENT && (tagOf(child) === "ul" || tagOf(child) === "ol")) {
+        if (nested) return "1 \u3064\u306E <li> \u306E\u4E2D\u306E\u7B87\u6761\u66F8\u304D\u306F 1 \u3064\u307E\u3067";
+        nested = child;
+        const ne = listError(nested, depth + 1);
+        if (ne) return ne;
+        continue;
+      }
+      if (nested && !isBlank(child)) return "<li> \u306E\u4E2D\u306E\u6587\u5B57\u306F\u3001\u5165\u308C\u5B50\u306E\u7B87\u6761\u66F8\u304D\u3088\u308A\u524D\u306B\u66F8\u304F";
+      if (child.nodeType === TEXT) continue;
+      if (child.nodeType === ELEMENT && tagOf(child) === "br") {
+        const be = attributeError(child);
+        if (be) return be;
+        continue;
+      }
+      return child.nodeType === ELEMENT ? `<li> \u306E\u4E2D\u306B <${tagOf(child)}> \u3092\u66F8\u304B\u306A\u3044` : "<li> \u306E\u4E2D\u306B\u30B3\u30E1\u30F3\u30C8\u306A\u3069\u3092\u66F8\u304B\u306A\u3044";
+    }
+  }
+  return null;
+}
+function notesFormatError(aside) {
+  for (const attr of [...aside.attributes]) {
+    if (attr.name === LINE_ATTR) continue;
+    if (attr.name === "class" && attr.value.trim() === NOTES_CLASS) continue;
+    return `<aside class="notes"> \u306B\u3001\u307B\u304B\u306E\u5C5E\u6027\u3084\u30AF\u30E9\u30B9\uFF08${attr.name}="${attr.value}"\uFF09\u3092\u66F8\u304B\u306A\u3044`;
+  }
+  const nodes = [...aside.childNodes];
+  const blocks = nodes.some((n) => n.nodeType === ELEMENT && ["p", "ul", "ol"].includes(tagOf(n)));
+  if (!blocks) return inlineError(aside, "\u30CE\u30FC\u30C8");
+  for (const node of nodes) {
+    if (isBlank(node)) continue;
+    if (node.nodeType !== ELEMENT) return node.nodeType === TEXT ? "\u6BB5\u843D\u3068\u7B87\u6761\u66F8\u304D\u3092\u6DF7\u305C\u308B\u3068\u304D\u306F\u3001\u6587\u5B57\u3082 <p> \u3067\u5305\u3080" : "\u30CE\u30FC\u30C8\u306E\u4E2D\u306B\u30B3\u30E1\u30F3\u30C8\u306A\u3069\u3092\u66F8\u304B\u306A\u3044";
+    const tag = tagOf(node);
+    if (tag === "p") {
+      const e = attributeError(node) ?? inlineError(node, "<p> ");
+      if (e) return e;
+    } else if (tag === "ul" || tag === "ol") {
+      const e = listError(node, 1);
+      if (e) return e;
+    } else if (tag === "br") {
+      return "\u6BB5\u843D\u3068\u7B87\u6761\u66F8\u304D\u3092\u6DF7\u305C\u308B\u3068\u304D\u306F\u3001\u6539\u884C\u3082 <p> \u306E\u4E2D\u306B\u66F8\u304F";
+    } else {
+      return `\u30CE\u30FC\u30C8\u306E\u4E2D\u306B <${tag}> \u3092\u66F8\u304B\u306A\u3044`;
+    }
+  }
+  return null;
+}
+
 // src/core/patterns.ts
 var PATTERNS = [
   { id: "cover", group: "\u69CB\u6210", name: "\u8868\u7D19", use: "\u4F55\u306E\u8A71\u304B\u3092 1 \u884C\u3067\u8A00\u3044\u3001\u8AB0\u304C\u3044\u3064\u8A71\u3059\u304B\u3092\u793A\u3059", headOnly: true },
@@ -21514,7 +21601,7 @@ var LIMITS = {
 };
 var MAX_ITEMS = 4;
 var MAX_LIST_DEPTH = 2;
-var LINE_ATTR = "data-l";
+var LINE_ATTR2 = "data-l";
 var STYLE_OK = /^(?:\s*--[a-z][a-z0-9-]*\s*:\s*-?[0-9.]+%?\s*;?)*\s*$/;
 var SELECTABLE_METAS = ["deck-density", "deck-theme", "deck-primary", "deck-primary-dark", "deck-author", "deck-date", "deck-lang"];
 function stampLines(source) {
@@ -21526,7 +21613,7 @@ function stampLines(source) {
     const before2 = source.slice(last, m.index);
     line += count(before2, "\n");
     out += before2 + m[0];
-    if (m[1] !== void 0) out += ` ${LINE_ATTR}="${line}"`;
+    if (m[1] !== void 0) out += ` ${LINE_ATTR2}="${line}"`;
     line += count(m[0], "\n");
     last = m.index + m[0].length;
   }
@@ -21546,7 +21633,7 @@ function textWidth(text) {
   return w;
 }
 function lineOf(el) {
-  return Number(el?.getAttribute(LINE_ATTR) ?? 0) || 0;
+  return Number(el?.getAttribute(LINE_ATTR2) ?? 0) || 0;
 }
 function closestClass(el, name, stop) {
   for (let cur = el; cur !== null && cur !== stop; cur = cur.parentElement) if (hasClass(cur, name)) return true;
@@ -21685,7 +21772,12 @@ function buildSlide(section, n, limits, input, report) {
   else pattern = findPattern(id);
   for (const nested of [...section.querySelectorAll("section")]) report("error", "nested-section", nested, n, "<section> \u306E\u4E2D\u306B <section> \u3092\u66F8\u304B\u306A\u3044");
   const notes = [];
-  for (const el of [...section.querySelectorAll("aside")].filter((a) => hasClass(a, "notes"))) {
+  const asides = [...section.querySelectorAll("aside")].filter((a) => hasClass(a, NOTES_CLASS));
+  if (asides.length > 1) report("error", "notes-format", asides[1], n, '\u767A\u8868\u8005\u30CE\u30FC\u30C8\uFF08<aside class="notes">\uFF09\u306F 1 \u679A\u306B 1 \u3064\u307E\u3067');
+  for (const el of asides) {
+    if (el.parentElement !== section) report("error", "notes-format", el, n, '<aside class="notes"> \u306F <section> \u306E\u76F4\u4E0B\u306B\u66F8\u304F');
+    const format = notesFormatError(el);
+    if (format !== null) report("error", "notes-format", el, n, `${format}\uFF08${NOTES_FORMAT_HINT}\uFF09`);
     notes.push(el.innerHTML.trim());
     el.remove();
   }
@@ -21743,11 +21835,11 @@ function buildSlide(section, n, limits, input, report) {
     `<footer class="sl-foot">${outer(foot)}<span class="sl-page">${n}</span></footer>`
   ].join("\n");
   const line = lineOf(section);
-  const html = `<section class="slide" data-pattern="${escapeHtml(id)}" ${LINE_ATTR}="${line}">
+  const html = `<section class="slide" data-pattern="${escapeHtml(id)}" ${LINE_ATTR2}="${line}">
 ${inner}
 </section>`;
   const hash = input.sha256(`${id}
-${inner.replace(new RegExp(` ${LINE_ATTR}="\\d+"`, "g"), "")}
+${inner.replace(new RegExp(` ${LINE_ATTR2}="\\d+"`, "g"), "")}
 ${notes.join("\n")}`, "hex").slice(0, 10);
   return { n, pattern: id, line, title: headTitle, html, notes: notes.join("\n"), hash };
 }
@@ -21881,6 +21973,24 @@ ${cells}
 `;
 }
 
+// src/core/vault-primary.ts
+function parseVaultPrimary(text) {
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return void 0;
+  }
+  const pick = (mode) => {
+    const v = json?.[mode];
+    const p = typeof v === "object" && v !== null ? v.primary : void 0;
+    return typeof p === "string" ? p.toLowerCase() : void 0;
+  };
+  const light = pick("light");
+  const dark = pick("dark");
+  return light === void 0 && dark === void 0 ? void 0 : { ...light ? { light } : {}, ...dark ? { dark } : {} };
+}
+
 // cli/slide.ts
 var SLIDE_FOLDER = "slide";
 var SOURCE = "deck.html";
@@ -21937,21 +22047,7 @@ function findDecks(root) {
 }
 function readVaultPrimary(root) {
   const path = join(root, THEME_FILE);
-  if (!existsSync(path)) return void 0;
-  let json;
-  try {
-    json = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return void 0;
-  }
-  const pick = (mode) => {
-    const v = json?.[mode];
-    const p = typeof v === "object" && v !== null ? v.primary : void 0;
-    return typeof p === "string" ? p.toLowerCase() : void 0;
-  };
-  const light = pick("light");
-  const dark = pick("dark");
-  return light === void 0 && dark === void 0 ? void 0 : { ...light ? { light } : {}, ...dark ? { dark } : {} };
+  return existsSync(path) ? parseVaultPrimary(readFileSync(path, "utf8")) : void 0;
 }
 function buildOne(root, deck) {
   const folder = join(root, ...deck.split("/"));

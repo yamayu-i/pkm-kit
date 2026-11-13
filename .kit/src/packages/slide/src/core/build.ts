@@ -7,6 +7,7 @@ import { toHex } from "../../../design/src/color.ts";
 import { applyTheme, type VaultTheme } from "../../../design/src/theme.ts";
 import { resolveColor, type Token } from "../../../design/src/tokens.ts";
 import { derivePrimary, isColorValue, lightenForDark, TOKENS, type Mode, type PrimaryColors } from "./color.ts";
+import { NOTES_CLASS, NOTES_FORMAT_HINT, notesFormatError } from "./notes.ts";
 import { findPattern, PATTERN_IDS, type Pattern } from "./patterns.ts";
 
 /** index.html に入れる共通のもの（esbuild.config.mjs が作る） */
@@ -277,9 +278,14 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 	else pattern = findPattern(id);
 	for (const nested of [...section.querySelectorAll("section")]) report("error", "nested-section", nested, n, "<section> の中に <section> を書かない");
 
-	// 発表者ノートは外に出す
+	// 発表者ノートは外に出す。書式は段落と箇条書きまで（ADR-0132。Obsidian の pkm-slide で編集できる範囲）
 	const notes: string[] = [];
-	for (const el of [...section.querySelectorAll("aside")].filter((a) => hasClass(a, "notes"))) {
+	const asides = [...section.querySelectorAll("aside")].filter((a) => hasClass(a, NOTES_CLASS));
+	if (asides.length > 1) report("error", "notes-format", asides[1] as Element, n, "発表者ノート（<aside class=\"notes\">）は 1 枚に 1 つまで");
+	for (const el of asides) {
+		if (el.parentElement !== section) report("error", "notes-format", el, n, "<aside class=\"notes\"> は <section> の直下に書く");
+		const format = notesFormatError(el);
+		if (format !== null) report("error", "notes-format", el, n, `${format}（${NOTES_FORMAT_HINT}）`);
 		notes.push(el.innerHTML.trim());
 		el.remove();
 	}

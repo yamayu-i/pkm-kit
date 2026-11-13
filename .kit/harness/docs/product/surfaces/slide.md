@@ -27,11 +27,20 @@
 
 - 「Slides」の View（一覧ペイン）。`slide/` を 1 本の木で見せる（[ADR-0124](../../../../src/docs/adr/0124-slide-list-tree.md)）。フォルダの行を押すと開閉し（開いたフォルダは端末ごとに覚える）、中のフォルダとデッキの行が字下げして並ぶ。デッキの行は名前（フォルダ名。Rename で変える値）、枚数、更新日時。フォルダが先、デッキは更新日時の新しい順（名前の順にも切り替えられる）。検索すると、名前・題・パスで当たったデッキを平らに並べる
 - PC でデッキの行にホバーすると、1 枚目の縮小と題（`deck.html` の `<title>`）のカードが出る
-- デッキの行を押すと Obsidian の中（pkm-html）で開く。Ctrl / Cmd を押しながらで新しいタブ。メニュー（右クリックか「…」）に「Open in new tab」「Open in browser」「Copy link」（ノートに貼る Markdown のリンク）「Rename」「Move to…」
+- デッキの行を押すと Obsidian の中（pkm-html）で開く。Ctrl / Cmd を押しながらで新しいタブ。メニュー（右クリックか「…」）に「Open in new tab」「Open in browser」「Copy link」（ノートに貼る Markdown のリンク）「Edit notes」「Rename」「Move to…」
 - 「New folder」で `slide/` の直下に整理のフォルダを作る（名前は英小文字・数字・ハイフン。空のフォルダも同期されるよう `.gitkeep` を置く）。フォルダのメニューに「New folder」（その中に作る）「Rename」「Move to…」「Delete」（デッキが入っていないときだけ）
 - PC ではデッキやフォルダを、フォルダの行にドラッグして動かせる。行のない所に落とすと `slide/` の直下に動く
 - 動かすと、ノートからのリンクは Obsidian が書き換え、デッキの `index.html` のパスも直す（ビルドし直さなくてよい）。ブラウザに残したレビューのコメントは、前の場所のものとして残り、新しい場所では見えない
 - まだビルドしていないデッキは、枚数の代わりに「Not built」と出る
+
+### 発表者ノートを直す（Obsidian の pkm-slide。[ADR-0132](../../../../src/docs/adr/0132-slide-notes-editor.md)）
+
+- デッキのメニューの「Edit notes」か、デッキ（`index.html` か `deck.html`）を開いているときのコマンド「Edit slide notes」で、ノートペインに編集の画面「Notes」を開く
+- スライドごとに、番号・見出し・ノートの入力欄が並ぶ。ノートは素の文字で書く（空行で段落、`- ` で箇条書き、`1. ` で番号付き、スペース 2 つで 1 段下げる。2 段まで）。変えたスライドに「Edited」が付く
+- 「Save」か Ctrl / Cmd + S で保存すると、変えたスライドのノートだけを `deck.html` に書き、その場でビルドし直して `index.html` も書く。モバイルでも PC でのビルドは要らない。ビルドの警告があれば件数と中身が出る
+- ビルドがエラーになるとき、開いた後に `deck.html` がほかで変わっていたとき（Claude Code、同期）は、何も書かずに理由を出す。「Reload」で読み直す。ほかで変わったとき、変更がなければ自動で読み直す
+- 保存していない変更があるまま閉じると、保存するか捨てるかを聞く
+- ノートに書けるのは段落と箇条書きまで。Claude Code が書くノートも同じ範囲（ビルドの検査が守らせる）なので、どのノートも直せる
 
 ### CLI（PC の Claude Code）
 
@@ -44,4 +53,4 @@
 
 ## 根拠
 
-[ADR-0117](../../../../src/docs/adr/0117-slides.md)、[ADR-0120](../../../../src/docs/adr/0120-slide-list-view-and-patterns.md)（一覧と整理、パターンの追加）。デザインの規約とパターンは、スキル [slide](../../../../../.claude/skills/slide/SKILL.md)
+[ADR-0117](../../../../src/docs/adr/0117-slides.md)、[ADR-0120](../../../../src/docs/adr/0120-slide-list-view-and-patterns.md)（一覧と整理、パターンの追加）、[ADR-0132](../../../../src/docs/adr/0132-slide-notes-editor.md)（発表者ノートの編集）。デザインの規約とパターンは、スキル [slide](../../../../../.claude/skills/slide/SKILL.md)

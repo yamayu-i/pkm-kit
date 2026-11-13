@@ -136,3 +136,9 @@ export function markdownLink(title: string, deckPath: string): string {
 	const text = title.replace(/[[\]]/g, (c) => `\\${c}`);
 	return `[${text}](${deckPath.split("/").map(encodeURIComponent).join("/")}/${DECK_BUILD})`;
 }
+
+/** デッキのファイル（slide/…/index.html か deck.html）なら、そのデッキのフォルダ。違えば null（ADR-0132 の「Edit slide notes」） */
+export function deckOfFile(path: string): string | null {
+	const m = /^(slide\/(?:[^/]+\/)*[^/]+)\/(?:index|deck)\.html$/.exec(path);
+	return m ? (m[1] as string) : null;
+}

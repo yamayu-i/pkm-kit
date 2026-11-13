@@ -111,6 +111,20 @@ describe("buildDeck（ADR-0117）", () => {
 		expect(html).toContain('<div class="sl-notes">話すこと</div>');
 	});
 
+	it("発表者ノートは段落と箇条書きまで。範囲の外・2 つ以上・<section> の直下でないものは notes-format で止める（ADR-0132）", () => {
+		const ok = build(deck(slide('<h2>見出し</h2>\n<aside class="notes">\n  <p>段落</p>\n  <ul><li>a<ul><li>b</li></ul></li></ul>\n</aside>')));
+		expect(rules(ok, "error")).toEqual([]);
+		for (const inner of [
+			'<h2>見出し</h2><aside class="notes"><strong>強調</strong></aside>',
+			'<h2>見出し</h2><aside class="notes">1</aside><aside class="notes">2</aside>',
+			'<h2>見出し</h2><div class="card"><aside class="notes">中</aside></div>',
+		]) {
+			const r = build(deck(slide(inner)));
+			expect(r.html, inner).toBeNull();
+			expect(rules(r, "error"), inner).toContain("notes-format");
+		}
+	});
+
 	it("行番号を付ける。行がずれただけでは、スライドのハッシュは変わらない", () => {
 		const a = build(deck(slide("<h2>見出し</h2>")));
 		const b = build(deck(`\n\n<!-- <p>コメントの中のタグには付けない</p> -->\n${slide("<h2>見出し</h2>")}`));
