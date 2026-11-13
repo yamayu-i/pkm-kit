@@ -22675,6 +22675,7 @@ function buildSlide(section, n2, limits, input, report) {
     if (el.parentElement !== section) report("error", "notes-format", el, n2, '<aside class="notes"> \u306F <section> \u306E\u76F4\u4E0B\u306B\u66F8\u304F');
     const format = notesFormatError(el);
     if (format !== null) report("error", "notes-format", el, n2, `${format}\uFF08${NOTES_FORMAT_HINT}\uFF09`);
+    for (const child of [...el.querySelectorAll(`[${LINE_ATTR2}]`)]) child.removeAttribute(LINE_ATTR2);
     notes.push(el.innerHTML.trim());
     el.remove();
   }

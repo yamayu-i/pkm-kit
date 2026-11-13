@@ -125,6 +125,14 @@ describe("buildDeck（ADR-0117）", () => {
 		}
 	});
 
+	it("段落と箇条書きのノートにも行番号を残さず、行がずれただけではハッシュが変わらない（ADR-0132）", () => {
+		const body = slide('<h2>見出し</h2>\n<aside class="notes">\n  <p>段落</p>\n  <ul><li>a</li></ul>\n</aside>');
+		const a = build(deck(body)).html as string;
+		const b = build(deck(body, "\n\n")).html as string;
+		expect(a).toContain('<div class="sl-notes"><p>段落</p>');
+		expect(/data-h="([^"]+)"/.exec(a)?.[1]).toBe(/data-h="([^"]+)"/.exec(b)?.[1]);
+	});
+
 	it("行番号を付ける。行がずれただけでは、スライドのハッシュは変わらない", () => {
 		const a = build(deck(slide("<h2>見出し</h2>")));
 		const b = build(deck(`\n\n<!-- <p>コメントの中のタグには付けない</p> -->\n${slide("<h2>見出し</h2>")}`));

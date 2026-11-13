@@ -286,6 +286,8 @@ function buildSlide(section: Element, n: number, limits: (typeof LIMITS)[Density
 		if (el.parentElement !== section) report("error", "notes-format", el, n, "<aside class=\"notes\"> は <section> の直下に書く");
 		const format = notesFormatError(el);
 		if (format !== null) report("error", "notes-format", el, n, `${format}（${NOTES_FORMAT_HINT}）`);
+		// 行番号はスライドの部品を指すためのもの。ノートには付けない（行がずれただけで、ハッシュが変わらないように）
+		for (const child of [...el.querySelectorAll(`[${LINE_ATTR}]`)]) child.removeAttribute(LINE_ATTR);
 		notes.push(el.innerHTML.trim());
 		el.remove();
 	}
