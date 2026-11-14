@@ -155,6 +155,7 @@ export function SlidesView({ app, model, actions }: SlidesViewProps) {
 		menu.addItem((i) => i.setTitle("Open in new tab").setIcon("file-plus").onClick(() => void actions.open(d, true)));
 		menu.addItem((i) => i.setTitle("Open in browser").setIcon("presentation").onClick(() => actions.openInBrowser(d)));
 		menu.addItem((i) => i.setTitle("Copy link").setIcon("link").onClick(() => void actions.copyLink(d)));
+		menu.addItem((i) => i.setTitle("Edit notes").setIcon("notebook-pen").onClick(() => void actions.editNotes(d, false)));
 		menu.addSeparator();
 		menu.addItem((i) => i.setTitle("Rename").setIcon("pencil").onClick(() => actions.rename(d.path)));
 		menu.addItem((i) => i.setTitle("Move to…").setIcon("folder-input").onClick(() => actions.moveTo(d.path)));

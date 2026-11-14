@@ -27,7 +27,7 @@ var import_obsidian11 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
-var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar"]);
+var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar", "pkm-slide-notes"]);
 function isListViewType(type) {
   return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
 }
@@ -68,32 +68,26 @@ async function openListView(workspace, type, options) {
   await workspace.revealLeaf(leaf);
 }
 async function openInNotePane(workspace, file, options) {
+  const target = notePaneLeaf(workspace, options);
+  await target.openFile(file, { active: true });
+  return target;
+}
+function notePaneLeaf(workspace, options) {
   const fallback = options.newTab ? "tab" : false;
   const leaves = options.phone ? [] : rootLeaves(workspace);
   const listLeaf = findListLeaf(workspace, leaves);
-  if (!listLeaf) {
-    const leaf = workspace.getLeaf(fallback);
-    await leaf.openFile(file, { active: true });
-    return leaf;
-  }
+  if (!listLeaf) return workspace.getLeaf(fallback);
   const container = listLeaf.getContainer();
   const notes = leaves.filter((l3) => l3.parent !== listLeaf.parent && !isListViewType(leafType(l3)) && l3.getContainer() === container);
-  let target;
   const first = notes[0];
-  if (!first) {
-    target = workspace.createLeafBySplit(listLeaf, "vertical", false);
-  } else {
-    const recent = workspace.getMostRecentLeaf();
-    const group = recent && notes.includes(recent) ? recent.parent : first.parent;
-    const inGroup = workspace.getMostRecentLeaf(group);
-    target = inGroup && notes.includes(inGroup) ? inGroup : first;
-    if (options.newTab) {
-      workspace.setActiveLeaf(target, { focus: false });
-      target = workspace.getLeaf("tab");
-    }
-  }
-  await target.openFile(file, { active: true });
-  return target;
+  if (!first) return workspace.createLeafBySplit(listLeaf, "vertical", false);
+  const recent = workspace.getMostRecentLeaf();
+  const group = recent && notes.includes(recent) ? recent.parent : first.parent;
+  const inGroup = workspace.getMostRecentLeaf(group);
+  const target = inGroup && notes.includes(inGroup) ? inGroup : first;
+  if (!options.newTab) return target;
+  workspace.setActiveLeaf(target, { focus: false });
+  return workspace.getLeaf("tab");
 }
 
 // src/obsidian/CreateNoteModal.tsx

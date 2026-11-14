@@ -4,9 +4,10 @@
  */
 import { FuzzySuggestModal, Modal, Notice, Platform, Setting, TFile, TFolder, type App } from "obsidian";
 import { openSlideInBrowser } from "../../../pkm-html/src/obsidian/open-external.ts";
-import { openInNotePane } from "../../../shared/src/list-pane.ts";
+import { openInNotePane, openViewInNotePane } from "../../../shared/src/list-pane.ts";
 import { folderLabel, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, type SlideTree } from "../core/decks.ts";
 import type { Deck } from "./model.ts";
+import { NOTES_VIEW_TYPE } from "./notes-view.ts";
 
 const KEEP = ".gitkeep";
 
@@ -75,6 +76,11 @@ export class SlideActions {
 			return;
 		}
 		await openInNotePane(this.app.workspace, deck.index, { phone: Platform.isPhone, newTab });
+	}
+
+	/** 発表者ノートの編集の画面を、ノートペインに開く（ADR-0132） */
+	async editNotes(deck: Deck, newTab: boolean): Promise<void> {
+		await openViewInNotePane(this.app.workspace, { type: NOTES_VIEW_TYPE, state: { deck: deck.path } }, { phone: Platform.isPhone, newTab });
 	}
 
 	openInBrowser(deck: Deck): void {

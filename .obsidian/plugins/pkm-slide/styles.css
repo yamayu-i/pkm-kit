@@ -550,3 +550,113 @@ body.theme-dark {
 		display: none;
 	}
 }
+
+/* ---- 発表者ノートの編集の画面（ADR-0132） ---- */
+.vt-sl-btn:disabled {
+	opacity: var(--vt-opacity-disabled);
+	cursor: default;
+}
+.vt-sl-btn:disabled:hover {
+	background-image: none;
+}
+.vt-sl-btn.is-primary {
+	border-color: transparent;
+	background: var(--vt-primary);
+	color: var(--vt-on-primary);
+}
+.vt-sl-btn.is-primary:hover:not(:disabled) {
+	background-image: linear-gradient(var(--vt-on-primary-state-hover), var(--vt-on-primary-state-hover));
+}
+.vt-sl-btn.is-text {
+	border-color: transparent;
+	padding: 0 var(--vt-space-12);
+}
+.vt-sl-notes-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: var(--vt-space-8) 0;
+	background: var(--vt-surface);
+}
+.vt-sl-notes-deck,
+.vt-sl-notes-help {
+	margin: 0;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+	overflow-wrap: anywhere;
+}
+.vt-sl-notes-status:empty {
+	display: none;
+}
+.vt-sl-notes-msg {
+	margin: 0;
+	font-size: var(--vt-type-body-medium-size);
+	line-height: var(--vt-type-body-medium-line-height);
+}
+.vt-sl-notes-msg.is-error {
+	color: var(--vt-error);
+}
+.vt-sl-notes-msg.is-warning {
+	color: var(--vt-on-surface-variant);
+}
+.vt-sl-notes-problems {
+	margin: var(--vt-space-4) 0 0;
+	padding-left: var(--vt-space-24);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+.vt-sl-notes-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-16);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.vt-sl-notes-item {
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-8);
+	min-width: 0;
+}
+.vt-sl-notes-label {
+	display: flex;
+	align-items: baseline;
+	gap: var(--vt-space-8);
+	min-width: 0;
+	font-size: var(--vt-type-title-medium-size);
+	line-height: var(--vt-type-title-medium-line-height);
+	font-weight: var(--vt-type-title-medium-weight);
+}
+.vt-sl-notes-n {
+	flex: none;
+	color: var(--vt-on-surface-variant);
+	font-variant-numeric: tabular-nums;
+}
+.vt-sl-notes-heading {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.vt-sl-notes-edited {
+	flex: none;
+	padding: 0 var(--vt-space-8);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-primary-state-hover);
+	color: var(--vt-primary);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-weight: var(--vt-type-label-small-weight);
+}
+.vt-sl-view textarea.vt-sl-notes-input {
+	width: 100%;
+	min-width: 0;
+	padding: var(--vt-space-8) var(--vt-space-12);
+	border-radius: var(--vt-radius-s);
+	font-size: var(--vt-type-body-medium-size);
+	line-height: var(--vt-type-body-medium-line-height);
+	resize: vertical;
+}

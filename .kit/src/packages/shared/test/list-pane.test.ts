@@ -108,6 +108,7 @@ describe("isListViewType", () => {
 		expect(isListViewType("pkm-updates-view")).toBe(true);
 		expect(isListViewType("pkm-slide-list")).toBe(true);
 		expect(isListViewType("pkm-task-sidebar")).toBe(false);
+		expect(isListViewType("pkm-slide-notes")).toBe(false);
 		expect(isListViewType("markdown")).toBe(false);
 		expect(isListViewType("empty")).toBe(false);
 	});

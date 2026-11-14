@@ -18,6 +18,8 @@ export function expandUnits(css) {
 export async function buildRuntime() {
 	const result = await esbuild.build({
 		entryPoints: [fileURLToPath(new URL("src/runtime/main.ts", import.meta.url))],
+		// 出力の中のパスのコメントを、どこから呼んでも同じにする（pkm-slide も同じスクリプトを束ねる。ADR-0132）
+		absWorkingDir: fileURLToPath(new URL(".", import.meta.url)),
 		bundle: true,
 		format: "iife",
 		platform: "browser",

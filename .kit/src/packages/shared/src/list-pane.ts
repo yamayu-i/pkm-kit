@@ -7,8 +7,8 @@ import type { PaneType, TFile, Workspace, WorkspaceLeaf, WorkspaceParent } from 
  */
 
 const LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
-/** 一覧の接頭辞を持つが、左サイドバーに常駐するもの（ADR-0021） */
-const NOT_LIST_VIEWS = new Set(["pkm-task-sidebar"]);
+/** 一覧の接頭辞を持つが、一覧ではないもの: 左サイドバーに常駐するもの（ADR-0021）、ノートペインに開く編集の画面（ADR-0132） */
+const NOT_LIST_VIEWS = new Set(["pkm-task-sidebar", "pkm-slide-notes"]);
 
 export interface PaneOptions {
 	/** スマホ（画面を分割できない） */
@@ -66,30 +66,34 @@ export async function openListView(workspace: Workspace, type: string, options: 
 
 /** ノートを開き、開いたタブを返す。一覧ペインがあれば、その右のノートペインで */
 export async function openInNotePane(workspace: Workspace, file: TFile, options: PaneOptions & { newTab: boolean }): Promise<WorkspaceLeaf> {
+	const target = notePaneLeaf(workspace, options);
+	await target.openFile(file, { active: true });
+	return target;
+}
+
+/** ノートではない View（編集の画面など。ADR-0132）を、ノートと同じ場所に開く */
+export async function openViewInNotePane(workspace: Workspace, state: { type: string; state?: Record<string, unknown> }, options: PaneOptions & { newTab: boolean }): Promise<WorkspaceLeaf> {
+	const target = notePaneLeaf(workspace, options);
+	await target.setViewState({ type: state.type, state: state.state, active: true });
+	await workspace.revealLeaf(target);
+	return target;
+}
+
+/** ノートを開くタブ。一覧ペインがあれば、その右のノートペインの、最近使ったタブ（なければ分けて作る） */
+function notePaneLeaf(workspace: Workspace, options: PaneOptions & { newTab: boolean }): WorkspaceLeaf {
 	const fallback: PaneType | false = options.newTab ? "tab" : false;
 	const leaves = options.phone ? [] : rootLeaves(workspace);
 	const listLeaf = findListLeaf(workspace, leaves);
-	if (!listLeaf) {
-		const leaf = workspace.getLeaf(fallback);
-		await leaf.openFile(file, { active: true });
-		return leaf;
-	}
+	if (!listLeaf) return workspace.getLeaf(fallback);
 	const container = listLeaf.getContainer();
 	const notes = leaves.filter((l) => l.parent !== listLeaf.parent && !isListViewType(leafType(l)) && l.getContainer() === container);
-	let target: WorkspaceLeaf;
 	const first = notes[0];
-	if (!first) {
-		target = workspace.createLeafBySplit(listLeaf, "vertical", false);
-	} else {
-		const recent = workspace.getMostRecentLeaf();
-		const group: WorkspaceParent = recent && notes.includes(recent) ? recent.parent : first.parent;
-		const inGroup = workspace.getMostRecentLeaf(group);
-		target = inGroup && notes.includes(inGroup) ? inGroup : first;
-		if (options.newTab) {
-			workspace.setActiveLeaf(target, { focus: false });
-			target = workspace.getLeaf("tab");
-		}
-	}
-	await target.openFile(file, { active: true });
-	return target;
+	if (!first) return workspace.createLeafBySplit(listLeaf, "vertical", false);
+	const recent = workspace.getMostRecentLeaf();
+	const group: WorkspaceParent = recent && notes.includes(recent) ? recent.parent : first.parent;
+	const inGroup = workspace.getMostRecentLeaf(group);
+	const target = inGroup && notes.includes(inGroup) ? inGroup : first;
+	if (!options.newTab) return target;
+	workspace.setActiveLeaf(target, { focus: false });
+	return workspace.getLeaf("tab");
 }
