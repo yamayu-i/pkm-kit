@@ -4,8 +4,8 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name2 in all)
+    __defProp(target, name2, { get: all[name2], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -53,14 +53,14 @@ function m(n2, l3) {
 function b(n2) {
   n2 && n2.parentNode && n2.parentNode.removeChild(n2);
 }
-function k(l3, u4, t3) {
+function k(l3, u4, t4) {
   var i3, r3, o3, e3 = {};
   for (o3 in u4) "key" == o3 ? i3 = u4[o3] : "ref" == o3 ? r3 = u4[o3] : e3[o3] = u4[o3];
-  if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t3), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
+  if (arguments.length > 2 && (e3.children = arguments.length > 3 ? n.call(arguments, 2) : t4), "function" == typeof l3 && null != l3.defaultProps) for (o3 in l3.defaultProps) void 0 === e3[o3] && (e3[o3] = l3.defaultProps[o3]);
   return x(l3, e3, i3, r3, null);
 }
-function x(n2, t3, i3, r3, o3) {
-  var e3 = { type: n2, props: t3, key: i3, ref: r3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
+function x(n2, t4, i3, r3, o3) {
+  var e3 = { type: n2, props: t4, key: i3, ref: r3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: null == o3 ? ++u : o3, __i: -1, __u: 0 };
   return null == o3 && null != l.vnode && l.vnode(e3), e3;
 }
 function S(n2) {
@@ -76,8 +76,8 @@ function $(n2, l3) {
 }
 function I(n2) {
   if (n2.__P && n2.__d) {
-    var u4 = n2.__v, t3 = u4.__e, i3 = [], r3 = [], o3 = m({}, u4);
-    o3.__v = u4.__v + 1, l.vnode && l.vnode(o3), q(n2.__P, o3, u4, n2.__n, n2.__P.namespaceURI, 32 & u4.__u ? [t3] : null, i3, null == t3 ? $(u4) : t3, !!(32 & u4.__u), r3), o3.__v = u4.__v, o3.__.__k[o3.__i] = o3, D(i3, o3, r3), u4.__e = u4.__ = null, o3.__e != t3 && P(o3);
+    var u4 = n2.__v, t4 = u4.__e, i3 = [], r3 = [], o3 = m({}, u4);
+    o3.__v = u4.__v + 1, l.vnode && l.vnode(o3), q(n2.__P, o3, u4, n2.__n, n2.__P.namespaceURI, 32 & u4.__u ? [t4] : null, i3, null == t4 ? $(u4) : t4, !!(32 & u4.__u), r3), o3.__v = u4.__v, o3.__.__k[o3.__i] = o3, D(i3, o3, r3), u4.__e = u4.__ = null, o3.__e != t4 && P(o3);
   }
 }
 function P(n2) {
@@ -95,21 +95,21 @@ function H() {
     i.length = H.__r = 0;
   }
 }
-function L(n2, l3, u4, t3, i3, r3, o3, e3, f4, c3, a3) {
-  var s3, h3, p3, v3, y3, _2, g2 = t3 && t3.__k || w, m3 = l3.length;
+function L(n2, l3, u4, t4, i3, r3, o3, e3, f4, c3, a3) {
+  var s3, h3, p3, v3, y3, _2, g2 = t4 && t4.__k || w, m3 = l3.length;
   for (f4 = T(u4, l3, g2, f4, m3), s3 = 0; s3 < m3; s3++) null != (p3 = u4.__k[s3]) && (h3 = -1 != p3.__i && g2[p3.__i] || d, p3.__i = s3, _2 = q(n2, p3, h3, i3, r3, o3, e3, f4, c3, a3), v3 = p3.__e, p3.ref && h3.ref != p3.ref && (h3.ref && J(h3.ref, null, p3), a3.push(p3.ref, p3.__c || v3, p3)), null == y3 && null != v3 && (y3 = v3), 4 & p3.__u ? (f4 = j(p3, f4, n2), h3.__e && (h3.__e = null)) : "function" == typeof p3.type && void 0 !== _2 ? f4 = _2 : v3 && (f4 = v3.nextSibling), p3.__u &= -7);
   return u4.__e = y3, f4;
 }
-function T(n2, l3, u4, t3, i3) {
+function T(n2, l3, u4, t4, i3) {
   var r3, o3, e3, f4, c3, a3 = u4.length, s3 = a3, h3 = 0;
   for (n2.__k = new Array(i3), r3 = 0; r3 < i3; r3++) null != (o3 = l3[r3]) && "boolean" != typeof o3 && "function" != typeof o3 ? ("string" == typeof o3 || "number" == typeof o3 || "bigint" == typeof o3 || o3.constructor == String ? o3 = n2.__k[r3] = x(null, o3, null, null, null) : g(o3) ? o3 = n2.__k[r3] = x(S, { children: o3 }, null, null, null) : void 0 === o3.constructor && o3.__b > 0 ? o3 = n2.__k[r3] = x(o3.type, o3.props, o3.key, o3.ref ? o3.ref : null, o3.__v) : n2.__k[r3] = o3, f4 = r3 + h3, o3.__ = n2, o3.__b = n2.__b + 1, e3 = null, -1 != (c3 = o3.__i = O(o3, u4, f4, s3)) && (s3--, (e3 = u4[c3]) && (e3.__u |= 2)), null == e3 || null == e3.__v ? (-1 == c3 && (i3 > a3 ? h3-- : i3 < a3 && h3++), "function" != typeof o3.type && (o3.__u |= 4)) : c3 != f4 && (c3 == f4 - 1 ? h3-- : c3 == f4 + 1 ? h3++ : (c3 > f4 ? h3-- : h3++, o3.__u |= 4))) : n2.__k[r3] = null;
-  if (s3) for (r3 = 0; r3 < a3; r3++) null != (e3 = u4[r3]) && 0 == (2 & e3.__u) && (e3.__e == t3 && (t3 = $(e3)), K(e3, e3));
-  return t3;
+  if (s3) for (r3 = 0; r3 < a3; r3++) null != (e3 = u4[r3]) && 0 == (2 & e3.__u) && (e3.__e == t4 && (t4 = $(e3)), K(e3, e3));
+  return t4;
 }
 function j(n2, l3, u4) {
-  var t3, i3;
+  var t4, i3;
   if ("function" == typeof n2.type) {
-    for (t3 = n2.__k, i3 = 0; t3 && i3 < t3.length; i3++) t3[i3] && (t3[i3].__ = n2, l3 = j(t3[i3], l3, u4));
+    for (t4 = n2.__k, i3 = 0; t4 && i3 < t4.length; i3++) t4[i3] && (t4[i3].__ = n2, l3 = j(t4[i3], l3, u4));
     return l3;
   }
   n2.__e != l3 && (l3 && n2.type && !l3.parentNode && (l3 = $(n2)), l3 = u4.insertBefore(n2.__e, l3 || null));
@@ -118,10 +118,10 @@ function j(n2, l3, u4) {
   } while (null != l3 && 8 == l3.nodeType);
   return l3;
 }
-function O(n2, l3, u4, t3) {
+function O(n2, l3, u4, t4) {
   var i3, r3, o3, e3 = n2.key, f4 = n2.type, c3 = l3[u4], a3 = null != c3 && 0 == (2 & c3.__u);
   if (null === c3 && null == e3 || a3 && e3 == c3.key && f4 == c3.type) return u4;
-  if (t3 > (a3 ? 1 : 0)) {
+  if (t4 > (a3 ? 1 : 0)) {
     for (i3 = u4 - 1, r3 = u4 + 1; i3 >= 0 || r3 < l3.length; ) if (null != (c3 = l3[o3 = i3 >= 0 ? i3-- : r3++]) && 0 == (2 & c3.__u) && e3 == c3.key && f4 == c3.type) return o3;
   }
   return -1;
@@ -129,14 +129,14 @@ function O(n2, l3, u4, t3) {
 function z(n2, l3, u4) {
   "-" == l3[0] ? n2.setProperty(l3, null == u4 ? "" : u4) : n2[l3] = null == u4 ? "" : "number" != typeof u4 || _.test(l3) ? u4 : u4 + "px";
 }
-function N(n2, l3, u4, t3, i3) {
+function N(n2, l3, u4, t4, i3) {
   var r3, o3;
   n: if ("style" == l3) if ("string" == typeof u4) n2.style.cssText = u4;
   else {
-    if ("string" == typeof t3 && (n2.style.cssText = t3 = ""), t3) for (l3 in t3) u4 && l3 in u4 || z(n2.style, l3, "");
-    if (u4) for (l3 in u4) t3 && u4[l3] == t3[l3] || z(n2.style, l3, u4[l3]);
+    if ("string" == typeof t4 && (n2.style.cssText = t4 = ""), t4) for (l3 in t4) u4 && l3 in u4 || z(n2.style, l3, "");
+    if (u4) for (l3 in u4) t4 && u4[l3] == t4[l3] || z(n2.style, l3, u4[l3]);
   }
-  else if ("o" == l3[0] && "n" == l3[1]) r3 = l3 != (l3 = l3.replace(s, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r3] = u4, u4 ? t3 ? u4[a] = t3[a] : (u4[a] = h, n2.addEventListener(l3, r3 ? v : p, r3)) : n2.removeEventListener(l3, r3 ? v : p, r3);
+  else if ("o" == l3[0] && "n" == l3[1]) r3 = l3 != (l3 = l3.replace(s, "$1")), o3 = l3.toLowerCase(), l3 = o3 in n2 || "onFocusOut" == l3 || "onFocusIn" == l3 ? o3.slice(2) : l3.slice(2), n2.l || (n2.l = {}), n2.l[l3 + r3] = u4, u4 ? t4 ? u4[a] = t4[a] : (u4[a] = h, n2.addEventListener(l3, r3 ? v : p, r3)) : n2.removeEventListener(l3, r3 ? v : p, r3);
   else {
     if ("http://www.w3.org/2000/svg" == i3) l3 = l3.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
     else if ("width" != l3 && "height" != l3 && "href" != l3 && "list" != l3 && "form" != l3 && "tabIndex" != l3 && "download" != l3 && "rowSpan" != l3 && "colSpan" != l3 && "role" != l3 && "popover" != l3 && l3 in n2) try {
@@ -150,26 +150,26 @@ function N(n2, l3, u4, t3, i3) {
 function V(n2) {
   return function(u4) {
     if (this.l) {
-      var t3 = this.l[u4.type + n2];
+      var t4 = this.l[u4.type + n2];
       if (null == u4[c]) u4[c] = h++;
-      else if (u4[c] < t3[a]) return;
-      return t3(l.event ? l.event(u4) : u4);
+      else if (u4[c] < t4[a]) return;
+      return t4(l.event ? l.event(u4) : u4);
     }
   };
 }
-function q(n2, u4, t3, i3, r3, o3, e3, f4, c3, a3) {
+function q(n2, u4, t4, i3, r3, o3, e3, f4, c3, a3) {
   var s3, h3, p3, v3, y3, d3, _2, k3, x2, M, I2, P2, A3, H2, T3, j3, F = u4.type;
   if (void 0 !== u4.constructor) return null;
-  128 & t3.__u && (c3 = !!(32 & t3.__u), o3 = [f4 = u4.__e = t3.__e]), (s3 = l.__b) && s3(u4);
+  128 & t4.__u && (c3 = !!(32 & t4.__u), o3 = [f4 = u4.__e = t4.__e]), (s3 = l.__b) && s3(u4);
   n: if ("function" == typeof F) {
     h3 = e3.length;
     try {
-      if (x2 = u4.props, M = F.prototype && F.prototype.render, I2 = (s3 = F.contextType) && i3[s3.__c], P2 = s3 ? I2 ? I2.props.value : s3.__ : i3, t3.__c ? k3 = (p3 = u4.__c = t3.__c).__ = p3.__E : (M ? u4.__c = p3 = new F(x2, P2) : (u4.__c = p3 = new C(x2, P2), p3.constructor = F, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M && null == p3.__s && (p3.__s = p3.state), M && null != F.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F.getDerivedStateFromProps(x2, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M && null == F.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
+      if (x2 = u4.props, M = F.prototype && F.prototype.render, I2 = (s3 = F.contextType) && i3[s3.__c], P2 = s3 ? I2 ? I2.props.value : s3.__ : i3, t4.__c ? k3 = (p3 = u4.__c = t4.__c).__ = p3.__E : (M ? u4.__c = p3 = new F(x2, P2) : (u4.__c = p3 = new C(x2, P2), p3.constructor = F, p3.render = Q), I2 && I2.sub(p3), p3.state || (p3.state = {}), p3.__n = i3, v3 = p3.__d = true, p3.__h = [], p3._sb = []), M && null == p3.__s && (p3.__s = p3.state), M && null != F.getDerivedStateFromProps && (p3.__s == p3.state && (p3.__s = m({}, p3.__s)), m(p3.__s, F.getDerivedStateFromProps(x2, p3.__s))), y3 = p3.props, d3 = p3.state, p3.__v = u4, v3) M && null == F.getDerivedStateFromProps && null != p3.componentWillMount && p3.componentWillMount(), M && null != p3.componentDidMount && p3.__h.push(p3.componentDidMount);
       else {
-        if (M && null == F.getDerivedStateFromProps && x2 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x2, P2), u4.__v == t3.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x2, p3.__s, P2)) {
-          u4.__v != t3.__v && (p3.props = x2, p3.state = p3.__s, p3.__d = false), u4.__e = t3.__e, u4.__k = t3.__k, u4.__k.some(function(n3) {
+        if (M && null == F.getDerivedStateFromProps && x2 !== y3 && null != p3.componentWillReceiveProps && p3.componentWillReceiveProps(x2, P2), u4.__v == t4.__v || !p3.__e && null != p3.shouldComponentUpdate && false === p3.shouldComponentUpdate(x2, p3.__s, P2)) {
+          u4.__v != t4.__v && (p3.props = x2, p3.state = p3.__s, p3.__d = false), u4.__e = t4.__e, u4.__k = t4.__k, u4.__k.some(function(n3) {
             n3 && (n3.__ = u4);
-          }), w.push.apply(p3.__h, p3._sb), p3._sb = [], p3.__h.length && e3.push(p3), f4 = $(t3);
+          }), w.push.apply(p3.__h, p3._sb), p3._sb = [], p3.__h.length && e3.push(p3), f4 = $(t4);
           break n;
         }
         null != p3.componentWillUpdate && p3.componentWillUpdate(x2, p3.__s, P2), M && null != p3.componentDidUpdate && p3.__h.push(function() {
@@ -180,24 +180,24 @@ function q(n2, u4, t3, i3, r3, o3, e3, f4, c3, a3) {
       else do {
         p3.__d = false, A3 && A3(u4), s3 = p3.render(p3.props, p3.state, p3.context), p3.state = p3.__s;
       } while (p3.__d && ++H2 < 25);
-      p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M && !v3 && null != p3.getSnapshotBeforeUpdate && (_2 = p3.getSnapshotBeforeUpdate(y3, d3)), T3 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T3) ? T3 : [T3], u4, t3, i3, r3, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k3 && (p3.__E = p3.__ = null);
+      p3.state = p3.__s, null != p3.getChildContext && (i3 = m(m({}, i3), p3.getChildContext())), M && !v3 && null != p3.getSnapshotBeforeUpdate && (_2 = p3.getSnapshotBeforeUpdate(y3, d3)), T3 = null != s3 && s3.type === S && null == s3.key ? E(s3.props.children) : s3, f4 = L(n2, g(T3) ? T3 : [T3], u4, t4, i3, r3, o3, e3, f4, c3, a3), p3.base = u4.__e, u4.__u &= -161, p3.__h.length && e3.push(p3), k3 && (p3.__E = p3.__ = null);
     } catch (n3) {
       if (e3.length = h3, u4.__v = null, c3 || null != o3) {
         if (n3.then) {
           for (u4.__u |= c3 ? 160 : 128; f4 && 8 == f4.nodeType && f4.nextSibling; ) f4 = f4.nextSibling;
           null != o3 && (o3[o3.indexOf(f4)] = null), u4.__e = f4;
         } else if (null != o3) for (j3 = o3.length; j3--; ) b(o3[j3]);
-      } else u4.__e = t3.__e;
-      null == u4.__k && (u4.__k = t3.__k || []), n3.then || B(u4), l.__e(n3, u4, t3);
+      } else u4.__e = t4.__e;
+      null == u4.__k && (u4.__k = t4.__k || []), n3.then || B(u4), l.__e(n3, u4, t4);
     }
-  } else null == o3 && u4.__v == t3.__v ? (u4.__k = t3.__k, u4.__e = t3.__e) : f4 = u4.__e = G(t3.__e, u4, t3, i3, r3, o3, e3, c3, a3);
+  } else null == o3 && u4.__v == t4.__v ? (u4.__k = t4.__k, u4.__e = t4.__e) : f4 = u4.__e = G(t4.__e, u4, t4, i3, r3, o3, e3, c3, a3);
   return (s3 = l.diffed) && s3(u4), 128 & u4.__u ? void 0 : f4;
 }
 function B(n2) {
   n2 && (n2.__c && (n2.__c.__e = true), n2.__k && n2.__k.some(B));
 }
-function D(n2, u4, t3) {
-  for (var i3 = 0; i3 < t3.length; i3++) J(t3[i3], t3[++i3], t3[++i3]);
+function D(n2, u4, t4) {
+  for (var i3 = 0; i3 < t4.length; i3++) J(t4[i3], t4[++i3], t4[++i3]);
   l.__c && l.__c(u4, n2), n2.some(function(u5) {
     try {
       n2 = u5.__h, u5.__h = [], n2.some(function(n3) {
@@ -211,8 +211,8 @@ function D(n2, u4, t3) {
 function E(n2) {
   return "object" != typeof n2 || null == n2 || n2.__b > 0 ? n2 : g(n2) ? n2.map(E) : void 0 !== n2.constructor ? null : m({}, n2);
 }
-function G(u4, t3, i3, r3, o3, e3, f4, c3, a3) {
-  var s3, h3, p3, v3, y3, w3, _2, m3 = i3.props || d, k3 = t3.props, x2 = t3.type;
+function G(u4, t4, i3, r3, o3, e3, f4, c3, a3) {
+  var s3, h3, p3, v3, y3, w3, _2, m3 = i3.props || d, k3 = t4.props, x2 = t4.type;
   if ("svg" == x2 ? o3 = "http://www.w3.org/2000/svg" : "math" == x2 ? o3 = "http://www.w3.org/1998/Math/MathML" : o3 || (o3 = "http://www.w3.org/1999/xhtml"), null != e3) {
     for (s3 = 0; s3 < e3.length; s3++) if ((y3 = e3[s3]) && "setAttribute" in y3 == !!x2 && (x2 ? y3.localName == x2 : 3 == y3.nodeType)) {
       u4 = y3, e3[s3] = null;
@@ -221,30 +221,30 @@ function G(u4, t3, i3, r3, o3, e3, f4, c3, a3) {
   }
   if (null == u4) {
     if (null == x2) return document.createTextNode(k3);
-    u4 = document.createElementNS(o3, x2, k3.is && k3), c3 && (l.__m && l.__m(t3, e3), c3 = false), e3 = null;
+    u4 = document.createElementNS(o3, x2, k3.is && k3), c3 && (l.__m && l.__m(t4, e3), c3 = false), e3 = null;
   }
   if (null == x2) m3 === k3 || c3 && u4.data == k3 || (u4.data = k3);
   else {
     if (e3 = "textarea" == x2 && null != k3.defaultValue ? null : e3 && n.call(u4.childNodes), !c3 && null != e3) for (m3 = {}, s3 = 0; s3 < u4.attributes.length; s3++) m3[(y3 = u4.attributes[s3]).name] = y3.value;
     for (s3 in m3) y3 = m3[s3], "dangerouslySetInnerHTML" == s3 ? p3 = y3 : "children" == s3 || s3 in k3 || "value" == s3 && "defaultValue" in k3 || "checked" == s3 && "defaultChecked" in k3 || N(u4, s3, null, y3, o3);
     for (s3 in k3) y3 = k3[s3], "children" == s3 ? v3 = y3 : "dangerouslySetInnerHTML" == s3 ? h3 = y3 : "value" == s3 ? w3 = y3 : "checked" == s3 ? _2 = y3 : c3 && "function" != typeof y3 || m3[s3] === y3 || N(u4, s3, y3, m3[s3], o3);
-    if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t3.__k = [];
-    else if (p3 && (u4.innerHTML = ""), L("template" == t3.type ? u4.content : u4, g(v3) ? v3 : [v3], t3, i3, r3, "foreignObject" == x2 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
+    if (h3) c3 || p3 && (h3.__html == p3.__html || h3.__html == u4.innerHTML) || (u4.innerHTML = h3.__html), t4.__k = [];
+    else if (p3 && (u4.innerHTML = ""), L("template" == t4.type ? u4.content : u4, g(v3) ? v3 : [v3], t4, i3, r3, "foreignObject" == x2 ? "http://www.w3.org/1999/xhtml" : o3, e3, f4, e3 ? e3[0] : i3.__k && $(i3, 0), c3, a3), null != e3) for (s3 = e3.length; s3--; ) b(e3[s3]);
     c3 && "textarea" != x2 || (s3 = "value", "progress" == x2 && null == w3 ? u4.removeAttribute("value") : null != w3 && (w3 !== u4[s3] || "progress" == x2 && !w3 || "option" == x2 && w3 != m3[s3]) && N(u4, s3, w3, m3[s3], o3), s3 = "checked", null != _2 && _2 != u4[s3] && N(u4, s3, _2, m3[s3], o3));
   }
   return u4;
 }
-function J(n2, u4, t3) {
+function J(n2, u4, t4) {
   try {
     if ("function" == typeof n2) {
       var i3 = "function" == typeof n2.__u;
       i3 && n2.__u(), i3 && null == u4 || (n2.__u = n2(u4));
     } else n2.current = u4;
   } catch (n3) {
-    l.__e(n3, t3);
+    l.__e(n3, t4);
   }
 }
-function K(n2, u4, t3) {
+function K(n2, u4, t4) {
   var i3, r3;
   if (l.unmount && l.unmount(n2), (i3 = n2.ref) && (i3.current && i3.current != n2.__e || J(i3, null, u4)), null != (i3 = n2.__c)) {
     if (i3.componentWillUnmount) try {
@@ -254,19 +254,19 @@ function K(n2, u4, t3) {
     }
     i3.base = i3.__P = i3.__n = null;
   }
-  if (i3 = n2.__k) for (r3 = 0; r3 < i3.length; r3++) i3[r3] && K(i3[r3], u4, t3 || "function" != typeof n2.type);
-  t3 || b(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
+  if (i3 = n2.__k) for (r3 = 0; r3 < i3.length; r3++) i3[r3] && K(i3[r3], u4, t4 || "function" != typeof n2.type);
+  t4 || b(n2.__e), n2.__c = n2.__ = n2.__e = void 0;
 }
 function Q(n2, l3, u4) {
   return this.constructor(n2, u4);
 }
-function R(u4, t3, i3) {
+function R(u4, t4, i3) {
   var r3, o3, e3, f4;
-  t3 == document && (t3 = document.documentElement), l.__ && l.__(u4, t3), o3 = (r3 = "function" == typeof i3) ? null : i3 && i3.__k || t3.__k, e3 = [], f4 = [], q(t3, u4 = (!r3 && i3 || t3).__k = k(S, null, [u4]), o3 || d, d, t3.namespaceURI, !r3 && i3 ? [i3] : o3 ? null : t3.firstChild ? n.call(t3.childNodes) : null, e3, !r3 && i3 ? i3 : o3 ? o3.__e : t3.firstChild, r3, f4), D(e3, u4, f4), u4.props.children = null;
+  t4 == document && (t4 = document.documentElement), l.__ && l.__(u4, t4), o3 = (r3 = "function" == typeof i3) ? null : i3 && i3.__k || t4.__k, e3 = [], f4 = [], q(t4, u4 = (!r3 && i3 || t4).__k = k(S, null, [u4]), o3 || d, d, t4.namespaceURI, !r3 && i3 ? [i3] : o3 ? null : t4.firstChild ? n.call(t4.childNodes) : null, e3, !r3 && i3 ? i3 : o3 ? o3.__e : t4.firstChild, r3, f4), D(e3, u4, f4), u4.props.children = null;
 }
-n = w.slice, l = { __e: function(n2, l3, u4, t3) {
+n = w.slice, l = { __e: function(n2, l3, u4, t4) {
   for (var i3, r3, o3; l3 = l3.__; ) if ((i3 = l3.__c) && !i3.__) try {
-    if ((r3 = i3.constructor) && null != r3.getDerivedStateFromError && (i3.setState(r3.getDerivedStateFromError(n2)), o3 = i3.__d), null != i3.componentDidCatch && (i3.componentDidCatch(n2, t3 || {}), o3 = i3.__d), o3) return i3.__E = i3;
+    if ((r3 = i3.constructor) && null != r3.getDerivedStateFromError && (i3.setState(r3.getDerivedStateFromError(n2)), o3 = i3.__d), null != i3.componentDidCatch && (i3.componentDidCatch(n2, t4 || {}), o3 = i3.__d), o3) return i3.__E = i3;
   } catch (l4) {
     n2 = l4;
   }
@@ -378,7 +378,7 @@ function notePaneLeaf(workspace, options) {
 }
 
 // src/header/extension.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // ../shared/src/header-mount.ts
 var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
@@ -575,7 +575,7 @@ function installHeaderMount(options) {
 }
 
 // src/header/IssueHeader.tsx
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
@@ -591,8 +591,8 @@ var v2 = c2.diffed;
 var l2 = c2.__c;
 var m2 = c2.unmount;
 var p2 = c2.__;
-function s2(n2, t3) {
-  c2.__h && c2.__h(r2, n2, o2 || t3), o2 = 0;
+function s2(n2, t4) {
+  c2.__h && c2.__h(r2, n2, o2 || t4), o2 = 0;
   var u4 = r2.__H || (r2.__H = { __: [], __h: [] });
   return n2 >= u4.__.length && u4.__.push({}), u4.__[n2];
 }
@@ -602,32 +602,32 @@ function d2(n2) {
 function y2(n2, u4, i3) {
   var o3 = s2(t2++, 2);
   if (o3.t = n2, !o3.__c && (o3.__ = [i3 ? i3(u4) : D2(void 0, u4), function(n3) {
-    var t3 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t3, n3);
-    t3 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
+    var t4 = o3.__N ? o3.__N[0] : o3.__[0], r3 = o3.t(t4, n3);
+    t4 !== r3 && (o3.__N = [r3, o3.__[1]], o3.__c.setState({}));
   }], o3.__c = r2, !r2.__f)) {
-    var f4 = function(n3, t3, r3) {
+    var f4 = function(n3, t4, r3) {
       if (!o3.__c.__H) return true;
       var u5 = false, i4 = o3.__c.props !== n3;
       if (o3.__c.__H.__.some(function(n4) {
         if (n4.__N) {
           u5 = true;
-          var t4 = n4.__[0];
-          n4.__ = n4.__N, n4.__N = void 0, t4 !== n4.__[0] && (i4 = true);
+          var t5 = n4.__[0];
+          n4.__ = n4.__N, n4.__N = void 0, t5 !== n4.__[0] && (i4 = true);
         }
       }), c3) {
-        var f5 = c3.call(this, n3, t3, r3);
+        var f5 = c3.call(this, n3, t4, r3);
         return u5 ? f5 || i4 : f5;
       }
       return !u5 || i4;
     };
     r2.__f = true;
     var c3 = r2.shouldComponentUpdate, e3 = r2.componentWillUpdate;
-    r2.componentWillUpdate = function(n3, t3, r3) {
+    r2.componentWillUpdate = function(n3, t4, r3) {
       if (this.__e) {
         var u5 = c3;
-        c3 = void 0, f4(n3, t3, r3), c3 = u5;
+        c3 = void 0, f4(n3, t4, r3), c3 = u5;
       }
-      e3 && e3.call(this, n3, t3, r3);
+      e3 && e3.call(this, n3, t4, r3);
     }, r2.shouldComponentUpdate = f4;
   }
   return o3.__N || o3.__;
@@ -647,18 +647,18 @@ function T2(n2, r3) {
 }
 function j2() {
   for (var n2; n2 = f2.shift(); ) {
-    var t3 = n2.__H;
-    if (n2.__P && t3) try {
-      t3.__h.some(z2), t3.__h.some(B2), t3.__h = [];
+    var t4 = n2.__H;
+    if (n2.__P && t4) try {
+      t4.__h.some(z2), t4.__h.some(B2), t4.__h = [];
     } catch (r3) {
-      t3.__h = [], c2.__e(r3, n2.__v);
+      t4.__h = [], c2.__e(r3, n2.__v);
     }
   }
 }
 c2.__b = function(n2) {
   r2 = null, e2 && e2(n2);
-}, c2.__ = function(n2, t3) {
-  n2 && t3.__k && t3.__k.__m && (n2.__m = t3.__k.__m), p2 && p2(n2, t3);
+}, c2.__ = function(n2, t4) {
+  n2 && t4.__k && t4.__k.__m && (n2.__m = t4.__k.__m), p2 && p2(n2, t4);
 }, c2.__r = function(n2) {
   a2 && a2(n2), t2 = 0;
   var i3 = (r2 = n2.__c).__H;
@@ -667,55 +667,55 @@ c2.__b = function(n2) {
   })) : (i3.__h.some(z2), i3.__h.some(B2), i3.__h = [], t2 = 0)), u2 = r2;
 }, c2.diffed = function(n2) {
   v2 && v2(n2);
-  var t3 = n2.__c;
-  t3 && t3.__H && (t3.__H.__h.length && (1 !== f2.push(t3) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t3.__H.__.some(function(n3) {
+  var t4 = n2.__c;
+  t4 && t4.__H && (t4.__H.__h.length && (1 !== f2.push(t4) && i2 === c2.requestAnimationFrame || ((i2 = c2.requestAnimationFrame) || w2)(j2)), t4.__H.__.some(function(n3) {
     n3.u && (n3.__H = n3.u, n3.u = void 0);
   })), u2 = r2 = null;
-}, c2.__c = function(n2, t3) {
-  t3.some(function(n3) {
+}, c2.__c = function(n2, t4) {
+  t4.some(function(n3) {
     try {
       n3.__h.some(z2), n3.__h = n3.__h.filter(function(n4) {
         return !n4.__ || B2(n4);
       });
     } catch (r3) {
-      t3.some(function(n4) {
+      t4.some(function(n4) {
         n4.__h && (n4.__h = []);
-      }), t3 = [], c2.__e(r3, n3.__v);
+      }), t4 = [], c2.__e(r3, n3.__v);
     }
-  }), l2 && l2(n2, t3);
+  }), l2 && l2(n2, t4);
 }, c2.unmount = function(n2) {
   m2 && m2(n2);
-  var t3, r3 = n2.__c;
+  var t4, r3 = n2.__c;
   r3 && r3.__H && (r3.__H.__.some(function(n3) {
     try {
       z2(n3);
     } catch (n4) {
-      t3 = n4;
+      t4 = n4;
     }
-  }), r3.__H = void 0, t3 && c2.__e(t3, r3.__v));
+  }), r3.__H = void 0, t4 && c2.__e(t4, r3.__v));
 };
 var k2 = "function" == typeof requestAnimationFrame;
 function w2(n2) {
-  var t3, r3 = function() {
-    clearTimeout(u4), k2 && cancelAnimationFrame(t3), setTimeout(n2);
+  var t4, r3 = function() {
+    clearTimeout(u4), k2 && cancelAnimationFrame(t4), setTimeout(n2);
   }, u4 = setTimeout(r3, 35);
-  k2 && (t3 = requestAnimationFrame(r3));
+  k2 && (t4 = requestAnimationFrame(r3));
 }
 function z2(n2) {
-  var t3 = r2, u4 = n2.__c;
-  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t3;
+  var t4 = r2, u4 = n2.__c;
+  "function" == typeof u4 && (n2.__c = void 0, u4()), r2 = t4;
 }
 function B2(n2) {
-  var t3 = r2;
-  n2.__c = n2.__(), r2 = t3;
+  var t4 = r2;
+  n2.__c = n2.__(), r2 = t4;
 }
-function C2(n2, t3) {
-  return !n2 || n2.length !== t3.length || t3.some(function(t4, r3) {
-    return t4 !== n2[r3];
+function C2(n2, t4) {
+  return !n2 || n2.length !== t4.length || t4.some(function(t5, r3) {
+    return t5 !== n2[r3];
   });
 }
-function D2(n2, t3) {
-  return "function" == typeof t3 ? t3(n2) : t3;
+function D2(n2, t4) {
+  return "function" == typeof t4 ? t4(n2) : t4;
 }
 
 // ../shared/src/dates.ts
@@ -728,10 +728,10 @@ function toEpochDay(date) {
   const y3 = Number(m3[1]);
   const mo = Number(m3[2]);
   const d3 = Number(m3[3]);
-  const t3 = Date.UTC(y3, mo - 1, d3);
-  const back = new Date(t3);
+  const t4 = Date.UTC(y3, mo - 1, d3);
+  const back = new Date(t4);
   if (back.getUTCFullYear() !== y3 || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d3) return null;
-  return t3 / DAY_MS;
+  return t4 / DAY_MS;
 }
 function fromEpochDay(day) {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
@@ -1224,12 +1224,56 @@ function parseRoutine(path, fm) {
 function parseMember(path, fm) {
   const r3 = new Reader(path, fm);
   const id = r3.common("member", "m");
-  const name = r3.string("name") ?? "";
-  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  const nickname = r3.string("nickname") || name;
+  const name2 = r3.string("name") ?? "";
+  if (!name2) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  const nickname = r3.string("nickname") || name2;
   const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
   if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
+  return { value: { path, id, name: name2, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
+}
+
+// src/core/issue-file.ts
+var ISSUE_BODY_TEMPLATE = "# Note\n\n";
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function newIssueContent(id, summary, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  if (extra.scheduled) lines.push(`scheduled: ${extra.scheduled}`);
+  if (extra.clarified) lines.push("clarified: true");
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  return lines.join("\n");
+}
+function newMemberContent(id, name2, created) {
+  return [
+    "---",
+    `schema: ${SCHEMA_VERSION}`,
+    "type: member",
+    `id: ${id}`,
+    `name: ${yamlString(name2)}`,
+    `nickname: ${yamlString(name2)}`,
+    `alias: ${yamlString(id)}`,
+    `created: ${created}`,
+    `updated: ${created}`,
+    "---",
+    ""
+  ].join("\n");
+}
+function newRoutineContent(id, summary, repeat, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  if (extra.start) lines.push(`start: ${extra.start}`);
+  lines.push("active: true");
+  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
+  return lines.join("\n");
+}
+function newDailyContent(created) {
+  return `---
+type: daily
+created: ${created}
+updated: ${created}
+---
+`;
 }
 
 // src/core/sub-issue.ts
@@ -1338,12 +1382,12 @@ function parseSubIssues(path, parent, text, parseYaml5) {
   }
   return { subs, blocks, problems };
 }
-function yamlString(s3) {
+function yamlString2(s3) {
   return JSON.stringify(s3);
 }
 function formatSubHead(sub) {
   if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
-  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
+  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString2(sub.summary)}`, `status: ${sub.status}`];
   const put = (key, value) => {
     if (value !== null) lines.push(`${key}: ${value}`);
   };
@@ -1372,7 +1416,7 @@ function formatSubIssue(sub) {
   }
   return `${head}
 ${body ? `${body}
-` : ""}`;
+${sub.body.endsWith("\n\n") ? "\n" : ""}` : ""}`;
 }
 function replaceSubIssues(text, blocks) {
   const { head, blocks: existing } = splitSubIssueText(text);
@@ -1498,7 +1542,7 @@ function newSubIssueInput(item, id, created) {
     dependsOn: item.dependsOn ?? [],
     created,
     migratedFrom: null,
-    body: item.body ?? ""
+    body: item.body ?? ISSUE_BODY_TEMPLATE
   };
 }
 function dependentsOf(subs, id) {
@@ -1636,8 +1680,8 @@ function normalizeSubPatch(patch) {
 
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function sanitizeDeviceName(name) {
-  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+function sanitizeDeviceName(name2) {
+  return name2.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
 }
 function worklogPath(device, from) {
   const safe = sanitizeDeviceName(device);
@@ -1718,7 +1762,7 @@ function replaceWorklogLine(text, entry, next) {
 }
 var MIN_WORKLOG_MS = 6e4;
 function stopWorklogLines(text, entries, to, toMs2) {
-  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
+  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t4, e3) => replaceWorklogLine(t4, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
 }
 function newWorklogId(random = Math.random) {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -1874,9 +1918,9 @@ function orderHistory(entries) {
   }
   return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
 }
-function lastOrder(history, date) {
+function lastOrder(history2, date) {
   let found;
-  for (const r3 of history) {
+  for (const r3 of history2) {
     if (r3.date > date) break;
     found = r3.tasks;
   }
@@ -1966,12 +2010,12 @@ function prorateEffort(intervals, now) {
   let k3 = 0;
   let prev = 0;
   for (let i3 = 0; i3 < events.length; ) {
-    const t3 = events[i3].t;
-    if (k3 > 0 && t3 > prev) {
-      const share = (t3 - prev) / k3;
+    const t4 = events[i3].t;
+    if (k3 > 0 && t4 > prev) {
+      const share = (t4 - prev) / k3;
       for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
     }
-    for (; i3 < events.length && events[i3].t === t3; i3++) {
+    for (; i3 < events.length && events[i3].t === t4; i3++) {
       const e3 = events[i3];
       const count = (active.get(e3.taskId) ?? 0) + e3.delta;
       if (count === 0) active.delete(e3.taskId);
@@ -1979,7 +2023,7 @@ function prorateEffort(intervals, now) {
       k3 += e3.delta;
       if (!result.has(e3.taskId)) result.set(e3.taskId, 0);
     }
-    prev = t3;
+    prev = t4;
   }
   return result;
 }
@@ -2389,10 +2433,10 @@ function parseTimeInput(input) {
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
-function u3(e3, t3, n2, o3, i3, u4) {
-  t3 || (t3 = {});
-  var a3, c3, p3 = t3;
-  if ("ref" in p3) for (c3 in p3 = {}, t3) "ref" == c3 ? a3 = t3[c3] : p3[c3] = t3[c3];
+function u3(e3, t4, n2, o3, i3, u4) {
+  t4 || (t4 = {});
+  var a3, c3, p3 = t4;
+  if ("ref" in p3) for (c3 in p3 = {}, t4) "ref" == c3 ? a3 = t4[c3] : p3[c3] = t4[c3];
   var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
   if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
   return l.vnode && l.vnode(l3), l3;
@@ -2558,8 +2602,8 @@ function DayCell(props) {
   if (props.scheduled) cls.push("is-scheduled");
   if (props.date === props.today) cls.push("is-today");
   if (props.dimmed) cls.push("is-dimmed");
-  const marks = [props.date === props.today ? "Today" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join(" \xB7 ");
-  const label = marks ? `${props.date}\uFF08${marks}\uFF09` : props.date;
+  const marks2 = [props.date === props.today ? "Today" : null, props.date === props.softDeadline ? "soft_deadline" : null, props.date === props.deadline ? "deadline" : null].filter(Boolean).join(" \xB7 ");
+  const label = marks2 ? `${props.date}\uFF08${marks2}\uFF09` : props.date;
   return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
 var pad2 = (n2) => String(n2).padStart(2, "0");
@@ -2616,8 +2660,8 @@ function DateTimeField(props) {
 }
 function toMs(date, time) {
   const d3 = parseDateInput(date, localToday());
-  const t3 = parseTimeInput(time);
-  return d3 === null || t3 === null ? null : (/* @__PURE__ */ new Date(`${d3}T${t3}:00`)).getTime();
+  const t4 = parseTimeInput(time);
+  return d3 === null || t4 === null ? null : (/* @__PURE__ */ new Date(`${d3}T${t4}:00`)).getTime();
 }
 function WorklogForm(props) {
   const [fromDate, setFromDate] = d2(dateOfMs(props.initial.fromMs));
@@ -2663,26 +2707,26 @@ function LabelForm(props) {
   const [draft, setDraft] = d2("");
   const names = [...props.labels.map((l3) => l3.name), ...extra.filter((n2) => !props.labels.some((l3) => l3.name === n2))];
   for (const n2 of props.initial) if (!names.includes(n2)) names.push(n2);
-  const toggle2 = (name) => {
+  const toggle2 = (name2) => {
     const next = new Set(selected);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
+    if (next.has(name2)) next.delete(name2);
+    else next.add(name2);
     setSelected(next);
   };
   const create = (e3) => {
     e3.preventDefault();
-    const name = draft.trim();
-    if (!name) return;
-    props.onCreate(name).then(() => {
-      setExtra([...extra, name]);
-      setSelected(/* @__PURE__ */ new Set([...selected, name]));
+    const name2 = draft.trim();
+    if (!name2) return;
+    props.onCreate(name2).then(() => {
+      setExtra([...extra, name2]);
+      setSelected(/* @__PURE__ */ new Set([...selected, name2]));
       setDraft("");
     }).catch(props.onError);
   };
   return /* @__PURE__ */ u3("div", { class: "vt-label-form", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: names.map((name) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
-      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(name), onChange: () => toggle2(name) }),
-      name
+    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: names.map((name2) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(name2), onChange: () => toggle2(name2) }),
+      name2
     ] })) }),
     /* @__PURE__ */ u3("form", { class: "vt-form", onSubmit: create, children: [
       /* @__PURE__ */ u3("input", { type: "text", placeholder: "New label", value: draft, onInput: (e3) => setDraft(e3.currentTarget.value) }),
@@ -2737,8 +2781,8 @@ function sortValue(m3, key, delegated) {
     case "delegated":
       return delegated.get(m3.id) ?? 0;
     case "created": {
-      const t3 = m3.created === null ? Number.NaN : Date.parse(m3.created);
-      return Number.isNaN(t3) ? null : t3;
+      const t4 = m3.created === null ? Number.NaN : Date.parse(m3.created);
+      return Number.isNaN(t4) ? null : t4;
     }
   }
 }
@@ -2814,8 +2858,8 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
   onChoose;
   getSuggestions(query) {
     const hits = sortMembers(this.members).filter((m3) => memberMatches(m3, query)).map((member) => ({ kind: "member", member }));
-    const name = query.trim().replace(/^@+/, "").trim();
-    if (memberQuery(query) && !this.members.some((m3) => memberExactly(m3, query))) hits.push({ kind: "create", name });
+    const name2 = query.trim().replace(/^@+/, "").trim();
+    if (memberQuery(query) && !this.members.some((m3) => memberExactly(m3, query))) hits.push({ kind: "create", name: name2 });
     return hits;
   }
   renderSuggestion(choice, el) {
@@ -2849,7 +2893,7 @@ function editLabels(ctx, current, save) {
     {
       labels: ctx.store.index.data.labels,
       initial: current,
-      onCreate: (name) => ctx.writer.addLabel(name),
+      onCreate: (name2) => ctx.writer.addLabel(name2),
       onSubmit: (names) => {
         close();
         save({ label: names });
@@ -3278,6 +3322,4581 @@ function stopTimer(ctx, ids) {
   return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
 }
 
+// ../../node_modules/.pnpm/@codemirror+commands@6.11.1/node_modules/@codemirror/commands/dist/index.js
+var import_state2 = require("@codemirror/state");
+var import_view2 = require("@codemirror/view");
+
+// ../../node_modules/.pnpm/@lezer+common@1.5.5/node_modules/@lezer/common/dist/index.js
+var DefaultBufferLength = 1024;
+var nextPropID = 0;
+var Range = class {
+  constructor(from, to) {
+    this.from = from;
+    this.to = to;
+  }
+};
+var NodeProp = class {
+  /**
+  Create a new node prop type.
+  */
+  constructor(config = {}) {
+    this.id = nextPropID++;
+    this.perNode = !!config.perNode;
+    this.deserialize = config.deserialize || (() => {
+      throw new Error("This node type doesn't define a deserialize function");
+    });
+    this.combine = config.combine || null;
+  }
+  /**
+  This is meant to be used with
+  [`NodeSet.extend`](#common.NodeSet.extend) or
+  [`LRParser.configure`](#lr.ParserConfig.props) to compute
+  prop values for each node type in the set. Takes a [match
+  object](#common.NodeType^match) or function that returns undefined
+  if the node type doesn't get this prop, and the prop's value if
+  it does.
+  */
+  add(match) {
+    if (this.perNode)
+      throw new RangeError("Can't add per-node props to node types");
+    if (typeof match != "function")
+      match = NodeType.match(match);
+    return (type) => {
+      let result = match(type);
+      return result === void 0 ? null : [this, result];
+    };
+  }
+};
+NodeProp.closedBy = new NodeProp({ deserialize: (str) => str.split(" ") });
+NodeProp.openedBy = new NodeProp({ deserialize: (str) => str.split(" ") });
+NodeProp.group = new NodeProp({ deserialize: (str) => str.split(" ") });
+NodeProp.isolate = new NodeProp({ deserialize: (value) => {
+  if (value && value != "rtl" && value != "ltr" && value != "auto")
+    throw new RangeError("Invalid value for isolate: " + value);
+  return value || "auto";
+} });
+NodeProp.contextHash = new NodeProp({ perNode: true });
+NodeProp.lookAhead = new NodeProp({ perNode: true });
+NodeProp.mounted = new NodeProp({ perNode: true });
+var MountedTree = class {
+  constructor(tree, overlay, parser, bracketed = false) {
+    this.tree = tree;
+    this.overlay = overlay;
+    this.parser = parser;
+    this.bracketed = bracketed;
+  }
+  /**
+  @internal
+  */
+  static get(tree) {
+    return tree && tree.props && tree.props[NodeProp.mounted.id];
+  }
+};
+var noProps = /* @__PURE__ */ Object.create(null);
+var NodeType = class _NodeType {
+  /**
+  @internal
+  */
+  constructor(name2, props, id, flags = 0) {
+    this.name = name2;
+    this.props = props;
+    this.id = id;
+    this.flags = flags;
+  }
+  /**
+  Define a node type.
+  */
+  static define(spec) {
+    let props = spec.props && spec.props.length ? /* @__PURE__ */ Object.create(null) : noProps;
+    let flags = (spec.top ? 1 : 0) | (spec.skipped ? 2 : 0) | (spec.error ? 4 : 0) | (spec.name == null ? 8 : 0);
+    let type = new _NodeType(spec.name || "", props, spec.id, flags);
+    if (spec.props)
+      for (let src of spec.props) {
+        if (!Array.isArray(src))
+          src = src(type);
+        if (src) {
+          if (src[0].perNode)
+            throw new RangeError("Can't store a per-node prop on a node type");
+          props[src[0].id] = src[1];
+        }
+      }
+    return type;
+  }
+  /**
+  Retrieves a node prop for this type. Will return `undefined` if
+  the prop isn't present on this node.
+  */
+  prop(prop) {
+    return this.props[prop.id];
+  }
+  /**
+  True when this is the top node of a grammar.
+  */
+  get isTop() {
+    return (this.flags & 1) > 0;
+  }
+  /**
+  True when this node is produced by a skip rule.
+  */
+  get isSkipped() {
+    return (this.flags & 2) > 0;
+  }
+  /**
+  Indicates whether this is an error node.
+  */
+  get isError() {
+    return (this.flags & 4) > 0;
+  }
+  /**
+  When true, this node type doesn't correspond to a user-declared
+  named node, for example because it is used to cache repetition.
+  */
+  get isAnonymous() {
+    return (this.flags & 8) > 0;
+  }
+  /**
+  Returns true when this node's name or one of its
+  [groups](#common.NodeProp^group) matches the given string.
+  */
+  is(name2) {
+    if (typeof name2 == "string") {
+      if (this.name == name2)
+        return true;
+      let group = this.prop(NodeProp.group);
+      return group ? group.indexOf(name2) > -1 : false;
+    }
+    return this.id == name2;
+  }
+  /**
+  Create a function from node types to arbitrary values by
+  specifying an object whose property names are node or
+  [group](#common.NodeProp^group) names. Often useful with
+  [`NodeProp.add`](#common.NodeProp.add). You can put multiple
+  names, separated by spaces, in a single property name to map
+  multiple node names to a single value.
+  */
+  static match(map) {
+    let direct = /* @__PURE__ */ Object.create(null);
+    for (let prop in map)
+      for (let name2 of prop.split(" "))
+        direct[name2] = map[prop];
+    return (node) => {
+      for (let groups = node.prop(NodeProp.group), i3 = -1; i3 < (groups ? groups.length : 0); i3++) {
+        let found = direct[i3 < 0 ? node.name : groups[i3]];
+        if (found)
+          return found;
+      }
+    };
+  }
+};
+NodeType.none = new NodeType(
+  "",
+  /* @__PURE__ */ Object.create(null),
+  0,
+  8
+  /* NodeFlag.Anonymous */
+);
+var CachedNode = /* @__PURE__ */ new WeakMap();
+var CachedInnerNode = /* @__PURE__ */ new WeakMap();
+var IterMode;
+(function(IterMode2) {
+  IterMode2[IterMode2["ExcludeBuffers"] = 1] = "ExcludeBuffers";
+  IterMode2[IterMode2["IncludeAnonymous"] = 2] = "IncludeAnonymous";
+  IterMode2[IterMode2["IgnoreMounts"] = 4] = "IgnoreMounts";
+  IterMode2[IterMode2["IgnoreOverlays"] = 8] = "IgnoreOverlays";
+  IterMode2[IterMode2["EnterBracketed"] = 16] = "EnterBracketed";
+})(IterMode || (IterMode = {}));
+var Tree = class _Tree {
+  /**
+  Construct a new tree. See also [`Tree.build`](#common.Tree^build).
+  */
+  constructor(type, children, positions, length, props) {
+    this.type = type;
+    this.children = children;
+    this.positions = positions;
+    this.length = length;
+    this.props = null;
+    if (props && props.length) {
+      this.props = /* @__PURE__ */ Object.create(null);
+      for (let [prop, value] of props)
+        this.props[typeof prop == "number" ? prop : prop.id] = value;
+    }
+  }
+  /**
+  @internal
+  */
+  toString() {
+    let mounted = MountedTree.get(this);
+    if (mounted && !mounted.overlay)
+      return mounted.tree.toString();
+    let children = "";
+    for (let ch of this.children) {
+      let str = ch.toString();
+      if (str) {
+        if (children)
+          children += ",";
+        children += str;
+      }
+    }
+    return !this.type.name ? children : (/\W/.test(this.type.name) && !this.type.isError ? JSON.stringify(this.type.name) : this.type.name) + (children.length ? "(" + children + ")" : "");
+  }
+  /**
+  Get a [tree cursor](#common.TreeCursor) positioned at the top of
+  the tree. Mode can be used to [control](#common.IterMode) which
+  nodes the cursor visits.
+  */
+  cursor(mode = 0) {
+    return new TreeCursor(this.topNode, mode);
+  }
+  /**
+  Get a [tree cursor](#common.TreeCursor) pointing into this tree
+  at the given position and side (see
+  [`moveTo`](#common.TreeCursor.moveTo).
+  */
+  cursorAt(pos, side = 0, mode = 0) {
+    let scope = CachedNode.get(this) || this.topNode;
+    let cursor = new TreeCursor(scope);
+    cursor.moveTo(pos, side);
+    CachedNode.set(this, cursor._tree);
+    return cursor;
+  }
+  /**
+  Get a [syntax node](#common.SyntaxNode) object for the top of the
+  tree.
+  */
+  get topNode() {
+    return new TreeNode(this, 0, 0, null);
+  }
+  /**
+  Get the [syntax node](#common.SyntaxNode) at the given position.
+  If `side` is -1, this will move into nodes that end at the
+  position. If 1, it'll move into nodes that start at the
+  position. With 0, it'll only enter nodes that cover the position
+  from both sides.
+  
+  Note that this will not enter
+  [overlays](#common.MountedTree.overlay), and you often want
+  [`resolveInner`](#common.Tree.resolveInner) instead.
+  */
+  resolve(pos, side = 0) {
+    let node = resolveNode(CachedNode.get(this) || this.topNode, pos, side, false);
+    CachedNode.set(this, node);
+    return node;
+  }
+  /**
+  Like [`resolve`](#common.Tree.resolve), but will enter
+  [overlaid](#common.MountedTree.overlay) nodes, producing a syntax node
+  pointing into the innermost overlaid tree at the given position
+  (with parent links going through all parent structure, including
+  the host trees).
+  */
+  resolveInner(pos, side = 0) {
+    let node = resolveNode(CachedInnerNode.get(this) || this.topNode, pos, side, true);
+    CachedInnerNode.set(this, node);
+    return node;
+  }
+  /**
+  In some situations, it can be useful to iterate through all
+  nodes around a position, including those in overlays that don't
+  directly cover the position. This method gives you an iterator
+  that will produce all nodes, from small to big, around the given
+  position.
+  */
+  resolveStack(pos, side = 0) {
+    return stackIterator(this, pos, side);
+  }
+  /**
+  Iterate over the tree and its children, calling `enter` for any
+  node that touches the `from`/`to` region (if given) before
+  running over such a node's children, and `leave` (if given) when
+  leaving the node. When `enter` returns `false`, that node will
+  not have its children iterated over (or `leave` called).
+  */
+  iterate(spec) {
+    let { enter, leave, from = 0, to = this.length } = spec;
+    let mode = spec.mode || 0, anon = (mode & IterMode.IncludeAnonymous) > 0;
+    for (let c3 = this.cursor(mode | IterMode.IncludeAnonymous); ; ) {
+      let entered = false;
+      if (c3.from <= to && c3.to >= from && (!anon && c3.type.isAnonymous || enter(c3) !== false)) {
+        if (c3.firstChild())
+          continue;
+        entered = true;
+      }
+      for (; ; ) {
+        if (entered && leave && (anon || !c3.type.isAnonymous))
+          leave(c3);
+        if (c3.nextSibling())
+          break;
+        if (!c3.parent())
+          return;
+        entered = true;
+      }
+    }
+  }
+  /**
+  Get the value of the given [node prop](#common.NodeProp) for this
+  node. Works with both per-node and per-type props.
+  */
+  prop(prop) {
+    return !prop.perNode ? this.type.prop(prop) : this.props ? this.props[prop.id] : void 0;
+  }
+  /**
+  Returns the node's [per-node props](#common.NodeProp.perNode) in a
+  format that can be passed to the [`Tree`](#common.Tree)
+  constructor.
+  */
+  get propValues() {
+    let result = [];
+    if (this.props)
+      for (let id in this.props)
+        result.push([+id, this.props[id]]);
+    return result;
+  }
+  /**
+  Balance the direct children of this tree, producing a copy of
+  which may have children grouped into subtrees with type
+  [`NodeType.none`](#common.NodeType^none).
+  */
+  balance(config = {}) {
+    return this.children.length <= 8 ? this : balanceRange(NodeType.none, this.children, this.positions, 0, this.children.length, 0, this.length, (children, positions, length) => new _Tree(this.type, children, positions, length, this.propValues), config.makeTree || ((children, positions, length) => new _Tree(NodeType.none, children, positions, length)));
+  }
+  /**
+  Build a tree from a postfix-ordered buffer of node information,
+  or a cursor over such a buffer.
+  */
+  static build(data) {
+    return buildTree(data);
+  }
+};
+Tree.empty = new Tree(NodeType.none, [], [], 0);
+var FlatBufferCursor = class _FlatBufferCursor {
+  constructor(buffer, index) {
+    this.buffer = buffer;
+    this.index = index;
+  }
+  get id() {
+    return this.buffer[this.index - 4];
+  }
+  get start() {
+    return this.buffer[this.index - 3];
+  }
+  get end() {
+    return this.buffer[this.index - 2];
+  }
+  get size() {
+    return this.buffer[this.index - 1];
+  }
+  get pos() {
+    return this.index;
+  }
+  next() {
+    this.index -= 4;
+  }
+  fork() {
+    return new _FlatBufferCursor(this.buffer, this.index);
+  }
+};
+var TreeBuffer = class _TreeBuffer {
+  /**
+  Create a tree buffer.
+  */
+  constructor(buffer, length, set) {
+    this.buffer = buffer;
+    this.length = length;
+    this.set = set;
+  }
+  /**
+  @internal
+  */
+  get type() {
+    return NodeType.none;
+  }
+  /**
+  @internal
+  */
+  toString() {
+    let result = [];
+    for (let index = 0; index < this.buffer.length; ) {
+      result.push(this.childString(index));
+      index = this.buffer[index + 3];
+    }
+    return result.join(",");
+  }
+  /**
+  @internal
+  */
+  childString(index) {
+    let id = this.buffer[index], endIndex = this.buffer[index + 3];
+    let type = this.set.types[id], result = type.name;
+    if (/\W/.test(result) && !type.isError)
+      result = JSON.stringify(result);
+    index += 4;
+    if (endIndex == index)
+      return result;
+    let children = [];
+    while (index < endIndex) {
+      children.push(this.childString(index));
+      index = this.buffer[index + 3];
+    }
+    return result + "(" + children.join(",") + ")";
+  }
+  /**
+  @internal
+  */
+  findChild(startIndex, endIndex, dir, pos, side) {
+    let { buffer } = this, pick = -1;
+    for (let i3 = startIndex; i3 != endIndex; i3 = buffer[i3 + 3]) {
+      if (checkSide(side, pos, buffer[i3 + 1], buffer[i3 + 2])) {
+        pick = i3;
+        if (dir > 0)
+          break;
+      }
+    }
+    return pick;
+  }
+  /**
+  @internal
+  */
+  slice(startI, endI, from) {
+    let b2 = this.buffer;
+    let copy = new Uint16Array(endI - startI), len = 0;
+    for (let i3 = startI, j3 = 0; i3 < endI; ) {
+      copy[j3++] = b2[i3++];
+      copy[j3++] = b2[i3++] - from;
+      let to = copy[j3++] = b2[i3++] - from;
+      copy[j3++] = b2[i3++] - startI;
+      len = Math.max(len, to);
+    }
+    return new _TreeBuffer(copy, len, this.set);
+  }
+};
+function checkSide(side, pos, from, to) {
+  switch (side) {
+    case -2:
+      return from < pos;
+    case -1:
+      return to >= pos && from < pos;
+    case 0:
+      return from < pos && to > pos;
+    case 1:
+      return from <= pos && to > pos;
+    case 2:
+      return to > pos;
+    case 4:
+      return true;
+  }
+}
+function resolveNode(node, pos, side, overlays) {
+  var _a2;
+  while (node.from == node.to || (side < 1 ? node.from >= pos : node.from > pos) || (side > -1 ? node.to <= pos : node.to < pos)) {
+    let parent = !overlays && node instanceof TreeNode && node.index < 0 ? null : node.parent;
+    if (!parent)
+      return node;
+    node = parent;
+  }
+  let mode = overlays ? 0 : IterMode.IgnoreOverlays;
+  if (overlays)
+    for (let scan = node, parent = scan.parent; parent; scan = parent, parent = scan.parent) {
+      if (scan instanceof TreeNode && scan.index < 0 && ((_a2 = parent.enter(pos, side, mode)) === null || _a2 === void 0 ? void 0 : _a2.from) != scan.from)
+        node = parent;
+    }
+  for (; ; ) {
+    let inner = node.enter(pos, side, mode);
+    if (!inner)
+      return node;
+    node = inner;
+  }
+}
+var BaseNode = class {
+  cursor(mode = 0) {
+    return new TreeCursor(this, mode);
+  }
+  getChild(type, before = null, after = null) {
+    let r3 = getChildren(this, type, before, after);
+    return r3.length ? r3[0] : null;
+  }
+  getChildren(type, before = null, after = null) {
+    return getChildren(this, type, before, after);
+  }
+  resolve(pos, side = 0) {
+    return resolveNode(this, pos, side, false);
+  }
+  resolveInner(pos, side = 0) {
+    return resolveNode(this, pos, side, true);
+  }
+  matchContext(context) {
+    return matchNodeContext(this.parent, context);
+  }
+  enterUnfinishedNodesBefore(pos) {
+    let scan = this.childBefore(pos), node = this;
+    while (scan) {
+      let last = scan.lastChild;
+      if (!last || last.to != scan.to)
+        break;
+      if (last.type.isError && last.from == last.to) {
+        node = scan;
+        scan = last.prevSibling;
+      } else {
+        scan = last;
+      }
+    }
+    return node;
+  }
+  get node() {
+    return this;
+  }
+  get next() {
+    return this.parent;
+  }
+};
+var TreeNode = class _TreeNode extends BaseNode {
+  constructor(_tree, from, index, _parent) {
+    super();
+    this._tree = _tree;
+    this.from = from;
+    this.index = index;
+    this._parent = _parent;
+  }
+  get type() {
+    return this._tree.type;
+  }
+  get name() {
+    return this._tree.type.name;
+  }
+  get to() {
+    return this.from + this._tree.length;
+  }
+  nextChild(i3, dir, pos, side, mode = 0) {
+    for (let parent = this; ; ) {
+      for (let { children, positions } = parent._tree, e3 = dir > 0 ? children.length : -1; i3 != e3; i3 += dir) {
+        let next = children[i3], start = positions[i3] + parent.from, mounted;
+        if (!(mode & IterMode.EnterBracketed && next instanceof Tree && (mounted = MountedTree.get(next)) && !mounted.overlay && mounted.bracketed && pos >= start && pos <= start + next.length) && !checkSide(side, pos, start, start + next.length))
+          continue;
+        if (next instanceof TreeBuffer) {
+          if (mode & IterMode.ExcludeBuffers)
+            continue;
+          let index = next.findChild(0, next.buffer.length, dir, pos - start, side);
+          if (index > -1)
+            return new BufferNode(new BufferContext(parent, next, i3, start), null, index);
+        } else if (mode & IterMode.IncludeAnonymous || (!next.type.isAnonymous || hasChild(next))) {
+          let mounted2;
+          if (!(mode & IterMode.IgnoreMounts) && (mounted2 = MountedTree.get(next)) && !mounted2.overlay)
+            return new _TreeNode(mounted2.tree, start, i3, parent);
+          let inner = new _TreeNode(next, start, i3, parent);
+          return mode & IterMode.IncludeAnonymous || !inner.type.isAnonymous ? inner : inner.nextChild(dir < 0 ? next.children.length - 1 : 0, dir, pos, side, mode);
+        }
+      }
+      if (mode & IterMode.IncludeAnonymous || !parent.type.isAnonymous)
+        return null;
+      if (parent.index >= 0)
+        i3 = parent.index + dir;
+      else
+        i3 = dir < 0 ? -1 : parent._parent._tree.children.length;
+      parent = parent._parent;
+      if (!parent)
+        return null;
+    }
+  }
+  get firstChild() {
+    return this.nextChild(
+      0,
+      1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  get lastChild() {
+    return this.nextChild(
+      this._tree.children.length - 1,
+      -1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  childAfter(pos) {
+    return this.nextChild(
+      0,
+      1,
+      pos,
+      2
+      /* Side.After */
+    );
+  }
+  childBefore(pos) {
+    return this.nextChild(
+      this._tree.children.length - 1,
+      -1,
+      pos,
+      -2
+      /* Side.Before */
+    );
+  }
+  prop(prop) {
+    return this._tree.prop(prop);
+  }
+  enter(pos, side, mode = 0) {
+    let mounted;
+    if (!(mode & IterMode.IgnoreOverlays) && (mounted = MountedTree.get(this._tree)) && mounted.overlay) {
+      let rPos = pos - this.from, enterBracketed = mode & IterMode.EnterBracketed && mounted.bracketed;
+      for (let { from, to } of mounted.overlay) {
+        if ((side > 0 || enterBracketed ? from <= rPos : from < rPos) && (side < 0 || enterBracketed ? to >= rPos : to > rPos))
+          return new _TreeNode(mounted.tree, mounted.overlay[0].from + this.from, -1, this);
+      }
+    }
+    return this.nextChild(0, 1, pos, side, mode);
+  }
+  nextSignificantParent() {
+    let val = this;
+    while (val.type.isAnonymous && val._parent)
+      val = val._parent;
+    return val;
+  }
+  get parent() {
+    return this._parent ? this._parent.nextSignificantParent() : null;
+  }
+  get nextSibling() {
+    return this._parent && this.index >= 0 ? this._parent.nextChild(
+      this.index + 1,
+      1,
+      0,
+      4
+      /* Side.DontCare */
+    ) : null;
+  }
+  get prevSibling() {
+    return this._parent && this.index >= 0 ? this._parent.nextChild(
+      this.index - 1,
+      -1,
+      0,
+      4
+      /* Side.DontCare */
+    ) : null;
+  }
+  get tree() {
+    return this._tree;
+  }
+  toTree() {
+    return this._tree;
+  }
+  /**
+  @internal
+  */
+  toString() {
+    return this._tree.toString();
+  }
+};
+function getChildren(node, type, before, after) {
+  let cur = node.cursor(), result = [];
+  if (!cur.firstChild())
+    return result;
+  if (before != null)
+    for (let found = false; !found; ) {
+      found = cur.type.is(before);
+      if (!cur.nextSibling())
+        return result;
+    }
+  for (; ; ) {
+    if (after != null && cur.type.is(after))
+      return result;
+    if (cur.type.is(type))
+      result.push(cur.node);
+    if (!cur.nextSibling())
+      return after == null ? result : [];
+  }
+}
+function matchNodeContext(node, context, i3 = context.length - 1) {
+  for (let p3 = node; i3 >= 0; p3 = p3.parent) {
+    if (!p3)
+      return false;
+    if (!p3.type.isAnonymous) {
+      if (context[i3] && context[i3] != p3.name)
+        return false;
+      i3--;
+    }
+  }
+  return true;
+}
+var BufferContext = class {
+  constructor(parent, buffer, index, start) {
+    this.parent = parent;
+    this.buffer = buffer;
+    this.index = index;
+    this.start = start;
+  }
+};
+var BufferNode = class _BufferNode extends BaseNode {
+  get name() {
+    return this.type.name;
+  }
+  get from() {
+    return this.context.start + this.context.buffer.buffer[this.index + 1];
+  }
+  get to() {
+    return this.context.start + this.context.buffer.buffer[this.index + 2];
+  }
+  constructor(context, _parent, index) {
+    super();
+    this.context = context;
+    this._parent = _parent;
+    this.index = index;
+    this.type = context.buffer.set.types[context.buffer.buffer[index]];
+  }
+  child(dir, pos, side) {
+    let { buffer } = this.context;
+    let index = buffer.findChild(this.index + 4, buffer.buffer[this.index + 3], dir, pos - this.context.start, side);
+    return index < 0 ? null : new _BufferNode(this.context, this, index);
+  }
+  get firstChild() {
+    return this.child(
+      1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  get lastChild() {
+    return this.child(
+      -1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  childAfter(pos) {
+    return this.child(
+      1,
+      pos,
+      2
+      /* Side.After */
+    );
+  }
+  childBefore(pos) {
+    return this.child(
+      -1,
+      pos,
+      -2
+      /* Side.Before */
+    );
+  }
+  prop(prop) {
+    return this.type.prop(prop);
+  }
+  enter(pos, side, mode = 0) {
+    if (mode & IterMode.ExcludeBuffers)
+      return null;
+    let { buffer } = this.context;
+    let index = buffer.findChild(this.index + 4, buffer.buffer[this.index + 3], side > 0 ? 1 : -1, pos - this.context.start, side);
+    return index < 0 ? null : new _BufferNode(this.context, this, index);
+  }
+  get parent() {
+    return this._parent || this.context.parent.nextSignificantParent();
+  }
+  externalSibling(dir) {
+    return this._parent ? null : this.context.parent.nextChild(
+      this.context.index + dir,
+      dir,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  get nextSibling() {
+    let { buffer } = this.context;
+    let after = buffer.buffer[this.index + 3];
+    if (after < (this._parent ? buffer.buffer[this._parent.index + 3] : buffer.buffer.length))
+      return new _BufferNode(this.context, this._parent, after);
+    return this.externalSibling(1);
+  }
+  get prevSibling() {
+    let { buffer } = this.context;
+    let parentStart = this._parent ? this._parent.index + 4 : 0;
+    if (this.index == parentStart)
+      return this.externalSibling(-1);
+    return new _BufferNode(this.context, this._parent, buffer.findChild(
+      parentStart,
+      this.index,
+      -1,
+      0,
+      4
+      /* Side.DontCare */
+    ));
+  }
+  get tree() {
+    return null;
+  }
+  toTree() {
+    let children = [], positions = [];
+    let { buffer } = this.context;
+    let startI = this.index + 4, endI = buffer.buffer[this.index + 3];
+    if (endI > startI) {
+      let from = buffer.buffer[this.index + 1];
+      children.push(buffer.slice(startI, endI, from));
+      positions.push(0);
+    }
+    return new Tree(this.type, children, positions, this.to - this.from);
+  }
+  /**
+  @internal
+  */
+  toString() {
+    return this.context.buffer.childString(this.index);
+  }
+};
+function iterStack(heads) {
+  if (!heads.length)
+    return null;
+  let pick = 0, picked = heads[0];
+  for (let i3 = 1; i3 < heads.length; i3++) {
+    let node = heads[i3];
+    if (node.from > picked.from || node.to < picked.to) {
+      picked = node;
+      pick = i3;
+    }
+  }
+  let next = picked instanceof TreeNode && picked.index < 0 ? null : picked.parent;
+  let newHeads = heads.slice();
+  if (next)
+    newHeads[pick] = next;
+  else
+    newHeads.splice(pick, 1);
+  return new StackIterator(newHeads, picked);
+}
+var StackIterator = class {
+  constructor(heads, node) {
+    this.heads = heads;
+    this.node = node;
+  }
+  get next() {
+    return iterStack(this.heads);
+  }
+};
+function stackIterator(tree, pos, side) {
+  let inner = tree.resolveInner(pos, side), layers = null;
+  for (let scan = inner instanceof TreeNode ? inner : inner.context.parent; scan; scan = scan.parent) {
+    if (scan.index < 0) {
+      let parent = scan.parent;
+      (layers || (layers = [inner])).push(parent.resolve(pos, side));
+      scan = parent;
+    } else {
+      let mount = MountedTree.get(scan.tree);
+      if (mount && mount.overlay && mount.overlay[0].from <= pos && mount.overlay[mount.overlay.length - 1].to >= pos) {
+        let root = new TreeNode(mount.tree, mount.overlay[0].from + scan.from, -1, scan);
+        (layers || (layers = [inner])).push(resolveNode(root, pos, side, false));
+      }
+    }
+  }
+  return layers ? iterStack(layers) : inner;
+}
+var TreeCursor = class {
+  /**
+  Shorthand for `.type.name`.
+  */
+  get name() {
+    return this.type.name;
+  }
+  /**
+  @internal
+  */
+  constructor(node, mode = 0) {
+    this.buffer = null;
+    this.stack = [];
+    this.index = 0;
+    this.bufferNode = null;
+    this.mode = mode & ~IterMode.EnterBracketed;
+    if (node instanceof TreeNode) {
+      this.yieldNode(node);
+    } else {
+      this._tree = node.context.parent;
+      this.buffer = node.context;
+      for (let n2 = node._parent; n2; n2 = n2._parent)
+        this.stack.unshift(n2.index);
+      this.bufferNode = node;
+      this.yieldBuf(node.index);
+    }
+  }
+  yieldNode(node) {
+    if (!node)
+      return false;
+    this._tree = node;
+    this.type = node.type;
+    this.from = node.from;
+    this.to = node.to;
+    return true;
+  }
+  yieldBuf(index, type) {
+    this.index = index;
+    let { start, buffer } = this.buffer;
+    this.type = type || buffer.set.types[buffer.buffer[index]];
+    this.from = start + buffer.buffer[index + 1];
+    this.to = start + buffer.buffer[index + 2];
+    return true;
+  }
+  /**
+  @internal
+  */
+  yield(node) {
+    if (!node)
+      return false;
+    if (node instanceof TreeNode) {
+      this.buffer = null;
+      return this.yieldNode(node);
+    }
+    this.buffer = node.context;
+    return this.yieldBuf(node.index, node.type);
+  }
+  /**
+  @internal
+  */
+  toString() {
+    return this.buffer ? this.buffer.buffer.childString(this.index) : this._tree.toString();
+  }
+  /**
+  @internal
+  */
+  enterChild(dir, pos, side) {
+    if (!this.buffer)
+      return this.yield(this._tree.nextChild(dir < 0 ? this._tree._tree.children.length - 1 : 0, dir, pos, side, this.mode));
+    let { buffer } = this.buffer;
+    let index = buffer.findChild(this.index + 4, buffer.buffer[this.index + 3], dir, pos - this.buffer.start, side);
+    if (index < 0)
+      return false;
+    this.stack.push(this.index);
+    return this.yieldBuf(index);
+  }
+  /**
+  Move the cursor to this node's first child. When this returns
+  false, the node has no child, and the cursor has not been moved.
+  */
+  firstChild() {
+    return this.enterChild(
+      1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  /**
+  Move the cursor to this node's last child.
+  */
+  lastChild() {
+    return this.enterChild(
+      -1,
+      0,
+      4
+      /* Side.DontCare */
+    );
+  }
+  /**
+  Move the cursor to the first child that ends after `pos`.
+  */
+  childAfter(pos) {
+    return this.enterChild(
+      1,
+      pos,
+      2
+      /* Side.After */
+    );
+  }
+  /**
+  Move to the last child that starts before `pos`.
+  */
+  childBefore(pos) {
+    return this.enterChild(
+      -1,
+      pos,
+      -2
+      /* Side.Before */
+    );
+  }
+  /**
+  Move the cursor to the child around `pos`. If side is -1 the
+  child may end at that position, when 1 it may start there. This
+  will also enter [overlaid](#common.MountedTree.overlay)
+  [mounted](#common.NodeProp^mounted) trees unless `overlays` is
+  set to false.
+  */
+  enter(pos, side, mode = this.mode) {
+    if (!this.buffer)
+      return this.yield(this._tree.enter(pos, side, mode));
+    return mode & IterMode.ExcludeBuffers ? false : this.enterChild(1, pos, side);
+  }
+  /**
+  Move to the node's parent node, if this isn't the top node.
+  */
+  parent() {
+    if (!this.buffer)
+      return this.yieldNode(this.mode & IterMode.IncludeAnonymous ? this._tree._parent : this._tree.parent);
+    if (this.stack.length)
+      return this.yieldBuf(this.stack.pop());
+    let parent = this.mode & IterMode.IncludeAnonymous ? this.buffer.parent : this.buffer.parent.nextSignificantParent();
+    this.buffer = null;
+    return this.yieldNode(parent);
+  }
+  /**
+  @internal
+  */
+  sibling(dir) {
+    if (!this.buffer)
+      return !this._tree._parent ? false : this.yield(this._tree.index < 0 ? null : this._tree._parent.nextChild(this._tree.index + dir, dir, 0, 4, this.mode));
+    let { buffer } = this.buffer, d3 = this.stack.length - 1;
+    if (dir < 0) {
+      let parentStart = d3 < 0 ? 0 : this.stack[d3] + 4;
+      if (this.index != parentStart)
+        return this.yieldBuf(buffer.findChild(
+          parentStart,
+          this.index,
+          -1,
+          0,
+          4
+          /* Side.DontCare */
+        ));
+    } else {
+      let after = buffer.buffer[this.index + 3];
+      if (after < (d3 < 0 ? buffer.buffer.length : buffer.buffer[this.stack[d3] + 3]))
+        return this.yieldBuf(after);
+    }
+    return d3 < 0 ? this.yield(this.buffer.parent.nextChild(this.buffer.index + dir, dir, 0, 4, this.mode)) : false;
+  }
+  /**
+  Move to this node's next sibling, if any.
+  */
+  nextSibling() {
+    return this.sibling(1);
+  }
+  /**
+  Move to this node's previous sibling, if any.
+  */
+  prevSibling() {
+    return this.sibling(-1);
+  }
+  atLastNode(dir) {
+    let index, parent, { buffer } = this;
+    if (buffer) {
+      if (dir > 0) {
+        if (this.index < buffer.buffer.buffer.length)
+          return false;
+      } else {
+        for (let i3 = 0; i3 < this.index; i3++)
+          if (buffer.buffer.buffer[i3 + 3] < this.index)
+            return false;
+      }
+      ({ index, parent } = buffer);
+    } else {
+      ({ index, _parent: parent } = this._tree);
+    }
+    for (; parent; { index, _parent: parent } = parent) {
+      if (index > -1)
+        for (let i3 = index + dir, e3 = dir < 0 ? -1 : parent._tree.children.length; i3 != e3; i3 += dir) {
+          let child = parent._tree.children[i3];
+          if (this.mode & IterMode.IncludeAnonymous || child instanceof TreeBuffer || !child.type.isAnonymous || hasChild(child))
+            return false;
+        }
+    }
+    return true;
+  }
+  move(dir, enter) {
+    if (enter && this.enterChild(
+      dir,
+      0,
+      4
+      /* Side.DontCare */
+    ))
+      return true;
+    for (; ; ) {
+      if (this.sibling(dir))
+        return true;
+      if (this.atLastNode(dir) || !this.parent())
+        return false;
+    }
+  }
+  /**
+  Move to the next node in a
+  [pre-order](https://en.wikipedia.org/wiki/Tree_traversal#Pre-order,_NLR)
+  traversal, going from a node to its first child or, if the
+  current node is empty or `enter` is false, its next sibling or
+  the next sibling of the first parent node that has one.
+  */
+  next(enter = true) {
+    return this.move(1, enter);
+  }
+  /**
+  Move to the next node in a last-to-first pre-order traversal. A
+  node is followed by its last child or, if it has none, its
+  previous sibling or the previous sibling of the first parent
+  node that has one.
+  */
+  prev(enter = true) {
+    return this.move(-1, enter);
+  }
+  /**
+  Move the cursor to the innermost node that covers `pos`. If
+  `side` is -1, it will enter nodes that end at `pos`. If it is 1,
+  it will enter nodes that start at `pos`.
+  */
+  moveTo(pos, side = 0) {
+    while (this.from == this.to || (side < 1 ? this.from >= pos : this.from > pos) || (side > -1 ? this.to <= pos : this.to < pos))
+      if (!this.parent())
+        break;
+    while (this.enterChild(1, pos, side)) {
+    }
+    return this;
+  }
+  /**
+  Get a [syntax node](#common.SyntaxNode) at the cursor's current
+  position.
+  */
+  get node() {
+    if (!this.buffer)
+      return this._tree;
+    let cache = this.bufferNode, result = null, depth = 0;
+    if (cache && cache.context == this.buffer) {
+      scan: for (let index = this.index, d3 = this.stack.length; d3 >= 0; ) {
+        for (let c3 = cache; c3; c3 = c3._parent)
+          if (c3.index == index) {
+            if (index == this.index)
+              return c3;
+            result = c3;
+            depth = d3 + 1;
+            break scan;
+          }
+        index = this.stack[--d3];
+      }
+    }
+    for (let i3 = depth; i3 < this.stack.length; i3++)
+      result = new BufferNode(this.buffer, result, this.stack[i3]);
+    return this.bufferNode = new BufferNode(this.buffer, result, this.index);
+  }
+  /**
+  Get the [tree](#common.Tree) that represents the current node, if
+  any. Will return null when the node is in a [tree
+  buffer](#common.TreeBuffer).
+  */
+  get tree() {
+    return this.buffer ? null : this._tree._tree;
+  }
+  /**
+  Iterate over the current node and all its descendants, calling
+  `enter` when entering a node and `leave`, if given, when leaving
+  one. When `enter` returns `false`, any children of that node are
+  skipped, and `leave` isn't called for it.
+  */
+  iterate(enter, leave) {
+    for (let depth = 0; ; ) {
+      let mustLeave = false;
+      if (this.type.isAnonymous || enter(this) !== false) {
+        if (this.firstChild()) {
+          depth++;
+          continue;
+        }
+        if (!this.type.isAnonymous)
+          mustLeave = true;
+      }
+      for (; ; ) {
+        if (mustLeave && leave)
+          leave(this);
+        mustLeave = this.type.isAnonymous;
+        if (!depth)
+          return;
+        if (this.nextSibling())
+          break;
+        this.parent();
+        depth--;
+        mustLeave = true;
+      }
+    }
+  }
+  /**
+  Test whether the current node matches a given context—a sequence
+  of direct parent node names. Empty strings in the context array
+  are treated as wildcards.
+  */
+  matchContext(context) {
+    if (!this.buffer)
+      return matchNodeContext(this.node.parent, context);
+    let { buffer } = this.buffer, { types } = buffer.set;
+    for (let i3 = context.length - 1, d3 = this.stack.length - 1; i3 >= 0; d3--) {
+      if (d3 < 0)
+        return matchNodeContext(this._tree, context, i3);
+      let type = types[buffer.buffer[this.stack[d3]]];
+      if (!type.isAnonymous) {
+        if (context[i3] && context[i3] != type.name)
+          return false;
+        i3--;
+      }
+    }
+    return true;
+  }
+};
+function hasChild(tree) {
+  return tree.children.some((ch) => ch instanceof TreeBuffer || !ch.type.isAnonymous || hasChild(ch));
+}
+function buildTree(data) {
+  var _a2;
+  let { buffer, nodeSet, maxBufferLength = DefaultBufferLength, reused = [], minRepeatType = nodeSet.types.length } = data;
+  let cursor = Array.isArray(buffer) ? new FlatBufferCursor(buffer, buffer.length) : buffer;
+  let types = nodeSet.types;
+  let contextHash = 0, lookAhead = 0;
+  function takeNode(parentStart, minPos, children2, positions2, inRepeat, depth) {
+    let { id, start, end, size } = cursor;
+    let lookAheadAtStart = lookAhead, contextAtStart = contextHash;
+    if (size < 0) {
+      cursor.next();
+      if (size == -1) {
+        let node2 = reused[id];
+        children2.push(node2);
+        positions2.push(start - parentStart);
+        return;
+      } else if (size == -3) {
+        contextHash = id;
+        return;
+      } else if (size == -4) {
+        lookAhead = id;
+        return;
+      } else {
+        throw new RangeError(`Unrecognized record size: ${size}`);
+      }
+    }
+    let type = types[id], node, buffer2;
+    let startPos = start - parentStart;
+    if (end - start <= maxBufferLength && (buffer2 = findBufferSize(cursor.pos - minPos, inRepeat))) {
+      let data2 = new Uint16Array(buffer2.size - buffer2.skip);
+      let endPos = cursor.pos - buffer2.size, index = data2.length;
+      while (cursor.pos > endPos)
+        index = copyToBuffer(buffer2.start, data2, index);
+      node = new TreeBuffer(data2, end - buffer2.start, nodeSet);
+      startPos = buffer2.start - parentStart;
+    } else {
+      let endPos = cursor.pos - size;
+      cursor.next();
+      let localChildren = [], localPositions = [];
+      let localInRepeat = id >= minRepeatType ? id : -1;
+      let lastGroup = 0, lastEnd = end, groupLookAhead = lookAheadAtStart;
+      while (cursor.pos > endPos) {
+        if (localInRepeat >= 0 && cursor.id == localInRepeat && cursor.size >= 0) {
+          if (cursor.end <= lastEnd - maxBufferLength) {
+            makeRepeatLeaf(localChildren, localPositions, start, lastGroup, cursor.end, lastEnd, localInRepeat, groupLookAhead, contextAtStart);
+            lastGroup = localChildren.length;
+            lastEnd = cursor.end;
+            groupLookAhead = lookAhead;
+          }
+          cursor.next();
+        } else if (depth > 2500) {
+          takeFlatNode(start, endPos, localChildren, localPositions);
+        } else {
+          if (localInRepeat >= 0 && cursor.size == -1 && reused[cursor.id].type == nodeSet.types[localInRepeat]) {
+            if (lastGroup < localChildren.length)
+              makeRepeatLeaf(localChildren, localPositions, start, lastGroup, cursor.end, lastEnd, localInRepeat, groupLookAhead, contextAtStart);
+            lastGroup = localChildren.length + 1;
+            lastEnd = cursor.start;
+            groupLookAhead = lookAhead;
+          }
+          takeNode(start, endPos, localChildren, localPositions, localInRepeat, depth + 1);
+        }
+      }
+      if (localInRepeat >= 0 && lastGroup > 0 && lastGroup < localChildren.length)
+        makeRepeatLeaf(localChildren, localPositions, start, lastGroup, start, lastEnd, localInRepeat, groupLookAhead, contextAtStart);
+      localChildren.reverse();
+      localPositions.reverse();
+      if (localInRepeat > -1 && lastGroup > 0) {
+        let make = makeBalanced(type, contextAtStart);
+        node = balanceRange(type, localChildren, localPositions, 0, localChildren.length, 0, end - start, make, make);
+      } else {
+        node = makeTree(type, localChildren, localPositions, end - start, lookAheadAtStart - end, contextAtStart);
+      }
+    }
+    children2.push(node);
+    positions2.push(startPos);
+  }
+  function takeFlatNode(parentStart, minPos, children2, positions2) {
+    let nodes = [];
+    let nodeCount = 0, stopAt = -1;
+    while (cursor.pos > minPos) {
+      let { id, start, end, size } = cursor;
+      if (size > 4) {
+        cursor.next();
+      } else if (stopAt > -1 && start < stopAt) {
+        break;
+      } else {
+        if (stopAt < 0)
+          stopAt = end - maxBufferLength;
+        nodes.push(id, start, end);
+        nodeCount++;
+        cursor.next();
+      }
+    }
+    if (nodeCount) {
+      let buffer2 = new Uint16Array(nodeCount * 4);
+      let start = nodes[nodes.length - 2];
+      for (let i3 = nodes.length - 3, j3 = 0; i3 >= 0; i3 -= 3) {
+        buffer2[j3++] = nodes[i3];
+        buffer2[j3++] = nodes[i3 + 1] - start;
+        buffer2[j3++] = nodes[i3 + 2] - start;
+        buffer2[j3++] = j3;
+      }
+      children2.push(new TreeBuffer(buffer2, nodes[2] - start, nodeSet));
+      positions2.push(start - parentStart);
+    }
+  }
+  function makeBalanced(type, contextHash2) {
+    return (children2, positions2, length2) => {
+      let lookAhead2 = 0, lastI = children2.length - 1, last, lookAheadProp;
+      if (lastI >= 0 && (last = children2[lastI]) instanceof Tree) {
+        if (!lastI && last.type == type && last.length == length2)
+          return last;
+        if (lookAheadProp = last.prop(NodeProp.lookAhead))
+          lookAhead2 = positions2[lastI] + last.length + lookAheadProp - length2;
+      }
+      return makeTree(type, children2, positions2, length2, lookAhead2, contextHash2);
+    };
+  }
+  function makeRepeatLeaf(children2, positions2, base, i3, from, to, type, lookAhead2, contextHash2) {
+    let localChildren = [], localPositions = [];
+    while (children2.length > i3) {
+      localChildren.push(children2.pop());
+      localPositions.push(positions2.pop() + base - from);
+    }
+    children2.push(makeTree(nodeSet.types[type], localChildren, localPositions, to - from, lookAhead2 - to, contextHash2));
+    positions2.push(from - base);
+  }
+  function makeTree(type, children2, positions2, length2, lookAhead2, contextHash2, props) {
+    if (contextHash2) {
+      let pair = [NodeProp.contextHash, contextHash2];
+      props = props ? [pair].concat(props) : [pair];
+    }
+    if (lookAhead2 > 25) {
+      let pair = [NodeProp.lookAhead, lookAhead2];
+      props = props ? [pair].concat(props) : [pair];
+    }
+    return new Tree(type, children2, positions2, length2, props);
+  }
+  function findBufferSize(maxSize, inRepeat) {
+    let fork = cursor.fork();
+    let size = 0, start = 0, skip = 0, minStart = fork.end - maxBufferLength;
+    let result = { size: 0, start: 0, skip: 0 };
+    scan: for (let minPos = fork.pos - maxSize; fork.pos > minPos; ) {
+      let nodeSize2 = fork.size;
+      if (fork.id == inRepeat && nodeSize2 >= 0) {
+        result.size = size;
+        result.start = start;
+        result.skip = skip;
+        skip += 4;
+        size += 4;
+        fork.next();
+        continue;
+      }
+      let startPos = fork.pos - nodeSize2;
+      if (nodeSize2 < 0 || startPos < minPos || fork.start < minStart)
+        break;
+      let localSkipped = fork.id >= minRepeatType ? 4 : 0;
+      let nodeStart = fork.start;
+      fork.next();
+      while (fork.pos > startPos) {
+        if (fork.size < 0) {
+          if (fork.size == -3 || fork.size == -4)
+            localSkipped += 4;
+          else
+            break scan;
+        } else if (fork.id >= minRepeatType) {
+          localSkipped += 4;
+        }
+        fork.next();
+      }
+      start = nodeStart;
+      size += nodeSize2;
+      skip += localSkipped;
+    }
+    if (inRepeat < 0 || size == maxSize) {
+      result.size = size;
+      result.start = start;
+      result.skip = skip;
+    }
+    return result.size > 4 ? result : void 0;
+  }
+  function copyToBuffer(bufferStart, buffer2, index) {
+    let { id, start, end, size } = cursor;
+    cursor.next();
+    if (size >= 0 && id < minRepeatType) {
+      let startIndex = index;
+      if (size > 4) {
+        let endPos = cursor.pos - (size - 4);
+        while (cursor.pos > endPos)
+          index = copyToBuffer(bufferStart, buffer2, index);
+      }
+      buffer2[--index] = startIndex;
+      buffer2[--index] = end - bufferStart;
+      buffer2[--index] = start - bufferStart;
+      buffer2[--index] = id;
+    } else if (size == -3) {
+      contextHash = id;
+    } else if (size == -4) {
+      lookAhead = id;
+    }
+    return index;
+  }
+  let children = [], positions = [];
+  while (cursor.pos > 0)
+    takeNode(data.start || 0, data.bufferStart || 0, children, positions, -1, 0);
+  let length = (_a2 = data.length) !== null && _a2 !== void 0 ? _a2 : children.length ? positions[0] + children[0].length : 0;
+  return new Tree(types[data.topID], children.reverse(), positions.reverse(), length);
+}
+var nodeSizeCache = /* @__PURE__ */ new WeakMap();
+function nodeSize(balanceType, node) {
+  if (!balanceType.isAnonymous || node instanceof TreeBuffer || node.type != balanceType)
+    return 1;
+  let size = nodeSizeCache.get(node);
+  if (size == null) {
+    size = 1;
+    for (let child of node.children) {
+      if (child.type != balanceType || !(child instanceof Tree)) {
+        size = 1;
+        break;
+      }
+      size += nodeSize(balanceType, child);
+    }
+    nodeSizeCache.set(node, size);
+  }
+  return size;
+}
+function balanceRange(balanceType, children, positions, from, to, start, length, mkTop, mkTree) {
+  let total = 0;
+  for (let i3 = from; i3 < to; i3++)
+    total += nodeSize(balanceType, children[i3]);
+  let maxChild = Math.ceil(
+    total * 1.5 / 8
+    /* Balance.BranchFactor */
+  );
+  let localChildren = [], localPositions = [];
+  function divide(children2, positions2, from2, to2, offset) {
+    for (let i3 = from2; i3 < to2; ) {
+      let groupFrom = i3, groupStart = positions2[i3], groupSize = nodeSize(balanceType, children2[i3]);
+      i3++;
+      for (; i3 < to2; i3++) {
+        let nextSize = nodeSize(balanceType, children2[i3]);
+        if (groupSize + nextSize >= maxChild)
+          break;
+        groupSize += nextSize;
+      }
+      if (i3 == groupFrom + 1) {
+        if (groupSize > maxChild) {
+          let only = children2[groupFrom];
+          divide(only.children, only.positions, 0, only.children.length, positions2[groupFrom] + offset);
+          continue;
+        }
+        localChildren.push(children2[groupFrom]);
+      } else {
+        let length2 = positions2[i3 - 1] + children2[i3 - 1].length - groupStart;
+        localChildren.push(balanceRange(balanceType, children2, positions2, groupFrom, i3, groupStart, length2, null, mkTree));
+      }
+      localPositions.push(groupStart + offset - start);
+    }
+  }
+  divide(children, positions, from, to, 0);
+  return (mkTop || mkTree)(localChildren, localPositions, length);
+}
+var TreeFragment = class _TreeFragment {
+  /**
+  Construct a tree fragment. You'll usually want to use
+  [`addTree`](#common.TreeFragment^addTree) and
+  [`applyChanges`](#common.TreeFragment^applyChanges) instead of
+  calling this directly.
+  */
+  constructor(from, to, tree, offset, openStart = false, openEnd = false) {
+    this.from = from;
+    this.to = to;
+    this.tree = tree;
+    this.offset = offset;
+    this.open = (openStart ? 1 : 0) | (openEnd ? 2 : 0);
+  }
+  /**
+  Whether the start of the fragment represents the start of a
+  parse, or the end of a change. (In the second case, it may not
+  be safe to reuse some nodes at the start, depending on the
+  parsing algorithm.)
+  */
+  get openStart() {
+    return (this.open & 1) > 0;
+  }
+  /**
+  Whether the end of the fragment represents the end of a
+  full-document parse, or the start of a change.
+  */
+  get openEnd() {
+    return (this.open & 2) > 0;
+  }
+  /**
+  Create a set of fragments from a freshly parsed tree, or update
+  an existing set of fragments by replacing the ones that overlap
+  with a tree with content from the new tree. When `partial` is
+  true, the parse is treated as incomplete, and the resulting
+  fragment has [`openEnd`](#common.TreeFragment.openEnd) set to
+  true.
+  */
+  static addTree(tree, fragments = [], partial = false) {
+    let result = [new _TreeFragment(0, tree.length, tree, 0, false, partial)];
+    for (let f4 of fragments)
+      if (f4.to > tree.length)
+        result.push(f4);
+    return result;
+  }
+  /**
+  Apply a set of edits to an array of fragments, removing or
+  splitting fragments as necessary to remove edited ranges, and
+  adjusting offsets for fragments that moved.
+  */
+  static applyChanges(fragments, changes, minGap = 128) {
+    if (!changes.length)
+      return fragments;
+    let result = [];
+    let fI = 1, nextF = fragments.length ? fragments[0] : null;
+    for (let cI = 0, pos = 0, off = 0; ; cI++) {
+      let nextC = cI < changes.length ? changes[cI] : null;
+      let nextPos = nextC ? nextC.fromA : 1e9;
+      if (nextPos - pos >= minGap)
+        while (nextF && nextF.from < nextPos) {
+          let cut = nextF;
+          if (pos >= cut.from || nextPos <= cut.to || off) {
+            let fFrom = Math.max(cut.from, pos) - off, fTo = Math.min(cut.to, nextPos) - off;
+            cut = fFrom >= fTo ? null : new _TreeFragment(fFrom, fTo, cut.tree, cut.offset + off, cI > 0, !!nextC);
+          }
+          if (cut)
+            result.push(cut);
+          if (nextF.to > nextPos)
+            break;
+          nextF = fI < fragments.length ? fragments[fI++] : null;
+        }
+      if (!nextC)
+        break;
+      pos = nextC.toA;
+      off = nextC.toA - nextC.toB;
+    }
+    return result;
+  }
+};
+var Parser = class {
+  /**
+  Start a parse, returning a [partial parse](#common.PartialParse)
+  object. [`fragments`](#common.TreeFragment) can be passed in to
+  make the parse incremental.
+  
+  By default, the entire input is parsed. You can pass `ranges`,
+  which should be a sorted array of non-empty, non-overlapping
+  ranges, to parse only those ranges. The tree returned in that
+  case will start at `ranges[0].from`.
+  */
+  startParse(input, fragments, ranges) {
+    if (typeof input == "string")
+      input = new StringInput(input);
+    ranges = !ranges ? [new Range(0, input.length)] : ranges.length ? ranges.map((r3) => new Range(r3.from, r3.to)) : [new Range(0, 0)];
+    return this.createParse(input, fragments || [], ranges);
+  }
+  /**
+  Run a full parse, returning the resulting tree.
+  */
+  parse(input, fragments, ranges) {
+    let parse = this.startParse(input, fragments, ranges);
+    for (; ; ) {
+      let done = parse.advance();
+      if (done)
+        return done;
+    }
+  }
+};
+var StringInput = class {
+  constructor(string2) {
+    this.string = string2;
+  }
+  get length() {
+    return this.string.length;
+  }
+  chunk(from) {
+    return this.string.slice(from);
+  }
+  get lineChunks() {
+    return false;
+  }
+  read(from, to) {
+    return this.string.slice(from, to);
+  }
+};
+var stoppedInner = new NodeProp({ perNode: true });
+
+// ../../node_modules/.pnpm/@codemirror+language@6.13.1/node_modules/@codemirror/language/dist/index.js
+var import_state = require("@codemirror/state");
+var import_view = require("@codemirror/view");
+
+// ../../node_modules/.pnpm/@lezer+highlight@1.2.5/node_modules/@lezer/highlight/dist/index.js
+var nextTagID = 0;
+var Tag = class _Tag {
+  /**
+  @internal
+  */
+  constructor(name2, set, base, modified) {
+    this.name = name2;
+    this.set = set;
+    this.base = base;
+    this.modified = modified;
+    this.id = nextTagID++;
+  }
+  toString() {
+    let { name: name2 } = this;
+    for (let mod of this.modified)
+      if (mod.name)
+        name2 = `${mod.name}(${name2})`;
+    return name2;
+  }
+  static define(nameOrParent, parent) {
+    let name2 = typeof nameOrParent == "string" ? nameOrParent : "?";
+    if (nameOrParent instanceof _Tag)
+      parent = nameOrParent;
+    if (parent === null || parent === void 0 ? void 0 : parent.base)
+      throw new Error("Can not derive from a modified tag");
+    let tag = new _Tag(name2, [], null, []);
+    tag.set.push(tag);
+    if (parent)
+      for (let t4 of parent.set)
+        tag.set.push(t4);
+    return tag;
+  }
+  /**
+  Define a tag _modifier_, which is a function that, given a tag,
+  will return a tag that is a subtag of the original. Applying the
+  same modifier to a twice tag will return the same value (`m1(t1)
+  == m1(t1)`) and applying multiple modifiers will, regardless or
+  order, produce the same tag (`m1(m2(t1)) == m2(m1(t1))`).
+  
+  When multiple modifiers are applied to a given base tag, each
+  smaller set of modifiers is registered as a parent, so that for
+  example `m1(m2(m3(t1)))` is a subtype of `m1(m2(t1))`,
+  `m1(m3(t1)`, and so on.
+  */
+  static defineModifier(name2) {
+    let mod = new Modifier(name2);
+    return (tag) => {
+      if (tag.modified.indexOf(mod) > -1)
+        return tag;
+      return Modifier.get(tag.base || tag, tag.modified.concat(mod).sort((a3, b2) => a3.id - b2.id));
+    };
+  }
+};
+var nextModifierID = 0;
+var Modifier = class _Modifier {
+  constructor(name2) {
+    this.name = name2;
+    this.instances = [];
+    this.id = nextModifierID++;
+  }
+  static get(base, mods) {
+    if (!mods.length)
+      return base;
+    let exists = mods[0].instances.find((t4) => t4.base == base && sameArray(mods, t4.modified));
+    if (exists)
+      return exists;
+    let set = [], tag = new Tag(base.name, set, base, mods);
+    for (let m3 of mods)
+      m3.instances.push(tag);
+    let configs = powerSet(mods);
+    for (let parent of base.set)
+      if (!parent.modified.length)
+        for (let config of configs)
+          set.push(_Modifier.get(parent, config));
+    return tag;
+  }
+};
+function sameArray(a3, b2) {
+  return a3.length == b2.length && a3.every((x2, i3) => x2 == b2[i3]);
+}
+function powerSet(array) {
+  let sets = [[]];
+  for (let i3 = 0; i3 < array.length; i3++) {
+    for (let j3 = 0, e3 = sets.length; j3 < e3; j3++) {
+      sets.push(sets[j3].concat(array[i3]));
+    }
+  }
+  return sets.sort((a3, b2) => b2.length - a3.length);
+}
+function styleTags(spec) {
+  let byName = /* @__PURE__ */ Object.create(null);
+  for (let prop in spec) {
+    let tags2 = spec[prop];
+    if (!Array.isArray(tags2))
+      tags2 = [tags2];
+    for (let part of prop.split(" "))
+      if (part) {
+        let pieces = [], mode = 2, rest = part;
+        for (let pos = 0; ; ) {
+          if (rest == "..." && pos > 0 && pos + 3 == part.length) {
+            mode = 1;
+            break;
+          }
+          let m3 = /^"(?:[^"\\]|\\.)*?"|[^\/!]+/.exec(rest);
+          if (!m3)
+            throw new RangeError("Invalid path: " + part);
+          pieces.push(m3[0] == "*" ? "" : m3[0][0] == '"' ? JSON.parse(m3[0]) : m3[0]);
+          pos += m3[0].length;
+          if (pos == part.length)
+            break;
+          let next = part[pos++];
+          if (pos == part.length && next == "!") {
+            mode = 0;
+            break;
+          }
+          if (next != "/")
+            throw new RangeError("Invalid path: " + part);
+          rest = part.slice(pos);
+        }
+        let last = pieces.length - 1, inner = pieces[last];
+        if (!inner)
+          throw new RangeError("Invalid path: " + part);
+        let rule = new Rule(tags2, mode, last > 0 ? pieces.slice(0, last) : null);
+        byName[inner] = rule.sort(byName[inner]);
+      }
+  }
+  return ruleNodeProp.add(byName);
+}
+var ruleNodeProp = new NodeProp({
+  combine(a3, b2) {
+    let cur, root, take;
+    while (a3 || b2) {
+      if (!a3 || b2 && a3.depth <= b2.depth) {
+        take = b2;
+        b2 = b2.next;
+      } else {
+        take = a3;
+        a3 = a3.next;
+      }
+      if (cur && cur.mode == take.mode && !take.context && !cur.context)
+        continue;
+      let copy = new Rule(take.tags, take.mode, take.context);
+      if (cur)
+        cur.next = copy;
+      else
+        root = copy;
+      cur = copy;
+    }
+    return root;
+  }
+});
+var Rule = class {
+  constructor(tags2, mode, context, next) {
+    this.tags = tags2;
+    this.mode = mode;
+    this.context = context;
+    this.next = next;
+  }
+  get opaque() {
+    return this.mode == 0;
+  }
+  get inherit() {
+    return this.mode == 1;
+  }
+  sort(other) {
+    if (!other || other.depth < this.depth) {
+      this.next = other;
+      return this;
+    }
+    other.next = this.sort(other.next);
+    return other;
+  }
+  get depth() {
+    return this.context ? this.context.length : 0;
+  }
+};
+Rule.empty = new Rule([], 2, null);
+function tagHighlighter(tags2, options) {
+  let map = /* @__PURE__ */ Object.create(null);
+  for (let style of tags2) {
+    if (!Array.isArray(style.tag))
+      map[style.tag.id] = style.class;
+    else
+      for (let tag of style.tag)
+        map[tag.id] = style.class;
+  }
+  let { scope, all = null } = options || {};
+  return {
+    style: (tags3) => {
+      let cls = all;
+      for (let tag of tags3) {
+        for (let sub of tag.set) {
+          let tagClass = map[sub.id];
+          if (tagClass) {
+            cls = cls ? cls + " " + tagClass : tagClass;
+            break;
+          }
+        }
+      }
+      return cls;
+    },
+    scope
+  };
+}
+var t3 = Tag.define;
+var comment = t3();
+var name = t3();
+var typeName = t3(name);
+var propertyName = t3(name);
+var literal = t3();
+var string = t3(literal);
+var number = t3(literal);
+var content = t3();
+var heading = t3(content);
+var keyword = t3();
+var operator = t3();
+var punctuation = t3();
+var bracket = t3(punctuation);
+var meta = t3();
+var tags = {
+  /**
+  A comment.
+  */
+  comment,
+  /**
+  A line [comment](#highlight.tags.comment).
+  */
+  lineComment: t3(comment),
+  /**
+  A block [comment](#highlight.tags.comment).
+  */
+  blockComment: t3(comment),
+  /**
+  A documentation [comment](#highlight.tags.comment).
+  */
+  docComment: t3(comment),
+  /**
+  Any kind of identifier.
+  */
+  name,
+  /**
+  The [name](#highlight.tags.name) of a variable.
+  */
+  variableName: t3(name),
+  /**
+  A type [name](#highlight.tags.name).
+  */
+  typeName,
+  /**
+  A tag name (subtag of [`typeName`](#highlight.tags.typeName)).
+  */
+  tagName: t3(typeName),
+  /**
+  A property or field [name](#highlight.tags.name).
+  */
+  propertyName,
+  /**
+  An attribute name (subtag of [`propertyName`](#highlight.tags.propertyName)).
+  */
+  attributeName: t3(propertyName),
+  /**
+  The [name](#highlight.tags.name) of a class.
+  */
+  className: t3(name),
+  /**
+  A label [name](#highlight.tags.name).
+  */
+  labelName: t3(name),
+  /**
+  A namespace [name](#highlight.tags.name).
+  */
+  namespace: t3(name),
+  /**
+  The [name](#highlight.tags.name) of a macro.
+  */
+  macroName: t3(name),
+  /**
+  A literal value.
+  */
+  literal,
+  /**
+  A string [literal](#highlight.tags.literal).
+  */
+  string,
+  /**
+  A documentation [string](#highlight.tags.string).
+  */
+  docString: t3(string),
+  /**
+  A character literal (subtag of [string](#highlight.tags.string)).
+  */
+  character: t3(string),
+  /**
+  An attribute value (subtag of [string](#highlight.tags.string)).
+  */
+  attributeValue: t3(string),
+  /**
+  A number [literal](#highlight.tags.literal).
+  */
+  number,
+  /**
+  An integer [number](#highlight.tags.number) literal.
+  */
+  integer: t3(number),
+  /**
+  A floating-point [number](#highlight.tags.number) literal.
+  */
+  float: t3(number),
+  /**
+  A boolean [literal](#highlight.tags.literal).
+  */
+  bool: t3(literal),
+  /**
+  Regular expression [literal](#highlight.tags.literal).
+  */
+  regexp: t3(literal),
+  /**
+  An escape [literal](#highlight.tags.literal), for example a
+  backslash escape in a string.
+  */
+  escape: t3(literal),
+  /**
+  A color [literal](#highlight.tags.literal).
+  */
+  color: t3(literal),
+  /**
+  A URL [literal](#highlight.tags.literal).
+  */
+  url: t3(literal),
+  /**
+  A language keyword.
+  */
+  keyword,
+  /**
+  The [keyword](#highlight.tags.keyword) for the self or this
+  object.
+  */
+  self: t3(keyword),
+  /**
+  The [keyword](#highlight.tags.keyword) for null.
+  */
+  null: t3(keyword),
+  /**
+  A [keyword](#highlight.tags.keyword) denoting some atomic value.
+  */
+  atom: t3(keyword),
+  /**
+  A [keyword](#highlight.tags.keyword) that represents a unit.
+  */
+  unit: t3(keyword),
+  /**
+  A modifier [keyword](#highlight.tags.keyword).
+  */
+  modifier: t3(keyword),
+  /**
+  A [keyword](#highlight.tags.keyword) that acts as an operator.
+  */
+  operatorKeyword: t3(keyword),
+  /**
+  A control-flow related [keyword](#highlight.tags.keyword).
+  */
+  controlKeyword: t3(keyword),
+  /**
+  A [keyword](#highlight.tags.keyword) that defines something.
+  */
+  definitionKeyword: t3(keyword),
+  /**
+  A [keyword](#highlight.tags.keyword) related to defining or
+  interfacing with modules.
+  */
+  moduleKeyword: t3(keyword),
+  /**
+  An operator.
+  */
+  operator,
+  /**
+  An [operator](#highlight.tags.operator) that dereferences something.
+  */
+  derefOperator: t3(operator),
+  /**
+  Arithmetic-related [operator](#highlight.tags.operator).
+  */
+  arithmeticOperator: t3(operator),
+  /**
+  Logical [operator](#highlight.tags.operator).
+  */
+  logicOperator: t3(operator),
+  /**
+  Bit [operator](#highlight.tags.operator).
+  */
+  bitwiseOperator: t3(operator),
+  /**
+  Comparison [operator](#highlight.tags.operator).
+  */
+  compareOperator: t3(operator),
+  /**
+  [Operator](#highlight.tags.operator) that updates its operand.
+  */
+  updateOperator: t3(operator),
+  /**
+  [Operator](#highlight.tags.operator) that defines something.
+  */
+  definitionOperator: t3(operator),
+  /**
+  Type-related [operator](#highlight.tags.operator).
+  */
+  typeOperator: t3(operator),
+  /**
+  Control-flow [operator](#highlight.tags.operator).
+  */
+  controlOperator: t3(operator),
+  /**
+  Program or markup punctuation.
+  */
+  punctuation,
+  /**
+  [Punctuation](#highlight.tags.punctuation) that separates
+  things.
+  */
+  separator: t3(punctuation),
+  /**
+  Bracket-style [punctuation](#highlight.tags.punctuation).
+  */
+  bracket,
+  /**
+  Angle [brackets](#highlight.tags.bracket) (usually `<` and `>`
+  tokens).
+  */
+  angleBracket: t3(bracket),
+  /**
+  Square [brackets](#highlight.tags.bracket) (usually `[` and `]`
+  tokens).
+  */
+  squareBracket: t3(bracket),
+  /**
+  Parentheses (usually `(` and `)` tokens). Subtag of
+  [bracket](#highlight.tags.bracket).
+  */
+  paren: t3(bracket),
+  /**
+  Braces (usually `{` and `}` tokens). Subtag of
+  [bracket](#highlight.tags.bracket).
+  */
+  brace: t3(bracket),
+  /**
+  Content, for example plain text in XML or markup documents.
+  */
+  content,
+  /**
+  [Content](#highlight.tags.content) that represents a heading.
+  */
+  heading,
+  /**
+  A level 1 [heading](#highlight.tags.heading).
+  */
+  heading1: t3(heading),
+  /**
+  A level 2 [heading](#highlight.tags.heading).
+  */
+  heading2: t3(heading),
+  /**
+  A level 3 [heading](#highlight.tags.heading).
+  */
+  heading3: t3(heading),
+  /**
+  A level 4 [heading](#highlight.tags.heading).
+  */
+  heading4: t3(heading),
+  /**
+  A level 5 [heading](#highlight.tags.heading).
+  */
+  heading5: t3(heading),
+  /**
+  A level 6 [heading](#highlight.tags.heading).
+  */
+  heading6: t3(heading),
+  /**
+  A prose [content](#highlight.tags.content) separator (such as a horizontal rule).
+  */
+  contentSeparator: t3(content),
+  /**
+  [Content](#highlight.tags.content) that represents a list.
+  */
+  list: t3(content),
+  /**
+  [Content](#highlight.tags.content) that represents a quote.
+  */
+  quote: t3(content),
+  /**
+  [Content](#highlight.tags.content) that is emphasized.
+  */
+  emphasis: t3(content),
+  /**
+  [Content](#highlight.tags.content) that is styled strong.
+  */
+  strong: t3(content),
+  /**
+  [Content](#highlight.tags.content) that is part of a link.
+  */
+  link: t3(content),
+  /**
+  [Content](#highlight.tags.content) that is styled as code or
+  monospace.
+  */
+  monospace: t3(content),
+  /**
+  [Content](#highlight.tags.content) that has a strike-through
+  style.
+  */
+  strikethrough: t3(content),
+  /**
+  Inserted text in a change-tracking format.
+  */
+  inserted: t3(),
+  /**
+  Deleted text.
+  */
+  deleted: t3(),
+  /**
+  Changed text.
+  */
+  changed: t3(),
+  /**
+  An invalid or unsyntactic element.
+  */
+  invalid: t3(),
+  /**
+  Metadata or meta-instruction.
+  */
+  meta,
+  /**
+  [Metadata](#highlight.tags.meta) that applies to the entire
+  document.
+  */
+  documentMeta: t3(meta),
+  /**
+  [Metadata](#highlight.tags.meta) that annotates or adds
+  attributes to a given syntactic element.
+  */
+  annotation: t3(meta),
+  /**
+  Processing instruction or preprocessor directive. Subtag of
+  [meta](#highlight.tags.meta).
+  */
+  processingInstruction: t3(meta),
+  /**
+  [Modifier](#highlight.Tag^defineModifier) that indicates that a
+  given element is being defined. Expected to be used with the
+  various [name](#highlight.tags.name) tags.
+  */
+  definition: Tag.defineModifier("definition"),
+  /**
+  [Modifier](#highlight.Tag^defineModifier) that indicates that
+  something is constant. Mostly expected to be used with
+  [variable names](#highlight.tags.variableName).
+  */
+  constant: Tag.defineModifier("constant"),
+  /**
+  [Modifier](#highlight.Tag^defineModifier) used to indicate that
+  a [variable](#highlight.tags.variableName) or [property
+  name](#highlight.tags.propertyName) is being called or defined
+  as a function.
+  */
+  function: Tag.defineModifier("function"),
+  /**
+  [Modifier](#highlight.Tag^defineModifier) that can be applied to
+  [names](#highlight.tags.name) to indicate that they belong to
+  the language's standard environment.
+  */
+  standard: Tag.defineModifier("standard"),
+  /**
+  [Modifier](#highlight.Tag^defineModifier) that indicates a given
+  [names](#highlight.tags.name) is local to some scope.
+  */
+  local: Tag.defineModifier("local"),
+  /**
+  A generic variant [modifier](#highlight.Tag^defineModifier) that
+  can be used to tag language-specific alternative variants of
+  some common tag. It is recommended for themes to define special
+  forms of at least the [string](#highlight.tags.string) and
+  [variable name](#highlight.tags.variableName) tags, since those
+  come up a lot.
+  */
+  special: Tag.defineModifier("special")
+};
+for (let name2 in tags) {
+  let val = tags[name2];
+  if (val instanceof Tag)
+    val.name = name2;
+}
+var classHighlighter = tagHighlighter([
+  { tag: tags.link, class: "tok-link" },
+  { tag: tags.heading, class: "tok-heading" },
+  { tag: tags.emphasis, class: "tok-emphasis" },
+  { tag: tags.strong, class: "tok-strong" },
+  { tag: tags.keyword, class: "tok-keyword" },
+  { tag: tags.atom, class: "tok-atom" },
+  { tag: tags.bool, class: "tok-bool" },
+  { tag: tags.url, class: "tok-url" },
+  { tag: tags.labelName, class: "tok-labelName" },
+  { tag: tags.inserted, class: "tok-inserted" },
+  { tag: tags.deleted, class: "tok-deleted" },
+  { tag: tags.literal, class: "tok-literal" },
+  { tag: tags.string, class: "tok-string" },
+  { tag: tags.number, class: "tok-number" },
+  { tag: [tags.regexp, tags.escape, tags.special(tags.string)], class: "tok-string2" },
+  { tag: tags.variableName, class: "tok-variableName" },
+  { tag: tags.local(tags.variableName), class: "tok-variableName tok-local" },
+  { tag: tags.definition(tags.variableName), class: "tok-variableName tok-definition" },
+  { tag: tags.special(tags.variableName), class: "tok-variableName2" },
+  { tag: tags.definition(tags.propertyName), class: "tok-propertyName tok-definition" },
+  { tag: tags.typeName, class: "tok-typeName" },
+  { tag: tags.namespace, class: "tok-namespace" },
+  { tag: tags.className, class: "tok-className" },
+  { tag: tags.macroName, class: "tok-macroName" },
+  { tag: tags.propertyName, class: "tok-propertyName" },
+  { tag: tags.operator, class: "tok-operator" },
+  { tag: tags.comment, class: "tok-comment" },
+  { tag: tags.meta, class: "tok-meta" },
+  { tag: tags.invalid, class: "tok-invalid" },
+  { tag: tags.punctuation, class: "tok-punctuation" }
+]);
+
+// ../../node_modules/.pnpm/style-mod@4.1.4/node_modules/style-mod/src/style-mod.js
+var C3 = "\u037C";
+var COUNT = typeof Symbol == "undefined" ? "__" + C3 : Symbol.for(C3);
+var SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : /* @__PURE__ */ Symbol("styleSet");
+var top = typeof globalThis != "undefined" ? globalThis : typeof window != "undefined" ? window : {};
+var StyleModule = class {
+  // :: (Object<Style>, ?{finish: ?(string) → string})
+  // Create a style module from the given spec.
+  //
+  // When `finish` is given, it is called on regular (non-`@`)
+  // selectors (after `&` expansion) to compute the final selector.
+  constructor(spec, options) {
+    this.rules = [];
+    let { finish } = options || {};
+    function splitSelector(selector) {
+      return /^@/.test(selector) ? [selector] : selector.split(/,\s*/);
+    }
+    function render(selectors, spec2, target, isKeyframes) {
+      let local = [], isAt = /^@(\w+)\b/.exec(selectors[0]), keyframes = isAt && isAt[1] == "keyframes";
+      if (isAt && spec2 == null) return target.push(selectors[0] + ";");
+      for (let prop in spec2) {
+        let value = spec2[prop];
+        if (/&/.test(prop)) {
+          render(
+            prop.split(/,\s*/).map((part) => selectors.map((sel) => part.replace(/&/, sel))).reduce((a3, b2) => a3.concat(b2)),
+            value,
+            target
+          );
+        } else if (value && typeof value == "object") {
+          if (!isAt) throw new RangeError("The value of a property (" + prop + ") should be a primitive value.");
+          render(splitSelector(prop), value, local, keyframes);
+        } else if (value != null) {
+          local.push(prop.replace(/_.*/, "").replace(/[A-Z]/g, (l3) => "-" + l3.toLowerCase()) + ": " + value + ";");
+        }
+      }
+      if (local.length || keyframes) {
+        target.push((finish && !isAt && !isKeyframes ? selectors.map(finish) : selectors).join(", ") + " {" + local.join(" ") + "}");
+      }
+    }
+    for (let prop in spec) render(splitSelector(prop), spec[prop], this.rules);
+  }
+  // :: () → string
+  // Returns a string containing the module's CSS rules.
+  getRules() {
+    return this.rules.join("\n");
+  }
+  // :: () → string
+  // Generate a new unique CSS class name.
+  static newName() {
+    let id = top[COUNT] || 1;
+    top[COUNT] = id + 1;
+    return C3 + id.toString(36);
+  }
+  // :: (union<Document, ShadowRoot>, union<[StyleModule], StyleModule>, ?{nonce: ?string})
+  //
+  // Mount the given set of modules in the given DOM root, which ensures
+  // that the CSS rules defined by the module are available in that
+  // context.
+  //
+  // Rules are only added to the document once per root.
+  //
+  // Rule order will follow the order of the modules, so that rules from
+  // modules later in the array take precedence of those from earlier
+  // modules. If you call this function multiple times for the same root
+  // in a way that changes the order of already mounted modules, the old
+  // order will be changed.
+  //
+  // If a Content Security Policy nonce is provided, it is added to
+  // the `<style>` tag generated by the library.
+  static mount(root, modules, options) {
+    let set = root[SET], nonce = options && options.nonce;
+    if (!set) set = new StyleSet(root, nonce);
+    else if (nonce) set.setNonce(nonce);
+    set.mount(Array.isArray(modules) ? modules : [modules], root);
+  }
+};
+var adoptedSet = /* @__PURE__ */ new Map();
+var StyleSet = class {
+  constructor(root, nonce) {
+    let doc = root.ownerDocument || root, win = doc.defaultView;
+    if (!root.head && root.adoptedStyleSheets && win.CSSStyleSheet) {
+      let adopted = adoptedSet.get(doc);
+      if (adopted) return root[SET] = adopted;
+      this.sheet = new win.CSSStyleSheet();
+      adoptedSet.set(doc, this);
+    } else {
+      this.styleTag = doc.createElement("style");
+      if (nonce) this.styleTag.setAttribute("nonce", nonce);
+    }
+    this.modules = [];
+    root[SET] = this;
+  }
+  mount(modules, root) {
+    let sheet = this.sheet;
+    let pos = 0, j3 = 0;
+    let changed = false;
+    for (let i3 = 0; i3 < modules.length; i3++) {
+      let mod = modules[i3], index = this.modules.indexOf(mod);
+      if (index < j3 && index > -1) {
+        this.modules.splice(index, 1);
+        changed = true;
+        j3--;
+        index = -1;
+      }
+      if (index == -1) {
+        this.modules.splice(j3++, 0, mod);
+        changed = true;
+        if (sheet) for (let k3 = 0; k3 < mod.rules.length; k3++)
+          sheet.insertRule(mod.rules[k3], pos++);
+      } else {
+        while (j3 < index) pos += this.modules[j3++].rules.length;
+        pos += mod.rules.length;
+        j3++;
+      }
+    }
+    if (sheet) {
+      if (root.adoptedStyleSheets.indexOf(this.sheet) < 0)
+        root.adoptedStyleSheets = [this.sheet, ...root.adoptedStyleSheets];
+    } else {
+      if (changed) {
+        let text = "";
+        for (let i3 = 0; i3 < this.modules.length; i3++)
+          text += this.modules[i3].getRules() + "\n";
+        this.styleTag.textContent = text;
+      }
+      let target = root.head || root;
+      if (this.styleTag.parentNode != target)
+        target.insertBefore(this.styleTag, target.firstChild);
+    }
+  }
+  setNonce(nonce) {
+    if (this.styleTag && this.styleTag.getAttribute("nonce") != nonce)
+      this.styleTag.setAttribute("nonce", nonce);
+  }
+};
+
+// ../../node_modules/.pnpm/@codemirror+language@6.13.1/node_modules/@codemirror/language/dist/index.js
+var _a;
+var languageDataProp = /* @__PURE__ */ new NodeProp();
+var sublanguageProp = /* @__PURE__ */ new NodeProp();
+var Language = class {
+  /**
+  Construct a language object. If you need to invoke this
+  directly, first define a data facet with
+  [`defineLanguageFacet`](https://codemirror.net/6/docs/ref/#language.defineLanguageFacet), and then
+  configure your parser to [attach](https://codemirror.net/6/docs/ref/#language.languageDataProp) it
+  to the language's outer syntax node.
+  */
+  constructor(data, parser, extraExtensions = [], name2 = "") {
+    this.data = data;
+    this.name = name2;
+    if (!import_state.EditorState.prototype.hasOwnProperty("tree"))
+      Object.defineProperty(import_state.EditorState.prototype, "tree", { get() {
+        return syntaxTree(this);
+      } });
+    this.parser = parser;
+    this.extension = [
+      language.of(this),
+      import_state.EditorState.languageData.of((state, pos, side) => {
+        let top2 = topNodeAt(state, pos, side), data2 = top2.type.prop(languageDataProp);
+        if (!data2)
+          return [];
+        let base = state.facet(data2), sub = top2.type.prop(sublanguageProp);
+        if (sub) {
+          let innerNode = top2.resolve(pos - top2.from, side);
+          for (let sublang of sub)
+            if (sublang.test(innerNode, state)) {
+              let data3 = state.facet(sublang.facet);
+              return sublang.type == "replace" ? data3 : data3.concat(base);
+            }
+        }
+        return base;
+      })
+    ].concat(extraExtensions);
+  }
+  /**
+  Query whether this language is active at the given position.
+  */
+  isActiveAt(state, pos, side = -1) {
+    return topNodeAt(state, pos, side).type.prop(languageDataProp) == this.data;
+  }
+  /**
+  Find the document regions that were parsed using this language.
+  The returned regions will _include_ any nested languages rooted
+  in this language, when those exist.
+  */
+  findRegions(state) {
+    let lang = state.facet(language);
+    if ((lang === null || lang === void 0 ? void 0 : lang.data) == this.data)
+      return [{ from: 0, to: state.doc.length }];
+    if (!lang || !lang.allowsNesting)
+      return [];
+    let result = [];
+    let explore = (tree, from) => {
+      if (tree.prop(languageDataProp) == this.data) {
+        result.push({ from, to: from + tree.length });
+        return;
+      }
+      let mount = tree.prop(NodeProp.mounted);
+      if (mount) {
+        if (mount.tree.prop(languageDataProp) == this.data) {
+          if (mount.overlay)
+            for (let r3 of mount.overlay)
+              result.push({ from: r3.from + from, to: r3.to + from });
+          else
+            result.push({ from, to: from + tree.length });
+          return;
+        } else if (mount.overlay) {
+          let size = result.length;
+          explore(mount.tree, mount.overlay[0].from + from);
+          if (result.length > size)
+            return;
+        }
+      }
+      for (let i3 = 0; i3 < tree.children.length; i3++) {
+        let ch = tree.children[i3];
+        if (ch instanceof Tree)
+          explore(ch, tree.positions[i3] + from);
+      }
+    };
+    explore(syntaxTree(state), 0);
+    return result;
+  }
+  /**
+  Indicates whether this language allows nested languages. The
+  default implementation returns true.
+  */
+  get allowsNesting() {
+    return true;
+  }
+};
+Language.setState = /* @__PURE__ */ import_state.StateEffect.define();
+function topNodeAt(state, pos, side) {
+  let topLang = state.facet(language), tree = syntaxTree(state).topNode;
+  if (!topLang || topLang.allowsNesting) {
+    for (let node = tree; node; node = node.enter(pos, side, IterMode.ExcludeBuffers | IterMode.EnterBracketed))
+      if (node.type.isTop)
+        tree = node;
+  }
+  return tree;
+}
+function syntaxTree(state) {
+  let field = state.field(Language.state, false);
+  return field ? field.tree : Tree.empty;
+}
+var DocInput = class {
+  /**
+  Create an input object for the given document.
+  */
+  constructor(doc) {
+    this.doc = doc;
+    this.cursorPos = 0;
+    this.string = "";
+    this.cursor = doc.iter();
+  }
+  get length() {
+    return this.doc.length;
+  }
+  syncTo(pos) {
+    this.string = this.cursor.next(pos - this.cursorPos).value;
+    this.cursorPos = pos + this.string.length;
+    return this.cursorPos - this.string.length;
+  }
+  chunk(pos) {
+    this.syncTo(pos);
+    return this.string;
+  }
+  get lineChunks() {
+    return true;
+  }
+  read(from, to) {
+    let stringStart = this.cursorPos - this.string.length;
+    if (from < stringStart || to >= this.cursorPos)
+      return this.doc.sliceString(from, to);
+    else
+      return this.string.slice(from - stringStart, to - stringStart);
+  }
+};
+var currentContext = null;
+var ParseContext = class _ParseContext {
+  constructor(parser, state, fragments = [], tree, treeLen, viewport, skipped, scheduleOn) {
+    this.parser = parser;
+    this.state = state;
+    this.fragments = fragments;
+    this.tree = tree;
+    this.treeLen = treeLen;
+    this.viewport = viewport;
+    this.skipped = skipped;
+    this.scheduleOn = scheduleOn;
+    this.parse = null;
+    this.tempSkipped = [];
+  }
+  /**
+  @internal
+  */
+  static create(parser, state, viewport) {
+    return new _ParseContext(parser, state, [], Tree.empty, 0, viewport, [], null);
+  }
+  startParse() {
+    return this.parser.startParse(new DocInput(this.state.doc), this.fragments);
+  }
+  /**
+  @internal
+  */
+  work(until, upto) {
+    if (upto != null && upto >= this.state.doc.length)
+      upto = void 0;
+    if (this.tree != Tree.empty && this.isDone(upto !== null && upto !== void 0 ? upto : this.state.doc.length)) {
+      this.takeTree();
+      return true;
+    }
+    return this.withContext(() => {
+      var _a2;
+      if (typeof until == "number") {
+        let endTime = Date.now() + until;
+        until = () => Date.now() > endTime;
+      }
+      if (!this.parse)
+        this.parse = this.startParse();
+      if (upto != null && (this.parse.stoppedAt == null || this.parse.stoppedAt > upto) && upto < this.state.doc.length)
+        this.parse.stopAt(upto);
+      for (; ; ) {
+        let done = this.parse.advance();
+        if (done) {
+          this.fragments = this.withoutTempSkipped(TreeFragment.addTree(done, this.fragments, this.parse.stoppedAt != null));
+          this.treeLen = (_a2 = this.parse.stoppedAt) !== null && _a2 !== void 0 ? _a2 : this.state.doc.length;
+          this.tree = done;
+          this.parse = null;
+          if (this.treeLen < (upto !== null && upto !== void 0 ? upto : this.state.doc.length))
+            this.parse = this.startParse();
+          else
+            return true;
+        }
+        if (until())
+          return false;
+      }
+    });
+  }
+  /**
+  @internal
+  */
+  takeTree() {
+    let pos, tree;
+    if (this.parse && (pos = this.parse.parsedPos) >= this.treeLen) {
+      if (this.parse.stoppedAt == null || this.parse.stoppedAt > pos)
+        this.parse.stopAt(pos);
+      this.withContext(() => {
+        while (!(tree = this.parse.advance())) {
+        }
+      });
+      this.treeLen = pos;
+      this.tree = tree;
+      this.fragments = this.withoutTempSkipped(TreeFragment.addTree(this.tree, this.fragments, true));
+      this.parse = null;
+    }
+  }
+  withContext(f4) {
+    let prev = currentContext;
+    currentContext = this;
+    try {
+      return f4();
+    } finally {
+      currentContext = prev;
+    }
+  }
+  withoutTempSkipped(fragments) {
+    for (let r3; r3 = this.tempSkipped.pop(); )
+      fragments = cutFragments(fragments, r3.from, r3.to);
+    return fragments;
+  }
+  /**
+  @internal
+  */
+  changes(changes, newState) {
+    let { fragments, tree, treeLen, viewport, skipped } = this;
+    this.takeTree();
+    if (!changes.empty) {
+      let ranges = [];
+      changes.iterChangedRanges((fromA, toA, fromB, toB) => ranges.push({ fromA, toA, fromB, toB }));
+      fragments = TreeFragment.applyChanges(fragments, ranges);
+      tree = Tree.empty;
+      treeLen = 0;
+      viewport = { from: changes.mapPos(viewport.from, -1), to: changes.mapPos(viewport.to, 1) };
+      if (this.skipped.length) {
+        skipped = [];
+        for (let r3 of this.skipped) {
+          let from = changes.mapPos(r3.from, 1), to = changes.mapPos(r3.to, -1);
+          if (from < to)
+            skipped.push({ from, to });
+        }
+      }
+    }
+    return new _ParseContext(this.parser, newState, fragments, tree, treeLen, viewport, skipped, this.scheduleOn);
+  }
+  /**
+  @internal
+  */
+  updateViewport(viewport) {
+    if (this.viewport.from == viewport.from && this.viewport.to == viewport.to)
+      return false;
+    this.viewport = viewport;
+    let startLen = this.skipped.length;
+    for (let i3 = 0; i3 < this.skipped.length; i3++) {
+      let { from, to } = this.skipped[i3];
+      if (from < viewport.to && to > viewport.from) {
+        this.fragments = cutFragments(this.fragments, from, to);
+        this.skipped.splice(i3--, 1);
+      }
+    }
+    if (this.skipped.length >= startLen)
+      return false;
+    this.reset();
+    return true;
+  }
+  /**
+  @internal
+  */
+  reset() {
+    if (this.parse) {
+      this.takeTree();
+      this.parse = null;
+    }
+  }
+  /**
+  Notify the parse scheduler that the given region was skipped
+  because it wasn't in view, and the parse should be restarted
+  when it comes into view.
+  */
+  skipUntilInView(from, to) {
+    this.skipped.push({ from, to });
+  }
+  /**
+  Returns a parser intended to be used as placeholder when
+  asynchronously loading a nested parser. It'll skip its input and
+  mark it as not-really-parsed, so that the next update will parse
+  it again.
+  
+  When `until` is given, a reparse will be scheduled when that
+  promise resolves.
+  */
+  static getSkippingParser(until) {
+    return new class extends Parser {
+      createParse(input, fragments, ranges) {
+        let from = ranges[0].from, to = ranges[ranges.length - 1].to;
+        let parser = {
+          parsedPos: from,
+          advance() {
+            let cx = currentContext;
+            if (cx) {
+              for (let r3 of ranges)
+                cx.tempSkipped.push(r3);
+              if (until)
+                cx.scheduleOn = cx.scheduleOn ? Promise.all([cx.scheduleOn, until]) : until;
+            }
+            this.parsedPos = to;
+            return new Tree(NodeType.none, [], [], to - from);
+          },
+          stoppedAt: null,
+          stopAt() {
+          }
+        };
+        return parser;
+      }
+    }();
+  }
+  /**
+  @internal
+  */
+  isDone(upto) {
+    upto = Math.min(upto, this.state.doc.length);
+    let frags = this.fragments;
+    return this.treeLen >= upto && frags.length && frags[0].from == 0 && frags[0].to >= upto;
+  }
+  /**
+  Get the context for the current parse, or `null` if no editor
+  parse is in progress.
+  */
+  static get() {
+    return currentContext;
+  }
+};
+function cutFragments(fragments, from, to) {
+  return TreeFragment.applyChanges(fragments, [{ fromA: from, toA: to, fromB: from, toB: to }]);
+}
+var LanguageState = class _LanguageState {
+  constructor(context) {
+    this.context = context;
+    this.tree = context.tree;
+  }
+  apply(tr) {
+    if (!tr.docChanged && this.tree == this.context.tree)
+      return this;
+    let newCx = this.context.changes(tr.changes, tr.state);
+    let upto = this.context.treeLen == tr.startState.doc.length ? void 0 : Math.max(tr.changes.mapPos(this.context.treeLen), newCx.viewport.to);
+    if (!newCx.work(20, upto))
+      newCx.takeTree();
+    return new _LanguageState(newCx);
+  }
+  static init(state) {
+    let vpTo = Math.min(3e3, state.doc.length);
+    let parseState = ParseContext.create(state.facet(language).parser, state, { from: 0, to: vpTo });
+    if (!parseState.work(20, vpTo))
+      parseState.takeTree();
+    return new _LanguageState(parseState);
+  }
+};
+Language.state = /* @__PURE__ */ import_state.StateField.define({
+  create: LanguageState.init,
+  update(value, tr) {
+    for (let e3 of tr.effects)
+      if (e3.is(Language.setState))
+        return e3.value;
+    if (tr.startState.facet(language) != tr.state.facet(language))
+      return LanguageState.init(tr.state);
+    return value.apply(tr);
+  }
+});
+var requestIdle = (callback) => {
+  let timeout = setTimeout(
+    () => callback(),
+    500
+    /* Work.MaxPause */
+  );
+  return () => clearTimeout(timeout);
+};
+if (typeof requestIdleCallback != "undefined")
+  requestIdle = (callback) => {
+    let idle = -1, timeout = setTimeout(
+      () => {
+        idle = requestIdleCallback(callback, {
+          timeout: 500 - 100
+          /* Work.MinPause */
+        });
+      },
+      100
+      /* Work.MinPause */
+    );
+    return () => idle < 0 ? clearTimeout(timeout) : cancelIdleCallback(idle);
+  };
+var isInputPending = typeof navigator != "undefined" && ((_a = navigator.scheduling) === null || _a === void 0 ? void 0 : _a.isInputPending) ? () => navigator.scheduling.isInputPending() : null;
+var parseWorker = /* @__PURE__ */ import_view.ViewPlugin.fromClass(class ParseWorker {
+  constructor(view) {
+    this.view = view;
+    this.working = null;
+    this.workScheduled = 0;
+    this.chunkEnd = -1;
+    this.chunkBudget = -1;
+    this.work = this.work.bind(this);
+    this.scheduleWork();
+  }
+  update(update) {
+    let cx = this.view.state.field(Language.state).context;
+    if (cx.updateViewport(update.view.viewport) || this.view.viewport.to > cx.treeLen)
+      this.scheduleWork();
+    if (update.docChanged || update.selectionSet) {
+      if (this.view.hasFocus)
+        this.chunkBudget += 50;
+      this.scheduleWork();
+    }
+    this.checkAsyncSchedule(cx);
+  }
+  scheduleWork() {
+    if (this.working)
+      return;
+    let { state } = this.view, field = state.field(Language.state);
+    if (field.tree != field.context.tree || !field.context.isDone(state.doc.length))
+      this.working = requestIdle(this.work);
+  }
+  work(deadline) {
+    this.working = null;
+    let now = Date.now();
+    if (this.chunkEnd < now && (this.chunkEnd < 0 || this.view.hasFocus)) {
+      this.chunkEnd = now + 3e4;
+      this.chunkBudget = 3e3;
+    }
+    if (this.chunkBudget <= 0)
+      return;
+    let { state, viewport: { to: vpTo } } = this.view, field = state.field(Language.state);
+    if (field.tree == field.context.tree && field.context.isDone(
+      vpTo + 1e5
+      /* Work.MaxParseAhead */
+    ))
+      return;
+    let endTime = Date.now() + Math.min(this.chunkBudget, 100, deadline && !isInputPending ? Math.max(25, deadline.timeRemaining() - 5) : 1e9);
+    let viewportFirst = field.context.treeLen < vpTo && state.doc.length > vpTo + 1e3;
+    let done = field.context.work(() => {
+      return isInputPending && isInputPending() || Date.now() > endTime;
+    }, vpTo + (viewportFirst ? 0 : 1e5));
+    this.chunkBudget -= Date.now() - now;
+    if (done || this.chunkBudget <= 0) {
+      field.context.takeTree();
+      this.view.dispatch({ effects: Language.setState.of(new LanguageState(field.context)) });
+    }
+    if (this.chunkBudget > 0 && !(done && !viewportFirst))
+      this.scheduleWork();
+    this.checkAsyncSchedule(field.context);
+  }
+  checkAsyncSchedule(cx) {
+    if (cx.scheduleOn) {
+      this.workScheduled++;
+      cx.scheduleOn.then(() => this.scheduleWork()).catch((err) => (0, import_view.logException)(this.view.state, err)).then(() => this.workScheduled--);
+      cx.scheduleOn = null;
+    }
+  }
+  destroy() {
+    if (this.working)
+      this.working();
+  }
+  isWorking() {
+    return !!(this.working || this.workScheduled > 0);
+  }
+}, {
+  eventHandlers: { focus() {
+    this.scheduleWork();
+  } }
+});
+var language = /* @__PURE__ */ import_state.Facet.define({
+  combine(languages) {
+    return languages.length ? languages[0] : null;
+  },
+  enables: (language2) => [
+    Language.state,
+    parseWorker,
+    import_view.EditorView.contentAttributes.compute([language2], (state) => {
+      let lang = state.facet(language2);
+      return lang && lang.name ? { "data-language": lang.name } : {};
+    })
+  ]
+});
+var indentService = /* @__PURE__ */ import_state.Facet.define();
+var indentUnit = /* @__PURE__ */ import_state.Facet.define({
+  combine: (values) => {
+    if (!values.length)
+      return "  ";
+    let unit = values[0];
+    if (!unit || /\S/.test(unit) || Array.from(unit).some((e3) => e3 != unit[0]))
+      throw new Error("Invalid indent unit: " + JSON.stringify(values[0]));
+    return unit;
+  }
+});
+function getIndentUnit(state) {
+  let unit = state.facet(indentUnit);
+  return unit.charCodeAt(0) == 9 ? state.tabSize * unit.length : unit.length;
+}
+function indentString(state, cols) {
+  let result = "", ts = state.tabSize, ch = state.facet(indentUnit)[0];
+  if (ch == "	") {
+    while (cols >= ts) {
+      result += "	";
+      cols -= ts;
+    }
+    ch = " ";
+  }
+  for (let i3 = 0; i3 < cols; i3++)
+    result += ch;
+  return result;
+}
+function getIndentation(context, pos) {
+  if (context instanceof import_state.EditorState)
+    context = new IndentContext(context);
+  for (let service of context.state.facet(indentService)) {
+    let result = service(context, pos);
+    if (result !== void 0)
+      return result;
+  }
+  let tree = syntaxTree(context.state);
+  return tree.length >= pos ? syntaxIndentation(context, tree, pos) : null;
+}
+var IndentContext = class {
+  /**
+  Create an indent context.
+  */
+  constructor(state, options = {}) {
+    this.state = state;
+    this.options = options;
+    this.unit = getIndentUnit(state);
+  }
+  /**
+  Get a description of the line at the given position, taking
+  [simulated line
+  breaks](https://codemirror.net/6/docs/ref/#language.IndentContext.constructor^options.simulateBreak)
+  into account. If there is such a break at `pos`, the `bias`
+  argument determines whether the part of the line line before or
+  after the break is used.
+  */
+  lineAt(pos, bias = 1) {
+    let line = this.state.doc.lineAt(pos);
+    let { simulateBreak, simulateDoubleBreak } = this.options;
+    if (simulateBreak != null && simulateBreak >= line.from && simulateBreak <= line.to) {
+      if (simulateDoubleBreak && simulateBreak == pos)
+        return { text: "", from: pos };
+      else if (bias < 0 ? simulateBreak < pos : simulateBreak <= pos)
+        return { text: line.text.slice(simulateBreak - line.from), from: simulateBreak };
+      else
+        return { text: line.text.slice(0, simulateBreak - line.from), from: line.from };
+    }
+    return line;
+  }
+  /**
+  Get the text directly after `pos`, either the entire line
+  or the next 100 characters, whichever is shorter.
+  */
+  textAfterPos(pos, bias = 1) {
+    if (this.options.simulateDoubleBreak && pos == this.options.simulateBreak)
+      return "";
+    let { text, from } = this.lineAt(pos, bias);
+    return text.slice(pos - from, Math.min(text.length, pos + 100 - from));
+  }
+  /**
+  Find the column for the given position.
+  */
+  column(pos, bias = 1) {
+    let { text, from } = this.lineAt(pos, bias);
+    let result = this.countColumn(text, pos - from);
+    let override = this.options.overrideIndentation ? this.options.overrideIndentation(from) : -1;
+    if (override > -1)
+      result += override - this.countColumn(text, text.search(/\S|$/));
+    return result;
+  }
+  /**
+  Find the column position (taking tabs into account) of the given
+  position in the given string.
+  */
+  countColumn(line, pos = line.length) {
+    return (0, import_state.countColumn)(line, this.state.tabSize, pos);
+  }
+  /**
+  Find the indentation column of the line at the given point.
+  */
+  lineIndent(pos, bias = 1) {
+    let { text, from } = this.lineAt(pos, bias);
+    let override = this.options.overrideIndentation;
+    if (override) {
+      let overriden = override(from);
+      if (overriden > -1)
+        return overriden;
+    }
+    return this.countColumn(text, text.search(/\S|$/));
+  }
+  /**
+  Returns the [simulated line
+  break](https://codemirror.net/6/docs/ref/#language.IndentContext.constructor^options.simulateBreak)
+  for this context, if any.
+  */
+  get simulatedBreak() {
+    return this.options.simulateBreak || null;
+  }
+};
+var indentNodeProp = /* @__PURE__ */ new NodeProp();
+function syntaxIndentation(cx, ast, pos) {
+  let stack2 = ast.resolveStack(pos);
+  let inner = ast.resolveInner(pos, -1).resolve(pos, 0).enterUnfinishedNodesBefore(pos);
+  if (inner != stack2.node) {
+    let add = [];
+    for (let cur = inner; cur && !(cur.from < stack2.node.from || cur.to > stack2.node.to || cur.from == stack2.node.from && cur.type == stack2.node.type); cur = cur.parent)
+      add.push(cur);
+    for (let i3 = add.length - 1; i3 >= 0; i3--)
+      stack2 = { node: add[i3], next: stack2 };
+  }
+  return indentFor(stack2, cx, pos);
+}
+function indentFor(stack2, cx, pos) {
+  for (let cur = stack2; cur; cur = cur.next) {
+    let strategy = indentStrategy(cur.node);
+    if (strategy)
+      return strategy(TreeIndentContext.create(cx, pos, cur));
+  }
+  return 0;
+}
+function ignoreClosed(cx) {
+  return cx.pos == cx.options.simulateBreak && cx.options.simulateDoubleBreak;
+}
+function indentStrategy(tree) {
+  let strategy = tree.type.prop(indentNodeProp);
+  if (strategy)
+    return strategy;
+  let first = tree.firstChild, close;
+  if (first && (close = first.type.prop(NodeProp.closedBy))) {
+    let last = tree.lastChild, closed = last && close.indexOf(last.name) > -1;
+    return (cx) => delimitedStrategy(cx, true, 1, void 0, closed && !ignoreClosed(cx) ? last.from : void 0);
+  }
+  return tree.parent == null ? topIndent : null;
+}
+function topIndent() {
+  return 0;
+}
+var TreeIndentContext = class _TreeIndentContext extends IndentContext {
+  constructor(base, pos, context) {
+    super(base.state, base.options);
+    this.base = base;
+    this.pos = pos;
+    this.context = context;
+  }
+  /**
+  The syntax tree node to which the indentation strategy
+  applies.
+  */
+  get node() {
+    return this.context.node;
+  }
+  /**
+  @internal
+  */
+  static create(base, pos, context) {
+    return new _TreeIndentContext(base, pos, context);
+  }
+  /**
+  Get the text directly after `this.pos`, either the entire line
+  or the next 100 characters, whichever is shorter.
+  */
+  get textAfter() {
+    return this.textAfterPos(this.pos);
+  }
+  /**
+  Get the indentation at the reference line for `this.node`, which
+  is the line on which it starts, unless there is a node that is
+  _not_ a parent of this node covering the start of that line. If
+  so, the line at the start of that node is tried, again skipping
+  on if it is covered by another such node.
+  */
+  get baseIndent() {
+    return this.baseIndentFor(this.node);
+  }
+  /**
+  Get the indentation for the reference line of the given node
+  (see [`baseIndent`](https://codemirror.net/6/docs/ref/#language.TreeIndentContext.baseIndent)).
+  */
+  baseIndentFor(node) {
+    let line = this.state.doc.lineAt(node.from);
+    for (; ; ) {
+      let atBreak = node.resolve(line.from);
+      while (atBreak.parent && atBreak.parent.from == atBreak.from)
+        atBreak = atBreak.parent;
+      if (isParent(atBreak, node))
+        break;
+      line = this.state.doc.lineAt(atBreak.from);
+    }
+    return this.lineIndent(line.from);
+  }
+  /**
+  Continue looking for indentations in the node's parent nodes,
+  and return the result of that.
+  */
+  continue() {
+    return indentFor(this.context.next, this.base, this.pos);
+  }
+};
+function isParent(parent, of) {
+  for (let cur = of; cur; cur = cur.parent)
+    if (parent == cur)
+      return true;
+  return false;
+}
+function bracketedAligned(context) {
+  let tree = context.node;
+  let openToken = tree.childAfter(tree.from), last = tree.lastChild;
+  if (!openToken)
+    return null;
+  let sim = context.options.simulateBreak;
+  let openLine = context.state.doc.lineAt(openToken.from);
+  let lineEnd = sim == null || sim <= openLine.from ? openLine.to : Math.min(openLine.to, sim);
+  for (let pos = openToken.to; ; ) {
+    let next = tree.childAfter(pos);
+    if (!next || next == last)
+      return null;
+    if (!next.type.isSkipped) {
+      if (next.from >= lineEnd)
+        return null;
+      let space = /^ */.exec(openLine.text.slice(openToken.to - openLine.from))[0].length;
+      return { from: openToken.from, to: openToken.to + space };
+    }
+    pos = next.to;
+  }
+}
+function delimitedStrategy(context, align, units, closing, closedAt) {
+  let after = context.textAfter, space = after.match(/^\s*/)[0].length;
+  let closed = closing && after.slice(space, space + closing.length) == closing || closedAt == context.pos + space;
+  let aligned = align ? bracketedAligned(context) : null;
+  if (aligned)
+    return closed ? context.column(aligned.from) : context.column(aligned.to);
+  return context.baseIndent + (closed ? 0 : context.unit * units);
+}
+var HighlightStyle = class _HighlightStyle {
+  constructor(specs, options) {
+    this.specs = specs;
+    let modSpec;
+    function def(spec) {
+      let cls = StyleModule.newName();
+      (modSpec || (modSpec = /* @__PURE__ */ Object.create(null)))["." + cls] = spec;
+      return cls;
+    }
+    const all = typeof options.all == "string" ? options.all : options.all ? def(options.all) : void 0;
+    const scopeOpt = options.scope;
+    this.scope = scopeOpt instanceof Language ? (type) => type.prop(languageDataProp) == scopeOpt.data : scopeOpt ? (type) => type == scopeOpt : void 0;
+    this.style = tagHighlighter(specs.map((style) => ({
+      tag: style.tag,
+      class: style.class || def(Object.assign({}, style, { tag: null }))
+    })), {
+      all
+    }).style;
+    this.module = modSpec ? new StyleModule(modSpec) : null;
+    this.themeType = options.themeType;
+  }
+  /**
+  Create a highlighter style that associates the given styles to
+  the given tags. The specs must be objects that hold a style tag
+  or array of tags in their `tag` property, and either a single
+  `class` property providing a static CSS class (for highlighter
+  that rely on external styling), or a
+  [`style-mod`](https://code.haverbeke.berlin/marijn/style-mod#documentation)-style
+  set of CSS properties (which define the styling for those tags).
+  
+  The CSS rules created for a highlighter will be emitted in the
+  order of the spec's properties. That means that for elements that
+  have multiple tags associated with them, styles defined further
+  down in the list will have a higher CSS precedence than styles
+  defined earlier.
+  */
+  static define(specs, options) {
+    return new _HighlightStyle(specs, options || {});
+  }
+};
+var defaultHighlightStyle = /* @__PURE__ */ HighlightStyle.define([
+  {
+    tag: tags.meta,
+    color: "#404740"
+  },
+  {
+    tag: tags.link,
+    textDecoration: "underline"
+  },
+  {
+    tag: tags.heading,
+    textDecoration: "underline",
+    fontWeight: "bold"
+  },
+  {
+    tag: tags.emphasis,
+    fontStyle: "italic"
+  },
+  {
+    tag: tags.strong,
+    fontWeight: "bold"
+  },
+  {
+    tag: tags.strikethrough,
+    textDecoration: "line-through"
+  },
+  {
+    tag: tags.keyword,
+    color: "#708"
+  },
+  {
+    tag: [tags.atom, tags.bool, tags.url, tags.contentSeparator, tags.labelName],
+    color: "#219"
+  },
+  {
+    tag: [tags.literal, tags.inserted],
+    color: "#164"
+  },
+  {
+    tag: [tags.string, tags.deleted],
+    color: "#a11"
+  },
+  {
+    tag: [tags.regexp, tags.escape, /* @__PURE__ */ tags.special(tags.string)],
+    color: "#e40"
+  },
+  {
+    tag: /* @__PURE__ */ tags.definition(tags.variableName),
+    color: "#00f"
+  },
+  {
+    tag: /* @__PURE__ */ tags.local(tags.variableName),
+    color: "#30a"
+  },
+  {
+    tag: [tags.typeName, tags.namespace],
+    color: "#085"
+  },
+  {
+    tag: tags.className,
+    color: "#167"
+  },
+  {
+    tag: [/* @__PURE__ */ tags.special(tags.variableName), tags.macroName],
+    color: "#256"
+  },
+  {
+    tag: /* @__PURE__ */ tags.definition(tags.propertyName),
+    color: "#00c"
+  },
+  {
+    tag: tags.comment,
+    color: "#940"
+  },
+  {
+    tag: tags.invalid,
+    color: "#f00"
+  }
+]);
+var DefaultScanDist = 1e4;
+var DefaultBrackets = "()[]{}";
+var bracketMatchingHandle = /* @__PURE__ */ new NodeProp();
+function matchingNodes(node, dir, brackets) {
+  let byProp = node.prop(dir < 0 ? NodeProp.openedBy : NodeProp.closedBy);
+  if (byProp)
+    return byProp;
+  if (node.name.length == 1) {
+    let index = brackets.indexOf(node.name);
+    if (index > -1 && index % 2 == (dir < 0 ? 1 : 0))
+      return [brackets[index + dir]];
+  }
+  return null;
+}
+function findHandle(node) {
+  let hasHandle = node.type.prop(bracketMatchingHandle);
+  return hasHandle ? hasHandle(node.node) : node;
+}
+function matchBrackets(state, pos, dir, config = {}) {
+  let maxScanDistance = config.maxScanDistance || DefaultScanDist, brackets = config.brackets || DefaultBrackets;
+  let tree = syntaxTree(state), node = tree.resolveInner(pos, dir);
+  for (let cur = node; cur; cur = cur.parent) {
+    let matches = matchingNodes(cur.type, dir, brackets);
+    if (matches && cur.from < cur.to) {
+      let handle = findHandle(cur);
+      if (handle && (dir > 0 ? pos >= handle.from && pos < handle.to : pos > handle.from && pos <= handle.to))
+        return matchMarkedBrackets(state, pos, dir, cur, handle, matches, brackets);
+    }
+  }
+  return matchPlainBrackets(state, pos, dir, tree, node.type, maxScanDistance, brackets);
+}
+function matchMarkedBrackets(_state, _pos, dir, token, handle, matching, brackets) {
+  let parent = token.parent, firstToken = { from: handle.from, to: handle.to };
+  let depth = 0, cursor = parent === null || parent === void 0 ? void 0 : parent.cursor();
+  if (cursor && (dir < 0 ? cursor.childBefore(token.from) : cursor.childAfter(token.to)))
+    do {
+      if (dir < 0 ? cursor.to <= token.from : cursor.from >= token.to) {
+        if (depth == 0 && matching.indexOf(cursor.type.name) > -1 && cursor.from < cursor.to) {
+          let endHandle = findHandle(cursor);
+          return { start: firstToken, end: endHandle ? { from: endHandle.from, to: endHandle.to } : void 0, matched: true };
+        } else if (matchingNodes(cursor.type, dir, brackets)) {
+          depth++;
+        } else if (matchingNodes(cursor.type, -dir, brackets)) {
+          if (depth == 0) {
+            let endHandle = findHandle(cursor);
+            return {
+              start: firstToken,
+              end: endHandle && endHandle.from < endHandle.to ? { from: endHandle.from, to: endHandle.to } : void 0,
+              matched: false
+            };
+          }
+          depth--;
+        }
+      }
+    } while (dir < 0 ? cursor.prevSibling() : cursor.nextSibling());
+  return { start: firstToken, matched: false };
+}
+function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, brackets) {
+  if (dir < 0 ? !pos : pos == state.doc.length)
+    return null;
+  let startCh = dir < 0 ? state.sliceDoc(pos - 1, pos) : state.sliceDoc(pos, pos + 1);
+  let bracket2 = brackets.indexOf(startCh);
+  if (bracket2 < 0 || bracket2 % 2 == 0 != dir > 0)
+    return null;
+  let startToken = { from: dir < 0 ? pos - 1 : pos, to: dir > 0 ? pos + 1 : pos };
+  let iter = state.doc.iterRange(pos, dir > 0 ? state.doc.length : 0), depth = 0;
+  for (let distance = 0; !iter.next().done && distance <= maxScanDistance; ) {
+    let text = iter.value;
+    if (dir < 0)
+      distance += text.length;
+    let basePos = pos + distance * dir;
+    for (let pos2 = dir > 0 ? 0 : text.length - 1, end = dir > 0 ? text.length : -1; pos2 != end; pos2 += dir) {
+      let found = brackets.indexOf(text[pos2]);
+      if (found < 0 || tree.resolveInner(basePos + pos2, 1).type != tokenType)
+        continue;
+      if (found % 2 == 0 == dir > 0) {
+        depth++;
+      } else if (depth == 1) {
+        return { start: startToken, end: { from: basePos + pos2, to: basePos + pos2 + 1 }, matched: found >> 1 == bracket2 >> 1 };
+      } else {
+        depth--;
+      }
+    }
+    if (dir > 0)
+      distance += text.length;
+  }
+  return iter.done ? { start: startToken, matched: false } : null;
+}
+var noTokens = /* @__PURE__ */ Object.create(null);
+var typeArray = [NodeType.none];
+var warned = [];
+var byTag = /* @__PURE__ */ Object.create(null);
+var defaultTable = /* @__PURE__ */ Object.create(null);
+for (let [legacyName, name2] of [
+  ["variable", "variableName"],
+  ["variable-2", "variableName.special"],
+  ["string-2", "string.special"],
+  ["def", "variableName.definition"],
+  ["tag", "tagName"],
+  ["attribute", "attributeName"],
+  ["type", "typeName"],
+  ["builtin", "variableName.standard"],
+  ["qualifier", "modifier"],
+  ["error", "invalid"],
+  ["header", "heading"],
+  ["property", "propertyName"]
+])
+  defaultTable[legacyName] = /* @__PURE__ */ createTokenType(noTokens, name2);
+function warnForPart(part, msg) {
+  if (warned.indexOf(part) > -1)
+    return;
+  warned.push(part);
+  console.warn(msg);
+}
+function createTokenType(extra, tagStr) {
+  let tags$1 = [];
+  for (let name3 of tagStr.split(" ")) {
+    let found = [];
+    for (let part of name3.split(".")) {
+      let value = extra[part] || tags[part];
+      if (!value) {
+        warnForPart(part, `Unknown highlighting tag ${part}`);
+      } else if (typeof value == "function") {
+        if (!found.length)
+          warnForPart(part, `Modifier ${part} used at start of tag`);
+        else
+          found = found.map(value);
+      } else {
+        if (found.length)
+          warnForPart(part, `Tag ${part} used as modifier`);
+        else
+          found = Array.isArray(value) ? value : [value];
+      }
+    }
+    for (let tag of found)
+      tags$1.push(tag);
+  }
+  if (!tags$1.length)
+    return 0;
+  let name2 = tagStr.replace(/ /g, "_"), key = name2 + " " + tags$1.map((t4) => t4.id);
+  let known = byTag[key];
+  if (known)
+    return known.id;
+  let type = byTag[key] = NodeType.define({
+    id: typeArray.length,
+    name: name2,
+    props: [styleTags({ [name2]: tags$1 })]
+  });
+  typeArray.push(type);
+  return type.id;
+}
+var marks = {
+  rtl: /* @__PURE__ */ import_view.Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "rtl" }, bidiIsolate: import_view.Direction.RTL }),
+  ltr: /* @__PURE__ */ import_view.Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "ltr" }, bidiIsolate: import_view.Direction.LTR }),
+  auto: /* @__PURE__ */ import_view.Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "auto" }, bidiIsolate: null })
+};
+
+// ../../node_modules/.pnpm/@codemirror+commands@6.11.1/node_modules/@codemirror/commands/dist/index.js
+var toggleComment = (target) => {
+  let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
+  return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
+};
+function command(f4, option) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let tr = f4(option, state);
+    if (!tr)
+      return false;
+    dispatch(state.update(tr));
+    return true;
+  };
+}
+var toggleLineComment = /* @__PURE__ */ command(
+  changeLineComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockComment = /* @__PURE__ */ command(
+  changeBlockComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockCommentByLine = /* @__PURE__ */ command(
+  (o3, s3) => changeBlockComment(o3, s3, selectedLineRanges(s3)),
+  0
+  /* CommentOption.Toggle */
+);
+function getConfig(state, pos) {
+  let data = state.languageDataAt("commentTokens", pos, 1);
+  return data.length ? data[0] : {};
+}
+var SearchMargin = 50;
+function findBlockComment(state, { open, close }, from, to) {
+  let textBefore = state.sliceDoc(from - SearchMargin, from);
+  let textAfter = state.sliceDoc(to, to + SearchMargin);
+  let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
+  let beforeOff = textBefore.length - spaceBefore;
+  if (textBefore.slice(beforeOff - open.length, beforeOff) == open && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
+    return {
+      open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
+      close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
+    };
+  }
+  let startText, endText;
+  if (to - from <= 2 * SearchMargin) {
+    startText = endText = state.sliceDoc(from, to);
+  } else {
+    startText = state.sliceDoc(from, from + SearchMargin);
+    endText = state.sliceDoc(to - SearchMargin, to);
+  }
+  let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
+  let endOff = endText.length - endSpace - close.length;
+  if (startText.slice(startSpace, startSpace + open.length) == open && endText.slice(endOff, endOff + close.length) == close) {
+    return {
+      open: {
+        pos: from + startSpace + open.length,
+        margin: /\s/.test(startText.charAt(startSpace + open.length)) ? 1 : 0
+      },
+      close: {
+        pos: to - endSpace - close.length,
+        margin: /\s/.test(endText.charAt(endOff - 1)) ? 1 : 0
+      }
+    };
+  }
+  return null;
+}
+function selectedLineRanges(state) {
+  let ranges = [];
+  for (let r3 of state.selection.ranges) {
+    let fromLine = state.doc.lineAt(r3.from);
+    let toLine = r3.to <= fromLine.to ? fromLine : state.doc.lineAt(r3.to);
+    if (toLine.from > fromLine.from && toLine.from == r3.to)
+      toLine = r3.to == fromLine.to + 1 ? fromLine : state.doc.lineAt(r3.to - 1);
+    let last = ranges.length - 1;
+    if (last >= 0 && ranges[last].to > fromLine.from)
+      ranges[last].to = toLine.to;
+    else
+      ranges.push({ from: fromLine.from + /^\s*/.exec(fromLine.text)[0].length, to: toLine.to });
+  }
+  return ranges;
+}
+function changeBlockComment(option, state, ranges = state.selection.ranges) {
+  let tokens = ranges.map((r3) => getConfig(state, r3.from).block);
+  if (!tokens.every((c3) => c3))
+    return null;
+  let comments = ranges.map((r3, i3) => findBlockComment(state, tokens[i3], r3.from, r3.to));
+  if (option != 2 && !comments.every((c3) => c3)) {
+    return { changes: state.changes(ranges.map((range, i3) => {
+      if (comments[i3])
+        return [];
+      return [{ from: range.from, insert: tokens[i3].open + " " }, { from: range.to, insert: " " + tokens[i3].close }];
+    })) };
+  } else if (option != 1 && comments.some((c3) => c3)) {
+    let changes = [];
+    for (let i3 = 0, comment2; i3 < comments.length; i3++)
+      if (comment2 = comments[i3]) {
+        let token = tokens[i3], { open, close } = comment2;
+        changes.push({ from: open.pos - token.open.length, to: open.pos + open.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
+      }
+    return { changes };
+  }
+  return null;
+}
+function changeLineComment(option, state, ranges = state.selection.ranges) {
+  let lines = [];
+  let prevLine = -1;
+  ranges: for (let { from, to } of ranges) {
+    let startI = lines.length, minIndent = 1e9, token;
+    for (let pos = from; pos <= to; ) {
+      let line = state.doc.lineAt(pos);
+      if (token == void 0) {
+        token = getConfig(state, line.from).line;
+        if (!token)
+          continue ranges;
+      }
+      if (line.from > prevLine && (from == to || to > line.from)) {
+        prevLine = line.from;
+        let indent = /^\s*/.exec(line.text)[0].length;
+        let empty = indent == line.length;
+        let comment2 = line.text.slice(indent, indent + token.length) == token ? indent : -1;
+        if (indent < line.text.length && indent < minIndent)
+          minIndent = indent;
+        lines.push({ line, comment: comment2, token, indent, empty, single: false });
+      }
+      pos = line.to + 1;
+    }
+    if (minIndent < 1e9) {
+      for (let i3 = startI; i3 < lines.length; i3++)
+        if (lines[i3].indent < lines[i3].line.text.length)
+          lines[i3].indent = minIndent;
+    }
+    if (lines.length == startI + 1)
+      lines[startI].single = true;
+  }
+  if (option != 2 && lines.some((l3) => l3.comment < 0 && (!l3.empty || l3.single))) {
+    let changes = [];
+    for (let { line, token, indent, empty, single } of lines)
+      if (single || !empty)
+        changes.push({ from: line.from + indent, insert: token + " " });
+    let changeSet = state.changes(changes);
+    return { changes: changeSet, selection: state.selection.map(changeSet, 1) };
+  } else if (option != 1 && lines.some((l3) => l3.comment >= 0)) {
+    let changes = [];
+    for (let { line, comment: comment2, token } of lines)
+      if (comment2 >= 0) {
+        let from = line.from + comment2, to = from + token.length;
+        if (line.text[to - line.from] == " ")
+          to++;
+        changes.push({ from, to });
+      }
+    return { changes };
+  }
+  return null;
+}
+var fromHistory = /* @__PURE__ */ import_state2.Annotation.define();
+var isolateHistory = /* @__PURE__ */ import_state2.Annotation.define();
+var invertedEffects = /* @__PURE__ */ import_state2.Facet.define();
+var historyConfig = /* @__PURE__ */ import_state2.Facet.define({
+  combine(configs) {
+    return (0, import_state2.combineConfig)(configs, {
+      minDepth: 100,
+      newGroupDelay: 500,
+      joinToEvent: (_t, isAdjacent2) => isAdjacent2
+    }, {
+      minDepth: Math.max,
+      newGroupDelay: Math.min,
+      joinToEvent: (a3, b2) => (tr, adj) => a3(tr, adj) || b2(tr, adj)
+    });
+  }
+});
+var historyField_ = /* @__PURE__ */ import_state2.StateField.define({
+  create() {
+    return HistoryState.empty;
+  },
+  update(state, tr) {
+    let config = tr.state.facet(historyConfig);
+    let fromHist = tr.annotation(fromHistory);
+    if (fromHist) {
+      let item = HistEvent.fromTransaction(tr, fromHist.selection), from = fromHist.side;
+      let other = from == 0 ? state.undone : state.done;
+      if (item)
+        other = updateBranch(other, other.length, config.minDepth, item);
+      else
+        other = addSelection(other, tr.startState.selection);
+      return new HistoryState(from == 0 ? fromHist.rest : other, from == 0 ? other : fromHist.rest);
+    }
+    let isolate = tr.annotation(isolateHistory);
+    if (isolate == "full" || isolate == "before")
+      state = state.isolate();
+    if (tr.annotation(import_state2.Transaction.addToHistory) === false)
+      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
+    let event = HistEvent.fromTransaction(tr);
+    let time = tr.annotation(import_state2.Transaction.time), userEvent = tr.annotation(import_state2.Transaction.userEvent);
+    if (event)
+      state = state.addChanges(event, time, userEvent, config, tr);
+    else if (tr.selection)
+      state = state.addSelection(tr.startState.selection, time, userEvent, config.newGroupDelay);
+    if (isolate == "full" || isolate == "after")
+      state = state.isolate();
+    return state;
+  },
+  toJSON(value) {
+    return { done: value.done.map((e3) => e3.toJSON()), undone: value.undone.map((e3) => e3.toJSON()) };
+  },
+  fromJSON(json) {
+    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
+  }
+});
+function history(config = {}) {
+  return [
+    historyField_,
+    historyConfig.of(config),
+    import_view2.EditorView.domEventHandlers({
+      beforeinput(e3, view) {
+        let command2 = e3.inputType == "historyUndo" ? undo : e3.inputType == "historyRedo" ? redo : null;
+        if (!command2)
+          return false;
+        e3.preventDefault();
+        return command2(view);
+      }
+    })
+  ];
+}
+function cmd(side, selection) {
+  return function({ state, dispatch }) {
+    if (!selection && state.readOnly)
+      return false;
+    let historyState = state.field(historyField_, false);
+    if (!historyState)
+      return false;
+    let tr = historyState.pop(side, state, selection);
+    if (!tr)
+      return false;
+    dispatch(tr);
+    return true;
+  };
+}
+var undo = /* @__PURE__ */ cmd(0, false);
+var redo = /* @__PURE__ */ cmd(1, false);
+var undoSelection = /* @__PURE__ */ cmd(0, true);
+var redoSelection = /* @__PURE__ */ cmd(1, true);
+var HistEvent = class _HistEvent {
+  constructor(changes, effects, mapped, startSelection, selectionsAfter) {
+    this.changes = changes;
+    this.effects = effects;
+    this.mapped = mapped;
+    this.startSelection = startSelection;
+    this.selectionsAfter = selectionsAfter;
+  }
+  setSelAfter(after) {
+    return new _HistEvent(this.changes, this.effects, this.mapped, this.startSelection, after);
+  }
+  toJSON() {
+    var _a2, _b, _c;
+    return {
+      changes: (_a2 = this.changes) === null || _a2 === void 0 ? void 0 : _a2.toJSON(),
+      mapped: (_b = this.mapped) === null || _b === void 0 ? void 0 : _b.toJSON(),
+      startSelection: (_c = this.startSelection) === null || _c === void 0 ? void 0 : _c.toJSON(),
+      selectionsAfter: this.selectionsAfter.map((s3) => s3.toJSON())
+    };
+  }
+  static fromJSON(json) {
+    return new _HistEvent(json.changes && import_state2.ChangeSet.fromJSON(json.changes), [], json.mapped && import_state2.ChangeDesc.fromJSON(json.mapped), json.startSelection && import_state2.EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(import_state2.EditorSelection.fromJSON));
+  }
+  // This does not check `addToHistory` and such, it assumes the
+  // transaction needs to be converted to an item. Returns null when
+  // there are no changes or effects in the transaction.
+  static fromTransaction(tr, selection) {
+    let effects = none;
+    for (let invert of tr.startState.facet(invertedEffects)) {
+      let result = invert(tr);
+      if (result.length)
+        effects = effects.concat(result);
+    }
+    if (!effects.length && tr.changes.empty)
+      return null;
+    return new _HistEvent(tr.changes.invert(tr.startState.doc), effects, void 0, selection || tr.startState.selection, none);
+  }
+  static selection(selections) {
+    return new _HistEvent(void 0, none, void 0, void 0, selections);
+  }
+};
+function updateBranch(branch, to, maxLen, newEvent) {
+  let start = to + 1 > maxLen + 20 ? to - maxLen - 1 : 0;
+  let newBranch = branch.slice(start, to);
+  newBranch.push(newEvent);
+  return newBranch;
+}
+function isAdjacent(a3, b2) {
+  let ranges = [], isAdjacent2 = false;
+  a3.iterChangedRanges((f4, t4) => ranges.push(f4, t4));
+  b2.iterChangedRanges((_f, _t, f4, t4) => {
+    for (let i3 = 0; i3 < ranges.length; ) {
+      let from = ranges[i3++], to = ranges[i3++];
+      if (t4 >= from && f4 <= to)
+        isAdjacent2 = true;
+    }
+  });
+  return isAdjacent2;
+}
+function eqSelectionShape(a3, b2) {
+  return a3.ranges.length == b2.ranges.length && a3.ranges.filter((r3, i3) => r3.empty != b2.ranges[i3].empty).length === 0;
+}
+function conc(a3, b2) {
+  return !a3.length ? b2 : !b2.length ? a3 : a3.concat(b2);
+}
+var none = [];
+var MaxSelectionsPerEvent = 200;
+function addSelection(branch, selection) {
+  if (!branch.length) {
+    return [HistEvent.selection([selection])];
+  } else {
+    let lastEvent = branch[branch.length - 1];
+    let sels = lastEvent.selectionsAfter.slice(Math.max(0, lastEvent.selectionsAfter.length - MaxSelectionsPerEvent));
+    if (sels.length && sels[sels.length - 1].eq(selection))
+      return branch;
+    sels.push(selection);
+    return updateBranch(branch, branch.length - 1, 1e9, lastEvent.setSelAfter(sels));
+  }
+}
+function popSelection(branch) {
+  let last = branch[branch.length - 1];
+  let newBranch = branch.slice();
+  newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
+  return newBranch;
+}
+function addMappingToBranch(branch, mapping) {
+  if (!branch.length)
+    return branch;
+  let length = branch.length, selections = none;
+  while (length) {
+    let event = mapEvent(branch[length - 1], mapping, selections);
+    if (event.changes && !event.changes.empty || event.effects.length) {
+      let result = branch.slice(0, length);
+      result[length - 1] = event;
+      return result;
+    } else {
+      mapping = event.mapped;
+      length--;
+      selections = event.selectionsAfter;
+    }
+  }
+  return selections.length ? [HistEvent.selection(selections)] : none;
+}
+function mapEvent(event, mapping, extraSelections) {
+  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s3) => s3.map(mapping)) : none, extraSelections);
+  if (!event.changes)
+    return HistEvent.selection(selections);
+  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
+  let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
+  return new HistEvent(mappedChanges, import_state2.StateEffect.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
+}
+var joinableUserEvent = /^(input\.type|delete)($|\.)/;
+var HistoryState = class _HistoryState {
+  constructor(done, undone, prevTime = 0, prevUserEvent = void 0) {
+    this.done = done;
+    this.undone = undone;
+    this.prevTime = prevTime;
+    this.prevUserEvent = prevUserEvent;
+  }
+  isolate() {
+    return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
+  }
+  addChanges(event, time, userEvent, config, tr) {
+    let done = this.done, lastEvent = done[done.length - 1];
+    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config.newGroupDelay && config.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
+    userEvent == "input.type.compose")) {
+      done = updateBranch(done, done.length - 1, config.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(import_state2.StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none));
+    } else {
+      done = updateBranch(done, done.length, config.minDepth, event);
+    }
+    return new _HistoryState(done, none, time, userEvent);
+  }
+  addSelection(selection, time, userEvent, newGroupDelay) {
+    let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none;
+    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
+      return this;
+    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
+  }
+  addMapping(mapping) {
+    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
+  }
+  pop(side, state, onlySelection) {
+    let branch = side == 0 ? this.done : this.undone;
+    if (branch.length == 0)
+      return null;
+    let event = branch[branch.length - 1], selection = event.selectionsAfter[0] || (event.startSelection ? event.startSelection.map(event.changes.invertedDesc, 1) : state.selection);
+    if (onlySelection && event.selectionsAfter.length) {
+      return state.update({
+        selection: event.selectionsAfter[event.selectionsAfter.length - 1],
+        annotations: fromHistory.of({ side, rest: popSelection(branch), selection }),
+        userEvent: side == 0 ? "select.undo" : "select.redo",
+        scrollIntoView: true
+      });
+    } else if (!event.changes) {
+      return null;
+    } else {
+      let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
+      if (event.mapped)
+        rest = addMappingToBranch(rest, event.mapped);
+      return state.update({
+        changes: event.changes,
+        selection: event.startSelection,
+        effects: event.effects,
+        annotations: fromHistory.of({ side, rest, selection }),
+        filter: false,
+        userEvent: side == 0 ? "undo" : "redo",
+        scrollIntoView: true
+      });
+    }
+  }
+};
+HistoryState.empty = /* @__PURE__ */ new HistoryState(none, none);
+var historyKeymap = [
+  { key: "Mod-z", run: undo, preventDefault: true },
+  { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
+  { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },
+  { key: "Mod-u", run: undoSelection, preventDefault: true },
+  { key: "Alt-u", mac: "Mod-Shift-u", run: redoSelection, preventDefault: true }
+];
+function updateSel(sel, by) {
+  return import_state2.EditorSelection.create(sel.ranges.map(by), sel.mainIndex);
+}
+function setSel(state, selection) {
+  return state.update({ selection, scrollIntoView: true, userEvent: "select" });
+}
+function moveSel({ state, dispatch }, how) {
+  let selection = updateSel(state.selection, how);
+  if (selection.eq(state.selection, true))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+function rangeEnd(range, forward) {
+  return import_state2.EditorSelection.cursor(forward ? range.to : range.from);
+}
+function cursorByChar(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByChar(range, forward) : rangeEnd(range, forward));
+}
+function ltrAtCursor(view) {
+  return view.textDirectionAt(view.state.selection.main.head) == import_view2.Direction.LTR;
+}
+var cursorCharLeft = (view) => cursorByChar(view, !ltrAtCursor(view));
+var cursorCharRight = (view) => cursorByChar(view, ltrAtCursor(view));
+function cursorByGroup(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByGroup(range, forward) : rangeEnd(range, forward));
+}
+var cursorGroupLeft = (view) => cursorByGroup(view, !ltrAtCursor(view));
+var cursorGroupRight = (view) => cursorByGroup(view, ltrAtCursor(view));
+var segmenter = typeof Intl != "undefined" && Intl.Segmenter ? /* @__PURE__ */ new Intl.Segmenter(void 0, { granularity: "word" }) : null;
+function interestingNode(state, node, bracketProp) {
+  if (node.type.prop(bracketProp))
+    return true;
+  let len = node.to - node.from;
+  return len && (len > 2 || /[^\s,.;:]/.test(state.sliceDoc(node.from, node.to))) || node.firstChild;
+}
+function moveBySyntax(state, start, forward) {
+  let pos = syntaxTree(state).resolveInner(start.head);
+  let bracketProp = forward ? NodeProp.closedBy : NodeProp.openedBy;
+  for (let at = start.head; ; ) {
+    let next = forward ? pos.childAfter(at) : pos.childBefore(at);
+    if (!next)
+      break;
+    if (interestingNode(state, next, bracketProp))
+      pos = next;
+    else
+      at = forward ? next.to : next.from;
+  }
+  let bracket2 = pos.type.prop(bracketProp), match, newPos;
+  if (bracket2 && (match = forward ? matchBrackets(state, pos.from, 1) : matchBrackets(state, pos.to, -1)) && match.matched)
+    newPos = forward ? match.end.to : match.end.from;
+  else
+    newPos = forward ? pos.to : pos.from;
+  return import_state2.EditorSelection.cursor(newPos, forward ? -1 : 1);
+}
+var cursorSyntaxLeft = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var cursorSyntaxRight = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function cursorByLine(view, forward) {
+  return moveSel(view, (range) => {
+    if (!range.empty)
+      return rangeEnd(range, forward);
+    let moved = view.moveVertically(range, forward);
+    return moved.head != range.head ? moved : view.moveToLineBoundary(range, forward);
+  });
+}
+var cursorLineUp = (view) => cursorByLine(view, false);
+var cursorLineDown = (view) => cursorByLine(view, true);
+function pageInfo(view) {
+  let selfScroll = view.scrollDOM.clientHeight < view.scrollDOM.scrollHeight - 2;
+  let marginTop = 0, marginBottom = 0, height;
+  if (selfScroll) {
+    for (let source of view.state.facet(import_view2.EditorView.scrollMargins)) {
+      let margins = source(view);
+      if (margins === null || margins === void 0 ? void 0 : margins.top)
+        marginTop = Math.max(margins === null || margins === void 0 ? void 0 : margins.top, marginTop);
+      if (margins === null || margins === void 0 ? void 0 : margins.bottom)
+        marginBottom = Math.max(margins === null || margins === void 0 ? void 0 : margins.bottom, marginBottom);
+    }
+    height = view.scrollDOM.clientHeight - marginTop - marginBottom;
+  } else {
+    height = (view.dom.ownerDocument.defaultView || window).innerHeight;
+  }
+  return {
+    marginTop,
+    marginBottom,
+    selfScroll,
+    height: Math.max(view.defaultLineHeight, height - 5)
+  };
+}
+function cursorByPage(view, forward) {
+  let page = pageInfo(view);
+  let { state } = view, selection = updateSel(state.selection, (range) => {
+    return range.empty ? view.moveVertically(range, forward, page.height) : rangeEnd(range, forward);
+  });
+  if (selection.eq(state.selection))
+    return false;
+  let effect;
+  if (page.selfScroll) {
+    let startPos = view.coordsAtPos(state.selection.main.head);
+    let scrollRect = view.scrollDOM.getBoundingClientRect();
+    let scrollTop = scrollRect.top + page.marginTop, scrollBottom = scrollRect.bottom - page.marginBottom;
+    if (startPos && startPos.top > scrollTop && startPos.bottom < scrollBottom)
+      effect = import_view2.EditorView.scrollIntoView(selection.main.head, { y: "start", yMargin: startPos.top - scrollTop });
+  }
+  view.dispatch(setSel(state, selection), { effects: effect });
+  return true;
+}
+var cursorPageUp = (view) => cursorByPage(view, false);
+var cursorPageDown = (view) => cursorByPage(view, true);
+function moveByLineBoundary(view, start, forward) {
+  let line = view.lineBlockAt(start.head), moved = view.moveToLineBoundary(start, forward);
+  if (moved.head == start.head && moved.head != (forward ? line.to : line.from))
+    moved = view.moveToLineBoundary(start, forward, false);
+  if (!forward && moved.head == line.from && line.length) {
+    let space = /^\s*/.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))[0].length;
+    if (space && start.head != line.from + space)
+      moved = import_state2.EditorSelection.cursor(line.from + space);
+  }
+  return moved;
+}
+var cursorLineBoundaryForward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, true));
+var cursorLineBoundaryBackward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, false));
+var cursorLineBoundaryLeft = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var cursorLineBoundaryRight = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var cursorLineStart = (view) => moveSel(view, (range) => view.moveToLineBoundary(range, false, false));
+var cursorLineEnd = (view) => moveSel(view, (range) => view.moveToLineBoundary(range, true, false));
+function toMatchingBracket(state, dispatch, extend) {
+  let found = false, selection = updateSel(state.selection, (range) => {
+    let matching = matchBrackets(state, range.head, -1) || matchBrackets(state, range.head, 1) || range.head > 0 && matchBrackets(state, range.head - 1, 1) || range.head < state.doc.length && matchBrackets(state, range.head + 1, -1);
+    if (!matching || !matching.end)
+      return range;
+    found = true;
+    let head = matching.start.from == range.head ? matching.end.to : matching.end.from;
+    return extend ? import_state2.EditorSelection.range(range.anchor, head) : import_state2.EditorSelection.cursor(head);
+  });
+  if (!found)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+var cursorMatchingBracket = ({ state, dispatch }) => toMatchingBracket(state, dispatch, false);
+function extendSel(target, forward, how) {
+  let selection = updateSel(target.state.selection, (range) => {
+    if (range.undirectional && range.head >= range.anchor != forward)
+      range = import_state2.EditorSelection.range(range.head, range.anchor);
+    let head = how(range);
+    return import_state2.EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || void 0, head.assoc);
+  });
+  if (selection.eq(target.state.selection))
+    return false;
+  target.dispatch(setSel(target.state, selection));
+  return true;
+}
+function selectByChar(view, forward) {
+  return extendSel(view, forward, (range) => view.moveByChar(range, forward));
+}
+var selectCharLeft = (view) => selectByChar(view, !ltrAtCursor(view));
+var selectCharRight = (view) => selectByChar(view, ltrAtCursor(view));
+function selectByGroup(view, forward) {
+  return extendSel(view, forward, (range) => view.moveByGroup(range, forward));
+}
+var selectGroupLeft = (view) => selectByGroup(view, !ltrAtCursor(view));
+var selectGroupRight = (view) => selectByGroup(view, ltrAtCursor(view));
+var selectSyntaxLeft = (view) => {
+  let forward = !ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveBySyntax(view.state, range, forward));
+};
+var selectSyntaxRight = (view) => {
+  let forward = ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveBySyntax(view.state, range, forward));
+};
+function selectByLine(view, forward) {
+  return extendSel(view, forward, (range) => view.moveVertically(range, forward));
+}
+var selectLineUp = (view) => selectByLine(view, false);
+var selectLineDown = (view) => selectByLine(view, true);
+function selectByPage(view, forward) {
+  return extendSel(view, forward, (range) => view.moveVertically(range, forward, pageInfo(view).height));
+}
+var selectPageUp = (view) => selectByPage(view, false);
+var selectPageDown = (view) => selectByPage(view, true);
+var selectLineBoundaryForward = (view) => extendSel(view, true, (range) => moveByLineBoundary(view, range, true));
+var selectLineBoundaryBackward = (view) => extendSel(view, false, (range) => moveByLineBoundary(view, range, false));
+var selectLineBoundaryLeft = (view) => {
+  let forward = !ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveByLineBoundary(view, range, forward));
+};
+var selectLineBoundaryRight = (view) => {
+  let forward = ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveByLineBoundary(view, range, forward));
+};
+var selectLineStart = (view) => extendSel(view, false, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).from));
+var selectLineEnd = (view) => extendSel(view, true, (range) => import_state2.EditorSelection.cursor(view.lineBlockAt(range.head).to));
+var cursorDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: 0 }));
+  return true;
+};
+var cursorDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.doc.length }));
+  return true;
+};
+var selectDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: 0 }));
+  return true;
+};
+var selectDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: state.doc.length }));
+  return true;
+};
+var selectAll = ({ state, dispatch }) => {
+  dispatch(state.update({ selection: { anchor: 0, head: state.doc.length }, userEvent: "select" }));
+  return true;
+};
+var selectLine = ({ state, dispatch }) => {
+  let ranges = selectedLineBlocks(state).map(({ from, to }) => import_state2.EditorSelection.undirectionalRange(from, Math.min(to + 1, state.doc.length)));
+  dispatch(state.update({ selection: import_state2.EditorSelection.create(ranges), userEvent: "select" }));
+  return true;
+};
+var selectParentSyntax = ({ state, dispatch }) => {
+  let selection = updateSel(state.selection, (range) => {
+    let tree = syntaxTree(state), stack2 = tree.resolveStack(range.from, 1);
+    if (range.empty) {
+      let stackBefore = tree.resolveStack(range.from, -1);
+      if (stackBefore.node.from >= stack2.node.from && stackBefore.node.to <= stack2.node.to)
+        stack2 = stackBefore;
+    }
+    for (let cur = stack2; cur; cur = cur.next) {
+      let { node } = cur;
+      if ((node.from < range.from && node.to >= range.to || node.to > range.to && node.from <= range.from) && cur.next)
+        return import_state2.EditorSelection.undirectionalRange(node.from, node.to);
+    }
+    return range;
+  });
+  if (selection.eq(state.selection))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function addCursorVertically(view, forward) {
+  let { state } = view, sel = state.selection, ranges = state.selection.ranges.slice();
+  for (let range of state.selection.ranges) {
+    let line = state.doc.lineAt(range.head);
+    if (forward ? line.to < view.state.doc.length : line.from > 0)
+      for (let cur = range; ; ) {
+        let next = view.moveVertically(cur, forward);
+        if (next.head < line.from || next.head > line.to) {
+          if (!ranges.some((r3) => r3.head == next.head))
+            ranges.push(next);
+          break;
+        } else if (next.head == cur.head) {
+          break;
+        } else {
+          cur = next;
+        }
+      }
+  }
+  if (ranges.length == sel.ranges.length)
+    return false;
+  view.dispatch(setSel(state, import_state2.EditorSelection.create(ranges, ranges.length - 1)));
+  return true;
+}
+var addCursorAbove = (view) => addCursorVertically(view, false);
+var addCursorBelow = (view) => addCursorVertically(view, true);
+var simplifySelection = ({ state, dispatch }) => {
+  let cur = state.selection, selection = null;
+  if (cur.ranges.length > 1)
+    selection = import_state2.EditorSelection.create([cur.main]);
+  else if (!cur.main.empty)
+    selection = import_state2.EditorSelection.create([import_state2.EditorSelection.cursor(cur.main.head)]);
+  if (!selection)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function deleteBy(target, by) {
+  if (target.state.readOnly)
+    return false;
+  let event = "delete.selection", { state } = target;
+  let changes = state.changeByRange((range) => {
+    let { from, to } = range;
+    if (from == to) {
+      let towards = by(range);
+      if (towards < from) {
+        event = "delete.backward";
+        towards = skipAtomic(target, towards, false);
+      } else if (towards > from) {
+        event = "delete.forward";
+        towards = skipAtomic(target, towards, true);
+      }
+      from = Math.min(from, towards);
+      to = Math.max(to, towards);
+    } else {
+      from = skipAtomic(target, from, false);
+      to = skipAtomic(target, to, true);
+    }
+    return from == to ? { range } : { changes: { from, to }, range: import_state2.EditorSelection.cursor(from, from < range.head ? -1 : 1) };
+  });
+  if (changes.changes.empty)
+    return false;
+  target.dispatch(state.update(changes, {
+    scrollIntoView: true,
+    userEvent: event,
+    effects: event == "delete.selection" ? import_view2.EditorView.announce.of(state.phrase("Selection deleted")) : void 0
+  }));
+  return true;
+}
+function skipAtomic(target, pos, forward) {
+  if (target instanceof import_view2.EditorView)
+    for (let ranges of target.state.facet(import_view2.EditorView.atomicRanges).map((f4) => f4(target)))
+      ranges.between(pos, pos, (from, to) => {
+        if (from < pos && to > pos)
+          pos = forward ? to : from;
+      });
+  return pos;
+}
+var deleteByChar = (target, forward, byIndentUnit) => deleteBy(target, (range) => {
+  let pos = range.from, { state } = target, line = state.doc.lineAt(pos), before, targetPos;
+  if (byIndentUnit && !forward && pos > line.from && pos < line.from + 200 && !/[^ \t]/.test(before = line.text.slice(0, pos - line.from))) {
+    if (before[before.length - 1] == "	")
+      return pos - 1;
+    let col = (0, import_state2.countColumn)(before, state.tabSize), drop = col % getIndentUnit(state) || getIndentUnit(state);
+    for (let i3 = 0; i3 < drop && before[before.length - 1 - i3] == " "; i3++)
+      pos--;
+    targetPos = pos;
+  } else {
+    targetPos = (0, import_state2.findClusterBreak)(line.text, pos - line.from, forward, forward) + line.from;
+    if (targetPos == pos && line.number != (forward ? state.doc.lines : 1))
+      targetPos += forward ? 1 : -1;
+    else if (!forward && /[\ufe00-\ufe0f]/.test(line.text.slice(targetPos - line.from, pos - line.from)))
+      targetPos = (0, import_state2.findClusterBreak)(line.text, targetPos - line.from, false, false) + line.from;
+  }
+  return targetPos;
+});
+var deleteCharBackward = (view) => deleteByChar(view, false, true);
+var deleteCharForward = (view) => deleteByChar(view, true, false);
+var deleteByGroup = (target, forward) => deleteBy(target, (range) => {
+  let pos = range.head, { state } = target, line = state.doc.lineAt(pos);
+  let categorize = state.charCategorizer(pos);
+  for (let cat = null; ; ) {
+    if (pos == (forward ? line.to : line.from)) {
+      if (pos == range.head && line.number != (forward ? state.doc.lines : 1))
+        pos += forward ? 1 : -1;
+      break;
+    }
+    let next = (0, import_state2.findClusterBreak)(line.text, pos - line.from, forward) + line.from;
+    let nextChar = line.text.slice(Math.min(pos, next) - line.from, Math.max(pos, next) - line.from);
+    let nextCat = categorize(nextChar);
+    if (cat != null && nextCat != cat)
+      break;
+    if (nextChar != " " || pos != range.head)
+      cat = nextCat;
+    pos = next;
+  }
+  return pos;
+});
+var deleteGroupBackward = (target) => deleteByGroup(target, false);
+var deleteGroupForward = (target) => deleteByGroup(target, true);
+var deleteToLineEnd = (view) => deleteBy(view, (range) => {
+  let lineEnd = view.lineBlockAt(range.head).to;
+  return range.head < lineEnd ? lineEnd : Math.min(view.state.doc.length, range.head + 1);
+});
+var deleteLineBoundaryBackward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, false).head;
+  return range.head > lineStart ? lineStart : Math.max(0, range.head - 1);
+});
+var deleteLineBoundaryForward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, true).head;
+  return range.head < lineStart ? lineStart : Math.min(view.state.doc.length, range.head + 1);
+});
+var splitLine = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    return {
+      changes: { from: range.from, to: range.to, insert: import_state2.Text.of(["", ""]) },
+      range: import_state2.EditorSelection.cursor(range.from)
+    };
+  });
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+  return true;
+};
+var transposeChars = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    if (!range.empty || range.from == 0 || range.from == state.doc.length)
+      return { range };
+    let pos = range.from, line = state.doc.lineAt(pos);
+    let from = pos == line.from ? pos - 1 : (0, import_state2.findClusterBreak)(line.text, pos - line.from, false) + line.from;
+    let to = pos == line.to ? pos + 1 : (0, import_state2.findClusterBreak)(line.text, pos - line.from, true) + line.from;
+    return {
+      changes: { from, to, insert: state.doc.slice(pos, to).append(state.doc.slice(from, pos)) },
+      range: import_state2.EditorSelection.cursor(to)
+    };
+  });
+  if (changes.changes.empty)
+    return false;
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "move.character" }));
+  return true;
+};
+function selectedLineBlocks(state) {
+  let blocks = [], upto = -1;
+  for (let range of state.selection.ranges) {
+    let startLine = state.doc.lineAt(range.from), endLine = state.doc.lineAt(range.to);
+    if (!range.empty && range.to == endLine.from)
+      endLine = state.doc.lineAt(range.to - 1);
+    if (upto >= startLine.number) {
+      let prev = blocks[blocks.length - 1];
+      prev.to = endLine.to;
+      prev.ranges.push(range);
+    } else {
+      blocks.push({ from: startLine.from, to: endLine.to, ranges: [range] });
+    }
+    upto = endLine.number + 1;
+  }
+  return blocks;
+}
+function moveLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [], ranges = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward ? block.to == state.doc.length : block.from == 0)
+      continue;
+    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
+    let size = nextLine.length + 1;
+    if (forward) {
+      changes.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
+      for (let r3 of block.ranges)
+        ranges.push(import_state2.EditorSelection.range(Math.min(state.doc.length, r3.anchor + size), Math.min(state.doc.length, r3.head + size)));
+    } else {
+      changes.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
+      for (let r3 of block.ranges)
+        ranges.push(import_state2.EditorSelection.range(r3.anchor - size, r3.head - size));
+    }
+  }
+  if (!changes.length)
+    return false;
+  dispatch(state.update({
+    changes,
+    scrollIntoView: true,
+    selection: import_state2.EditorSelection.create(ranges, state.selection.mainIndex),
+    userEvent: "move.line"
+  }));
+  return true;
+}
+var moveLineUp = ({ state, dispatch }) => moveLine(state, dispatch, false);
+var moveLineDown = ({ state, dispatch }) => moveLine(state, dispatch, true);
+function copyLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward)
+      changes.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
+    else
+      changes.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
+  }
+  let changeSet = state.changes(changes);
+  dispatch(state.update({
+    changes: changeSet,
+    selection: state.selection.map(changeSet, forward ? 1 : -1),
+    scrollIntoView: true,
+    userEvent: "input.copyline"
+  }));
+  return true;
+}
+var copyLineUp = ({ state, dispatch }) => copyLine(state, dispatch, false);
+var copyLineDown = ({ state, dispatch }) => copyLine(state, dispatch, true);
+var deleteLine = (view) => {
+  if (view.state.readOnly)
+    return false;
+  let { state } = view, changes = state.changes(selectedLineBlocks(state).map(({ from, to }) => {
+    if (from > 0)
+      from--;
+    else if (to < state.doc.length)
+      to++;
+    return { from, to };
+  }));
+  let selection = updateSel(state.selection, (range) => {
+    let dist = void 0;
+    if (view.lineWrapping) {
+      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
+      if (pos)
+        dist = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
+    }
+    return view.moveVertically(range, true, dist);
+  }).map(changes);
+  view.dispatch({ changes, selection, scrollIntoView: true, userEvent: "delete.line" });
+  return true;
+};
+function isBetweenBrackets(state, pos) {
+  if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
+    return { from: pos, to: pos };
+  let context = syntaxTree(state).resolveInner(pos);
+  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
+  if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
+    return { from: before.to, to: after.from };
+  return null;
+}
+var insertNewlineAndIndent = /* @__PURE__ */ newlineAndIndent(false);
+var insertBlankLine = /* @__PURE__ */ newlineAndIndent(true);
+function newlineAndIndent(atEof) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let changes = state.changeByRange((range) => {
+      let { from, to } = range, line = state.doc.lineAt(from);
+      let explode = !atEof && from == to && isBetweenBrackets(state, from);
+      if (atEof)
+        from = to = (to <= line.to ? line : state.doc.lineAt(to)).to;
+      let cx = new IndentContext(state, { simulateBreak: from, simulateDoubleBreak: !!explode });
+      let indent = getIndentation(cx, from);
+      if (indent == null)
+        indent = (0, import_state2.countColumn)(/^\s*/.exec(state.doc.lineAt(from).text)[0], state.tabSize);
+      while (to < line.to && /\s/.test(line.text[to - line.from]))
+        to++;
+      if (explode)
+        ({ from, to } = explode);
+      else if (from > line.from && from < line.from + 100 && !/\S/.test(line.text.slice(0, from)))
+        from = line.from;
+      let insert = ["", indentString(state, indent)];
+      if (explode)
+        insert.push(indentString(state, cx.lineIndent(line.from, -1)));
+      return {
+        changes: { from, to, insert: import_state2.Text.of(insert) },
+        range: import_state2.EditorSelection.cursor(from + 1 + insert[1].length)
+      };
+    });
+    dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+    return true;
+  };
+}
+function changeBySelectedLine(state, f4) {
+  let atLine = -1;
+  return state.changeByRange((range) => {
+    let changes = [];
+    for (let pos = range.from; pos <= range.to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.number > atLine && (range.empty || range.to > line.from)) {
+        f4(line, changes, range);
+        atLine = line.number;
+      }
+      pos = line.to + 1;
+    }
+    let changeSet = state.changes(changes);
+    return {
+      changes,
+      range: import_state2.EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
+    };
+  });
+}
+var indentSelection = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let updated = /* @__PURE__ */ Object.create(null);
+  let context = new IndentContext(state, { overrideIndentation: (start) => {
+    let found = updated[start];
+    return found == null ? -1 : found;
+  } });
+  let changes = changeBySelectedLine(state, (line, changes2, range) => {
+    let indent = getIndentation(context, line.from);
+    if (indent == null)
+      return;
+    if (!/\S/.test(line.text))
+      indent = 0;
+    let cur = /^\s*/.exec(line.text)[0];
+    let norm = indentString(state, indent);
+    if (cur != norm || range.from < line.from + cur.length) {
+      updated[line.from] = indent;
+      changes2.push({ from: line.from, to: line.from + cur.length, insert: norm });
+    }
+  });
+  if (!changes.changes.empty)
+    dispatch(state.update(changes, { userEvent: "indent" }));
+  return true;
+};
+var indentMore = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    changes.push({ from: line.from, insert: state.facet(indentUnit) });
+  }), { userEvent: "input.indent" }));
+  return true;
+};
+var indentLess = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    let space = /^\s*/.exec(line.text)[0];
+    if (!space)
+      return;
+    let col = (0, import_state2.countColumn)(space, state.tabSize), keep = 0;
+    let insert = indentString(state, Math.max(0, col - getIndentUnit(state)));
+    while (keep < space.length && keep < insert.length && space.charCodeAt(keep) == insert.charCodeAt(keep))
+      keep++;
+    changes.push({ from: line.from + keep, to: line.from + space.length, insert: insert.slice(keep) });
+  }), { userEvent: "delete.dedent" }));
+  return true;
+};
+var toggleTabFocusMode = (view) => {
+  view.setTabFocusMode();
+  return true;
+};
+var emacsStyleKeymap = [
+  { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
+  { key: "Ctrl-p", run: cursorLineUp, shift: selectLineUp },
+  { key: "Ctrl-n", run: cursorLineDown, shift: selectLineDown },
+  { key: "Ctrl-a", run: cursorLineStart, shift: selectLineStart },
+  { key: "Ctrl-e", run: cursorLineEnd, shift: selectLineEnd },
+  { key: "Ctrl-d", run: deleteCharForward },
+  { key: "Ctrl-h", run: deleteCharBackward },
+  { key: "Ctrl-k", run: deleteToLineEnd },
+  { key: "Ctrl-Alt-h", run: deleteGroupBackward },
+  { key: "Ctrl-o", run: splitLine },
+  { key: "Ctrl-t", run: transposeChars },
+  { key: "Ctrl-v", run: cursorPageDown }
+];
+var standardKeymap = /* @__PURE__ */ [
+  { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
+  { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
+  { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
+  { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
+  { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
+  { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
+  { mac: "Cmd-ArrowUp", run: cursorDocStart, shift: selectDocStart },
+  { mac: "Ctrl-ArrowUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
+  { mac: "Cmd-ArrowDown", run: cursorDocEnd, shift: selectDocEnd },
+  { mac: "Ctrl-ArrowDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
+  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
+  { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
+  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+  { key: "Enter", run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
+  { key: "Mod-a", run: selectAll },
+  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward, preventDefault: true },
+  { key: "Delete", run: deleteCharForward, preventDefault: true },
+  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward, preventDefault: true },
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward, preventDefault: true },
+  { mac: "Mod-Backspace", run: deleteLineBoundaryBackward, preventDefault: true },
+  { mac: "Mod-Delete", run: deleteLineBoundaryForward, preventDefault: true }
+].concat(/* @__PURE__ */ emacsStyleKeymap.map((b2) => ({ mac: b2.key, run: b2.run, shift: b2.shift })));
+var defaultKeymap = /* @__PURE__ */ [
+  { key: "Alt-ArrowLeft", mac: "Ctrl-ArrowLeft", run: cursorSyntaxLeft, shift: selectSyntaxLeft },
+  { key: "Alt-ArrowRight", mac: "Ctrl-ArrowRight", run: cursorSyntaxRight, shift: selectSyntaxRight },
+  { key: "Alt-ArrowUp", run: moveLineUp },
+  { key: "Shift-Alt-ArrowUp", run: copyLineUp },
+  { key: "Alt-ArrowDown", run: moveLineDown },
+  { key: "Shift-Alt-ArrowDown", run: copyLineDown },
+  { key: "Mod-Alt-ArrowUp", run: addCursorAbove },
+  { key: "Mod-Alt-ArrowDown", run: addCursorBelow },
+  { key: "Escape", run: simplifySelection },
+  { key: "Mod-Enter", run: insertBlankLine },
+  { key: "Alt-l", mac: "Ctrl-l", run: selectLine },
+  { key: "Mod-i", run: selectParentSyntax, preventDefault: true },
+  { key: "Mod-[", run: indentLess },
+  { key: "Mod-]", run: indentMore },
+  { key: "Mod-Alt-\\", run: indentSelection },
+  { key: "Shift-Mod-k", run: deleteLine },
+  { key: "Shift-Mod-\\", run: cursorMatchingBracket },
+  { key: "Mod-/", run: toggleComment },
+  { key: "Alt-A", mac: "Ctrl-A", run: toggleBlockComment },
+  { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
+].concat(standardKeymap);
+
+// src/obsidian/NoteEditor.tsx
+var import_state3 = require("@codemirror/state");
+var import_view3 = require("@codemirror/view");
+var import_obsidian5 = require("obsidian");
+
+// src/core/note-preview.ts
+function notePreviewBlocks(text, selection) {
+  const blocks = [];
+  let start = 0;
+  let offset = 0;
+  let fence = null;
+  const add = (to) => {
+    if (text.slice(start, to).trim() && !selection.some((s3) => s3.from <= to && s3.to >= start)) blocks.push({ from: start, to });
+  };
+  for (const line of text.split("\n")) {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (marker) {
+      if (!fence) fence = { char: marker[1][0], length: marker[1].length };
+      else if (marker[1][0] === fence.char && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+    }
+    if (!fence && !line.trim()) {
+      add(Math.max(start, offset - 1));
+      start = offset + line.length + 1;
+    }
+    offset += line.length + 1;
+  }
+  add(text.length);
+  return blocks;
+}
+
+// src/obsidian/NoteEditor.tsx
+function NoteEditor({ app, sourcePath, initial, onChange }) {
+  const host = A2(null);
+  const changed = A2(onChange);
+  changed.current = onChange;
+  h2(() => {
+    if (!host.current) return;
+    class Preview extends import_view3.WidgetType {
+      constructor(text, from) {
+        super();
+        this.text = text;
+        this.from = from;
+      }
+      text;
+      from;
+      component = new import_obsidian5.Component();
+      eq(other) {
+        return other.text === this.text && other.from === this.from;
+      }
+      toDOM(view2) {
+        const el = document.createElement("div");
+        el.className = "vt-note-preview markdown-rendered";
+        this.component.load();
+        void import_obsidian5.MarkdownRenderer.render(app, this.text, el, sourcePath, this.component).then(
+          () => view2.requestMeasure(),
+          () => {
+            el.textContent = this.text;
+            view2.requestMeasure();
+          }
+        );
+        el.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          view2.dispatch({ selection: { anchor: this.from } });
+          view2.focus();
+        });
+        return el;
+      }
+      destroy() {
+        this.component.unload();
+      }
+    }
+    const decorate = (state) => import_view3.Decoration.set(notePreviewBlocks(state.doc.toString(), state.selection.ranges).map(({ from, to }) => import_view3.Decoration.replace({ widget: new Preview(state.doc.sliceString(from, to), from), block: true }).range(from, to)));
+    const previews = import_state3.StateField.define({
+      create: decorate,
+      update: (value, tr) => tr.docChanged || tr.selection ? decorate(tr.state) : value,
+      provide: (field) => import_view3.EditorView.decorations.from(field)
+    });
+    const view = new import_view3.EditorView({
+      parent: host.current,
+      state: import_state3.EditorState.create({ doc: initial, extensions: [
+        history(),
+        import_view3.keymap.of([...defaultKeymap, ...historyKeymap]),
+        import_view3.EditorView.lineWrapping,
+        previews,
+        import_view3.EditorView.contentAttributes.of({ "aria-label": "Note", role: "textbox", "aria-multiline": "true" }),
+        import_view3.EditorView.updateListener.of((update) => {
+          if (update.docChanged) changed.current(update.state.doc.toString());
+        })
+      ] })
+    });
+    return () => view.destroy();
+  }, [app, sourcePath]);
+  return /* @__PURE__ */ u3("div", { ref: host, class: "vt-note-editor" });
+}
+
 // src/obsidian/sub-editor.tsx
 var DATE_FIELDS = [
   ["start", "Start"],
@@ -3415,9 +8034,9 @@ function SubIssueForm(props) {
             s3.summary
           ] }))
         ] }),
-        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: "Notes" }),
-          /* @__PURE__ */ u3("textarea", { class: "vt-subissue-body-input", value: draft.body, onInput: (e3) => set({ body: e3.currentTarget.value }) })
+        /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Note" }),
+          /* @__PURE__ */ u3(NoteEditor, { app: ctx.app, sourcePath: sub.path, initial: sub.body, onChange: (body) => set({ body }) })
         ] }),
         error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
@@ -3541,7 +8160,7 @@ function LabelBadge(props) {
 }
 
 // src/header/SubIssues.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -3966,15 +8585,15 @@ function SubTimeline(props) {
           const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
           const handles = barWidth >= HANDLE * 3;
           const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
-          const marks = [
+          const marks2 = [
             ...sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : [],
             ...sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []
           ];
-          const nothing = !bar && sub.scheduled === null && marks.length === 0;
+          const nothing = !bar && sub.scheduled === null && marks2.length === 0;
           return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
             nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
             !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
-            marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
+            marks2.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
             bar && /* @__PURE__ */ u3(
               "div",
               {
@@ -4087,12 +8706,12 @@ function SubRow(props) {
     save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
   };
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     const at = props.visible.indexOf(sub.key);
     m3.addItem((mi) => mi.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
     m3.addSeparator();
@@ -4122,7 +8741,7 @@ function SubRow(props) {
       },
       children: /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
-        /* @__PURE__ */ u3("div", { class: "vt-subissue-summary", title: sub.summary, children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", title: sub.summary, onClick: () => openSubEditor(ctx, sub), children: [
           /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
           hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
         ] }),
@@ -4302,7 +8921,7 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian6.Menu();
+    const m3 = new import_obsidian7.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -4355,7 +8974,7 @@ function LabelsField(props) {
   const { ctx, labels, index, save } = props;
   const colors2 = new Map(index.data.labels.map((l3) => [l3.name, l3.color]));
   return /* @__PURE__ */ u3("button", { class: "vt-labels", onClick: () => editLabels(ctx, labels, save), title: "Edit labels", children: [
-    labels.map((name) => /* @__PURE__ */ u3(LabelBadge, { name, color: colors2.get(name) ?? "var(--background-modifier-border)" })),
+    labels.map((name2) => /* @__PURE__ */ u3(LabelBadge, { name: name2, color: colors2.get(name2) ?? "var(--background-modifier-border)" })),
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-label is-empty", children: [
       /* @__PURE__ */ u3(Icon, { name: labels.length === 0 ? "tag" : "pencil" }),
       labels.length === 0 ? "label" : ""
@@ -4535,7 +9154,7 @@ function Worklog(props) {
 }
 
 // src/header/MemberHeader.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/ui/a11y.ts
 function linkProps(open) {
@@ -4595,7 +9214,7 @@ function DelegatedIssues(props) {
     active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
       /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
-      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian7.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian8.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
     ] }, issue.id)),
     done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
       "Finished (closed / canceled) ",
@@ -4649,7 +9268,7 @@ function MemberHeader(props) {
 }
 
 // src/header/RoutineHeader.tsx
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/ui/RepeatFields.tsx
 function defaultRepeatDraft() {
@@ -4695,15 +9314,15 @@ function RepeatFields(props) {
       ] })
     ] }),
     draft.every === "week" && /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [1, 2, 3, 4, 5, 6, 0].map((w3) => {
-      const name = WEEKDAY_NAMES[w3];
-      const onDay = draft.weekdays.includes(name);
+      const name2 = WEEKDAY_NAMES[w3];
+      const onDay = draft.weekdays.includes(name2);
       return /* @__PURE__ */ u3(
         "button",
         {
           type: "button",
           class: `vt-filter-chip${onDay ? " is-on" : ""}`,
-          onClick: () => set({ weekdays: onDay ? draft.weekdays.filter((x2) => x2 !== name) : [...draft.weekdays, name] }),
-          children: name
+          onClick: () => set({ weekdays: onDay ? draft.weekdays.filter((x2) => x2 !== name2) : [...draft.weekdays, name2] }),
+          children: name2
         }
       );
     }) }),
@@ -4879,11 +9498,11 @@ function installTaskHeaders(ctx, plugin) {
     views: () => {
       const views = [];
       app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof import_obsidian9.MarkdownView) views.push(leaf.view);
+        if (leaf.view instanceof import_obsidian10.MarkdownView) views.push(leaf.view);
       });
       return views;
     },
-    activeView: () => app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView),
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian10.MarkdownView),
     model: (view) => {
       const path = view.file?.path ?? null;
       return path !== null && isTaskNotePath(path) ? path : null;
@@ -4896,12 +9515,12 @@ function installTaskHeaders(ctx, plugin) {
 }
 
 // src/header/sub-cards.ts
-var import_state = require("@codemirror/state");
-var import_view = require("@codemirror/view");
-var import_obsidian11 = require("obsidian");
+var import_state4 = require("@codemirror/state");
+var import_view4 = require("@codemirror/view");
+var import_obsidian12 = require("obsidian");
 
 // src/obsidian/sub-card.tsx
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/draft.ts
 function adoptValue(state, value, normalize) {
@@ -4965,7 +9584,7 @@ function SubCard(props) {
     void save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
   };
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian10.Menu();
+    const m3 = new import_obsidian11.Menu();
     for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -5090,7 +9709,7 @@ function ReadingCard(props) {
   const redraw = () => setTick((n2) => n2 + 1);
   h2(() => ctx.store.subscribe(redraw), [ctx]);
   if (props.id === null) return /* @__PURE__ */ u3(UnreadableCard, { raw: props.raw });
-  const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", import_obsidian10.parseYaml).subs;
+  const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", import_obsidian11.parseYaml).subs;
   const sub = subs.find((s3) => s3.id === props.id);
   if (!sub) return null;
   return /* @__PURE__ */ u3(
@@ -5113,7 +9732,7 @@ function ReadingCard(props) {
 // src/header/sub-cards.ts
 var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
 var LIVE_PREVIEW_SAVE_MS = 600;
-var refresh = import_state.StateEffect.define();
+var refresh = import_state4.StateEffect.define();
 function toggleOpen(ctx, path, id, ids) {
   ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
   void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
@@ -5126,7 +9745,7 @@ function syncReading(ctx, path) {
 function installReading(ctx, plugin) {
   let memo = null;
   const layoutOf = (path, text) => {
-    if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, import_obsidian11.parseYaml) };
+    if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, import_obsidian12.parseYaml) };
     return memo.layout;
   };
   plugin.registerMarkdownPostProcessor((el, mctx) => {
@@ -5158,7 +9777,7 @@ function installReading(ctx, plugin) {
         }),
         host
       );
-      const child = new import_obsidian11.MarkdownRenderChild(host);
+      const child = new import_obsidian12.MarkdownRenderChild(host);
       child.onunload = () => R(null, host);
       mctx.addChild(child);
     } else if (r3.role === "body") {
@@ -5167,7 +9786,7 @@ function installReading(ctx, plugin) {
       bodies.set(path, set);
       set.add(entry);
       el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id));
-      const child = new import_obsidian11.MarkdownRenderChild(el);
+      const child = new import_obsidian12.MarkdownRenderChild(el);
       child.onunload = () => set.delete(entry);
       mctx.addChild(child);
     }
@@ -5176,14 +9795,14 @@ function installReading(ctx, plugin) {
 function editorSave(ctx, view, path, id) {
   return async (patch) => {
     const text = view.state.doc.toString();
-    const r3 = subHeadChange(path, issueIdOf(path), text, id, patch, import_obsidian11.parseYaml, new Set(ctx.store.index.members.keys()));
+    const r3 = subHeadChange(path, issueIdOf(path), text, id, patch, import_obsidian12.parseYaml, new Set(ctx.store.index.members.keys()));
     if (r3.change.insert !== text.slice(r3.change.from, r3.change.to)) view.dispatch({ changes: r3.change, userEvent: "input.sub-card" });
     if (r3.before.status !== r3.after.status) await ctx.writer.afterSubStatusChange(r3.after, r3.before.status, r3.after.status);
   };
 }
 function editorToggle(ctx, view, path, id) {
   const parent = issueIdOf(path);
-  const layout = layoutSubIssues(path, parent, view.state.doc.toString(), import_obsidian11.parseYaml);
+  const layout = layoutSubIssues(path, parent, view.state.doc.toString(), import_obsidian12.parseYaml);
   const wasOpen = isSubOpen(ctx.settings.subOpen, path, id);
   toggleOpen(
     ctx,
@@ -5200,7 +9819,7 @@ function showSource(view, from, cardTo) {
   view.dispatch({ selection: { anchor: Math.min(from + 1, cardTo) }, scrollIntoView: true });
   view.focus();
 }
-var SubCardWidget = class extends import_view.WidgetType {
+var SubCardWidget = class extends import_view4.WidgetType {
   constructor(ctx, path, sub, siblings, open, raw, range) {
     super();
     this.ctx = ctx;
@@ -5264,15 +9883,15 @@ var SubCardWidget = class extends import_view.WidgetType {
     return true;
   }
 };
-var NONE = { all: import_view.Decoration.none, folds: import_view.Decoration.none };
+var NONE = { all: import_view4.Decoration.none, folds: import_view4.Decoration.none };
 function build(ctx, state) {
-  const path = state.field(import_obsidian11.editorInfoField, false)?.file?.path;
-  if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian11.editorLivePreviewField, false)) return NONE;
+  const path = state.field(import_obsidian12.editorInfoField, false)?.file?.path;
+  if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian12.editorLivePreviewField, false)) return NONE;
   const text = state.doc.toString();
   const parent = issueIdOf(path);
-  const layout = layoutSubIssues(path, parent, text, import_obsidian11.parseYaml);
+  const layout = layoutSubIssues(path, parent, text, import_obsidian12.parseYaml);
   if (layout.length === 0) return NONE;
-  const subs = parseSubIssues(path, parent, text, import_obsidian11.parseYaml).subs;
+  const subs = parseSubIssues(path, parent, text, import_obsidian12.parseYaml).subs;
   const touches = (from, to) => state.selection.ranges.some((r3) => cursorInside(r3, from, to));
   const all = [];
   const folds = [];
@@ -5284,26 +9903,26 @@ function build(ctx, state) {
     const collapsed = sub !== null && !open && !touches(b2.cardTo, sectionTo);
     const cardTo = collapsed ? sectionTo : b2.cardTo;
     if (!touches(b2.from, cardTo)) {
-      all.push(import_view.Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b2.from, b2.cardTo), { from: b2.from, cardTo: b2.cardTo }), block: true }).range(b2.from, cardTo));
+      all.push(import_view4.Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b2.from, b2.cardTo), { from: b2.from, cardTo: b2.cardTo }), block: true }).range(b2.from, cardTo));
     }
     if (collapsed && sectionTo > b2.cardTo) {
-      folds.push(import_view.Decoration.replace({ block: true }).range(b2.cardTo, sectionTo));
+      folds.push(import_view4.Decoration.replace({ block: true }).range(b2.cardTo, sectionTo));
     }
   }
-  return { all: import_view.Decoration.set(all, true), folds: import_view.Decoration.set(folds, true) };
+  return { all: import_view4.Decoration.set(all, true), folds: import_view4.Decoration.set(folds, true) };
 }
 function installSubCards(ctx, plugin) {
-  const field = import_state.StateField.define({
+  const field = import_state4.StateField.define({
     create: (state) => build(ctx, state),
     update: (_value, tr) => build(ctx, tr.state),
-    provide: (f4) => [import_view.EditorView.decorations.from(f4, (v3) => v3.all), import_view.EditorView.atomicRanges.of((view) => view.state.field(f4).folds)]
+    provide: (f4) => [import_view4.EditorView.decorations.from(f4, (v3) => v3.all), import_view4.EditorView.atomicRanges.of((view) => view.state.field(f4).folds)]
   });
   plugin.registerEditorExtension(field);
   installReading(ctx, plugin);
 }
 
 // src/obsidian/capture.tsx
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/core/capture.ts
 var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
@@ -5340,7 +9959,7 @@ function CaptureForm(props) {
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         "Create ",
         summaries.length,
-        import_obsidian12.Platform.isMobile ? "" : " (Mod+Enter)"
+        import_obsidian13.Platform.isMobile ? "" : " (Mod+Enter)"
       ] }),
       /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
     ] })
@@ -5349,7 +9968,7 @@ function CaptureForm(props) {
 async function openAll(ctx, files) {
   let first = null;
   for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian12.Platform.isPhone });
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian13.Platform.isPhone });
     first ??= leaf;
   }
   if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
@@ -5369,7 +9988,7 @@ function showCreatedNotice(ctx, created, failed) {
       void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
     });
   }
-  notice = new import_obsidian12.Notice(fragment, NOTICE_MS);
+  notice = new import_obsidian13.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
   new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
@@ -5384,9 +10003,9 @@ function openCaptureModal(ctx) {
 }
 
 // src/obsidian/settings.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {} };
-var TaskSettingTab = class extends import_obsidian13.PluginSettingTab {
+var TaskSettingTab = class extends import_obsidian14.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -5396,8 +10015,8 @@ var TaskSettingTab = class extends import_obsidian13.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian13.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
-      (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
+    new import_obsidian14.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+      (t4) => t4.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
       })
@@ -5406,7 +10025,7 @@ var TaskSettingTab = class extends import_obsidian13.PluginSettingTab {
 };
 
 // src/obsidian/status-bar.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/core/running.ts
 var SUMMARY_MAX = 24;
@@ -5440,7 +10059,7 @@ function registerRunningStatusBar(host, store, open) {
     path = s3?.path ?? null;
     el.toggle(s3 !== null);
     el.setText(s3?.text ?? "");
-    (0, import_obsidian14.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+    (0, import_obsidian15.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
   };
   el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
   host.register(store.subscribe(render));
@@ -5449,7 +10068,7 @@ function registerRunningStatusBar(host, store, open) {
 }
 
 // src/obsidian/status-undo.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -5531,7 +10150,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian15.setIcon)(icon, "chevron-right");
+      (0, import_obsidian16.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -5544,7 +10163,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -5570,13 +10189,13 @@ function parseLabels(text) {
       problem(`name \u306E\u306A\u3044 label \u304C\u3042\u308A\u307E\u3059: ${JSON.stringify(item)}`);
       continue;
     }
-    const name = o3.name.trim();
-    if (labels.some((l3) => l3.name === name)) {
-      problem(`label \u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${name}`);
+    const name2 = o3.name.trim();
+    if (labels.some((l3) => l3.name === name2)) {
+      problem(`label \u304C\u91CD\u8907\u3057\u3066\u3044\u307E\u3059: ${name2}`);
       continue;
     }
     const color = typeof o3.color === "string" && /^#[0-9a-f]{3,8}$/i.test(o3.color) ? o3.color : DEFAULT_LABEL_COLOR;
-    labels.push({ name, color });
+    labels.push({ name: name2, color });
   }
   return { labels, problems };
 }
@@ -5719,15 +10338,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian16.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian16.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian17.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian17.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian16.TFile) this.touch(file);
+        if (file instanceof import_obsidian17.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian16.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian17.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -5768,7 +10387,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian16.parseYaml };
+    const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian17.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -5793,9 +10412,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian17.ItemView {
+  class PreactView extends import_obsidian18.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -5817,7 +10436,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -5892,50 +10511,6 @@ function closeBoardNote(text, date, index, board) {
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
-// src/core/issue-file.ts
-var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString2(s3) {
-  return JSON.stringify(s3);
-}
-function newIssueContent(id, summary, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
-  if (extra.scheduled) lines.push(`scheduled: ${extra.scheduled}`);
-  if (extra.clarified) lines.push("clarified: true");
-  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
-  return lines.join("\n");
-}
-function newMemberContent(id, name, created) {
-  return [
-    "---",
-    `schema: ${SCHEMA_VERSION}`,
-    "type: member",
-    `id: ${id}`,
-    `name: ${yamlString2(name)}`,
-    `nickname: ${yamlString2(name)}`,
-    `alias: ${yamlString2(id)}`,
-    `created: ${created}`,
-    `updated: ${created}`,
-    "---",
-    ""
-  ].join("\n");
-}
-function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString2(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
-  if (extra.start) lines.push(`start: ${extra.start}`);
-  lines.push("active: true");
-  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
-  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
-  return lines.join("\n");
-}
-function newDailyContent(created) {
-  return `---
-type: daily
-created: ${created}
-updated: ${created}
----
-`;
-}
-
 // ../design/src/color.ts
 var HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 function isHex(text) {
@@ -5948,12 +10523,12 @@ function parseHex(text) {
   const n2 = (i3) => Number.parseInt(h3.slice(i3, i3 + 2), 16);
   return { r: n2(0), g: n2(2), b: n2(4), a: h3.length === 8 ? n2(6) / 255 : 1 };
 }
-function over(top, bottom) {
-  const a3 = top.a;
+function over(top2, bottom) {
+  const a3 = top2.a;
   return {
-    r: top.r * a3 + bottom.r * (1 - a3),
-    g: top.g * a3 + bottom.g * (1 - a3),
-    b: top.b * a3 + bottom.b * (1 - a3),
+    r: top2.r * a3 + bottom.r * (1 - a3),
+    g: top2.g * a3 + bottom.g * (1 - a3),
+    b: top2.b * a3 + bottom.b * (1 - a3),
     a: 1
   };
 }
@@ -6105,8 +10680,8 @@ function labelContrast(color) {
 }
 
 // src/core/label-edit.ts
-function labelNameError(name, others) {
-  const n2 = name.trim();
+function labelNameError(name2, others) {
+  const n2 = name2.trim();
   if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
   if (others.some((o3) => o3.trim() === n2)) return "\u540C\u3058\u540D\u524D\u306E label \u304C\u3042\u308A\u307E\u3059";
   return null;
@@ -6146,11 +10721,11 @@ function planLabelSave(original, drafts, usage) {
   const labels = [];
   const renames = /* @__PURE__ */ new Map();
   for (const d3 of drafts) {
-    const name = d3.name.trim();
-    const error = labelNameError(name, drafts.filter((x2) => x2.key !== d3.key).map((x2) => x2.name)) ?? labelColorError(d3.color);
-    if (error) throw new Error(`label\u300C${name}\u300D: ${error}`);
-    labels.push({ name, color: d3.color });
-    if (d3.from !== null && d3.from !== name) renames.set(d3.from, name);
+    const name2 = d3.name.trim();
+    const error = labelNameError(name2, drafts.filter((x2) => x2.key !== d3.key).map((x2) => x2.name)) ?? labelColorError(d3.color);
+    if (error) throw new Error(`label\u300C${name2}\u300D: ${error}`);
+    labels.push({ name: name2, color: d3.color });
+    if (d3.from !== null && d3.from !== name2) renames.set(d3.from, name2);
   }
   const kept = new Set(drafts.map((d3) => d3.from));
   const removed = original.map((l3) => l3.name).filter((n2) => !kept.has(n2));
@@ -6237,9 +10812,9 @@ var TaskWriter = class {
     const fixed = normalizeSubPatch(patch);
     let change = null;
     await this.app.vault.process(this.file(sub.path), (text) => {
-      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian18.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
+      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian19.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
       this.assertSubs(siblings, [sub.id]);
-      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian18.parseYaml);
+      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian19.parseYaml);
       change = r3.before.status !== r3.after.status ? { from: r3.before.status, to: r3.after.status } : null;
       return r3.text;
     });
@@ -6271,7 +10846,7 @@ var TaskWriter = class {
     const created = localDateTime();
     let keys = [];
     await this.app.vault.process(this.file(issue.path), (text) => {
-      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian18.parseYaml).subs;
+      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian19.parseYaml).subs;
       const taken = existing.map((s3) => s3.id);
       const subs = summaries.map((summary) => {
         const id = newSubId(taken);
@@ -6280,7 +10855,7 @@ var TaskWriter = class {
       });
       this.assertSubs([...existing, ...subs], subs.map((s3) => s3.id));
       keys = subs.map((s3) => subKey(issue.id, s3.id));
-      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian18.parseYaml);
+      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian19.parseYaml);
     });
     this.store.refreshSoon();
     return keys;
@@ -6303,9 +10878,9 @@ var TaskWriter = class {
     const sub = this.store.index.sub(key);
     if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
     await this.app.vault.process(this.file(sub.path), (text) => {
-      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian18.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
+      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian19.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
       const to = position(ids, sub.id);
-      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian18.parseYaml);
+      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian19.parseYaml);
     });
     this.store.refreshSoon();
   }
@@ -6317,7 +10892,7 @@ var TaskWriter = class {
     if (dependents.length > 0) throw new Error(`${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308B\u306E\u3067\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
     const running = this.store.index.running(key);
     if (running.length > 0) await this.stopTimer(running);
-    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian18.parseYaml));
+    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian19.parseYaml));
     this.store.refreshSoon();
   }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
@@ -6328,7 +10903,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now, Math.random, sub);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian19.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -6347,7 +10922,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian18.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian19.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, extra)));
@@ -6359,20 +10934,20 @@ var TaskWriter = class {
     this.store.refreshSoon();
     return { created, failed };
   }
-  async createMember(name) {
+  async createMember(name2) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian18.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian19.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
-    await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
+    await this.app.vault.create(path, newMemberContent(id, name2, localDateTime()));
     this.store.refreshSoon();
     return id;
   }
   /** labels.json に label を足す（すでにあれば何もしない） */
-  async addLabel(name, color = DEFAULT_LABEL_COLOR) {
+  async addLabel(name2, color = DEFAULT_LABEL_COLOR) {
     if (this.store.problems.some((p3) => p3.path === LABELS_PATH)) throw new Error(`${LABELS_PATH} \u3092\u76F4\u3057\u3066\u304B\u3089 label \u3092\u8FFD\u52A0\u3057\u3066\u304F\u3060\u3055\u3044`);
     const labels = [...this.store.index.data.labels];
-    if (labels.some((l3) => l3.name === name)) return;
-    labels.push({ name, color });
+    if (labels.some((l3) => l3.name === name2)) return;
+    labels.push({ name: name2, color });
     await this.writeLabelsFile(labels);
   }
   /**
@@ -6421,11 +10996,11 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian18.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian19.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
-      (text) => targets.reduce((t3, key) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })), text)
+      (text) => targets.reduce((t4, key) => appendWorklogLine(t4, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })), text)
     );
     this.store.refreshSoon();
     for (const id of targets) {
@@ -6452,14 +11027,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian19.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian19.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -6477,14 +11052,14 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian18.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian19.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian18.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian19.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -6503,7 +11078,7 @@ function stepperItems(steps, current, counts, passed) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -6518,7 +11093,7 @@ function IssueTable(props) {
   const all = selected !== void 0 && issues.length > 0 && issues.every((i3) => selected.has(i3.id));
   if (issues.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: props.empty ?? "Nothing here" });
   const due = (issue, value) => value ? /* @__PURE__ */ u3("span", { class: `vt-due-chip vt-due-${dueLevel(issue, value, today)}`, children: formatShortDate(value) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
-  const editable = (issue, c3, open, content) => /* @__PURE__ */ u3("button", { class: "vt-cell-edit", "aria-label": `Edit ${c3} of ${issue.id}`, title: `Edit ${c3}`, onClick: open, children: content });
+  const editable = (issue, c3, open, content2) => /* @__PURE__ */ u3("button", { class: "vt-cell-edit", "aria-label": `Edit ${c3} of ${issue.id}`, title: `Edit ${c3}`, onClick: open, children: content2 });
   const text = (value) => value ? /* @__PURE__ */ u3("span", { class: "vt-cell-detail", children: value }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
   const cell = (issue, c3) => {
     const save = saveIssue(ctx, issue);
@@ -6556,7 +11131,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `Select ${issue.id}` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -6577,7 +11152,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var ENTER_MS = 3e3;
 var LANE_TITLE = {
   working: "Working",
@@ -6619,7 +11194,7 @@ function TaskCard(props) {
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const starred = board.stars.includes(key);
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian20.Menu();
+    const m3 = new import_obsidian21.Menu();
     for (const s3 of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -6633,7 +11208,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian20.Menu();
+    const m3 = new import_obsidian21.Menu();
     if (!done) {
       if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 3").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
       else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 3").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
@@ -6673,7 +11248,7 @@ function TaskCard(props) {
       } : {},
       children: [
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
-        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
           starred && !done && /* @__PURE__ */ u3(Icon, { name: "star", class: "vt-task-star" }),
           summary
         ] }),
@@ -6699,7 +11274,7 @@ function ParentHead(props) {
   const parent = props.ctx.store.index.issues.get(props.parentId);
   return /* @__PURE__ */ u3("div", { class: "vt-lane-parent", children: [
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: props.parentId }),
-    parent ? /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", title: parent.summary, ...linkProps((e3) => void props.ctx.openPath(parent.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: parent.summary }) : /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", children: "Deleted issue" })
+    parent ? /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", title: parent.summary, ...linkProps((e3) => void props.ctx.openPath(parent.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: parent.summary }) : /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", children: "Deleted issue" })
   ] });
 }
 function Lane(props) {
@@ -7375,24 +11950,24 @@ function LabelManagerView(props) {
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 function MemberForm(props) {
-  const [name, setName] = d2("");
+  const [name2, setName] = d2("");
   return /* @__PURE__ */ u3(
     "form",
     {
       class: "vt-worklog-form",
       onSubmit: (e3) => {
         e3.preventDefault();
-        if (name.trim()) props.onSubmit(name.trim());
+        if (name2.trim()) props.onSubmit(name2.trim());
       },
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "name" }),
-          /* @__PURE__ */ u3("input", { type: "text", value: name, placeholder: "e.g. Taro Tanaka", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
+          /* @__PURE__ */ u3("input", { type: "text", value: name2, placeholder: "e.g. Taro Tanaka", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-muted", children: "The same name goes into nickname, and the ID into alias. You can change them on the member screen later." }),
-        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name.trim(), children: "Create" }) })
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name2.trim(), children: "Create" }) })
       ]
     }
   );
@@ -7414,9 +11989,9 @@ function MemberListView(props) {
   const create = () => new PreactModal(ctx.app, "Create member", (close) => /* @__PURE__ */ u3(
     MemberForm,
     {
-      onSubmit: (name) => {
+      onSubmit: (name2) => {
         close();
-        void ctx.writer.createMember(name).then((id) => ctx.openPath(pathForId(id))).catch((e3) => ctx.report("member \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+        void ctx.writer.createMember(name2).then((id) => ctx.openPath(pathForId(id))).catch((e3) => ctx.report("member \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
       }
     }
   )).open();
@@ -7453,7 +12028,7 @@ function MemberListView(props) {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
@@ -7467,7 +12042,7 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -7549,7 +12124,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian22.Menu();
+    const m3 = new import_obsidian23.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -7560,10 +12135,10 @@ function IssueListView(props) {
           TextForm,
           {
             initial: "",
-            onSubmit: (name) => {
+            onSubmit: (name2) => {
               close();
-              if (!name) return;
-              ctx.settings.presets = [...ctx.settings.presets.filter((p3) => p3.name !== name), { name, query: q2 }];
+              if (!name2) return;
+              ctx.settings.presets = [...ctx.settings.presets.filter((p3) => p3.name !== name2), { name: name2, query: q2 }];
               void ctx.saveSettings();
             }
           }
@@ -7640,7 +12215,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var FIELD_OF = {
@@ -7685,7 +12260,7 @@ function OrganizeView(props) {
   const today = localToday();
   const [handled, setHandled] = d2(/* @__PURE__ */ new Set());
   const [count, setCount] = d2(0);
-  const [undo, setUndo] = d2(null);
+  const [undo2, setUndo] = d2(null);
   const [drag, setDrag] = d2(null);
   const start = A2(null);
   const root = A2(null);
@@ -7708,11 +12283,11 @@ function OrganizeView(props) {
     }
   };
   const undoLast = async () => {
-    if (!undo) return;
+    if (!undo2) return;
     try {
-      await ctx.writer.update(undo.path, undo.prev);
+      await ctx.writer.update(undo2.path, undo2.prev);
       const next2 = new Set(handled);
-      next2.delete(undo.id);
+      next2.delete(undo2.id);
       setHandled(next2);
       setCount(Math.max(0, count - 1));
       setUndo(null);
@@ -7768,7 +12343,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian23.Menu();
+    const m3 = new import_obsidian24.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -7780,7 +12355,7 @@ function OrganizeView(props) {
       {
         labels: ctx.store.index.data.labels,
         initial: issue.labels,
-        onCreate: (name) => ctx.writer.addLabel(name),
+        onCreate: (name2) => ctx.writer.addLabel(name2),
         onSubmit: (names) => {
           c3();
           void ctx.writer.update(issue.path, { label: names });
@@ -7899,12 +12474,12 @@ function OrganizeView(props) {
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
-      undo ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void undoLast(), children: [
+      undo2 ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void undoLast(), children: [
         /* @__PURE__ */ u3(Icon, { name: "undo-2" }),
         " Undo (",
-        undo.id,
+        undo2.id,
         ": ",
-        undo.label,
+        undo2.label,
         ")"
       ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Next / \u2191 Tickler / \u2193 Cancel (swipe or arrow keys)" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
@@ -7916,7 +12491,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian24 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -7977,7 +12552,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
@@ -7991,7 +12566,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian25 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -8016,7 +12591,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian26.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -8027,7 +12602,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian26 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -8064,7 +12639,7 @@ function SidebarView(props) {
         const summary = task?.summary || taskId;
         const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian26.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian27.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -8275,7 +12850,7 @@ function TasksNowDialog(props) {
   const running = runningTasks(index, now);
   const paused = running.length === 0 ? pausedTasks(index, pausedKeys) : [];
   const worklogs = index.data.worklogs;
-  const todo = todoTasks(index, localToday(new Date(now)), /* @__PURE__ */ new Set([...running.map((t3) => t3.key), ...paused.map((t3) => t3.key)]));
+  const todo = todoTasks(index, localToday(new Date(now)), /* @__PURE__ */ new Set([...running.map((t4) => t4.key), ...paused.map((t4) => t4.key)]));
   const remember = async (keys) => {
     ctx.settings.pausedTasks = keys;
     setPausedKeys(keys);
@@ -8293,14 +12868,14 @@ function TasksNowDialog(props) {
     }
   };
   const stopGroup = (keepGroup) => guarded(keepGroup ? "\u4E00\u6642\u505C\u6B62\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F" : "\u505C\u6B62\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", async () => {
-    const keys = running.map((t3) => t3.key);
+    const keys = running.map((t4) => t4.key);
     const entries = index.running();
     if (entries.length === 0) return;
     await ctx.writer.stopTimer(entries);
     await remember(keepGroup ? keys : []);
   });
   const resume = () => guarded("\u518D\u958B\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", async () => {
-    await ctx.writer.startTimer(paused.map((t3) => t3.key), ctx.settings.deviceName);
+    await ctx.writer.startTimer(paused.map((t4) => t4.key), ctx.settings.deviceName);
     await remember([]);
   });
   const discardPaused = () => guarded("\u7834\u68C4\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", () => remember([]));
@@ -8343,15 +12918,15 @@ function TasksNowDialog(props) {
         ] })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
-        running.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t3.key]) } })),
-        paused.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, paused: true, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
+        running.map((t4) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t4, action: { icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t4.key]) } })),
+        paused.map((t4) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t4, paused: true, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t4.key]) } })),
         running.length === 0 && paused.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "No running tasks" })
       ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-now-section", "aria-label": "Task list", children: [
       /* @__PURE__ */ u3("h3", { class: "vt-now-heading", children: "Tasks" }),
       /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
-        todo.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
+        todo.map((t4) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t4, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t4.key]) } })),
         todo.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "Nothing left on today's board" })
       ] })
     ] })
@@ -8373,7 +12948,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian27.Plugin {
+var PkmTaskPlugin = class extends import_obsidian28.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -8384,27 +12959,27 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian27.Notice(`${message}${detail}`);
+      new import_obsidian28.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
-    const undo = new StatusUndo(report);
-    this.undo = undo;
+    const undo2 = new StatusUndo(report);
+    this.undo = undo2;
     writer.onStatusChange = (c3) => {
-      if (c3.via !== "undo") undo.push(c3.id, () => writer.update(c3.path, c3.before, "undo"));
+      if (c3.via !== "undo") undo2.push(c3.id, () => writer.update(c3.path, c3.before, "undo"));
     };
     const ctx = {
       app: this.app,
       store,
       writer,
-      undo,
+      undo: undo2,
       settings: this.taskSettings,
       saveSettings: () => this.saveData(this.taskSettings),
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian27.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian28.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian27.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian28.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -8451,8 +13026,8 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
     });
   }
   /** pkm-ribbon が尋ねるバッジの数（ADR-0070 の 6）。Tasks Now は、記録中のタスクの数（なければ null） */
-  getRibbonBadge(command) {
-    if (command !== TASKS_NOW_COMMAND || !this.store) return null;
+  getRibbonBadge(command2) {
+    if (command2 !== TASKS_NOW_COMMAND || !this.store) return null;
     const n2 = new Set(this.store.index.running().map(workKey)).size;
     return n2 > 0 ? n2 : null;
   }
@@ -8466,8 +13041,8 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
     this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
     if (!this.taskSettings.deviceName) {
       const git = this.app.plugins?.plugins?.["pkm-git"];
-      const name = git?.data?.deviceName;
-      if (typeof name === "string" && name) this.taskSettings.deviceName = sanitizeDeviceName(name);
+      const name2 = git?.data?.deviceName;
+      if (typeof name2 === "string" && name2) this.taskSettings.deviceName = sanitizeDeviceName(name2);
     }
   }
 };

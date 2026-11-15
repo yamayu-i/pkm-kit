@@ -14,8 +14,8 @@ const plugin = {
 	format: "cjs",
 	platform: "browser",
 	target: "es2022",
-	// CodeMirror は Obsidian が持っているものを使う
-	external: ["obsidian", "electron", "@codemirror/*", "@lezer/*"],
+	// state / view は Obsidian と共有する。commands とその補助モジュールは同梱する。
+	external: ["obsidian", "electron", "@codemirror/state", "@codemirror/view"],
 	jsx: "automatic",
 	jsxImportSource: "preact",
 	// 中身をレビューしやすく、ビルドの再現性を確認しやすくするため minify しない

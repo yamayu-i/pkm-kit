@@ -143,10 +143,10 @@ function SubRow(props: {
 				<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
 					<StatusIcon status={sub.status} />
 				</button>
-				<div class="vt-subissue-summary" title={sub.summary}>
+				<button type="button" class="vt-subissue-summary" title={sub.summary} onClick={() => openSubEditor(ctx, sub)}>
 					<span class="vt-subissue-summary-text">{sub.summary}</span>
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
-				</div>
+				</button>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
 				<PickTimer ctx={ctx} keyOf={sub.key} />
 				<button type="button" class="vt-icon-button" aria-label="More actions" title="More actions" onClick={moreMenu}>

@@ -31,7 +31,7 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 		const r = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "仕様" }, { summary: "実装", estimated: 120, scheduled: "2026-11-16", body: "メモ" }] }) as { created: string[] };
 		expect(r.created).toHaveLength(2);
 		expect(subs().map((s) => [s.summary, s.status, s.estimated, s.scheduled, s.body, s.created])).toEqual([
-			["仕様", "open", null, null, "", subs()[0]!.created],
+			["仕様", "open", null, null, "# Note", subs()[0]!.created],
 			["実装", "open", 120, "2026-11-16", "メモ", subs()[1]!.created],
 		]);
 		expect(subs().every((s) => s.created !== null)).toBe(true);
@@ -113,7 +113,7 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 		expect(r).not.toHaveProperty("children");
 		expect(r.effortMinutes).toBe(40);
 		expect(r.directEffortMinutes).toBe(10);
-		expect(r.subIssues).toEqual([expect.objectContaining({ key: created[0], summary: "a", estimated: 30, effortMinutes: 30, body: "" })]);
+		expect(r.subIssues).toEqual([expect.objectContaining({ key: created[0], summary: "a", estimated: 30, effortMinutes: 30, body: "# Note" })]);
 		expect(String(r.body)).not.toContain("<!-- sub-issue");
 	});
 

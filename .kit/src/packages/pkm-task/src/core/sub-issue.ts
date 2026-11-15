@@ -1,3 +1,4 @@
+import { ISSUE_BODY_TEMPLATE } from "./issue-file";
 import type { LocalDate } from "./dates";
 import { isId } from "./ids";
 import type { Problem } from "./problem";
@@ -204,7 +205,7 @@ export function formatSubIssue(sub: SubIssueInput): string {
 	if (body.split(/\r?\n/).some((l) => l.startsWith(SUB_ISSUE_MARKER))) {
 		throw new SubIssueFormatError(`サブの本文の行頭に ${SUB_ISSUE_MARKER} は書けません`);
 	}
-	return `${head}\n${body ? `${body}\n` : ""}`;
+	return `${head}\n${body ? `${body}\n${sub.body.endsWith("\n\n") ? "\n" : ""}` : ""}`;
 }
 
 /**
@@ -366,7 +367,7 @@ export function newSubIssueInput(item: NewSubIssue, id: string, created: string)
 		dependsOn: item.dependsOn ?? [],
 		created,
 		migratedFrom: null,
-		body: item.body ?? "",
+		body: item.body ?? ISSUE_BODY_TEMPLATE,
 	};
 }
 

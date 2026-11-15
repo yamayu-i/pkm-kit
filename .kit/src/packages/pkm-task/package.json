@@ -24,6 +24,7 @@
     "yaml": "2.9.1"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
     "preact": "10.29.8"
   }
 }

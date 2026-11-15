@@ -3663,3 +3663,17 @@ body.is-mobile .vt-toast {
 .vt-subissues div.vt-subissue-summary { cursor: inherit; }
 .vt-subissues div.vt-subissue-summary:hover .vt-subissue-summary-text { color: inherit; }
 .markdown-preview-view .vt-sub-card-section { margin-block: 0; }
+
+/* サブの Note: 段落をクリックすると Markdown ソースを編集する */
+.vt-note-editor {
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface);
+}
+.vt-note-editor .cm-editor { min-height: 180px; }
+.vt-note-editor .cm-scroller { max-height: 420px; overflow: auto; }
+.vt-note-editor .cm-content { padding: 12px; white-space: pre-wrap; }
+.vt-note-editor .cm-focused { outline: 2px solid var(--vt-primary); }
+.vt-note-preview { cursor: text; }
+.vt-note-preview > :first-child { margin-top: 0; }
+.vt-note-preview > :last-child { margin-bottom: 0; }
