@@ -206,7 +206,7 @@ body.theme-dark {
 .vt-upd-page {
 	display: flex;
 	flex-direction: column;
-	gap: var(--vt-space-16);
+	gap: var(--vt-space-4);
 	min-height: 100%;
 	padding-top: var(--vt-space-8);
 }
@@ -219,19 +219,16 @@ body.theme-dark {
 	line-height: var(--vt-type-body-small-line-height);
 }
 
-.vt-upd-empty {
-	padding: var(--vt-space-16);
-	border-radius: var(--vt-radius-m);
-	border: 1px dashed var(--vt-outline-variant);
-	color: var(--vt-on-surface-variant);
-	font-size: var(--vt-type-body-small-size);
-	line-height: var(--vt-type-body-small-line-height);
-}
-
 .vt-upd-section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--vt-space-4);
+	padding-block: var(--vt-space-8);
+}
+
+/* 0 件のセクションは見出しのリンクだけ。縦幅を取らない（モバイルでは各 View への入口） */
+.vt-upd-section-empty {
+	padding-block: 0;
 }
 
 .vt-upd-heading {

@@ -22,4 +22,14 @@ describe("無限スクロール（ADR-0070 の 3）", () => {
 		expect(visibleSections(all, 100).map((s) => s.items.length)).toEqual([30, 30, 5]);
 		expect(visibleSections(all, 0)).toEqual([]);
 	});
+
+	it("0 件のセクションは常に残す", () => {
+		const all = [section("issues", 30), section("inbox", 0), section("notes", 30), section("sources", 0)];
+		expect(visibleSections(all, 20).map((s) => [s.id, s.items.length])).toEqual([
+			["issues", 20],
+			["inbox", 0],
+			["sources", 0],
+		]);
+		expect(visibleSections([section("issues", 0)], 0).map((s) => s.id)).toEqual(["issues"]);
+	});
 });

@@ -1003,12 +1003,11 @@ function buildSections(notes, since, today) {
     const ms = updatedMs(n2.frontmatter?.updated);
     if (ms !== null && (since === null || ms > since)) changed.set(n2.path, ms);
   }
-  if (changed.size === 0) return [];
   const p3 = prepare(notes, today);
   const out = [];
   for (const def of SECTIONS) {
     const items = [...new Set(def.paths(p3))].filter((path) => changed.has(path)).map((path) => ({ path, title: p3.titles.get(path) ?? path, updatedMs: changed.get(path) })).sort((a3, b2) => b2.updatedMs - a3.updatedMs || a3.path.localeCompare(b2.path, "en", { numeric: true }));
-    if (items.length > 0) out.push({ id: def.id, title: def.title, command: def.command, items });
+    out.push({ id: def.id, title: def.title, command: def.command, items });
   }
   return out;
 }
@@ -1587,7 +1586,7 @@ function visibleSections(sections, limit) {
   const out = [];
   let left = Math.max(0, limit);
   for (const s3 of sections) {
-    if (left === 0) break;
+    if (left === 0 && s3.items.length > 0) continue;
     const items = s3.items.slice(0, left);
     left -= items.length;
     out.push({ ...s3, items });
@@ -1655,12 +1654,12 @@ function UpdatesView({ app, model, deviceName }) {
   };
   return /* @__PURE__ */ u3("div", { class: "vt-upd-page", children: [
     /* @__PURE__ */ u3("p", { class: "vt-upd-since", children: model.since === null ? "Not viewed yet. Showing all notes" : `Last viewed: ${formatDateTime(model.since)}` }),
-    shown.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-upd-empty", children: "No notes changed since you last viewed" }) : shown.map((s3) => /* @__PURE__ */ u3("section", { class: "vt-upd-section", "aria-labelledby": `vt-upd-${s3.id}`, children: [
+    shown.map((s3) => /* @__PURE__ */ u3("section", { class: `vt-upd-section${s3.items.length === 0 ? " vt-upd-section-empty" : ""}`, "aria-labelledby": `vt-upd-${s3.id}`, children: [
       /* @__PURE__ */ u3("h2", { class: "vt-upd-heading", id: `vt-upd-${s3.id}`, children: [
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-upd-heading-link", onClick: () => openList(s3.title, s3.command), children: s3.title }),
-        /* @__PURE__ */ u3("span", { class: "vt-upd-count", children: model.sections.find((x2) => x2.id === s3.id)?.items.length ?? s3.items.length })
+        s3.items.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-upd-count", children: model.sections.find((x2) => x2.id === s3.id)?.items.length ?? s3.items.length })
       ] }),
-      /* @__PURE__ */ u3("ul", { class: "vt-upd-list", children: s3.items.map((item) => /* @__PURE__ */ u3("li", { children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-upd-row", onClick: (e3) => openNote(item.path, import_obsidian3.Keymap.isModEvent(e3) !== false), children: [
+      s3.items.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-upd-list", children: s3.items.map((item) => /* @__PURE__ */ u3("li", { children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-upd-row", onClick: (e3) => openNote(item.path, import_obsidian3.Keymap.isModEvent(e3) !== false), children: [
         /* @__PURE__ */ u3("span", { class: "vt-upd-title", children: item.title }),
         /* @__PURE__ */ u3("span", { class: "vt-upd-time", children: formatDateTime(item.updatedMs) })
       ] }) }, item.path)) })
