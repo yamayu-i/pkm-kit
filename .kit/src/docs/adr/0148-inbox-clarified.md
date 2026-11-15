@@ -27,7 +27,8 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 ### Next Actions
 
-- 「`open` で、`clarified` で、`scheduled` がない」issue を Next（Next Actions）と呼ぶ。保存する項目は増やさず、算出する
+- 「`open` で、`clarified` で、`scheduled` に今日以降の日付がない」issue を Next（Next Actions）と呼ぶ。保存する項目は増やさず、算出する（`isScheduledAhead` と同じ基準）
+- `scheduled` が過去の日付だけの issue も Next に入る。「`scheduled` が空」で決めると、実行日が過ぎてやっていない issue が、Inbox（`clarified` 済み）にも Next にも Scheduled 画面（今日以降だけ）にも Due（期限だけ）にも出ず、どの一覧からも消えるため。この穴は、今の Inbox の定義にもある
 - Next は Inbox に出ない。選ぶ場所は DailyTaskView（#150）、見直す場所は Weekly Review（#151）
 
 ### clarified を付ける・外す

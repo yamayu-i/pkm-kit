@@ -35,7 +35,7 @@ DailyTaskView（Today。[ADR-0009](0009-views.md)）は、Overdue → Previous b
 
 ### Pick
 
-- 対象: `open` で、`clarified` で、`scheduled` がなく、今日のボードにない issue（Next）。サブは対象にしない（サブは親の画面とボードの「Add issue」から載せる）
+- 対象: Next（ADR-0148。`open` で、`clarified` で、`scheduled` に今日以降の日付がない）のうち、今日のボードにない issue。サブは対象にしない（サブは親の画面とボードの「Add issue」から載せる）
 - 並び順: priority の高い順 → deadline が近い順 → 最後に見直してから（`reviewed`）古い順
 - 列: priority、summary、estimated、label、deadline、最後に見直してからの日数（古い Next に気づくため）
 - 操作: Add to board（主。今日のボードに載せる。`scheduled` は書かない）、Someday、Cancel、Inbox（`clarified` を外す。日付は残す）
@@ -60,7 +60,7 @@ DailyTaskView（Today。[ADR-0009](0009-views.md)）は、Overdue → Previous b
 
 - **Overdue と Due soon を別々の段階のまま、Do Today だけ足す**: 操作の抜けは直るが、同じ部品の重複が残る
 - **Pick を段階にせず、「Add issue」の候補を並べ替える**: 候補はモーダルで、一覧として見渡せず、古さや見積もりも出せない
-- **Pick で `scheduled` を今日にする**: ボードに載せるだけなら日付は要らない。日付を書くと、翌日に持ち越されたとき「予定日が過ぎた issue」として Due に出てしまう。GTD でも、日付は確定したものだけに付ける
+- **Pick で `scheduled` を今日にする**: ボードに載せた記録は、日ごとの操作ログがすでに持っている。既存の「Add issue」も `scheduled` を書かないので、Pick もそろえる。書くと「今日やる」を二重に持ち、日付が過去になっても issue に残る。書く案にも、Daily の「Do Today」と意味がそろう利点はあるが、既存の挙動との一貫性を取る
 - **文脈・体力の専用項目を足す**: 今の利用実態を確かめていない。label・estimated・priority で足りるか、使ってから判断する
 - **Weekly Review を Daily に統合する**: Daily は今日の選択の場。選ばれなかったものの健全性は、全体を一度に見る場（#151）でないと確かめられない
 
