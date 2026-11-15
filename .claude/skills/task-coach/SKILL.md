@@ -28,7 +28,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 最初に `task_get_overview` を 1 回呼ぶ。個別のファイルを先に読まない。
 
-- `board`: 今日のボードに載っている issue・サブイシュー（`subs`）・routine、未完了、★（`stars`。今日の最重要、3 件まで）。欄ごとの並び（Working / Top 3 / Up next / Waiting / Done）は `task_get_board` の `lanes` で見る
+- `board`: 今日のボードに載っている issue・サブイシュー（`subs`）・routine、未完了、★（`stars`。今日の最重要、4 件まで）。欄ごとの並び（Working / Top 4 / Up next / Waiting / Done）は `task_get_board` の `lanes` で見る
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
 - `scheduledNotOnBoard`: 今日が Calendar の日（`scheduled`。その日にやらなければならない日。ADR-0152）だがまだボードに載っていない issue の ID とサブイシューの合成キー（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
@@ -44,7 +44,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 1. `pendingBoards` があれば、昨日の未完了を片付けて、過去のボードを `task_close_board` で締めることを先に提案する。片付け方は `task_carry_issues` の `mode`: 今日もやる（`today`。日付を書かない）、Next に戻す（`next`）、その日に考え直す（`tickler` と `reschedule_to`）、その日にやらなければならない日を選び直す（`move` と `reschedule_to`。Calendar の日を持つものだけ）、Inbox に戻す（`inbox`）
 2. `dead`（期限切れ）、`caution`（期限間近）、`scheduledNotOnBoard`（今日の Calendar）を提示し、今日やるべき候補を挙げる。Next（`task_list_issues` で open・`clarified`・Calendar の日も Tickler もないもの）から、文脈・時間・優先度で選ぶ（GTD の Engage。ADR-0150）
-3. 今日やると決めたものは `task_add_to_board` で載せる。`scheduled` は書かない（Calendar はその日にやらなければならない日だけに使う。ADR-0152）。今日の最重要を 3 件まで選んで `task_star_card` で ★ を付け、やる順を `task_order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱う
+3. 今日やると決めたものは `task_add_to_board` で載せる。`scheduled` は書かない（Calendar はその日にやらなければならない日だけに使う。ADR-0152）。今日の最重要を 4 件まで選んで `task_star_card` で ★ を付け、やる順を `task_order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱う
 4. `workload.overloadedByMinutes > 0`（詰め込みすぎ）または `unestimatedCount > 0`（見積もりなし）なら指摘し、優先度の低いものを別日にリスケするか、見積もりを設定する（`task_update_issue`）よう提案する
 
 ### 日中（優先度の相談・割り込み対応）

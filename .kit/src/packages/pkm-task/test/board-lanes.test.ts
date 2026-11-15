@@ -129,14 +129,14 @@ describe("欄（ADR-0137）", () => {
 		expect(index.order("2026-11-14")).toBeUndefined();
 	});
 
-	it("★ は 3 件まで。2 台が同時に付けて 4 件になったら全部出す", () => {
-		const stars = ["i-1", "i-2", "i-6", "r-1"].map((task) => line(DATE, { op: "star", task, on: true }));
+	it("★ は 4 件まで。2 台が同時に付けて 5 件になったら全部出す", () => {
+		const stars = ["i-1", "i-2", "i-6", "r-1", "r-2"].map((task) => line(DATE, { op: "star", task, on: true }));
 		const { index } = load(md, [...base, ...stars.slice(0, 2)]);
 		expect(canStar(lanesOf(index))).toBe(true);
-		const three = load(md, [...base, ...stars.slice(0, 3)]).index;
-		expect(canStar(lanesOf(three))).toBe(false);
-		const four = load(md, [...base, ...stars]).index;
-		expect(keys(lanesOf(four)).top).toEqual(["i-1", "i-2", "i-6", "r-1"]);
+		const four = load(md, [...base, ...stars.slice(0, 4)]).index;
+		expect(canStar(lanesOf(four))).toBe(false);
+		const five = load(md, [...base, ...stars]).index;
+		expect(keys(lanesOf(five)).top).toEqual(["i-1", "i-2", "i-6", "r-1", "r-2"]);
 	});
 });
 

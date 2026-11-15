@@ -111,24 +111,24 @@ describe("サブを載せる・持ち越す（ADR-0137, 0152）", () => {
 describe("★ と並べ替え（ADR-0137）", () => {
 	const base = ["i-2", "i-3", "i-4", "i-1#aaaaaa"].map((task) => line({ op: "add", task }));
 
-	it("★ を付け外しする。3 件あるときは付けずに知らせる", async () => {
-		const { ctx, ops } = setup([...base, ...["i-2", "i-3", "i-4"].map((task) => line({ op: "star", task, on: true }))]);
+	it("★ を付け外しする。4 件あるときは付けずに知らせる", async () => {
+		const { ctx, ops } = setup([...base, line({ op: "add", task: "i-1#bbbbbb" }), ...["i-2", "i-3", "i-4", "i-1#bbbbbb"].map((task) => line({ op: "star", task, on: true }))]);
 		notices.length = 0;
 		await setStar(ctx, DATE, "i-1#aaaaaa", true);
 		expect(ops).toEqual([]);
-		expect(notices).toEqual(["★ は 3 件までです。ほかの ★ を外してから付けてください"]);
+		expect(notices).toEqual(["★ は 4 件までです。ほかの ★ を外してから付けてください"]);
 		await setStar(ctx, DATE, "i-2", false);
 		expect(ops).toEqual([{ op: "star", task: "i-2", on: false }]);
 	});
 
-	it("Top 3 に落とすと ★ が付き、3 件あるときは入れない", async () => {
+	it("Top 4 に落とすと ★ が付き、4 件あるときは入れない", async () => {
 		const { ctx, ops } = setup(base);
 		await moveCard(ctx, DATE, "i-4", "top", null);
 		expect(ops).toEqual([
 			{ op: "star", task: "i-4", on: true },
 			{ op: "order", tasks: ["i-4", "i-2", "i-3", "i-1#aaaaaa"] },
 		]);
-		const full = setup([...base, ...["i-2", "i-3", "i-4"].map((task) => line({ op: "star", task, on: true }))]);
+		const full = setup([...base, line({ op: "add", task: "i-1#bbbbbb" }), ...["i-2", "i-3", "i-4", "i-1#bbbbbb"].map((task) => line({ op: "star", task, on: true }))]);
 		await moveCard(full.ctx, DATE, "i-1#aaaaaa", "top", "i-2");
 		expect(full.ops).toEqual([]);
 	});

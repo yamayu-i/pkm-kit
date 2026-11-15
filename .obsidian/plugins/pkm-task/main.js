@@ -3063,7 +3063,7 @@ function useNow(intervalMs = 3e4) {
 var import_obsidian4 = require("obsidian");
 
 // src/core/board-lanes.ts
-var TOP_LIMIT = 3;
+var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
   const cards = [];
   for (const key of board.issues) {
@@ -3252,7 +3252,7 @@ function lanesOn(ctx, date) {
 function setStar(ctx, date, key, on) {
   const { board, lanes } = lanesOn(ctx, date);
   if (on && !board.stars.includes(key) && !canStar(lanes)) {
-    new import_obsidian4.Notice("\u2605 \u306F 3 \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044");
+    new import_obsidian4.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
     return Promise.resolve();
   }
   return guard(ctx, "\u2605 \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "star", task: key, on }]));
@@ -3260,7 +3260,7 @@ function setStar(ctx, date, key, on) {
 function moveCard(ctx, date, key, lane, before) {
   const { board, lanes, previous } = lanesOn(ctx, date);
   if (lane === "top" && !board.stars.includes(key) && !canStar(lanes)) {
-    new import_obsidian4.Notice("\u2605 \u306F 3 \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u5165\u308C\u3066\u304F\u3060\u3055\u3044");
+    new import_obsidian4.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u5165\u308C\u3066\u304F\u3060\u3055\u3044`);
     return Promise.resolve();
   }
   return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, moveOps(lanes, board, key, lane, before, previous)));
@@ -11167,13 +11167,13 @@ var import_obsidian21 = require("obsidian");
 var ENTER_MS = 3e3;
 var LANE_TITLE = {
   working: "Working",
-  top: "Top 3",
+  top: "Top 4",
   next: "Up next",
   waiting: "Waiting",
   done: "Done"
 };
 var LANE_EMPTY = {
-  top: "Pick up to 3 cards that matter most today. Drag them here, or use the card menu.",
+  top: "Pick up to 4 cards that matter most today. Drag them here, or use the card menu.",
   next: "Nothing else to do today."
 };
 function changeIssueStatus(ctx, issue, to) {
@@ -11221,8 +11221,8 @@ function TaskCard(props) {
   const moreMenu = (e3) => {
     const m3 = new import_obsidian21.Menu();
     if (!done) {
-      if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 3").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
-      else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 3").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
+      if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 4").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
+      else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
     }
     const up = stepOps(lanes, board, key, -1, void 0);
     const down = stepOps(lanes, board, key, 1, void 0);
@@ -11259,10 +11259,18 @@ function TaskCard(props) {
       } : {},
       children: [
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
-        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
-          starred && !done && /* @__PURE__ */ u3(Icon, { name: "star", class: "vt-task-star" }),
-          summary
-        ] }),
+        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: summary }),
+        !done && /* @__PURE__ */ u3(
+          "button",
+          {
+            class: `vt-icon-button vt-star${starred ? " is-starred" : ""}`,
+            "aria-label": starred ? "Remove from Top 4" : "Add to Top 4",
+            "aria-pressed": starred,
+            title: starred ? "Remove from Top 4" : "Add to Top 4",
+            onClick: () => void setStar(ctx, date, key, !starred),
+            children: /* @__PURE__ */ u3(Icon, { name: "star" })
+          }
+        ),
         /* @__PURE__ */ u3(
           "button",
           {
@@ -11276,7 +11284,7 @@ function TaskCard(props) {
             ]
           }
         ),
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Card menu", title: "Top 3, move and more", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Card menu", title: "Move and more", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
       ]
     }
   );
@@ -11324,7 +11332,7 @@ function Lane(props) {
             lane === "top" && /* @__PURE__ */ u3(Icon, { name: "star" }),
             LANE_TITLE[lane]
           ] }),
-          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards.length}/3` : cards.length })
+          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards.length}/${TOP_LIMIT}` : cards.length })
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
           cardRuns(cards).map(

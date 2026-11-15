@@ -19,7 +19,7 @@ export const LANES: readonly LaneId[] = ["working", "top", "next", "waiting", "d
 export type OrderedLane = "top" | "next" | "waiting";
 
 /** ★ の上限 */
-export const TOP_LIMIT = 3;
+export const TOP_LIMIT = 4;
 
 export type BoardLanes = Record<LaneId, BoardCard[]>;
 

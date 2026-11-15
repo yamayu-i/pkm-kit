@@ -1720,16 +1720,13 @@ button.vt-badge:disabled::after {
 	flex: none;
 }
 
-/* ★ の印（題の前） */
-.vt-task-star {
-	margin-right: 4px;
+/* ★ のボタン（ワンクリックで Top 4 に入れる / 外す）。付いているときは primary で塗る */
+.vt-star.is-starred {
 	color: var(--vt-primary);
-	vertical-align: -2px;
 }
 
-.vt-task-star svg {
-	width: 16px;
-	height: 16px;
+.vt-star.is-starred svg {
+	fill: currentColor;
 }
 
 .vt-task-summary {

@@ -8645,7 +8645,7 @@ function nextOrder(visible, previous) {
 
 // src/core/board-lanes.ts
 var LANES = ["working", "top", "next", "waiting", "done"];
-var TOP_LIMIT = 3;
+var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
   const cards = [];
   for (const key of board.issues) {
@@ -9708,7 +9708,7 @@ function orderCardOnDisk(root, index, date, key, before, device, now) {
 function starCardOnDisk(root, index, date, key, on, device, now) {
   if (typeof on !== "boolean") throw new Error("on \u306F true \u304B false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const { board, lanes } = laneOfKey(index, date, key);
-  if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error("\u2605 \u306F 3 \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044");
+  if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
 function setRoutineResultOnDisk(root, index, date, routineId, result, device, now) {
@@ -10839,7 +10839,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF083 \u4EF6\u307E\u3067\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
     inputSchema: {
       type: "object",
       properties: {
@@ -10948,7 +10948,7 @@ var TOOLS = [
   },
   {
     name: "star_card",
-    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u306B \u2605 \u4ECA\u65E5\u306E\u6700\u91CD\u8981\u3092\u4ED8\u3051\u308B\uFF08on: true\uFF09\u304B\u5916\u3059\uFF08on: false\uFF09\u3002\u2605 \u306F 3 \u4EF6\u307E\u3067\u3002\u305D\u306E\u65E5\u3060\u3051\u3067\u7FCC\u65E5\u306B\u306F\u5F15\u304D\u7D99\u304C\u306A\u3044",
+    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u306B \u2605 \u4ECA\u65E5\u306E\u6700\u91CD\u8981\u3092\u4ED8\u3051\u308B\uFF08on: true\uFF09\u304B\u5916\u3059\uFF08on: false\uFF09\u3002\u2605 \u306F 4 \u4EF6\u307E\u3067\u3002\u305D\u306E\u65E5\u3060\u3051\u3067\u7FCC\u65E5\u306B\u306F\u5F15\u304D\u7D99\u304C\u306A\u3044",
     inputSchema: {
       type: "object",
       properties: {

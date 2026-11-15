@@ -81,19 +81,19 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(index.order(date)).toEqual(["i-2", "r-1", "i-1"]);
 	});
 
-	it("★ は 3 件まで。order_card は同じ欄の中だけ（ADR-0137）", () => {
+	it("★ は 4 件まで。order_card は同じ欄の中だけ（ADR-0137）", () => {
 		for (const n of [3, 4, 5]) {
 			writeFileSync(join(root, `issue/i-${n}.md`), `---\ntype: issue\nid: i-${n}\nsummary: t${n}\nstatus: open\ncreated: 2026-10-30T10:00:00+09:00\n---\n`);
 		}
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2", "i-3", "i-4", "i-5"] });
-		for (const key of ["i-1", "i-2", "i-3"]) callMcpTool(ctx, "star_card", { date, key, on: true });
-		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-4", on: true })).toThrow(/3 件/);
+		for (const key of ["i-1", "i-2", "i-3", "i-5"]) callMcpTool(ctx, "star_card", { date, key, on: true });
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-4", on: true })).toThrow(/4 件/);
 		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-4", before: "i-1" })).toThrow(/同じ欄/);
 		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-9", before: null })).toThrow(/載っていません/);
 		callMcpTool(ctx, "star_card", { date, key: "i-1", on: false });
 		callMcpTool(ctx, "star_card", { date, key: "i-4", on: true });
 		const board = callMcpTool(ctx, "get_board", { date }) as { stars: string[] };
-		expect(board.stars).toEqual(["i-2", "i-3", "i-4"]);
+		expect(board.stars).toEqual(["i-2", "i-3", "i-5", "i-4"]);
 	});
 
 	it("不正な操作（存在しない issue、廃止した move_card、未完了がある状態での close、廃止した parent）を拒否して書き込まない", () => {
