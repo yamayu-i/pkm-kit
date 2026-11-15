@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { reopenPatch } from "../core/actions";
 import type { Issue } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { askDate, cancelIssues, scheduleIssues } from "../obsidian/issue-actions";
+import { askDate, cancelIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
@@ -71,7 +71,7 @@ export function SomedayView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
-					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e) => ctx.report("revisit を設定できませんでした", e)) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
 				]}

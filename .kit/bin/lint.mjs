@@ -7763,6 +7763,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v = this.fm[key];
+    if (typeof v === "boolean") return v;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v = this.fm[key];
@@ -7786,6 +7794,17 @@ var Reader = class {
       }
     }
     return out;
+  }
+  /**
+   * Calendar の日付 1 つ（ADR-0152）。以前のリストなら最も早い日を読み、移行を促す警告を出す
+   * （移行 0152-calendar-tickler で日付 1 つに書き直す）
+   */
+  calendarDate(key) {
+    const v = this.fm[key];
+    if (!Array.isArray(v)) return this.date(key);
+    const dates = this.dates(key);
+    if (v.length > 0) this.problem("legacy-scheduled-list", `${key} \u306F\u65E5\u4ED8 1 \u3064\u306B\u3057\u307E\u3057\u305F\uFF08ADR-0152\uFF09\u3002\u79FB\u884C 0152-calendar-tickler \u3067\u66F8\u304D\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09`, "warning");
+    return dates[0] ?? null;
   }
   dates(key) {
     const out = /* @__PURE__ */ new Set();
@@ -7838,11 +7857,13 @@ function parseIssue(path, fm) {
     labels: r.strings("label"),
     related: r.strings("related"),
     estimated: r.minutes("estimated"),
-    scheduled: r.dates("scheduled"),
+    scheduled: r.calendarDate("scheduled"),
     softDeadline: r.date("soft_deadline"),
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),
+    clarified: r.boolean("clarified", false),
+    tickler: r.date("tickler"),
     created: r.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r.problems };
@@ -7955,7 +7976,7 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     delegatedTo: r.ref("delegated_to", "m"),
     start: r.date("start"),
     end: r.date("end"),
-    scheduled: r.dates("scheduled"),
+    scheduled: r.calendarDate("scheduled"),
     softDeadline: r.date("soft_deadline"),
     deadline: r.date("deadline"),
     estimated: r.minutes("estimated"),
@@ -8171,7 +8192,7 @@ function lastOrder(history, date) {
 
 // src/core/daily.ts
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i) => isActive(i) && i.scheduled.includes(date) && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
+  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
 }
 
 // src/core/effort.ts
@@ -8350,7 +8371,7 @@ var TaskIndex = class {
   toAutoAdd(date) {
     const daily = this.board(date);
     const skip = /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]);
-    const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled.includes(date) && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
+    const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled === date && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
     return [...scheduledOn(this.issues.values(), date, skip).map((i) => i.id), ...subs.map((s) => s.key)];
   }
   /** ボードの並び（ADR-0114, 0137）。その日までで最後に並べたもの。なければ undefined */
@@ -8527,7 +8548,7 @@ function lintVault(data2, options = {}) {
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
     }
-    if (issue.status === "someday" && (issue.scheduled.length > 0 || issue.softDeadline !== null || issue.deadline !== null)) {
+    if (issue.status === "someday" && (issue.scheduled !== null || issue.softDeadline !== null || issue.deadline !== null)) {
       add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
     }
     if (issue.revisit !== null && issue.status !== "someday") {

@@ -27,8 +27,8 @@ export interface SubIssue {
 	delegatedTo: string | null;
 	start: LocalDate | null;
 	end: LocalDate | null;
-	/** 昇順・重複なし */
-	scheduled: LocalDate[];
+	/** Calendar: その日にやらなければならない日（ADR-0152）。日付 1 つ */
+	scheduled: LocalDate | null;
 	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	/** 分 */
@@ -139,7 +139,7 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 		delegatedTo: r.ref("delegated_to", "m"),
 		start: r.date("start"),
 		end: r.date("end"),
-		scheduled: r.dates("scheduled"),
+		scheduled: r.calendarDate("scheduled"),
 		softDeadline: r.date("soft_deadline"),
 		deadline: r.date("deadline"),
 		estimated: r.minutes("estimated"),
@@ -182,7 +182,7 @@ export function formatSubIssue(sub: SubIssueInput): string {
 	put("delegated_to", sub.delegatedTo);
 	put("start", sub.start);
 	put("end", sub.end);
-	if (sub.scheduled.length > 0) put("scheduled", JSON.stringify(sub.scheduled));
+	put("scheduled", sub.scheduled);
 	put("soft_deadline", sub.softDeadline);
 	put("deadline", sub.deadline);
 	put("estimated", sub.estimated === null ? null : String(sub.estimated));
@@ -300,12 +300,12 @@ export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: Readon
 		for (const [key, value] of [
 			["start", s.start],
 			["end", s.end],
+			["scheduled", s.scheduled],
 			["soft_deadline", s.softDeadline],
 			["deadline", s.deadline],
 		] as const) {
 			if (!isDate(value)) errors.push(`${where}: ${key} が YYYY-MM-DD の日付ではありません: ${String(value)}`);
 		}
-		for (const d of s.scheduled) if (!isDate(d)) errors.push(`${where}: scheduled に日付でない値があります: ${d}`);
 		if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end が start より前です`);
 		if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated は 0 以上の数（分）にしてください`);
 		if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated には delegated_to が要ります`);
@@ -353,7 +353,7 @@ export function newSubIssueInput(item: NewSubIssue, id: string, created: string)
 		delegatedTo: item.delegatedTo ?? null,
 		start: item.start ?? null,
 		end: item.end ?? null,
-		scheduled: [...new Set(item.scheduled ?? [])].sort(),
+		scheduled: item.scheduled ?? null,
 		softDeadline: item.softDeadline ?? null,
 		deadline: item.deadline ?? null,
 		estimated: item.estimated ?? null,
@@ -384,11 +384,10 @@ export function subCounts(subs: readonly Pick<SubIssue, "status">[]): { open: nu
 
 const shortDate = (d: LocalDate) => `${d.slice(5, 7)}/${d.slice(8, 10)}`;
 
-/** 行の補足（ADR-0142）: 期間 → 今日以降の次の予定日 → 期限（deadline、なければ soft_deadline）。なければ null */
+/** 行の補足（ADR-0142）: 期間 → 今日以降の Calendar の日（ADR-0152）→ 期限（deadline、なければ soft_deadline）。なければ null */
 export function subHint(sub: Pick<SubIssue, "start" | "end" | "scheduled" | "deadline" | "softDeadline">, today: LocalDate): string | null {
 	if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}–${sub.end ? shortDate(sub.end) : ""}`;
-	const next = sub.scheduled.find((d) => d >= today);
-	if (next) return shortDate(next);
+	if (sub.scheduled !== null && sub.scheduled >= today) return shortDate(sub.scheduled);
 	const due = sub.deadline ?? sub.softDeadline;
 	return due ? `Due ${shortDate(due)}` : null;
 }

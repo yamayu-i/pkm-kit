@@ -9,7 +9,7 @@ import { linkProps } from "../ui/a11y";
 
 const DAYS = 14;
 
-/** Scheduled（ADR-0009）: 今日以降に実行日がある issue × 14 日。セルで on / off */
+/** Scheduled（ADR-0009, 0152）: 今日以降に Calendar の日（その日にやらなければならない日）がある issue × 14 日。セルでその日に移す・消す */
 export function ScheduledView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
@@ -17,10 +17,9 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 	const days = Array.from({ length: DAYS }, (_, i) => addDays(today, i));
 	const issues = [...ctx.store.index.issues.values()]
 		.filter((i) => isScheduledAhead(i, today))
-		.sort((a, b) => (a.scheduled.find((d) => d >= today) ?? "").localeCompare(b.scheduled.find((d) => d >= today) ?? "") || a.id.localeCompare(b.id, "en", { numeric: true }));
-	const toggle = (path: string, scheduled: string[], d: string) => {
-		const next = scheduled.includes(d) ? scheduled.filter((x) => x !== d) : [...scheduled, d].sort();
-		void ctx.writer.update(path, { scheduled: next }).catch((e) => ctx.report("実行日を変えられませんでした", e));
+		.sort((a, b) => a.scheduled!.localeCompare(b.scheduled!) || a.id.localeCompare(b.id, "en", { numeric: true }));
+	const toggle = (path: string, scheduled: string | null, d: string) => {
+		void ctx.writer.update(path, { scheduled: scheduled === d ? null : d }).catch((e) => ctx.report("Calendar の日を変えられませんでした", e));
 	};
 	return (
 		<div class="vt-page">
@@ -29,7 +28,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 				<span class="vt-count">{issues.length}</span>
 			</header>
 			{issues.length === 0 ? (
-				<div class="vt-empty">No issues with a Do Date from today on</div>
+				<div class="vt-empty">No issues on the Calendar from today on</div>
 			) : (
 				<div class="vt-sched-scroll">
 					<table class="vt-sched">
@@ -57,7 +56,7 @@ export function ScheduledView(props: { ctx: TaskContext }) {
 									</th>
 									{days.map((d) => (
 										<td>
-											<DayCell date={d} scheduled={i.scheduled.includes(d)} softDeadline={i.softDeadline} deadline={i.deadline} today={today} onClick={() => toggle(i.path, i.scheduled, d)} />
+											<DayCell date={d} scheduled={i.scheduled === d} softDeadline={i.softDeadline} deadline={i.deadline} today={today} onClick={() => toggle(i.path, i.scheduled, d)} />
 										</td>
 									))}
 								</tr>

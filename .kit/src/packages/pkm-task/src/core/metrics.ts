@@ -209,7 +209,7 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 	const dead = deadIssues(index.data.issues, date);
 	const caution = cautionIssues(index.data.issues, date, cautionDays);
 
-	const inbox = index.data.issues.filter(isInbox);
+	const inbox = index.data.issues.filter((i) => isInbox(i, date));
 	const pending = pendingBoards(index, index.data.boards, date).map((b) => {
 		const u = unfinished(index, b.date, b.board);
 		return {

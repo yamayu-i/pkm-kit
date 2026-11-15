@@ -18,7 +18,7 @@ export interface TimelineSub {
 	id: string;
 	start: LocalDate | null;
 	end: LocalDate | null;
-	scheduled: LocalDate[];
+	scheduled: LocalDate | null;
 	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	dependsOn: string[];
@@ -52,7 +52,7 @@ const maxDate = (dates: LocalDate[]) => dates.reduce((a, b) => (b > a ? b : a));
 export function timelineRange(subs: readonly TimelineSub[], today: LocalDate, scale: TimelineScale): TimelineRange {
 	const dates = [today];
 	for (const s of subs) {
-		for (const d of [s.start, s.end, s.softDeadline, s.deadline, ...s.scheduled]) if (d) dates.push(d);
+		for (const d of [s.start, s.end, s.softDeadline, s.deadline, s.scheduled]) if (d) dates.push(d);
 	}
 	let from = addDays(minDate(dates), -PAD_DAYS);
 	let to = addDays(maxDate(dates), PAD_DAYS);

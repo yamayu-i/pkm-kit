@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TaskIndex, emptyVaultData, isInbox, organizeQueue, type VaultData } from "../src/core/index";
+import { TaskIndex, emptyVaultData, isInbox, isNext, organizeQueue, type VaultData } from "../src/core/index";
 import { LABEL_CONTRAST_MIN, labelContrast, lintVault } from "../src/core/lint";
 import { parseIssue, parseMember, parseRoutine, type Issue, type Member, type Routine } from "../src/core/schema";
 import type { WorklogEntry } from "../src/core/worklog";
@@ -58,11 +58,25 @@ describe("TaskIndex", () => {
 });
 
 describe("Inbox と Organize", () => {
-	it("open で予定も期限もないものが Inbox", () => {
-		expect(isInbox(issue("i-1"))).toBe(true);
-		expect(isInbox(issue("i-1", { scheduled: ["2026-11-01"] }))).toBe(false);
-		expect(isInbox(issue("i-1", { deadline: "2026-11-01" }))).toBe(false);
-		expect(isInbox(issue("i-1", { status: "someday" }))).toBe(false);
+	it("open で clarified でないものが Inbox。日付は見ない（ADR-0148）", () => {
+		const today = "2026-11-01";
+		expect(isInbox(issue("i-1"), today)).toBe(true);
+		// 締切だけ決まっていて、中身は未整理
+		expect(isInbox(issue("i-1", { deadline: "2026-11-01" }), today)).toBe(true);
+		expect(isInbox(issue("i-1", { scheduled: "2026-11-01" }), today)).toBe(true);
+		// 整理済みで、日付は決めていない
+		expect(isInbox(issue("i-1", { clarified: true }), today)).toBe(false);
+		expect(isInbox(issue("i-1", { status: "someday" }), today)).toBe(false);
+		expect(isInbox(issue("i-1", { status: "in-progress" }), today)).toBe(false);
+	});
+
+	it("Next は open で clarified で、Calendar（scheduled）も Tickler もないもの（ADR-0148, 0152）", () => {
+		expect(isNext(issue("i-1", { clarified: true }))).toBe(true);
+		expect(isNext(issue("i-1", { clarified: true, deadline: "2026-11-05" }))).toBe(true);
+		expect(isNext(issue("i-1", { clarified: true, scheduled: "2026-11-05" }))).toBe(false);
+		expect(isNext(issue("i-1", { clarified: true, tickler: "2026-11-05" }))).toBe(false);
+		expect(isNext(issue("i-1"))).toBe(false);
+		expect(isNext(issue("i-1", { clarified: true, status: "waiting" }))).toBe(false);
 	});
 
 	it("Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday", () => {
@@ -70,6 +84,7 @@ describe("Inbox と Organize", () => {
 			[
 				issue("i-1", { created: "2026-10-30T09:00:00+09:00" }),
 				issue("i-2", { created: "2026-10-29T09:00:00+09:00" }),
+				issue("i-8", { clarified: true }),
 				issue("i-3", { status: "someday", reviewed: "2026-10-01" }),
 				issue("i-4", { status: "someday" }),
 				issue("i-5", { status: "someday", revisit: "2026-10-31" }),

@@ -10,12 +10,12 @@
 ## 今の流れ
 
 1. [Organize](../surfaces/task-organize.md) を開く。Inbox の古い順 → revisit を過ぎた Someday → 見ていない期間が長い Someday の順に 1 件ずつカードが出る
-2. スワイプ・ボタン・矢印キーで決める: Do Date（カレンダーで選ぶ。Inbox からなら estimated も）、To Someday、Later、Cancel、Already done
+2. スワイプ・ボタン・矢印キーで決める: Next（日付を決めずに整理済みにする）、Tickler（今は決めず、その日に Inbox に戻す）、To Someday、Cancel、Calendar（その日にやらなければならない日を 1 つ選ぶ）、Already done
 3. 1 つ前に戻せる
 
 ## 関わる概念
 
-[Inbox](../concepts/task-inbox.md)、[Someday](../concepts/task-someday.md)、[Do Date](../concepts/task-do-date.md)、[estimated](../concepts/task-estimate.md)
+[Inbox](../concepts/task-inbox.md)、[Someday](../concepts/task-someday.md)、[Calendar](../concepts/task-do-date.md)、[Tickler](../concepts/task-tickler.md)、[estimated](../concepts/task-estimate.md)
 
 ## うまくいっている兆し
 

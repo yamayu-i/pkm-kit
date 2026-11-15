@@ -14,7 +14,7 @@
 6. estimated / total / average
 7. worklog、本文
 
-status、Do Date、期限、親子は持たない。
+status、Calendar の日、期限、親子は持たない。
 
 issue 画面と同じく、ページの一番上に出る。編集の画面とリーディングビューの両方に出て、どちらでも編集できる。
 

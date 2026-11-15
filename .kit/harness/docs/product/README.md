@@ -13,7 +13,7 @@ pkm-kit を使う人の体験に責任を持つための文書（[ADR-0012](../a
 |---|---|---|---|
 | 戦略 | [strategy.md](strategy.md) | ビジョン、使う人、望む成果、原則、やらないこと、当たり前の品質 | 戦略 |
 | 場面 | [jobs/](jobs/README.md) | 使う人の状況・したいこと・期待する結果と、今の流れ | 範囲 |
-| 概念 | [concepts/](concepts/README.md) | 使う人が頭に置くもの（issue、Do Date など）の目的・状態・操作と、用語の対応表 | 構造 |
+| 概念 | [concepts/](concepts/README.md) | 使う人が頭に置くもの（issue、Calendar など）の目的・状態・操作と、用語の対応表 | 構造 |
 | 今の体験の正本 | [surfaces/](surfaces/README.md) | 画面・コマンド・MCP などの面ごとの、今の振る舞い | 構造・骨格 |
 | 見た目 | [デザインルール](../../../src/docs/design.md) | 色・文字・部品・アクセシビリティ | 骨格・表面 |
 | 機会 | GitHub の Issue（ラベル `ux`） | 場面、困りごと、根拠 | — |

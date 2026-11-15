@@ -1,9 +1,9 @@
 import { Notice } from "obsidian";
-import { inboxPatch, reschedulePatch } from "../core/actions";
+import { backToNextPatch, inboxPatch, ticklerPatch } from "../core/actions";
 import { emptyBoard, type RoutineResult } from "../core/board";
 import { boardLanes, canStar, moveOps, stepOps, type OrderedLane } from "../core/board-lanes";
 import type { BoardOp } from "../core/board-log";
-import type { LocalDate } from "../core/dates";
+import { addDays, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
 import type { TaskContext } from "./context";
@@ -24,10 +24,10 @@ export const addToBoard = (ctx: TaskContext, date: LocalDate, ids: string[]) =>
 		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task }))),
 	);
 
-/** その日を実行日にした issue を作って、ボードに載せる */
+/** issue を作って、その日のボードに載せる。ボードで作るのは今やると決めたものなので整理済みにする。日付は書かない（ADR-0152） */
 export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: string): Promise<void> {
 	try {
-		const { created } = await ctx.writer.createIssues([summary], [date]);
+		const { created } = await ctx.writer.createIssues([summary], { clarified: true });
 		const file = created[0];
 		if (!file) throw new Error(`作成に失敗しました: ${summary}`);
 		await addToBoard(ctx, date, [file.basename]);
@@ -39,10 +39,9 @@ export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: 
 export const removeFromBoard = (ctx: TaskContext, date: LocalDate, id: string) =>
 	guard(ctx, "ボードから外せませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
 
-/** その日が scheduled でないサブを、scheduled に今日を足してから載せる（ADR-0137） */
+/** サブをボードに載せる。日付は書かない（今日やると選んだだけで、その日にやらなければならないわけではない。ADR-0152） */
 export async function addSubToBoard(ctx: TaskContext, date: LocalDate, sub: SubIssue): Promise<void> {
 	try {
-		if (!sub.scheduled.includes(date)) await ctx.writer.updateSub(sub.key, { scheduled: [...sub.scheduled, date].sort() });
 		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: sub.key }]);
 	} catch (e) {
 		ctx.report("サブをボードに載せられませんでした", e);
@@ -98,44 +97,49 @@ export async function setRoutineResult(ctx: TaskContext, date: LocalDate, id: st
 	if (record && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
 }
 
+/** 持ち越しの片付け方（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Next に戻す、move: Calendar の日を選び直す、tickler・inbox は issue だけ */
+export type CarryKind = "today" | "next" | "move" | "tickler" | "inbox";
+
 /**
- * ボードのサブをリスケで片付ける（ADR-0137）。ボードには残し、未完了に数えない（carried）。
- * fixedTo があれば日付を聞かずにそこへ移す
+ * ボードのサブを片付ける（ADR-0137, 0152）。元のボードには残し、未完了に数えない（carried）。
+ * サブは Tickler と Inbox を持たない（ADR-0148, 0152）
  */
-export async function carrySubs(ctx: TaskContext, date: LocalDate, subs: SubIssue[], fixedTo: LocalDate | null = null): Promise<void> {
-	let to = fixedTo;
-	if (to === null) {
-		to = await askDate(ctx, "Move Do Date");
+export async function carrySubs(ctx: TaskContext, date: LocalDate, subs: SubIssue[], kind: "today" | "next" | "move"): Promise<void> {
+	let to: LocalDate | null = null;
+	if (kind === "move") {
+		to = await askDate(ctx, "Move date (must be done on this day)", localToday());
 		if (to === null) return;
 	}
 	try {
 		for (const sub of subs) {
-			const dates = new Set(sub.scheduled);
-			dates.delete(date);
-			dates.add(to);
-			await ctx.writer.updateSub(sub.key, { scheduled: [...dates].sort() });
+			if (kind === "next" && sub.scheduled !== null) await ctx.writer.updateSub(sub.key, { scheduled: null });
+			if (kind === "move") await ctx.writer.updateSub(sub.key, { scheduled: to });
 		}
 		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, subs.map((s) => ({ op: "carry", task: s.key })));
+		if (kind === "today") await ctx.writer.appendBoardOps(localToday(), ctx.settings.deviceName, subs.map((s) => ({ op: "add", task: s.key })));
 	} catch (e) {
 		ctx.report("片付けられませんでした", e);
 	}
 }
 
 /**
- * ボードの issue をリスケ / Inbox で片付ける。ボードには残し、未完了に数えない（carried）。
- * fixedTo があれば日付を聞かずにそこへ移す（Do Today / Do Tomorrow。ADR-0018）
+ * ボードの issue を片付ける（ADR-0152）。元のボードには残し、未完了に数えない（carried）。
+ * today は今日のボードに載せるだけで日付を書かない。move は Calendar の日、tickler は Tickler の日（既定は明日）を聞く
  */
-export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Issue[], kind: "reschedule" | "inbox", fixedTo: LocalDate | null = null): Promise<void> {
-	let to = fixedTo;
-	if (kind === "reschedule" && to === null) {
-		to = await askDate(ctx, "Move Do Date");
-		if (to === null) return;
-	}
+export async function carryIssues(ctx: TaskContext, date: LocalDate, issues: Issue[], kind: CarryKind): Promise<void> {
+	let to: LocalDate | null = null;
+	if (kind === "move") to = await askDate(ctx, "Move date (must be done on this day)", localToday());
+	if (kind === "tickler") to = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
+	if ((kind === "move" || kind === "tickler") && to === null) return;
 	try {
 		for (const issue of issues) {
-			await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to!, date));
+			if (kind === "inbox") await ctx.writer.update(issue.path, inboxPatch());
+			else if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
+			else if (kind === "move") await ctx.writer.update(issue.path, { scheduled: to });
+			else if (kind === "tickler") await ctx.writer.update(issue.path, ticklerPatch(issue, to!));
 		}
 		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i) => ({ op: "carry", task: i.id })));
+		if (kind === "today") await ctx.writer.appendBoardOps(localToday(), ctx.settings.deviceName, issues.map((i) => ({ op: "add", task: i.id })));
 	} catch (e) {
 		ctx.report("片付けられませんでした", e);
 	}

@@ -98,13 +98,13 @@ describe("readVault（CLI）とサブイシュー", () => {
 			mkdirSync(join(root, "issue"));
 			writeFileSync(
 				join(root, "issue/i-1.md"),
-				"---\nschema: 1\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\n---\n\n## Note\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 子\nstatus: open\nscheduled: [2026-11-16]\n-->\n本文\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 重なり\nstatus: open\n-->\n",
+				"---\nschema: 1\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\n---\n\n## Note\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 子\nstatus: open\nscheduled: 2026-11-16\n-->\n本文\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 重なり\nstatus: open\n-->\n",
 			);
 			const { data, problems } = readVault(root);
 			expect(problems).toEqual([]);
 			expect(data.subIssues.map((s) => [s.key, s.summary, s.scheduled])).toEqual([
-				["i-1#aaaaaa", "子", ["2026-11-16"]],
-				["i-1#aaaaaa", "重なり", []],
+				["i-1#aaaaaa", "子", "2026-11-16"],
+				["i-1#aaaaaa", "重なり", null],
 			]);
 			expect(lintVault(data).map((p) => p.code)).toEqual(["duplicate-sub-id"]);
 		} finally {

@@ -34,11 +34,12 @@ function sub(extra: string): SubIssue {
 describe("行の補足（ADR-0142）", () => {
 	const today = "2026-11-15";
 	it("期間 → 次の予定日 → 期限の順", () => {
-		expect(subHint(sub("start: 2026-11-16\nend: 2026-11-20\nscheduled: [2026-11-17]\n"), today)).toBe("11/16–11/20");
+		expect(subHint(sub("start: 2026-11-16\nend: 2026-11-20\nscheduled: 2026-11-17\n"), today)).toBe("11/16–11/20");
 		expect(subHint(sub("end: 2026-11-20\n"), today)).toBe("–11/20");
 		expect(subHint(sub("start: 2026-11-16\n"), today)).toBe("11/16–");
-		expect(subHint(sub("scheduled: [2026-11-10, 2026-11-18, 2026-11-19]\ndeadline: 2026-11-30\n"), today)).toBe("11/18");
-		expect(subHint(sub("scheduled: [2026-11-10]\ndeadline: 2026-11-30\n"), today)).toBe("Due 11/30");
+		expect(subHint(sub("scheduled: 2026-11-18\ndeadline: 2026-11-30\n"), today)).toBe("11/18");
+		// 過ぎた Calendar の日は出さず、期限を出す
+		expect(subHint(sub("scheduled: 2026-11-10\ndeadline: 2026-11-30\n"), today)).toBe("Due 11/30");
 		expect(subHint(sub("soft_deadline: 2026-11-25\n"), today)).toBe("Due 11/25");
 		expect(subHint(sub(""), today)).toBeNull();
 	});
