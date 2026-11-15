@@ -84,4 +84,5 @@
 | [0128](0128-markdown-view.md) | 承認 | ノートの表示を自作プラグイン pkm-markdown で整える（インラインコードのコピー、本文のタグを文字に、見出しと箇条書き） |
 | [0129](0129-vault-theme-follow-primary.md) | 承認 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
+| [0135](0135-sub-issues-in-issue-file.md) | 提案 | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
 <!-- adr-index:end -->
