@@ -20,16 +20,16 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 ### Inbox の定義
 
-- `isInbox(issue)` を「`status` が `open` で、`clarified` が `true` でない」に変える。日付は見ない（ただし、[ADR-0152](0152-tickler-replaces-scheduled.md) の `tickler` が今日より後のものは出さない）
+- `isInbox(issue)` を「`status` が `open` で、`clarified` が `true` でない」に変える。日付は見ない。ただし [ADR-0152](0152-calendar-and-tickler.md) の `tickler` について、今日より後のものは出さず、今日以前のものは `clarified` があっても出す（整理を先送りしたものが戻ってくる）
 - `clarified` は frontmatter の真偽値。「何をするか・何が済めば終わりかを自分で決めた（処理した）」ことを表す。未設定は未整理（`false` と同じ）
 - 1 行の登録（クイックキャプチャ、Inbox 画面の入力欄、MCP の `create_issue`）は、これまでどおり `clarified` を書かない。登録は軽いままにする
 - status とは別の項目にする。`open` 以外の status（`in-progress`・`waiting` など）は、`clarified` が未設定でも Inbox に出ない（ADR-0006 のとおり）
 
 ### Next Actions
 
-- 「`open` で、`clarified` で、`tickler`（ADR-0152）がない」issue を Next（Next Actions）と呼ぶ。保存する項目は増やさず、算出する
-- `tickler` があるものは、日付の前は隠れ、日付が来たら Daily の Tickler の表に出る（ADR-0152）。どの一覧からも消える issue を作らない
-- 以前は「`scheduled` が空」を条件にしかけたが、実行日が過ぎてやっていない issue がどこにも出なくなる穴があった（今の Inbox の定義にもある）。`scheduled` は ADR-0152 で廃止する
+- 「`open` で、`clarified` で、`scheduled`（Calendar）も `tickler` もない」issue を Next（Next Actions）と呼ぶ。保存する項目は増やさず、算出する
+- `scheduled` があるものは Calendar として扱い、その日にボードに載り、過ぎたら Daily の Missed の表に出る。`tickler` があるものは、日付の前は隠れ、日付が来たら Inbox に戻る（ADR-0152）。どの一覧からも消える issue を作らない
+- 以前は「`scheduled` が空」だけを条件にしかけたが、実行日が過ぎてやっていない issue がどこにも出なくなる穴があった（今の Inbox の定義にもある）。ADR-0152 の Missed で塞ぐ
 - Next は Inbox に出ない。選ぶ場所は DailyTaskView（#150）、見直す場所は Weekly Review（#151）
 
 ### clarified を付ける・外す
@@ -39,15 +39,17 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 | 操作 | 書くもの | `clarified` |
 |---|---|---|
 | Next（新設） | `clarified: true` と `reviewed` | 付ける |
-| Tickler（Do Date を置き換える。ADR-0152） | `tickler`（日付 1 つ）と `reviewed` | 付ける |
+| Calendar（Do Date を置き換える。ADR-0152） | `scheduled`（日付 1 つ）と `reviewed` | 付ける |
+| Tickler（Later を置き換える。ADR-0152） | `tickler`（日付 1 つ）と `reviewed` | 触らない（整理の先送りなので） |
 | Someday / Cancel / Already done | status の変更 | 触らない |
 
-- Organize の Tickler で `clarified: true` を付けるのは、「その日まで出さない」と決めたことが整理の結果だから。issue 画面や MCP で `tickler` だけを書くときは、`clarified` を変えない
+- Organize で整理すると、どの操作でも `tickler` を消す（Tickler を選び直したときは新しい日付に置き換える）
+- Organize の Calendar で `clarified: true` を付けるのは、「その日にやる」と決めたことが整理の結果だから。issue 画面や MCP で `scheduled` だけを書くときは、`clarified` を変えない
 - `deadline`・`soft_deadline` だけを書く操作では、`clarified` を付けない。締切が分かっていて、中身が曖昧という状態を残すため
-- 「Inbox に戻す」（View のアクション、ボードの Inbox 操作、MCP）は、`clarified` を消すだけにする。期限（`soft_deadline`・`deadline`）は残す。`tickler`（ADR-0152）は消す（残すと Inbox に出ないため）。ADR-0152 の実装までは `scheduled` も残す。status が `open` でなければ `open` に戻す。GTD では処理したものを Inbox に戻さないが、実行中に曖昧さが見つかったときの人の逃げ道として残す
+- 「Inbox に戻す」（View のアクション、ボードの Inbox 操作、MCP）は、`clarified` を消すだけにする。期限（`soft_deadline`・`deadline`）と `scheduled`（Calendar）は残す。`tickler`（ADR-0152）は消す（今日より後の日付が残ると Inbox に出ないため）。status が `open` でなければ `open` に戻す。GTD では処理したものを Inbox に戻さないが、実行中に曖昧さが見つかったときの人の逃げ道として残す
 - Later は廃止する。Later は何も変えずに `reviewed` を今日にして、そのセッションでキューから外すだけの操作だった。処理せずに Inbox に残すのは、GTD の「Inbox に戻さず、1 件ずつ処理する」に合わない。決められないものは、Someday か Next にする。↑ キー・上スワイプ・ボタン・取り消しの対応から外す
 - issue の画面と一覧から、`clarified` を直接切り替えられる
-- Organize で `estimated` を要求しない。これまでは Inbox から Do Date を決めるときだけ要求していた（[ADR-0030](0030-organize-schedule-calendar.md)）。GTD は見積もりを整理の条件にしない。Do Date は ADR-0152 で廃止するので、見積もりは issue 画面で任意に入れる
+- Organize で `estimated` を要求しない。これまでは Inbox から Do Date を決めるときだけ要求していた（[ADR-0030](0030-organize-schedule-calendar.md)）。GTD は見積もりを整理の条件にしない。Do Date は ADR-0152 で Calendar に置き換わり、そこでも見積もりを求めない。見積もりは issue 画面で任意に入れる
 
 ### 範囲
 
@@ -64,7 +66,7 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 - Daily で Next から選ぶ、Daily の段階の整理: #150（ADR-0150）
 - Next・Project・Waiting For・Someday の見直し（Weekly Review）: #151
-- `scheduled` の廃止と Tickler: #152（ADR-0152）
+- `scheduled` を Calendar に絞ることと Tickler: #152（ADR-0152）
 
 ### 派生する変更
 
@@ -76,7 +78,7 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 - 「整理したか」と「いつやるか」は別の問いなので、別の項目に持つ。締切の近さと仕事の明確さを独立に扱える（#134 §3.2、例 C）
 - 未設定を未整理にするので、登録は 1 行のまま。入力の負担を増やさない（#134 §5 の、管理の手間を増やさないという点）
 - GTD は、日時が確定したものだけを Calendar に置き、それ以外は日付のない Next に置く。日付のない Next を整理の出口として持たないと、Do Date を無理に決めるか、Inbox に残すしかなくなる
-- Organize で Tickler を決めることは処理の結果なので、`clarified` を付ける。期限だけでは処理したとは言えないので付けない
+- Organize で Calendar（その日にやる）を決めることは処理の結果なので、`clarified` を付ける。期限だけ、Tickler だけでは処理したとは言えないので付けない
 - 「戻す」で日付を残すので、再整理が締切を消さない
 - `estimated` を要求しないのは、見積もりは整理の条件ではなく、任意の情報だから。見積もりがないとボードの負荷計算は粗くなるが、それは別に扱う
 
@@ -94,7 +96,7 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 - 変更するもの: `core/schema.ts`（`clarified` の読み書き）、`core/index.ts`（`isInbox`、Next の算出）、`core/actions.ts`（`inboxPatch`、Next の patch）、`views/OrganizeView.tsx`（Next の追加、Later の削除、`requireEstimate`）、`cli/mcp.ts`・`cli/vault-ops.ts`、`core/lint.ts`、issue 画面・一覧の切り替え、プロダクトの文書、`task-coach` スキル
 - 移行 `.kit/migrations/0148-inbox-clarified/`。子の Vault の issue の frontmatter を書き換えるので、`.kit/changes/` に変更のノートを書く
-- Organize の操作が Later の廃止と Next の追加で入れ替わる。キーとスワイプの割り当て（今は 4 方向で埋まっている）は、Later の ↑ を Next に当てる。→ の Do Date は ADR-0152 で Tickler に置き換わる
-- この ADR だけを先に実装する間は、Do Date（`scheduled`）が残る。その間は Organize の Do Date も `clarified: true` を書く（ADR-0152 の実装で Tickler に置き換わる）
+- Organize の操作が Later の廃止と Next の追加で入れ替わる。キーとスワイプの割り当て（今は 4 方向で埋まっている）は、→ を Next、↑ を Tickler（ADR-0152）に当てる。Calendar はボタンにする
+- この ADR だけを先に実装する間は、Do Date（日付のリストの `scheduled`）が残る。その間は Organize の Do Date が `clarified: true` を書き、↑ はボタンのない空きにしておく（ADR-0152 の実装で Calendar と Tickler に置き換わる）
 - `clarified` は通常のメタデータ。`updated` の自動付与（ADR-0028）の対象になる
 - ADR-0006 の状態を `承認（一部置換: 0032, 0148）` にする（承認のとき）

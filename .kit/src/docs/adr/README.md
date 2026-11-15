@@ -90,5 +90,5 @@
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 提案 | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 提案 | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
-| [0152](0152-tickler-replaces-scheduled.md) | 提案 | scheduled（Do Date）を廃止し、Tickler を専用の項目にする |
+| [0152](0152-calendar-and-tickler.md) | 提案 | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 <!-- adr-index:end -->
