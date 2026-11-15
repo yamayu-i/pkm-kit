@@ -3314,11 +3314,244 @@ function SubIssueForm(props) {
   );
 }
 
+// src/ui/FilterChip.tsx
+function FilterChip(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
+    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
+    props.label
+  ] });
+}
+function toggle(list, v3) {
+  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+}
+
+// src/core/timeline.ts
+var DAY_PX = { day: 28, week: 8 };
+var PAD_DAYS = 2;
+var MIN_DAYS = 14;
+var MIN_WEEKS = 8;
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var minDate = (dates) => dates.reduce((a3, b2) => b2 < a3 ? b2 : a3);
+var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
+function timelineRange(subs, today, scale) {
+  const dates = [today];
+  for (const s3 of subs) {
+    for (const d3 of [s3.start, s3.end, s3.softDeadline, s3.deadline, ...s3.scheduled]) if (d3) dates.push(d3);
+  }
+  let from = addDays(minDate(dates), -PAD_DAYS);
+  let to = addDays(maxDate(dates), PAD_DAYS);
+  if (scale === "week") {
+    from = addDays(from, -weekdayOf(from));
+    to = addDays(to, 6 - weekdayOf(to));
+  }
+  const days = Math.max(diffDays(to, from) + 1, scale === "week" ? MIN_WEEKS * 7 : MIN_DAYS);
+  return { from, days };
+}
+function timelineColumns(range, scale) {
+  const out = [];
+  const step = scale === "week" ? 7 : 1;
+  let prevMonth = -1;
+  for (let i3 = 0; i3 < range.days; i3 += step) {
+    const date = addDays(range.from, i3);
+    const month = Number(date.slice(5, 7)) - 1;
+    const day = Number(date.slice(8, 10));
+    const wd = weekdayOf(date);
+    const showMonth = i3 === 0 || (scale === "day" ? day === 1 : month !== prevMonth);
+    out.push({
+      date,
+      label: scale === "week" ? `${month + 1}/${day}` : String(day),
+      month: showMonth ? MONTHS[month] : null,
+      weekend: scale === "day" && (wd === 0 || wd === 6),
+      weekStart: wd === 0,
+      span: Math.min(step, range.days - i3)
+    });
+    prevMonth = month;
+  }
+  return out;
+}
+function dayOffset(range, date) {
+  return diffDays(date, range.from);
+}
+function dateAtX(range, x2, scale) {
+  const i3 = Math.min(range.days - 1, Math.max(0, Math.floor(x2 / DAY_PX[scale])));
+  return addDays(range.from, i3);
+}
+function barOf(sub) {
+  const a3 = sub.start ?? sub.end;
+  const b2 = sub.end ?? sub.start;
+  if (a3 === null || b2 === null) return null;
+  return a3 <= b2 ? { start: a3, end: b2 } : { start: b2, end: a3 };
+}
+function dragBar(bar, mode, delta) {
+  if (mode === "move") return { start: addDays(bar.start, delta), end: addDays(bar.end, delta) };
+  if (mode === "start") {
+    const start = addDays(bar.start, delta);
+    return { start: start > bar.end ? bar.end : start, end: bar.end };
+  }
+  const end = addDays(bar.end, delta);
+  return { start: bar.start, end: end < bar.start ? bar.start : end };
+}
+function dependencyArrows(subs) {
+  const bars = new Map(subs.map((s3) => [s3.id, barOf(s3)]));
+  const out = [];
+  for (const s3 of subs) {
+    const to = bars.get(s3.id);
+    if (!to) continue;
+    for (const dep of s3.dependsOn) {
+      const from = bars.get(dep);
+      if (!from || dep === s3.id) continue;
+      out.push({ from: dep, to: s3.id, late: to.start < from.end });
+    }
+  }
+  return out;
+}
+
+// src/header/SubTimeline.tsx
+var ROW = 36;
+var HANDLE = 8;
+function SubTimeline(props) {
+  const { ctx, subs, scale } = props;
+  const today = localToday();
+  const px = DAY_PX[scale];
+  const range = timelineRange(subs, today, scale);
+  const cols = timelineColumns(range, scale);
+  const width = range.days * px;
+  const scroller = A2(null);
+  const [drag, setDrag] = d2(null);
+  h2(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
+  }, [scale]);
+  const save = (sub, next) => ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e3) => ctx.report("\u671F\u9593\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const shown = (sub) => {
+    const bar = barOf(sub);
+    return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+  };
+  const xOf = (date) => dayOffset(range, date) * px;
+  const rowOf = new Map(subs.map((s3, i3) => [s3.id, i3]));
+  const arrows = dependencyArrows(subs.map((s3) => ({ ...s3, ...shown(s3) ?? {} })));
+  const startDrag = (e3, sub, mode) => {
+    const bar = barOf(sub);
+    if (!bar || e3.button !== 0) return;
+    e3.preventDefault();
+    e3.stopPropagation();
+    e3.currentTarget.setPointerCapture(e3.pointerId);
+    setDrag({ key: sub.key, mode, x0: e3.clientX, bar, delta: 0 });
+  };
+  const moveDrag = (e3) => {
+    if (!drag) return;
+    const delta = Math.round((e3.clientX - drag.x0) / px);
+    if (delta !== drag.delta) setDrag({ ...drag, delta });
+  };
+  const endDrag = (sub) => {
+    if (!drag) return;
+    const d3 = drag;
+    setDrag(null);
+    if (d3.delta !== 0) void save(sub, dragBar(d3.bar, d3.mode, d3.delta));
+  };
+  const keyDown = (e3, sub) => {
+    const bar = barOf(sub);
+    if (e3.key === "Enter") {
+      e3.preventDefault();
+      openSubEditor(ctx, sub);
+    } else if (bar && (e3.key === "ArrowLeft" || e3.key === "ArrowRight")) {
+      e3.preventDefault();
+      void save(sub, dragBar(bar, e3.shiftKey ? "end" : "move", e3.key === "ArrowLeft" ? -1 : 1));
+    }
+  };
+  const pickDay = (e3, sub) => {
+    if (barOf(sub)) return;
+    const rect = e3.currentTarget.getBoundingClientRect();
+    const date = dateAtX(range, e3.clientX - rect.left, scale);
+    void save(sub, { start: date, end: date });
+  };
+  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}`, children: [
+    /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-corner" }),
+      subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Edit: ${sub.summary}`, onClick: () => openSubEditor(ctx, sub), children: [
+        /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+        /* @__PURE__ */ u3("span", { class: "vt-timeline-label-text", children: sub.summary })
+      ] }))
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-timeline-scroll", ref: scroller, children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
+        "div",
+        {
+          class: `vt-timeline-col${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}${c3.date === today ? " is-today" : ""}`,
+          style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` },
+          children: [
+            c3.month !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-month", children: c3.month }),
+            /* @__PURE__ */ u3("span", { class: "vt-timeline-day", children: c3.label })
+          ]
+        }
+      )) }),
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
+        cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
+        /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
+        subs.map((sub, i3) => {
+          const bar = shown(sub);
+          const left = bar ? xOf(bar.start) : 0;
+          const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
+          const handles = barWidth >= HANDLE * 3;
+          const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
+          const marks = [
+            ...sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : [],
+            ...sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []
+          ];
+          const nothing = !bar && sub.scheduled.length === 0 && marks.length === 0;
+          return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
+            nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
+            !bar && sub.scheduled.map((d3) => /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(d3) + px / 2}px` }, title: `Do date ${formatShortDate(d3)}` })),
+            marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
+            bar && /* @__PURE__ */ u3(
+              "div",
+              {
+                class: `vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}`,
+                style: { left: `${left}px`, width: `${barWidth}px` },
+                tabIndex: 0,
+                role: "button",
+                "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
+                title: `${sub.summary}
+${period}`,
+                onPointerDown: (e3) => startDrag(e3, sub, "move"),
+                onPointerMove: moveDrag,
+                onPointerUp: () => endDrag(sub),
+                onPointerCancel: () => setDrag(null),
+                onKeyDown: (e3) => keyDown(e3, sub),
+                onClick: (e3) => e3.stopPropagation(),
+                children: handles && /* @__PURE__ */ u3(S, { children: [
+                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
+                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
+                ] })
+              }
+            )
+          ] });
+        }),
+        /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
+          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M0 0 L8 4 L0 8 z", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })) }),
+          arrows.map((a3) => {
+            const from = shown(subs[rowOf.get(a3.from)]);
+            const to = shown(subs[rowOf.get(a3.to)]);
+            const x1 = xOf(from.end) + px;
+            const y1 = rowOf.get(a3.from) * ROW + ROW / 2;
+            const x2 = xOf(to.start);
+            const y22 = rowOf.get(a3.to) * ROW + ROW / 2;
+            const elbow = Math.max(x1, x2 - 6);
+            return /* @__PURE__ */ u3("path", { class: `vt-timeline-arrow${a3.late ? " is-late" : ""}`, d: `M${x1} ${y1} H${elbow} V${y22} H${x2}`, "marker-end": `url(#vt-timeline-arrowhead${a3.late ? "-late" : ""})` });
+          })
+        ] })
+      ] })
+    ] }) })
+  ] });
+}
+
 // src/header/SubIssues.tsx
 var DRAG_TYPE = "application/x-pkm-sub-issue";
 function SubIssues(props) {
   const { ctx, issue, index, now } = props;
   const [showClosed, setShowClosed] = d2(false);
+  const [mode, setMode] = d2("list");
+  const [scale, setScale] = d2("day");
   const [open, setOpen] = d2(/* @__PURE__ */ new Set());
   const subs = index.subs(issue.id);
   const shown = visibleSubs(subs, showClosed);
@@ -3334,9 +3567,20 @@ function SubIssues(props) {
         counts.open,
         " / ",
         counts.total
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      counts.total > 0 && /* @__PURE__ */ u3("div", { class: "vt-subissues-modes", children: [
+        mode === "timeline" && /* @__PURE__ */ u3(S, { children: [
+          /* @__PURE__ */ u3(FilterChip, { label: "Day", on: scale === "day", onClick: () => setScale("day") }),
+          /* @__PURE__ */ u3(FilterChip, { label: "Week", on: scale === "week", onClick: () => setScale("week") }),
+          /* @__PURE__ */ u3("span", { class: "vt-subissues-modes-sep", "aria-hidden": "true" })
+        ] }),
+        /* @__PURE__ */ u3(FilterChip, { label: "List", on: mode === "list", onClick: () => setMode("list") }),
+        /* @__PURE__ */ u3(FilterChip, { label: "Timeline", on: mode === "timeline", onClick: () => setMode("timeline") })
       ] })
     ] }),
-    shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
+    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale }),
+    mode === "list" && shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
       SubRow,
       {
         ctx,
@@ -6341,19 +6585,6 @@ function LabelManagerView(props) {
 
 // src/views/MemberListView.tsx
 var import_obsidian18 = require("obsidian");
-
-// src/ui/FilterChip.tsx
-function FilterChip(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
-    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
-    props.label
-  ] });
-}
-function toggle(list, v3) {
-  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
-}
-
-// src/views/MemberListView.tsx
 function MemberForm(props) {
   const [name, setName] = d2("");
   return /* @__PURE__ */ u3(

@@ -3372,6 +3372,265 @@ body.is-mobile .vt-toast {
 	resize: vertical;
 }
 
+/* 表示（List / Timeline）と目盛り（Day / Week）の切り替え（ADR-0143） */
+.vt-subissues-modes {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+
+.vt-subissues-modes-sep {
+	height: 20px;
+	margin: 0 4px;
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+/* ---------- サブイシューのガントチャート（ADR-0143） ----------
+ * 左に題の列、右に日の列（カードの中で横にスクロール）。行の高さは 36px（SubTimeline.tsx の ROW と同じ） */
+.vt-timeline {
+	display: flex;
+	min-width: 0;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	overflow: hidden;
+}
+
+.vt-timeline-labels {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	width: clamp(96px, 30%, 200px);
+	border-right: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-corner {
+	height: 36px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 36px;
+	min-width: 0;
+	padding: 0 8px;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-timeline-label:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-timeline-label .vt-status-icon {
+	flex: none;
+}
+
+.vt-timeline-label-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-timeline-label.is-done .vt-timeline-label-text {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-timeline-scroll {
+	flex: 1;
+	min-width: 0;
+	overflow-x: auto;
+}
+
+.vt-timeline-grid {
+	position: relative;
+}
+
+.vt-timeline-head {
+	position: relative;
+	height: 36px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-col {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding-bottom: 2px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	white-space: nowrap;
+}
+
+.vt-timeline.is-week .vt-timeline-col {
+	padding-left: 4px;
+	text-align: left;
+}
+
+.vt-timeline-col.is-week-start {
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-col.is-today .vt-timeline-day {
+	color: var(--vt-primary);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-month {
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-body {
+	position: relative;
+}
+
+/* 日の縞（土日の面、週の区切りの線） */
+.vt-timeline-stripe {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.vt-timeline-stripe.is-weekend {
+	background: var(--vt-surface-container);
+}
+
+.vt-timeline-stripe.is-week-start {
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-today {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-left: 2px solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-timeline-row {
+	position: absolute;
+	right: 0;
+	left: 0;
+	height: 36px;
+}
+
+.vt-timeline-row.is-empty {
+	cursor: copy;
+}
+
+.vt-timeline-none {
+	position: sticky;
+	left: 0;
+	display: inline-block;
+	padding: 8px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+/* 棒: status の印の色。ドラッグで動かす。両端はつまみ */
+.vt-timeline-bar {
+	position: absolute;
+	top: 8px;
+	height: 20px;
+	border: 1px solid var(--vt-dot);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-dot);
+	cursor: grab;
+	touch-action: none;
+}
+
+.vt-timeline-bar.is-dragging {
+	box-shadow: var(--vt-elevation-3);
+	cursor: grabbing;
+}
+
+.vt-timeline-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 8px;
+	cursor: ew-resize;
+	touch-action: none;
+}
+
+.vt-timeline-handle.is-start {
+	left: 0;
+}
+
+.vt-timeline-handle.is-end {
+	right: 0;
+}
+
+/* 予定日の点と、期限の印 */
+.vt-timeline-dot {
+	position: absolute;
+	top: 12px;
+	width: 8px;
+	height: 8px;
+	transform: translateX(-50%);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-on-surface-variant);
+}
+
+.vt-timeline-mark {
+	position: absolute;
+	top: 4px;
+	bottom: 4px;
+	border-left: 2px solid;
+}
+
+.vt-timeline-mark.is-soft {
+	border-color: var(--vt-amber);
+}
+
+.vt-timeline-mark.is-hard {
+	border-color: var(--vt-red);
+}
+
+/* 依存の矢印。遅れ（依存先の end より前に始まる）は error の色 */
+.vt-timeline-arrows {
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.vt-timeline-arrow {
+	fill: none;
+	stroke: var(--vt-on-surface-variant);
+	stroke-width: 1.5;
+}
+
+.vt-timeline-arrowhead {
+	fill: var(--vt-on-surface-variant);
+}
+
+.vt-timeline-arrow.is-late {
+	stroke: var(--vt-error);
+}
+
+.vt-timeline-arrowhead.is-late {
+	fill: var(--vt-error);
+}
+
 /* worklog の行の、記録したサブの題 */
 .vt-log-sub {
 	overflow: hidden;

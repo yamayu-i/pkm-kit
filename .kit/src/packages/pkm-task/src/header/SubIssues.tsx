@@ -10,7 +10,10 @@ import { startTimer, stopTimer } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { pickMember } from "../obsidian/issue-editors";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
+import type { TimelineScale } from "../core/timeline";
+import { FilterChip } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
+import { SubTimeline } from "./SubTimeline";
 import { StatusIcon } from "../ui/StatusIcon";
 
 /** ドラッグで運ぶ値の種類（同じ親のサブの合成キー） */
@@ -20,6 +23,9 @@ const DRAG_TYPE = "application/x-pkm-sub-issue";
 export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; now: number }) {
 	const { ctx, issue, index, now } = props;
 	const [showClosed, setShowClosed] = useState(false);
+	// 表示（List / Timeline）と目盛り（Day / Week）は保存しない（ADR-0143）
+	const [mode, setMode] = useState<"list" | "timeline">("list");
+	const [scale, setScale] = useState<TimelineScale>("day");
 	const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 	const subs = index.subs(issue.id);
 	const shown = visibleSubs(subs, showClosed);
@@ -37,8 +43,23 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 						{counts.open} / {counts.total}
 					</span>
 				)}
+				<span class="vt-spacer" />
+				{counts.total > 0 && (
+					<div class="vt-subissues-modes">
+						{mode === "timeline" && (
+							<>
+								<FilterChip label="Day" on={scale === "day"} onClick={() => setScale("day")} />
+								<FilterChip label="Week" on={scale === "week"} onClick={() => setScale("week")} />
+								<span class="vt-subissues-modes-sep" aria-hidden="true" />
+							</>
+						)}
+						<FilterChip label="List" on={mode === "list"} onClick={() => setMode("list")} />
+						<FilterChip label="Timeline" on={mode === "timeline"} onClick={() => setMode("timeline")} />
+					</div>
+				)}
 			</div>
-			{shown.length > 0 && (
+			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} />}
+			{mode === "list" && shown.length > 0 && (
 				<ul class="vt-subissue-list">
 					{shown.map((sub) => (
 						<SubRow

@@ -9,4 +9,5 @@
 - MCP の `create_issue`・`update_issue`・`list_issues` から `parent` を外した（渡すとエラー）。`get_issue` は `ancestors`・`children` を返さない。スキル `task-coach` は、大きい issue をサブイシューに分けるよう提案する
 - issue の `parent`（親子関係）を廃止した。issue 画面の Parent / Children 欄と、Capture の「子として作る」をなくした。`parent` が残っている issue は lint が `legacy-parent` のエラーにする。`related` にサブの合成キーを書ける
 - issue 画面のヘッダーに「Sub-issues」のカードを足した（ADR-0142）。1 行の一覧（status・題・期間など・実績・再生）で、題を押すと本文と項目が開く。closed / canceled は「Show N closed」で出す。「Add a sub-issue」の入力欄は Enter で 1 件作ってフォーカスを残し、複数行の貼り付けは行ごとに作る。ドラッグ（モバイルはメニューの Move up / Move down）で並べ、Edit のダイアログで全部の項目と本文を直す。リーディング表示では、md の中のサブの部分を隠す（編集表示では見える）。worklog の一覧に、サブで記録した行のサブの題を出す
+- カード「Sub-issues」に、ガントチャート（Timeline）を足した（ADR-0143）。見出しの右の `List` / `Timeline` で切り替え、目盛りは `Day` と `Week`（日曜始まり。全期間を見渡す）。棒のドラッグで期間をずらし、両端で伸ばす（指を離したときに保存）。期間のない行は日を押すとその日の棒を作る。依存は矢印で、依存先が終わる前に始まるものは赤
 - 子への影響: 移行 0135-sub-issues がある。子の issue のファイルを消すので、取り込む前にすべての端末で同期を済ませ、取り込みの前後はほかの端末で issue を編集しない。扱えない issue（ない親・循環・読めない frontmatter）があると移行が止まるので、README のとおりにユーザーに確かめて直す。モバイルで、親の issue を開いて表示が崩れないことを確かめる

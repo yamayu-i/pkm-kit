@@ -6,6 +6,8 @@ import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
+import { SubTimeline } from "../src/header/SubTimeline";
+import { visibleSubs } from "../src/core/sub-issue";
 import { StatusUndo } from "../src/obsidian/status-undo";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
@@ -42,6 +44,8 @@ const i2Subs = [
 	sub("bbbbbb", `summary: "新しいフローの手順を書く"\nstatus: in-progress\nstart: ${t}\nend: ${addDays(t, 3)}\nestimated: 120\n`, "下書きは共有フォルダにある。\n\n- 承認の段を 1 つ減らす\n"),
 	sub("cccccc", `summary: "経理に確認してもらう（長めの表題がここに入るとどうなるか）"\nstatus: delegated\ndelegated_to: m-1\nscheduled: [${addDays(t, 2)}]\ndepends_on: [bbbbbb]\n`),
 	sub("dddddd", `summary: "旧フローの資料を片付ける"\nstatus: open\ndeadline: ${addDays(t, 6)}\n`),
+	sub("eeeeee", `summary: "新しいフローで試しに送る"\nstatus: open\nstart: ${addDays(t, 4)}\nend: ${addDays(t, 9)}\nsoft_deadline: ${addDays(t, 8)}\ndepends_on: [bbbbbb]\n`),
+	sub("ffffff", `summary: "結果を共有する"\nstatus: waiting\nstart: ${addDays(t, 7)}\nend: ${addDays(t, 24)}\ndepends_on: [eeeeee]\n`),
 ].join("\n");
 const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
 const boardLog = [
@@ -142,7 +146,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 };
 
 const name = location.hash.slice(1) || "header";
-if (name === "header" || name === "routine" || name === "member") {
+if (name === "header" || name === "routine" || name === "member" || name === "timeline") {
 	for (const [id, width] of [
 		["wide", 760],
 		["narrow", 360],
@@ -153,8 +157,16 @@ if (name === "header" || name === "routine" || name === "member") {
 		el.style.width = `${width}px`;
 		el.style.margin = "8px";
 		document.body.append(el);
+		// ガントチャート（ADR-0143）: Day と Week を縦に並べる
+		const subs = visibleSubs(store.index.subs("i-2"), false);
+		const timeline = h("div", { class: "vt-subissues", style: "display:flex;flex-direction:column;gap:16px" }, [
+			h(SubTimeline, { ctx: ctx as never, subs, scale: "day" }),
+			h(SubTimeline, { ctx: ctx as never, subs, scale: "week" }),
+		]);
 		const header =
-			name === "routine"
+			name === "timeline"
+				? timeline
+				: name === "routine"
 				? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" })
 				: name === "member"
 					? h(MemberHeader, { ctx: ctx as never, path: "member/m-1.md" })
