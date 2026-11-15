@@ -6,7 +6,7 @@
 
 ## 今の振る舞い
 
-- 一覧 View ごとのセクションに、前回の確認より後に `updated` が新しくなったノートを、新しい順に出す。セクションは Issues、Inbox、Organize、Scheduled、Someday、Routines、Members、Daily notes、Notes、Sources の順。0 件のセクションは出さない
+- 一覧 View ごとのセクションに、前回の確認より後に `updated` が新しくなったノートを、新しい順に出す。セクションは Issues、Inbox、Organize、Scheduled、Someday、Routines、Members、Daily notes、Notes、Sources の順。0 件のセクションも、見出しのリンクだけを出す（件数も行もなし。モバイルでは各 View への入口になる）
 - 各セクションに載るノートは、その一覧を開いたときに載るものと同じ。ただし Issues は closed / canceled / someday も含む（閉じた変更も見えるように）。1 つのノートが複数の一覧に当たるなら、そのすべてに出る
 - セクションの見出しを押すと、その一覧を一覧ペインに開く。行を押すとノートをノートペインに開く（Ctrl/Cmd+クリックで新しいタブ）
 - 50 行ずつ出し、下まで見ると次の 50 行が出る

@@ -104,7 +104,7 @@ function prepare(notes: readonly NoteRecord[], today: LocalDate): Prepared {
 
 /**
  * 各セクションに、基準（since）より後に updated が新しくなったノートを、updated の新しい順に入れる。
- * since が null（まだ一度も Viewed を押していない）なら、updated があるものすべて。0 件のセクションは返さない
+ * since が null（まだ一度も Viewed を押していない）なら、updated があるものすべて。0 件のセクションも返す（モバイルで一覧への入口になるので、見出しは常に出す）
  */
 export function buildSections(notes: readonly NoteRecord[], since: number | null, today: LocalDate): Section[] {
 	const changed = new Map<string, number>();
@@ -112,7 +112,6 @@ export function buildSections(notes: readonly NoteRecord[], since: number | null
 		const ms = updatedMs(n.frontmatter?.updated);
 		if (ms !== null && (since === null || ms > since)) changed.set(n.path, ms);
 	}
-	if (changed.size === 0) return [];
 	const p = prepare(notes, today);
 	const out: Section[] = [];
 	for (const def of SECTIONS) {
@@ -120,7 +119,7 @@ export function buildSections(notes: readonly NoteRecord[], since: number | null
 			.filter((path) => changed.has(path))
 			.map((path) => ({ path, title: p.titles.get(path) ?? path, updatedMs: changed.get(path) as number }))
 			.sort((a, b) => b.updatedMs - a.updatedMs || a.path.localeCompare(b.path, "en", { numeric: true }));
-		if (items.length > 0) out.push({ id: def.id, title: def.title, command: def.command, items });
+		out.push({ id: def.id, title: def.title, command: def.command, items });
 	}
 	return out;
 }

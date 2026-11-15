@@ -69,17 +69,15 @@ export function UpdatesView({ app, model, deviceName }: UpdatesProps) {
 	return (
 		<div class="vt-upd-page">
 			<p class="vt-upd-since">{model.since === null ? "Not viewed yet. Showing all notes" : `Last viewed: ${formatDateTime(model.since)}`}</p>
-			{shown.length === 0 ? (
-				<div class="vt-upd-empty">No notes changed since you last viewed</div>
-			) : (
-				shown.map((s) => (
-					<section key={s.id} class="vt-upd-section" aria-labelledby={`vt-upd-${s.id}`}>
-						<h2 class="vt-upd-heading" id={`vt-upd-${s.id}`}>
-							<button type="button" class="vt-upd-heading-link" onClick={() => openList(s.title, s.command)}>
-								{s.title}
-							</button>
-							<span class="vt-upd-count">{model.sections.find((x) => x.id === s.id)?.items.length ?? s.items.length}</span>
-						</h2>
+			{shown.map((s) => (
+				<section key={s.id} class={`vt-upd-section${s.items.length === 0 ? " vt-upd-section-empty" : ""}`} aria-labelledby={`vt-upd-${s.id}`}>
+					<h2 class="vt-upd-heading" id={`vt-upd-${s.id}`}>
+						<button type="button" class="vt-upd-heading-link" onClick={() => openList(s.title, s.command)}>
+							{s.title}
+						</button>
+						{s.items.length > 0 && <span class="vt-upd-count">{model.sections.find((x) => x.id === s.id)?.items.length ?? s.items.length}</span>}
+					</h2>
+					{s.items.length > 0 && (
 						<ul class="vt-upd-list">
 							{s.items.map((item) => (
 								<li key={item.path}>
@@ -90,9 +88,9 @@ export function UpdatesView({ app, model, deviceName }: UpdatesProps) {
 								</li>
 							))}
 						</ul>
-					</section>
-				))
-			)}
+					)}
+				</section>
+			))}
 			{more && <div ref={sentinel} class="vt-upd-sentinel" aria-hidden="true" />}
 			<div class="vt-upd-footer">
 				{!device && <span class="vt-upd-note">Set a device name in pkm-task or pkm-git settings to record Viewed</span>}
