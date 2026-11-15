@@ -395,7 +395,7 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <ol>
 <li>リボンの「Open Today」（<a href="#surfaces-ribbon-md">リボン</a>）か、左サイドバーの Today（<a href="#surfaces-task-sidebar-md">Tasks サイドバー</a>）を押す。Today は一覧ペインに開く（<a href="#surfaces-layout-panes-md">一覧ペインとノートペイン</a>）</li>
 <li><a href="#surfaces-task-today-md">Today</a> の段階を順に片付ける: Calendar → Previous boards → Pick → Board。今日が Calendar の日の issue と今日の routine は、自動でボードに載っている。Pick で Next から今日やるものを選ぶ</li>
-<li><a href="#surfaces-task-board-md">task board</a> で、今日の最重要を 3 件まで Top 3 に入れ、Up next を並べる。並びは前の日から引き継ぐ。今日が Calendar の日のサブイシューもカードとして載る</li>
+<li><a href="#surfaces-task-board-md">task board</a> で、今日の最重要を 4 件まで Top 4 に入れ、Up next を並べる。並びは前の日から引き継ぐ。今日が Calendar の日のサブイシューもカードとして載る</li>
 <li>AI と相談するときは、task-coach が MCP で状況を読み、負荷（見積もりの合計と使える時間）を見て、載せすぎを減らす（<a href="#surfaces-task-mcp-md">MCP と task-coach</a>）</li>
 </ol>
 <h3 id="jobs-task-plan-day-md--関わる概念">関わる概念</h3>
@@ -789,10 +789,11 @@ ADR へのリンク。
 </ul>
 <h3 id="surfaces-task-board-md--今の振る舞い">今の振る舞い</h3>
 <ul>
-<li>1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 3（★ 今日の最重要。3 件まで）・Up next（残り。in-progress も open もここ）・Waiting（waiting / delegated。件数を出して開いたまま）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる</li>
+<li>1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（routine だけ。issue・サブと混ぜない。開いたまま始め、見出しで開閉。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Waiting（waiting / delegated。件数を出して開いたまま）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる</li>
 <li>カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。<code>delegated…</code> も選べる）・題・再生 / 停止・<code>···</code> のメニューだけを出す。ID はマウスを乗せると出る</li>
 <li>同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る</li>
-<li><code>···</code> のメニュー: Add to Top 3 / Remove from Top 3、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 3 と Up next の間と中をドラッグで並べ替えられ、Top 3 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ</li>
+<li>星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる</li>
+<li><code>···</code> のメニュー: Add to Top 4 / Remove from Top 4、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ</li>
 <li>Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも <code>i-12 › 題</code> の形で候補に出る。載せても日付は書かない（ADR-0152）</li>
 <li>status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる</li>
 <li>未完了の一覧: issue は Back to Next、Tickler、Move date（Calendar の日を持つものだけ）、Close、Cancel、Inbox。サブイシューは Back to Next、Close、Move date、Cancel（Tickler と Inbox はない）。持ち越したものはボードに残るが未完了に数えない</li>
@@ -1464,11 +1465,11 @@ ADR へのリンク。
 <h3 id="concepts-task-board-lane-md--目的">目的</h3>
 <p>その日のボードを、今の状態と大事さで自然に分け、次にどれに手を付けるかを迷わずに決める。</p>
 <h3 id="concepts-task-board-lane-md--状態">状態</h3>
-<p>欄は保存しない。status・タイマー・★ から決まる: Working（タイマーが動いているもの）→ Done（closed / canceled / someday、結果のある routine、持ち越したもの）→ Waiting（waiting / delegated）→ Top 3（★ を付けたもの。3 件まで）→ Up next（残り）。★ はその日だけの記録、並びは翌日以降にも引き継ぐ記録で、どちらもボードの操作ログ（<code>star</code>、<code>order</code>）に残る。</p>
+<p>欄は保存しない。status・タイマー・★ から決まる: Routines（routine は常にここ。issue・サブと混ぜない）→ Working（タイマーが動いている issue・サブ）→ Done（closed / canceled / someday、持ち越したもの）→ Waiting（waiting / delegated）→ Top 4（★ を付けたもの。4 件まで）→ Up next（残り）。★ はその日だけの記録、並びは翌日以降にも引き継ぐ記録で、どちらもボードの操作ログ（<code>star</code>、<code>order</code>）に残る。</p>
 <h3 id="concepts-task-board-lane-md--操作">操作</h3>
-<p>★ を付ける・外す（カードのメニュー、Top 3 へのドラッグ）、並べ替える（Top 3 と Up next のドラッグ、Move up / Move down）、タイマーを動かす（Working に移る）。</p>
+<p>★ を付ける・外す（カードのメニュー、Top 4 へのドラッグ）、並べ替える（Top 4 と Up next のドラッグ、Move up / Move down）、タイマーを動かす（Working に移る）。</p>
 <h3 id="concepts-task-board-lane-md--使い方の筋道">使い方の筋道</h3>
-<p>朝、今日の最重要を 3 件まで Top 3 に入れ、Up next を並べる。手を付けるとタイマーで Working に移り、止めると元の欄に戻る。AI や人に任せて待つものは waiting / delegated にして Waiting に出す。同じ issue のサブが隣り合うと、親の見出しの下にまとまる。</p>
+<p>朝、今日の最重要を 4 件まで Top 4 に入れ、Up next を並べる。手を付けるとタイマーで Working に移り、止めると元の欄に戻る。AI や人に任せて待つものは waiting / delegated にして Waiting に出す。同じ issue のサブが隣り合うと、親の見出しの下にまとまる。</p>
 <h3 id="concepts-task-board-lane-md--根拠">根拠</h3>
 <p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0137-board-lanes-and-sub-issue-cards.md">ADR-0137</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0114-board-manual-order.md">ADR-0114</a></p>
 <footer><a href="#contents">目次へ</a> 前: <a href="#concepts-sync-snapshot-md">同期と snapshot</a> 次: <a href="#concepts-task-board-md">task board</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/concepts/task-board-lane.md">原本</a></footer></article>
