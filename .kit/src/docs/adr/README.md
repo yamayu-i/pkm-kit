@@ -92,4 +92,5 @@
 | [0150](0150-daily-engage-steps.md) | 承認 | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
 | [0152](0152-calendar-and-tickler.md) | 承認 | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認 | リボンの「Tasks Now」ダイアログ |
+| [0156](0156-pkm-mcp.md) | 提案 | MCP を PKM 全体に広げ、子での利用ログを貯める |
 <!-- adr-index:end -->
