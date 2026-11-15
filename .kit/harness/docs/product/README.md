@@ -40,3 +40,7 @@ ADR は「なぜそう決めたか」の履歴で、書き換えない。`surfac
 | 新しい場面に応える機能を足す | `jobs/` に場面を足す |
 | [product-review](../../skills/product-review/SKILL.md) | 歩き通しで見つけた食い違いを直す。機会を起票する |
 | 望む成果や原則を変える | `strategy.md`（人が承認する） |
+
+## 子へ配布する HTML
+
+正本の全文と実装の画面例を pkm-guide/user-experience.html に生成する。共通の HTML の構造はコードで作り、LLM は原本の意味のある差分だけを書く。更新は [product-guide の手順](../../../src/packages/product-guide/README.md) に従う。体験の変更時は定義書も更新し、verify で原本と生成物が一致することを確かめる。

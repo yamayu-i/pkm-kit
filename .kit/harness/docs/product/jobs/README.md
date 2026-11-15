@@ -61,3 +61,7 @@
 |---|---|
 | [端末を持ち替えても、同じ Vault で続ける](sync-devices.md) | PC / スマホ |
 | [仕組みの更新を取り込む](kit-upgrade.md) | PC / AI 経由 |
+
+## 体験と仕様の確認
+
+- [体験定義と仕様を確認する](guide-read.md)

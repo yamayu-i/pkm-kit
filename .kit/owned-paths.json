@@ -45,6 +45,8 @@
     ".obsidian/plugins/pkm-markdown/main.js",
     ".obsidian/plugins/pkm-markdown/manifest.json",
     ".obsidian/plugins/pkm-markdown/styles.css",
-    ".obsidian/snippets/pkm-theme.css"
+    ".obsidian/snippets/pkm-theme.css",
+    "pkm-guide/user-experience.html",
+    "pkm-guide/ui/**"
   ]
 }

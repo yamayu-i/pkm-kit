@@ -20,3 +20,19 @@
 ## 根拠
 
 [ADR-0009](../../../../src/docs/adr/0009-views.md)、[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0150](../../../../src/docs/adr/0150-daily-engage-steps.md)、[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)。段階表示を縮めたのは変更の記録（`.kit/CHANGELOG.md` の「Daily の段階表示を縮める」）
+
+## 入力と制約
+
+Calendar の日は必須の予定です。今日やりたいだけのものは Pick で選び、scheduled を書きません。
+
+## 操作と保存
+
+今日の予定と routine をボードに自動で載せます。同じ日に手で外したものは再追加しません。Pick は board の add 操作として記録されます。
+
+## 失敗時と戻し方
+
+前の日に未完了が残った場合は Previous boards へ戻り、日付変更・Next・完了等で片付けます。期限と作業日の意味を混同した場合は Calendar を直します。
+
+## 端末の違い
+
+同じ段階を PC とスマホで進めます。幅が狭くなると操作が折り返されます。AI には MCP から同じ状態を読ませます。

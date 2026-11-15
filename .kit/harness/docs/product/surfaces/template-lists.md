@@ -24,3 +24,19 @@
 ## 根拠
 
 [ADR-0026](../../../../src/docs/adr/0026-note-views.md)、[ADR-0027](../../../../src/docs/adr/0027-hide-properties-english-labels.md)、[ADR-0045](../../../../src/docs/adr/0045-tmp-list-view.md)
+
+## 入力と制約
+
+Daily notes・Notes・Sources は場所より type で集めます。Temporary files は tmp/ 以下を拡張子に関係なく集めます。
+
+## 操作と保存
+
+検索や並べ替えは表示だけの操作です。Temporary files の Delete は確認後に Obsidian の削除設定に従って消します。
+
+## 失敗時と戻し方
+
+tmp/ のノートが Notes に見えないのは仕様です。削除したファイルは Obsidian の削除先を確認します。対応しない拡張子は開けない旨を通知します。
+
+## 端末の違い
+
+PC で Obsidian が開けない拡張子は OS の既定アプリへ渡します。スマホでは開ける拡張子が限られます。

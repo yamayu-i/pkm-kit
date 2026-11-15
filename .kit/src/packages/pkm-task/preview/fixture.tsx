@@ -113,9 +113,9 @@ const { data } = collectVault({
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"},{"name":"読書","color":"#f5e6c8"}]',
 });
 
-const store = { index: new TaskIndex(data), version: 1, subscribe: () => () => {}, mtime: () => Date.now(), problems: [] };
+export const store = { index: new TaskIndex(data), version: 1, subscribe: () => () => {}, mtime: () => Date.now(), problems: [] };
 const noop = async () => {};
-const ctx = {
+export const ctx = {
 	app: { vault: { getFileByPath: () => null } },
 	store,
 	writer: new Proxy({}, { get: () => noop }),
@@ -127,7 +127,7 @@ const ctx = {
 	undo: new StatusUndo((m: string) => console.log("report", m), 60_000),
 };
 
-const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
+export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	daily: DailyView,
 	board: DailyView,
 	pick: DailyView,
@@ -151,6 +151,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 };
 
 VIEWS["note-editor"] = () => h(NoteEditor, { app: {} as never, sourcePath: "issue/i-2.md", initial: "# Note\n\nfirst paragraph\n\nlast paragraph", onChange: (text: string) => { document.body.dataset.note = text; } });
+if (!new URLSearchParams(location.search).has("guide-only")) {
 const name = location.hash.slice(1) || "header";
 const headerPaths: Record<string, string> = {
 	header: "issue/i-2.md",
@@ -210,4 +211,6 @@ if (name in headerPaths || name === "routine" || name === "member" || name === "
 		ctx.undo.push("i-12", noop);
 		ctx.undo.push("i-6", noop);
 	}
+}
+
 }

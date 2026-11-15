@@ -133,6 +133,7 @@ check("lockfile と package.json が一致している", () => {
 
 /** ビルド成果物をコミットしているプラグイン。outdirEnv はビルド先を一時フォルダに変える環境変数 */
 const plugins = [
+ { id: "product-guide", outdirEnv: "PRODUCT_GUIDE_OUTDIR", files: [], bins: ["product-guide.mjs"], allowedRequires: [] },
 	{ id: "pkm-git", outdirEnv: "PKM_GIT_OUTDIR", files: ["main.js", "manifest.json"], bins: ["stamp-updated.mjs"], allowedRequires: ["obsidian"] },
 	{
 		id: "pkm-task",

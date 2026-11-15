@@ -32,6 +32,7 @@ const tests = readdirSync(join(scripts, "test"))
 	.map((f) => join(scripts, "test", f));
 
 const steps = [
+	["体験定義書", node, [join(root, ".kit/bin/product-guide.mjs"), "check"]],
 	["スクリプトのテスト", node, ["--test", ...tests]],
 	["文書の構造（子向けのハーネス）", node, [join(scripts, "check-docs.mjs")]],
 	["文書の構造（上流のハーネス）", node, [join(scripts, "check-docs.mjs"), join(root, ".kit/harness")]],

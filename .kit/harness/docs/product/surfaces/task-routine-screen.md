@@ -25,3 +25,19 @@ issue 画面と同じく、ページの一番上に出る。編集の画面と�
 ## 根拠
 
 [ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0021](../../../../src/docs/adr/0021-routine-effort-and-sidebar.md)、[ADR-0077](../../../../src/docs/adr/0077-task-header-dom-mount.md)
+
+## 入力と制約
+
+繰り返しの every・interval・on、開始日・終了日、有効かどうか、見積もりを扱います。routine 自体に issue の status や期限はありません。
+
+## 操作と保存
+
+項目は routine ノートへ、その日の完了・中止は board の routine 操作へ、時間は worklog へ保存します。無効化しても過去の実績を消しません。
+
+## 失敗時と戻し方
+
+意図しない日に出る場合は開始・終了と繰り返し条件を確認します。一時停止したものを戻すには active を有効にします。ログの誤りは worklog の編集で直します。
+
+## 端末の違い
+
+PC とスマホで同じ項目を扱います。ホバーを必要とする入力はありません。
