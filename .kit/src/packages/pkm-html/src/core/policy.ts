@@ -6,6 +6,9 @@
 /** 開く拡張子 */
 export const HTML_EXTENSIONS = ["html", "htm"] as const;
 
+/** 体験定義書（ADR-0042）。上流が生成し、merge で子に届く */
+export const GUIDE_PATH = "pkm-guide/user-experience.html";
+
 /**
  * iframe の <head> の最初に入れる CSP。外部の画像・CSS・フォント・フレームを読み込ませない。
  * 画像とフォントは data: だけ（Vault の中の画像は、読み込む前に data: に置き換える）

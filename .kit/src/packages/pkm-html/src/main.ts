@@ -1,9 +1,9 @@
 /**
  * pkm-html: Vault の中の HTML を、読み取り専用で表示する（ADR-0037）。
- * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）と、スライドをブラウザで開くコマンド（ADR-0117）を持つ。ほかのプラグインには依存しない
+ * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）と、スライドをブラウザで開くコマンド（ADR-0117）と、体験定義書を開くコマンド（ADR-0042）を持つ。ほかのプラグインには依存しない
  */
 import { Notice, Plugin, TFile, type TAbstractFile } from "obsidian";
-import { HTML_EXTENSIONS, isSlideDeck } from "./core/policy.ts";
+import { GUIDE_PATH, HTML_EXTENSIONS, isSlideDeck } from "./core/policy.ts";
 import { exportHtmlToTmp } from "./obsidian/export.ts";
 import { HtmlView, VIEW_TYPE } from "./obsidian/html-view.ts";
 import { openSlideInBrowser } from "./obsidian/open-external.ts";
@@ -27,6 +27,20 @@ export default class PkmHtmlPlugin extends Plugin {
 				if (!isHtml(file)) return false;
 				if (!checking) void exportHtmlToTmp(this.app, file);
 				return true;
+			},
+		});
+		// 体験定義書（ADR-0042）の入口。ファイル一覧で探さずに開ける
+		this.addCommand({
+			id: "open-user-experience-guide",
+			name: "Open user experience guide",
+			icon: "book-open",
+			callback: () => {
+				const file = this.app.vault.getAbstractFileByPath(GUIDE_PATH);
+				if (!isHtml(file)) {
+					new Notice(`pkm-html: ${GUIDE_PATH} がありません。上流の取り込みと同期を確認してください`);
+					return;
+				}
+				void this.app.workspace.getLeaf("tab").openFile(file);
 			},
 		});
 		// スライド（ADR-0117）は共通のスクリプトで動くので、OS のブラウザで開く

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bytesToBase64, candidatePaths, classifyLink, CSP, firstSrcsetUrl, imageType, isScriptUrl } from "../src/core/policy.ts";
+import { bytesToBase64, candidatePaths, classifyLink, CSP, GUIDE_PATH, firstSrcsetUrl, imageType, isScriptUrl } from "../src/core/policy.ts";
 
 describe("candidatePaths（ADR-0037: HTML からの相対パス → Vault ルートからのパス）", () => {
 	it("相対パスを先に、Vault ルートからのパスを後に返す", () => {
@@ -78,5 +78,13 @@ describe("isSlideDeck（ADR-0117）", () => {
 		expect(isSlideDeck("slide/roadmap/deck.html")).toBe(false);
 		expect(isSlideDeck("tmp/slide/roadmap/index.html")).toBe(false);
 		expect(isSlideDeck("notes/index.html")).toBe(false);
+	});
+});
+
+describe("GUIDE_PATH（ADR-0042: 体験定義書を開くコマンドの開く先）", () => {
+	it("product-guide の出力先と同じ", async () => {
+		const { readFileSync } = await import("node:fs");
+		const cli = readFileSync(new URL("../../product-guide/cli/product-guide.ts", import.meta.url), "utf8");
+		expect(cli).toContain(`const guidePath="${GUIDE_PATH}"`);
 	});
 });

@@ -77,6 +77,7 @@ Obsidian 本体の CSS・実行順・モバイル固有の挙動はプレビュ�
 - すでに同じパスに子のファイルがある場合は通常の git の衝突として解決し、setup で上書きしない。取り込みの案内に退避の手順を書く
 - 子の所有物や設定を変えないので、移行は付けない。`setup` と vault-upgrade の fixture で、配置と所有の検査が通ることを確かめる
 - Obsidian のファイル一覧で `pkm-guide/user-experience.html` を開く。README と子向けの案内に入口を載せる
+- コマンドパレットの「Open user experience guide」（PKM HTML のコマンド）でも開く。新しいタブに開き、ファイルがなければ通知で取り込みと同期の確認を促す
 - ノートではなく HTML なので、frontmatter・wiki の索引・updated の付与の対象にしない
 
 ### 6. テーマ、安全性、表示の検査

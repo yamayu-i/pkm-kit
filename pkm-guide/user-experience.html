@@ -170,7 +170,7 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <p>何ができるかを知りたいとき、操作の意味や保存結果を確かめたいときに、今の体験と仕様を画面と並べて読みたい。</p>
 <h3 id="jobs-guide-read-md--今の流れ">今の流れ</h3>
 <ol>
-<li>ファイル一覧の pkm-guide/user-experience.html を開く（<a href="#surfaces-html-view-md">HTML の表示</a>）。</li>
+<li>コマンドパレットの「Open user experience guide」か、ファイル一覧の pkm-guide/user-experience.html で開く（<a href="#surfaces-html-view-md">HTML の表示</a>）。新しいタブに開く。</li>
 <li>最初は全体像を読み、したいことに合う場面へ進む。特定の画面や用語が分かっていれば目次から直接引く。</li>
 <li>画面の開き方、入力と制約、操作後に保存されるもの、失敗時の戻し方を確かめる。</li>
 <li>実装の画面例と説明を見比べる。追加の状態は折りたたみを開く。画像を押すと全体を開ける。</li>
@@ -179,7 +179,7 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <h3 id="jobs-guide-read-md--始める条件と期待する結果">始める条件と期待する結果</h3>
 <p>上流のセットアップか更新を取り込んであり、PKM HTML が有効なこと。期待する結果は、どの画面で操作し、何が保存され、困ったときにどう戻すかを説明できること。</p>
 <h3 id="jobs-guide-read-md--つまずいたとき">つまずいたとき</h3>
-<p>HTML が開けなければ PKM HTML の有効化を確認する。画像が欠けたら同期を完了させる。本文と画面の違いを見つけたら子のエスカレーションで上流へ伝える。子で定義書を直接修正しない。</p>
+<p>HTML が開けなければ PKM HTML の有効化を確認する。コマンドが「ありません」と通知したら、上流の取り込みと同期を確認する。画像が欠けたら同期を完了させる。本文と画面の違いを見つけたら子のエスカレーションで上流へ伝える。子で定義書を直接修正しない。</p>
 <h3 id="jobs-guide-read-md--関わる概念">関わる概念</h3>
 <p><a href="#concepts-note-type-md">ノートの type</a>（定義書はノートではない）、<a href="#concepts-sync-snapshot-md">同期と snapshot</a></p>
 <h3 id="jobs-guide-read-md--うまくいっている兆し">うまくいっている兆し</h3>
@@ -604,7 +604,7 @@ ADR へのリンク。
 <article id="surfaces-html-view-md" aria-label="HTML の表示"><p class="eyebrow">surfaces/html-view.md</p><details class="chapter-nav"><summary>この章の目次</summary><ul><li><a href="#surfaces-html-view-md--今の振る舞い">今の振る舞い</a></li><li><a href="#surfaces-html-view-md--スライドをブラウザで開く">スライドをブラウザで開く</a></li><li><a href="#surfaces-html-view-md--tmp-への書き出し">tmp/ への書き出し</a></li><li><a href="#surfaces-html-view-md--使う概念">使う概念</a></li><li><a href="#surfaces-html-view-md--根拠">根拠</a></li><li><a href="#surfaces-html-view-md--入力と制約">入力と制約</a></li><li><a href="#surfaces-html-view-md--操作と保存">操作と保存</a></li><li><a href="#surfaces-html-view-md--失敗時と戻し方">失敗時と戻し方</a></li><li><a href="#surfaces-html-view-md--端末の違い">端末の違い</a></li><li><a href="#surfaces-html-view-md--ユーザー体験定義書を読む">ユーザー体験定義書を読む</a></li></ul></details><h2 id="surfaces-html-view-md--html-の表示">HTML の表示</h2>
 <ul>
 <li>種類: View</li>
-<li>開き方: ファイルエクスプローラー、Markdown リンク、クイックスイッチャーから <code>.html</code> / <code>.htm</code> を開く。書き出しは、コマンド「Export HTML to tmp/」か、ファイルのメニュー。スライドをブラウザで開くのは、コマンド「Open slide in browser」、ファイルのメニューの「Open in browser」、タブの右上のボタン</li>
+<li>開き方: ファイルエクスプローラー、Markdown リンク、クイックスイッチャーから <code>.html</code> / <code>.htm</code> を開く。体験定義書は、コマンド「Open user experience guide」でも開く。書き出しは、コマンド「Export HTML to tmp/」か、ファイルのメニュー。スライドをブラウザで開くのは、コマンド「Open slide in browser」、ファイルのメニューの「Open in browser」、タブの右上のボタン</li>
 <li>場面: <a href="#jobs-guide-read-md">体験定義と仕様を確認する</a></li>
 </ul>
 <h3 id="surfaces-html-view-md--今の振る舞い">今の振る舞い</h3>
@@ -638,9 +638,9 @@ ADR へのリンク。
 <h3 id="surfaces-html-view-md--失敗時と戻し方">失敗時と戻し方</h3>
 <p>外部の CSS やスクリプトで描く内容は欠けます。画像が出ない場合は相対パスと上限を確認します。隠しフォルダ内の HTML はファイル一覧から開けないため、定義書の入口は pkm-guide/ に置きます。</p>
 <h3 id="surfaces-html-view-md--端末の違い">端末の違い</h3>
-<p>PC とスマホのどちらでも閲覧と書き出しができます。スライドの動く機能はブラウザを使い、開けない端末では通知を確認します。</p>
+<p>PC とスマホのどちらでも閲覧と書き出し、体験定義書を開くコマンドが使えます。スライドの動く機能はブラウザを使い、開けない端末では通知を確認します。</p>
 <h3 id="surfaces-html-view-md--ユーザー体験定義書を読む">ユーザー体験定義書を読む</h3>
-<p>ファイル一覧の pkm-guide/user-experience.html を開くと、場面・画面と操作・用語から現在の仕様を引けます。画像は実装を合成データで描画した例です。本文は上流の原本から生成し、子で直接編集しません。更新は上流の取り込みで届きます。</p>
+<p>コマンドパレットの「Open user experience guide」か、ファイル一覧の pkm-guide/user-experience.html を開くと、場面・画面と操作・用語から現在の仕様を引けます。画像は実装を合成データで描画した例です。本文は上流の原本から生成し、子で直接編集しません。更新は上流の取り込みで届きます。</p>
 <section class="gallery"><h3>実装の画面例</h3><h4>HTML の閲覧</h4><p>実際の sandbox 付き iframe と共通の変換処理で表示します。</p><figure><a class="shot light wide" href="ui/html--sample-light-wide.png"><img src="ui/html--sample-light-wide.png" alt="HTML の閲覧 / light / wide" loading="lazy"><span>画像を開く · light / wide</span></a><a class="shot light narrow" href="ui/html--sample-light-narrow.png"><img src="ui/html--sample-light-narrow.png" alt="HTML の閲覧 / light / narrow" loading="lazy"><span>画像を開く · light / narrow</span></a><a class="shot dark wide" href="ui/html--sample-dark-wide.png"><img src="ui/html--sample-dark-wide.png" alt="HTML の閲覧 / dark / wide" loading="lazy"><span>画像を開く · dark / wide</span></a><a class="shot dark narrow" href="ui/html--sample-dark-narrow.png"><img src="ui/html--sample-dark-narrow.png" alt="HTML の閲覧 / dark / narrow" loading="lazy"><span>画像を開く · dark / narrow</span></a><figcaption>HTML の閲覧 — 合成データによる実装プレビュー</figcaption></figure></section><footer><a href="#contents">目次へ</a> 前: <a href="#surfaces-git-sync-md">PKM Git</a> 次: <a href="#surfaces-kit-upgrade-md">上流の更新の取り込み</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/surfaces/html-view.md">原本</a></footer></article>
 <article id="surfaces-kit-upgrade-md" aria-label="上流の更新の取り込み"><p class="eyebrow">surfaces/kit-upgrade.md</p><details class="chapter-nav"><summary>この章の目次</summary><ul><li><a href="#surfaces-kit-upgrade-md--今の振る舞い">今の振る舞い</a></li><li><a href="#surfaces-kit-upgrade-md--使う概念">使う概念</a></li><li><a href="#surfaces-kit-upgrade-md--根拠">根拠</a></li><li><a href="#surfaces-kit-upgrade-md--入力と制約">入力と制約</a></li><li><a href="#surfaces-kit-upgrade-md--操作と保存">操作と保存</a></li><li><a href="#surfaces-kit-upgrade-md--失敗時と戻し方">失敗時と戻し方</a></li><li><a href="#surfaces-kit-upgrade-md--端末の違い">端末の違い</a></li><li><a href="#surfaces-kit-upgrade-md--結果を確認する例">結果を確認する例</a></li></ul></details><h2 id="surfaces-kit-upgrade-md--上流の更新の取り込み">上流の更新の取り込み</h2>
 <ul>
