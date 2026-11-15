@@ -2799,19 +2799,28 @@ function queryMembers(members, q2, delegated) {
   });
 }
 
+// ../shared/src/modal-keys.ts
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
 // src/obsidian/modals.ts
 var PreactModal = class extends import_obsidian2.Modal {
   constructor(app, title, view) {
     super(app);
     this.title = title;
     this.view = view;
+    registerCloseKey(this);
   }
   title;
   view;
   onOpen() {
     this.setTitle(this.title);
     this.modalEl.addClass("vt-ui");
-    R(k(() => this.view(() => this.close()), {}), this.contentEl);
+    R(k(() => this.view(() => this.close(), this.scope), {}), this.contentEl);
   }
   onClose() {
     R(null, this.contentEl);
@@ -2832,6 +2841,7 @@ var BoardIssueModal = class extends import_obsidian2.SuggestModal {
     super(app);
     this.items = items;
     this.onChoose = onChoose;
+    registerCloseKey(this);
     this.setPlaceholder("Search issues and sub-issues, or type a summary to create one");
   }
   items;
@@ -2852,6 +2862,7 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
     super(app);
     this.members = members;
     this.onChoose = onChoose;
+    registerCloseKey(this);
     this.setPlaceholder("Search delegates by @alias, nickname or name, or type a name to create one");
   }
   members;
@@ -12879,6 +12890,22 @@ function TasksNowDialog(props) {
     await remember([]);
   });
   const discardPaused = () => guarded("\u7834\u68C4\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", () => remember([]));
+  const keyActions = A2({ toggle: () => {
+  }, end: () => {
+  } });
+  keyActions.current = {
+    toggle: () => void (running.length > 0 ? stopGroup(true) : paused.length > 0 ? resume() : void 0),
+    end: () => void (running.length > 0 ? stopGroup(false) : paused.length > 0 ? discardPaused() : void 0)
+  };
+  h2(() => {
+    const scope = props.scope;
+    if (!scope) return;
+    const handlers = [
+      scope.register([], " ", () => (keyActions.current.toggle(), false)),
+      scope.register(["Shift"], " ", () => (keyActions.current.end(), false))
+    ];
+    return () => handlers.forEach((handler) => scope.unregister(handler));
+  }, [props.scope]);
   return /* @__PURE__ */ u3("div", { class: "vt-now", children: [
     /* @__PURE__ */ u3("section", { class: "vt-now-clock", "aria-live": "off", children: [
       /* @__PURE__ */ u3(Icon, { name: "clock" }),
@@ -13004,7 +13031,7 @@ var PkmTaskPlugin = class extends import_obsidian28.Plugin {
       name: "Open Tasks Now",
       icon: "timer",
       callback: () => {
-        const modal = new PreactModal(this.app, "Tasks Now", () => k(TasksNowDialog, { ctx }));
+        const modal = new PreactModal(this.app, "Tasks Now", (_close, scope) => k(TasksNowDialog, { ctx, scope }));
         modal.modalEl.addClass("vt-now-modal");
         modal.open();
       }

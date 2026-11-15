@@ -123,6 +123,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 
 	class Modal {
 		contentEl = {};
+		scope = { register: () => ({}), unregister: () => {} };
 		constructor(readonly app: unknown) {}
 		setTitle() {}
 		open() {}

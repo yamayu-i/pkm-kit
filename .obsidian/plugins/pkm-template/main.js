@@ -918,6 +918,14 @@ function formatPromptDate(date, weekday) {
   return weekday ? `${date} ${(WEEKDAY_NAMES[weekdayOf(date)] ?? "sun").toUpperCase()}` : date;
 }
 
+// ../shared/src/modal-keys.ts
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
 // src/obsidian/DatePromptModal.tsx
 function DatePromptForm(props) {
   const today = localToday();
@@ -985,6 +993,7 @@ var DatePromptModal = class extends import_obsidian.Modal {
     super(app);
     this.label = label;
     this.resolve = resolve;
+    registerCloseKey(this);
   }
   label;
   resolve;
@@ -1181,6 +1190,7 @@ var CreateNoteModal = class extends import_obsidian2.Modal {
     this.templates = templates;
     this.onReport = onReport;
     this.linkEditor = linkEditor;
+    registerCloseKey(this);
   }
   manager;
   templates;
@@ -2270,6 +2280,7 @@ var ConfirmDeleteModal = class extends import_obsidian9.Modal {
     super(app);
     this.path = path;
     this.onConfirm = onConfirm;
+    registerCloseKey(this);
   }
   path;
   onConfirm;

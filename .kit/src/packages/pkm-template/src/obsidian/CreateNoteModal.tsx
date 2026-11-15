@@ -5,6 +5,7 @@ import { formatDateTime } from "../core/date-format";
 import { resolveOutputPath, usesIdFileName } from "../core/template";
 import type { LoadedTemplate, TemplateManager } from "./creator";
 import { askDates } from "./DatePromptModal";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 function templateLabel(file: string): string {
 	return file.replace(/\.md$/i, "");
@@ -220,6 +221,7 @@ export class CreateNoteModal extends Modal {
 		private readonly linkEditor: Editor | null = null,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
