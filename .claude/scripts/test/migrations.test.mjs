@@ -441,8 +441,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 は issue/ だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -767,3 +767,35 @@ test("0137: group が 1 行の値でない routine は変えずに、check が�
 	assert.equal(readFileSync(join(root, "routine/r-2.md"), "utf8"), files["routine/r-2.md"]);
 });
 
+
+test("0148: 日付がある open の issue に clarified: true を足す。日付のない issue・open でない issue・clarified のある issue は変えない", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		"issue/i-20.md": "---\r\ntype: issue\r\nid: i-20\r\nsummary: 期限だけ\r\nstatus: \"open\"\r\nsoft_deadline: 2026-02-01\r\n---\r\n本文\r\n",
+		"issue/i-21.md": "---\ntype: issue\nid: i-21\nsummary: 空の日付\nstatus: open\nscheduled: []\ndeadline: null\n---\n",
+		"issue/i-22.md": "---\ntype: issue\nid: i-22\nsummary: 決めてある\nstatus: open\nclarified: false\ndeadline: 2026-02-01\n---\n",
+		"issue/i-23.md": "---\ntype: issue\nid: i-23\nsummary: 待ち\nstatus: waiting\ndeadline: 2026-02-01\n---\n",
+		"issue/i-24.md": "---\ntype: issue\nid: i-24\nsummary: 本文の日付\nstatus: open\n---\n\ndeadline: 2026-02-01\n",
+	});
+	const untouched = ["issue/i-2.md", "issue/i-21.md", "issue/i-22.md", "issue/i-23.md", "issue/i-24.md"].map((p) => [p, readFileSync(join(root, p), "utf8")]);
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	assert.match(readFileSync(join(root, "issue/i-1.md"), "utf8"), /^clarified: true\n---\n/m);
+	assert.match(readFileSync(join(root, "issue/i-14.md"), "utf8"), /^scheduled:\n {2}- 2026-01-08\n[\s\S]*^clarified: true\n---\n$/m);
+	assert.equal(readFileSync(join(root, "issue/i-20.md"), "utf8"), "---\r\ntype: issue\r\nid: i-20\r\nsummary: 期限だけ\r\nstatus: \"open\"\r\nsoft_deadline: 2026-02-01\r\nclarified: true\r\n---\r\n本文\r\n");
+	for (const [p, text] of untouched) assert.equal(readFileSync(join(root, p), "utf8"), text, p);
+	// pkm-task で読むと、日付のある issue は Inbox から外れ、日付のない issue は Inbox に残る
+	assert.deepEqual(taskLint(root).filter((p) => p.startsWith("issue/i-")), []);
+	const again = await runMigrations(root);
+	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
+});
+
+test("0148: --dry-run は書かずに、clarified を足す issue を一覧にする", () => {
+	const root = childFrom("legacy");
+	const before = snapshot(root);
+	const dry = node(root, "--dry-run");
+	assert.equal(dry.status, 0, dry.stderr);
+	assert.match(dry.stdout, /issue\/i-14\.md: 日付があるので整理済み（clarified: true）にする/);
+	assert.doesNotMatch(dry.stdout, /issue\/i-2\.md: 日付があるので/);
+	assert.deepEqual(snapshot(root), before);
+});
