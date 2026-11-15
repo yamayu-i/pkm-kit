@@ -100,7 +100,7 @@ export default class PkmTaskPlugin extends Plugin {
 		installTaskHeaders(ctx, this);
 		installSubAreaHiding(this);
 		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
-		// リボンの「Tasks Now」（pkm-ribbon がこのコマンドを呼ぶ。ADR-0144）
+		// リボンの「Tasks Now」（pkm-ribbon がこのコマンドを呼ぶ。ADR-0154）
 		this.addCommand({
 			id: "open-tasks-now",
 			name: "Open Tasks Now",
@@ -112,7 +112,7 @@ export default class PkmTaskPlugin extends Plugin {
 			},
 		});
 		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
-		// 記録中のタスクの数を、リボンの Tasks Now のバッジに出す（ADR-0144）。数が変わったときだけ pkm-ribbon に知らせる
+		// 記録中のタスクの数を、リボンの Tasks Now のバッジに出す（ADR-0154）。数が変わったときだけ pkm-ribbon に知らせる
 		let lastBadge: number | null = null;
 		this.register(
 			store.subscribe(() => {

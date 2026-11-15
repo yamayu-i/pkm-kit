@@ -16,7 +16,7 @@ function log(id: string, taskId: string, fromMs: number, toMs: number | null): W
 
 const index = (issues = [issue("i-1"), issue("i-2")], worklogs: WorklogEntry[] = []) => new TaskIndex({ ...emptyVaultData(), issues, worklogs });
 
-describe("Organized（ADR-0144）", () => {
+describe("Organized（ADR-0154）", () => {
 	it("いちばん新しい reviewed の 0 時と、この端末の記録の新しい方を前回にする", () => {
 		const i = index([issue("i-1", { reviewed: "2026-11-14" }), issue("i-2", { reviewed: "2026-11-10" })]);
 		expect(lastOrganizedMs(i, null)).toBe(new Date(2026, 10, 14).getTime());
@@ -32,7 +32,7 @@ describe("Organized（ADR-0144）", () => {
 	});
 });
 
-describe("Worklog Paused（ADR-0144）", () => {
+describe("Worklog Paused（ADR-0154）", () => {
 	it("止めてから 12 時間未満は緑、12 時間以上は赤", () => {
 		expect(pausedCard([log("a", "i-1", NOW - 20 * H, NOW - 11 * H)], NOW)).toMatchObject({ level: "ok", elapsedMs: 11 * H });
 		expect(pausedCard([log("a", "i-1", NOW - 20 * H, NOW - 12 * H)], NOW).level).toBe("alert");
@@ -52,7 +52,7 @@ describe("Worklog Paused（ADR-0144）", () => {
 	});
 });
 
-describe("Rest / Focus Streak（ADR-0144）", () => {
+describe("Rest / Focus Streak（ADR-0154）", () => {
 	const at = (ms: number) => restCard([log("a", "i-1", NOW - ms, null)], NOW);
 	it("1 時間以内は緑（Healthy）、2 時間までは黄（Caution）、2 時間以上は赤（Over-focused）", () => {
 		expect(at(59 * 60_000)).toMatchObject({ level: "ok", label: "Healthy" });

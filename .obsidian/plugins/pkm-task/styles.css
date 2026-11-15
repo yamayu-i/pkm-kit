@@ -3578,7 +3578,7 @@ body.is-mobile .vt-toast {
 	display: none;
 }
 
-/* Tasks Now（ADR-0144）: リボンから開くダイアログ */
+/* Tasks Now（ADR-0154）: リボンから開くダイアログ */
 .modal.vt-now-modal {
 	width: min(720px, 94vw);
 	max-width: 94vw;

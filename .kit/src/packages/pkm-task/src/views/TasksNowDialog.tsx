@@ -54,7 +54,7 @@ function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: strin
 }
 
 /**
- * Tasks Now（ADR-0144）: リボンから開くダイアログ。今の日時・PKM State・実行中のタスク群・タスクリスト
+ * Tasks Now（ADR-0154）: リボンから開くダイアログ。今の日時・PKM State・実行中のタスク群・タスクリスト
  */
 export function TasksNowDialog(props: { ctx: TaskContext }) {
 	const { ctx } = props;

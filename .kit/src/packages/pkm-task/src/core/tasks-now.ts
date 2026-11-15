@@ -6,7 +6,7 @@ import type { TaskIndex } from "./index";
 import { workKey, type WorklogEntry } from "./worklog";
 
 /**
- * Tasks Now（ADR-0144）: リボンの「Tasks Now」で開くダイアログの、状態の判定と一覧の組み立て。
+ * Tasks Now（ADR-0154）: リボンの「Tasks Now」で開くダイアログの、状態の判定と一覧の組み立て。
  * 画面に依存しない純粋な関数だけを置く
  */
 
