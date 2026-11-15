@@ -51,7 +51,7 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 }
 
 // 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
-const SCREENS = ["header", "timeline", "routine", "member", "daily", "pick", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "labels", "members", "sidebar", "forms"];
+const SCREENS = ["header", "header-unpicked", "header-picked", "header-someday", "header-closed", "timeline", "routine", "member", "daily", "pick", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "labels", "members", "sidebar", "forms"];
 const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
 const screens = wanted.length > 0 ? wanted : SCREENS;
 
@@ -70,6 +70,18 @@ for (const theme of ["light", "dark"]) {
 		await page.locator("#narrow").screenshot({ path: `${out}${screen}-${theme}-narrow.png` });
 
 		for (const root of ["#wide", "#narrow"]) {
+			const expectedControl = { header: "Stop timer", "header-unpicked": "Pick", "header-picked": "Start timer", "header-someday": "Pick", "header-closed": null };
+			if (Object.hasOwn(expectedControl, screen)) {
+				const control = page.locator(`${root} .vt-worklog .vt-section-head button[aria-label]`);
+				const labels = await control.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
+				const expected = expectedControl[screen] === null ? [] : [expectedControl[screen]];
+				if (JSON.stringify(labels) !== JSON.stringify(expected)) problems.push(`${where} ${root}: Issue の操作 ${JSON.stringify(labels)} != ${JSON.stringify(expected)}`);
+				// Pick と再生は同じ大きさ。記録中だけ経過時間の分だけ横に伸びる。
+				for (const button of await page.locator(`${root} .vt-play:not(.is-running)`).all()) {
+					const box = await button.boundingBox();
+					if (!box || box.width !== 36 || box.height !== 36) problems.push(`${where} ${root}: Pick / 再生が 36px でない: ${JSON.stringify(box)}`);
+				}
+			}
 			for (const p of await page.evaluate(auditInPage, { rootSelector: root, targetMin })) {
 				problems.push(`${where} ${root}: [${p.rule}] ${p.where}: ${p.message}`);
 			}

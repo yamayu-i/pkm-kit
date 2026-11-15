@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { isOnBoard } from "../core/board";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { pickIssuePatch, pickSubPatch } from "../core/pick";
+import { pickIssuePatch, pickSubPatch, pickTimerControl } from "../core/pick";
 import { Icon } from "../ui/Icon";
 import { useNow, useStoreVersion } from "../ui/hooks";
 import { addToBoard, startTimer, stopTimer } from "./board-actions";
@@ -37,7 +37,7 @@ export function PickToggle(props: { ctx: TaskContext; keyOf: string }) {
 		confirmModal(ctx, "Next にして Pick", `Next にするため、次のプロパティを変更して今日のボードに載せます。${fields}`, "Pick", () => void apply());
 	};
 	return (
-		<button type="button" class="vt-icon-button vt-pick" aria-label="Pick" title="Add to today's board" disabled={busy} onClick={run}>
+		<button type="button" class="vt-play vt-pick" aria-label="Pick" title="Add to today's board" disabled={busy} onClick={run}>
 			<Icon name="calendar-check" />
 		</button>
 	);
@@ -49,7 +49,11 @@ export function PickTimer(props: { ctx: TaskContext; keyOf: string }) {
 	useStoreVersion(ctx.store);
 	const now = useNow();
 	const running = ctx.store.index.running(keyOf);
-	if (!running.length && !isOnBoard(ctx.store.index, localToday(), keyOf)) return <PickToggle {...props} />;
+	const task = ctx.store.index.issues.get(keyOf) ?? ctx.store.index.sub(keyOf);
+	if (!task) return null;
+	const control = pickTimerControl(task.status, isOnBoard(ctx.store.index, localToday(), keyOf), running.length > 0);
+	if (control === null) return null;
+	if (control === "pick") return <PickToggle {...props} />;
 	const elapsed = running.reduce((m, log) => Math.max(m, now - log.fromMs), 0);
 	const label = running.length ? "Stop timer" : "Start timer";
 	return (

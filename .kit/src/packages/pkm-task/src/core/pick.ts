@@ -1,8 +1,16 @@
 import { isNext } from "./index";
-import type { Issue } from "./schema";
+import type { Issue, Status } from "./schema";
+import { isDoneStatus } from "./status-log";
 import type { Patch } from "./actions";
 import type { LocalDate } from "./dates";
 import type { SubIssue, SubIssuePatch } from "./sub-issue";
+
+/** issue と上下のサブで共通。記録中は、完了後や日をまたいでも停止できる。 */
+export function pickTimerControl(status: Status, picked: boolean, running: boolean): "pick" | "start" | "stop" | null {
+	if (running) return "stop";
+	if (isDoneStatus(status)) return null;
+	return picked ? "start" : "pick";
+}
 
 /** Pick の前に Next にする。null なら確認も更新も不要。期限は残す。 */
 export function pickIssuePatch(issue: Issue): Patch | null {

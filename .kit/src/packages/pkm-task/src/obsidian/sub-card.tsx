@@ -121,7 +121,7 @@ export function SubCard(props: SubCardProps) {
 						<span class="vt-subissue-summary-text">{sub.summary}</span>
 						{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 					</button>
-					{!isDoneStatus(sub.status) && <PickTimer ctx={ctx} keyOf={sub.key} />}
+					<PickTimer ctx={ctx} keyOf={sub.key} />
 				</div>
 				{open && <SubFields {...props} save={save} error={error} />}
 			</div>

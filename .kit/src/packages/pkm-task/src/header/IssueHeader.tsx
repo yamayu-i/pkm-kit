@@ -5,7 +5,6 @@ import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, wee
 import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
-import { isActive } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
 import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
@@ -371,7 +370,7 @@ export function Worklog(props: { ctx: TaskContext; taskId: string; index: TaskIn
 		<section class="vt-worklog">
 			<div class="vt-section-head">
 				<span class="vt-field-label">worklog</span>
-				{props.index.issues.has(taskId) && isActive(props.index.issues.get(taskId)!) && <PickTimer ctx={ctx} keyOf={taskId} />}
+				{props.index.issues.has(taskId) && <PickTimer ctx={ctx} keyOf={taskId} />}
 				{logs.length > 0 && <span class="vt-count">{logs.length}</span>}
 				<span class="vt-spacer" />
 				<button class="vt-text-button" onClick={add}>
