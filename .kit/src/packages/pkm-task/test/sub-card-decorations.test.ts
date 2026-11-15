@@ -20,10 +20,12 @@ const text = `${card("aaaaaa")}\n\nBody\n\n${card("bbbbbb")}\n\n`;
 
 function create(anchor: number) {
 	let field: StateField<any>;
-	const ctx = { settings: { subOpen: {} } } as TaskContext;
+	const ctx = { settings: { subOpen: {} }, store: { subscribe: () => () => {} } } as unknown as TaskContext;
 	installSubCards(ctx, {
-		registerEditorExtension: (f: StateField<any>) => { field = f; },
+		registerEditorExtension: (f: unknown[]) => { field = f.find((x) => x instanceof StateField) as StateField<any>; },
 		registerMarkdownPostProcessor: () => {},
+		registerDomEvent: () => {},
+		register: () => {},
 	} as unknown as Plugin);
 	const state = EditorState.create({ doc: text, selection: { anchor }, extensions: [editorInfoField, editorLivePreviewField, field!] });
 	const ranges: [number, number][] = [];

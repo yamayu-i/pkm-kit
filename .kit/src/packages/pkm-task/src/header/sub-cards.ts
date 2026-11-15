@@ -1,7 +1,8 @@
 import { StateEffect, StateField, type EditorState, type Range } from "@codemirror/state";
-import { Decoration, EditorView, WidgetType, type DecorationSet } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { MarkdownRenderChild, editorInfoField, editorLivePreviewField, parseYaml, type Plugin } from "obsidian";
 import { h, render } from "preact";
+import { pickSticky, type StickyRegion } from "../core/sub-sticky";
 import {
 	cursorInside,
 	isSubOpen,
@@ -14,7 +15,8 @@ import {
 	type SubLayout,
 } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
-import { ReadingCard, SubCard, UnreadableCard, issueIdOf, type SaveSub } from "../obsidian/sub-card";
+import { ReadingCard, StickySubRow, SubCard, UnreadableCard, issueIdOf, type SaveSub } from "../obsidian/sub-card";
+import { StickyOverlay, stickyBox } from "./sub-sticky-overlay";
 
 const ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
 
@@ -33,14 +35,175 @@ function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): 
 // ---------- Reading ----------
 
 const CLOSED_CLASS = "vt-sub-body-closed";
-const bodies = new Map<string, Set<{ id: string; el: HTMLElement }>>();
+
+/** Reading で描いたセクション。scroller は、DOM にあるのを見たときのスクロール領域（画面外では DOM から外れるため覚えておく） */
+interface SectionEntry {
+	id: string;
+	el: HTMLElement;
+	line: number;
+	scroller?: HTMLElement;
+}
+const bodies = new Map<string, Set<SectionEntry>>();
+const cards = new Map<string, Set<SectionEntry>>();
+/** 開閉を変えたことを、Reading のカードに知らせる（浮かべた行から閉じたとき、カードの矢印を描き直す） */
+const openListeners = new Set<() => void>();
+
+function addEntry(map: Map<string, Set<SectionEntry>>, path: string, entry: SectionEntry, mctx: { addChild: (c: MarkdownRenderChild) => void }): void {
+	const set = map.get(path) ?? new Set();
+	map.set(path, set);
+	set.add(entry);
+	const child = new MarkdownRenderChild(entry.el);
+	child.onunload = () => {
+		set.delete(entry);
+		if (set.size === 0) map.delete(path);
+	};
+	mctx.addChild(child);
+}
 
 /** Reading で、開閉を本文のセクションに反映する（描き直さずに class を付け外しする） */
 function syncReading(ctx: TaskContext, path: string): void {
 	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b.id));
+	for (const fn of openListeners) fn();
+	readingSticky?.scheduleAll();
 }
 
+/** Reading: 開いたサブの題の行を、スクロール領域の上端に浮かべる（ADR-0161 の追記） */
+class ReadingSticky {
+	private readonly overlays = new Map<HTMLElement, StickyOverlay>();
+	private readonly pending = new Set<HTMLElement>();
+	private frame = 0;
+
+	constructor(private readonly ctx: TaskContext) {}
+
+	schedule(scroller: HTMLElement): void {
+		this.pending.add(scroller);
+		if (this.frame === 0) this.frame = window.requestAnimationFrame(() => this.flush());
+	}
+
+	scheduleAll(): void {
+		for (const s of this.overlays.keys()) this.schedule(s);
+		for (const set of cards.values()) for (const c of set) if (c.scroller) this.schedule(c.scroller);
+	}
+
+	private flush(): void {
+		this.frame = 0;
+		const list = [...this.pending];
+		this.pending.clear();
+		for (const s of list) this.update(s);
+	}
+
+	/** 入れ物（スクロール領域の親）が消えたものは片付ける */
+	private overlayOf(scroller: HTMLElement): StickyOverlay | null {
+		let o = this.overlays.get(scroller);
+		if (!scroller.isConnected || !scroller.parentElement) {
+			o?.destroy();
+			this.overlays.delete(scroller);
+			return null;
+		}
+		if (!o) {
+			o = new StickyOverlay(scroller.parentElement);
+			this.overlays.set(scroller, o);
+		}
+		return o;
+	}
+
+	private update(scroller: HTMLElement): void {
+		const overlay = this.overlayOf(scroller);
+		if (!overlay) return;
+		const tag = (e: SectionEntry) => {
+			if (e.el.isConnected && scroller.contains(e.el)) e.scroller = scroller;
+			return e.scroller === scroller;
+		};
+		const found: { path: string; card: SectionEntry; region: StickyRegion; box: HTMLElement | null }[] = [];
+		for (const [path, set] of cards) {
+			const mine = [...set].filter(tag);
+			if (mine.length === 0) continue;
+			const ownBodies = [...(bodies.get(path) ?? [])].filter(tag).sort((a, b) => a.line - b.line);
+			for (const card of mine) {
+				if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+				const bs = ownBodies.filter((b) => b.id === card.id);
+				const shown = bs.filter((b) => b.el.isConnected);
+				const last = bs[bs.length - 1];
+				let top: number;
+				let bottom: number;
+				if (card.el.isConnected) top = card.el.getBoundingClientRect().top;
+				else if (shown.length > 0) top = -Infinity;
+				else continue;
+				if (last?.el.isConnected) bottom = last.el.getBoundingClientRect().bottom;
+				else if (shown.length > 0) bottom = Infinity;
+				else bottom = card.el.getBoundingClientRect().bottom;
+				found.push({ path, card, region: { top, bottom }, box: card.el.isConnected ? card.el : (shown[0]?.el ?? null) });
+			}
+		}
+		found.sort((a, b) => a.card.line - b.card.line);
+		const rect = scroller.getBoundingClientRect();
+		const pick = pickSticky(
+			found.map((f) => f.region),
+			rect.top,
+			overlay.rowHeight,
+		);
+		const f = pick === null ? null : found[pick.index]!;
+		const subs = f === null ? [] : parseSubIssues(f.path, issueIdOf(f.path), this.ctx.store.text(f.path) ?? "", parseYaml).subs;
+		const sub = f === null ? undefined : subs.find((s) => s.id === f.card.id);
+		if (!f || !sub || !f.box || pick === null) return overlay.hide();
+		const box = stickyBox(scroller, f.box.getBoundingClientRect());
+		const { ctx } = this;
+		overlay.show(
+			`${f.path}\n${JSON.stringify(sub)}`,
+			() =>
+				h(StickySubRow, {
+					ctx,
+					sub,
+					save: (patch) => ctx.writer.updateSub(sub.key, patch),
+					onToggle: () => {
+						toggleOpen(
+							ctx,
+							f.path,
+							sub.id,
+							subs.map((s) => s.id),
+						);
+						syncReading(ctx, f.path);
+						if (f.card.el.isConnected) f.card.el.scrollIntoView({ block: "start" });
+					},
+				}),
+			box,
+			pick.offset,
+		);
+	}
+
+	destroy(): void {
+		if (this.frame !== 0) window.cancelAnimationFrame(this.frame);
+		for (const o of this.overlays.values()) o.destroy();
+		this.overlays.clear();
+	}
+}
+
+let readingSticky: ReadingSticky | null = null;
+
 function installReading(ctx: TaskContext, plugin: Plugin): void {
+	const sticky = new ReadingSticky(ctx);
+	readingSticky = sticky;
+	plugin.register(() => {
+		sticky.destroy();
+		if (readingSticky === sticky) readingSticky = null;
+	});
+	// スクロールは泡立たないので、捕捉で受ける。Reading のスクロール領域だけを見る（DOM のない検査の環境では登録しない）
+	if (typeof document === "undefined") return installReadingCards(ctx, plugin);
+	plugin.registerDomEvent(
+		document,
+		"scroll",
+		(e) => {
+			const t = e.target;
+			if (t instanceof HTMLElement && t.classList.contains("markdown-preview-view")) sticky.schedule(t);
+		},
+		{ capture: true, passive: true },
+	);
+	plugin.registerDomEvent(window, "resize", () => sticky.scheduleAll());
+	plugin.register(ctx.store.subscribe(() => sticky.scheduleAll()));
+	installReadingCards(ctx, plugin);
+}
+
+function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 	let memo: { path: string; text: string; layout: SubLayout[] } | null = null;
 	const layoutOf = (path: string, text: string): SubLayout[] => {
 		if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, parseYaml) };
@@ -59,6 +222,7 @@ function installReading(ctx: TaskContext, plugin: Plugin): void {
 			el.addClass("vt-sub-card-section");
 			const b = layout[r.index]!;
 			const raw = info.text.slice(b.from, b.cardTo ?? layout[r.index + 1]?.from ?? info.text.length).trimEnd();
+			if (r.id !== null) addEntry(cards, path, { id: r.id, el, line: info.lineStart }, mctx);
 			const host = el.createDiv();
 			render(
 				h(ReadingCard, {
@@ -67,6 +231,10 @@ function installReading(ctx: TaskContext, plugin: Plugin): void {
 					id: r.id,
 					raw,
 					open: () => r.id !== null && isSubOpen(ctx.settings.subOpen, path, r.id),
+					subscribeOpen: (fn: () => void) => {
+						openListeners.add(fn);
+						return () => openListeners.delete(fn);
+					},
 					onToggle: (ids: string[]) => {
 						if (r.id === null) return;
 						toggleOpen(ctx, path, r.id, ids);
@@ -79,14 +247,8 @@ function installReading(ctx: TaskContext, plugin: Plugin): void {
 			child.onunload = () => render(null, host);
 			mctx.addChild(child);
 		} else if (r.role === "body") {
-			const entry = { id: r.id, el };
-			const set = bodies.get(path) ?? new Set();
-			bodies.set(path, set);
-			set.add(entry);
+			addEntry(bodies, path, { id: r.id, el, line: info.lineStart }, mctx);
 			el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r.id));
-			const child = new MarkdownRenderChild(el);
-			child.onunload = () => set.delete(entry);
-			mctx.addChild(child);
 		}
 	});
 }
@@ -232,11 +394,113 @@ function build(ctx: TaskContext, state: EditorState): Built {
 	return { all: Decoration.set(all, true), folds: Decoration.set(folds, true) };
 }
 
+interface EditorStickyMeasure {
+	path: string;
+	b: SubLayout;
+	sub: SubIssue;
+	offset: number;
+	box: ReturnType<typeof stickyBox>;
+}
+
+/** Live Preview: 開いたサブの題の行を、スクロール領域の上端に浮かべる（ADR-0161 の追記）。位置は CodeMirror の高さの情報から求める（カードが画面外で DOM になくてもよい） */
+function editorSticky(ctx: TaskContext) {
+	return ViewPlugin.fromClass(
+		class {
+			private readonly overlay: StickyOverlay;
+			private readonly onScroll = () => this.schedule();
+			private memo: { doc: EditorState["doc"]; layout: SubLayout[]; subs: SubIssue[] } | null = null;
+
+			constructor(private readonly view: EditorView) {
+				this.overlay = new StickyOverlay(view.dom);
+				view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
+				this.schedule();
+			}
+
+			update(u: ViewUpdate): void {
+				if (u.docChanged || u.geometryChanged || u.viewportChanged || u.transactions.some((t) => t.effects.some((e) => e.is(refresh)))) this.schedule();
+			}
+
+			private schedule(): void {
+				this.view.requestMeasure({ key: this, read: () => this.read(), write: (m) => this.write(m) });
+			}
+
+			private read(): EditorStickyMeasure | null {
+				const { view } = this;
+				const state = view.state;
+				const path = state.field(editorInfoField, false)?.file?.path;
+				if (!path || !ISSUE_PATH_RE.test(path) || !state.field(editorLivePreviewField, false)) return null;
+				if (this.memo?.doc !== state.doc) {
+					const text = state.doc.toString();
+					const parent = issueIdOf(path);
+					this.memo = { doc: state.doc, layout: layoutSubIssues(path, parent, text, parseYaml), subs: parseSubIssues(path, parent, text, parseYaml).subs };
+				}
+				const { layout, subs } = this.memo;
+				const open: { b: SubLayout; sub: SubIssue; region: StickyRegion }[] = [];
+				for (const b of layout) {
+					if (b.cardTo === null || b.id === null || !isSubOpen(ctx.settings.subOpen, path, b.id)) continue;
+					const sub = subs.find((s) => s.id === b.id);
+					if (!sub) continue;
+					const end = b.bodyFrom !== null && b.bodyTo !== null && b.bodyTo > b.bodyFrom ? b.bodyTo : b.cardTo;
+					open.push({ b, sub, region: { top: view.lineBlockAt(b.from).top, bottom: view.lineBlockAt(end).bottom } });
+				}
+				if (open.length === 0) return null;
+				const rect = view.scrollDOM.getBoundingClientRect();
+				const pick = pickSticky(
+					open.map((o) => o.region),
+					rect.top - view.documentTop,
+					this.overlay.rowHeight,
+				);
+				if (pick === null) return null;
+				const host = view.contentDOM.querySelector<HTMLElement>(".vt-sub-card-host");
+				let card: { left: number; right: number };
+				if (host) {
+					card = host.getBoundingClientRect();
+				} else {
+					const r = view.contentDOM.getBoundingClientRect();
+					const cs = getComputedStyle(view.contentDOM);
+					card = { left: r.left + (parseFloat(cs.paddingLeft) || 0), right: r.right - (parseFloat(cs.paddingRight) || 0) };
+				}
+				const box = stickyBox(view.scrollDOM, card);
+				const o = open[pick.index]!;
+				return { path, b: o.b, sub: o.sub, offset: pick.offset, box };
+			}
+
+			private write(m: EditorStickyMeasure | null): void {
+				if (m === null) return this.overlay.hide();
+				const { view } = this;
+				const { path, b, sub } = m;
+				this.overlay.show(
+					`${path}\n${JSON.stringify(sub)}`,
+					() =>
+						h(StickySubRow, {
+							ctx,
+							sub,
+							save: editorSave(ctx, view, path, sub.id),
+							onToggle: () => {
+								editorToggle(ctx, view, path, sub.id);
+								// 閉じると本文が消えるので、そのカードを上端に出す（読んでいた位置を見失わない）
+								view.dispatch({ effects: EditorView.scrollIntoView(b.from, { y: "start" }) });
+							},
+						}),
+					m.box,
+					m.offset,
+				);
+			}
+
+			destroy(): void {
+				this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
+				this.overlay.destroy();
+			}
+		},
+	);
+}
+
 /**
  * issue の md のサブの項目を、サブごとのカードに描く（ADR-0161。ADR-0158 の「領域全体を 1 つのウィジェットにする」を置き換える）。
  * - Live Preview: 項目のブロック（マーカーから `-->` まで）をカードに置き換える。本文は置き換えず、issue 本体の Live Preview が描く。
  *   閉じたサブの本文は隠す。ブロックの中にカーソルがある間は、生の md を見せる。ソースモードでは描き替えない
  * - Reading: マーカーを含むセクションにカードを描き、閉じたサブの本文のセクションを隠す
+ * - どちらも、開いたサブの題の行を、スクロールで上端を越えたら、そのサブの本文の終わりまで上端に浮かべる
  */
 export function installSubCards(ctx: TaskContext, plugin: Plugin): void {
 	const field = StateField.define<Built>({
@@ -244,6 +508,6 @@ export function installSubCards(ctx: TaskContext, plugin: Plugin): void {
 		update: (_value, tr) => build(ctx, tr.state),
 		provide: (f) => [EditorView.decorations.from(f, (v) => v.all), EditorView.atomicRanges.of((view) => view.state.field(f).folds)],
 	});
-	plugin.registerEditorExtension(field);
+	plugin.registerEditorExtension([field, editorSticky(ctx)]);
 	installReading(ctx, plugin);
 }

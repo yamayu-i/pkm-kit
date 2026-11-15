@@ -3065,18 +3065,18 @@ var import_obsidian4 = require("obsidian");
 // src/core/board-lanes.ts
 var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
-  const cards = [];
+  const cards2 = [];
   for (const key of board.issues) {
     const issue = index.issues.get(key);
     if (issue) {
-      cards.push({ kind: "issue", key, issue });
+      cards2.push({ kind: "issue", key, issue });
       continue;
     }
     const sub = index.sub(key);
-    if (sub) cards.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
+    if (sub) cards2.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
   }
-  for (const routine of index.routinesOn(date)) cards.push({ kind: "routine", key: routine.id, routine });
-  return cards;
+  for (const routine of index.routinesOn(date)) cards2.push({ kind: "routine", key: routine.id, routine });
+  return cards2;
 }
 function cardStatus(board, card) {
   if (card.kind === "issue") return card.issue.status;
@@ -3113,9 +3113,9 @@ function boardLanes(index, date, board) {
   lanes.done.sort((a3, b2) => added.indexOf(a3.key) - added.indexOf(b2.key));
   return lanes;
 }
-function cardRuns(cards) {
+function cardRuns(cards2) {
   const runs = [];
-  for (const card of cards) {
+  for (const card of cards2) {
     const parent = card.kind === "sub" ? card.sub.parent : null;
     const last = runs[runs.length - 1];
     if (parent !== null && last && last.parent === parent) last.cards.push(card);
@@ -9535,6 +9535,15 @@ var import_state4 = require("@codemirror/state");
 var import_view4 = require("@codemirror/view");
 var import_obsidian12 = require("obsidian");
 
+// src/core/sub-sticky.ts
+function pickSticky(regions, edge, rowHeight) {
+  let pick = null;
+  regions.forEach((r3, index) => {
+    if (r3.top < edge && r3.bottom > edge) pick = { index, offset: Math.min(0, r3.bottom - edge - rowHeight) };
+  });
+  return pick;
+}
+
 // src/obsidian/sub-card.tsx
 var import_obsidian11 = require("obsidian");
 
@@ -9594,6 +9603,13 @@ function SubCard(props) {
     setError(e3 instanceof Error ? e3.message : String(e3));
     return false;
   });
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
+    /* @__PURE__ */ u3(SubRow2, { ctx, sub, open, onToggle: props.onToggle, save }),
+    open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
+  ] }) });
+}
+function SubRow2(props) {
+  const { ctx, sub, open, save } = props;
   const changeStatus = (next) => {
     if (next === "delegated") return pickMember(ctx, (id) => void save({ status: next, delegatedTo: id }));
     if (next === sub.status) return;
@@ -9605,18 +9621,23 @@ function SubCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const hint = subHint(sub, localToday());
-  return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
-    /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
-        /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
-        /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
-        hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
-      ] }),
-      /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+    /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+    /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
+      /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
+      /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
+      hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
     ] }),
-    open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
-  ] }) });
+    /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
+  ] });
+}
+function StickySubRow(props) {
+  const { ctx, sub } = props;
+  const save = (patch) => props.save(patch).then(() => true).catch((e3) => {
+    ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    return false;
+  });
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue is-open${isDoneStatus(sub.status) ? " is-done" : ""}`, children: /* @__PURE__ */ u3(SubRow2, { ctx, sub, open: true, onToggle: props.onToggle, save }) }) });
 }
 function SubFields(props) {
   const { ctx, sub, save, delayMs } = props;
@@ -9724,6 +9745,7 @@ function ReadingCard(props) {
   const [, setTick] = d2(0);
   const redraw = () => setTick((n2) => n2 + 1);
   h2(() => ctx.store.subscribe(redraw), [ctx]);
+  h2(() => props.subscribeOpen?.(redraw), [props.subscribeOpen]);
   if (props.id === null) return /* @__PURE__ */ u3(UnreadableCard, { raw: props.raw });
   const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", import_obsidian11.parseYaml).subs;
   const sub = subs.find((s3) => s3.id === props.id);
@@ -9745,6 +9767,57 @@ function ReadingCard(props) {
   );
 }
 
+// src/header/sub-sticky-overlay.ts
+var ROW_HEIGHT_GUESS = 46;
+var SHADOW_ROOM = 4;
+function stickyBox(scroller, card) {
+  const r3 = scroller.getBoundingClientRect();
+  const left = Math.max(card.left, r3.left);
+  const right = Math.min(card.right, r3.left + scroller.clientWidth);
+  return { top: r3.top, left, width: Math.max(0, right - left) };
+}
+var StickyOverlay = class {
+  el;
+  inner;
+  key = null;
+  height = ROW_HEIGHT_GUESS;
+  constructor(container) {
+    this.el = document.createElement("div");
+    this.el.className = "vt-sub-sticky";
+    this.el.hidden = true;
+    this.inner = document.createElement("div");
+    this.inner.className = "vt-sub-sticky-inner";
+    this.el.appendChild(this.inner);
+    container.appendChild(this.el);
+  }
+  /** 浮かべる行の高さ（押し出しの計算に使う） */
+  get rowHeight() {
+    return this.height;
+  }
+  /** key が変わったときだけ描き直す */
+  show(key, view, box, offset) {
+    this.el.hidden = false;
+    if (key !== this.key) {
+      this.key = key;
+      R(view(), this.inner);
+    }
+    this.height = this.inner.offsetHeight || this.height;
+    const base = (this.el.offsetParent ?? this.el.parentElement)?.getBoundingClientRect();
+    this.el.style.top = `${box.top - (base?.top ?? 0)}px`;
+    this.el.style.left = `${box.left - (base?.left ?? 0)}px`;
+    this.el.style.width = `${box.width}px`;
+    this.el.style.height = `${this.height + SHADOW_ROOM}px`;
+    this.inner.style.transform = offset === 0 ? "" : `translateY(${offset}px)`;
+  }
+  hide() {
+    this.el.hidden = true;
+  }
+  destroy() {
+    R(null, this.inner);
+    this.el.remove();
+  }
+};
+
 // src/header/sub-cards.ts
 var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
 var LIVE_PREVIEW_SAVE_MS = 600;
@@ -9755,10 +9828,152 @@ function toggleOpen(ctx, path, id, ids) {
 }
 var CLOSED_CLASS = "vt-sub-body-closed";
 var bodies = /* @__PURE__ */ new Map();
+var cards = /* @__PURE__ */ new Map();
+var openListeners = /* @__PURE__ */ new Set();
+function addEntry(map, path, entry, mctx) {
+  const set = map.get(path) ?? /* @__PURE__ */ new Set();
+  map.set(path, set);
+  set.add(entry);
+  const child = new import_obsidian12.MarkdownRenderChild(entry.el);
+  child.onunload = () => {
+    set.delete(entry);
+    if (set.size === 0) map.delete(path);
+  };
+  mctx.addChild(child);
+}
 function syncReading(ctx, path) {
   for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b2.id));
+  for (const fn of openListeners) fn();
+  readingSticky?.scheduleAll();
 }
+var ReadingSticky = class {
+  constructor(ctx) {
+    this.ctx = ctx;
+  }
+  ctx;
+  overlays = /* @__PURE__ */ new Map();
+  pending = /* @__PURE__ */ new Set();
+  frame = 0;
+  schedule(scroller) {
+    this.pending.add(scroller);
+    if (this.frame === 0) this.frame = window.requestAnimationFrame(() => this.flush());
+  }
+  scheduleAll() {
+    for (const s3 of this.overlays.keys()) this.schedule(s3);
+    for (const set of cards.values()) for (const c3 of set) if (c3.scroller) this.schedule(c3.scroller);
+  }
+  flush() {
+    this.frame = 0;
+    const list = [...this.pending];
+    this.pending.clear();
+    for (const s3 of list) this.update(s3);
+  }
+  /** 入れ物（スクロール領域の親）が消えたものは片付ける */
+  overlayOf(scroller) {
+    let o3 = this.overlays.get(scroller);
+    if (!scroller.isConnected || !scroller.parentElement) {
+      o3?.destroy();
+      this.overlays.delete(scroller);
+      return null;
+    }
+    if (!o3) {
+      o3 = new StickyOverlay(scroller.parentElement);
+      this.overlays.set(scroller, o3);
+    }
+    return o3;
+  }
+  update(scroller) {
+    const overlay = this.overlayOf(scroller);
+    if (!overlay) return;
+    const tag = (e3) => {
+      if (e3.el.isConnected && scroller.contains(e3.el)) e3.scroller = scroller;
+      return e3.scroller === scroller;
+    };
+    const found = [];
+    for (const [path, set] of cards) {
+      const mine = [...set].filter(tag);
+      if (mine.length === 0) continue;
+      const ownBodies = [...bodies.get(path) ?? []].filter(tag).sort((a3, b2) => a3.line - b2.line);
+      for (const card of mine) {
+        if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+        const bs = ownBodies.filter((b2) => b2.id === card.id);
+        const shown = bs.filter((b2) => b2.el.isConnected);
+        const last = bs[bs.length - 1];
+        let top2;
+        let bottom;
+        if (card.el.isConnected) top2 = card.el.getBoundingClientRect().top;
+        else if (shown.length > 0) top2 = -Infinity;
+        else continue;
+        if (last?.el.isConnected) bottom = last.el.getBoundingClientRect().bottom;
+        else if (shown.length > 0) bottom = Infinity;
+        else bottom = card.el.getBoundingClientRect().bottom;
+        found.push({ path, card, region: { top: top2, bottom }, box: card.el.isConnected ? card.el : shown[0]?.el ?? null });
+      }
+    }
+    found.sort((a3, b2) => a3.card.line - b2.card.line);
+    const rect = scroller.getBoundingClientRect();
+    const pick = pickSticky(
+      found.map((f5) => f5.region),
+      rect.top,
+      overlay.rowHeight
+    );
+    const f4 = pick === null ? null : found[pick.index];
+    const subs = f4 === null ? [] : parseSubIssues(f4.path, issueIdOf(f4.path), this.ctx.store.text(f4.path) ?? "", import_obsidian12.parseYaml).subs;
+    const sub = f4 === null ? void 0 : subs.find((s3) => s3.id === f4.card.id);
+    if (!f4 || !sub || !f4.box || pick === null) return overlay.hide();
+    const box = stickyBox(scroller, f4.box.getBoundingClientRect());
+    const { ctx } = this;
+    overlay.show(
+      `${f4.path}
+${JSON.stringify(sub)}`,
+      () => k(StickySubRow, {
+        ctx,
+        sub,
+        save: (patch) => ctx.writer.updateSub(sub.key, patch),
+        onToggle: () => {
+          toggleOpen(
+            ctx,
+            f4.path,
+            sub.id,
+            subs.map((s3) => s3.id)
+          );
+          syncReading(ctx, f4.path);
+          if (f4.card.el.isConnected) f4.card.el.scrollIntoView({ block: "start" });
+        }
+      }),
+      box,
+      pick.offset
+    );
+  }
+  destroy() {
+    if (this.frame !== 0) window.cancelAnimationFrame(this.frame);
+    for (const o3 of this.overlays.values()) o3.destroy();
+    this.overlays.clear();
+  }
+};
+var readingSticky = null;
 function installReading(ctx, plugin) {
+  const sticky = new ReadingSticky(ctx);
+  readingSticky = sticky;
+  plugin.register(() => {
+    sticky.destroy();
+    if (readingSticky === sticky) readingSticky = null;
+  });
+  if (typeof document === "undefined") return installReadingCards(ctx, plugin);
+  plugin.registerDomEvent(
+    document,
+    "scroll",
+    (e3) => {
+      const t4 = e3.target;
+      if (t4 instanceof HTMLElement && t4.classList.contains("markdown-preview-view")) sticky.schedule(t4);
+    },
+    { capture: true, passive: true }
+  );
+  plugin.registerDomEvent(window, "resize", () => sticky.scheduleAll());
+  plugin.register(ctx.store.subscribe(() => sticky.scheduleAll()));
+  installReadingCards(ctx, plugin);
+}
+function installReadingCards(ctx, plugin) {
   let memo = null;
   const layoutOf = (path, text) => {
     if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, import_obsidian12.parseYaml) };
@@ -9777,6 +9992,7 @@ function installReading(ctx, plugin) {
       el.addClass("vt-sub-card-section");
       const b2 = layout[r3.index];
       const raw = info.text.slice(b2.from, b2.cardTo ?? layout[r3.index + 1]?.from ?? info.text.length).trimEnd();
+      if (r3.id !== null) addEntry(cards, path, { id: r3.id, el, line: info.lineStart }, mctx);
       const host = el.createDiv();
       R(
         k(ReadingCard, {
@@ -9785,6 +10001,10 @@ function installReading(ctx, plugin) {
           id: r3.id,
           raw,
           open: () => r3.id !== null && isSubOpen(ctx.settings.subOpen, path, r3.id),
+          subscribeOpen: (fn) => {
+            openListeners.add(fn);
+            return () => openListeners.delete(fn);
+          },
           onToggle: (ids) => {
             if (r3.id === null) return;
             toggleOpen(ctx, path, r3.id, ids);
@@ -9797,14 +10017,8 @@ function installReading(ctx, plugin) {
       child.onunload = () => R(null, host);
       mctx.addChild(child);
     } else if (r3.role === "body") {
-      const entry = { id: r3.id, el };
-      const set = bodies.get(path) ?? /* @__PURE__ */ new Set();
-      bodies.set(path, set);
-      set.add(entry);
+      addEntry(bodies, path, { id: r3.id, el, line: info.lineStart }, mctx);
       el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id));
-      const child = new import_obsidian12.MarkdownRenderChild(el);
-      child.onunload = () => set.delete(entry);
-      mctx.addChild(child);
     }
   });
 }
@@ -9927,13 +10141,99 @@ function build(ctx, state) {
   }
   return { all: import_view4.Decoration.set(all, true), folds: import_view4.Decoration.set(folds, true) };
 }
+function editorSticky(ctx) {
+  return import_view4.ViewPlugin.fromClass(
+    class {
+      constructor(view) {
+        this.view = view;
+        this.overlay = new StickyOverlay(view.dom);
+        view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
+        this.schedule();
+      }
+      view;
+      overlay;
+      onScroll = () => this.schedule();
+      memo = null;
+      update(u4) {
+        if (u4.docChanged || u4.geometryChanged || u4.viewportChanged || u4.transactions.some((t4) => t4.effects.some((e3) => e3.is(refresh)))) this.schedule();
+      }
+      schedule() {
+        this.view.requestMeasure({ key: this, read: () => this.read(), write: (m3) => this.write(m3) });
+      }
+      read() {
+        const { view } = this;
+        const state = view.state;
+        const path = state.field(import_obsidian12.editorInfoField, false)?.file?.path;
+        if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian12.editorLivePreviewField, false)) return null;
+        if (this.memo?.doc !== state.doc) {
+          const text = state.doc.toString();
+          const parent = issueIdOf(path);
+          this.memo = { doc: state.doc, layout: layoutSubIssues(path, parent, text, import_obsidian12.parseYaml), subs: parseSubIssues(path, parent, text, import_obsidian12.parseYaml).subs };
+        }
+        const { layout, subs } = this.memo;
+        const open = [];
+        for (const b2 of layout) {
+          if (b2.cardTo === null || b2.id === null || !isSubOpen(ctx.settings.subOpen, path, b2.id)) continue;
+          const sub = subs.find((s3) => s3.id === b2.id);
+          if (!sub) continue;
+          const end = b2.bodyFrom !== null && b2.bodyTo !== null && b2.bodyTo > b2.bodyFrom ? b2.bodyTo : b2.cardTo;
+          open.push({ b: b2, sub, region: { top: view.lineBlockAt(b2.from).top, bottom: view.lineBlockAt(end).bottom } });
+        }
+        if (open.length === 0) return null;
+        const rect = view.scrollDOM.getBoundingClientRect();
+        const pick = pickSticky(
+          open.map((o4) => o4.region),
+          rect.top - view.documentTop,
+          this.overlay.rowHeight
+        );
+        if (pick === null) return null;
+        const host = view.contentDOM.querySelector(".vt-sub-card-host");
+        let card;
+        if (host) {
+          card = host.getBoundingClientRect();
+        } else {
+          const r3 = view.contentDOM.getBoundingClientRect();
+          const cs = getComputedStyle(view.contentDOM);
+          card = { left: r3.left + (parseFloat(cs.paddingLeft) || 0), right: r3.right - (parseFloat(cs.paddingRight) || 0) };
+        }
+        const box = stickyBox(view.scrollDOM, card);
+        const o3 = open[pick.index];
+        return { path, b: o3.b, sub: o3.sub, offset: pick.offset, box };
+      }
+      write(m3) {
+        if (m3 === null) return this.overlay.hide();
+        const { view } = this;
+        const { path, b: b2, sub } = m3;
+        this.overlay.show(
+          `${path}
+${JSON.stringify(sub)}`,
+          () => k(StickySubRow, {
+            ctx,
+            sub,
+            save: editorSave(ctx, view, path, sub.id),
+            onToggle: () => {
+              editorToggle(ctx, view, path, sub.id);
+              view.dispatch({ effects: import_view4.EditorView.scrollIntoView(b2.from, { y: "start" }) });
+            }
+          }),
+          m3.box,
+          m3.offset
+        );
+      }
+      destroy() {
+        this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
+        this.overlay.destroy();
+      }
+    }
+  );
+}
 function installSubCards(ctx, plugin) {
   const field = import_state4.StateField.define({
     create: (state) => build(ctx, state),
     update: (_value, tr) => build(ctx, tr.state),
     provide: (f4) => [import_view4.EditorView.decorations.from(f4, (v3) => v3.all), import_view4.EditorView.atomicRanges.of((view) => view.state.field(f4).folds)]
   });
-  plugin.registerEditorExtension(field);
+  plugin.registerEditorExtension([field, editorSticky(ctx)]);
   installReading(ctx, plugin);
 }
 
@@ -11304,7 +11604,7 @@ function ParentHead(props) {
 }
 function Lane(props) {
   const { ctx, date, board, lanes, lane, now } = props;
-  const cards = lanes[lane];
+  const cards2 = lanes[lane];
   const [over2, setOver] = d2(false);
   const [open, setOpen] = d2(lane === "routine");
   const collapsible = lane === "done" || lane === "routine";
@@ -11317,7 +11617,7 @@ function Lane(props) {
       "aria-label": LANE_TITLE[lane],
       ...isDragLane(lane) ? {
         onDragOver: (e3) => {
-          if (!accepts && !cards.some((c3) => c3.key === readDrag2(e3))) return;
+          if (!accepts && !cards2.some((c3) => c3.key === readDrag2(e3))) return;
           e3.preventDefault();
           setOver(true);
         },
@@ -11338,16 +11638,16 @@ function Lane(props) {
             lane === "top" && /* @__PURE__ */ u3(Icon, { name: "star" }),
             LANE_TITLE[lane]
           ] }),
-          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards.filter((c3) => cardStatus(board, c3) === "open").length}/${cards.length}` : cards.length })
+          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards2.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards2.filter((c3) => cardStatus(board, c3) === "open").length}/${cards2.length}` : cards2.length })
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
-          cardRuns(cards).map(
+          cardRuns(cards2).map(
             (run) => run.parent === null ? run.cards.map((card) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)) : /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
               /* @__PURE__ */ u3(ParentHead, { ctx, parentId: run.parent }),
               run.cards.map((card) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key))
             ] }, `${run.parent}/${run.cards[0].key}`)
           ),
-          cards.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] })
+          cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] })
         ] })
       ]
     }
