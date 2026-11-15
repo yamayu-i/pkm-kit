@@ -856,21 +856,6 @@ button.vt-badge:disabled::after {
 	color: var(--vt-on-surface);
 }
 
-/* 今日のボードに載せる（Pick）: 載せているあいだは色をつける */
-.vt-icon-button.vt-pick.is-on,
-.vt-field-chip.vt-pick.is-on {
-	background: var(--vt-secondary-container);
-	color: var(--vt-on-secondary-container);
-}
-
-.vt-field-chip.vt-pick.is-on .vt-icon {
-	color: inherit;
-}
-
-.vt-subissue .vt-pick {
-	flex: none;
-}
-
 /* ---------- 工数 ---------- */
 
 .vt-effort {
@@ -1985,9 +1970,17 @@ button.vt-badge:disabled::after {
 	color: var(--vt-on-red-container);
 }
 
+.vt-play.vt-pick {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
 .vt-play .vt-icon svg {
 	width: 16px;
 	height: 16px;
+}
+
+.vt-play:not(.vt-pick) .vt-icon svg {
 	fill: currentColor;
 }
 

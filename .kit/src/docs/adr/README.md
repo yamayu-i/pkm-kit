@@ -97,4 +97,5 @@
 | [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
 | [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
 | [0165](0165-issue-screen-pick-and-reading.md) | 承認 | issue の本文表示を下部に集約し、Pick の後にタイマーを出す |
+| [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 <!-- adr-index:end -->

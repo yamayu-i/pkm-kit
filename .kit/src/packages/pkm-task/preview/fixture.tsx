@@ -150,7 +150,14 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 };
 
 const name = location.hash.slice(1) || "header";
-if (name === "header" || name === "routine" || name === "member" || name === "timeline") {
+const headerPaths: Record<string, string> = {
+	header: "issue/i-2.md",
+	"header-unpicked": "issue/i-14.md",
+	"header-picked": "issue/i-1.md",
+	"header-someday": "issue/i-9.md",
+	"header-closed": "issue/i-12.md",
+};
+if (name in headerPaths || name === "routine" || name === "member" || name === "timeline") {
 	for (const [id, width] of [
 		["wide", 760],
 		["narrow", 360],
@@ -174,7 +181,7 @@ if (name === "header" || name === "routine" || name === "member" || name === "ti
 				? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" })
 				: name === "member"
 					? h(MemberHeader, { ctx: ctx as never, path: "member/m-1.md" })
-					: h(IssueHeader, { ctx: ctx as never, path: "issue/i-2.md" });
+					: h(IssueHeader, { ctx: ctx as never, path: headerPaths[name]! });
 		render(header, el);
 	}
 } else {

@@ -1,9 +1,19 @@
 import { expect, it } from "vitest";
-import { pickIssuePatch, pickSubPatch } from "../src/core/pick";
+import { pickIssuePatch, pickSubPatch, pickTimerControl } from "../src/core/pick";
+import { STATUSES } from "../src/core/schema";
 import { parseIssue } from "../src/core/schema";
 import { parseSubIssues } from "../src/core/sub-issue";
 import { isNext } from "../src/core/index";
 import { parse } from "yaml";
+
+it.each(STATUSES)("issue とサブの %s で Pick・再生・停止の条件をそろえる", (status) => {
+	const done = status === "closed" || status === "canceled";
+	expect(pickTimerControl(status, false, false)).toBe(done ? null : "pick");
+	expect(pickTimerControl(status, true, false)).toBe(done ? null : "start");
+	// 済みにした後やボードから外れた後も、記録を停止できる。
+	expect(pickTimerControl(status, false, true)).toBe("stop");
+	expect(pickTimerControl(status, true, true)).toBe("stop");
+});
 it("Next なら変更せず、それ以外は Next に必要な項目を変更する", () => {
 	const issue = parseIssue("issue/i-1.md", {type:"issue", id:"i-1", summary:"Task", status:"waiting", scheduled:"2026-11-20", tickler:"2026-11-19"}).value!;
 	const patch = pickIssuePatch(issue)!;
