@@ -24,3 +24,13 @@ export function pickSticky(regions: readonly StickyRegion[], edge: number, rowHe
 	});
 	return pick;
 }
+
+/**
+ * 開閉のあとに足すスクロールの量（ADR-0179）。before / after は、開閉の前と後の題の行の上端（画面の座標）、edge はスクロール領域の上端。
+ * - 題の行から開閉したとき: 題の行の位置を保つ（ずれた分だけ戻す）
+ * - 上端に浮かんだ行から閉じたとき（floating）: 題を上端に出す
+ */
+export function toggleScrollDelta(before: number, after: number, edge: number, floating: boolean): number {
+	const delta = floating ? after - edge : after - before;
+	return Math.abs(delta) < 1 ? 0 : delta;
+}

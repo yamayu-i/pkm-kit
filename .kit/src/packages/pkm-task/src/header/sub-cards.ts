@@ -1,8 +1,8 @@
 import { StateEffect, StateField, type EditorState, type Range } from "@codemirror/state";
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
-import { MarkdownRenderChild, editorInfoField, editorLivePreviewField, parseYaml, type Plugin } from "obsidian";
+import { MarkdownRenderChild, MarkdownView, editorInfoField, editorLivePreviewField, parseYaml, type Plugin } from "obsidian";
 import { h, render } from "preact";
-import { pickSticky, type StickyRegion } from "../core/sub-sticky";
+import { pickSticky, toggleScrollDelta, type StickyRegion } from "../core/sub-sticky";
 import {
 	cursorInside,
 	isSubOpen,
@@ -16,6 +16,7 @@ import {
 } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
 import { ReadingCard, StickySubRow, SubCard, UnreadableCard, issueIdOf, type SaveSub } from "../obsidian/sub-card";
+import { setSubRevealer } from "./sub-reveal";
 import { StickyOverlay, stickyBox } from "./sub-sticky-overlay";
 
 const ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
@@ -65,6 +66,42 @@ function syncReading(ctx: TaskContext, path: string): void {
 	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b.id));
 	for (const fn of openListeners) fn();
 	readingSticky?.scheduleAll();
+}
+
+/** 開閉で描き直した後に、題の行の位置を戻す（ADR-0179）。Reading の遅延描画で位置が変わるので、次の描画でもう一度確かめる */
+function keepReadingScroll(scroller: HTMLElement, el: HTMLElement, before: number, floating: boolean, tries = 2): void {
+	window.requestAnimationFrame(() => {
+		if (!el.isConnected) return;
+		const d = toggleScrollDelta(before, el.getBoundingClientRect().top, scroller.getBoundingClientRect().top, floating);
+		if (d !== 0) scroller.scrollTop += d;
+		if (tries > 1) keepReadingScroll(scroller, el, before, floating, tries - 1);
+	});
+}
+
+/** Reading で、そのサブのカードのセクション（DOM にあるもの） */
+function readingCardEl(path: string, id: string, scroller: HTMLElement): HTMLElement | null {
+	for (const c of cards.get(path) ?? []) if (c.id === id && c.el.isConnected && scroller.contains(c.el)) return c.el;
+	return null;
+}
+
+/** Reading で、そのサブのカードの題をスクロール領域の上端に出す。カードが DOM になければ、行番号で近くまでスクロールしてから合わせる */
+function readingScrollToCard(ctx: TaskContext, scroller: HTMLElement, path: string, id: string, line: number): void {
+	const el = readingCardEl(path, id, scroller);
+	if (el) return keepReadingScroll(scroller, el, 0, true);
+	const view = ctx.app.workspace
+		.getLeavesOfType("markdown")
+		.map((l) => l.view)
+		.find((v): v is MarkdownView => v instanceof MarkdownView && v.previewMode.containerEl.contains(scroller));
+	view?.previewMode.applyScroll(line);
+	window.requestAnimationFrame(() => {
+		const found = readingCardEl(path, id, scroller);
+		if (found) keepReadingScroll(scroller, found, 0, true);
+	});
+}
+
+/** Reading のスクロール領域 */
+function readingScroller(el: HTMLElement): HTMLElement | null {
+	return el.matches(".markdown-preview-view") ? el : (el.closest<HTMLElement>(".markdown-preview-view") ?? el.querySelector<HTMLElement>(".markdown-preview-view"));
 }
 
 /** Reading: 開いたサブの題の行を、スクロール領域の上端に浮かべる（ADR-0161 の追記） */
@@ -163,7 +200,8 @@ class ReadingSticky {
 							subs.map((s) => s.id),
 						);
 						syncReading(ctx, f.path);
-						if (f.card.el.isConnected) f.card.el.scrollIntoView({ block: "start" });
+						// 閉じると本文が消えるので、そのカードの題を上端に出す（ADR-0179）
+						readingScrollToCard(ctx, scroller, f.path, sub.id, f.card.line);
 					},
 				}),
 			box,
@@ -237,8 +275,12 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 					},
 					onToggle: (ids: string[]) => {
 						if (r.id === null) return;
+						// 押した題の行の位置を保つ（ADR-0179）
+						const before = el.getBoundingClientRect().top;
+						const scroller = readingScroller(el);
 						toggleOpen(ctx, path, r.id, ids);
 						syncReading(ctx, path);
+						if (scroller) keepReadingScroll(scroller, el, before, false);
 					},
 				}),
 				host,
@@ -265,8 +307,28 @@ function editorSave(ctx: TaskContext, view: EditorView, path: string, id: string
 	};
 }
 
-/** 開閉を切り替える。閉じるとき、カーソルが本文の中にあれば項目のカードの終わりに移してから隠す */
-function editorToggle(ctx: TaskContext, view: EditorView, path: string, id: string): void {
+/** Live Preview の、文書の位置の行の上端（画面の座標） */
+function editorTop(view: EditorView, pos: number): number {
+	return view.lineBlockAt(pos).top + view.documentTop;
+}
+
+/** 開閉で描き直した後に、題の行の位置を戻す（ADR-0179）。画面外の高さは見積もりなので、描いた後にもう一度確かめる */
+function keepEditorScroll(view: EditorView, pos: number, before: number, floating: boolean, tries = 2): void {
+	view.requestMeasure({
+		read: () => toggleScrollDelta(before, editorTop(view, pos), view.scrollDOM.getBoundingClientRect().top, floating),
+		write: (d) => {
+			if (d === 0) return;
+			view.scrollDOM.scrollTop += d;
+			if (tries > 1) keepEditorScroll(view, pos, before, floating, tries - 1);
+		},
+	});
+}
+
+/**
+ * 開閉を切り替える。閉じるとき、カーソルが本文の中にあれば項目のカードの終わりに移してから隠す。
+ * 押した題の行の位置を保つ。上端に浮かんだ行から閉じたとき（floating）は、そのカードの題を上端に出す（ADR-0179）
+ */
+function editorToggle(ctx: TaskContext, view: EditorView, path: string, id: string, floating = false): void {
 	const parent = issueIdOf(path);
 	const layout = layoutSubIssues(path, parent, view.state.doc.toString(), parseYaml);
 	const wasOpen = isSubOpen(ctx.settings.subOpen, path, id);
@@ -277,9 +339,11 @@ function editorToggle(ctx: TaskContext, view: EditorView, path: string, id: stri
 		layout.flatMap((b) => (b.id ? [b.id] : [])),
 	);
 	const b = layout.find((x) => x.id === id);
+	const before = b ? editorTop(view, b.from) : 0;
 	const inBody = wasOpen && b && b.cardTo !== null && b.bodyFrom !== null && b.bodyTo !== null && view.state.selection.ranges.some((r) => r.from <= b.bodyTo! && r.to >= b.bodyFrom!);
 	view.dispatch({ effects: refresh.of(null), ...(inBody ? { selection: { anchor: b!.cardTo! } } : {}) });
 	syncReading(ctx, path);
+	if (b) keepEditorScroll(view, b.from, before, floating);
 }
 
 /** そのブロックの生の md を見せる（項目の範囲の中、先頭の次にカーソルを置く） */
@@ -394,6 +458,9 @@ function build(ctx: TaskContext, state: EditorState): Built {
 	return { all: Decoration.set(all, true), folds: Decoration.set(folds, true) };
 }
 
+/** 開いている Live Preview のエディタ（「Open note」でカードを探すため） */
+const liveViews = new Set<EditorView>();
+
 interface EditorStickyMeasure {
 	path: string;
 	b: SubLayout;
@@ -412,6 +479,7 @@ function editorSticky(ctx: TaskContext) {
 
 			constructor(private readonly view: EditorView) {
 				this.overlay = new StickyOverlay(view.dom);
+				liveViews.add(view);
 				view.scrollDOM.addEventListener("scroll", this.onScroll, { passive: true });
 				this.schedule();
 			}
@@ -468,7 +536,7 @@ function editorSticky(ctx: TaskContext) {
 			private write(m: EditorStickyMeasure | null): void {
 				if (m === null) return this.overlay.hide();
 				const { view } = this;
-				const { path, b, sub } = m;
+				const { path, sub } = m;
 				this.overlay.show(
 					`${path}\n${JSON.stringify(sub)}`,
 					() =>
@@ -476,11 +544,8 @@ function editorSticky(ctx: TaskContext) {
 							ctx,
 							sub,
 							save: editorSave(ctx, view, path, sub.id),
-							onToggle: () => {
-								editorToggle(ctx, view, path, sub.id);
-								// 閉じると本文が消えるので、そのカードを上端に出す（読んでいた位置を見失わない）
-								view.dispatch({ effects: EditorView.scrollIntoView(b.from, { y: "start" }) });
-							},
+							// 閉じると本文が消えるので、そのカードの題を上端に出す（読んでいた位置を見失わない）
+							onToggle: () => editorToggle(ctx, view, path, sub.id, true),
 						}),
 					m.box,
 					m.offset,
@@ -488,6 +553,7 @@ function editorSticky(ctx: TaskContext) {
 			}
 
 			destroy(): void {
+				liveViews.delete(this.view);
 				this.view.scrollDOM.removeEventListener("scroll", this.onScroll);
 				this.overlay.destroy();
 			}
@@ -509,5 +575,44 @@ export function installSubCards(ctx: TaskContext, plugin: Plugin): void {
 		provide: (f) => [EditorView.decorations.from(f, (v) => v.all), EditorView.atomicRanges.of((view) => view.state.field(f).folds)],
 	});
 	plugin.registerEditorExtension([field, editorSticky(ctx)]);
+	setSubRevealer((sub) => revealSubIn(ctx, sub));
+	plugin.register(() => setSubRevealer(null));
 	installReading(ctx, plugin);
+}
+
+/**
+ * サブを開き、下部のカードの題を画面の上端に出す（「Open note」。ADR-0179）。
+ * そのノートを開いているビュー（今のビューを優先）の表示に合わせて、Live Preview ではエディタ、Reading では描いたセクションを動かす
+ */
+function revealSubIn(ctx: TaskContext, sub: SubIssue): void {
+	const { path, id } = sub;
+	if (!isSubOpen(ctx.settings.subOpen, path, id)) {
+		toggleOpen(
+			ctx,
+			path,
+			id,
+			ctx.store.index.subs(sub.parent).map((s) => s.id),
+		);
+	}
+	syncReading(ctx, path);
+	const active = ctx.app.workspace.getActiveViewOfType(MarkdownView);
+	const view =
+		active?.file?.path === path
+			? active
+			: ctx.app.workspace
+					.getLeavesOfType("markdown")
+					.map((l) => l.view)
+					.find((v): v is MarkdownView => v instanceof MarkdownView && v.file?.path === path);
+	if (!view) return;
+	if (view.getMode() === "preview") {
+		const scroller = readingScroller(view.previewMode.containerEl);
+		const b = layoutSubIssues(path, sub.parent, ctx.store.text(path) ?? "", parseYaml).find((x) => x.id === id);
+		if (scroller && b) readingScrollToCard(ctx, scroller, path, id, b.startLine);
+		return;
+	}
+	const ev = [...liveViews].find((v) => view.containerEl.contains(v.dom));
+	if (!ev) return;
+	const b = layoutSubIssues(path, sub.parent, ev.state.doc.toString(), parseYaml).find((x) => x.id === id);
+	if (!b) return;
+	ev.dispatch({ effects: [refresh.of(null), EditorView.scrollIntoView(b.from, { y: "start" })] });
 }

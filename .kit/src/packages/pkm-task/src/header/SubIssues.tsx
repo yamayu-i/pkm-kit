@@ -10,6 +10,7 @@ import type { TaskContext } from "../obsidian/context";
 import { pickMember } from "../obsidian/issue-editors";
 import { PickTimer } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
+import { revealSub } from "./sub-reveal";
 import type { TimelineScale } from "../core/timeline";
 import { FilterChip } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
@@ -148,6 +149,9 @@ function SubRow(props: {
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 				</button>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
+				<button type="button" class="vt-icon-button" aria-label="Open note" title="Open note" onClick={() => revealSub(sub)}>
+					<Icon name="file-text" />
+				</button>
 				<PickTimer ctx={ctx} keyOf={sub.key} />
 				<button type="button" class="vt-icon-button" aria-label="More actions" title="More actions" onClick={moreMenu}>
 					<Icon name="more-horizontal" />

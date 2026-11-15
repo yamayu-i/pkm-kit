@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickSticky } from "../src/core/sub-sticky";
+import { pickSticky, toggleScrollDelta } from "../src/core/sub-sticky";
 
 describe("pickSticky", () => {
 	const regions = [
@@ -29,5 +29,22 @@ describe("pickSticky", () => {
 
 	it("上端の位置が不明（画面の外）でも、本文が上端をまたげば選ぶ", () => {
 		expect(pickSticky([{ top: -Infinity, bottom: Infinity }], 100, 44)).toEqual({ index: 0, offset: 0 });
+	});
+});
+
+describe("toggleScrollDelta（ADR-0179）", () => {
+	it("題の行から開閉したら、題の行の位置を保つ", () => {
+		expect(toggleScrollDelta(300, 300, 0, false)).toBe(0);
+		expect(toggleScrollDelta(300, 120, 0, false)).toBe(-180);
+		expect(toggleScrollDelta(300, 420, 0, false)).toBe(120);
+	});
+
+	it("1px 未満のずれは直さない", () => {
+		expect(toggleScrollDelta(300, 300.4, 0, false)).toBe(0);
+	});
+
+	it("浮かんだ行から閉じたら、題を上端に出す", () => {
+		expect(toggleScrollDelta(40, -800, 40, true)).toBe(-840);
+		expect(toggleScrollDelta(40, 40, 40, true)).toBe(0);
 	});
 });
