@@ -130,7 +130,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"open-members",
 			"open-labels",
 			"open-sidebar",
-			"capture-issues",
+				"capture-issues",
+			"open-tasks-now",
 		]);
 		// Board groups の View は廃止した（ADR-0137）
 		expect(mock.views).toHaveLength(10);

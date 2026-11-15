@@ -114,6 +114,8 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		const prev = snapshot(issue, full);
 		try {
 			await ctx.writer.update(issue.path, full);
+			ctx.settings.lastOrganizedAt = new Date().toISOString();
+			void ctx.saveSettings();
 			setUndo({ path: issue.path, id: issue.id, prev, label });
 			setHandled(new Set([...handled, issue.id]));
 			setCount(count + 1);

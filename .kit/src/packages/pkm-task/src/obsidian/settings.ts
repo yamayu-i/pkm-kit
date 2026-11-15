@@ -8,9 +8,13 @@ export interface TaskSettings {
 	deviceName: string;
 	/** Issue List の保存した条件 */
 	presets: { name: string; query: IssueQuery }[];
+	/** この端末で最後に Organize した時刻（ISO。Tasks Now の Organized に使う。ADR-0144） */
+	lastOrganizedAt: string | null;
+	/** Tasks Now で一時停止した記録の群（鍵の一覧。再開で一括して始める。ADR-0144） */
+	pausedTasks: string[];
 }
 
-export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [] };
+export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [] };
 
 export { sanitizeDeviceName } from "../core/worklog";
 

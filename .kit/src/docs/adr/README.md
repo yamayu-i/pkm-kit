@@ -88,4 +88,5 @@
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認 | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
+| [0144](0144-tasks-now-dialog.md) | 提案 | リボンの「Tasks Now」ダイアログ |
 <!-- adr-index:end -->

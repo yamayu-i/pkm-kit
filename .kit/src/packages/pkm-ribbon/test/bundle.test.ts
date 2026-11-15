@@ -102,6 +102,7 @@ function load({ commands = new Set(), plugins = {} }: Options = {}) {
 const ORDER = [
 	["calendar", "Open today's daily note", "pkm-template:open-todays-daily"],
 	["sun", "Open Today", "pkm-task:open-daily"],
+	["timer", "Tasks Now", "pkm-task:open-tasks-now"],
 	["bell", "Open PKM Updates", "pkm-updates:open-view"],
 	["list-plus", "Capture issues", "pkm-task:capture-issues"],
 	["refresh-cw", "Git: Sync", "pkm-git:sync"],
@@ -136,8 +137,9 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、A
 		for (const r of ribbon) r.run();
 		expect(notices).toHaveLength(ORDER.length);
 		expect(notices[0]).toContain("pkm-template");
-		expect(notices[2]).toContain("pkm-updates");
-		expect(notices[4]).toContain("pkm-git");
+		expect(notices[2]).toContain("pkm-task");
+		expect(notices[3]).toContain("pkm-updates");
+		expect(notices[5]).toContain("pkm-git");
 	});
 
 	describe("バッジ（ADR-0070 の 6）", () => {
@@ -154,7 +156,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0029、A
 					},
 				},
 			});
-			const el = ribbon[2]!.el;
+			const el = ribbon[3]!.el;
 			expect(el.badge()).toBeNull();
 			layoutReady();
 			expect(asked).toEqual(["pkm-updates:open-view"]);

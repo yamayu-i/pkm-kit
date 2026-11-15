@@ -1,8 +1,10 @@
 import { Notice, Platform, Plugin } from "obsidian";
+import { h } from "preact";
 import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data.ts";
 import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
 import { installTaskHeaders } from "./header/extension";
 import { installSubAreaHiding } from "./header/hide-sub-area";
+import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
@@ -21,6 +23,7 @@ import { RoutineListView } from "./views/RoutineListView";
 import { ScheduledView } from "./views/ScheduledView";
 import { SidebarView } from "./views/SidebarView";
 import { SomedayView } from "./views/SomedayView";
+import { TasksNowDialog } from "./views/TasksNowDialog";
 
 /** View の一覧（ADR-0009, 0010, 0021, 0035） */
 const VIEWS: ViewSpec[] = [
@@ -92,6 +95,17 @@ export default class PkmTaskPlugin extends Plugin {
 		installTaskHeaders(ctx, this);
 		installSubAreaHiding(this);
 		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
+		// リボンの「Tasks Now」（pkm-ribbon がこのコマンドを呼ぶ。ADR-0144）
+		this.addCommand({
+			id: "open-tasks-now",
+			name: "Open Tasks Now",
+			icon: "timer",
+			callback: () => {
+				const modal = new PreactModal(this.app, "Tasks Now", () => h(TasksNowDialog, { ctx }));
+				modal.modalEl.addClass("vt-now-modal");
+				modal.open();
+			},
+		});
 		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
 		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）
 		registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
