@@ -56,6 +56,7 @@ function installReading(ctx: TaskContext, plugin: Plugin): void {
 		if (r.role === "hide") {
 			el.addClass("vt-subissue-area-hidden");
 		} else if (r.role === "card") {
+			el.addClass("vt-sub-card-section");
 			const b = layout[r.index]!;
 			const raw = info.text.slice(b.from, b.cardTo ?? layout[r.index + 1]?.from ?? info.text.length).trimEnd();
 			const host = el.createDiv();
@@ -216,15 +217,16 @@ function build(ctx: TaskContext, state: EditorState): Built {
 		if (b.cardTo === null || b.bodyFrom === null || b.bodyTo === null) continue;
 		const sub = b.id === null ? null : (subs.find((s) => s.id === b.id) ?? null);
 		const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
-		// カーソルが項目のブロックの中にある間は、生の md を見せる
-		if (!touches(b.from, b.cardTo)) {
-			all.push(Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b.from, b.cardTo), { from: b.from, cardTo: b.cardTo }), block: true }).range(b.from, b.cardTo));
+		// 閉じたサブは末尾の空行までカードに含める。項目と本文を別々に隠すと空行だけが残る。
+		const sectionTo = layout[b.index + 1] ? layout[b.index + 1]!.from - 1 : text.length;
+		const collapsed = sub !== null && !open && !touches(b.cardTo, sectionTo);
+		const cardTo = collapsed ? sectionTo : b.cardTo;
+		// カーソルが項目や閉じた本文にある間は、生の md を見せる
+		if (!touches(b.from, cardTo)) {
+			all.push(Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b.from, b.cardTo), { from: b.from, cardTo: b.cardTo }), block: true }).range(b.from, cardTo));
 		}
-		// 閉じたサブの本文は隠す。選択が重なる間は見せる
-		if (sub !== null && !open && b.bodyTo > b.bodyFrom && !touches(b.bodyFrom, b.bodyTo)) {
-			const fold = Decoration.replace({ block: true }).range(b.bodyFrom, b.bodyTo);
-			all.push(fold);
-			folds.push(fold);
+		if (collapsed && sectionTo > b.cardTo) {
+			folds.push(Decoration.replace({ block: true }).range(b.cardTo, sectionTo));
 		}
 	}
 	return { all: Decoration.set(all, true), folds: Decoration.set(folds, true) };

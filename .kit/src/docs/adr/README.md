@@ -65,7 +65,7 @@
 | [0072](0072-view-selector.md) | 承認 | Cmd+K で一覧の View を探して開くダイアログを、新しいプラグイン pkm-view-selector にする |
 | [0075](0075-running-timer-status-bar.md) | 承認 | 記録中のタイマーを、PC のステータスバーに出す |
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
-| [0077](0077-task-header-dom-mount.md) | 承認 | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
+| [0077](0077-task-header-dom-mount.md) | 一部置換（ADR-0165） | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
 | [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
 | [0085](0085-drawio-cli-build-render.md) | 置換（ADR-0111） | Claude Code が図を作る・直せるように、CLI に build / render / inspect を足し、描画を XML から自前で作る |
 | [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
@@ -86,7 +86,7 @@
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
 | [0135](0135-sub-issues-in-issue-file.md) | 承認（一部置換: 0152） | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
-| [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
+| [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165） | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 承認 | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認 | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
@@ -94,6 +94,7 @@
 | [0154](0154-tasks-now-dialog.md) | 承認 | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
 | [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
-| [0161](0161-sub-issue-cards-in-body.md) | 承認 | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
+| [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
 | [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
+| [0165](0165-issue-screen-pick-and-reading.md) | 承認 | issue の本文表示を下部に集約し、Pick の後にタイマーを出す |
 <!-- adr-index:end -->

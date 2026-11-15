@@ -17,7 +17,7 @@
 
 /* issue・routine・member を開いているときは、Live Preview とリーディングビューで Properties 欄を隠す（ヘッダーが代わりに表示する。ADR-0077） */
 .markdown-source-view.is-live-preview.show-properties:has(.vt-header) .metadata-container:not(.mod-error),
-.markdown-reading-view .markdown-preview-view .markdown-preview-sizer:has(> .vt-header) .metadata-container:not(.mod-error) {
+.markdown-reading-view .markdown-preview-view .markdown-preview-sizer:has(.vt-header) .metadata-container:not(.mod-error) {
 	display: none;
 }
 
@@ -3513,7 +3513,7 @@ body.is-mobile .vt-toast {
 }
 
 .vt-sub-card {
-	margin: 12px 0 4px;
+	margin: 0;
 }
 
 .vt-sub-card .vt-subissue {
@@ -3665,3 +3665,8 @@ body.is-mobile .vt-toast {
 	color: var(--vt-on-surface-variant);
 	text-align: center;
 }
+
+/* 上部の題は一覧のラベル。本文の開閉は下部のカードが担う。 */
+.vt-subissues div.vt-subissue-summary { cursor: inherit; }
+.vt-subissues div.vt-subissue-summary:hover .vt-subissue-summary-text { color: inherit; }
+.markdown-preview-view .vt-sub-card-section { margin-block: 0; }

@@ -1,15 +1,14 @@
-import { Component, MarkdownRenderer, Menu } from "obsidian";
-import { useEffect, useRef, useState } from "preact/hooks";
-import { formatShortDate, localToday } from "../core/dates";
+import { Menu } from "obsidian";
+import { useState } from "preact/hooks";
+import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
 import { isDoneStatus } from "../core/status-log";
 import { splitQuickAdd, subCounts, subHint, visibleSubs, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
-import { startTimer, stopTimer } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { pickMember } from "../obsidian/issue-editors";
-import { PickToggle } from "../obsidian/pick-toggle";
+import { PickTimer } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import type { TimelineScale } from "../core/timeline";
 import { FilterChip } from "../ui/FilterChip";
@@ -20,20 +19,18 @@ import { StatusIcon } from "../ui/StatusIcon";
 /** ドラッグで運ぶ値の種類（同じ親のサブの合成キー） */
 const DRAG_TYPE = "application/x-pkm-sub-issue";
 
-/** 親の issue 画面のサブイシュー（ADR-0142）: 1 行の一覧、アコーディオン、closed の表示の切り替え、素早い追加、並べ替え */
+/** 親の issue 画面のサブイシュー（ADR-0142）: 1 行の一覧、closed の表示の切り替え、素早い追加、並べ替え */
 export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; now: number }) {
 	const { ctx, issue, index, now } = props;
 	const [showClosed, setShowClosed] = useState(false);
 	// 表示（List / Timeline）と目盛り（Day / Week）は保存しない（ADR-0143）
 	const [mode, setMode] = useState<"list" | "timeline">("list");
 	const [scale, setScale] = useState<TimelineScale>("day");
-	const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
 	const subs = index.subs(issue.id);
 	const shown = visibleSubs(subs, showClosed);
 	const counts = subCounts(subs);
 	const effort = index.effortByKey(now);
 	const visibleKeys = shown.map((s) => s.key);
-	const toggle = (key: string) => setOpen((o) => (o.has(key) ? new Set([...o].filter((k) => k !== key)) : new Set([...o, key])));
 	const move = (key: string, before: string | null) => void ctx.writer.moveSubBefore(key, before).catch((e) => ctx.report("サブを並べ替えられませんでした", e));
 	return (
 		<section class="vt-card vt-subissues">
@@ -68,10 +65,7 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 							ctx={ctx}
 							sub={sub}
 							index={index}
-							now={now}
 							actual={effort.get(sub.key) ?? 0}
-							open={open.has(sub.key)}
-							onToggle={() => toggle(sub.key)}
 							visible={visibleKeys}
 							onDrop={(dragged) => move(dragged, sub.key)}
 						/>
@@ -96,17 +90,13 @@ function SubRow(props: {
 	ctx: TaskContext;
 	sub: SubIssue;
 	index: TaskIndex;
-	now: number;
 	actual: number;
-	open: boolean;
-	onToggle: () => void;
 	visible: string[];
 	onDrop: (dragged: string) => void;
 }) {
-	const { ctx, sub, index, now, actual, open } = props;
+	const { ctx, sub, index, actual } = props;
 	const [dropBefore, setDropBefore] = useState(false);
 	const running = index.running(sub.key);
-	const elapsed = running.reduce((m, l) => Math.max(m, now - l.fromMs), 0);
 	const hint = subHint(sub, localToday());
 	const save = (patch: SubIssuePatch) => void ctx.writer.updateSub(sub.key, patch).catch((e) => ctx.report("サブを保存できませんでした", e));
 	const changeStatus = (next: Status) => {
@@ -133,7 +123,7 @@ function SubRow(props: {
 	};
 	return (
 		<li
-			class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}${open ? " is-open" : ""}`}
+			class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`}
 			draggable
 			onDragStart={(e) => e.dataTransfer?.setData(DRAG_TYPE, sub.key)}
 			onDragOver={(e) => {
@@ -153,80 +143,18 @@ function SubRow(props: {
 				<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
 					<StatusIcon status={sub.status} />
 				</button>
-				<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
+				<div class="vt-subissue-summary" title={sub.summary}>
 					<span class="vt-subissue-summary-text">{sub.summary}</span>
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
-				</button>
+				</div>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
-				{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
-				<button
-					type="button"
-					class={`vt-play${running.length > 0 ? " is-running" : ""}`}
-					aria-label={running.length > 0 ? "Stop timer" : "Start timer"}
-					title={running.length > 0 ? "Stop timer" : "Start timer"}
-					onClick={() => void (running.length > 0 ? stopTimer(ctx, [sub.key]) : startTimer(ctx, [sub.key]))}
-				>
-					<Icon name={running.length > 0 ? "square" : "play"} />
-					{running.length > 0 && <span class="vt-num">{formatMinutes(elapsed / 60_000)}</span>}
-				</button>
+				{(!isDoneStatus(sub.status) || running.length > 0) && <PickTimer ctx={ctx} keyOf={sub.key} />}
 				<button type="button" class="vt-icon-button" aria-label="More actions" title="More actions" onClick={moreMenu}>
 					<Icon name="more-horizontal" />
 				</button>
 			</div>
-			{open && <SubDetail ctx={ctx} sub={sub} index={index} />}
 		</li>
 	);
-}
-
-/** 開いた行の中身: 項目と、本文（Markdown。読み取り専用）と Edit */
-function SubDetail(props: { ctx: TaskContext; sub: SubIssue; index: TaskIndex }) {
-	const { ctx, sub, index } = props;
-	const member = sub.delegatedTo === null ? null : index.members.get(sub.delegatedTo);
-	const deps = sub.dependsOn.map((d) => index.sub(`${sub.parent}#${d}`)?.summary ?? d);
-	const facts: [string, string][] = [
-		...(sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} – ${sub.end ? formatShortDate(sub.end) : "?"}`] as [string, string]] : []),
-		...(sub.scheduled !== null ? [["Calendar", sub.scheduled.slice(5).replace("-", "/")] as [string, string]] : []),
-		...(sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)] as [string, string]] : []),
-		...(sub.deadline ? [["Deadline", formatShortDate(sub.deadline)] as [string, string]] : []),
-		...(sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)] as [string, string]] : []),
-		...(deps.length > 0 ? [["Depends on", deps.join(", ")] as [string, string]] : []),
-		...(member ? [["Delegated to", member.nickname] as [string, string]] : []),
-	];
-	return (
-		<div class="vt-subissue-detail">
-			{facts.length > 0 && (
-				<dl class="vt-subissue-facts">
-					{facts.map(([k, v]) => (
-						<>
-							<dt>{k}</dt>
-							<dd>{v}</dd>
-						</>
-					))}
-				</dl>
-			)}
-			{sub.body.trim() ? <MarkdownBody ctx={ctx} markdown={sub.body} sourcePath={sub.path} /> : <p class="vt-muted">No notes</p>}
-			<div class="vt-subissue-detail-actions">
-				<button type="button" class="vt-button is-text" onClick={() => openSubEditor(ctx, sub)}>
-					<Icon name="pencil" /> Edit
-				</button>
-			</div>
-		</div>
-	);
-}
-
-/** Markdown を Obsidian の描画で出す（HTML 文字列を入れない） */
-function MarkdownBody(props: { ctx: TaskContext; markdown: string; sourcePath: string }) {
-	const ref = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		const el = ref.current;
-		if (!el) return;
-		const owner = new Component();
-		owner.load();
-		while (el.firstChild) el.removeChild(el.firstChild);
-		void MarkdownRenderer.render(props.ctx.app, props.markdown, el, props.sourcePath, owner);
-		return () => owner.unload();
-	}, [props.markdown, props.sourcePath]);
-	return <div class="vt-subissue-body markdown-rendered" ref={ref} />;
 }
 
 /** 素早い追加（ADR-0142）: Enter で 1 件作り、フォーカスを残す。複数行の貼り付けは行ごとに作る。末尾へのドラッグもここで受ける */

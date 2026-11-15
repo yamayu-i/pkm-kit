@@ -382,6 +382,10 @@ var import_obsidian9 = require("obsidian");
 
 // ../shared/src/header-mount.ts
 var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
+function headerContainer(sizer) {
+  if (!sizer.className.split(" ").includes("markdown-preview-sizer")) return sizer;
+  return Array.from(sizer.children).find((c3) => c3.className.split(" ").includes("mod-header")) ?? null;
+}
 function findHost(sizer, className) {
   for (const child of Array.from(sizer.children)) if (child.className === className) return child;
   return null;
@@ -436,7 +440,10 @@ function installHeaderMount(options) {
   const report = (errors) => {
     for (const e3 of errors) console.error(`[${plugin.manifest.id}] header`, e3);
   };
-  const sizersOf = (view) => Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+  const sizersOf = (view) => Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS)).flatMap((sizer) => {
+    const target = headerContainer(sizer);
+    return target ? [target] : [];
+  });
   const watch = (view, sizer, host) => {
     unwatch(sizer);
     const keep = new MutationObserver(() => {
@@ -2967,6 +2974,31 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
+// src/core/pick.ts
+function pickIssuePatch(issue) {
+  return isNext(issue) ? null : { status: "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
+}
+function pickSubPatch(sub, today) {
+  const future = sub.start !== null && sub.start > today;
+  if (sub.status === "open" && sub.scheduled === null && !future) return null;
+  return { status: "open", delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
+}
+
+// src/ui/hooks.ts
+function useStoreVersion(store) {
+  const [version, setVersion] = d2(store.version);
+  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
+  return version;
+}
+function useNow(intervalMs = 3e4) {
+  const [now, setNow] = d2(Date.now());
+  h2(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
 // src/obsidian/board-actions.ts
 var import_obsidian4 = require("obsidian");
 
@@ -3134,9 +3166,6 @@ var addToBoard = (ctx, date, ids) => guard(
   "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
   ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
 );
-function toggleOnBoard(ctx, date, key) {
-  return isOnBoard(ctx.store.index, date, key) ? removeFromBoard(ctx, date, key) : addToBoard(ctx, date, [key]);
-}
 async function createOnBoard(ctx, date, summary) {
   try {
     const { created } = await ctx.writer.createIssues([summary], { clarified: true });
@@ -3243,92 +3272,6 @@ function stopTimer(ctx, ids) {
   if (running.length === 0) return Promise.resolve();
   return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
 }
-
-// src/obsidian/pick-toggle.tsx
-function PickToggle(props) {
-  const { ctx } = props;
-  const today = localToday();
-  const on = isOnBoard(ctx.store.index, today, props.keyOf);
-  const title = on ? "On today's board. Click to remove" : "Add to today's board";
-  const run = () => void toggleOnBoard(ctx, today, props.keyOf);
-  if (props.chip) {
-    return /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip vt-pick${on ? " is-on" : " is-placeholder"}`, "aria-pressed": on, title, onClick: run, children: [
-      /* @__PURE__ */ u3(Icon, { name: "calendar-check" }),
-      on ? "On today's board" : "Add to today's board"
-    ] });
-  }
-  return /* @__PURE__ */ u3("button", { type: "button", class: `vt-icon-button vt-pick${on ? " is-on" : ""}`, "aria-label": title, "aria-pressed": on, title, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
-}
-
-// src/ui/StatusIcon.tsx
-var SHAPES = {
-  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-  "in-progress": /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
-  ] }),
-  waiting: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
-  ] }),
-  delegated: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
-  ] }),
-  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
-  closed: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
-  ] }),
-  canceled: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
-  ] })
-};
-function StatusIcon(props) {
-  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
-}
-
-// src/ui/badges.tsx
-function StatusBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
-    props.status,
-    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function IdBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
-}
-var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
-function PriorityBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
-    props.priority ?? "priority",
-    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function LabelBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
-}
-
-// src/ui/hooks.ts
-function useStoreVersion(store) {
-  const [version, setVersion] = d2(store.version);
-  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
-  return version;
-}
-function useNow(intervalMs = 3e4) {
-  const [now, setNow] = d2(Date.now());
-  h2(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
-
-// src/header/SubIssues.tsx
-var import_obsidian5 = require("obsidian");
 
 // src/obsidian/sub-editor.tsx
 var DATE_FIELDS = [
@@ -3482,6 +3425,114 @@ function SubIssueForm(props) {
     }
   );
 }
+
+// src/obsidian/pick-toggle.tsx
+function PickToggle(props) {
+  const { ctx, keyOf } = props;
+  const [busy, setBusy] = d2(false);
+  const run = () => {
+    const today = localToday();
+    const issue = ctx.store.index.issues.get(keyOf);
+    const sub = ctx.store.index.sub(keyOf);
+    const issuePatch = issue ? pickIssuePatch(issue) : null;
+    const subPatch = sub ? pickSubPatch(sub, today) : null;
+    const patch = issuePatch ?? subPatch;
+    const apply2 = async () => {
+      setBusy(true);
+      try {
+        if (issue && issuePatch) await ctx.writer.update(issue.path, issuePatch);
+        else if (sub && subPatch) await ctx.writer.updateSub(sub.key, subPatch);
+        await addToBoard(ctx, today, [keyOf]);
+      } catch (e3) {
+        ctx.report("Pick \u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (!patch) return void apply2();
+    const fields = Object.entries(patch).map(([key, value]) => `${key}: ${value === null ? "\u89E3\u9664" : value}`).join("\u3001");
+    confirmModal(ctx, "Next \u306B\u3057\u3066 Pick", `Next \u306B\u3059\u308B\u305F\u3081\u3001\u6B21\u306E\u30D7\u30ED\u30D1\u30C6\u30A3\u3092\u5909\u66F4\u3057\u3066\u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u307E\u3059\u3002${fields}`, "Pick", () => void apply2());
+  };
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-pick", "aria-label": "Pick", title: "Add to today's board", disabled: busy, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
+}
+function PickTimer(props) {
+  const { ctx, keyOf } = props;
+  useStoreVersion(ctx.store);
+  const now = useNow();
+  const running = ctx.store.index.running(keyOf);
+  if (!running.length && !isOnBoard(ctx.store.index, localToday(), keyOf)) return /* @__PURE__ */ u3(PickToggle, { ...props });
+  const elapsed = running.reduce((m3, log) => Math.max(m3, now - log.fromMs), 0);
+  const label = running.length ? "Stop timer" : "Start timer";
+  return /* @__PURE__ */ u3(
+    "button",
+    {
+      type: "button",
+      class: `vt-play${running.length ? " is-running" : ""}`,
+      "aria-label": label,
+      title: label,
+      onClick: () => void (running.length ? stopTimer(ctx, [keyOf]) : startTimer(ctx, [keyOf])),
+      children: [
+        /* @__PURE__ */ u3(Icon, { name: running.length ? "square" : "play" }),
+        running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+      ]
+    }
+  );
+}
+
+// src/ui/StatusIcon.tsx
+var SHAPES = {
+  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+  "in-progress": /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
+  ] }),
+  waiting: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
+  ] }),
+  delegated: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
+  ] }),
+  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
+  closed: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
+  ] }),
+  canceled: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
+  ] })
+};
+function StatusIcon(props) {
+  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
+}
+
+// src/ui/badges.tsx
+function StatusBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
+    props.status,
+    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function IdBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
+}
+var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
+function PriorityBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    props.priority ?? "priority",
+    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function LabelBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
+}
+
+// src/header/SubIssues.tsx
+var import_obsidian5 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -3970,13 +4021,11 @@ function SubIssues(props) {
   const [showClosed, setShowClosed] = d2(false);
   const [mode, setMode] = d2("list");
   const [scale, setScale] = d2("day");
-  const [open, setOpen] = d2(/* @__PURE__ */ new Set());
   const subs = index.subs(issue.id);
   const shown = visibleSubs(subs, showClosed);
   const counts = subCounts(subs);
   const effort = index.effortByKey(now);
   const visibleKeys = shown.map((s3) => s3.key);
-  const toggle2 = (key) => setOpen((o3) => o3.has(key) ? new Set([...o3].filter((k3) => k3 !== key)) : /* @__PURE__ */ new Set([...o3, key]));
   const move2 = (key, before) => void ctx.writer.moveSubBefore(key, before).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   return /* @__PURE__ */ u3("section", { class: "vt-card vt-subissues", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
@@ -4004,10 +4053,7 @@ function SubIssues(props) {
         ctx,
         sub,
         index,
-        now,
         actual: effort.get(sub.key) ?? 0,
-        open: open.has(sub.key),
-        onToggle: () => toggle2(sub.key),
         visible: visibleKeys,
         onDrop: (dragged) => move2(dragged, sub.key)
       },
@@ -4021,10 +4067,9 @@ function readDrag(e3) {
   return e3.dataTransfer?.getData(DRAG_TYPE) || null;
 }
 function SubRow(props) {
-  const { ctx, sub, index, now, actual, open } = props;
+  const { ctx, sub, index, actual } = props;
   const [dropBefore, setDropBefore] = d2(false);
   const running = index.running(sub.key);
-  const elapsed = running.reduce((m3, l3) => Math.max(m3, now - l3.fromMs), 0);
   const hint = subHint(sub, localToday());
   const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   const changeStatus = (next) => {
@@ -4051,7 +4096,7 @@ function SubRow(props) {
   return /* @__PURE__ */ u3(
     "li",
     {
-      class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}${open ? " is-open" : ""}`,
+      class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`,
       draggable: true,
       onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, sub.key),
       onDragOver: (e3) => {
@@ -4066,73 +4111,18 @@ function SubRow(props) {
         const dragged = readDrag(e3);
         if (dragged && dragged !== sub.key) props.onDrop(dragged);
       },
-      children: [
-        /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
-          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
-          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
-            /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
-            hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
-          ] }),
-          actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
-          !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: sub.key }),
-          /* @__PURE__ */ u3(
-            "button",
-            {
-              type: "button",
-              class: `vt-play${running.length > 0 ? " is-running" : ""}`,
-              "aria-label": running.length > 0 ? "Stop timer" : "Start timer",
-              title: running.length > 0 ? "Stop timer" : "Start timer",
-              onClick: () => void (running.length > 0 ? stopTimer(ctx, [sub.key]) : startTimer(ctx, [sub.key])),
-              children: [
-                /* @__PURE__ */ u3(Icon, { name: running.length > 0 ? "square" : "play" }),
-                running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
-              ]
-            }
-          ),
-          /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+      children: /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-summary", title: sub.summary, children: [
+          /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
+          hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
         ] }),
-        open && /* @__PURE__ */ u3(SubDetail, { ctx, sub, index })
-      ]
+        actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
+        (!isDoneStatus(sub.status) || running.length > 0) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+      ] })
     }
   );
-}
-function SubDetail(props) {
-  const { ctx, sub, index } = props;
-  const member = sub.delegatedTo === null ? null : index.members.get(sub.delegatedTo);
-  const deps = sub.dependsOn.map((d3) => index.sub(`${sub.parent}#${d3}`)?.summary ?? d3);
-  const facts = [
-    ...sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} \u2013 ${sub.end ? formatShortDate(sub.end) : "?"}`]] : [],
-    ...sub.scheduled !== null ? [["Calendar", sub.scheduled.slice(5).replace("-", "/")]] : [],
-    ...sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)]] : [],
-    ...sub.deadline ? [["Deadline", formatShortDate(sub.deadline)]] : [],
-    ...sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)]] : [],
-    ...deps.length > 0 ? [["Depends on", deps.join(", ")]] : [],
-    ...member ? [["Delegated to", member.nickname]] : []
-  ];
-  return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: [
-    facts.length > 0 && /* @__PURE__ */ u3("dl", { class: "vt-subissue-facts", children: facts.map(([k3, v3]) => /* @__PURE__ */ u3(S, { children: [
-      /* @__PURE__ */ u3("dt", { children: k3 }),
-      /* @__PURE__ */ u3("dd", { children: v3 })
-    ] })) }),
-    sub.body.trim() ? /* @__PURE__ */ u3(MarkdownBody, { ctx, markdown: sub.body, sourcePath: sub.path }) : /* @__PURE__ */ u3("p", { class: "vt-muted", children: "No notes" }),
-    /* @__PURE__ */ u3("div", { class: "vt-subissue-detail-actions", children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openSubEditor(ctx, sub), children: [
-      /* @__PURE__ */ u3(Icon, { name: "pencil" }),
-      " Edit"
-    ] }) })
-  ] });
-}
-function MarkdownBody(props) {
-  const ref = A2(null);
-  h2(() => {
-    const el = ref.current;
-    if (!el) return;
-    const owner = new import_obsidian5.Component();
-    owner.load();
-    while (el.firstChild) el.removeChild(el.firstChild);
-    void import_obsidian5.MarkdownRenderer.render(props.ctx.app, props.markdown, el, props.sourcePath, owner);
-    return () => owner.unload();
-  }, [props.markdown, props.sourcePath]);
-  return /* @__PURE__ */ u3("div", { class: "vt-subissue-body markdown-rendered", ref });
 }
 function QuickAdd(props) {
   const { ctx, issue } = props;
@@ -4345,7 +4335,6 @@ function StatusField(props) {
         "revisit ",
         issue.revisit ? formatShortDate(issue.revisit) : "\u2014"
       ] }),
-      isActive(issue) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: issue.id, chip: true }),
       /* @__PURE__ */ u3("button", { class: `vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`, onClick: editDetail, children: [
         /* @__PURE__ */ u3(Icon, { name: "pencil" }),
         issue.statusDetail || "Add detail"
@@ -4522,6 +4511,7 @@ function Worklog(props) {
   return /* @__PURE__ */ u3("section", { class: "vt-worklog", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "worklog" }),
+      props.index.issues.has(taskId) && isActive(props.index.issues.get(taskId)) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: taskId }),
       logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: logs.length }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: add, children: [
@@ -4979,7 +4969,7 @@ function SubCard(props) {
         /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
         hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
       ] }),
-      !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: sub.key })
+      !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
     ] }),
     open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
   ] }) });
@@ -5140,6 +5130,7 @@ function installReading(ctx, plugin) {
     if (r3.role === "hide") {
       el.addClass("vt-subissue-area-hidden");
     } else if (r3.role === "card") {
+      el.addClass("vt-sub-card-section");
       const b2 = layout[r3.index];
       const raw = info.text.slice(b2.from, b2.cardTo ?? layout[r3.index + 1]?.from ?? info.text.length).trimEnd();
       const host = el.createDiv();
@@ -5280,13 +5271,14 @@ function build(ctx, state) {
     if (b2.cardTo === null || b2.bodyFrom === null || b2.bodyTo === null) continue;
     const sub = b2.id === null ? null : subs.find((s3) => s3.id === b2.id) ?? null;
     const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
-    if (!touches(b2.from, b2.cardTo)) {
-      all.push(import_view.Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b2.from, b2.cardTo), { from: b2.from, cardTo: b2.cardTo }), block: true }).range(b2.from, b2.cardTo));
+    const sectionTo = layout[b2.index + 1] ? layout[b2.index + 1].from - 1 : text.length;
+    const collapsed = sub !== null && !open && !touches(b2.cardTo, sectionTo);
+    const cardTo = collapsed ? sectionTo : b2.cardTo;
+    if (!touches(b2.from, cardTo)) {
+      all.push(import_view.Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b2.from, b2.cardTo), { from: b2.from, cardTo: b2.cardTo }), block: true }).range(b2.from, cardTo));
     }
-    if (sub !== null && !open && b2.bodyTo > b2.bodyFrom && !touches(b2.bodyFrom, b2.bodyTo)) {
-      const fold = import_view.Decoration.replace({ block: true }).range(b2.bodyFrom, b2.bodyTo);
-      all.push(fold);
-      folds.push(fold);
+    if (collapsed && sectionTo > b2.cardTo) {
+      folds.push(import_view.Decoration.replace({ block: true }).range(b2.cardTo, sectionTo));
     }
   }
   return { all: import_view.Decoration.set(all, true), folds: import_view.Decoration.set(folds, true) };

@@ -1585,6 +1585,10 @@ var import_obsidian5 = require("obsidian");
 
 // ../shared/src/header-mount.ts
 var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
+function headerContainer(sizer) {
+  if (!sizer.className.split(" ").includes("markdown-preview-sizer")) return sizer;
+  return Array.from(sizer.children).find((c3) => c3.className.split(" ").includes("mod-header")) ?? null;
+}
 function findHost(sizer, className) {
   for (const child of Array.from(sizer.children)) if (child.className === className) return child;
   return null;
@@ -1639,7 +1643,10 @@ function installHeaderMount(options) {
   const report = (errors) => {
     for (const e3 of errors) console.error(`[${plugin.manifest.id}] header`, e3);
   };
-  const sizersOf = (view) => Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS));
+  const sizersOf = (view) => Array.from(view.contentEl.querySelectorAll(HEADER_SIZERS)).flatMap((sizer) => {
+    const target = headerContainer(sizer);
+    return target ? [target] : [];
+  });
   const watch = (view, sizer, host) => {
     unwatch(sizer);
     const keep = new MutationObserver(() => {
