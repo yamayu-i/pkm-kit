@@ -40,6 +40,48 @@ function snapshot(root) {
 
 const node = (root, ...args) => spawnSync(process.execPath, [join(root, ".kit/migrate.mjs"), ...args, root], { encoding: "utf8" });
 
+test("0167: 通常の改行を残す設定にし、ほかの設定と本文を保持する", async () => {
+	const root = childFrom("legacy");
+	write(root, { ".obsidian/app.json": JSON.stringify({ strictLineBreaks: true, tabSize: 4, custom: "keep" }) });
+	const daily = readFileSync(join(root, "daily/2026/01/2026-01-01.md"), "utf8");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	assert.deepEqual(readJsonFile(root, ".obsidian/app.json"), { strictLineBreaks: false, tabSize: 4, custom: "keep" });
+	assert.equal(readFileSync(join(root, "daily/2026/01/2026-01-01.md"), "utf8"), daily);
+});
+
+test("0167: dry-run は設定を書かず、未設定・false・ファイルなしは変えない", async () => {
+	const { migrate } = await import("../../../.kit/migrations/0167-markdown-line-breaks/migrate.mjs");
+	const { check } = await import("../../../.kit/migrations/0167-markdown-line-breaks/check.mjs");
+	const root = tempVault();
+	for (const value of [{ strictLineBreaks: true, tabSize: 4 }, { strictLineBreaks: false }, { tabSize: 4 }]) {
+		write(root, { ".obsidian/app.json": JSON.stringify(value) });
+		const before = readFileSync(join(root, ".obsidian/app.json"), "utf8");
+		const changes = migrate(root, { dryRun: true });
+		assert.equal(changes.length, value.strictLineBreaks === true ? 1 : 0);
+		assert.equal(readFileSync(join(root, ".obsidian/app.json"), "utf8"), before);
+		migrate(root);
+		assert.deepEqual(check(root), []);
+		assert.deepEqual(migrate(root), []);
+	}
+	rmSync(join(root, ".obsidian/app.json"));
+	assert.deepEqual(migrate(root), []);
+	assert.deepEqual(check(root), []);
+	assert.equal(existsSync(join(root, ".obsidian/app.json")), false);
+});
+
+test("0167: 壊れた JSON・オブジェクトでない値・真偽値でない設定を変更しない", async () => {
+	const { migrate } = await import("../../../.kit/migrations/0167-markdown-line-breaks/migrate.mjs");
+	const { check } = await import("../../../.kit/migrations/0167-markdown-line-breaks/check.mjs");
+	for (const value of ["{ broken", "null", "[]", '{"strictLineBreaks":"true"}']) {
+		const root = tempVault();
+		write(root, { ".obsidian/app.json": value });
+		assert.deepEqual(migrate(root), []);
+		assert.ok(check(root).length > 0);
+		assert.equal(readFileSync(join(root, ".obsidian/app.json"), "utf8"), value);
+	}
+});
+
 test("fixture がある", () => {
 	assert.ok(fixtures.includes("fresh") && fixtures.includes("legacy") && fixtures.includes("customized"));
 });
@@ -442,7 +484,7 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
 	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp"]);
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp", "0167-markdown-line-breaks"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);

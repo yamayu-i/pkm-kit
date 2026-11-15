@@ -218,7 +218,7 @@ packages/design/tokens.json（正本）
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
 | カード（ボード） | `.vt-task` | 押せるカード。1 行に status のバッジ（メニュー）・題・再生 / 停止・`⋯` のメニューだけを置き、大きくしない。ID は出さず表題を優先し、★ は題の前の primary の星。記録中は緑の枠。Top 3 と Up next ではドラッグでき、別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。ADR-0114, 0137） |
-| 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
+| 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン。未 Pick は同じ 36px の `.vt-play.vt-pick`。issue の Worklog 見出しと上下のサブで共通の表示条件を使い、closed・canceled は非表示、記録中は状態に関係なく停止を表示する |
 | ボードの欄 | `.vt-lane`（`.vt-lanes`） | ボードの枠。上から Working（緑の枠）・Top 3・Up next・Waiting・Done（面を沈め、たたむ）を 1 列に積む。Top 3 と Up next は空でも出し、ほかはカードがあるときだけ出す。カードを落とせるときは primary の枠 + secondary-container の面（ADR-0137） |
 | 親の見出し | `.vt-lane-run`（`.vt-lane-parent`） | 同じ欄で隣り合った、同じ親のサブのまとまり。左に outline-variant の太い線、上に親の ID のバッジと弱い文字の親の題（押すと親を開く）（ADR-0137） |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
@@ -279,6 +279,8 @@ pkm-html（ADR-0037）は、HTML を iframe に出し、`tokens.css` を差し�
 ### ノートの本文（pkm-markdown。[ADR-0128](adr/0128-markdown-view.md)）
 
 pkm-markdown の `styles.css` は、Obsidian が描くノートの本文（閲覧モードの `.markdown-rendered` と、ライブプレビューの `.markdown-source-view.mod-cm6`）に効く。プラグインの UI と同じ検査を通す。
+
+- 通常の改行は両モードで残す（必須設定 `strictLineBreaks: false`）。H2 の上余白とリストの行間・深さ 9 までの記号をそろえる。編集用の記号・空行・補助線など、残る差は [表示差の一覧](markdown-views.md) を参照
 
 - **必須**: 見出しの大きさと本文の行の高さは変えない（Obsidian の既定のまま）。利用者が設定で本文の文字を大きくしたときに追従させるため。文字の大きさのトークンは px で、ノートの本文には使わない
 - 箇条書きの記号の大きさは `em` で書く（本文の文字に追従する）。位置は 1 行目の行の高さ（`1lh`）の中央に置く。行の高さに沿った位置は `transform` の `calc()` で書く（余白の検査は px の 4 刻みだけを許すため）

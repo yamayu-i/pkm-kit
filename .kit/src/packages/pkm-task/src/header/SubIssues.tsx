@@ -148,7 +148,7 @@ function SubRow(props: {
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 				</div>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
-				{(!isDoneStatus(sub.status) || running.length > 0) && <PickTimer ctx={ctx} keyOf={sub.key} />}
+				<PickTimer ctx={ctx} keyOf={sub.key} />
 				<button type="button" class="vt-icon-button" aria-label="More actions" title="More actions" onClick={moreMenu}>
 					<Icon name="more-horizontal" />
 				</button>

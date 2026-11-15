@@ -2975,6 +2975,11 @@ function issueRowMenu(ctx, e3, issue) {
 }
 
 // src/core/pick.ts
+function pickTimerControl(status, picked, running) {
+  if (running) return "stop";
+  if (isDoneStatus(status)) return null;
+  return picked ? "start" : "pick";
+}
 function pickIssuePatch(issue) {
   return isNext(issue) ? null : { status: "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
 }
@@ -3453,14 +3458,18 @@ function PickToggle(props) {
     const fields = Object.entries(patch).map(([key, value]) => `${key}: ${value === null ? "\u89E3\u9664" : value}`).join("\u3001");
     confirmModal(ctx, "Next \u306B\u3057\u3066 Pick", `Next \u306B\u3059\u308B\u305F\u3081\u3001\u6B21\u306E\u30D7\u30ED\u30D1\u30C6\u30A3\u3092\u5909\u66F4\u3057\u3066\u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u307E\u3059\u3002${fields}`, "Pick", () => void apply2());
   };
-  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-pick", "aria-label": "Pick", title: "Add to today's board", disabled: busy, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-play vt-pick", "aria-label": "Pick", title: "Add to today's board", disabled: busy, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
 }
 function PickTimer(props) {
   const { ctx, keyOf } = props;
   useStoreVersion(ctx.store);
   const now = useNow();
   const running = ctx.store.index.running(keyOf);
-  if (!running.length && !isOnBoard(ctx.store.index, localToday(), keyOf)) return /* @__PURE__ */ u3(PickToggle, { ...props });
+  const task = ctx.store.index.issues.get(keyOf) ?? ctx.store.index.sub(keyOf);
+  if (!task) return null;
+  const control = pickTimerControl(task.status, isOnBoard(ctx.store.index, localToday(), keyOf), running.length > 0);
+  if (control === null) return null;
+  if (control === "pick") return /* @__PURE__ */ u3(PickToggle, { ...props });
   const elapsed = running.reduce((m3, log) => Math.max(m3, now - log.fromMs), 0);
   const label = running.length ? "Stop timer" : "Start timer";
   return /* @__PURE__ */ u3(
@@ -4118,7 +4127,7 @@ function SubRow(props) {
           hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
         ] }),
         actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
-        (!isDoneStatus(sub.status) || running.length > 0) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key }),
+        /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
       ] })
     }
@@ -4511,7 +4520,7 @@ function Worklog(props) {
   return /* @__PURE__ */ u3("section", { class: "vt-worklog", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "worklog" }),
-      props.index.issues.has(taskId) && isActive(props.index.issues.get(taskId)) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: taskId }),
+      props.index.issues.has(taskId) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: taskId }),
       logs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: logs.length }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: add, children: [
@@ -4969,7 +4978,7 @@ function SubCard(props) {
         /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
         hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
       ] }),
-      !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
+      /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
     ] }),
     open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
   ] }) });

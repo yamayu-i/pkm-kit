@@ -20,8 +20,16 @@
 	background-color: var(--vt-primary);
 }
 
-.markdown-rendered h2 {
+.markdown-rendered h2,
+.markdown-rendered :is(p, pre, table, ul, ol) + h2,
+.markdown-rendered div:is(.el-blockquote, .el-p, .el-pre, .el-table, .el-ul, .el-ol) + div > h2 {
+	/* 本体の「段落の次の見出し」規則と同じ詳細度で指定する */
 	margin-block-start: var(--vt-space-32);
+}
+
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-header-2 {
+	/* 編集画面では行の margin ではなく padding で余白を作る */
+	padding-top: var(--vt-space-32);
 }
 
 .markdown-rendered h2,
@@ -41,6 +49,7 @@
 /* ● */
 .markdown-rendered ul > li > .list-bullet::after,
 .markdown-rendered ul ul ul ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul ul ul ul > li > .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-1 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-4 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-7 .list-bullet::after {
@@ -55,6 +64,7 @@
 /* ○ */
 .markdown-rendered ul ul > li > .list-bullet::after,
 .markdown-rendered ul ul ul ul ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul ul ul ul ul > li > .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-2 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-5 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-8 .list-bullet::after {
@@ -69,6 +79,7 @@
 /* – */
 .markdown-rendered ul ul ul > li > .list-bullet::after,
 .markdown-rendered ul ul ul ul ul ul > li > .list-bullet::after,
+.markdown-rendered ul ul ul ul ul ul ul ul ul > li > .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-3 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-6 .list-bullet::after,
 .markdown-source-view.mod-cm6 .HyperMD-list-line-9 .list-bullet::after {
@@ -82,13 +93,16 @@
 }
 
 /* ───── 閲覧モードの箇条書き: 記号の位置を決め、同じ深さの記号どうしを薄い線でつなぐ ───── */
+
 /*
  * 線は、項目の記号の真ん中から、次の同じ深さの項目の記号の真ん中まで。両端の記号との隙間は同じ 4px。
  * 記号は項目の 1 行目の行の高さ（1lh）の中央に置くので、線の始まりは「上の余白 + 0.5lh + 記号の半分 + 隙間」、
  * 長さは「項目の高さ - 記号の大きさ - 隙間 × 2」になる（次の項目の記号も同じ位置にあるため）
  */
 .markdown-rendered ul > li,
-.markdown-rendered ol > li {
+.markdown-rendered ol > li,
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-list-line,
+.markdown-source-view.mod-cm6.is-live-preview .cm-line.HyperMD-header + .cm-line.HyperMD-list-line {
 	position: relative;
 	margin-block: 0;
 	padding-block: var(--vt-space-2);
