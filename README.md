@@ -73,6 +73,8 @@ git add -A && git commit -m "vault: セットアップ" && git push
 
 ### 5. 使い始める
 
+[ユーザー体験定義書・仕様書](pkm-guide/user-experience.html) を PKM HTML で開くと、場面・操作・制約と実装の画面例を参照できる。上流の更新と一緒に最新版が届く。
+
 - この Vault だけの目的・規約は `.claude/local/CLAUDE.md` に書く。テンプレートを変えたいときは `template/` に置く（上流の既定を上書きする）
 - Obsidian の Hotkeys で「PKM Template: Create new file from template」に `Cmd + N` などを割り当てると便利
 - Claude Code で Vault を開き、「この記事を取り込んで: <URL>」などと頼む（下の「LLM wiki」）

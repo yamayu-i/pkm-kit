@@ -22,3 +22,19 @@
 ## 根拠
 
 [ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)
+
+## 入力と制約
+
+Top 3 は 3 件まで。未完了が残る間は Close board を押せません。routine の結果は当日の結果です。
+
+## 操作と保存
+
+★・順番・追加と除外・routine の結果は board の操作ログへ追記します。issue の状態変更は frontmatter、作業時間は worklog に保存します。締めると daily の Task board 節へ要約を書きます。
+
+## 失敗時と戻し方
+
+状態変更直後は取り消しのトーストを使えます。外しすぎたカードは Add issue や Pick から載せ直します。ボードから除外しても元の issue は削除しません。
+
+## 端末の違い
+
+PC のドラッグに加えて Move up / Move down のメニューを使えます。スマホではカードのメニューから同じ並びを直します。

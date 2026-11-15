@@ -4,6 +4,8 @@ name: plugin
 on:
   pull_request:
     paths:
+      - ".kit/harness/docs/product/**"
+      - "pkm-guide/**"
       - ".kit/src/**"
       - ".kit/bin/**"
       - ".kit/obsidian-required.json"
@@ -14,6 +16,8 @@ on:
   push:
     branches: [main]
     paths:
+      - ".kit/harness/docs/product/**"
+      - "pkm-guide/**"
       - ".kit/src/**"
       - ".kit/bin/**"
       - ".kit/obsidian-required.json"
@@ -84,10 +88,16 @@ jobs:
         run: pnpm --filter design build
       - name: 画面を描いて検査する
         run: pnpm --filter pkm-task preview:ui
+      - name: 定義書の画面例と閲覧を検査する
+        run: |
+          pnpm --filter product-guide capture --check
+          pnpm --filter product-guide preview:ui
       - name: スクリーンショットを成果物にする
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: preview-ui
-          path: .kit/src/packages/pkm-task/preview/out/*.png
+          path: |
+            .kit/src/packages/pkm-task/preview/out/*.png
+            .kit/src/packages/product-guide/preview/out/*.png
           if-no-files-found: ignore

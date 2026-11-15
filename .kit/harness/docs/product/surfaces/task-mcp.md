@@ -25,3 +25,26 @@
 ## 根拠
 
 [ADR-0025](../../../../src/docs/adr/0025-mcp-and-task-coach.md)、[ADR-0156](../../../../src/docs/adr/0156-pkm-mcp.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、子向けの task-coach（`.claude/skills/task-coach/SKILL.md`）
+
+## 入力と制約
+
+タスクは ID、サブは親 ID と sub の ID の組で指定します。依頼の曖昧な日付や作業の 1 日を、勝手に Calendar や 24 時間へ変換しません。
+
+## 操作と保存
+
+AI は MCP のツールで素のファイルを読み書きします。相談の提案だけでは保存されず、選択した操作で初めて状態が変わります。
+
+## 失敗時と戻し方
+
+エラーの対象 ID・不正なフィールド・不足の条件を確認します。曖昧な依頼は対象と期待する結果を明らかにし、結果を読み直して重複操作を防ぎます。
+
+## 端末の違い
+
+Claude Code の PC 上の操作です。スマホからは Obsidian の対応する画面で同じ正本を使います。
+
+
+## 操作の例
+
+「今日の残りを確認して、次にやる 2 件を相談したい」と頼む。AI は get_overview と get_board で状況を読み、提案する。選んだ後に add_to_board で載せ、get_board で結果を確認する。相談しただけでは Calendar の日を書かない。
+
+存在しない ID で get_issue を呼んだ場合は、list_issues で対象を調べ直す。create_issue を繰り返す前には Inbox を読み、すでに作ったものを重複して作らない。

@@ -1,0 +1,682 @@
+{
+  "surfaces/task-today.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "daily",
+        "label": "一日の計画を始める",
+        "detail": "過去の未完了と今日の予定を確認し、段階を進めます。"
+      },
+      {
+        "provider": "task",
+        "screen": "previous",
+        "label": "過去のボードを片付ける",
+        "detail": "未完了の行き先を決め、今日の作業に入ります。"
+      },
+      {
+        "provider": "task",
+        "screen": "pick",
+        "label": "Next から選ぶ",
+        "detail": "Calendar と Tickler を持たない候補と、親ごとのサブを並べます。"
+      },
+      {
+        "provider": "task",
+        "screen": "daily--empty",
+        "label": "予定がまだない",
+        "detail": "候補がない状態でも Today を開けます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-daily"
+    ]
+  },
+  "surfaces/task-board.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "board",
+        "label": "今日のボード",
+        "detail": "作業中・次にやること・完了と、親ごとのサブを確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "board--empty",
+        "label": "空のボード",
+        "detail": "今日のボードに何も載っていない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-issue-screen.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "header",
+        "label": "項目・サブ・worklog",
+        "detail": "親の予算とサブの状態を同じ画面で確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "timeline",
+        "label": "Timeline",
+        "detail": "期間と依存関係を日単位で見ます。"
+      },
+      {
+        "provider": "task",
+        "screen": "header--unpicked",
+        "label": "今日のボードに載っていない",
+        "detail": "Pick を押して選ぶ入口です。"
+      },
+      {
+        "provider": "task",
+        "screen": "header--closed",
+        "label": "完了した issue",
+        "detail": "完了後の操作の違いを確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "forms",
+        "label": "日付・時間の入力",
+        "detail": "日付と作業時間をそれぞれのフォームで編集します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-routine-screen.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "routine",
+        "label": "routine の項目",
+        "detail": "繰り返しと作業の記録を確認します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-issues.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "issues",
+        "label": "Issues 一覧",
+        "detail": "絞り込み・並べ替えと一覧からの操作です。"
+      },
+      {
+        "provider": "task",
+        "screen": "issues--empty",
+        "label": "issue がない",
+        "detail": "まだタスクを作っていない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-issues"
+    ]
+  },
+  "surfaces/task-inbox.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "inbox",
+        "label": "未整理の Inbox",
+        "detail": "次の一歩をまだ決めていない issue を集めます。"
+      },
+      {
+        "provider": "task",
+        "screen": "inbox--empty",
+        "label": "Inbox が空",
+        "detail": "整理する issue がない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-inbox"
+    ]
+  },
+  "surfaces/task-someday.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "someday",
+        "label": "いつか見直す",
+        "detail": "見直し日を持つ issue と、しばらく見ていない issue です。"
+      },
+      {
+        "provider": "task",
+        "screen": "someday--empty",
+        "label": "Someday が空",
+        "detail": "保留した issue がない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-someday"
+    ]
+  },
+  "surfaces/task-organize.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "organize",
+        "label": "1 件ずつ整理",
+        "detail": "Next・Someday・Tickler・Calendar へ整理するカードです。"
+      },
+      {
+        "provider": "task",
+        "screen": "organize--empty",
+        "label": "整理するものがない",
+        "detail": "カードをすべて処理した状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-organize"
+    ]
+  },
+  "surfaces/task-scheduled.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "scheduled",
+        "label": "予定と期限",
+        "detail": "Calendar の日、期限と候補を確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "scheduled--empty",
+        "label": "予定がない",
+        "detail": "対象となる日付がない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-scheduled"
+    ]
+  },
+  "surfaces/task-routines.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "routines",
+        "label": "routine 一覧",
+        "detail": "有効・無効と繰り返しの条件を確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "routines--empty",
+        "label": "routine がない",
+        "detail": "まだ繰り返しを登録していない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-routines"
+    ]
+  },
+  "surfaces/task-labels.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "labels",
+        "label": "ラベルの管理",
+        "detail": "名前と色を一覧で管理します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-labels"
+    ]
+  },
+  "surfaces/task-capture.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "capture",
+        "label": "入力前",
+        "detail": "1 行に 1 件ずつ書きます。空では作成できません。"
+      },
+      {
+        "provider": "task",
+        "screen": "capture--input",
+        "label": "複数行の入力",
+        "detail": "箇条書きから件数を計算します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-sidebar.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "sidebar",
+        "label": "Tasks サイドバー",
+        "detail": "件数と各一覧への入口をまとめます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-sidebar"
+    ]
+  },
+  "surfaces/task-status-bar.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "status",
+        "label": "作業の記録中",
+        "detail": "PC のステータスバーに実装が出す表示です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-now.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "now",
+        "label": "今の作業",
+        "detail": "同時に記録中の群と PKM State を見ます。"
+      },
+      {
+        "provider": "task",
+        "screen": "now--empty",
+        "label": "作業していない",
+        "detail": "記録のない状態から次の作業を選びます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
+  "surfaces/task-members.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "members",
+        "label": "Members 一覧",
+        "detail": "委任先を一覧で探します。"
+      },
+      {
+        "provider": "task",
+        "screen": "member",
+        "label": "member の項目",
+        "detail": "委任先の名前・別名・関連 issue を見ます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-members"
+    ]
+  },
+  "surfaces/template-create.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "template",
+        "screen": "create",
+        "label": "テンプレート選択",
+        "detail": "タイトルと保存先を確認して作ります。"
+      },
+      {
+        "provider": "template",
+        "screen": "create--duplicate",
+        "label": "重複する保存先",
+        "detail": "同名ファイルの検出により作成を止めます。"
+      },
+      {
+        "provider": "template",
+        "screen": "create--empty",
+        "label": "テンプレートがない",
+        "detail": "設定とテンプレートの配置を確認する案内です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-template/src"
+    ]
+  },
+  "surfaces/template-lists.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "template",
+        "screen": "daily",
+        "label": "Daily notes",
+        "detail": "日付と作成日時から探します。"
+      },
+      {
+        "provider": "template",
+        "screen": "notes",
+        "label": "Notes",
+        "detail": "タイトルとタグから探します。"
+      },
+      {
+        "provider": "template",
+        "screen": "sources",
+        "label": "Sources",
+        "detail": "取得元と取り込みの状態を確認します。"
+      },
+      {
+        "provider": "template",
+        "screen": "tmp",
+        "label": "Temporary files",
+        "detail": "型・更新日時・容量と削除の入口です。"
+      },
+      {
+        "provider": "template",
+        "screen": "notes--empty",
+        "label": "ノートがない",
+        "detail": "該当する type のノートがない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-template/src"
+    ],
+    "views": [
+      "pkm-template-daily-list",
+      "pkm-template-note-list",
+      "pkm-template-source-list",
+      "pkm-template-tmp-list"
+    ]
+  },
+  "surfaces/template-header.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "template",
+        "screen": "header",
+        "label": "note のヘッダー",
+        "detail": "タイトルとタグ・作成日を見ます。"
+      },
+      {
+        "provider": "template",
+        "screen": "header--daily",
+        "label": "daily のヘッダー",
+        "detail": "日付と曜日を見ます。"
+      },
+      {
+        "provider": "template",
+        "screen": "header--source",
+        "label": "source のヘッダー",
+        "detail": "取得元と引用先へ辿れます。"
+      },
+      {
+        "provider": "template",
+        "screen": "header--wiki",
+        "label": "wiki のヘッダー",
+        "detail": "出典と被リンク数を見ます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-template/src"
+    ]
+  },
+  "surfaces/updates.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "updates",
+        "screen": "list",
+        "label": "前回からの変更",
+        "detail": "一覧ごとの変更と Viewed を確認します。"
+      },
+      {
+        "provider": "updates",
+        "screen": "list--empty",
+        "label": "確認後・変更なし",
+        "detail": "前回の確認以降に対象がない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-updates/src"
+    ],
+    "views": [
+      "pkm-updates-view"
+    ]
+  },
+  "surfaces/html-view.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "html",
+        "screen": "sample",
+        "label": "HTML の閲覧",
+        "detail": "実際の sandbox 付き iframe と共通の変換処理で表示します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-html/src"
+    ],
+    "views": [
+      "pkm-html"
+    ]
+  },
+  "surfaces/slide.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "slide",
+        "screen": "list",
+        "label": "Slides 一覧",
+        "detail": "フォルダとデッキを同じ木で扱います。"
+      },
+      {
+        "provider": "slide",
+        "screen": "list--empty",
+        "label": "デッキがない",
+        "detail": "まだスライドを作っていない状態です。"
+      },
+      {
+        "provider": "slide",
+        "screen": "notes",
+        "label": "発表者ノート",
+        "detail": "各スライドのノートと保存をまとめます。"
+      },
+      {
+        "provider": "browser",
+        "screen": "overview",
+        "label": "ブラウザで一覧を見る",
+        "detail": "共通のスライドビルダーが生成した閲覧画面です。"
+      },
+      {
+        "provider": "browser",
+        "screen": "review",
+        "label": "Review で見直す",
+        "detail": "部品を選び、コメントを付けて AI に返します。"
+      },
+      {
+        "provider": "browser",
+        "screen": "show",
+        "label": "Slide Show",
+        "detail": "1 枚ずつ表示する発表の画面です。"
+      },
+      {
+        "provider": "browser",
+        "screen": "presenter",
+        "label": "Presenter",
+        "detail": "今と次のスライド、ノート、経過時間を見ます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-slide/src"
+    ],
+    "views": [
+      "pkm-slide-list",
+      "pkm-slide-notes"
+    ]
+  },
+  "surfaces/diagram.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "diagram",
+        "screen": "toolbar",
+        "label": "図の操作バー",
+        "detail": "ホバーすると Copy・Save PNG・Expand が出ます。"
+      },
+      {
+        "provider": "diagram",
+        "screen": "zoom",
+        "label": "拡大表示",
+        "detail": "実装の拡大ウィンドウで読みます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-diagram/src"
+    ]
+  },
+  "surfaces/ribbon.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "ribbon",
+        "screen": "buttons",
+        "label": "リボンと件数",
+        "detail": "本番の並びとバッジを描画します。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-ribbon/src"
+    ]
+  },
+  "surfaces/view-selector.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "selector",
+        "screen": "list",
+        "label": "View を探す",
+        "detail": "コマンドの登録から候補を集めます。"
+      },
+      {
+        "provider": "selector",
+        "screen": "list--search",
+        "label": "該当する View がない",
+        "detail": "検索語を変えて探し直せます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-view-selector/src"
+    ]
+  },
+  "surfaces/git-sync.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "git",
+        "screen": "settings",
+        "label": "同期の設定",
+        "detail": "認証情報は空の合成環境です。"
+      },
+      {
+        "provider": "git",
+        "screen": "conflicts",
+        "label": "コンフリクト一覧",
+        "detail": "内容を残したまま解決する入口です。"
+      },
+      {
+        "provider": "git",
+        "screen": "conflicts--empty",
+        "label": "衝突なし",
+        "detail": "未解決のファイルがない状態です。"
+      },
+      {
+        "provider": "git",
+        "screen": "resolve",
+        "label": "箇所ごとの解決",
+        "detail": "Use local・Use remote・Use both から選びます。"
+      },
+      {
+        "provider": "git",
+        "screen": "history",
+        "label": "版の履歴",
+        "detail": "Preview と Restore で確かめて戻せます。"
+      },
+      {
+        "provider": "git",
+        "screen": "preview",
+        "label": "前の版を見る",
+        "detail": "読み取り専用で内容を確認します。"
+      },
+      {
+        "provider": "git",
+        "screen": "log",
+        "label": "同期の記録",
+        "detail": "端末内の失敗と回復の記録です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-git/src"
+    ]
+  },
+  "surfaces/task-mcp.md": {
+    "kind": "example",
+    "screens": [],
+    "reason": "AI の操作面です。本文に依頼・入力・結果の例を記します。",
+    "source": [
+      ".kit/src/packages/pkm-task/cli"
+    ]
+  },
+  "surfaces/kit-upgrade.md": {
+    "kind": "example",
+    "screens": [],
+    "reason": "CLI と手順です。本文に操作と確認する結果を記します。",
+    "source": [
+      ".claude/skills/vault-upgrade"
+    ]
+  },
+  "surfaces/layout-panes.md": {
+    "kind": "layout",
+    "screens": [],
+    "reason": "配置は本文の表で説明し、各ペインの実装画像は対応する画面の章で参照します。",
+    "source": [
+      ".kit/src/packages/shared/src/list-pane.ts"
+    ]
+  }
+}

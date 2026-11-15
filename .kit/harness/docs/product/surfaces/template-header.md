@@ -23,3 +23,19 @@
 ## 根拠
 
 [ADR-0026](../../../../src/docs/adr/0026-note-views.md)、[ADR-0027](../../../../src/docs/adr/0027-hide-properties-english-labels.md)
+
+## 入力と制約
+
+frontmatter の type に応じた表示です。値のない項目は出しません。daily の日付はファイル名から決めます。
+
+## 操作と保存
+
+表示だけのヘッダーです。リンクを押すと出典や引用先のノートへ移動します。daily・note・source・wiki では代わりに Properties 欄を隠します。
+
+## 失敗時と戻し方
+
+タイトルが想定と違うときは type・title とファイル名を確認します。存在しない出典は文字として残る場合があり、正本の sources を修正します。
+
+## 端末の違い
+
+PC とスマホ、Reading View と Live Preview で同じ情報を読みます。ソースモードでは frontmatter をそのまま確認できます。

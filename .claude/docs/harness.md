@@ -101,3 +101,7 @@ git の履歴 ──▶ usage-report.mjs で集計 ─────────�
 ## 権限
 
 `.claude/settings.json` で拒否している操作: force push、PR のマージ、`--no-verify`、`git reset --hard`、`.env` の読み取り。main への push は wiki の操作のために拒否しない（ほかの作業では手順で禁じる）。
+
+## 体験と仕様を確認する
+
+子 Vault の [ユーザー体験定義書・仕様書](../../pkm-guide/user-experience.html) に、場面・画面と操作・用語とデータ・画面例がある。上流の生成物なので子で直接編集しない。更新は vault-upgrade の取り込みで届く。表示の食い違いはエスカレーションする。

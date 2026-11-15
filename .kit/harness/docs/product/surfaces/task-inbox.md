@@ -17,3 +17,19 @@
 ## 根拠
 
 [ADR-0006](../../../../src/docs/adr/0006-status-inbox-someday.md)、[ADR-0009](../../../../src/docs/adr/0009-views.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)
+
+## 入力と制約
+
+open で clarified が true でない issue が対象です。期限の有無は Inbox の判定に使いません。サブはここには並べません。
+
+## 操作と保存
+
+入力欄から summary のみの issue を作れます。整理して Next や Calendar にすると clarified が true になり、一覧から出ます。
+
+## 失敗時と戻し方
+
+整理したはずの項目が残る場合は clarified を確認します。期限を入れるだけでは整理済みになりません。誤って整理したものは Inbox に戻せます。
+
+## 端末の違い
+
+PC は行・ボタン・キーボード、スマホはタップで開きます。スマホの画面では一覧とノートを同時に並べません。

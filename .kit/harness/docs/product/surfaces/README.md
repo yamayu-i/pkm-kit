@@ -15,6 +15,14 @@ ADR は決めた理由の履歴で、書き換えない。ここは振る舞い�
 
 ## 今の振る舞い
 
+## 入力と制約
+
+## 操作と保存
+
+## 失敗時と戻し方
+
+## 端末の違い
+
 ## 使う概念
 
 ## 根拠
@@ -28,6 +36,8 @@ ADR へのリンク。
 
 | 面 | 種類 |
 |---|---|
+| [Tasks Now](task-now.md) | ダイアログ |
+| [Members と member 画面](task-members.md) | View・画面 |
 | [Today](task-today.md) | View |
 | [task board](task-board.md) | View（Today の段階） |
 | [issue 画面](task-issue-screen.md) | 画面 |
