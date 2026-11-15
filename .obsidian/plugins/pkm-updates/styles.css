@@ -246,8 +246,10 @@ body.theme-dark {
 }
 
 .vt-upd-heading-link {
+	display: inline-flex;
+	align-items: center;
 	height: auto;
-	padding: 0;
+	padding: var(--vt-space-2) var(--vt-space-8);
 	border: 0;
 	background: none;
 	box-shadow: none;
@@ -321,10 +323,8 @@ body.theme-dark {
 	height: 4px;
 }
 
-/* 画面の最下部に固定する（一覧が短くても下に置く） */
+/* スクロールした最下部に置く */
 .vt-upd-footer {
-	position: sticky;
-	bottom: 0;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -333,7 +333,6 @@ body.theme-dark {
 	margin-top: auto;
 	padding: var(--vt-space-12) 0;
 	border-top: 1px solid var(--vt-outline-variant);
-	background: var(--vt-surface);
 }
 
 .vt-upd-viewed {

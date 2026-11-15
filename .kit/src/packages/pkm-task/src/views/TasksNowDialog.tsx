@@ -37,7 +37,7 @@ function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: strin
 	const open = task.path ? () => void ctx.openPath(task.path!) : null;
 	return (
 		<div class={`vt-task${task.elapsedMs !== null ? " is-running" : ""}${props.paused ? " is-paused" : ""}`}>
-			<span class="vt-routine-id">{task.id}</span>
+			<span class="vt-badge vt-id vt-routine-id">{task.id}</span>
 			{open ? (
 				<span class="vt-task-summary" title={`${task.id} ${task.summary}`} {...linkProps(open)}>
 					{task.summary || task.key}
