@@ -1,6 +1,6 @@
 # ADR-0152: scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-15
 
 ## 背景
@@ -33,7 +33,8 @@ GTD の Calendar と Tickler は別物である。Calendar は「整理済みで
 - `tickler` が今日より後の issue は、どの一覧（Inbox・Next・Pick・Organize）にも出さない。期限（`deadline`・`soft_deadline`）は Tickler と関係なく Daily の期限の表に出す（期限は外との約束なので隠さない）
 - `tickler` が今日以前になったら、Inbox に出す（`clarified` があっても出す）。Organize で整理すると、どの操作でも `tickler` を消す
 - Tickler は整理の先送りなので、`clarified` を付けない
-- サブは `tickler` を持たない。サブは行動として作るので、先送りが要るなら親の issue に付ける
+- サブも `tickler` を持つ。規則は issue と同じ（サブも Inbox・Organize の対象になるため。ADR-0148）。日付が来たサブは、`i-12 › サブの題` の形で Inbox に出る
+- サブの `start`（ガントの期間の始まり）は Tickler とは別。`start` が今日より後のサブは Pick に出さない（ADR-0150）
 
 ### 設定する場面
 
@@ -102,7 +103,7 @@ Tickler は、ADR-0148 で廃止した Later（何も決めずにキューから
 - **`scheduled` をそのまま残す（日付のリスト・やりたい日）**: 今日やるものを決める経路が、`scheduled` と Pick の 2 つになる。GTD の Calendar の使い方に反する
 - **日付が来た Tickler を Daily に出す**: Tickler は整理を先送りしたものなので、Daily（今日やるものを選ぶ場）ではなく Organize（整理する場）で扱う
 - **Someday の `revisit` を `tickler` にまとめる**: どちらも「この日に見直す」だが、someday は status で意識の外に置くもの（Organize の someday の列に出る）、Tickler は open のまま一時的に隠すもの。今は分けておき、使ってみて同じなら別に検討する
-- **サブにも `tickler` を足す**: サブは行動として作るので、整理の先送りは要らない。必要なら親に付ける
+- **サブの Tickler を `start` で代える**: `start` はガントの期間で、日付が来ても Inbox には戻らない。意味が違う
 - **`scheduled` の名前を `calendar` などに変える**: 意味は絞るが、データの役割（その日のボードに載る）は同じ。名前を変えると、移行と MCP・スキルの変更が増える
 
 ## 影響
