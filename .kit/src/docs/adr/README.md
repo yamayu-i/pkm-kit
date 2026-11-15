@@ -86,4 +86,5 @@
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
 | [0135](0135-sub-issues-in-issue-file.md) | 承認 | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
 | [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
+| [0143](0143-sub-issue-timeline.md) | 提案 | サブイシューのガントチャート（Timeline） |
 <!-- adr-index:end -->
