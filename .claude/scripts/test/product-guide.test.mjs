@@ -32,7 +32,7 @@ test("外部根拠リンクは GitHub、Vault 外や危険な URL は禁止す�
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
-import {buildGuide,checkGuide,fingerprint,sha,safeOutput} from "../../../.kit/bin/product-guide.mjs";
+import {buildGuide,checkGuide,uiDrift,fingerprint,sha,safeOutput} from "../../../.kit/bin/product-guide.mjs";
 test("子の Node だけで再生成漏れと入力の変更を検出できる",()=>{
  const root=mkdtempSync(join(tmpdir(),"pkm-guide-test-"));
  try{
@@ -50,7 +50,7 @@ test("子の Node だけで再生成漏れと入力の変更を検出できる",
   assert.match(checkGuide(root).join("\n"),/原本と一致/);
   assert.ok(!checkGuide(root).join("\n").includes("UI の入力"),"共通書式だけなら UI の撮り直しは不要");
   mkdirSync(join(root,".kit/src/packages/pkm-task"),{recursive:true});
-  put(".kit/src/packages/pkm-task/styles.css","body {}");assert.match(checkGuide(root).join("\n"),/UI の入力/);
+  put(".kit/src/packages/pkm-task/styles.css","body {}");assert.ok(!checkGuide(root).join("\n").includes("UI の入力"),"UI の入力の変化は失敗にしない");assert.equal(uiDrift(root),true);
   put("pkm-guide/ui/manifest.json",JSON.stringify({fingerprint:fingerprint(root),images:[{screen:"example",file:"pkm-guide/ui/example.png",theme:"light",width:"wide",sha256:sha("image")}]}));
   assert.match(checkGuide(root).join("\n"),/画像がない/);
  }finally{rmSync(root,{recursive:true,force:true})}
