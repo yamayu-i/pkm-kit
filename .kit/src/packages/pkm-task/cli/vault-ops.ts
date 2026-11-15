@@ -18,8 +18,11 @@ import {
 	 sanitizeDeviceName,
 	serializeWorklogEntry,
 	stopWorklogLines,
+	workKey,
+	workTarget,
 	worklogPath,
 } from "../src/core/worklog";
+import { parseSubKey, updateSubIssueText, type SubIssue, type SubIssuePatch } from "../src/core/sub-issue";
 
 /** Vault ルート内の相対パスを安全に解決する（ルート外へのアクセスを防ぐ） */
 export function resolveInVault(root: string, relPath: string): string {
@@ -56,10 +59,10 @@ export interface StatusLogContext {
 }
 
 /** status の変化を statuslog に 1 行追記する（ADR-0031）。端末名がなければ書かない */
-export function appendStatusLogOnDisk(root: string, task: string, from: Status, to: Status, log: StatusLogContext): void {
+export function appendStatusLogOnDisk(root: string, task: string, from: Status, to: Status, log: StatusLogContext, sub: string | null = null): void {
 	const dev = sanitizeDeviceName(log.device);
 	if (!dev) return;
-	const line = statusLogLine(task, from, to, log.via, log.now);
+	const line = statusLogLine(task, from, to, log.via, log.now, Math.random, sub);
 	if (line === null) return;
 	const relPath = statusLogPath(dev, log.now);
 	writeTextInVault(root, relPath, appendWorklogLine(readTextOrEmpty(root, relPath), line));
@@ -458,16 +461,36 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	return updated;
 }
 
+/**
+ * サブの項目を書き換える（ADR-0135）。status が変わったら statuslog に task と sub で書き、
+ * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+ */
+export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string, patch: SubIssuePatch, log?: StatusLogContext): SubIssue {
+	const current = index.sub(key);
+	if (!current) throw new Error(`サブがありません: ${key}`);
+	const text = readTextOrEmpty(root, current.path);
+	const r = updateSubIssueText(current.path, current.parent, text, current.id, patch, parse);
+	writeTextInVault(root, current.path, r.text);
+	if (log && r.before.status !== r.after.status) {
+		appendStatusLogOnDisk(root, current.parent, r.before.status, r.after.status, log, current.id);
+		if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
+	}
+	return r.after;
+}
+
+/** 記録を始める。taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。すでに記録中のものは除く */
 export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string[], device: string, now: Date): string[] {
 	const dev = sanitizeDeviceName(device);
 	if (!dev) throw new Error("端末名が空です");
 	if (!Array.isArray(taskIds) || taskIds.length === 0) throw new Error("task_ids を 1 件以上指定してください");
 	for (const id of taskIds) {
-		if (!index.issues.has(id) && !index.routines.has(id)) {
+		if (parseSubKey(id) !== null) {
+			if (!index.sub(id)) throw new Error(`サブがありません: ${id}`);
+		} else if (!index.issues.has(id) && !index.routines.has(id)) {
 			throw new Error(`issue または routine がありません: ${id}`);
 		}
 	}
-	const running = new Set(index.running().map((l) => l.taskId));
+	const running = new Set(index.running().map(workKey));
 	const targets = taskIds.filter((id) => !running.has(id));
 	if (targets.length === 0) return [];
 
@@ -475,12 +498,17 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 	const relPath = worklogPath(dev, now);
 	const current = readTextOrEmpty(root, relPath);
 	const next = targets.reduce(
-		(acc, taskId) => appendWorklogLine(acc, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })),
+		(acc, key) => appendWorklogLine(acc, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })),
 		current,
 	);
 	writeTextInVault(root, relPath, next);
-	// open の issue は、記録を始めたら in-progress にする（ADR-0031）
+	// open の issue とサブは、記録を始めたら in-progress にする（ADR-0031, 0135）
 	for (const id of targets) {
+		const sub = index.sub(id);
+		if (sub) {
+			if (sub.status === "open") updateSubIssueOnDisk(root, index, id, { status: "in-progress" }, { device: dev, now, via: "timer" });
+			continue;
+		}
 		const issue = index.issues.get(id);
 		if (issue?.status === "open") updateIssueFrontmatter(root, issue.path, { status: "in-progress" }, { device: dev, now, via: "timer" });
 	}
@@ -488,7 +516,7 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 }
 
 export function stopTimerOnDisk(root: string, index: TaskIndex, taskIds: string[] | undefined, now: Date): string[] {
-	const running = index.running().filter((l) => !taskIds || taskIds.length === 0 || taskIds.includes(l.taskId));
+	const running = index.running().filter((l) => !taskIds || taskIds.length === 0 || taskIds.includes(workKey(l)));
 	if (running.length === 0) return [];
 
 	const to = localDateTime(now);
@@ -502,7 +530,7 @@ export function stopTimerOnDisk(root: string, index: TaskIndex, taskIds: string[
 		const next = stopWorklogLines(current, entries, to, toMs);
 		writeTextInVault(root, relPath, next);
 	}
-	return running.map((e) => e.taskId);
+	return running.map(workKey);
 }
 
 /** デイリーノート本文の末尾にセクションを追記する（既存の行は変更・削除しない。ADR-0025） */

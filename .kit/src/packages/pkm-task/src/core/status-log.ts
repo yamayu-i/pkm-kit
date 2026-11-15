@@ -1,5 +1,6 @@
 import type { Problem } from "./problem";
 import { STATUSES, type Status } from "./schema";
+import { isSubId } from "./sub-issue";
 import { sanitizeDeviceName } from "./worklog";
 
 /** status の変更をどこから行ったか（ADR-0031） */
@@ -15,6 +16,8 @@ export interface StatusLogEntry {
 	at: string;
 	atMs: number;
 	task: string;
+	/** サブの status の変化なら、サブの id（ADR-0135）。issue の変化は null */
+	sub?: string | null;
 	from: Status;
 	to: Status;
 	via: StatusVia;
@@ -36,14 +39,22 @@ export function newStatusLogId(random: () => number = Math.random): string {
 	return `st_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
 }
 
-export function serializeStatusLogEntry(e: Pick<StatusLogEntry, "id" | "at" | "task" | "from" | "to" | "via">): string {
-	return JSON.stringify({ id: e.id, at: e.at, task: e.task, from: e.from, to: e.to, via: e.via });
+export function serializeStatusLogEntry(e: Pick<StatusLogEntry, "id" | "at" | "task" | "sub" | "from" | "to" | "via">): string {
+	return JSON.stringify({ id: e.id, at: e.at, task: e.task, ...(e.sub ? { sub: e.sub } : {}), from: e.from, to: e.to, via: e.via });
 }
 
-/** 1 回の変更を 1 行にする。status が変わっていなければ null */
-export function statusLogLine(task: string, from: Status, to: Status, via: StatusVia, at: Date, random: () => number = Math.random): string | null {
+/** 1 回の変更を 1 行にする。status が変わっていなければ null。サブの変化は sub に id を渡す（ADR-0135） */
+export function statusLogLine(
+	task: string,
+	from: Status,
+	to: Status,
+	via: StatusVia,
+	at: Date,
+	random: () => number = Math.random,
+	sub: string | null = null,
+): string | null {
 	if (from === to) return null;
-	return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, from, to, via });
+	return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, sub, from, to, via });
 }
 
 const isStatus = (v: unknown): v is Status => typeof v === "string" && (STATUSES as readonly string[]).includes(v);
@@ -74,10 +85,12 @@ export function parseStatusLog(path: string, text: string): { entries: StatusLog
 		const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
 		if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at が日時ではありません");
 		if (typeof o.task !== "string" || !o.task) return problem(line, "invalid-status-log", "task がありません");
+		const sub = o.sub === undefined || o.sub === null ? null : o.sub;
+		if (sub !== null && !isSubId(sub)) return problem(line, "invalid-status-log", "sub が英小文字と数字の 6 文字ではありません");
 		if (!isStatus(o.from) || !isStatus(o.to)) return problem(line, "invalid-status-log", "from / to が status ではありません");
 		const via = (STATUS_VIAS as readonly unknown[]).includes(o.via) ? (o.via as StatusVia) : null;
 		if (via === null) return problem(line, "invalid-status-log", "via が不正です");
-		entries.push({ path, line, id: o.id, at: o.at as string, atMs, task: o.task, from: o.from, to: o.to, via });
+		entries.push({ path, line, id: o.id, at: o.at as string, atMs, task: o.task, sub, from: o.from, to: o.to, via });
 	});
 	return { entries, problems };
 }
@@ -89,11 +102,16 @@ export function compareStatusLog(a: StatusLogEntry, b: StatusLogEntry): number {
 	return a.line - b.line;
 }
 
-/** 記録から、その issue が今の status になる前の status（分からなければ null）。logs は compareStatusLog の順 */
+/** issue そのものの記録か（サブの記録ではない。ADR-0135） */
+export function isIssueStatusLog(e: Pick<StatusLogEntry, "sub">): boolean {
+	return !e.sub;
+}
+
+/** 記録から、その issue が今の status になる前の status（分からなければ null）。logs は compareStatusLog の順。サブの記録は見ない */
 export function statusBefore(logs: readonly StatusLogEntry[], task: string, current: Status): Status | null {
 	for (let i = logs.length - 1; i >= 0; i--) {
 		const e = logs[i]!;
-		if (e.task !== task) continue;
+		if (e.task !== task || !isIssueStatusLog(e)) continue;
 		return e.to === current && e.from !== current ? e.from : null;
 	}
 	return null;
@@ -103,7 +121,7 @@ export function statusBefore(logs: readonly StatusLogEntry[], task: string, curr
 export function closedAtMap(logs: readonly StatusLogEntry[], closedIds: Iterable<string>): Map<string, number> {
 	const ids = new Set(closedIds);
 	const out = new Map<string, number>();
-	for (const e of logs) if (ids.has(e.task) && e.to === "closed") out.set(e.task, e.atMs);
+	for (const e of logs) if (ids.has(e.task) && isIssueStatusLog(e) && e.to === "closed") out.set(e.task, e.atMs);
 	return out;
 }
 

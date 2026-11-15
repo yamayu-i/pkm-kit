@@ -178,6 +178,9 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		else logIds.set(log.id, where);
 		if (!index.issues.has(log.taskId) && !index.routines.has(log.taskId)) {
 			add("error", log.path, "dangling-task", `${log.line} 行目: task_id の ${log.taskId} がありません`);
+		} else if (log.sub && !index.sub(subKey(log.taskId, log.sub))) {
+			// 消したサブの行は消さず、集計では親に含める（ADR-0135）
+			add("warning", log.path, "dangling-sub-worklog", `${log.line} 行目: sub の ${log.sub} が ${log.taskId} にありません（削除済みとして親に含めます）`);
 		}
 		if (log.toMs !== null && log.toMs <= log.fromMs) {
 			add("error", log.path, "non-positive-worklog", `${log.line} 行目: to が from 以前です`);

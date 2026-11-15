@@ -2,6 +2,7 @@ import { Keymap } from "obsidian";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { sidebarCounts } from "../core/index";
+import { workKey } from "../core/worklog";
 import { stopTimer } from "../obsidian/board-actions";
 import { openCaptureModal } from "../obsidian/capture";
 import type { TaskContext } from "../obsidian/context";
@@ -25,11 +26,12 @@ export function SidebarView(props: { ctx: TaskContext }) {
 	const index = ctx.store.index;
 	const counts = sidebarCounts(index, today);
 
-	// 記録中のタスク（同じ taskId の複数ログは 1 行にまとめる）
+	// 記録中のタスク（同じ鍵の複数ログは 1 行にまとめる。サブは合成キー。ADR-0135）
 	const runningByTask = new Map<string, number>();
 	for (const l of index.running()) {
 		const elapsed = Math.max(0, now - l.fromMs);
-		runningByTask.set(l.taskId, Math.max(runningByTask.get(l.taskId) ?? 0, elapsed));
+		const key = workKey(l);
+		runningByTask.set(key, Math.max(runningByTask.get(key) ?? 0, elapsed));
 	}
 
 	const items: NavItem[] = [
@@ -55,10 +57,9 @@ export function SidebarView(props: { ctx: TaskContext }) {
 					<div class="vt-field-label">Running</div>
 					<div class="vt-sidebar-running">
 						{[...runningByTask.entries()].map(([taskId, elapsed]) => {
-							const issue = index.issues.get(taskId);
-							const routine = index.routines.get(taskId);
-							const summary = issue?.summary || routine?.summary || taskId;
-							const path = issue?.path ?? routine?.path ?? null;
+							const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
+							const summary = task?.summary || taskId;
+							const path = task?.path ?? null;
 							return (
 								<div class="vt-task is-running" key={taskId}>
 									<div class="vt-task-top">

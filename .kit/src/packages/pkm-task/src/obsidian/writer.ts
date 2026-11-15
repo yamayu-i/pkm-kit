@@ -1,4 +1,4 @@
-import { TFile, normalizePath, type App } from "obsidian";
+import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
@@ -11,7 +11,8 @@ import { STATUSES, type Status } from "../core/schema";
 import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
-import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, worklogPath, type WorklogEntry } from "../core/worklog";
+import { updateSubIssueText, type SubIssuePatch } from "../core/sub-issue";
+import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, workKey, workTarget, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
@@ -102,13 +103,36 @@ export class TaskWriter {
 		this.onStatusChange?.({ path, id, from, to, before, via });
 	}
 
+	/**
+	 * サブの項目を書き換える（ADR-0135）。key は合成キー。status が変わったら statuslog に task と sub で書き、
+	 * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+	 */
+	async updateSub(key: string, patch: SubIssuePatch, via: StatusVia = "ui"): Promise<void> {
+		const sub = this.store.index.sub(key);
+		if (!sub) throw new Error(`サブがありません: ${key}`);
+		let change: { from: Status; to: Status } | null = null;
+		await this.app.vault.process(this.file(sub.path), (text) => {
+			const r = updateSubIssueText(sub.path, sub.parent, text, sub.id, patch, parseYaml);
+			change = r.before.status !== r.after.status ? { from: r.before.status, to: r.after.status } : null;
+			return r.text;
+		});
+		this.store.refreshSoon();
+		const done = change as { from: Status; to: Status } | null;
+		if (done === null) return;
+		await this.recordStatus(sub.parent, done.from, done.to, via, sub.id);
+		if (isDoneStatus(done.to)) {
+			const running = this.store.index.running(key);
+			if (running.length > 0) await this.stopTimer(running);
+		}
+	}
+
 	/** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
-	private async recordStatus(task: string, from: Status, to: Status, via: StatusVia): Promise<void> {
+	private async recordStatus(task: string, from: Status, to: Status, via: StatusVia, sub: string | null = null): Promise<void> {
 		const device = this.deviceName();
 		if (!device) return;
 		try {
 			const now = new Date();
-			const line = statusLogLine(task, from, to, via, now);
+			const line = statusLogLine(task, from, to, via, now, Math.random, sub);
 			if (line === null) return;
 			const file = await this.getOrCreate(normalizePath(statusLogPath(device, now)), "");
 			await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
@@ -203,11 +227,12 @@ export class TaskWriter {
 
 	/**
 	 * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
-	 * open の issue は in-progress にする（ADR-0031）
+	 * taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。
+	 * open の issue とサブは in-progress にする（ADR-0031）
 	 */
 	async startTimer(taskIds: string[], device: string): Promise<void> {
 		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
-		const running = new Set(this.store.index.running().map((l) => l.taskId));
+		const running = new Set(this.store.index.running().map(workKey));
 		const targets = taskIds.filter((id) => !running.has(id));
 		if (targets.length === 0) return;
 		const now = new Date();
@@ -215,10 +240,15 @@ export class TaskWriter {
 		const path = normalizePath(worklogPath(device, now));
 		const file = await this.getOrCreate(path, "");
 		await this.app.vault.process(file, (text) =>
-			targets.reduce((t, taskId) => appendWorklogLine(t, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text),
+			targets.reduce((t, key) => appendWorklogLine(t, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })), text),
 		);
 		this.store.refreshSoon();
 		for (const id of targets) {
+			const sub = this.store.index.sub(id);
+			if (sub) {
+				if (sub.status === "open") await this.updateSub(id, { status: "in-progress" }, "timer");
+				continue;
+			}
 			const issue = this.store.index.issues.get(id);
 			if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
 		}

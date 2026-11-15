@@ -861,6 +861,498 @@ function nextOrder(visible, previous) {
   return result;
 }
 
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+function nextIds(prefix, existing, count = 1) {
+  let max = 0;
+  for (const id of existing) {
+    const n2 = idNumber(id, prefix);
+    if (n2 !== null && n2 > max) max = n2;
+  }
+  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
+}
+function pathForId(id) {
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  return `${folder}/${id}.md`;
+}
+
+// src/core/repeat.ts
+function parseWeekday(s3) {
+  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
+  return i3 < 0 ? null : i3;
+}
+function parseMonthSpec(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
+  }
+  if (typeof value !== "string") return null;
+  const s3 = value.trim().toLowerCase();
+  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
+  if (s3 === "last") return { kind: "last" };
+  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
+  if (nth) {
+    const weekday = parseWeekday(nth[2]);
+    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
+  }
+  const last = /^last-([a-z]{3})$/.exec(s3);
+  if (last) {
+    const weekday = parseWeekday(last[1]);
+    return weekday === null ? null : { kind: "lastWeekday", weekday };
+  }
+  return null;
+}
+function asList(value) {
+  if (value === void 0 || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+function serializeMonthSpec(spec) {
+  switch (spec.kind) {
+    case "day":
+      return spec.day;
+    case "last":
+      return "last";
+    case "nth":
+      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
+    case "lastWeekday":
+      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
+  }
+}
+function serializeRepeat(rule) {
+  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
+  if (rule.every === "day") return { every: "day", ...interval };
+  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
+  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
+}
+function parseRepeat(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
+  }
+  const raw = value;
+  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
+  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
+    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
+  }
+  const on = asList(raw.on);
+  switch (raw.every) {
+    case "day":
+      return { ok: true, value: { every: "day", interval } };
+    case "week": {
+      const weekdays = [];
+      for (const v3 of on) {
+        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
+        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        if (!weekdays.includes(w3)) weekdays.push(w3);
+      }
+      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "week", interval, weekdays } };
+    }
+    case "month": {
+      const days = [];
+      for (const v3 of on) {
+        const spec = parseMonthSpec(v3);
+        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        days.push(spec);
+      }
+      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "month", interval, days } };
+    }
+    default:
+      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
+  }
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function matchesMonthSpec(spec, year, month, day, weekday) {
+  const last = daysInMonth(year, month);
+  switch (spec.kind) {
+    case "day":
+      return spec.day === day;
+    case "last":
+      return day === last;
+    case "nth":
+      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
+    case "lastWeekday":
+      return weekday === spec.weekday && day + 7 > last;
+  }
+}
+function mondayOffset(date) {
+  return (weekdayOf(date) + 6) % 7;
+}
+function occursOn(rule, anchor, date) {
+  const elapsed = diffDays(date, anchor);
+  if (elapsed < 0) return false;
+  switch (rule.every) {
+    case "day":
+      return elapsed % rule.interval === 0;
+    case "week": {
+      if (!rule.weekdays.includes(weekdayOf(date))) return false;
+      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
+      return weeks % rule.interval === 0;
+    }
+    case "month": {
+      const [y3, m3, d3] = date.split("-").map(Number);
+      const [ay, am] = anchor.split("-").map(Number);
+      const months = (y3 - ay) * 12 + (m3 - am);
+      if (months % rule.interval !== 0) return false;
+      const weekday = weekdayOf(date);
+      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
+    }
+  }
+}
+var ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
+function describeRepeat(rule) {
+  const every = (unit, each) => rule.interval === 1 ? each : `Every ${rule.interval} ${unit}s`;
+  switch (rule.every) {
+    case "day":
+      return every("day", "Daily");
+    case "week":
+      return `${every("week", "Weekly")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
+    case "month": {
+      const days = rule.days.map((d3) => {
+        switch (d3.kind) {
+          case "day":
+            return `day ${d3.day}`;
+          case "last":
+            return "last day";
+          case "nth":
+            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
+          case "lastWeekday":
+            return `last ${WEEKDAY_NAMES[d3.weekday]}`;
+        }
+      });
+      return `${every("month", "Monthly")} ${days.join(", ")}`;
+    }
+  }
+}
+
+// src/core/schema.ts
+var SCHEMA_VERSION = 1;
+var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var PRIORITIES = ["high", "mid", "low", "chore"];
+var STATUS_DETAIL_MAX = 20;
+var Reader = class {
+  constructor(path, fm) {
+    this.path = path;
+    this.fm = fm;
+  }
+  path;
+  fm;
+  problems = [];
+  problem(code, message, severity = "error") {
+    this.problems.push({ severity, path: this.path, code, message });
+  }
+  has(key) {
+    const v3 = this.fm[key];
+    return v3 !== void 0 && v3 !== null && v3 !== "";
+  }
+  string(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "string") return v3.trim();
+    if (typeof v3 === "number") return String(v3);
+    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    return null;
+  }
+  oneOf(key, values) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (values.includes(v3)) return v3;
+    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
+    return null;
+  }
+  date(key) {
+    if (!this.has(key)) return null;
+    const d3 = normalizeDate(this.fm[key]);
+    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
+    return d3;
+  }
+  datetime(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
+    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
+    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
+    return null;
+  }
+  minutes(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
+    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
+    return null;
+  }
+  list(key) {
+    if (!this.has(key)) return [];
+    const v3 = this.fm[key];
+    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
+  }
+  strings(key) {
+    const out = [];
+    for (const v3 of this.list(key)) {
+      if (typeof v3 === "string" || typeof v3 === "number") {
+        const s3 = String(v3).trim();
+        if (s3 && !out.includes(s3)) out.push(s3);
+      } else {
+        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
+      }
+    }
+    return out;
+  }
+  dates(key) {
+    const out = /* @__PURE__ */ new Set();
+    for (const v3 of this.list(key)) {
+      const d3 = normalizeDate(v3);
+      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
+      else out.add(d3);
+    }
+    return [...out].sort();
+  }
+  ref(key, prefix) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (isId(v3, prefix)) return v3;
+    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
+    return null;
+  }
+  common(type, prefix) {
+    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
+      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
+    }
+    const id = this.string("id");
+    if (id === null || !isId(id, prefix)) {
+      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
+      return null;
+    }
+    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
+    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
+    return id;
+  }
+};
+function parseIssue(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("issue", "i");
+  const summary = r3.string("summary") ?? "";
+  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  const issue = {
+    path,
+    id: id ?? "",
+    summary,
+    status: status ?? "open",
+    statusDetail: r3.string("status-detail") ?? "",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    parent: r3.ref("parent", "i"),
+    related: r3.strings("related"),
+    estimated: r3.minutes("estimated"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    revisit: r3.date("revisit"),
+    reviewed: r3.date("reviewed"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : issue, problems: r3.problems };
+}
+function parseRoutine(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("routine", "r");
+  let repeat = null;
+  const parsed = parseRepeat(fm.repeat);
+  if (parsed.ok) repeat = parsed.value;
+  else r3.problem("invalid-repeat", parsed.error);
+  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
+  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const routine = {
+    path,
+    id: id ?? "",
+    summary: r3.string("summary") ?? "",
+    repeat,
+    start: r3.date("start"),
+    end: r3.date("end"),
+    active: active !== false,
+    group: r3.string("group"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    estimated: r3.minutes("estimated"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : routine, problems: r3.problems };
+}
+function parseMember(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("member", "m");
+  const name = r3.string("name") ?? "";
+  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  const nickname = r3.string("nickname") || name;
+  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
+}
+
+// src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SubIssueFormatError = class extends Error {
+};
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+function parseSubKey(key) {
+  const at = key.indexOf("#");
+  if (at < 0) return null;
+  const parent = key.slice(0, at);
+  const id = key.slice(at + 1);
+  return isId(parent, "i") && isSubId(id) ? { parent, id } : null;
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text) {
+  const fm = FRONTMATTER_RE.exec(text);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text.length) {
+    if (text.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text, blocks: [] };
+  const blocks = starts.map((s3, i3) => text.slice(s3, starts[i3 + 1] ?? text.length));
+  return { head: text.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml3) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml3(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r3 = new Reader(path, fm);
+  const id = r3.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r3.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r3.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    start: r3.date("start"),
+    end: r3.date("end"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    estimated: r3.minutes("estimated"),
+    dependsOn: r3.strings("depends_on"),
+    created: r3.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
+}
+function parseSubIssues(path, parent, text, parseYaml3) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text).blocks) {
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml3);
+    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
+    problems.push(...r3.problems);
+    if (r3.sub) subs.push(r3.sub);
+  }
+  return { subs, blocks, problems };
+}
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function formatSubIssue(sub) {
+  if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
+  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
+  const put = (key, value) => {
+    if (value !== null) lines.push(`${key}: ${value}`);
+  };
+  put("delegated_to", sub.delegatedTo);
+  put("start", sub.start);
+  put("end", sub.end);
+  if (sub.scheduled.length > 0) put("scheduled", JSON.stringify(sub.scheduled));
+  put("soft_deadline", sub.softDeadline);
+  put("deadline", sub.deadline);
+  put("estimated", sub.estimated === null ? null : String(sub.estimated));
+  if (sub.dependsOn.length > 0) put("depends_on", JSON.stringify(sub.dependsOn));
+  put("created", sub.created);
+  put("migrated_from", sub.migratedFrom);
+  for (const line of lines.slice(1)) {
+    if (line.includes(BLOCK_END)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B ${BLOCK_END} \u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
+    if (/[\r\n]/.test(line)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
+  }
+  const body = sub.body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+  if (body.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) {
+    throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u672C\u6587\u306E\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`);
+  }
+  lines.push(BLOCK_END);
+  return `${lines.join("\n")}
+${body ? `${body}
+` : ""}`;
+}
+function replaceSubIssues(text, blocks) {
+  const { head, blocks: existing } = splitSubIssueText(text);
+  if (blocks.length === 0) return existing.length === 0 ? text : `${head.trimEnd()}
+`;
+  const parts = blocks.map((b2) => typeof b2 === "string" ? `${b2.trimEnd()}
+` : formatSubIssue(b2));
+  return `${head.trimEnd()}
+
+${parts.join("\n")}`;
+}
+function updateSubIssueText(path, parent, text, id, patch, parseYaml3) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+  const at = blocks.findIndex((b2) => b2.sub?.id === id);
+  if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  const before = blocks[at].sub;
+  const after = { ...before, ...patch, id: before.id };
+  const next = replaceSubIssues(
+    text,
+    blocks.map((b2, i3) => i3 === at ? after : b2.sub ?? b2.raw)
+  );
+  return { text: next, before, after };
+}
+
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
 function sanitizeDeviceName(name) {
@@ -893,6 +1385,8 @@ function parseWorklog(path, text) {
     const o3 = obj;
     if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
     if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
     if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     let toMs2 = null;
@@ -905,6 +1399,7 @@ function parseWorklog(path, text) {
       line,
       id: o3.id,
       taskId: o3.task_id,
+      sub,
       from: o3.from,
       to: toMs2 === null ? null : o3.to,
       description: typeof o3.description === "string" ? o3.description : "",
@@ -915,7 +1410,14 @@ function parseWorklog(path, text) {
   return { entries, problems };
 }
 function serializeWorklogEntry(e3) {
-  return JSON.stringify({ id: e3.id, task_id: e3.taskId, from: e3.from, to: e3.to, description: e3.description });
+  return JSON.stringify({ id: e3.id, task_id: e3.taskId, ...e3.sub ? { sub: e3.sub } : {}, from: e3.from, to: e3.to, description: e3.description });
+}
+function workKey(e3) {
+  return e3.sub ? `${e3.taskId}#${e3.sub}` : e3.taskId;
+}
+function workTarget(key) {
+  const parsed = parseSubKey(key);
+  return parsed ? { taskId: parsed.parent, sub: parsed.id } : { taskId: key, sub: null };
 }
 function replaceWorklogLine(text, entry, next) {
   const lines = text.split("\n");
@@ -930,7 +1432,7 @@ function replaceWorklogLine(text, entry, next) {
     throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
   }
   if (next === null) lines.splice(i3, 1);
-  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, sub: entry.sub ?? null, ...next });
   return lines.join("\n");
 }
 var MIN_WORKLOG_MS = 6e4;
@@ -1160,346 +1662,6 @@ function prorateEffort(intervals, now) {
   return result;
 }
 
-// src/core/repeat.ts
-function parseWeekday(s3) {
-  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
-  return i3 < 0 ? null : i3;
-}
-function parseMonthSpec(value) {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
-  }
-  if (typeof value !== "string") return null;
-  const s3 = value.trim().toLowerCase();
-  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
-  if (s3 === "last") return { kind: "last" };
-  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
-  if (nth) {
-    const weekday = parseWeekday(nth[2]);
-    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
-  }
-  const last = /^last-([a-z]{3})$/.exec(s3);
-  if (last) {
-    const weekday = parseWeekday(last[1]);
-    return weekday === null ? null : { kind: "lastWeekday", weekday };
-  }
-  return null;
-}
-function asList(value) {
-  if (value === void 0 || value === null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-function serializeMonthSpec(spec) {
-  switch (spec.kind) {
-    case "day":
-      return spec.day;
-    case "last":
-      return "last";
-    case "nth":
-      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
-    case "lastWeekday":
-      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
-  }
-}
-function serializeRepeat(rule) {
-  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
-  if (rule.every === "day") return { every: "day", ...interval };
-  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
-  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
-}
-function parseRepeat(value) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
-  }
-  const raw = value;
-  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
-  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
-    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
-  }
-  const on = asList(raw.on);
-  switch (raw.every) {
-    case "day":
-      return { ok: true, value: { every: "day", interval } };
-    case "week": {
-      const weekdays = [];
-      for (const v3 of on) {
-        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
-        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        if (!weekdays.includes(w3)) weekdays.push(w3);
-      }
-      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "week", interval, weekdays } };
-    }
-    case "month": {
-      const days = [];
-      for (const v3 of on) {
-        const spec = parseMonthSpec(v3);
-        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        days.push(spec);
-      }
-      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "month", interval, days } };
-    }
-    default:
-      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
-  }
-}
-function daysInMonth(year, month) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-function matchesMonthSpec(spec, year, month, day, weekday) {
-  const last = daysInMonth(year, month);
-  switch (spec.kind) {
-    case "day":
-      return spec.day === day;
-    case "last":
-      return day === last;
-    case "nth":
-      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
-    case "lastWeekday":
-      return weekday === spec.weekday && day + 7 > last;
-  }
-}
-function mondayOffset(date) {
-  return (weekdayOf(date) + 6) % 7;
-}
-function occursOn(rule, anchor, date) {
-  const elapsed = diffDays(date, anchor);
-  if (elapsed < 0) return false;
-  switch (rule.every) {
-    case "day":
-      return elapsed % rule.interval === 0;
-    case "week": {
-      if (!rule.weekdays.includes(weekdayOf(date))) return false;
-      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
-      return weeks % rule.interval === 0;
-    }
-    case "month": {
-      const [y3, m3, d3] = date.split("-").map(Number);
-      const [ay, am] = anchor.split("-").map(Number);
-      const months = (y3 - ay) * 12 + (m3 - am);
-      if (months % rule.interval !== 0) return false;
-      const weekday = weekdayOf(date);
-      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
-    }
-  }
-}
-var ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
-function describeRepeat(rule) {
-  const every = (unit, each) => rule.interval === 1 ? each : `Every ${rule.interval} ${unit}s`;
-  switch (rule.every) {
-    case "day":
-      return every("day", "Daily");
-    case "week":
-      return `${every("week", "Weekly")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
-    case "month": {
-      const days = rule.days.map((d3) => {
-        switch (d3.kind) {
-          case "day":
-            return `day ${d3.day}`;
-          case "last":
-            return "last day";
-          case "nth":
-            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
-          case "lastWeekday":
-            return `last ${WEEKDAY_NAMES[d3.weekday]}`;
-        }
-      });
-      return `${every("month", "Monthly")} ${days.join(", ")}`;
-    }
-  }
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m3 ? Number(m3[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-function nextIds(prefix, existing, count = 1) {
-  let max = 0;
-  for (const id of existing) {
-    const n2 = idNumber(id, prefix);
-    if (n2 !== null && n2 > max) max = n2;
-  }
-  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
-}
-function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
-  return `${folder}/${id}.md`;
-}
-
-// src/core/schema.ts
-var SCHEMA_VERSION = 1;
-var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
-var PRIORITIES = ["high", "mid", "low", "chore"];
-var STATUS_DETAIL_MAX = 20;
-var Reader = class {
-  constructor(path, fm) {
-    this.path = path;
-    this.fm = fm;
-  }
-  path;
-  fm;
-  problems = [];
-  problem(code, message, severity = "error") {
-    this.problems.push({ severity, path: this.path, code, message });
-  }
-  has(key) {
-    const v3 = this.fm[key];
-    return v3 !== void 0 && v3 !== null && v3 !== "";
-  }
-  string(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "string") return v3.trim();
-    if (typeof v3 === "number") return String(v3);
-    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    return null;
-  }
-  oneOf(key, values) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (values.includes(v3)) return v3;
-    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
-    return null;
-  }
-  date(key) {
-    if (!this.has(key)) return null;
-    const d3 = normalizeDate(this.fm[key]);
-    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
-    return d3;
-  }
-  datetime(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
-    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
-    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
-    return null;
-  }
-  minutes(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
-    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
-    return null;
-  }
-  list(key) {
-    if (!this.has(key)) return [];
-    const v3 = this.fm[key];
-    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
-  }
-  strings(key) {
-    const out = [];
-    for (const v3 of this.list(key)) {
-      if (typeof v3 === "string" || typeof v3 === "number") {
-        const s3 = String(v3).trim();
-        if (s3 && !out.includes(s3)) out.push(s3);
-      } else {
-        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
-      }
-    }
-    return out;
-  }
-  dates(key) {
-    const out = /* @__PURE__ */ new Set();
-    for (const v3 of this.list(key)) {
-      const d3 = normalizeDate(v3);
-      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
-      else out.add(d3);
-    }
-    return [...out].sort();
-  }
-  ref(key, prefix) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (isId(v3, prefix)) return v3;
-    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
-    return null;
-  }
-  common(type, prefix) {
-    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
-      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
-    }
-    const id = this.string("id");
-    if (id === null || !isId(id, prefix)) {
-      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
-      return null;
-    }
-    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
-    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
-    return id;
-  }
-};
-function parseIssue(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("issue", "i");
-  const summary = r3.string("summary") ?? "";
-  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
-  const status = r3.oneOf("status", STATUSES);
-  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
-  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
-  const issue = {
-    path,
-    id: id ?? "",
-    summary,
-    status: status ?? "open",
-    statusDetail: r3.string("status-detail") ?? "",
-    delegatedTo: r3.ref("delegated_to", "m"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    parent: r3.ref("parent", "i"),
-    related: r3.strings("related"),
-    estimated: r3.minutes("estimated"),
-    scheduled: r3.dates("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
-    revisit: r3.date("revisit"),
-    reviewed: r3.date("reviewed"),
-    created: r3.datetime("created")
-  };
-  return { value: id === null ? null : issue, problems: r3.problems };
-}
-function parseRoutine(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("routine", "r");
-  let repeat = null;
-  const parsed = parseRepeat(fm.repeat);
-  if (parsed.ok) repeat = parsed.value;
-  else r3.problem("invalid-repeat", parsed.error);
-  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
-  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const routine = {
-    path,
-    id: id ?? "",
-    summary: r3.string("summary") ?? "",
-    repeat,
-    start: r3.date("start"),
-    end: r3.date("end"),
-    active: active !== false,
-    group: r3.string("group"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    estimated: r3.minutes("estimated"),
-    created: r3.datetime("created")
-  };
-  return { value: id === null ? null : routine, problems: r3.problems };
-}
-function parseMember(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("member", "m");
-  const name = r3.string("name") ?? "";
-  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  const nickname = r3.string("nickname") || name;
-  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
-  if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -1514,11 +1676,11 @@ function newStatusLogId(random = Math.random) {
   return `st_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
 }
 function serializeStatusLogEntry(e3) {
-  return JSON.stringify({ id: e3.id, at: e3.at, task: e3.task, from: e3.from, to: e3.to, via: e3.via });
+  return JSON.stringify({ id: e3.id, at: e3.at, task: e3.task, ...e3.sub ? { sub: e3.sub } : {}, from: e3.from, to: e3.to, via: e3.via });
 }
-function statusLogLine(task, from, to, via, at, random = Math.random) {
+function statusLogLine(task, from, to, via, at, random = Math.random, sub = null) {
   if (from === to) return null;
-  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, from, to, via });
+  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, sub, from, to, via });
 }
 var isStatus = (v3) => typeof v3 === "string" && STATUSES.includes(v3);
 function parseStatusLog(path, text) {
@@ -1544,10 +1706,12 @@ function parseStatusLog(path, text) {
     const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
     if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (typeof o3.task !== "string" || !o3.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-status-log", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (!isStatus(o3.from) || !isStatus(o3.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const via = STATUS_VIAS.includes(o3.via) ? o3.via : null;
     if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, from: o3.from, to: o3.to, via });
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, sub, from: o3.from, to: o3.to, via });
   });
   return { entries, problems };
 }
@@ -1556,10 +1720,13 @@ function compareStatusLog(a3, b2) {
   if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
   return a3.line - b2.line;
 }
+function isIssueStatusLog(e3) {
+  return !e3.sub;
+}
 function statusBefore(logs, task, current) {
   for (let i3 = logs.length - 1; i3 >= 0; i3--) {
     const e3 = logs[i3];
-    if (e3.task !== task) continue;
+    if (e3.task !== task || !isIssueStatusLog(e3)) continue;
     return e3.to === current && e3.from !== current ? e3.from : null;
   }
   return null;
@@ -1567,7 +1734,7 @@ function statusBefore(logs, task, current) {
 function closedAtMap(logs, closedIds) {
   const ids = new Set(closedIds);
   const out = /* @__PURE__ */ new Map();
-  for (const e3 of logs) if (ids.has(e3.task) && e3.to === "closed") out.set(e3.task, e3.atMs);
+  for (const e3 of logs) if (ids.has(e3.task) && isIssueStatusLog(e3) && e3.to === "closed") out.set(e3.task, e3.atMs);
   return out;
 }
 function nextStatuses(status) {
@@ -1695,10 +1862,18 @@ var TaskIndex = class {
     if (childId === parentId || !this.issues.has(parentId)) return false;
     return !this.ancestors(parentId).some((a3) => a3.id === childId);
   }
-  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
   effortMinutes(now) {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
+  }
+  /**
+   * 按分後の実績（分）。記録の鍵（workKey）ごと: サブは合成キー、親の ID は親に直接付けた行だけ（ADR-0135）。
+   * 按分は同時に動いている区間の数で割るので、親の ID とそのサブの合計は effortMinutes の親の値と同じ
+   */
+  effortByKey(now) {
+    const ms = prorateEffort(this.data.worklogs.map((l3) => ({ taskId: workKey(l3), fromMs: l3.fromMs, toMs: l3.toMs })), now);
+    return new Map([...ms].map(([key, v3]) => [key, v3 / 6e4]));
   }
   /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
   routineEffort(taskId, now) {
@@ -1732,9 +1907,9 @@ var TaskIndex = class {
   order(date, group) {
     return lastOrder(this.data.orders, group, date);
   }
-  /** 記録中（to が空）の worklog */
-  running(taskId) {
-    return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
+  /** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
+  running(key) {
+    return this.data.worklogs.filter((l3) => l3.toMs === null && (key === void 0 || workKey(l3) === key));
   }
   /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
   statusBefore(id) {
@@ -1744,7 +1919,7 @@ var TaskIndex = class {
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {
     const logs = this.data.statusLogs;
-    for (let i3 = logs.length - 1; i3 >= 0; i3--) if (logs[i3].task === id) return logs[i3];
+    for (let i3 = logs.length - 1; i3 >= 0; i3--) if (logs[i3].task === id && isIssueStatusLog(logs[i3])) return logs[i3];
     return void 0;
   }
   /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
@@ -3570,11 +3745,12 @@ function runningStatus(index, now) {
   const elapsedByTask = /* @__PURE__ */ new Map();
   for (const l3 of index.running()) {
     const elapsed = Math.max(0, now - l3.fromMs);
-    elapsedByTask.set(l3.taskId, Math.max(elapsedByTask.get(l3.taskId) ?? 0, elapsed));
+    const key = workKey(l3);
+    elapsedByTask.set(key, Math.max(elapsedByTask.get(key) ?? 0, elapsed));
   }
   if (elapsedByTask.size === 0) return null;
   const rows = [...elapsedByTask.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([taskId, elapsed]) => {
-    const task = index.issues.get(taskId) ?? index.routines.get(taskId);
+    const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
     return { taskId, summary: task?.summary ?? "", path: task?.path ?? null, time: formatMinutes(Math.floor(elapsed / 6e4)) };
   });
   const tooltip = rows.map((r4) => [r4.taskId, r4.summary, r4.time].filter(Boolean).join(" ")).join("\n");
@@ -3738,95 +3914,6 @@ function parseLabels(text) {
 function serializeLabels(labels) {
   return `${JSON.stringify(labels.map((l3) => ({ name: l3.name, color: l3.color })), null, 2)}
 `;
-}
-
-// src/core/sub-issue.ts
-var SUB_ISSUE_MARKER = "<!-- sub-issue";
-var BLOCK_END = "-->";
-var SUB_ID_RE = /^[a-z0-9]{6}$/;
-function isSubId(value) {
-  return typeof value === "string" && SUB_ID_RE.test(value);
-}
-function subKey(parent, id) {
-  return `${parent}#${id}`;
-}
-var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-function splitSubIssueText(text) {
-  const fm = FRONTMATTER_RE.exec(text);
-  const from = fm ? fm[0].length : 0;
-  const starts = [];
-  let pos = from;
-  while (pos <= text.length) {
-    if (text.startsWith(SUB_ISSUE_MARKER, pos)) {
-      const next = text[pos + SUB_ISSUE_MARKER.length];
-      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
-    }
-    const nl = text.indexOf("\n", pos);
-    if (nl < 0) break;
-    pos = nl + 1;
-  }
-  if (starts.length === 0) return { head: text, blocks: [] };
-  const blocks = starts.map((s3, i3) => text.slice(s3, starts[i3 + 1] ?? text.length));
-  return { head: text.slice(0, starts[0]), blocks };
-}
-function prefixed(problems, id) {
-  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
-}
-function parseBlock(path, parent, raw, order, parseYaml2) {
-  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
-  const lines = raw.split(/\r?\n/);
-  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
-  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
-  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
-  let fm;
-  try {
-    fm = parseYaml2(yamlText);
-  } catch {
-    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  const r3 = new Reader(path, fm);
-  const id = r3.string("id");
-  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
-  const extra = [];
-  const summary = r3.string("summary") ?? "";
-  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
-  const status = r3.oneOf("status", STATUSES);
-  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
-  const migratedFrom = r3.ref("migrated_from", "i");
-  const sub = {
-    parent,
-    path,
-    id,
-    key: subKey(parent, id),
-    order,
-    summary,
-    status: status ?? "open",
-    delegatedTo: r3.ref("delegated_to", "m"),
-    start: r3.date("start"),
-    end: r3.date("end"),
-    scheduled: r3.dates("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
-    estimated: r3.minutes("estimated"),
-    dependsOn: r3.strings("depends_on"),
-    created: r3.datetime("created"),
-    migratedFrom,
-    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
-  };
-  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
-}
-function parseSubIssues(path, parent, text, parseYaml2) {
-  const blocks = [];
-  const problems = [];
-  const subs = [];
-  for (const raw of splitSubIssueText(text).blocks) {
-    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml2);
-    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
-    problems.push(...r3.problems);
-    if (r3.sub) subs.push(r3.sub);
-  }
-  return { subs, blocks, problems };
 }
 
 // src/core/load.ts
@@ -4112,11 +4199,11 @@ function closeBoardNote(text, date, index, board) {
 
 // src/core/issue-file.ts
 var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString(s3) {
+function yamlString2(s3) {
   return JSON.stringify(s3);
 }
 function newIssueContent(id, summary, created, parent = null, scheduled = []) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
   if (parent !== null) lines.push(`parent: ${parent}`);
   if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
@@ -4128,9 +4215,9 @@ function newMemberContent(id, name, created) {
     `schema: ${SCHEMA_VERSION}`,
     "type: member",
     `id: ${id}`,
-    `name: ${yamlString(name)}`,
-    `nickname: ${yamlString(name)}`,
-    `alias: ${yamlString(id)}`,
+    `name: ${yamlString2(name)}`,
+    `nickname: ${yamlString2(name)}`,
+    `alias: ${yamlString2(id)}`,
     `created: ${created}`,
     `updated: ${created}`,
     "---",
@@ -4138,10 +4225,10 @@ function newMemberContent(id, name, created) {
   ].join("\n");
 }
 function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString2(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
   if (extra.start) lines.push(`start: ${extra.start}`);
   lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+  if (extra.group) lines.push(`group: ${yamlString2(extra.group)}`);
   if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
   return lines.join("\n");
@@ -4446,13 +4533,35 @@ var TaskWriter = class {
     }
     this.onStatusChange?.({ path, id, from, to, before, via });
   }
+  /**
+   * サブの項目を書き換える（ADR-0135）。key は合成キー。status が変わったら statuslog に task と sub で書き、
+   * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+   */
+  async updateSub(key, patch, via = "ui") {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    let change = null;
+    await this.app.vault.process(this.file(sub.path), (text) => {
+      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, patch, import_obsidian14.parseYaml);
+      change = r3.before.status !== r3.after.status ? { from: r3.before.status, to: r3.after.status } : null;
+      return r3.text;
+    });
+    this.store.refreshSoon();
+    const done = change;
+    if (done === null) return;
+    await this.recordStatus(sub.parent, done.from, done.to, via, sub.id);
+    if (isDoneStatus(done.to)) {
+      const running = this.store.index.running(key);
+      if (running.length > 0) await this.stopTimer(running);
+    }
+  }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
-  async recordStatus(task, from, to, via) {
+  async recordStatus(task, from, to, via, sub = null) {
     const device = this.deviceName();
     if (!device) return;
     try {
       const now = /* @__PURE__ */ new Date();
-      const line = statusLogLine(task, from, to, via, now);
+      const line = statusLogLine(task, from, to, via, now, Math.random, sub);
       if (line === null) return;
       const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
@@ -4537,11 +4646,12 @@ var TaskWriter = class {
   }
   /**
    * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
-   * open の issue は in-progress にする（ADR-0031）
+   * taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。
+   * open の issue とサブは in-progress にする（ADR-0031）
    */
   async startTimer(taskIds, device) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const running = new Set(this.store.index.running().map((l3) => l3.taskId));
+    const running = new Set(this.store.index.running().map(workKey));
     const targets = taskIds.filter((id) => !running.has(id));
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
@@ -4550,10 +4660,15 @@ var TaskWriter = class {
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
-      (text) => targets.reduce((t3, taskId) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text)
+      (text) => targets.reduce((t3, key) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })), text)
     );
     this.store.refreshSoon();
     for (const id of targets) {
+      const sub = this.store.index.sub(id);
+      if (sub) {
+        if (sub.status === "open") await this.updateSub(id, { status: "in-progress" }, "timer");
+        continue;
+      }
       const issue = this.store.index.issues.get(id);
       if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
     }
@@ -4758,7 +4873,7 @@ function startTimer(ctx, ids) {
   return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
 }
 function stopTimer(ctx, ids) {
-  const running = ctx.store.index.running().filter((l3) => ids.includes(l3.taskId));
+  const running = ctx.store.index.running().filter((l3) => ids.includes(workKey(l3)));
   if (running.length === 0) return Promise.resolve();
   return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
 }
@@ -5020,7 +5135,7 @@ function GroupBox(props) {
   );
   const siblings = own.map(itemId);
   const ids = all.filter((it) => it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open").map(itemId);
-  const runningIds = ctx.store.index.running().map((l3) => l3.taskId).filter((id) => all.some((it) => itemId(it) === id));
+  const runningIds = ctx.store.index.running().map(workKey).filter((id) => all.some((it) => itemId(it) === id));
   return /* @__PURE__ */ u3(
     "section",
     {
@@ -6380,7 +6495,8 @@ function SidebarView(props) {
   const runningByTask = /* @__PURE__ */ new Map();
   for (const l3 of index.running()) {
     const elapsed = Math.max(0, now - l3.fromMs);
-    runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
+    const key = workKey(l3);
+    runningByTask.set(key, Math.max(runningByTask.get(key) ?? 0, elapsed));
   }
   const items = [
     { type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
@@ -6402,10 +6518,9 @@ function SidebarView(props) {
     runningByTask.size > 0 && /* @__PURE__ */ u3("section", { class: "vt-sidebar-section", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "Running" }),
       /* @__PURE__ */ u3("div", { class: "vt-sidebar-running", children: [...runningByTask.entries()].map(([taskId, elapsed]) => {
-        const issue = index.issues.get(taskId);
-        const routine = index.routines.get(taskId);
-        const summary = issue?.summary || routine?.summary || taskId;
-        const path = issue?.path ?? routine?.path ?? null;
+        const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
+        const summary = task?.summary || taskId;
+        const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
           path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(

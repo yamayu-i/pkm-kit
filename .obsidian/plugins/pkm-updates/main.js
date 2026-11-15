@@ -165,176 +165,13 @@ function markCarried(board, ids) {
   for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
 }
 
-// ../pkm-task/src/core/worklog.ts
-var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function sanitizeDeviceName(name) {
-  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+// ../pkm-task/src/core/ids.ts
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
 }
-function parseWorklog(path, text2) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text2.split("\n").forEach((raw, i3) => {
-    const line = i3 + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o3 = obj;
-    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
-    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs = null;
-    if (o3.to !== null && o3.to !== void 0) {
-      toMs = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
-      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    }
-    entries.push({
-      path,
-      line,
-      id: o3.id,
-      taskId: o3.task_id,
-      from: o3.from,
-      to: toMs === null ? null : o3.to,
-      description: typeof o3.description === "string" ? o3.description : "",
-      fromMs,
-      toMs
-    });
-  });
-  return { entries, problems };
-}
-
-// ../pkm-task/src/core/board-log.ts
-var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
-function parseOp(o3) {
-  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
-  switch (o3.op) {
-    case "add":
-    case "remove":
-    case "carry":
-      return task ? { op: o3.op, task } : null;
-    case "place":
-      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
-    case "routine":
-      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
-    case "close":
-      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
-    case "reopen":
-      return { op: "reopen" };
-    case "order":
-      return (o3.group === null || typeof o3.group === "string" && o3.group) && Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o3.group, tasks: o3.tasks } : null;
-    default:
-      return null;
-  }
-}
-function parseBoardLog(path, text2) {
-  const entries = [];
-  const problems = [];
-  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
-  text2.split("\n").forEach((raw, i3) => {
-    const line = i3 + 1;
-    if (!raw.trim()) return;
-    let obj;
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-      return;
-    }
-    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-      return;
-    }
-    const o3 = obj;
-    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
-    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
-    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    const op = parseOp(o3);
-    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
-  });
-  return { entries, problems };
-}
-function compareEntries(a3, b2) {
-  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
-  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
-  return a3.line - b2.line;
-}
-function apply(board, op) {
-  switch (op.op) {
-    case "add":
-      if (!board.issues.includes(op.task)) board.issues.push(op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      board.closed = false;
-      break;
-    case "remove":
-      board.issues = board.issues.filter((id) => id !== op.task);
-      board.carried = board.carried.filter((id) => id !== op.task);
-      delete board.groups[op.task];
-      break;
-    case "place":
-      if (op.group === null) delete board.groups[op.task];
-      else board.groups[op.task] = op.group;
-      break;
-    case "routine":
-      if (op.result === null) delete board.routines[op.task];
-      else board.routines[op.task] = op.result;
-      break;
-    case "carry":
-      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
-      break;
-    case "close":
-    case "reopen":
-      board.closed = op.op === "close";
-      break;
-    case "order":
-      break;
-  }
-}
-function replayBoard(initial, entries) {
-  const board = { ...emptyBoard(), ...structuredClone(initial) };
-  let lastClose = null;
-  for (const e3 of [...entries].sort(compareEntries)) {
-    apply(board, e3.op);
-    if (e3.op.op === "close") lastClose = e3.op.tasks;
-  }
-  const seen = lastClose;
-  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
-  return board;
-}
-function removedTasks(entries) {
-  const last = /* @__PURE__ */ new Map();
-  for (const e3 of [...entries].sort(compareEntries)) {
-    if (e3.op.op === "add" || e3.op.op === "remove") last.set(e3.op.task, e3.op.op);
-  }
-  return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
-}
-function placementHistory(initial, entries) {
-  const records = [];
-  for (const [date, board] of initial) {
-    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
-  }
-  for (const e3 of [...entries].sort(compareEntries)) {
-    if (e3.op.op === "place") records.push({ task: e3.op.task, date: e3.date, atMs: e3.atMs, group: e3.op.group });
-  }
-  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
-}
-function orderHistory(entries) {
-  const records = [];
-  for (const e3 of [...entries].sort(compareEntries)) {
-    if (e3.op.op === "order") records.push({ group: e3.op.group ?? "", date: e3.date, atMs: e3.atMs, tasks: e3.op.tasks });
-  }
-  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
 }
 
 // ../pkm-task/src/core/repeat.ts
@@ -402,15 +239,6 @@ function parseRepeat(value) {
     default:
       return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
   }
-}
-
-// ../pkm-task/src/core/ids.ts
-function idNumber(id, prefix) {
-  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m3 ? Number(m3[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
 }
 
 // ../pkm-task/src/core/schema.ts
@@ -581,6 +409,270 @@ function parseMember(path, fm) {
   return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
 }
 
+// ../pkm-task/src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text2) {
+  const fm = FRONTMATTER_RE.exec(text2);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text2.length) {
+    if (text2.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text2[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text2.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text2, blocks: [] };
+  const blocks = starts.map((s3, i3) => text2.slice(s3, starts[i3 + 1] ?? text2.length));
+  return { head: text2.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r3 = new Reader(path, fm);
+  const id = r3.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r3.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r3.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    start: r3.date("start"),
+    end: r3.date("end"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    estimated: r3.minutes("estimated"),
+    dependsOn: r3.strings("depends_on"),
+    created: r3.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
+}
+function parseSubIssues(path, parent, text2, parseYaml) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text2).blocks) {
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml);
+    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
+    problems.push(...r3.problems);
+    if (r3.sub) subs.push(r3.sub);
+  }
+  return { subs, blocks, problems };
+}
+
+// ../pkm-task/src/core/worklog.ts
+var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function sanitizeDeviceName(name) {
+  return name.trim().replace(/[\\/:*?"<>|#^[\]]/g, "-").replace(/^\.+/, "");
+}
+function parseWorklog(path, text2) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text2.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
+    if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    let toMs = null;
+    if (o3.to !== null && o3.to !== void 0) {
+      toMs = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
+      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    }
+    entries.push({
+      path,
+      line,
+      id: o3.id,
+      taskId: o3.task_id,
+      sub,
+      from: o3.from,
+      to: toMs === null ? null : o3.to,
+      description: typeof o3.description === "string" ? o3.description : "",
+      fromMs,
+      toMs
+    });
+  });
+  return { entries, problems };
+}
+
+// ../pkm-task/src/core/board-log.ts
+var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+function parseOp(o3) {
+  const task = typeof o3.task === "string" && o3.task ? o3.task : null;
+  switch (o3.op) {
+    case "add":
+    case "remove":
+    case "carry":
+      return task ? { op: o3.op, task } : null;
+    case "place":
+      return task && (o3.group === null || typeof o3.group === "string" && o3.group) ? { op: "place", task, group: o3.group } : null;
+    case "routine":
+      return task && (o3.result === null || o3.result === "closed" || o3.result === "canceled") ? { op: "routine", task, result: o3.result } : null;
+    case "close":
+      return Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "close", tasks: o3.tasks } : null;
+    case "reopen":
+      return { op: "reopen" };
+    case "order":
+      return (o3.group === null || typeof o3.group === "string" && o3.group) && Array.isArray(o3.tasks) && o3.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o3.group, tasks: o3.tasks } : null;
+    default:
+      return null;
+  }
+}
+function parseBoardLog(path, text2) {
+  const entries = [];
+  const problems = [];
+  const problem = (line, code, message) => problems.push({ severity: "error", path, code, message: `${line} \u884C\u76EE: ${message}` });
+  text2.split("\n").forEach((raw, i3) => {
+    const line = i3 + 1;
+    if (!raw.trim()) return;
+    let obj;
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      problem(line, "invalid-json", "JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+      return;
+    }
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      problem(line, "invalid-json", "\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      return;
+    }
+    const o3 = obj;
+    if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-board-log", "id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
+    if (Number.isNaN(atMs)) return problem(line, "invalid-board-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    if (typeof o3.date !== "string" || !isLocalDate(o3.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+    const op = parseOp(o3);
+    if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, date: o3.date, op });
+  });
+  return { entries, problems };
+}
+function compareEntries(a3, b2) {
+  if (a3.atMs !== b2.atMs) return a3.atMs - b2.atMs;
+  if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
+  return a3.line - b2.line;
+}
+function apply(board, op) {
+  switch (op.op) {
+    case "add":
+      if (!board.issues.includes(op.task)) board.issues.push(op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      board.closed = false;
+      break;
+    case "remove":
+      board.issues = board.issues.filter((id) => id !== op.task);
+      board.carried = board.carried.filter((id) => id !== op.task);
+      delete board.groups[op.task];
+      break;
+    case "place":
+      if (op.group === null) delete board.groups[op.task];
+      else board.groups[op.task] = op.group;
+      break;
+    case "routine":
+      if (op.result === null) delete board.routines[op.task];
+      else board.routines[op.task] = op.result;
+      break;
+    case "carry":
+      if (board.issues.includes(op.task)) markCarried(board, [op.task]);
+      break;
+    case "close":
+    case "reopen":
+      board.closed = op.op === "close";
+      break;
+    case "order":
+      break;
+  }
+}
+function replayBoard(initial, entries) {
+  const board = { ...emptyBoard(), ...structuredClone(initial) };
+  let lastClose = null;
+  for (const e3 of [...entries].sort(compareEntries)) {
+    apply(board, e3.op);
+    if (e3.op.op === "close") lastClose = e3.op.tasks;
+  }
+  const seen = lastClose;
+  if (board.closed && seen !== null && board.issues.some((id) => !seen.includes(id))) board.closed = false;
+  return board;
+}
+function removedTasks(entries) {
+  const last = /* @__PURE__ */ new Map();
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "add" || e3.op.op === "remove") last.set(e3.op.task, e3.op.op);
+  }
+  return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
+}
+function placementHistory(initial, entries) {
+  const records = [];
+  for (const [date, board] of initial) {
+    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
+  }
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "place") records.push({ task: e3.op.task, date: e3.date, atMs: e3.atMs, group: e3.op.group });
+  }
+  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
+}
+function orderHistory(entries) {
+  const records = [];
+  for (const e3 of [...entries].sort(compareEntries)) {
+    if (e3.op.op === "order") records.push({ group: e3.op.group ?? "", date: e3.date, atMs: e3.atMs, tasks: e3.op.tasks });
+  }
+  return records.sort((a3, b2) => a3.date !== b2.date ? a3.date.localeCompare(b2.date) : a3.atMs - b2.atMs);
+}
+
 // ../pkm-task/src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -608,10 +700,12 @@ function parseStatusLog(path, text2) {
     const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
     if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (typeof o3.task !== "string" || !o3.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-status-log", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (!isStatus(o3.from) || !isStatus(o3.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const via = STATUS_VIAS.includes(o3.via) ? o3.via : null;
     if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, from: o3.from, to: o3.to, via });
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, sub, from: o3.from, to: o3.to, via });
   });
   return { entries, problems };
 }
@@ -727,95 +821,6 @@ function parseLabels(text2) {
     labels.push({ name, color });
   }
   return { labels, problems };
-}
-
-// ../pkm-task/src/core/sub-issue.ts
-var SUB_ISSUE_MARKER = "<!-- sub-issue";
-var BLOCK_END = "-->";
-var SUB_ID_RE = /^[a-z0-9]{6}$/;
-function isSubId(value) {
-  return typeof value === "string" && SUB_ID_RE.test(value);
-}
-function subKey(parent, id) {
-  return `${parent}#${id}`;
-}
-var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-function splitSubIssueText(text2) {
-  const fm = FRONTMATTER_RE.exec(text2);
-  const from = fm ? fm[0].length : 0;
-  const starts = [];
-  let pos = from;
-  while (pos <= text2.length) {
-    if (text2.startsWith(SUB_ISSUE_MARKER, pos)) {
-      const next = text2[pos + SUB_ISSUE_MARKER.length];
-      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
-    }
-    const nl = text2.indexOf("\n", pos);
-    if (nl < 0) break;
-    pos = nl + 1;
-  }
-  if (starts.length === 0) return { head: text2, blocks: [] };
-  const blocks = starts.map((s3, i3) => text2.slice(s3, starts[i3 + 1] ?? text2.length));
-  return { head: text2.slice(0, starts[0]), blocks };
-}
-function prefixed(problems, id) {
-  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
-}
-function parseBlock(path, parent, raw, order, parseYaml) {
-  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
-  const lines = raw.split(/\r?\n/);
-  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
-  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
-  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
-  let fm;
-  try {
-    fm = parseYaml(yamlText);
-  } catch {
-    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  const r3 = new Reader(path, fm);
-  const id = r3.string("id");
-  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
-  const extra = [];
-  const summary = r3.string("summary") ?? "";
-  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
-  const status = r3.oneOf("status", STATUSES);
-  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
-  const migratedFrom = r3.ref("migrated_from", "i");
-  const sub = {
-    parent,
-    path,
-    id,
-    key: subKey(parent, id),
-    order,
-    summary,
-    status: status ?? "open",
-    delegatedTo: r3.ref("delegated_to", "m"),
-    start: r3.date("start"),
-    end: r3.date("end"),
-    scheduled: r3.dates("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
-    estimated: r3.minutes("estimated"),
-    dependsOn: r3.strings("depends_on"),
-    created: r3.datetime("created"),
-    migratedFrom,
-    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
-  };
-  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
-}
-function parseSubIssues(path, parent, text2, parseYaml) {
-  const blocks = [];
-  const problems = [];
-  const subs = [];
-  for (const raw of splitSubIssueText(text2).blocks) {
-    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml);
-    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
-    problems.push(...r3.problems);
-    if (r3.sub) subs.push(r3.sub);
-  }
-  return { subs, blocks, problems };
 }
 
 // ../pkm-task/src/core/load.ts

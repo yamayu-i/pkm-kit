@@ -1,4 +1,5 @@
 import type { Problem } from "./problem";
+import { isSubId, parseSubKey } from "./sub-issue";
 
 /** worklog の 1 行（ADR-0004） */
 export interface WorklogEntry {
@@ -8,6 +9,8 @@ export interface WorklogEntry {
 	id: string;
 	/** issue（i-N）か routine（r-N） */
 	taskId: string;
+	/** サブで記録した行は、サブの id（ADR-0135）。親や routine に直接付けた行は null */
+	sub?: string | null;
 	from: string;
 	/** 動いている間は null */
 	to: string | null;
@@ -54,6 +57,8 @@ export function parseWorklog(path: string, text: string): { entries: WorklogEntr
 		const o = obj as Record<string, unknown>;
 		if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id がありません");
 		if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id がありません");
+		const sub = o.sub === undefined || o.sub === null ? null : o.sub;
+		if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub が英小文字と数字の 6 文字ではありません");
 		const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
 		if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from が日時ではありません");
 		let toMs: number | null = null;
@@ -66,6 +71,7 @@ export function parseWorklog(path: string, text: string): { entries: WorklogEntr
 			line,
 			id: o.id,
 			taskId: o.task_id,
+			sub,
 			from: o.from as string,
 			to: toMs === null ? null : (o.to as string),
 			description: typeof o.description === "string" ? o.description : "",
@@ -76,8 +82,20 @@ export function parseWorklog(path: string, text: string): { entries: WorklogEntr
 	return { entries, problems };
 }
 
-export function serializeWorklogEntry(e: Pick<WorklogEntry, "id" | "taskId" | "from" | "to" | "description">): string {
-	return JSON.stringify({ id: e.id, task_id: e.taskId, from: e.from, to: e.to, description: e.description });
+/** sub のない行は、sub を書かない（従来と同じ文字列。ADR-0135） */
+export function serializeWorklogEntry(e: Pick<WorklogEntry, "id" | "taskId" | "sub" | "from" | "to" | "description">): string {
+	return JSON.stringify({ id: e.id, task_id: e.taskId, ...(e.sub ? { sub: e.sub } : {}), from: e.from, to: e.to, description: e.description });
+}
+
+/** 記録の対象の鍵（ADR-0135）: issue / routine はその ID、サブは合成キー `i-12#k3f9a2` */
+export function workKey(e: Pick<WorklogEntry, "taskId" | "sub">): string {
+	return e.sub ? `${e.taskId}#${e.sub}` : e.taskId;
+}
+
+/** 鍵から worklog の task_id と sub を作る */
+export function workTarget(key: string): { taskId: string; sub: string | null } {
+	const parsed = parseSubKey(key);
+	return parsed ? { taskId: parsed.parent, sub: parsed.id } : { taskId: key, sub: null };
 }
 
 /**
@@ -86,7 +104,7 @@ export function serializeWorklogEntry(e: Pick<WorklogEntry, "id" | "taskId" | "f
  */
 export function replaceWorklogLine(
 	text: string,
-	entry: Pick<WorklogEntry, "line" | "id" | "taskId">,
+	entry: Pick<WorklogEntry, "line" | "id" | "taskId" | "sub">,
 	next: Pick<WorklogEntry, "from" | "to" | "description"> | null,
 ): string {
 	const lines = text.split("\n");
@@ -101,7 +119,7 @@ export function replaceWorklogLine(
 		throw new Error("worklog のファイルが変わっています。開き直してから編集してください");
 	}
 	if (next === null) lines.splice(i, 1);
-	else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+	else lines[i] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, sub: entry.sub ?? null, ...next });
 	return lines.join("\n");
 }
 

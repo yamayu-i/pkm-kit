@@ -214,7 +214,8 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 	const runningTimers = index.running().map((l) => ({
 		id: l.id,
 		taskId: l.taskId,
-		summary: index.issues.get(l.taskId)?.summary ?? index.routines.get(l.taskId)?.summary ?? null,
+		...(l.sub ? { sub: l.sub } : {}),
+		summary: (l.sub ? index.sub(`${l.taskId}#${l.sub}`)?.summary : undefined) ?? index.issues.get(l.taskId)?.summary ?? index.routines.get(l.taskId)?.summary ?? null,
 		from: l.from,
 		elapsedMinutes: Math.max(0, Math.round((now - l.fromMs) / 60_000)),
 	}));

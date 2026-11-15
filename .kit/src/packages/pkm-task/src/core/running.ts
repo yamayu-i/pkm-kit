@@ -1,5 +1,6 @@
 import { formatMinutes } from "./format";
 import type { TaskIndex } from "./index";
+import { workKey } from "./worklog";
 
 /** ステータスバーの summary の最大文字数（ADR-0075） */
 const SUMMARY_MAX = 24;
@@ -21,13 +22,15 @@ export function runningStatus(index: TaskIndex, now: number): RunningStatus | nu
 	const elapsedByTask = new Map<string, number>();
 	for (const l of index.running()) {
 		const elapsed = Math.max(0, now - l.fromMs);
-		elapsedByTask.set(l.taskId, Math.max(elapsedByTask.get(l.taskId) ?? 0, elapsed));
+		const key = workKey(l);
+		elapsedByTask.set(key, Math.max(elapsedByTask.get(key) ?? 0, elapsed));
 	}
 	if (elapsedByTask.size === 0) return null;
 	const rows = [...elapsedByTask.entries()]
 		.sort((a, b) => b[1] - a[1])
 		.map(([taskId, elapsed]) => {
-			const task = index.issues.get(taskId) ?? index.routines.get(taskId);
+			// サブは題をサブのものにし、開くのは親の md（ADR-0135）
+			const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
 			return { taskId, summary: task?.summary ?? "", path: task?.path ?? null, time: formatMinutes(Math.floor(elapsed / 60_000)) };
 		});
 	const tooltip = rows.map((r) => [r.taskId, r.summary, r.time].filter(Boolean).join(" ")).join("\n");

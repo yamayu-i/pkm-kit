@@ -31,6 +31,7 @@ import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow } from "../ui/hooks";
 import { linkProps } from "../ui/a11y";
+import { workKey } from "../core/worklog";
 
 type Item = { kind: "issue"; issue: Issue } | { kind: "routine"; routine: Routine };
 
@@ -265,7 +266,7 @@ function GroupBox(props: {
 	);
 	const siblings = own.map(itemId);
 	const ids = all.filter((it) => (it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open")).map(itemId);
-	const runningIds = ctx.store.index.running().map((l) => l.taskId).filter((id) => all.some((it) => itemId(it) === id));
+	const runningIds = ctx.store.index.running().map(workKey).filter((id) => all.some((it) => itemId(it) === id));
 	return (
 		<section
 			class={`vt-group${props.sub ? " is-sub" : ""}${props.ungrouped ? " is-ungrouped" : ""}${over ? " is-over" : ""}`}

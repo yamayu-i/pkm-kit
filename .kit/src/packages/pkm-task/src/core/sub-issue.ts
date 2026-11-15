@@ -211,3 +211,30 @@ export function replaceSubIssues(text: string, blocks: readonly (SubIssueInput |
 	const parts = blocks.map((b) => (typeof b === "string" ? `${b.trimEnd()}\n` : formatSubIssue(b)));
 	return `${head.trimEnd()}\n\n${parts.join("\n")}`;
 }
+
+/** サブの項目のうち、書き換えられるもの（id と、索引で作る値は変えない） */
+export type SubIssuePatch = Partial<Omit<SubIssueInput, "id">>;
+
+/**
+ * md の中のサブ 1 件の項目を書き換える。ほかのサブ（読めなかったブロックを含む）と親の部分は変えない。
+ * そのサブがなければ例外。書けない値なら SubIssueFormatError
+ */
+export function updateSubIssueText(
+	path: string,
+	parent: string,
+	text: string,
+	id: string,
+	patch: SubIssuePatch,
+	parseYaml: YamlParse,
+): { text: string; before: SubIssue; after: SubIssue } {
+	const { blocks } = parseSubIssues(path, parent, text, parseYaml);
+	const at = blocks.findIndex((b) => b.sub?.id === id);
+	if (at < 0) throw new Error(`サブがありません: ${subKey(parent, id)}`);
+	const before = blocks[at]!.sub!;
+	const after: SubIssue = { ...before, ...patch, id: before.id };
+	const next = replaceSubIssues(
+		text,
+		blocks.map((b, i) => (i === at ? after : (b.sub ?? b.raw))),
+	);
+	return { text: next, before, after };
+}
