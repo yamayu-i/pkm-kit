@@ -93,6 +93,12 @@ const { data } = collectVault({
 		issue("i-15", { summary: "図書館に本を返す", clarified: true, priority: "high", deadline: addDays(t, 5) }),
 		issue("i-16", { summary: "役所に書類を出す（窓口は木曜だけ）", clarified: true, scheduled: addDays(t, -2) }),
 		issue("i-17", { summary: "返金が届いたか確かめる", tickler: addDays(t, 4), clarified: true }),
+		// Pick のサブ（ADR-0150）: 親は行に出さず、小さい見出しの下にサブを並べる
+		issue(
+			"i-18",
+			{ summary: "引っ越しを終える（新居で暮らし始め、旧居の手続きが済んでいる）", clarified: true, priority: "high", deadline: addDays(t, 30) },
+			`---\n---\n\n${[sub("mmmmmm", `summary: "退去の連絡方法と期限を確かめる"\nstatus: open\n`), sub("nnnnnn", `summary: "大型の荷物の処理方法を調べる"\nstatus: open\nestimated: 30\n`), sub("pppppp", `summary: "荷造りをする"\nstatus: open\nstart: ${addDays(t, 10)}\n`)].join("\n")}`,
+		),
 		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
@@ -123,6 +129,7 @@ const ctx = {
 const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	daily: DailyView,
 	board: DailyView,
+	pick: DailyView,
 	issues: IssueListView,
 	inbox: InboxView,
 	organize: OrganizeView,
@@ -185,8 +192,9 @@ if (name === "header" || name === "routine" || name === "member" || name === "ti
 		el.style.margin = "8px";
 		document.body.append(el);
 		render(h(VIEWS[name]!, { ctx: ctx as never }), el);
-		// board は DailyView の最後の段階を開いた状態
+		// board は DailyView の最後の段階、pick は Pick の段階（ADR-0150）を開いた状態
 		if (name === "board") setTimeout(() => el.querySelector<HTMLButtonElement>(".vt-step:last-child")?.click(), 0);
+		if (name === "pick") setTimeout(() => el.querySelectorAll<HTMLButtonElement>(".vt-step")[2]?.click(), 0);
 	}
 	// 取り消しのトースト（ADR-0031）。画面の右下に固定で出る
 	if (name === "board") {

@@ -6,13 +6,13 @@
 
 ## 今の振る舞い
 
-- 今日以降に Do Date がある issue を行に、今日から 14 日分の日付を列に並べる（横スクロール。summary は左に固定）
-- セルを押すと、その日の Do Date を入れる・外す
+- 今日以降に Calendar の日（その日にやらなければならない日）がある issue を行に、今日から 14 日分の日付を列に並べる（横スクロール。summary は左に固定）
+- セルを押すと、Calendar の日をその日に移す。同じ日をもう一度押すと消す（日付は 1 つ）
 - soft deadline・deadline の枠と、締切を過ぎた日の塗りは、issue 画面の 7 日ストリップと同じ
 
 ## 使う概念
 
-[Do Date](../concepts/task-do-date.md)、[deadline と soft deadline](../concepts/task-deadline.md)
+[Calendar](../concepts/task-do-date.md)、[deadline と soft deadline](../concepts/task-deadline.md)
 
 ## 根拠
 

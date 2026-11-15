@@ -6,7 +6,7 @@
 
 ## 状態
 
-`issue/i-N.md` の frontmatter が正本: `id`、`summary`、[status](task-status.md)、`priority`（high / mid / low / chore）、[label](task-label.md)、`parent`、`related`、[estimated](task-estimate.md)、[Do Date](task-do-date.md)（`scheduled`）、[deadline と soft deadline](task-deadline.md)、`clarified`（整理済みか。[Inbox](task-inbox.md)）。子・実績は保存せず、索引で計算する。
+`issue/i-N.md` の frontmatter が正本: `id`、`summary`、[status](task-status.md)、`priority`（high / mid / low / chore）、[label](task-label.md)、`parent`、`related`、[estimated](task-estimate.md)、[Calendar](task-do-date.md)（`scheduled`）、[Tickler](task-tickler.md)（`tickler`）、[deadline と soft deadline](task-deadline.md)、`clarified`（整理済みか。[Inbox](task-inbox.md)）。子・実績は保存せず、索引で計算する。
 
 ## 操作
 
@@ -14,7 +14,7 @@
 
 ## 使い方の筋道
 
-思いついたら作ると Inbox に入る。整理で Next にすると日付のない次の行動に、Do Date を入れると、その日のボードに載る。終えて closed にすると、ボードの「完了」に移る。
+思いついたら作ると Inbox に入る。整理で Next にすると日付のない次の行動になり、Today の Pick で選んでボードに載せる。Calendar の日を入れると、その日のボードに自動で載る。終えて closed にすると、ボードの「完了」に移る。
 
 ## 根拠
 

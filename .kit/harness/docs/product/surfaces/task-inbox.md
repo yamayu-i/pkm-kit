@@ -8,7 +8,7 @@
 
 - 上の入力欄に summary を入れて Enter で、Inbox に issue を作る
 - Inbox の issue の一覧。列: priority、status、labels、estimated、created。行の編集は [Issues](task-issues.md) と同じ
-- 選んだ行に Add Do Date で Do Date を足せる
+- 選んだ行を Next（整理済み）にする、Tickler を付ける、Someday・Close・Cancel にする
 
 ## 使う概念
 

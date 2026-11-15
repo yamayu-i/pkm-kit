@@ -332,7 +332,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					<>
 						{leftIssues.length > 0 && (
 							<>
-								<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="All issues are done" />
+								<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "calendar", "deadline", "estimated"]} empty="All issues are done" />
 								<ActionBar
 									count={sel.length}
 									actions={[

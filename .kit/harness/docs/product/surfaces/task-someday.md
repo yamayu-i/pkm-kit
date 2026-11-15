@@ -7,7 +7,7 @@
 ## 今の振る舞い
 
 - someday の issue の一覧。列: priority、status、labels、revisit、reviewed。reviewed が古い順にも並べられる
-- 行の編集と Add Do Date は [Issues](task-issues.md) と同じ。Do Date や期限を入れると open に戻る
+- 行の編集は [Issues](task-issues.md) と同じ。Tickler を付けるか、Calendar の日や期限を入れると open に戻る
 
 ## 使う概念
 

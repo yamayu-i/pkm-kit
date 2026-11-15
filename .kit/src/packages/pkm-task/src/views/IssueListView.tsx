@@ -144,7 +144,7 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					</button>
 				</div>
 			</section>
-			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"]} empty="No issues match" />
+			<IssueTable ctx={ctx} issues={shown} selected={selected} onSelect={setSelected} columns={["status-detail", "labels", "calendar", "soft_deadline", "deadline", "estimated"]} empty="No issues match" />
 			<ActionBar
 				count={sel.length}
 				actions={[

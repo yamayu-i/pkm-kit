@@ -144,7 +144,7 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 					<span class="vt-field-label">Calendar</span>
 					<span class="vt-count">{issues.length + props.subs.length}</span>
 				</div>
-				<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["next", "deadline", "estimated"]} empty="" />
+				<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["calendar", "deadline", "estimated"]} empty="" />
 				{issues.length > 0 && (
 					<ActionBar
 						count={sel.length}
@@ -211,7 +211,7 @@ function PreviousIssues(props: { ctx: TaskContext; date: LocalDate; issues: Issu
 	if (issues.length === 0) return null;
 	return (
 		<>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "calendar", "deadline", "estimated"]} />
 			<ActionBar count={sel.length} actions={carryActions(ctx, date, sel, "today", () => setSelected(new Set()))} />
 		</>
 	);

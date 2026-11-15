@@ -10,11 +10,11 @@
 
 ## 操作
 
-Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決める（Next・Do Date で整理済みになる）。issue 画面の `Inbox` / `Clarified` で切り替えられる。どの画面の「Inbox に戻す」も、`clarified` を外すだけで予定と期限は残す。
+Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決める（Next・Calendar で整理済みになる。Tickler は整理の先送りで、その日に Inbox に戻る）。issue 画面の `Inbox` / `Clarified` で切り替えられる。どの画面の「Inbox に戻す」も、`clarified` を外すだけで予定と期限は残す。
 
 ## 使い方の筋道
 
-作った issue は Inbox に入る。Organize で Next（日付を決めない）か Do Date を選ぶと整理済みになり、Inbox から出る。期限を入れただけでは出ない。
+作った issue は Inbox に入る。Organize で Next（日付を決めない）か Calendar を選ぶと整理済みになり、Inbox から出る。期限を入れただけでは出ない。
 
 ## 根拠
 

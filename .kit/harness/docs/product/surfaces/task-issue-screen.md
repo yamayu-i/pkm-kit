@@ -12,7 +12,7 @@
 2. ID のバッジと summary（押して編集）
 3. status（メニュー）と status-detail。delegated なら委任先
 4. priority と label
-5. 今日からの 7 日のストリップ（押して Do Date を入れる・外す。「calendar >」で先の日も選べる）と、soft deadline・deadline
+5. 今日からの 7 日のストリップ（押すとその日を Calendar の日にする。もう一度押すと消す。「calendar >」で先の日も選べる）、tickler（その日に Inbox に戻す）、soft deadline・deadline
 6. Parent と Children（検索して選ぶ、新しく作る、外す。循環は作れない）
 7. estimated（プリセットか単位付きの入力）、実績、残り
 8. worklog（新しい順に 5 件ずつ。押して編集）
@@ -22,7 +22,7 @@
 
 ## 使う概念
 
-[issue](../concepts/task-issue.md)、[status](../concepts/task-status.md)、[Do Date](../concepts/task-do-date.md)、[deadline と soft deadline](../concepts/task-deadline.md)、[estimated と実績](../concepts/task-estimate.md)、[worklog とタイマー](../concepts/task-worklog.md)
+[issue](../concepts/task-issue.md)、[status](../concepts/task-status.md)、[Calendar](../concepts/task-do-date.md)、[Tickler](../concepts/task-tickler.md)、[deadline と soft deadline](../concepts/task-deadline.md)、[estimated と実績](../concepts/task-estimate.md)、[worklog とタイマー](../concepts/task-worklog.md)
 
 ## 根拠
 
