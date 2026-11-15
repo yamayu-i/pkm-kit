@@ -2,6 +2,7 @@ import { FuzzySuggestModal, Modal, SuggestModal, prepareFuzzySearch, type App } 
 import { h, render, type ComponentChild } from "preact";
 import { memberExactly, memberLabel, memberMatches, memberQuery, sortMembers } from "../core/member";
 import type { Issue, Member } from "../core/schema";
+import type { SubIssue } from "../core/sub-issue";
 
 /** preact の部品を中身にするモーダル */
 export class PreactModal extends Modal {
@@ -50,35 +51,45 @@ export class IssueSuggestModal extends FuzzySuggestModal<Issue> {
 	}
 }
 
-type BoardChoice = { kind: "issue"; issue: Issue } | { kind: "create"; summary: string };
+export type BoardChoice = { kind: "issue"; issue: Issue } | { kind: "sub"; sub: SubIssue } | { kind: "create"; summary: string };
 
-/** ボードに載せる issue を検索するか、入力した summary で新しく作る */
+/** 候補の文字（サブは `i-12 › 題`。ADR-0137） */
+export function boardChoiceText(choice: Exclude<BoardChoice, { kind: "create" }>): string {
+	return choice.kind === "issue" ? `${choice.issue.id} ${choice.issue.summary}` : `${choice.sub.parent} › ${choice.sub.summary}`;
+}
+
+/** 候補を絞る。空なら全部、そうでなければ曖昧検索の点の順。作る候補は常に最後 */
+export function boardSuggestions(items: readonly Exclude<BoardChoice, { kind: "create" }>[], query: string, match: (q: string) => (text: string) => { score: number } | null): BoardChoice[] {
+	const summary = query.trim();
+	if (!summary) return [...items];
+	const test = match(summary);
+	const hits = items
+		.map((item) => ({ item, result: test(boardChoiceText(item)) }))
+		.filter((h) => h.result !== null)
+		.sort((a, b) => b.result!.score - a.result!.score)
+		.map(({ item }): BoardChoice => item);
+	// 似た issue があっても新しく作れるように、常に最後に出す
+	return [...hits, { kind: "create", summary }];
+}
+
+/** ボードに載せる issue かサブを検索するか、入力した summary で新しく作る */
 export class BoardIssueModal extends SuggestModal<BoardChoice> {
 	constructor(
 		app: App,
-		private readonly items: Issue[],
+		private readonly items: Exclude<BoardChoice, { kind: "create" }>[],
 		private readonly onChoose: (choice: BoardChoice) => void,
 	) {
 		super(app);
-		this.setPlaceholder("Search issues, or type a summary to create one");
+		this.setPlaceholder("Search issues and sub-issues, or type a summary to create one");
 	}
 
 	getSuggestions(query: string): BoardChoice[] {
-		const summary = query.trim();
-		if (!summary) return this.items.map((issue) => ({ kind: "issue", issue }));
-		const match = prepareFuzzySearch(summary);
-		const hits = this.items
-			.map((issue) => ({ issue, result: match(`${issue.id} ${issue.summary}`) }))
-			.filter((h) => h.result !== null)
-			.sort((a, b) => b.result!.score - a.result!.score)
-			.map(({ issue }): BoardChoice => ({ kind: "issue", issue }));
-		// 似た issue があっても新しく作れるように、常に最後に出す
-		return [...hits, { kind: "create", summary }];
+		return boardSuggestions(this.items, query, prepareFuzzySearch);
 	}
 
 	renderSuggestion(choice: BoardChoice, el: HTMLElement): void {
-		if (choice.kind === "issue") el.createEl("div", { text: `${choice.issue.id} ${choice.issue.summary}` });
-		else el.createEl("div", { text: `+ Create "${choice.summary}" and add it to the board` });
+		if (choice.kind === "create") el.createEl("div", { text: `+ Create "${choice.summary}" and add it to the board` });
+		else el.createEl("div", { text: boardChoiceText(choice) });
 	}
 
 	onChooseSuggestion(choice: BoardChoice): void {

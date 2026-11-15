@@ -3,6 +3,7 @@ import { cautionIssues, deadIssues, type DueLists } from "./daily";
 import { addDays, type LocalDate } from "./dates";
 import { isActive, isInbox, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
+import type { SubIssue } from "./sub-issue";
 
 /** 1 日の集中作業に使える時間の既定値（分。ADR-0025） */
 export const DEFAULT_AVAILABLE_MINUTES = 240;
@@ -24,16 +25,20 @@ export function boardWorkload(index: TaskIndex, date: LocalDate, availableMinute
 	const board = index.board(date)?.board ?? emptyBoard();
 	const items = boardItems(index, date, board);
 	const activeBoardIssues = items.issues.filter((i) => !board.carried.includes(i.id));
+	const activeBoardSubs = items.subs.filter((x) => !board.carried.includes(x.key));
 	const totalEstimatedMinutes =
 		activeBoardIssues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) +
+		activeBoardSubs.reduce((sum, x) => sum + (x.estimated ?? 0), 0) +
 		items.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
 
 	const rem = unfinished(index, date, board);
 	const unfinishedEstimatedMinutes =
 		rem.issues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) +
+		rem.subs.reduce((sum, x) => sum + (x.estimated ?? 0), 0) +
 		rem.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
 	const unestimatedCount =
 		rem.issues.filter((i) => i.estimated === null).length +
+		rem.subs.filter((x) => x.estimated === null).length +
 		rem.routines.filter((r) => r.estimated === null).length;
 
 	const overloadedByMinutes = Math.max(0, unfinishedEstimatedMinutes - availableMinutes);
@@ -167,19 +172,22 @@ export interface TaskOverview {
 	board: {
 		closed: boolean;
 		issues: Issue[];
+		subs: SubIssue[];
 		routines: Routine[];
-		unfinished: { issues: Issue[]; routines: Routine[] };
+		unfinished: { issues: Issue[]; subs: SubIssue[]; routines: Routine[] };
 		carried: string[];
-		groups: Record<string, string>;
+		/** ★ 今日の最重要（ADR-0137） */
+		stars: string[];
 		routineResults: Record<string, RoutineResult>;
 	};
 	workload: BoardWorkload;
-	scheduledNotOnBoard: Issue[];
+	/** 今日が実行日でまだ載っていない issue の ID とサブの合成キー */
+	scheduledNotOnBoard: string[];
 	dead: DueLists;
 	caution: DueLists;
 	inboxCount: number;
 	inboxSample: Issue[];
-	pendingBoards: { date: LocalDate; unfinishedIssues: string[]; unfinishedRoutines: string[] }[];
+	pendingBoards: { date: LocalDate; unfinishedIssues: string[]; unfinishedSubs: string[]; unfinishedRoutines: string[] }[];
 	runningTimers: { id: string; taskId: string; summary: string | null; from: string; elapsedMinutes: number }[];
 	frequentlyCarried: { issue: Issue; count: number }[];
 	stalled: StalledIssuesResult;
@@ -207,6 +215,7 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 		return {
 			date: b.date,
 			unfinishedIssues: u.issues.map((i) => i.id),
+			unfinishedSubs: u.subs.map((x) => x.key),
 			unfinishedRoutines: u.routines.map((r) => r.id),
 		};
 	});
@@ -235,10 +244,11 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 		board: {
 			closed: board.closed,
 			issues: items.issues,
+			subs: items.subs,
 			routines: items.routines,
 			unfinished: rem,
 			carried: [...board.carried],
-			groups: { ...board.groups },
+			stars: [...board.stars],
 			routineResults: { ...board.routines },
 		},
 		workload,

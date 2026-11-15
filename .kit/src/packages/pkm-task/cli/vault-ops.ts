@@ -6,7 +6,7 @@ import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
 import { isLocalDate, localDateTime, type LocalDate } from "../src/core/dates";
-import { groupKeys, UNGROUPED } from "../src/core/groups";
+import { boardLanes, canStar, moveOps, type OrderedLane } from "../src/core/board-lanes";
 import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
 import { frontmatterRange, newDailyContent, newIssueContent } from "../src/core/issue-file";
@@ -156,10 +156,19 @@ export function appendBoardOpsOnDisk(
 	writeTextInVault(root, relPath, next);
 }
 
+/** ボードに載せられる鍵か（issue の ID かサブの合成キー。ADR-0137） */
+function assertBoardKey(index: TaskIndex, key: string): void {
+	if (!index.issues.has(key) && !index.sub(key)) throw new Error(`issue またはサブがありません: ${key}`);
+}
+
+/** issue とサブ（合成キー）を載せる。その日が scheduled でないサブは、scheduled に足してから載せる（ADR-0137） */
 export function addToBoardOnDisk(root: string, index: TaskIndex, date: LocalDate, issueIds: string[], device: string, now: Date): void {
+	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
 	if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids を 1 件以上指定してください");
+	for (const id of issueIds) assertBoardKey(index, id);
 	for (const id of issueIds) {
-		if (!index.issues.has(id)) throw new Error(`issue がありません: ${id}`);
+		const sub = index.sub(id);
+		if (sub && !sub.scheduled.includes(date)) updateSubIssueOnDisk(root, index, id, { scheduled: [...sub.scheduled, date].sort() });
 	}
 	appendBoardOpsOnDisk(
 		root,
@@ -172,30 +181,34 @@ export function addToBoardOnDisk(root: string, index: TaskIndex, date: LocalDate
 }
 
 export function removeFromBoardOnDisk(root: string, index: TaskIndex, date: LocalDate, issueId: string, device: string, now: Date): void {
-	if (!index.issues.has(issueId)) throw new Error(`issue がありません: ${issueId}`);
+	assertBoardKey(index, issueId);
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "remove", task: issueId }], now);
 }
 
-export function moveCardOnDisk(
-	root: string,
-	index: TaskIndex,
-	date: LocalDate,
-	id: string,
-	group: string | null,
-	device: string,
-	now: Date,
-): void {
-	if (!index.issues.has(id) && !index.routines.has(id)) {
-		throw new Error(`issue または routine がありません: ${id}`);
-	}
-	const normalized = group === null || group === UNGROUPED ? null : group.trim();
-	if (normalized !== null) {
-		const validGroups = groupKeys(index.data.groups);
-		if (!validGroups.includes(normalized)) {
-			throw new Error(`定義されていないグループです: ${normalized}（有効なグループ: ${validGroups.join(", ") || "なし"}）`);
-		}
-	}
-	appendBoardOpsOnDisk(root, index, date, device, [{ op: "place", task: id, group: normalized }], now);
+/** ボードの欄とカード（ADR-0137） */
+function laneOfKey(index: TaskIndex, date: LocalDate, key: string) {
+	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
+	const board = index.board(date)?.board ?? emptyBoard();
+	const lanes = boardLanes(index, date, board);
+	const lane = (Object.keys(lanes) as (keyof typeof lanes)[]).find((l) => lanes[l].some((c) => c.key === key));
+	if (!lane) throw new Error(`${key} は ${date} のボードに載っていません`);
+	return { board, lanes, lane };
+}
+
+/** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 3・Up next・Waiting の欄だけ */
+export function orderCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, before: string | null, device: string, now: Date): void {
+	const { board, lanes, lane } = laneOfKey(index, date, key);
+	if (lane === "working" || lane === "done") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
+	if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before（${before}）は ${key} と同じ欄にありません`);
+	appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane as OrderedLane, before, index.order(date)), now);
+}
+
+/** ★ 今日の最重要を付け外しする。付けるのは 3 件まで */
+export function starCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, on: boolean, device: string, now: Date): void {
+	if (typeof on !== "boolean") throw new Error("on は true か false にしてください");
+	const { board, lanes } = laneOfKey(index, date, key);
+	if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error("★ は 3 件までです。ほかの ★ を外してから付けてください");
+	appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
 
 export function setRoutineResultOnDisk(
@@ -232,24 +245,32 @@ export function carryIssuesOnDisk(
 	}
 
 	const board = index.board(date)?.board ?? emptyBoard();
-	const issues: Issue[] = [];
 	for (const id of issueIds) {
-		const issue = index.issues.get(id);
-		if (!issue) throw new Error(`issue がありません: ${id}`);
+		assertBoardKey(index, id);
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
-		issues.push(issue);
+		// サブは親の中にあるので、Inbox には送らない（ADR-0137）
+		if (mode === "inbox" && index.sub(id)) throw new Error(`サブは Inbox に戻せません: ${id}`);
 	}
 
-	for (const issue of issues) {
-		const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo!, date);
-		updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
+	for (const id of issueIds) {
+		const issue = index.issues.get(id);
+		if (issue) {
+			const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo!, date);
+			updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
+			continue;
+		}
+		const sub = index.sub(id)!;
+		const dates = new Set(sub.scheduled);
+		dates.delete(date);
+		dates.add(rescheduleTo!);
+		updateSubIssueOnDisk(root, index, id, { scheduled: [...dates].sort() });
 	}
 	appendBoardOpsOnDisk(
 		root,
 		index,
 		date,
 		device,
-		issues.map((i) => ({ op: "carry", task: i.id })),
+		issueIds.map((task) => ({ op: "carry", task })),
 		now,
 	);
 }

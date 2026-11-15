@@ -51,13 +51,11 @@ const i2Subs = [
 ].join("\n");
 const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
 const boardLog = [
-	...["i-6", "i-1", "i-2", "i-12", "i-13"].map((task) => boardOp(t, { op: "add", task })),
-	boardOp(t, { op: "place", task: "i-12", group: "午前" }),
-	boardOp(t, { op: "place", task: "i-6", group: "午前/集中" }),
-	boardOp(t, { op: "place", task: "i-2", group: "午後" }),
-	// 午前の中は手で並べた順（ADR-0114）: routine の r-1 を i-13 の前に
-	boardOp(t, { op: "place", task: "i-13", group: "午前" }),
-	boardOp(t, { op: "order", group: "午前", tasks: ["r-1", "i-13", "i-12"] }),
+	// 欄（ADR-0137）: 作業中は i-2 とそのサブ、★ は 2 件、次にやる順に同じ親のサブが隣り合う
+	...["i-6", "i-1", "i-2", "i-12", "i-13", "i-2#aaaaaa", "i-2#bbbbbb", "i-2#cccccc", "i-2#dddddd", "i-2#eeeeee", "i-2#gggggg"].map((task) => boardOp(t, { op: "add", task })),
+	boardOp(t, { op: "star", task: "i-2#eeeeee", on: true }),
+	boardOp(t, { op: "star", task: "i-6", on: true }),
+	boardOp(t, { op: "order", tasks: ["i-2#eeeeee", "i-6", "i-2#dddddd", "i-2#gggggg", "i-1"] }),
 	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
 	boardOp(addDays(t, -2), { op: "routine", task: "r-1", result: "canceled" }),
 ];

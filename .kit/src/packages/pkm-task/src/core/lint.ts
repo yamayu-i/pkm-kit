@@ -162,7 +162,7 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 	for (const b of data.boards) {
 		for (const id of b.board.issues) {
 			// 移行でサブにした子の ID は、過去のボードに残ってよい（ADR-0135）
-			if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
+			if (!index.issues.has(id) && !index.sub(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
 		}
 	}
 

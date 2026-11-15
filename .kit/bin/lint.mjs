@@ -7572,7 +7572,7 @@ function normalizeDate(value) {
 // src/core/board.ts
 var BOARD_KEY = "board";
 function emptyBoard() {
-  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
 }
 function record(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
@@ -7586,7 +7586,6 @@ function parseBoard(value) {
   if (Array.isArray(raw.carried)) {
     for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
   }
-  for (const [id, g] of Object.entries(record(raw.groups))) if (typeof g === "string" && g) board.groups[id] = g;
   for (const [id, r] of Object.entries(record(raw.routines))) if (r === "closed" || r === "canceled") board.routines[id] = r;
   board.closed = raw.closed === true;
   return board;
@@ -7597,10 +7596,6 @@ function dailyNotePath(date) {
 var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
 function markCarried(board, ids) {
   for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
-}
-function placementOf(board, id, fallback, keys, remembered) {
-  const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
-  return key !== "" && keys.includes(key) ? key : "";
 }
 
 // src/core/ids.ts
@@ -8037,6 +8032,7 @@ function workKey(e) {
 
 // src/core/board-log.ts
 var BOARD_LOG_PATH_RE = /^board\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
+var IGNORED = "ignored";
 function parseOp(o) {
   const task = typeof o.task === "string" && o.task ? o.task : null;
   switch (o.op) {
@@ -8045,7 +8041,9 @@ function parseOp(o) {
     case "carry":
       return task ? { op: o.op, task } : null;
     case "place":
-      return task && (o.group === null || typeof o.group === "string" && o.group) ? { op: "place", task, group: o.group } : null;
+      return IGNORED;
+    case "star":
+      return task && typeof o.on === "boolean" ? { op: "star", task, on: o.on } : null;
     case "routine":
       return task && (o.result === null || o.result === "closed" || o.result === "canceled") ? { op: "routine", task, result: o.result } : null;
     case "close":
@@ -8053,7 +8051,8 @@ function parseOp(o) {
     case "reopen":
       return { op: "reopen" };
     case "order":
-      return (o.group === null || typeof o.group === "string" && o.group) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o.group, tasks: o.tasks } : null;
+      if ("group" in o) return IGNORED;
+      return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", tasks: o.tasks } : null;
     default:
       return null;
   }
@@ -8083,6 +8082,7 @@ function parseBoardLog(path, text) {
     if (typeof o.date !== "string" || !isLocalDate(o.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const op = parseOp(o);
     if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    if (op === IGNORED) return;
     entries.push({ path, line, id: o.id, at: o.at, atMs, date: o.date, op });
   });
   return { entries, problems: problems2 };
@@ -8102,11 +8102,13 @@ function apply(board, op) {
     case "remove":
       board.issues = board.issues.filter((id) => id !== op.task);
       board.carried = board.carried.filter((id) => id !== op.task);
-      delete board.groups[op.task];
+      board.stars = board.stars.filter((id) => id !== op.task);
       break;
     case "place":
-      if (op.group === null) delete board.groups[op.task];
-      else board.groups[op.task] = op.group;
+      break;
+    case "star":
+      board.stars = board.stars.filter((id) => id !== op.task);
+      if (op.on) board.stars.push(op.task);
       break;
     case "routine":
       if (op.result === null) delete board.routines[op.task];
@@ -8121,6 +8123,18 @@ function apply(board, op) {
       break;
     case "order":
       break;
+  }
+}
+function renameBoardOp(op, rename) {
+  switch (op.op) {
+    case "close":
+      return { op: "close", tasks: op.tasks.map(rename) };
+    case "order":
+      return { op: "order", tasks: op.tasks.map(rename) };
+    case "reopen":
+      return op;
+    default:
+      return { ...op, task: rename(op.task) };
   }
 }
 function replayBoard(initial, entries) {
@@ -8141,36 +8155,18 @@ function removedTasks(entries) {
   }
   return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
 }
-function placementHistory(initial, entries) {
-  const records = [];
-  for (const [date, board] of initial) {
-    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
-  }
-  for (const e of [...entries].sort(compareEntries)) {
-    if (e.op.op === "place") records.push({ task: e.op.task, date: e.date, atMs: e.atMs, group: e.op.group });
-  }
-  return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
-}
-function lastPlacement(history, task, date) {
-  let found;
-  for (const r of history) {
-    if (r.date > date) break;
-    if (r.task === task) found = r.group;
-  }
-  return found;
-}
 function orderHistory(entries) {
   const records = [];
   for (const e of [...entries].sort(compareEntries)) {
-    if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+    if (e.op.op === "order") records.push({ date: e.date, atMs: e.atMs, tasks: e.op.tasks });
   }
   return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
 }
-function lastOrder(history, group, date) {
+function lastOrder(history, date) {
   let found;
   for (const r of history) {
     if (r.date > date) break;
-    if (r.group === group) found = r.tasks;
+    found = r.tasks;
   }
   return found;
 }
@@ -8350,21 +8346,18 @@ var TaskIndex = class {
     return this.data.boards.find((b) => b.date === date);
   }
   /**
-   * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+   * その日のボードに自動で載せる issue の ID とサブの合成キー（ADR-0034, 0137）:
+   * その日が実行日で active で、まだ載っておらず、その日に外してもいないもの。issue（ID の順）→ サブ（親の md の順）
    */
   toAutoAdd(date) {
     const daily = this.board(date);
-    return scheduledOn(this.issues.values(), date, /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]));
+    const skip = /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]);
+    const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled.includes(date) && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
+    return [...scheduledOn(this.issues.values(), date, skip).map((i) => i.id), ...subs.map((s) => s.key)];
   }
-  /**
-   * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
-   */
-  placement(date, board, id, fallback, keys) {
-    return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
-  }
-  /** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
-  order(date, group) {
-    return lastOrder(this.data.orders, group, date);
+  /** ボードの並び（ADR-0114, 0137）。その日までで最後に並べたもの。なければ undefined */
+  order(date) {
+    return lastOrder(this.data.orders, date);
   }
   /** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
   running(key) {
@@ -8554,7 +8547,7 @@ function lintVault(data2, options = {}) {
   }
   for (const b of data2.boards) {
     for (const id of b.board.issues) {
-      if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (!index.issues.has(id) && !index.sub(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
     }
   }
   const logIds = /* @__PURE__ */ new Map();
@@ -8630,12 +8623,15 @@ function fileKind(path) {
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
-function resolveMigrated(data2) {
+function migratedIds(data2) {
   const issueIds = new Set(data2.issues.map((i) => i.id));
   const byOld = /* @__PURE__ */ new Map();
   for (const s of data2.subIssues) {
     if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
   }
+  return byOld;
+}
+function resolveMigrated(data2, byOld) {
   if (byOld.size === 0) return;
   data2.worklogs = data2.worklogs.map((l) => {
     const to = l.sub ? void 0 : byOld.get(l.taskId);
@@ -8647,7 +8643,7 @@ function resolveMigrated(data2) {
   });
 }
 function collectVault(input) {
-  const data2 = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data2 = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
   const problems2 = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -8689,13 +8685,22 @@ function collectVault(input) {
     problems2.push(...r.problems);
     data2.worklogs.push(...r.entries);
   }
+  const byOld = migratedIds(data2);
+  const renameKey = (key) => {
+    const to = byOld.get(key);
+    return to ? subKey(to.parent, to.id) : key;
+  };
+  for (const [date, board] of initialBoards) {
+    initialBoards.set(date, { ...board, issues: board.issues.map(renameKey), carried: board.carried.map(renameKey) });
+  }
   const logsByDate = /* @__PURE__ */ new Map();
   const allLogs = [];
   for (const { path, text } of [...input.boardLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseBoardLog(path, text);
     problems2.push(...r.problems);
-    allLogs.push(...r.entries);
-    for (const e of r.entries) logsByDate.set(e.date, [...logsByDate.get(e.date) ?? [], e]);
+    const entries = byOld.size === 0 ? r.entries : r.entries.map((e) => ({ ...e, op: renameBoardOp(e.op, renameKey) }));
+    allLogs.push(...entries);
+    for (const e of entries) logsByDate.set(e.date, [...logsByDate.get(e.date) ?? [], e]);
   }
   for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
     const logs = logsByDate.get(date) ?? [];
@@ -8708,7 +8713,6 @@ function collectVault(input) {
       ...removed.length > 0 ? { removed } : {}
     });
   }
-  data2.placements = placementHistory(initialBoards, allLogs);
   data2.orders = orderHistory(allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseStatusLog(path, text);
@@ -8716,7 +8720,7 @@ function collectVault(input) {
     data2.statusLogs.push(...r.entries);
   }
   data2.statusLogs.sort(compareStatusLog);
-  resolveMigrated(data2);
+  resolveMigrated(data2, byOld);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems2.push(...r.problems);

@@ -103,7 +103,7 @@ packages/design/tokens.json（正本）
 | `--vt-surface` | 面 | 基本の面（Obsidian のエディタの背景）。編集できるものの面 |
 | `--vt-surface-container` | 面 | カードの面 |
 | `--vt-surface-container-high` | 面 | 一段強い面（日付ブロック、関係のチップ、件数、ノートのコード） |
-| `--vt-secondary-container` / `--vt-on-secondary-container` | 面 / 文字 | 選んでいるもの（選んだ行、on の絞り込みチップ、今の段階、カードを落とせるグループ） |
+| `--vt-secondary-container` / `--vt-on-secondary-container` | 面 / 文字 | 選んでいるもの（選んだ行、on の絞り込みチップ、今の段階、カードを落とせる欄） |
 | `--vt-on-surface` | 文字（7:1） | 本文 |
 | `--vt-on-surface-variant` | 文字（4.5:1） | 補助の文字、ラベル、アイコン、未入力の表示 |
 | `--vt-outline` | 印（3:1） | 編集できるものの枠線 |
@@ -193,8 +193,6 @@ packages/design/tokens.json（正本）
 | カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
 | status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に status のアイコン、末尾に ▾ |
 | status のアイコン | `.vt-status-icon` | ○ を土台にした自作の SVG（ADR-0031）。色は status の印の色（`--vt-dot`）、白抜きは下の面（`--vt-knock`）。in-progress は `--vt-duration-spin` でゆっくり回り、closed は閉じた直後（`.is-enter`）だけチェックを描く |
-| 次の status | `.vt-next` | ボードのカードの 28px の丸い tonal ボタン。押した後の status の色とアイコン。戻す（`.is-undo`）は枠線だけ |
-| 完了の欄 | `.vt-done` | ボードの下のカード。closed / canceled のカードを並べる。カードは落とせない |
 | 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
 | リボンのバッジ | `.vt-ribbon-badge` | リボンのボタンの右上に重ねる 16px の丸（数が多ければ横に伸びる）。primary の面 + on-primary の文字、label-small。押せない（ボタンを押す）。読み上げはボタンの名前に件数を足す（ADR-0070） |
@@ -219,10 +217,10 @@ packages/design/tokens.json（正本）
 | 図の印（縮めすぎて読めない） | `.vt-diagram-shrunk` | ノートの中で縮めて出した図のいちばん小さい文字が 9px 未満のとき、図の右下に出す丸い印「Expand to read」（`::after`。`--vt-surface-container-high` + `--vt-elevation-1`、label-medium の文字）。押せない飾りで、拡大は操作バーの Expand で行う。pkm-diagram（ADR-0102） |
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
-| カード（ボード） | `.vt-task` | 押せる・ドラッグできるカード。ID は出さず表題を優先する。記録中は緑の枠。別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。未分類では左、グループでは上。ADR-0114） |
+| カード（ボード） | `.vt-task` | 押せるカード。1 行に status のバッジ（メニュー）・題・再生 / 停止・`⋯` のメニューだけを置き、大きくしない。ID は出さず表題を優先し、★ は題の前の primary の星。記録中は緑の枠。Top 3 と Up next ではドラッグでき、別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。ADR-0114, 0137） |
 | 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン |
-| グループ | `.vt-group` | ボードの枠。1 階層目は横に等分（`.vt-board-columns`、狭いペインでは縦）、サブグループは中に縦に積む。カードを落とせるときは primary の枠 + secondary-container の面 |
-| 未分類 | `.vt-group.is-ungrouped` | グループと並べず、ボードの上に横長に置く（点線の枠、カードは横に並ぶ）。カードがすべてグループに入ったら出さない |
+| ボードの欄 | `.vt-lane`（`.vt-lanes`） | ボードの枠。上から Working（緑の枠）・Top 3・Up next・Waiting・Done（面を沈め、たたむ）を 1 列に積む。Top 3 と Up next は空でも出し、ほかはカードがあるときだけ出す。カードを落とせるときは primary の枠 + secondary-container の面（ADR-0137） |
+| 親の見出し | `.vt-lane-run`（`.vt-lane-parent`） | 同じ欄で隣り合った、同じ親のサブのまとまり。左に outline-variant の太い線、上に親の ID のバッジと弱い文字の親の題（押すと親を開く）（ADR-0137） |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
 | 変更の行 | `.vt-upd-row` | PKM Updates の行。押せるカード（48px 以上）で、タイトルと、右に弱い文字の日時。セクションの見出し（`.vt-upd-heading-link`）は一覧 View へのリンクで、primary の文字に下線 |
 | 確認のボタン | `.vt-upd-viewed` | PKM Updates の下に固定した帯（`.vt-upd-footer`、`position: sticky`）の右の filled（primary）の丸いボタン。一覧が短くても画面の下に置く |
@@ -259,7 +257,7 @@ packages/design/tokens.json（正本）
 - View の見出しは「タイトル（headline-small）+ 件数のチップ + 右に主な操作」
 - セクションの間は 12px。カードの中も 12px
 - `.vt-header` と `.vt-view` に `container-type: inline-size` を付け、ペインの幅で切り替える（`@container`）
-  - 720px 以下（`--vt-breakpoint-pane-medium`）: 一覧の補助の列を隠し、ボードのグループを縦に積む
+  - 720px 以下（`--vt-breakpoint-pane-medium`）: 一覧の補助の列を隠す
   - 480px 以下（`--vt-breakpoint-pane-narrow`）: 横並びを縦並びにする
   - 300px 以下（`--vt-breakpoint-pane-compact`）: 工数のタイルを 1 列にする
 - **必須**: 画面の幅・高さの `@media` は使わない。`@container` の幅は breakpoint のトークンと同じ数字にする（`@container` の中では var() が使えないので、検査で照合する）

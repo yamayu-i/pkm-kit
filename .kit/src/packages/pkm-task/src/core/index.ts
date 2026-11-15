@@ -1,6 +1,6 @@
 import { diffDays, localToday, type LocalDate } from "./dates";
-import { emptyBoard, pendingBoards, placementOf, unfinished, type BoardState, type DailyBoard } from "./board";
-import { lastOrder, lastPlacement, type OrderRecord, type PlacementRecord } from "./board-log";
+import { emptyBoard, pendingBoards, unfinished, unfinishedCount, type DailyBoard } from "./board";
+import { lastOrder, type OrderRecord } from "./board-log";
 import { deadIssues, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { GroupDef } from "./groups";
@@ -25,20 +25,18 @@ export interface VaultData {
 	groups: GroupDef[];
 	/** status の記録（古い順。ADR-0031） */
 	statusLogs: StatusLogEntry[];
-	/** カードを置いた記録（ボードの日付 → 時刻の順。ADR-0034） */
-	placements: PlacementRecord[];
-	/** グループの中を並べた記録（ボードの日付 → 時刻の順。ADR-0114） */
+	/** ボードを並べた記録（ボードの日付 → 時刻の順。ADR-0114, 0137） */
 	orders: OrderRecord[];
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
 export const INACTIVE_STATUSES: readonly Status[] = ["closed", "canceled", "someday"];
 
-export function isActive(issue: Issue): boolean {
+export function isActive(issue: Pick<Issue, "status">): boolean {
 	return !INACTIVE_STATUSES.includes(issue.status);
 }
 
@@ -165,23 +163,19 @@ export class TaskIndex {
 	}
 
 	/**
-	 * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+	 * その日のボードに自動で載せる issue の ID とサブの合成キー（ADR-0034, 0137）:
+	 * その日が実行日で active で、まだ載っておらず、その日に外してもいないもの。issue（ID の順）→ サブ（親の md の順）
 	 */
-	toAutoAdd(date: LocalDate): Issue[] {
+	toAutoAdd(date: LocalDate): string[] {
 		const daily = this.board(date);
-		return scheduledOn(this.issues.values(), date, new Set([...(daily?.board.issues ?? []), ...(daily?.removed ?? [])]));
+		const skip = new Set([...(daily?.board.issues ?? []), ...(daily?.removed ?? [])]);
+		const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled.includes(date) && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
+		return [...scheduledOn(this.issues.values(), date, skip).map((i) => i.id), ...subs.map((s) => s.key)];
 	}
 
-	/**
-	 * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
-	 */
-	placement(date: LocalDate, board: BoardState, id: string, fallback: string | null, keys: readonly string[]): string {
-		return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
-	}
-
-	/** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
-	order(date: LocalDate, group: string): string[] | undefined {
-		return lastOrder(this.data.orders, group, date);
+	/** ボードの並び（ADR-0114, 0137）。その日までで最後に並べたもの。なければ undefined */
+	order(date: LocalDate): string[] | undefined {
+		return lastOrder(this.data.orders, date);
 	}
 
 	/** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
@@ -233,10 +227,10 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 	const todayLeft = unfinished(index, today, todayBoard);
 	const previousCount = pending.reduce((n, b) => {
 		const u = unfinished(index, b.date, b.board);
-		return n + u.issues.length + u.routines.length;
+		return n + unfinishedCount(u);
 	}, 0);
 	return {
-		daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + todayLeft.issues.length + todayLeft.routines.length,
+		daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
 		inbox: issues.filter(isInbox).length,
 		organize: organizeQueue(issues, today).length,
 		scheduled: issues.filter((i) => isActive(i) && i.scheduled.some((d) => d >= today)).length,

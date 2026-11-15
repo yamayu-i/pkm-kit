@@ -1,11 +1,11 @@
 import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type BoardState } from "./board";
-import { BOARD_LOG_PATH_RE, orderHistory, parseBoardLog, placementHistory, removedTasks, replayBoard, type BoardLogEntry } from "./board-log";
+import { BOARD_LOG_PATH_RE, orderHistory, parseBoardLog, removedTasks, renameBoardOp, replayBoard, type BoardLogEntry } from "./board-log";
 import { GROUPS_PATH, parseGroups } from "./groups";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
 import type { Problem } from "./problem";
 import { parseIssue, parseMember, parseRoutine } from "./schema";
-import { parseSubIssues, type YamlParse } from "./sub-issue";
+import { parseSubIssues, subKey, type YamlParse } from "./sub-issue";
 import { STATUS_LOG_PATH_RE, compareStatusLog, parseStatusLog } from "./status-log";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
@@ -44,12 +44,16 @@ export interface VaultInput {
  * 移行で子の issue をサブにした後も、旧 ID の worklog・statuslog の行をそのサブの行として読む（ADR-0135）。
  * jsonl は追記だけの記録なので書き換えず、読むときに置き換える。旧 ID の issue がまだあるなら置き換えない
  */
-function resolveMigrated(data: VaultData): void {
+function migratedIds(data: VaultData): Map<string, { parent: string; id: string }> {
 	const issueIds = new Set(data.issues.map((i) => i.id));
 	const byOld = new Map<string, { parent: string; id: string }>();
 	for (const s of data.subIssues) {
 		if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
 	}
+	return byOld;
+}
+
+function resolveMigrated(data: VaultData, byOld: Map<string, { parent: string; id: string }>): void {
 	if (byOld.size === 0) return;
 	data.worklogs = data.worklogs.map((l) => {
 		const to = l.sub ? undefined : byOld.get(l.taskId);
@@ -63,7 +67,7 @@ function resolveMigrated(data: VaultData): void {
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -106,13 +110,23 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		problems.push(...r.problems);
 		data.worklogs.push(...r.entries);
 	}
+	// 移行したサブの以前の ID を指すボードの記録も、そのサブの合成キーとして読む（ADR-0137）
+	const byOld = migratedIds(data);
+	const renameKey = (key: string) => {
+		const to = byOld.get(key);
+		return to ? subKey(to.parent, to.id) : key;
+	};
+	for (const [date, board] of initialBoards) {
+		initialBoards.set(date, { ...board, issues: board.issues.map(renameKey), carried: board.carried.map(renameKey) });
+	}
 	const logsByDate = new Map<string, BoardLogEntry[]>();
 	const allLogs: BoardLogEntry[] = [];
 	for (const { path, text } of [...(input.boardLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
 		const r = parseBoardLog(path, text);
 		problems.push(...r.problems);
-		allLogs.push(...r.entries);
-		for (const e of r.entries) logsByDate.set(e.date, [...(logsByDate.get(e.date) ?? []), e]);
+		const entries = byOld.size === 0 ? r.entries : r.entries.map((e) => ({ ...e, op: renameBoardOp(e.op, renameKey) }));
+		allLogs.push(...entries);
+		for (const e of entries) logsByDate.set(e.date, [...(logsByDate.get(e.date) ?? []), e]);
 	}
 	for (const date of [...new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
 		const logs = logsByDate.get(date) ?? [];
@@ -125,7 +139,6 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 			...(removed.length > 0 ? { removed } : {}),
 		});
 	}
-	data.placements = placementHistory(initialBoards, allLogs);
 	data.orders = orderHistory(allLogs);
 	for (const { path, text } of [...(input.statusLogs ?? [])].sort((a, b) => a.path.localeCompare(b.path))) {
 		const r = parseStatusLog(path, text);
@@ -133,7 +146,7 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		data.statusLogs.push(...r.entries);
 	}
 	data.statusLogs.sort(compareStatusLog);
-	resolveMigrated(data);
+	resolveMigrated(data, byOld);
 	if (input.labels !== null) {
 		const r = parseLabels(input.labels);
 		problems.push(...r.problems);

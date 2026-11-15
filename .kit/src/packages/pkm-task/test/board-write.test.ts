@@ -28,8 +28,9 @@ describe("要約を書いて締める", () => {
 		const tasks = new TaskIndex({ ...index().data, routines: [routine] });
 		expect(() => closeBoardNote(note, date, tasks, board)).toThrow(/未完了/);
 	});
-	it("存在しない issue を完了扱いしない", () => {
-		expect(() => closeBoardNote(note, date, new TaskIndex(emptyVaultData()), board)).toThrow(/i-1/);
+	it("鍵が指すものがない issue は、完了にも未完了にも数えず、締めを止めない（ADR-0137）", () => {
+		const text = closeBoardNote(note, date, new TaskIndex(emptyVaultData()), board);
+		expect(text.slice(note.length)).not.toContain("i-1");
 	});
 	it("マージ競合を上書きしない", () => {
 		expect(() => closeBoardNote(`${note}<<<<<<< local\nx\n=======\ny\n>>>>>>> remote\n`, date, index(), board)).toThrow();

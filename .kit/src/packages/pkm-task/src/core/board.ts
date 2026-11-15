@@ -1,6 +1,7 @@
 import { addDays, type LocalDate } from "./dates";
 import { isActive, routineOccursOn, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
+import type { SubIssue } from "./sub-issue";
 
 /** routine のその日の結果（ADR-0010: その日のうちに closed か canceled にする） */
 export type RoutineResult = "closed" | "canceled";
@@ -9,12 +10,12 @@ export type RoutineResult = "closed" | "canceled";
  * その日の task board の状態。保存せず、操作ログを再生して作る（ADR-0020）
  */
 export interface BoardState {
-	/** ボードに載せた issue の ID（載せた順） */
+	/** ボードに載せた issue の ID とサブの合成キー（載せた順。ADR-0137） */
 	issues: string[];
-	/** issue / routine の ID → グループ（`親` か `親/子`）。ないものは未分類 */
-	groups: Record<string, string>;
+	/** ★ 今日の最重要（付けた順。ADR-0137） */
+	stars: string[];
 	routines: Record<string, RoutineResult>;
-	/** リスケや Inbox で片付けた issue（ボードには残すが未完了に数えない） */
+	/** リスケや Inbox で片付けた issue とサブ（ボードには残すが未完了に数えない） */
 	carried: string[];
 	/** 締めたか */
 	closed: boolean;
@@ -23,7 +24,7 @@ export interface BoardState {
 export const BOARD_KEY = "board";
 
 export function emptyBoard(): BoardState {
-	return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+	return { issues: [], stars: [], routines: {}, carried: [], closed: false };
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -40,7 +41,7 @@ export function parseBoard(value: unknown): BoardState {
 	if (Array.isArray(raw.carried)) {
 		for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
 	}
-	for (const [id, g] of Object.entries(record(raw.groups))) if (typeof g === "string" && g) board.groups[id] = g;
+	// 以前の groups（グループの置き場所）は読まない（ADR-0137）
 	for (const [id, r] of Object.entries(record(raw.routines))) if (r === "closed" || r === "canceled") board.routines[id] = r;
 	board.closed = raw.closed === true;
 	return board;
@@ -63,19 +64,26 @@ export interface DailyBoard {
 	removed?: string[];
 }
 
-/** ボードに載っているもの（その日に出てくる routine も含む） */
-export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; routines: Routine[] } {
+/** ボードに載っているもの（その日に出てくる routine も含む）。鍵が指すものがなくなったものは除く（ADR-0137） */
+export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const issues = board.issues.map((id) => index.issues.get(id)).filter((i): i is Issue => i !== undefined);
-	return { issues, routines: index.routinesOn(date) };
+	const subs = board.issues.map((key) => index.sub(key)).filter((s): s is SubIssue => s !== undefined);
+	return { issues, subs, routines: index.routinesOn(date) };
 }
 
-/** 未完了: closed / canceled / someday になっておらず、片付けて（carried）もいない issue と、結果のない routine */
-export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; routines: Routine[] } {
+/** 未完了: closed / canceled / someday になっておらず、片付けて（carried）もいない issue とサブと、結果のない routine */
+export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const items = boardItems(index, date, board);
 	return {
 		issues: items.issues.filter((i) => isActive(i) && !board.carried.includes(i.id)),
+		subs: items.subs.filter((s) => isActive(s) && !board.carried.includes(s.key)),
 		routines: items.routines.filter((r) => board.routines[r.id] === undefined),
 	};
+}
+
+/** 未完了の件数 */
+export function unfinishedCount(u: { issues: unknown[]; subs: unknown[]; routines: unknown[] }): number {
+	return u.issues.length + u.subs.length + u.routines.length;
 }
 
 /** 片付けた issue として記録する（ボードには残る） */
@@ -106,18 +114,9 @@ export function pendingBoards(index: TaskIndex, boards: DailyBoard[], today: Loc
 		.filter((b) => b.date < today && !b.board.closed)
 		.filter((b) => {
 			const u = unfinished(index, b.date, b.board);
-			return u.issues.length > 0 || u.routines.length > 0;
+			return unfinishedCount(u) > 0;
 		})
 		.sort((a, b) => a.date.localeCompare(b.date));
-}
-
-/**
- * カードの置き場所（グループの鍵）。その日に移したもの → 前に置いた場所（remembered。null は未分類に置いた）
- * → 既定（routine の group）→ 未分類（""）の順（ADR-0034）。今はないグループを指していたら未分類
- */
-export function placementOf(board: BoardState, id: string, fallback: string | null, keys: readonly string[], remembered?: string | null): string {
-	const key = board.groups[id] ?? (remembered !== undefined ? (remembered ?? "") : (fallback ?? ""));
-	return key !== "" && keys.includes(key) ? key : "";
 }
 
 /** 並び（ADR-0114）にあるものはその順に、ないものは元の順で末尾に出す */

@@ -7,13 +7,16 @@ import { sanitizeDeviceName } from "./worklog";
 export type BoardOp =
 	| { op: "add"; task: string }
 	| { op: "remove"; task: string }
+	/** 以前のグループの置き場所（ADR-0034）。ADR-0137 で廃止。読むが再生では使わない */
 	| { op: "place"; task: string; group: string | null }
 	| { op: "routine"; task: string; result: RoutineResult | null }
 	| { op: "carry"; task: string }
 	| { op: "close"; tasks: string[] }
 	| { op: "reopen" }
-	/** グループの中の並び全体（ADR-0114）。group が null なら未分類。BoardState は変えず、並びの履歴から決める */
-	| { op: "order"; group: string | null; tasks: string[] };
+	/** ★ 今日の最重要（ADR-0137）。その日だけ */
+	| { op: "star"; task: string; on: boolean }
+	/** ボードの並び全体（ADR-0114, 0137）。BoardState は変えず、並びの履歴から決める */
+	| { op: "order"; tasks: string[] };
 
 /** 操作ログの 1 行 */
 export interface BoardLogEntry {
@@ -43,7 +46,10 @@ export function nextBoardAt(nowMs: number, latestMs: number | null): number {
 	return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
 }
 
-function parseOp(o: Record<string, unknown>): BoardOp | null {
+/** 以前の形式で、読んでも捨てる行（ADR-0137: place と group 付きの order） */
+const IGNORED = "ignored" as const;
+
+function parseOp(o: Record<string, unknown>): BoardOp | typeof IGNORED | null {
 	const task = typeof o.task === "string" && o.task ? o.task : null;
 	switch (o.op) {
 		case "add":
@@ -51,7 +57,9 @@ function parseOp(o: Record<string, unknown>): BoardOp | null {
 		case "carry":
 			return task ? { op: o.op, task } : null;
 		case "place":
-			return task && (o.group === null || (typeof o.group === "string" && o.group)) ? { op: "place", task, group: o.group as string | null } : null;
+			return IGNORED;
+		case "star":
+			return task && typeof o.on === "boolean" ? { op: "star", task, on: o.on } : null;
 		case "routine":
 			return task && (o.result === null || o.result === "closed" || o.result === "canceled") ? { op: "routine", task, result: o.result } : null;
 		case "close":
@@ -59,9 +67,8 @@ function parseOp(o: Record<string, unknown>): BoardOp | null {
 		case "reopen":
 			return { op: "reopen" };
 		case "order":
-			return (o.group === null || (typeof o.group === "string" && o.group)) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id)
-				? { op: "order", group: o.group as string | null, tasks: o.tasks as string[] }
-				: null;
+			if ("group" in o) return IGNORED;
+			return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", tasks: o.tasks as string[] } : null;
 		default:
 			return null;
 	}
@@ -95,6 +102,7 @@ export function parseBoardLog(path: string, text: string): { entries: BoardLogEn
 		if (typeof o.date !== "string" || !isLocalDate(o.date)) return problem(line, "invalid-board-log", "date が日付ではありません");
 		const op = parseOp(o);
 		if (!op) return problem(line, "invalid-board-log", "操作が不正です");
+		if (op === IGNORED) return;
 		entries.push({ path, line, id: o.id, at: o.at as string, atMs, date: o.date, op });
 	});
 	return { entries, problems };
@@ -127,11 +135,13 @@ function apply(board: BoardState, op: BoardOp): void {
 		case "remove":
 			board.issues = board.issues.filter((id) => id !== op.task);
 			board.carried = board.carried.filter((id) => id !== op.task);
-			delete board.groups[op.task];
+			board.stars = board.stars.filter((id) => id !== op.task);
 			break;
 		case "place":
-			if (op.group === null) delete board.groups[op.task];
-			else board.groups[op.task] = op.group;
+			break;
+		case "star":
+			board.stars = board.stars.filter((id) => id !== op.task);
+			if (op.on) board.stars.push(op.task);
 			break;
 		case "routine":
 			if (op.result === null) delete board.routines[op.task];
@@ -146,6 +156,20 @@ function apply(board: BoardState, op: BoardOp): void {
 			break;
 		case "order":
 			break;
+	}
+}
+
+/** 鍵を読み替える（移行したサブの以前の ID → 合成キー。ADR-0135, 0137） */
+export function renameBoardOp(op: BoardOp, rename: (key: string) => string): BoardOp {
+	switch (op.op) {
+		case "close":
+			return { op: "close", tasks: op.tasks.map(rename) };
+		case "order":
+			return { op: "order", tasks: op.tasks.map(rename) };
+		case "reopen":
+			return op;
+		default:
+			return { ...op, task: rename(op.task) };
 	}
 }
 
@@ -172,42 +196,8 @@ export function removedTasks(entries: BoardLogEntry[]): string[] {
 	return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
 }
 
-/** カードを置いた記録（ADR-0034）。group が null なら未分類に置いた */
-export interface PlacementRecord {
-	task: string;
-	date: LocalDate;
-	/** 操作の時刻。既存の frontmatter の board から読んだものはその日のいちばん前（-Infinity） */
-	atMs: number;
-	group: string | null;
-}
-
-/**
- * 置いた記録をボードの日付 → 時刻の順に並べる。initial は既存の frontmatter の board（日付 → 状態）
- */
-export function placementHistory(initial: ReadonlyMap<string, BoardState>, entries: BoardLogEntry[]): PlacementRecord[] {
-	const records: PlacementRecord[] = [];
-	for (const [date, board] of initial) {
-		for (const [task, group] of Object.entries(board.groups)) records.push({ task, date: date as LocalDate, atMs: Number.NEGATIVE_INFINITY, group });
-	}
-	for (const e of [...entries].sort(compareEntries)) {
-		if (e.op.op === "place") records.push({ task: e.op.task, date: e.date, atMs: e.atMs, group: e.op.group });
-	}
-	return records.sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs));
-}
-
-/** その日までで最後に置いたグループ。置いたことがなければ undefined、未分類に置いたなら null */
-export function lastPlacement(history: readonly PlacementRecord[], task: string, date: LocalDate): string | null | undefined {
-	let found: string | null | undefined;
-	for (const r of history) {
-		if (r.date > date) break;
-		if (r.task === task) found = r.group;
-	}
-	return found;
-}
-
-/** グループの中を並べた記録（ADR-0114）。group は鍵（未分類は ""） */
+/** ボードを並べた記録（ADR-0114, 0137） */
 export interface OrderRecord {
-	group: string;
 	date: LocalDate;
 	atMs: number;
 	tasks: string[];
@@ -217,17 +207,17 @@ export interface OrderRecord {
 export function orderHistory(entries: BoardLogEntry[]): OrderRecord[] {
 	const records: OrderRecord[] = [];
 	for (const e of [...entries].sort(compareEntries)) {
-		if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+		if (e.op.op === "order") records.push({ date: e.date, atMs: e.atMs, tasks: e.op.tasks });
 	}
 	return records.sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs));
 }
 
-/** その日までで最後のそのグループの並び。並べたことがなければ undefined */
-export function lastOrder(history: readonly OrderRecord[], group: string, date: LocalDate): string[] | undefined {
+/** その日までで最後の並び。並べたことがなければ undefined */
+export function lastOrder(history: readonly OrderRecord[], date: LocalDate): string[] | undefined {
 	let found: string[] | undefined;
 	for (const r of history) {
 		if (r.date > date) break;
-		if (r.group === group) found = r.tasks;
+		found = r.tasks;
 	}
 	return found;
 }
