@@ -278,3 +278,11 @@ export function roundedPath(points: readonly [number, number][], radius: number)
 	const last = points[points.length - 1]!;
 	return `${d} L${num(last[0])} ${num(last[1])}`;
 }
+
+/** ホバー・フォーカスした棒（id）に入る矢印の番号と、依存先の id（ADR-0143）。入る矢印がなければ null（何も強調しない） */
+export function incomingOf(arrows: readonly { from: string; to: string }[], id: string | null): { arrows: number[]; from: string[] } | null {
+	if (id === null) return null;
+	const idx = arrows.flatMap((a, i) => (a.to === id ? [i] : []));
+	if (idx.length === 0) return null;
+	return { arrows: idx, from: [...new Set(idx.map((i) => arrows[i]!.from))] };
+}

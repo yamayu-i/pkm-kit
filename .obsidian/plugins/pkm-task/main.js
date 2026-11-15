@@ -3517,6 +3517,12 @@ function roundedPath(points, radius) {
   const last = points[points.length - 1];
   return `${d3} L${num(last[0])} ${num(last[1])}`;
 }
+function incomingOf(arrows, id) {
+  if (id === null) return null;
+  const idx = arrows.flatMap((a3, i3) => a3.to === id ? [i3] : []);
+  if (idx.length === 0) return null;
+  return { arrows: idx, from: [...new Set(idx.map((i3) => arrows[i3].from))] };
+}
 
 // src/header/SubTimeline.tsx
 var ROW = 36;
@@ -3530,6 +3536,8 @@ function SubTimeline(props) {
   const width = range.days * px;
   const scroller = A2(null);
   const [drag, setDrag] = d2(null);
+  const [hovered, setHovered] = d2(null);
+  const [focused, setFocused] = d2(null);
   h2(() => {
     const el = scroller.current;
     if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
@@ -3547,7 +3555,10 @@ function SubTimeline(props) {
     return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
   });
   const routes = routeArrows(arrows, spans, ROW);
-  const routed = arrows.map((a3, i3) => ({ late: a3.late, d: roundedPath(routes[i3], 4) }));
+  const active = hovered ?? focused;
+  const related = incomingOf(arrows, active);
+  const routed = arrows.map((a3, i3) => ({ late: a3.late, related: related?.arrows.includes(i3) ?? false, d: roundedPath(routes[i3], 4) }));
+  const relatedFrom = new Set(related?.from ?? []);
   const startDrag = (e3, sub, mode) => {
     const bar = barOf(sub);
     if (!bar || e3.button !== 0) return;
@@ -3583,7 +3594,7 @@ function SubTimeline(props) {
     const date = dateAtX(range, e3.clientX - rect.left, scale);
     void save(sub, { start: date, end: date });
   };
-  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}`, children: [
+  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}`, children: [
     /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
       /* @__PURE__ */ u3("div", { class: "vt-timeline-corner" }),
       subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Edit: ${sub.summary}`, onClick: () => openSubEditor(ctx, sub), children: [
@@ -3606,11 +3617,18 @@ function SubTimeline(props) {
       /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
         cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
         /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
-          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => (
+          /* @__PURE__ */ u3("defs", { children: ["", "-late", "-related"].map((suffix) => (
             // 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
-            /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })
+            /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}` }) })
           )) }),
-          routed.map((r3) => /* @__PURE__ */ u3("path", { class: `vt-timeline-arrow${r3.late ? " is-late" : ""}`, d: r3.d, "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : ""})` }))
+          routed.map((r3) => /* @__PURE__ */ u3(
+            "path",
+            {
+              class: `vt-timeline-arrow${r3.late ? " is-late" : ""}${r3.related ? " is-related" : ""}`,
+              d: r3.d,
+              "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : r3.related ? "-related" : ""})`
+            }
+          ))
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
         subs.map((sub, i3) => {
@@ -3631,13 +3649,17 @@ function SubTimeline(props) {
             bar && /* @__PURE__ */ u3(
               "div",
               {
-                class: `vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}`,
+                class: `vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`,
                 style: { left: `${left}px`, width: `${barWidth}px` },
                 tabIndex: 0,
                 role: "button",
                 "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
                 title: `${sub.summary}
 ${period}`,
+                onPointerEnter: () => setHovered(sub.id),
+                onPointerLeave: () => setHovered((h3) => h3 === sub.id ? null : h3),
+                onFocus: () => setFocused(sub.id),
+                onBlur: () => setFocused((f4) => f4 === sub.id ? null : f4),
                 onPointerDown: (e3) => startDrag(e3, sub, "move"),
                 onPointerMove: moveDrag,
                 onPointerUp: () => endDrag(sub),

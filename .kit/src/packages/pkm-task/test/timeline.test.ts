@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barOf, dateAtX, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
+import { barOf, dateAtX, incomingOf, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
 
 function s(id: string, extra: Partial<TimelineSub> = {}): TimelineSub {
 	return { id, start: null, end: null, scheduled: [], softDeadline: null, deadline: null, dependsOn: [], ...extra };
@@ -221,5 +221,19 @@ describe("矢印の経路（重ならない工夫）", () => {
 		// 短い区間は、半分までしか丸めない
 		expect(roundedPath([[0, 0], [4, 0], [4, 10]], 4)).toBe("M0 0 L2 0 Q4 0 4 2 L4 10");
 		expect(roundedPath([[0, 0], [10, 0]], 4)).toBe("M0 0 L10 0");
+	});
+});
+
+describe("ホバー・フォーカスで強調するもの", () => {
+	const arrows = [
+		{ from: "a", to: "b", late: false },
+		{ from: "a", to: "c", late: false },
+		{ from: "b", to: "c", late: true },
+	];
+	it("その棒に入る矢印と、依存先の棒。入る矢印がなければ何も強調しない", () => {
+		expect(incomingOf(arrows, "c")).toEqual({ arrows: [1, 2], from: ["a", "b"] });
+		expect(incomingOf(arrows, "b")).toEqual({ arrows: [0], from: ["a"] });
+		expect(incomingOf(arrows, "a")).toBeNull();
+		expect(incomingOf(arrows, null)).toBeNull();
 	});
 });

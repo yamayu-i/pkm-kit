@@ -3633,6 +3633,39 @@ body.is-mobile .vt-toast {
 	stroke: var(--vt-error);
 }
 
+/* ホバー・フォーカスした棒に入る矢印と、依存先の棒を強調し、ほかの矢印と棒を薄くする */
+.vt-timeline-arrow,
+.vt-timeline-bar {
+	transition: opacity var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-timeline.has-focus .vt-timeline-arrow:not(.is-related),
+.vt-timeline.has-focus .vt-timeline-bar:not(.is-related, .is-active) {
+	opacity: var(--vt-opacity-disabled);
+}
+
+.vt-timeline-arrow.is-related {
+	stroke: var(--vt-primary);
+	stroke-width: 1.5;
+}
+
+.vt-timeline-arrow.is-related.is-late {
+	stroke: var(--vt-error);
+}
+
+.vt-timeline-arrowhead.is-related {
+	stroke: var(--vt-primary);
+}
+
+.vt-timeline-bar.is-related {
+	outline: var(--vt-border-width-thick) solid var(--vt-primary);
+	outline-offset: 2px;
+}
+
+.vt-timeline-bar.is-active {
+	box-shadow: var(--vt-elevation-3);
+}
+
 /* worklog の行の、記録したサブの題 */
 .vt-log-sub {
 	overflow: hidden;

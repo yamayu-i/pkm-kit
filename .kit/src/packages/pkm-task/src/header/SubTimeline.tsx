@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import type { SubIssue } from "../core/sub-issue";
-import { barOf, dateAtX, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
+import { barOf, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { StatusIcon } from "../ui/StatusIcon";
@@ -29,6 +29,9 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	const width = range.days * px;
 	const scroller = useRef<HTMLDivElement>(null);
 	const [drag, setDrag] = useState<Drag | null>(null);
+	// ホバー・フォーカス（クリック）した棒。その棒に入る矢印と依存先の棒を強調し、ほかを薄くする
+	const [hovered, setHovered] = useState<string | null>(null);
+	const [focused, setFocused] = useState<string | null>(null);
 
 	// 開いたときと目盛りを変えたときは、今日が左寄りに見えるようにする
 	useEffect(() => {
@@ -51,7 +54,10 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
 	});
 	const routes = routeArrows(arrows, spans, ROW);
-	const routed = arrows.map((a, i) => ({ late: a.late, d: roundedPath(routes[i]!, 4) }));
+	const active = hovered ?? focused;
+	const related = incomingOf(arrows, active);
+	const routed = arrows.map((a, i) => ({ late: a.late, related: related?.arrows.includes(i) ?? false, d: roundedPath(routes[i]!, 4) }));
+	const relatedFrom = new Set(related?.from ?? []);
 
 	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
 		const bar = barOf(sub);
@@ -91,7 +97,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	};
 
 	return (
-		<div class={`vt-timeline is-${scale}`}>
+		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}`}>
 			<div class="vt-timeline-labels">
 				<div class="vt-timeline-corner" />
 				{subs.map((sub) => (
@@ -121,15 +127,19 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 						{/* 矢印は棒の下に描く（棒を塗りつぶさない）。経路は timeline.ts の routeArrows（途中の棒をよけ、線どうしが重ならないようにずらす） */}
 						<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
 							<defs>
-								{(["", "-late"] as const).map((suffix) => (
+								{(["", "-late", "-related"] as const).map((suffix) => (
 									// 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
 									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-										<path d="M1 0.5 L5 3 L1 5.5" class={`vt-timeline-arrowhead${suffix ? " is-late" : ""}`} />
+										<path d="M1 0.5 L5 3 L1 5.5" class={`vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}`} />
 									</marker>
 								))}
 							</defs>
 							{routed.map((r) => (
-								<path class={`vt-timeline-arrow${r.late ? " is-late" : ""}`} d={r.d} marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : ""})`} />
+								<path
+									class={`vt-timeline-arrow${r.late ? " is-late" : ""}${r.related ? " is-related" : ""}`}
+									d={r.d}
+									marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : r.related ? "-related" : ""})`}
+								/>
 							))}
 						</svg>
 						<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
@@ -156,12 +166,16 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 									))}
 									{bar && (
 										<div
-											class={`vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}`}
+											class={`vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
 											style={{ left: `${left}px`, width: `${barWidth}px` }}
 											tabIndex={0}
 											role="button"
 											aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`}
 											title={`${sub.summary}\n${period}`}
+											onPointerEnter={() => setHovered(sub.id)}
+											onPointerLeave={() => setHovered((h) => (h === sub.id ? null : h))}
+											onFocus={() => setFocused(sub.id)}
+											onBlur={() => setFocused((f) => (f === sub.id ? null : f))}
 											onPointerDown={(e) => startDrag(e, sub, "move")}
 											onPointerMove={moveDrag}
 											onPointerUp={() => endDrag(sub)}
