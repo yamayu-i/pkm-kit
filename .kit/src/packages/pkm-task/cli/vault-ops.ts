@@ -194,7 +194,7 @@ function laneOfKey(index: TaskIndex, date: LocalDate, key: string) {
 /** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 4・Up next・Waiting の欄だけ */
 export function orderCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, before: string | null, device: string, now: Date): void {
 	const { board, lanes, lane } = laneOfKey(index, date, key);
-	if (lane === "working" || lane === "done") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
+	if (lane === "working" || lane === "done" || lane === "routine") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
 	if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before（${before}）は ${key} と同じ欄にありません`);
 	appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane as OrderedLane, before, index.order(date)), now);
 }
@@ -202,7 +202,8 @@ export function orderCardOnDisk(root: string, index: TaskIndex, date: LocalDate,
 /** ★ 今日の最重要を付け外しする。付けるのは TOP_LIMIT 件まで */
 export function starCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, on: boolean, device: string, now: Date): void {
 	if (typeof on !== "boolean") throw new Error("on は true か false にしてください");
-	const { board, lanes } = laneOfKey(index, date, key);
+	const { board, lanes, lane } = laneOfKey(index, date, key);
+	if (on && lane === "routine") throw new Error(`${key} は routine なので ★ を付けられません`);
 	if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから付けてください`);
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }

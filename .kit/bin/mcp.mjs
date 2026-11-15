@@ -8644,7 +8644,7 @@ function nextOrder(visible, previous) {
 }
 
 // src/core/board-lanes.ts
-var LANES = ["working", "top", "next", "waiting", "done"];
+var LANES = ["working", "top", "routine", "next", "waiting", "done"];
 var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
   const cards = [];
@@ -8674,6 +8674,7 @@ function isSettled(board, card) {
   return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
 function laneOf(index, board, card) {
+  if (card.kind === "routine") return "routine";
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
@@ -8682,7 +8683,7 @@ function laneOf(index, board, card) {
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], next: [], waiting: [], done: [] };
+  const lanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
   const order = index.order(date);
   for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) lanes[laneOf(index, board, card)].push(card);
   const startedAt = (c) => Math.min(...index.running(c.key).map((l) => l.fromMs));
@@ -9701,13 +9702,14 @@ function laneOfKey(index, date, key) {
 }
 function orderCardOnDisk(root, index, date, key, before, device, now) {
   const { board, lanes, lane } = laneOfKey(index, date, key);
-  if (lane === "working" || lane === "done") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
+  if (lane === "working" || lane === "done" || lane === "routine") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
   if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before\uFF08${before}\uFF09\u306F ${key} \u3068\u540C\u3058\u6B04\u306B\u3042\u308A\u307E\u305B\u3093`);
   appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane, before, index.order(date)), now);
 }
 function starCardOnDisk(root, index, date, key, on, device, now) {
   if (typeof on !== "boolean") throw new Error("on \u306F true \u304B false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const { board, lanes } = laneOfKey(index, date, key);
+  const { board, lanes, lane } = laneOfKey(index, date, key);
+  if (on && lane === "routine") throw new Error(`${key} \u306F routine \u306A\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
   if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
@@ -10839,7 +10841,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001routine: routine \u3059\u3079\u3066\uFF08issue \u3068\u6DF7\u305C\u306A\u3044\u3002\u2605 \u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
     inputSchema: {
       type: "object",
       properties: {

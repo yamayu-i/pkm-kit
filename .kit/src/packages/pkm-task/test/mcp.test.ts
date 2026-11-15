@@ -50,24 +50,26 @@ describe("MCP サーバーと検査付き操作", () => {
 	it("ボードへの追加・★・並べ替え・routine 結果記録・get_board が正しく動き、Obsidian 側の readVault でも整合する（ADR-0137）", () => {
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
 		callMcpTool(ctx, "star_card", { date, key: "i-2", on: true });
-		callMcpTool(ctx, "order_card", { date, key: "r-1", before: "i-1" });
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "r-1", before: "i-1" })).toThrow(/並べ替えられない/);
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "r-1", on: true })).toThrow(/routine/);
 		callMcpTool(ctx, "update_issue", { id: "i-1", status: "waiting" });
 
 		type Card = { key: string; kind: string; status: string; starred: boolean };
 		const read = () =>
 			callMcpTool(ctx, "get_board", { date }) as {
 				closed: boolean;
-				lanes: Record<"working" | "top" | "next" | "waiting" | "done", Card[]>;
+				lanes: Record<"working" | "top" | "routine" | "next" | "waiting" | "done", Card[]>;
 				unfinished: { issues: { id: string }[]; routines: { id: string }[] };
 			};
 		let board = read();
 		expect(board.closed).toBe(false);
-		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], next: ["r-1"], waiting: ["i-1"], done: [] });
+		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], routine: ["r-1"], next: [], waiting: ["i-1"], done: [] });
 		expect(board.lanes.top[0]).toMatchObject({ key: "i-2", kind: "issue", status: "open", starred: true });
 
 		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
 		board = read();
-		expect(board.lanes.done.map((c) => c.key)).toEqual(["r-1"]);
+		expect(board.lanes.routine.map((c) => c.key)).toEqual(["r-1"]);
+		expect(board.lanes.routine[0]).toMatchObject({ status: "closed" });
 		expect(board.unfinished.issues.map((i) => i.id)).toEqual(["i-1", "i-2"]);
 		expect(board.unfinished.routines).toEqual([]);
 
@@ -78,7 +80,7 @@ describe("MCP サーバーと検査付き操作", () => {
 		const index = new TaskIndex(data);
 		expect(index.board(date)?.board.issues).toEqual(["i-1", "i-2"]);
 		expect(index.board(date)?.board.stars).toEqual(["i-2"]);
-		expect(index.order(date)).toEqual(["i-2", "r-1", "i-1"]);
+		expect(index.order(date)).toBeUndefined();
 	});
 
 	it("★ は 4 件まで。order_card は同じ欄の中だけ（ADR-0137）", () => {

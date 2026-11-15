@@ -6,7 +6,7 @@
 
 ## 状態
 
-欄は保存しない。status・タイマー・★ から決まる: Working（タイマーが動いているもの）→ Done（closed / canceled / someday、結果のある routine、持ち越したもの）→ Waiting（waiting / delegated）→ Top 4（★ を付けたもの。4 件まで）→ Up next（残り）。★ はその日だけの記録、並びは翌日以降にも引き継ぐ記録で、どちらもボードの操作ログ（`star`、`order`）に残る。
+欄は保存しない。status・タイマー・★ から決まる: Routines（routine は常にここ。issue・サブと混ぜない）→ Working（タイマーが動いている issue・サブ）→ Done（closed / canceled / someday、持ち越したもの）→ Waiting（waiting / delegated）→ Top 4（★ を付けたもの。4 件まで）→ Up next（残り）。★ はその日だけの記録、並びは翌日以降にも引き継ぐ記録で、どちらもボードの操作ログ（`star`、`order`）に残る。
 
 ## 操作
 

@@ -3095,6 +3095,7 @@ function isSettled(board, card) {
   return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
 function laneOf(index, board, card) {
+  if (card.kind === "routine") return "routine";
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
@@ -3103,7 +3104,7 @@ function laneOf(index, board, card) {
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], next: [], waiting: [], done: [] };
+  const lanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
   const order = index.order(date);
   for (const card of sortByOrder(boardCards(index, date, board), (c3) => c3.key, order)) lanes[laneOf(index, board, card)].push(card);
   const startedAt = (c3) => Math.min(...index.running(c3.key).map((l3) => l3.fromMs));
@@ -3121,6 +3122,9 @@ function cardRuns(cards) {
     else runs.push({ parent, cards: [card] });
   }
   return runs;
+}
+function showRoutineLane(board, lanes) {
+  return lanes.routine.some((c3) => cardStatus(board, c3) === "open");
 }
 function canStar(lanes) {
   return lanes.top.length < TOP_LIMIT;
@@ -3251,6 +3255,7 @@ function lanesOn(ctx, date) {
 }
 function setStar(ctx, date, key, on) {
   const { board, lanes } = lanesOn(ctx, date);
+  if (on && lanes.routine.some((c3) => c3.key === key)) return Promise.resolve();
   if (on && !board.stars.includes(key) && !canStar(lanes)) {
     new import_obsidian4.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
     return Promise.resolve();
@@ -11168,6 +11173,7 @@ var ENTER_MS = 3e3;
 var LANE_TITLE = {
   working: "Working",
   top: "Top 4",
+  routine: "Routines",
   next: "Up next",
   waiting: "Waiting",
   done: "Done"
@@ -11220,7 +11226,7 @@ function TaskCard(props) {
   };
   const moreMenu = (e3) => {
     const m3 = new import_obsidian21.Menu();
-    if (!done) {
+    if (!done && card.kind !== "routine") {
       if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 4").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
       else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
     }
@@ -11260,7 +11266,7 @@ function TaskCard(props) {
       children: [
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
         /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: summary }),
-        !done && /* @__PURE__ */ u3(
+        !done && card.kind !== "routine" && /* @__PURE__ */ u3(
           "button",
           {
             class: `vt-icon-button vt-star${starred ? " is-starred" : ""}`,
@@ -11300,8 +11306,8 @@ function Lane(props) {
   const { ctx, date, board, lanes, lane, now } = props;
   const cards = lanes[lane];
   const [over2, setOver] = d2(false);
-  const [open, setOpen] = d2(false);
-  const collapsible = lane === "done";
+  const [open, setOpen] = d2(lane === "routine");
+  const collapsible = lane === "done" || lane === "routine";
   const shown = !collapsible || open;
   const accepts = isDragLane(lane) && (lane !== "top" || canStar(lanes));
   return /* @__PURE__ */ u3(
@@ -11332,7 +11338,7 @@ function Lane(props) {
             lane === "top" && /* @__PURE__ */ u3(Icon, { name: "star" }),
             LANE_TITLE[lane]
           ] }),
-          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards.length}/${TOP_LIMIT}` : cards.length })
+          /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards.filter((c3) => cardStatus(board, c3) === "open").length}/${cards.length}` : cards.length })
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
           cardRuns(cards).map(
@@ -11370,7 +11376,7 @@ function Board(props) {
       else void createOnBoard(ctx, date, choice.summary);
     }).open();
   };
-  const visibleLanes = ["working", "top", "next", "waiting", "done"].filter((l3) => l3 === "top" || l3 === "next" || lanes[l3].length > 0);
+  const visibleLanes = ["working", "top", "routine", "next", "waiting", "done"].filter((l3) => l3 === "routine" ? showRoutineLane(board, lanes) : l3 === "top" || l3 === "next" || lanes[l3].length > 0);
   return /* @__PURE__ */ u3("div", { class: "vt-board", children: [
     /* @__PURE__ */ u3("div", { class: "vt-board-head", children: [
       /* @__PURE__ */ u3("h3", { class: "vt-h", children: [

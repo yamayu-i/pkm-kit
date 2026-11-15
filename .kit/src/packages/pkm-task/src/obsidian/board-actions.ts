@@ -62,6 +62,7 @@ function lanesOn(ctx: TaskContext, date: LocalDate) {
 /** ★ 今日の最重要を付け外しする。上限（TOP_LIMIT 件）あるときは付けない（ADR-0137, 0164） */
 export function setStar(ctx: TaskContext, date: LocalDate, key: string, on: boolean): Promise<void> {
 	const { board, lanes } = lanesOn(ctx, date);
+	if (on && lanes.routine.some((c) => c.key === key)) return Promise.resolve();
 	if (on && !board.stars.includes(key) && !canStar(lanes)) {
 		new Notice(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから付けてください`);
 		return Promise.resolve();
