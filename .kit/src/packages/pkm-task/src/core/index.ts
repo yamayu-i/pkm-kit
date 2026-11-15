@@ -8,10 +8,13 @@ import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
 import { closedAtMap, statusBefore, type StatusLogEntry } from "./status-log";
+import type { SubIssue } from "./sub-issue";
 import type { WorklogEntry } from "./worklog";
 
 export interface VaultData {
 	issues: Issue[];
+	/** issue の md の中のサブイシュー（親の md の順 → md に書いた順。ADR-0135） */
+	subIssues: SubIssue[];
 	routines: Routine[];
 	members: Member[];
 	labels: LabelDef[];
@@ -29,7 +32,7 @@ export interface VaultData {
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -95,6 +98,8 @@ export class TaskIndex {
 	readonly members = new Map<string, Member>();
 	readonly issuesByPath = new Map<string, Issue>();
 	private readonly childrenOf = new Map<string, Issue[]>();
+	private readonly subsOf = new Map<string, SubIssue[]>();
+	private readonly subsByKey = new Map<string, SubIssue>();
 
 	constructor(readonly data: VaultData) {
 		// ID が重複していたら最初のものを使う（重複は lint で報告する）
@@ -102,12 +107,30 @@ export class TaskIndex {
 		for (const r of data.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
 		for (const m of data.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
 		for (const i of data.issues) this.issuesByPath.set(i.path, i);
+		for (const sub of data.subIssues) {
+			// 同じ親で id が重なったら最初のものを使う（重なりは lint で報告する）
+			if (this.subsByKey.has(sub.key)) continue;
+			this.subsByKey.set(sub.key, sub);
+			const list = this.subsOf.get(sub.parent) ?? [];
+			list.push(sub);
+			this.subsOf.set(sub.parent, list);
+		}
 		for (const issue of this.issues.values()) {
 			if (issue.parent === null) continue;
 			const list = this.childrenOf.get(issue.parent) ?? [];
 			list.push(issue);
 			this.childrenOf.set(issue.parent, list);
 		}
+	}
+
+	/** その issue のサブ（md に書いた順。ADR-0135） */
+	subs(parentId: string): SubIssue[] {
+		return this.subsOf.get(parentId) ?? [];
+	}
+
+	/** 合成キー `i-12#k3f9a2` のサブ */
+	sub(key: string): SubIssue | undefined {
+		return this.subsByKey.get(key);
 	}
 
 	children(id: string): Issue[] {

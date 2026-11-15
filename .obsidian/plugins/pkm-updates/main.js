@@ -729,6 +729,95 @@ function parseLabels(text2) {
   return { labels, problems };
 }
 
+// ../pkm-task/src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text2) {
+  const fm = FRONTMATTER_RE.exec(text2);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text2.length) {
+    if (text2.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text2[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text2.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text2, blocks: [] };
+  const blocks = starts.map((s3, i3) => text2.slice(s3, starts[i3 + 1] ?? text2.length));
+  return { head: text2.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r3 = new Reader(path, fm);
+  const id = r3.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r3.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r3.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    start: r3.date("start"),
+    end: r3.date("end"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    estimated: r3.minutes("estimated"),
+    dependsOn: r3.strings("depends_on"),
+    created: r3.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
+}
+function parseSubIssues(path, parent, text2, parseYaml) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text2).blocks) {
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml);
+    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
+    problems.push(...r3.problems);
+    if (r3.sub) subs.push(r3.sub);
+  }
+  return { subs, blocks, problems };
+}
+
 // ../pkm-task/src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
@@ -741,10 +830,10 @@ function fileKind(path) {
   return m3 ? m3[1] : null;
 }
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
-  for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
+  for (const { path, frontmatter, text: text2 } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
@@ -760,7 +849,14 @@ function collectVault(input) {
     if (kind === "issue") {
       const r3 = parseIssue(path, frontmatter);
       problems.push(...r3.problems);
-      if (r3.value) data.issues.push(r3.value);
+      if (r3.value) {
+        data.issues.push(r3.value);
+        if (text2 !== void 0 && input.parseYaml) {
+          const s3 = parseSubIssues(path, r3.value.id, text2, input.parseYaml);
+          problems.push(...s3.problems);
+          data.subIssues.push(...s3.subs);
+        }
+      }
     } else if (kind === "routine") {
       const r3 = parseRoutine(path, frontmatter);
       problems.push(...r3.problems);

@@ -5,6 +5,7 @@ import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
 import type { Problem } from "./problem";
 import { parseIssue, parseMember, parseRoutine } from "./schema";
+import { parseSubIssues, type YamlParse } from "./sub-issue";
 import { STATUS_LOG_PATH_RE, compareStatusLog, parseStatusLog } from "./status-log";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
@@ -24,7 +25,9 @@ export function fileKind(path: string): FileKind | null {
 
 export interface VaultInput {
 	/** issue / routine / member / デイリーノートの md。frontmatter が読めなかったら null */
-	markdown: { path: string; frontmatter: Record<string, unknown> | null }[];
+	markdown: { path: string; frontmatter: Record<string, unknown> | null; text?: string }[];
+	/** issue の md の全文（text）からサブを読むための YAML の関数（ADR-0135）。ないならサブは読まない */
+	parseYaml?: YamlParse;
 	/** worklog の jsonl */
 	worklogs: { path: string; text: string }[];
 	/** `issue/labels.json` の中身（ないなら null） */
@@ -39,10 +42,10 @@ export interface VaultInput {
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
-	for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
+	for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
 		const kind = fileKind(path);
 		if (kind === "daily") {
 			// 既存の board は読み取り専用の初期状態（ADR-0020）。board がないデイリーノートは対象外
@@ -59,7 +62,14 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		if (kind === "issue") {
 			const r = parseIssue(path, frontmatter);
 			problems.push(...r.problems);
-			if (r.value) data.issues.push(r.value);
+			if (r.value) {
+				data.issues.push(r.value);
+				if (text !== undefined && input.parseYaml) {
+					const s = parseSubIssues(path, r.value.id, text, input.parseYaml);
+					problems.push(...s.problems);
+					data.subIssues.push(...s.subs);
+				}
+			}
 		} else if (kind === "routine") {
 			const r = parseRoutine(path, frontmatter);
 			problems.push(...r.problems);

@@ -74,9 +74,9 @@ export interface Parsed<T> {
 	problems: Problem[];
 }
 
-type Frontmatter = Record<string, unknown>;
+export type Frontmatter = Record<string, unknown>;
 
-class Reader {
+export class Reader {
 	readonly problems: Problem[] = [];
 	constructor(
 		private readonly path: string,

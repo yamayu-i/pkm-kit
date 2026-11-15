@@ -1,4 +1,4 @@
-import { TFile, type App, type EventRef } from "obsidian";
+import { TFile, parseYaml, type App, type EventRef } from "obsidian";
 
 /** Plugin#registerEvent。プラグインの unload で外れる */
 type RegisterEvent = (ref: EventRef) => void;
@@ -7,8 +7,8 @@ import { collectVault, fileKind, type VaultInput } from "../core/load";
 import type { Problem } from "../core/problem";
 
 /**
- * メモリ上の索引（ADR-0002）。issue / routine / member は metadataCache から、
- * worklog とボードの操作ログと labels.json はファイルを読んで持つ。変更があったら少し待ってから作り直す
+ * メモリ上の索引（ADR-0002）。issue / routine / member の frontmatter は metadataCache から、
+ * issue の本文（サブイシュー。ADR-0135）と worklog とボードの操作ログと labels.json はファイルを読んで持つ。変更があったら少し待ってから作り直す
  */
 export class TaskStore {
 	index = new TaskIndex(emptyVaultData());
@@ -64,7 +64,7 @@ export class TaskStore {
 
 	private async readText(file: TFile): Promise<void> {
 		const kind = fileKind(file.path);
-		if (kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+		if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
 	}
 
 	private touch(file: TFile): void {
@@ -80,15 +80,17 @@ export class TaskStore {
 	}
 
 	private rebuild(): void {
-		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
+		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml };
 		for (const file of this.app.vault.getMarkdownFiles()) {
 			const kind = fileKind(file.path);
 			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
 			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-			input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null });
+			const text = kind === "issue" ? this.texts.get(file.path) : undefined;
+			input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null, ...(text !== undefined ? { text } : {}) });
 		}
 		for (const [path, text] of this.texts) {
 			const kind = fileKind(path);
+			if (kind === "issue") continue;
 			if (kind === "worklog") input.worklogs.push({ path, text });
 			else if (kind === "board") input.boardLogs!.push({ path, text });
 			else if (kind === "statuslog") input.statusLogs!.push({ path, text });

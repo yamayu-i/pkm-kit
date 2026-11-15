@@ -8041,6 +8041,13 @@ var TaskIndex = class {
     for (const r of data2.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
     for (const m of data2.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
     for (const i of data2.issues) this.issuesByPath.set(i.path, i);
+    for (const sub of data2.subIssues) {
+      if (this.subsByKey.has(sub.key)) continue;
+      this.subsByKey.set(sub.key, sub);
+      const list = this.subsOf.get(sub.parent) ?? [];
+      list.push(sub);
+      this.subsOf.set(sub.parent, list);
+    }
     for (const issue of this.issues.values()) {
       if (issue.parent === null) continue;
       const list = this.childrenOf.get(issue.parent) ?? [];
@@ -8054,6 +8061,16 @@ var TaskIndex = class {
   members = /* @__PURE__ */ new Map();
   issuesByPath = /* @__PURE__ */ new Map();
   childrenOf = /* @__PURE__ */ new Map();
+  subsOf = /* @__PURE__ */ new Map();
+  subsByKey = /* @__PURE__ */ new Map();
+  /** その issue のサブ（md に書いた順。ADR-0135） */
+  subs(parentId) {
+    return this.subsOf.get(parentId) ?? [];
+  }
+  /** 合成キー `i-12#k3f9a2` のサブ */
+  sub(key) {
+    return this.subsByKey.get(key);
+  }
   children(id) {
     return this.childrenOf.get(id) ?? [];
   }
@@ -8273,6 +8290,95 @@ function parseLabels(text) {
   return { labels, problems };
 }
 
+// src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text) {
+  const fm = FRONTMATTER_RE.exec(text);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text.length) {
+    if (text.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text, blocks: [] };
+  const blocks = starts.map((s, i) => text.slice(s, starts[i + 1] ?? text.length));
+  return { head: text.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p) => ({ ...p, message: `\u30B5\u30D6 ${id}: ${p.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l, i) => i > 0 && l.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r = new Reader(path, fm);
+  const id = r.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r.oneOf("status", STATUSES);
+  if (status === null && !r.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r.ref("delegated_to", "m"),
+    start: r.date("start"),
+    end: r.date("end"),
+    scheduled: r.dates("scheduled"),
+    softDeadline: r.date("soft_deadline"),
+    deadline: r.date("deadline"),
+    estimated: r.minutes("estimated"),
+    dependsOn: r.strings("depends_on"),
+    created: r.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r.problems], id) };
+}
+function parseSubIssues(path, parent, text, parseYaml) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text).blocks) {
+    const r = parseBlock(path, parent, raw, blocks.length, parseYaml);
+    blocks.push({ raw: raw.trimEnd(), sub: r.sub });
+    problems.push(...r.problems);
+    if (r.sub) subs.push(r.sub);
+  }
+  return { subs, blocks, problems };
+}
+
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
@@ -8285,10 +8391,10 @@ function fileKind(path) {
   return m ? m[1] : null;
 }
 function collectVault(input) {
-  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data2 = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
-  for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
+  for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
@@ -8304,7 +8410,14 @@ function collectVault(input) {
     if (kind === "issue") {
       const r = parseIssue(path, frontmatter);
       problems.push(...r.problems);
-      if (r.value) data2.issues.push(r.value);
+      if (r.value) {
+        data2.issues.push(r.value);
+        if (text !== void 0 && input.parseYaml) {
+          const s = parseSubIssues(path, r.value.id, text, input.parseYaml);
+          problems.push(...s.problems);
+          data2.subIssues.push(...s.subs);
+        }
+      }
     } else if (kind === "routine") {
       const r = parseRoutine(path, frontmatter);
       problems.push(...r.problems);
@@ -8370,9 +8483,9 @@ function walk(root2, dir = root2, out = []) {
   }
   return out;
 }
-var FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+var FRONTMATTER_RE2 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 function readFrontmatter(text) {
-  const m = FRONTMATTER_RE.exec(text);
+  const m = FRONTMATTER_RE2.exec(text);
   if (!m) return null;
   try {
     const value = (0, import_yaml.parse)(m[1]);
@@ -8383,7 +8496,7 @@ function readFrontmatter(text) {
 }
 function readVault(root2) {
   const paths = walk(root2);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
+  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
   for (const path of paths) {
     const kind = fileKind(path);
     if (kind === null) continue;
@@ -8393,7 +8506,7 @@ function readVault(root2) {
     else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
     else if (kind === "groups") input.groups = text;
-    else input.markdown.push({ path, frontmatter: readFrontmatter(text) });
+    else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...kind === "issue" ? { text } : {} });
   }
   const { data: data2, problems } = collectVault(input);
   return { data: data2, problems, paths };
