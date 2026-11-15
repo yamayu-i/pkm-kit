@@ -5,7 +5,7 @@ import { LABELS_PATH } from "./labels";
 import { isId } from "./ids";
 import type { Problem } from "./problem";
 import { STATUS_DETAIL_MAX } from "./schema";
-import { subKey, type SubIssue } from "./sub-issue";
+import { parseSubKey, subKey, type SubIssue } from "./sub-issue";
 
 export interface LintOptions {
 	/** Vault にあるファイルのパス。related のパス参照を確かめるのに使う（省略時は確かめない） */
@@ -120,15 +120,10 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 	}
 	for (const issue of data.issues) {
 		const { path } = issue;
-		if (issue.parent !== null) {
-			if (issue.parent === issue.id) add("error", path, "self-parent", "parent が自分自身です");
-			else if (!index.issues.has(issue.parent)) add("error", path, "dangling-parent", `parent の ${issue.parent} がありません`);
-			else if (!index.canSetParent(issue.id, issue.parent)) {
-				add("error", path, "parent-cycle", "親子関係が循環しています");
-			}
-		}
 		for (const ref of issue.related) {
-			if (isId(ref, "i")) {
+			if (parseSubKey(ref) !== null) {
+				if (!index.sub(ref)) add("error", path, "dangling-related", `related のサブ ${ref} がありません`);
+			} else if (isId(ref, "i")) {
 				if (!index.issues.has(ref)) add("error", path, "dangling-related", `related の ${ref} がありません`);
 			} else if (options.paths && !options.paths.has(safeDecode(ref))) {
 				add("error", path, "dangling-related", `related のノート ${ref} がありません`);
@@ -166,7 +161,8 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 
 	for (const b of data.boards) {
 		for (const id of b.board.issues) {
-			if (!index.issues.has(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
+			// 移行でサブにした子の ID は、過去のボードに残ってよい（ADR-0135）
+			if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
 		}
 	}
 

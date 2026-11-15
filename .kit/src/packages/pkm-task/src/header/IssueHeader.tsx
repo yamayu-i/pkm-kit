@@ -1,15 +1,14 @@
-import { Keymap, Menu } from "obsidian";
+import { Menu } from "obsidian";
 import type { ComponentChild } from "preact";
 import { useState } from "preact/hooks";
 import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
-import { isActive, type TaskIndex } from "../core/index";
+import type { TaskIndex } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
-import { openCaptureModal } from "../obsidian/capture";
-import { IssueSuggestModal, PreactModal } from "../obsidian/modals";
+import { PreactModal } from "../obsidian/modals";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
 import { CalendarForm, DateForm, DayCell, WorklogForm } from "../ui/forms";
@@ -17,7 +16,6 @@ import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useStoreVersion } from "../ui/hooks";
 import { Pager } from "../ui/Pager";
-import { linkProps } from "../ui/a11y";
 
 const WORKLOG_PAGE = 5;
 
@@ -27,11 +25,6 @@ export function formatDateTime(value: string | number | null): string {
 	if (Number.isNaN(d.getTime())) return "—";
 	const pad = (n: number) => String(n).padStart(2, "0");
 	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** 親の候補: 循環しないもの。閉じたものは後ろ（ADR-0012） */
-function sortCandidates(issues: Issue[]): Issue[] {
-	return [...issues].sort((a, b) => Number(!isActive(a)) - Number(!isActive(b)) || a.id.localeCompare(b.id, "en", { numeric: true }));
 }
 
 /** issue 画面のヘッダー（ADR-0012）。ページの一番上に差し込む（ADR-0077） */
@@ -66,9 +59,6 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 					<ScheduleStrip ctx={ctx} issue={issue} save={save} />
 					<DueFields ctx={ctx} issue={issue} save={save} />
 				</div>
-			</section>
-			<section class="vt-card">
-				<Relations ctx={ctx} issue={issue} index={index} save={save} />
 			</section>
 			<Effort ctx={ctx} issue={issue} index={index} save={save} />
 			<hr class="vt-sep" />
@@ -249,78 +239,6 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 		<div class="vt-dues">
 			{row("soft_deadline", "soft_deadline", issue.softDeadline)}
 			{row("deadline", "deadline", issue.deadline)}
-		</div>
-	);
-}
-
-function IssueLink(props: { ctx: TaskContext; issue: Issue; onRemove?: () => void }) {
-	return (
-		<span class="vt-relation">
-			<IdBadge issue={props.issue} />
-			<span class="vt-link" {...linkProps((e) => void props.ctx.openPath(props.issue.path, Keymap.isModEvent(e) !== false))}>
-				{props.issue.summary}
-			</span>
-			{props.onRemove && (
-				<button class="vt-icon-button" aria-label="Remove" title="Remove" onClick={props.onRemove}>
-					<Icon name="x" />
-				</button>
-			)}
-		</span>
-	);
-}
-
-function Relations(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
-	const { ctx, issue, index, save } = props;
-	const parent = issue.parent === null ? null : index.issues.get(issue.parent);
-	const children = index.children(issue.id);
-	const pickParent = () => {
-		const candidates = sortCandidates([...index.issues.values()].filter((c) => index.canSetParent(issue.id, c.id)));
-		new IssueSuggestModal(ctx.app, candidates, (p) => save({ parent: p.id }), "Search for a parent issue").open();
-	};
-	const addChild = (e: MouseEvent) => {
-		const m = new Menu();
-		m.addItem((item) =>
-			item.setTitle("Make an existing issue a child").onClick(() => {
-				const candidates = sortCandidates([...index.issues.values()].filter((c) => c.parent !== issue.id && index.canSetParent(c.id, issue.id)));
-				new IssueSuggestModal(ctx.app, candidates, (c) => save({ parent: issue.id }, c.path), "Search for a child issue").open();
-			}),
-		);
-		m.addItem((item) =>
-			item.setTitle("Create new").onClick(() => openCaptureModal(ctx, issue.id)),
-		);
-		m.showAtMouseEvent(e);
-	};
-	return (
-		<div class="vt-row vt-halves vt-small vt-relations">
-			<div class="vt-relation-col">
-				<div class="vt-field-label">
-					Parent
-					<button class="vt-icon-button" aria-label="Choose parent" title="Choose parent" onClick={pickParent}>
-						<Icon name="pencil" />
-					</button>
-				</div>
-				{parent ? (
-					<IssueLink ctx={ctx} issue={parent} onRemove={() => save({ parent: null })} />
-				) : issue.parent !== null ? (
-					<span class="vt-muted">{issue.parent} (not found)</span>
-				) : (
-					<span class="vt-muted">—</span>
-				)}
-			</div>
-			<div class="vt-relation-col">
-				<div class="vt-field-label">
-					Children
-					<button class="vt-icon-button" aria-label="Add child" title="Add child" onClick={addChild}>
-						<Icon name="plus" />
-					</button>
-				</div>
-				<div class="vt-wrap">
-					{children.length === 0 && <span class="vt-muted">—</span>}
-					{children.map((c) => (
-						<IssueLink ctx={ctx} issue={c} onRemove={() => save({ parent: null }, c.path)} />
-					))}
-				</div>
-			</div>
 		</div>
 	);
 }

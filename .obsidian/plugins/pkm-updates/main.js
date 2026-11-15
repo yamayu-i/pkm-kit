@@ -352,6 +352,7 @@ function parseIssue(path, fm) {
   const status = r3.oneOf("status", STATUSES);
   if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
   if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (r3.has("parent")) r3.problem("legacy-parent", "parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u79FB\u884C 0135-sub-issues \u3067\u89AA\u306E\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306B\u5909\u63DB\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09");
   const issue = {
     path,
     id: id ?? "",
@@ -361,7 +362,6 @@ function parseIssue(path, fm) {
     delegatedTo: r3.ref("delegated_to", "m"),
     priority: r3.oneOf("priority", PRIORITIES),
     labels: r3.strings("label"),
-    parent: r3.ref("parent", "i"),
     related: r3.strings("related"),
     estimated: r3.minutes("estimated"),
     scheduled: r3.dates("scheduled"),
@@ -834,6 +834,22 @@ function fileKind(path) {
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
+function resolveMigrated(data) {
+  const issueIds = new Set(data.issues.map((i3) => i3.id));
+  const byOld = /* @__PURE__ */ new Map();
+  for (const s3 of data.subIssues) {
+    if (s3.migratedFrom !== null && !issueIds.has(s3.migratedFrom) && !byOld.has(s3.migratedFrom)) byOld.set(s3.migratedFrom, { parent: s3.parent, id: s3.id });
+  }
+  if (byOld.size === 0) return;
+  data.worklogs = data.worklogs.map((l3) => {
+    const to = l3.sub ? void 0 : byOld.get(l3.taskId);
+    return to ? { ...l3, taskId: to.parent, sub: to.id } : l3;
+  });
+  data.statusLogs = data.statusLogs.map((e3) => {
+    const to = e3.sub ? void 0 : byOld.get(e3.task);
+    return to ? { ...e3, task: to.parent, sub: to.id } : e3;
+  });
+}
 function collectVault(input) {
   const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
@@ -904,6 +920,7 @@ function collectVault(input) {
     data.statusLogs.push(...r3.entries);
   }
   data.statusLogs.sort(compareStatusLog);
+  resolveMigrated(data);
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
     problems.push(...r3.problems);

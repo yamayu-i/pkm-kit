@@ -150,7 +150,7 @@ export class TaskWriter {
 	}
 
 	/** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
-	async createIssues(summaries: string[], parent: string | null = null, scheduled: LocalDate[] = []): Promise<{ created: TFile[]; failed: string[] }> {
+	async createIssues(summaries: string[], scheduled: LocalDate[] = []): Promise<{ created: TFile[]; failed: string[] }> {
 		const ids = nextIds("i", this.takenIds(), summaries.length);
 		const created: TFile[] = [];
 		const failed: string[] = [];
@@ -159,7 +159,7 @@ export class TaskWriter {
 			const path = normalizePath(pathForId(ids[i]!));
 			try {
 				await this.ensureFolder(path);
-				created.push(await this.app.vault.create(path, newIssueContent(ids[i]!, summary, now, parent, scheduled)));
+				created.push(await this.app.vault.create(path, newIssueContent(ids[i]!, summary, now, scheduled)));
 			} catch (e) {
 				console.error("pkm-task: issue を作れませんでした", path, e);
 				failed.push(summary);

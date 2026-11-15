@@ -10,9 +10,8 @@ function yamlString(s: string): string {
 }
 
 /** 新しい issue のファイルの中身。scheduled がなければ Inbox に入る（ADR-0011） */
-export function newIssueContent(id: string, summary: string, created: string, parent: string | null = null, scheduled: LocalDate[] = []): string {
+export function newIssueContent(id: string, summary: string, created: string, scheduled: LocalDate[] = []): string {
 	const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
-	if (parent !== null) lines.push(`parent: ${parent}`);
 	if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
 	lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
 	return lines.join("\n");

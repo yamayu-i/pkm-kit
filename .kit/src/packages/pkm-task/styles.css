@@ -655,47 +655,6 @@ button.vt-badge:disabled::after {
 .vt-due-0 .vt-due-label { color: inherit; }
 .vt-due-overdue { box-shadow: inset 0 0 0 2px var(--vt-red); }
 
-/* ---------- 親子 ---------- */
-
-.vt-relations {
-	align-items: flex-start;
-}
-
-.vt-relation-col {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 8px;
-	min-width: 0;
-}
-
-.vt-relation-col > .vt-wrap {
-	max-width: 100%;
-}
-
-.vt-wrap {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.vt-relation {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	min-width: 0;
-	max-width: 100%;
-	padding: 4px;
-	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-container-high);
-}
-
-.vt-relation .vt-link {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .vt-icon-button {
 	display: inline-flex;
 	align-items: center;

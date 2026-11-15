@@ -40,6 +40,27 @@ export interface VaultInput {
 	statusLogs?: { path: string; text: string }[];
 }
 
+/**
+ * 移行で子の issue をサブにした後も、旧 ID の worklog・statuslog の行をそのサブの行として読む（ADR-0135）。
+ * jsonl は追記だけの記録なので書き換えず、読むときに置き換える。旧 ID の issue がまだあるなら置き換えない
+ */
+function resolveMigrated(data: VaultData): void {
+	const issueIds = new Set(data.issues.map((i) => i.id));
+	const byOld = new Map<string, { parent: string; id: string }>();
+	for (const s of data.subIssues) {
+		if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
+	}
+	if (byOld.size === 0) return;
+	data.worklogs = data.worklogs.map((l) => {
+		const to = l.sub ? undefined : byOld.get(l.taskId);
+		return to ? { ...l, taskId: to.parent, sub: to.id } : l;
+	});
+	data.statusLogs = data.statusLogs.map((e) => {
+		const to = e.sub ? undefined : byOld.get(e.task);
+		return to ? { ...e, task: to.parent, sub: to.id } : e;
+	});
+}
+
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
 	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
@@ -112,6 +133,7 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		data.statusLogs.push(...r.entries);
 	}
 	data.statusLogs.sort(compareStatusLog);
+	resolveMigrated(data);
 	if (input.labels !== null) {
 		const r = parseLabels(input.labels);
 		problems.push(...r.problems);

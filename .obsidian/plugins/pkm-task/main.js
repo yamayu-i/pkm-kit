@@ -121,7 +121,7 @@ function notePaneLeaf(workspace, options) {
 }
 
 // src/header/extension.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -568,7 +568,7 @@ function installHeaderMount(options) {
 }
 
 // src/header/IssueHeader.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
@@ -1144,6 +1144,7 @@ function parseIssue(path, fm) {
   const status = r3.oneOf("status", STATUSES);
   if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
   if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (r3.has("parent")) r3.problem("legacy-parent", "parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u79FB\u884C 0135-sub-issues \u3067\u89AA\u306E\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306B\u5909\u63DB\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09");
   const issue = {
     path,
     id: id ?? "",
@@ -1153,7 +1154,6 @@ function parseIssue(path, fm) {
     delegatedTo: r3.ref("delegated_to", "m"),
     priority: r3.oneOf("priority", PRIORITIES),
     labels: r3.strings("label"),
-    parent: r3.ref("parent", "i"),
     related: r3.strings("related"),
     estimated: r3.minutes("estimated"),
     scheduled: r3.dates("scheduled"),
@@ -1817,19 +1817,12 @@ var TaskIndex = class {
       list.push(sub);
       this.subsOf.set(sub.parent, list);
     }
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
-    }
   }
   data;
   issues = /* @__PURE__ */ new Map();
   routines = /* @__PURE__ */ new Map();
   members = /* @__PURE__ */ new Map();
   issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
   subsOf = /* @__PURE__ */ new Map();
   subsByKey = /* @__PURE__ */ new Map();
   /** その issue のサブ（md に書いた順。ADR-0135） */
@@ -1840,27 +1833,10 @@ var TaskIndex = class {
   sub(key) {
     return this.subsByKey.get(key);
   }
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
-  }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
-  }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a3) => a3.id === childId);
+  /** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+  migrated(oldId) {
+    if (this.issues.has(oldId)) return void 0;
+    return this.data.subIssues.find((s3) => s3.migratedFrom === oldId);
   }
   /** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
   effortMinutes(now) {
@@ -2558,25 +2534,6 @@ var PreactModal = class extends import_obsidian2.Modal {
     R(null, this.contentEl);
   }
 };
-var IssueSuggestModal = class extends import_obsidian2.FuzzySuggestModal {
-  constructor(app, items, onChoose, placeholder = "Search issues (ID / summary)") {
-    super(app);
-    this.items = items;
-    this.onChoose = onChoose;
-    this.setPlaceholder(placeholder);
-  }
-  items;
-  onChoose;
-  getItems() {
-    return this.items;
-  }
-  getItemText(issue) {
-    return `${issue.id} ${issue.summary}`;
-  }
-  onChooseItem(issue) {
-    this.onChoose(issue);
-  }
-};
 var BoardIssueModal = class extends import_obsidian2.SuggestModal {
   constructor(app, items, onChoose) {
     super(app);
@@ -2761,87 +2718,6 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
-// src/obsidian/capture.tsx
-var import_obsidian4 = require("obsidian");
-
-// src/core/capture.ts
-var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
-function parseCaptureText(text) {
-  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
-}
-
-// src/obsidian/capture.tsx
-var NOTICE_MS = 5e3;
-function CaptureForm(props) {
-  const [text, setText] = d2("");
-  const ref = A2(null);
-  h2(() => ref.current?.focus(), []);
-  const summaries = parseCaptureText(text);
-  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
-  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
-    /* @__PURE__ */ u3(
-      "textarea",
-      {
-        ref,
-        rows: 6,
-        placeholder: "One summary per line\n- You can paste a bulleted list",
-        value: text,
-        onInput: (e3) => setText(e3.currentTarget.value),
-        onKeyDown: (e3) => {
-          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
-            e3.preventDefault();
-            submit();
-          }
-        }
-      }
-    ),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        "Create ",
-        summaries.length,
-        import_obsidian4.Platform.isMobile ? "" : " (Mod+Enter)"
-      ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
-    ] })
-  ] });
-}
-async function openAll(ctx, files) {
-  let first = null;
-  for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian4.Platform.isPhone });
-    first ??= leaf;
-  }
-  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
-}
-function showCreatedNotice(ctx, created, failed) {
-  const fragment = document.createDocumentFragment();
-  const ids = created.map((f4) => f4.basename);
-  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
-  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
-  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
-  let notice = null;
-  if (created.length > 0) {
-    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
-    button.addEventListener("click", (e3) => {
-      e3.stopPropagation();
-      notice?.hide();
-      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
-    });
-  }
-  notice = new import_obsidian4.Notice(fragment, NOTICE_MS);
-}
-function openCaptureModal(ctx, parent = null) {
-  new PreactModal(ctx.app, parent === null ? "Capture issues" : "Capture child issues", (close) => /* @__PURE__ */ u3(
-    CaptureForm,
-    {
-      onSubmit: (summaries) => {
-        close();
-        void ctx.writer.createIssues(summaries, parent).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-      }
-    }
-  )).open();
-}
-
 // src/ui/StatusIcon.tsx
 var SHAPES = {
   open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
@@ -2933,21 +2809,6 @@ function Pager(props) {
   ] });
 }
 
-// src/ui/a11y.ts
-function linkProps(open) {
-  return {
-    role: "link",
-    tabIndex: 0,
-    onClick: (e3) => open(e3),
-    onKeyDown: (e3) => {
-      if (e3.key === "Enter") {
-        e3.preventDefault();
-        open(e3);
-      }
-    }
-  };
-}
-
 // src/header/IssueHeader.tsx
 var WORKLOG_PAGE = 5;
 function formatDateTime(value) {
@@ -2956,9 +2817,6 @@ function formatDateTime(value) {
   if (Number.isNaN(d3.getTime())) return "\u2014";
   const pad = (n2) => String(n2).padStart(2, "0");
   return `${d3.getFullYear()}-${pad(d3.getMonth() + 1)}-${pad(d3.getDate())} ${pad(d3.getHours())}:${pad(d3.getMinutes())}`;
-}
-function sortCandidates(issues) {
-  return [...issues].sort((a3, b2) => Number(!isActive(a3)) - Number(!isActive(b2)) || a3.id.localeCompare(b2.id, "en", { numeric: true }));
 }
 function IssueHeader(props) {
   const { ctx, path } = props;
@@ -2992,7 +2850,6 @@ function IssueHeader(props) {
       /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save }),
       /* @__PURE__ */ u3(DueFields, { ctx, issue, save })
     ] }) }),
-    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }) }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
     /* @__PURE__ */ u3(Worklog, { ctx, taskId: issue.id, index }),
@@ -3040,7 +2897,7 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian4.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -3142,57 +2999,6 @@ function DueFields(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-dues", children: [
     row("soft_deadline", "soft_deadline", issue.softDeadline),
     row("deadline", "deadline", issue.deadline)
-  ] });
-}
-function IssueLink(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
-    /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
-    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Remove", title: "Remove", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
-  ] });
-}
-function Relations(props) {
-  const { ctx, issue, index, save } = props;
-  const parent = issue.parent === null ? null : index.issues.get(issue.parent);
-  const children = index.children(issue.id);
-  const pickParent = () => {
-    const candidates = sortCandidates([...index.issues.values()].filter((c3) => index.canSetParent(issue.id, c3.id)));
-    new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "Search for a parent issue").open();
-  };
-  const addChild = (e3) => {
-    const m3 = new import_obsidian5.Menu();
-    m3.addItem(
-      (item) => item.setTitle("Make an existing issue a child").onClick(() => {
-        const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
-        new IssueSuggestModal(ctx.app, candidates, (c3) => save({ parent: issue.id }, c3.path), "Search for a child issue").open();
-      })
-    );
-    m3.addItem(
-      (item) => item.setTitle("Create new").onClick(() => openCaptureModal(ctx, issue.id))
-    );
-    m3.showAtMouseEvent(e3);
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-row vt-halves vt-small vt-relations", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-        "Parent",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Choose parent", title: "Choose parent", onClick: pickParent, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) })
-      ] }),
-      parent ? /* @__PURE__ */ u3(IssueLink, { ctx, issue: parent, onRemove: () => save({ parent: null }) }) : issue.parent !== null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        issue.parent,
-        " (not found)"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-        "Children",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Add child", title: "Add child", onClick: addChild, children: /* @__PURE__ */ u3(Icon, { name: "plus" }) })
-      ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-wrap", children: [
-        children.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }),
-        children.map((c3) => /* @__PURE__ */ u3(IssueLink, { ctx, issue: c3, onRemove: () => save({ parent: null }, c3.path) }))
-      ] })
-    ] })
   ] });
 }
 function Effort(props) {
@@ -3300,7 +3106,24 @@ function Worklog(props) {
 }
 
 // src/header/MemberHeader.tsx
-var import_obsidian6 = require("obsidian");
+var import_obsidian5 = require("obsidian");
+
+// src/ui/a11y.ts
+function linkProps(open) {
+  return {
+    role: "link",
+    tabIndex: 0,
+    onClick: (e3) => open(e3),
+    onKeyDown: (e3) => {
+      if (e3.key === "Enter") {
+        e3.preventDefault();
+        open(e3);
+      }
+    }
+  };
+}
+
+// src/header/MemberHeader.tsx
 function MemberField(props) {
   const { label, field, value, required, save } = props;
   const [draft, setDraft] = d2(value);
@@ -3343,7 +3166,7 @@ function DelegatedIssues(props) {
     active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
       /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
-      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
     ] }, issue.id)),
     done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
       "Finished (closed / canceled) ",
@@ -3397,7 +3220,7 @@ function MemberHeader(props) {
 }
 
 // src/header/RoutineHeader.tsx
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/core/groups.ts
 var GROUPS_PATH = "issue/board-groups.json";
@@ -3592,7 +3415,7 @@ function RoutineHeader(props) {
     }
   )).open();
   const groupMenu = (e3) => {
-    const m3 = new import_obsidian7.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const key of ["", ...groupKeys(index.data.groups)]) {
       m3.addItem(
         (item) => item.setTitle(key || "Unsorted").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
@@ -3698,11 +3521,11 @@ function installTaskHeaders(ctx, plugin) {
     views: () => {
       const views = [];
       app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof import_obsidian8.MarkdownView) views.push(leaf.view);
+        if (leaf.view instanceof import_obsidian7.MarkdownView) views.push(leaf.view);
       });
       return views;
     },
-    activeView: () => app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView),
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView),
     model: (view) => {
       const path = view.file?.path ?? null;
       return path !== null && isTaskNotePath(path) ? path : null;
@@ -3712,6 +3535,87 @@ function installTaskHeaders(ctx, plugin) {
     clear: (host) => R(null, host),
     resized: remeasureEditor
   });
+}
+
+// src/obsidian/capture.tsx
+var import_obsidian8 = require("obsidian");
+
+// src/core/capture.ts
+var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
+function parseCaptureText(text) {
+  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
+}
+
+// src/obsidian/capture.tsx
+var NOTICE_MS = 5e3;
+function CaptureForm(props) {
+  const [text, setText] = d2("");
+  const ref = A2(null);
+  h2(() => ref.current?.focus(), []);
+  const summaries = parseCaptureText(text);
+  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
+  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
+    /* @__PURE__ */ u3(
+      "textarea",
+      {
+        ref,
+        rows: 6,
+        placeholder: "One summary per line\n- You can paste a bulleted list",
+        value: text,
+        onInput: (e3) => setText(e3.currentTarget.value),
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
+            e3.preventDefault();
+            submit();
+          }
+        }
+      }
+    ),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        "Create ",
+        summaries.length,
+        import_obsidian8.Platform.isMobile ? "" : " (Mod+Enter)"
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
+    ] })
+  ] });
+}
+async function openAll(ctx, files) {
+  let first = null;
+  for (const file of files) {
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian8.Platform.isPhone });
+    first ??= leaf;
+  }
+  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
+}
+function showCreatedNotice(ctx, created, failed) {
+  const fragment = document.createDocumentFragment();
+  const ids = created.map((f4) => f4.basename);
+  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
+  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
+  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
+  let notice = null;
+  if (created.length > 0) {
+    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
+    button.addEventListener("click", (e3) => {
+      e3.stopPropagation();
+      notice?.hide();
+      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
+    });
+  }
+  notice = new import_obsidian8.Notice(fragment, NOTICE_MS);
+}
+function openCaptureModal(ctx) {
+  new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
+    CaptureForm,
+    {
+      onSubmit: (summaries) => {
+        close();
+        void ctx.writer.createIssues(summaries).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
 }
 
 // src/obsidian/settings.ts
@@ -3927,6 +3831,22 @@ function fileKind(path) {
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
+function resolveMigrated(data) {
+  const issueIds = new Set(data.issues.map((i3) => i3.id));
+  const byOld = /* @__PURE__ */ new Map();
+  for (const s3 of data.subIssues) {
+    if (s3.migratedFrom !== null && !issueIds.has(s3.migratedFrom) && !byOld.has(s3.migratedFrom)) byOld.set(s3.migratedFrom, { parent: s3.parent, id: s3.id });
+  }
+  if (byOld.size === 0) return;
+  data.worklogs = data.worklogs.map((l3) => {
+    const to = l3.sub ? void 0 : byOld.get(l3.taskId);
+    return to ? { ...l3, taskId: to.parent, sub: to.id } : l3;
+  });
+  data.statusLogs = data.statusLogs.map((e3) => {
+    const to = e3.sub ? void 0 : byOld.get(e3.task);
+    return to ? { ...e3, task: to.parent, sub: to.id } : e3;
+  });
+}
 function collectVault(input) {
   const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
@@ -3997,6 +3917,7 @@ function collectVault(input) {
     data.statusLogs.push(...r3.entries);
   }
   data.statusLogs.sort(compareStatusLog);
+  resolveMigrated(data);
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
     problems.push(...r3.problems);
@@ -4202,9 +4123,8 @@ var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
 function yamlString2(s3) {
   return JSON.stringify(s3);
 }
-function newIssueContent(id, summary, created, parent = null, scheduled = []) {
+function newIssueContent(id, summary, created, scheduled = []) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
   if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
@@ -4576,7 +4496,7 @@ var TaskWriter = class {
     return ids;
   }
   /** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
-  async createIssues(summaries, parent = null, scheduled = []) {
+  async createIssues(summaries, scheduled = []) {
     const ids = nextIds("i", this.takenIds(), summaries.length);
     const created = [];
     const failed = [];
@@ -4585,7 +4505,7 @@ var TaskWriter = class {
       const path = (0, import_obsidian14.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
-        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
+        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, scheduled)));
       } catch (e3) {
         console.error("pkm-task: issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", path, e3);
         failed.push(summary);
@@ -4815,7 +4735,7 @@ var addToBoard = (ctx, date, ids) => guard(
 );
 async function createOnBoard(ctx, date, summary) {
   try {
-    const { created } = await ctx.writer.createIssues([summary], null, [date]);
+    const { created } = await ctx.writer.createIssues([summary], [date]);
     const file = created[0];
     if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
     await addToBoard(ctx, date, [file.basename]);
@@ -5900,7 +5820,7 @@ var import_obsidian18 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
-  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", parent: null, sort: "id", desc: true };
+  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", sort: "id", desc: true };
 }
 function nextScheduled(issue, today) {
   return issue.scheduled.find((d3) => d3 >= today) ?? null;
@@ -5933,7 +5853,6 @@ function queryIssues(issues, q2, today) {
     if (q2.labels.length > 0 && !q2.labels.every((l3) => i3.labels.includes(l3))) return false;
     if (q2.scheduled === "yes" && i3.scheduled.length === 0) return false;
     if (q2.scheduled === "no" && i3.scheduled.length > 0) return false;
-    if (q2.parent !== null && i3.parent !== q2.parent) return false;
     const hay = `${i3.id} ${i3.summary}`.toLowerCase();
     return words.every((w3) => hay.includes(w3));
   });

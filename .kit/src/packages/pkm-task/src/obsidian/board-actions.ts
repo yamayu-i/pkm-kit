@@ -25,7 +25,7 @@ export const addToBoard = (ctx: TaskContext, date: LocalDate, ids: string[]) =>
 /** その日を実行日にした issue を作って、ボードに載せる */
 export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: string): Promise<void> {
 	try {
-		const { created } = await ctx.writer.createIssues([summary], null, [date]);
+		const { created } = await ctx.writer.createIssues([summary], [date]);
 		const file = created[0];
 		if (!file) throw new Error(`作成に失敗しました: ${summary}`);
 		await addToBoard(ctx, date, [file.basename]);

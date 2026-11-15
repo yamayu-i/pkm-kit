@@ -7668,6 +7668,7 @@ function parseIssue(path, fm) {
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
   if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (r.has("parent")) r.problem("legacy-parent", "parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u79FB\u884C 0135-sub-issues \u3067\u89AA\u306E\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306B\u5909\u63DB\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09");
   const issue = {
     path,
     id: id ?? "",
@@ -7677,7 +7678,6 @@ function parseIssue(path, fm) {
     delegatedTo: r.ref("delegated_to", "m"),
     priority: r.oneOf("priority", PRIORITIES),
     labels: r.strings("label"),
-    parent: r.ref("parent", "i"),
     related: r.strings("related"),
     estimated: r.minutes("estimated"),
     scheduled: r.dates("scheduled"),
@@ -8393,19 +8393,12 @@ var TaskIndex = class {
       list.push(sub);
       this.subsOf.set(sub.parent, list);
     }
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
-    }
   }
   data;
   issues = /* @__PURE__ */ new Map();
   routines = /* @__PURE__ */ new Map();
   members = /* @__PURE__ */ new Map();
   issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
   subsOf = /* @__PURE__ */ new Map();
   subsByKey = /* @__PURE__ */ new Map();
   /** その issue のサブ（md に書いた順。ADR-0135） */
@@ -8416,27 +8409,10 @@ var TaskIndex = class {
   sub(key) {
     return this.subsByKey.get(key);
   }
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
-  }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
-  }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a) => a.id === childId);
+  /** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+  migrated(oldId) {
+    if (this.issues.has(oldId)) return void 0;
+    return this.data.subIssues.find((s) => s.migratedFrom === oldId);
   }
   /** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
   effortMinutes(now) {
@@ -8898,15 +8874,10 @@ function lintVault(data, options = {}) {
   }
   for (const issue of data.issues) {
     const { path } = issue;
-    if (issue.parent !== null) {
-      if (issue.parent === issue.id) add("error", path, "self-parent", "parent \u304C\u81EA\u5206\u81EA\u8EAB\u3067\u3059");
-      else if (!index.issues.has(issue.parent)) add("error", path, "dangling-parent", `parent \u306E ${issue.parent} \u304C\u3042\u308A\u307E\u305B\u3093`);
-      else if (!index.canSetParent(issue.id, issue.parent)) {
-        add("error", path, "parent-cycle", "\u89AA\u5B50\u95A2\u4FC2\u304C\u5FAA\u74B0\u3057\u3066\u3044\u307E\u3059");
-      }
-    }
     for (const ref of issue.related) {
-      if (isId(ref, "i")) {
+      if (parseSubKey(ref) !== null) {
+        if (!index.sub(ref)) add("error", path, "dangling-related", `related \u306E\u30B5\u30D6 ${ref} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      } else if (isId(ref, "i")) {
         if (!index.issues.has(ref)) add("error", path, "dangling-related", `related \u306E ${ref} \u304C\u3042\u308A\u307E\u305B\u3093`);
       } else if (options.paths && !options.paths.has(safeDecode(ref))) {
         add("error", path, "dangling-related", `related \u306E\u30CE\u30FC\u30C8 ${ref} \u304C\u3042\u308A\u307E\u305B\u3093`);
@@ -8940,7 +8911,7 @@ function lintVault(data, options = {}) {
   }
   for (const b of data.boards) {
     for (const id of b.board.issues) {
-      if (!index.issues.has(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
     }
   }
   const logIds = /* @__PURE__ */ new Map();
@@ -8963,7 +8934,7 @@ function lintVault(data, options = {}) {
 
 // src/core/list.ts
 function defaultQuery() {
-  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", parent: null, sort: "id", desc: true };
+  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", sort: "id", desc: true };
 }
 function nextScheduled(issue, today) {
   return issue.scheduled.find((d) => d >= today) ?? null;
@@ -8996,7 +8967,6 @@ function queryIssues(issues, q, today) {
     if (q.labels.length > 0 && !q.labels.every((l) => i.labels.includes(l))) return false;
     if (q.scheduled === "yes" && i.scheduled.length === 0) return false;
     if (q.scheduled === "no" && i.scheduled.length > 0) return false;
-    if (q.parent !== null && i.parent !== q.parent) return false;
     const hay = `${i.id} ${i.summary}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
@@ -9228,6 +9198,22 @@ function fileKind(path) {
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
+function resolveMigrated(data) {
+  const issueIds = new Set(data.issues.map((i) => i.id));
+  const byOld = /* @__PURE__ */ new Map();
+  for (const s of data.subIssues) {
+    if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
+  }
+  if (byOld.size === 0) return;
+  data.worklogs = data.worklogs.map((l) => {
+    const to = l.sub ? void 0 : byOld.get(l.taskId);
+    return to ? { ...l, taskId: to.parent, sub: to.id } : l;
+  });
+  data.statusLogs = data.statusLogs.map((e) => {
+    const to = e.sub ? void 0 : byOld.get(e.task);
+    return to ? { ...e, task: to.parent, sub: to.id } : e;
+  });
+}
 function collectVault(input) {
   const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
@@ -9298,6 +9284,7 @@ function collectVault(input) {
     data.statusLogs.push(...r.entries);
   }
   data.statusLogs.sort(compareStatusLog);
+  resolveMigrated(data);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems.push(...r.problems);
@@ -9466,9 +9453,8 @@ var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
 function yamlString2(s) {
   return JSON.stringify(s);
 }
-function newIssueContent(id, summary, created, parent = null, scheduled = []) {
+function newIssueContent(id, summary, created, scheduled = []) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
   if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
@@ -9681,7 +9667,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   const [id] = nextIds("i", taken, 1);
   const relPath = pathForId(id);
   const allScheduled = input.add_to_board_date && !scheduled.includes(input.add_to_board_date) ? [...scheduled, input.add_to_board_date].sort() : [...scheduled].sort();
-  writeTextInVault(root, relPath, newIssueContent(id, summary, localDateTime(now), null, allScheduled));
+  writeTextInVault(root, relPath, newIssueContent(id, summary, localDateTime(now), allScheduled));
   const extra = {};
   if (input.priority !== void 0) extra.priority = input.priority;
   if (input.labels !== void 0 && input.labels.length > 0) extra.labels = input.labels;

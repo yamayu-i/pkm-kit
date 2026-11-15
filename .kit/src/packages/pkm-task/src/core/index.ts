@@ -91,13 +91,12 @@ export function organizeQueue(issues: Iterable<Issue>, today: LocalDate): Issue[
 	return [...inbox, ...revisitDue, ...someday];
 }
 
-/** メモリ上の索引（ADR-0002）。children など保存しない値はここで作る */
+/** メモリ上の索引（ADR-0002）。サブの引き当てなど保存しない値はここで作る */
 export class TaskIndex {
 	readonly issues = new Map<string, Issue>();
 	readonly routines = new Map<string, Routine>();
 	readonly members = new Map<string, Member>();
 	readonly issuesByPath = new Map<string, Issue>();
-	private readonly childrenOf = new Map<string, Issue[]>();
 	private readonly subsOf = new Map<string, SubIssue[]>();
 	private readonly subsByKey = new Map<string, SubIssue>();
 
@@ -115,12 +114,6 @@ export class TaskIndex {
 			list.push(sub);
 			this.subsOf.set(sub.parent, list);
 		}
-		for (const issue of this.issues.values()) {
-			if (issue.parent === null) continue;
-			const list = this.childrenOf.get(issue.parent) ?? [];
-			list.push(issue);
-			this.childrenOf.set(issue.parent, list);
-		}
 	}
 
 	/** その issue のサブ（md に書いた順。ADR-0135） */
@@ -133,29 +126,10 @@ export class TaskIndex {
 		return this.subsByKey.get(key);
 	}
 
-	children(id: string): Issue[] {
-		return this.childrenOf.get(id) ?? [];
-	}
-
-	/** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-	ancestors(id: string): Issue[] {
-		const out: Issue[] = [];
-		const seen = new Set([id]);
-		let parent = this.issues.get(id)?.parent ?? null;
-		while (parent !== null && !seen.has(parent)) {
-			seen.add(parent);
-			const issue = this.issues.get(parent);
-			if (!issue) break;
-			out.push(issue);
-			parent = issue.parent;
-		}
-		return out;
-	}
-
-	/** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-	canSetParent(childId: string, parentId: string): boolean {
-		if (childId === parentId || !this.issues.has(parentId)) return false;
-		return !this.ancestors(parentId).some((a) => a.id === childId);
+	/** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+	migrated(oldId: string): SubIssue | undefined {
+		if (this.issues.has(oldId)) return undefined;
+		return this.data.subIssues.find((s) => s.migratedFrom === oldId);
 	}
 
 	/** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */

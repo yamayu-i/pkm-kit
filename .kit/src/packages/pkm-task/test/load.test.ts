@@ -48,11 +48,11 @@ describe("collectVault", () => {
 describe("newIssueContent", () => {
 	it("作った md は YAML として読めて、そのまま issue になる", () => {
 		const created = localDateTime(new Date("2026-10-31T01:02:03Z"));
-		const text = newIssueContent("i-5", 'コロン: と "引用符" と #', created, "i-1");
+		const text = newIssueContent("i-5", 'コロン: と "引用符" と #', created);
 		const fm = parse(/^---\n([\s\S]*?)\n---/.exec(text)![1]!) as Record<string, unknown>;
 		const { value, problems } = parseIssue("issue/i-5.md", fm);
 		expect(problems).toEqual([]);
-		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", parent: "i-1", created });
+		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", created });
 		expect(text).toContain("## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n");
 		expect(fm.updated).toBe(created);
 	});

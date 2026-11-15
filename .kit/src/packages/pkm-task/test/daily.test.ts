@@ -339,7 +339,7 @@ describe("monthGridDays", () => {
 
 describe("newIssueContent", () => {
 	it("scheduled を渡すと実行日の入った issue になり、Inbox に入らない", () => {
-		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", null, ["2026-11-01"]))![1]!;
+		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", ["2026-11-01"]))![1]!;
 		const line = yaml.split("\n").find((l) => l.startsWith("scheduled:"));
 		expect(line).toBe('scheduled: ["2026-11-01"]');
 		expect(issue("i-1", { scheduled: ["2026-11-01"] }).scheduled).toEqual(["2026-11-01"]);

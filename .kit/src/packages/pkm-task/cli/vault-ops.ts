@@ -323,7 +323,7 @@ export function createIssueOnDisk(
 			? [...scheduled, input.add_to_board_date].sort()
 			: [...scheduled].sort();
 
-	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), null, allScheduled));
+	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), allScheduled));
 
 	const extra: Record<string, unknown> = {};
 	if (input.priority !== undefined) extra.priority = input.priority;

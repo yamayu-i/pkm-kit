@@ -441,8 +441,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -637,4 +637,90 @@ test("0129: theme.json が規約に合わなければ何も書かずに、check 
 	const { failed } = await runMigrations(root);
 	assert.equal(failed?.name, "0129-vault-theme-follow");
 	assert.equal(readFileSync(join(root, ".obsidian/snippets/pkm-theme-local.css"), "utf8"), snippet);
+});
+
+/** pkm-task の lint（ビルド済みの CLI）で、Vault の issue/ と worklog/ の問題を読む */
+function taskLint(root) {
+	const r = spawnSync(process.execPath, [join(here, ".kit/bin/lint.mjs"), root, "--json"], { encoding: "utf8" });
+	return JSON.parse(r.stdout).problems.map((p) => `${p.path} ${p.code}`);
+}
+
+test("0135: 子と孫を、いちばん上の祖先のサブにして子のファイルを消し、related を合成キーにする。ほかの issue は変えない", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		"worklog/pc/2026-01.jsonl": '{"id":"wl_1","task_id":"i-11","from":"2026-01-05T00:00:00Z","to":"2026-01-05T01:00:00Z","description":""}\n',
+	});
+	const other = readFileSync(join(root, "issue/i-2.md"), "utf8");
+	const head = readFileSync(join(root, "issue/i-10.md"), "utf8");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	assert.ok(!existsSync(join(root, "issue/i-11.md")));
+	assert.ok(!existsSync(join(root, "issue/i-12.md")));
+	assert.equal(readFileSync(join(root, "issue/i-2.md"), "utf8"), other);
+	const parent = readFileSync(join(root, "issue/i-10.md"), "utf8");
+	assert.ok(parent.startsWith(head.trimEnd()), "親の本文は変えない");
+	const blocks = parent.split("<!-- sub-issue").slice(1);
+	assert.equal(blocks.length, 2);
+	assert.match(blocks[0], /\nsummary: "子: 仕様を決める"\nstatus: closed\nscheduled: \["2026-01-05","2026-01-06"\]\nestimated: 120\ncreated: 2026-01-03T09:00:00\+09:00\nmigrated_from: i-11\n-->\n（移行で残した項目）priority: high \/ label: \[仕事, 調査\] \/ related: \[i-2\]\n\n## ToDo\n\n- \[x\] 下調べ\n/);
+	assert.match(blocks[1], /\nsummary: "孫の issue"\nstatus: open\ndeadline: 2026-01-20\ncreated: 2026-01-04T09:00:00\+09:00\nmigrated_from: i-12\n-->\n$/);
+	const subId = /^\nid: ([a-z0-9]{6})\n/.exec(blocks[0])[1];
+	assert.match(readFileSync(join(root, "issue/i-13.md"), "utf8"), new RegExp(`^related: \\["i-10#${subId}","daily/2026/01/2026-01-01.md"\\]$`, "m"));
+	// pkm-task で読むと、サブになり、旧 ID の worklog はそのサブの記録になる（lint の問題がない）
+	assert.deepEqual(taskLint(root).filter((p) => p.startsWith("issue/") || p.startsWith("worklog/")), []);
+});
+
+test("0135: --dry-run は書かずに、変換する子と残す値を一覧にする", () => {
+	const root = childFrom("legacy");
+	const before = snapshot(root);
+	const dry = node(root, "--dry-run");
+	assert.equal(dry.status, 0, dry.stderr);
+	assert.match(dry.stdout, /issue\/i-11\.md: i-10 のサブ [a-z0-9]{6}（i-10#[a-z0-9]{6}）にして、ファイルを消す。写さない項目を本文の先頭に残す: priority: high/);
+	assert.deepEqual(snapshot(root), before);
+});
+
+test("0135: ない親・循環・読めない parent は変えずに、check が失敗して止まる", async () => {
+	for (const [files, pattern] of [
+		[{ "issue/i-20.md": "---\ntype: issue\nid: i-20\nsummary: x\nstatus: open\nparent: i-99\n---\n" }, /issue\/i-20\.md: parent の i-99 がない/],
+		[
+			{
+				"issue/i-20.md": "---\ntype: issue\nid: i-20\nsummary: x\nstatus: open\nparent: i-21\n---\n",
+				"issue/i-21.md": "---\ntype: issue\nid: i-21\nsummary: y\nstatus: open\nparent: i-20\n---\n",
+			},
+			/循環/,
+		],
+		[{ "issue/i-20.md": "---\ntype: issue\nid: i-20\nsummary: x\nstatus: open\nparent:\n  id: i-1\n---\n" }, /parent が読めない/],
+		[{ "issue/i-20.md": "---\ntype: issue\nid: i-20\nsummary: x\nstatus: open\nparent: i-1\n---\n\n<!-- sub-issue\n" }, /本文の行頭に <!-- sub-issue/],
+	]) {
+		const root = childFrom("legacy");
+		write(root, files);
+		const { failed } = await runMigrations(root);
+		assert.equal(failed?.name, "0135-sub-issues");
+		assert.match(failed.problems.join("\n"), pattern);
+		for (const [path, text] of Object.entries(files)) assert.equal(readFileSync(join(root, path), "utf8"), text);
+	}
+});
+
+test("0135: CRLF の親にも、行末をそろえて足す", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		"issue/i-1.md": "---\r\ntype: issue\r\nid: i-1\r\nsummary: 親\r\nstatus: open\r\n---\r\n\r\n本文\r\n",
+		"issue/i-2.md": "---\ntype: issue\nid: i-2\nsummary: 子\nstatus: open\nparent: i-1\n---\n",
+	});
+	await runMigrations(root);
+	const text = readFileSync(join(root, "issue/i-1.md"), "utf8");
+	assert.match(text, /^---\r\ntype: issue\r\nid: i-1\r\nsummary: 親\r\nstatus: open\r\n---\r\n\r\n本文\r\n\r\n<!-- sub-issue\r\nid: [a-z0-9]{6}\r\nsummary: "子"\r\nstatus: open\r\nmigrated_from: i-2\r\n-->\r\n$/);
+});
+
+test("0135: 親に足し終えて子を消す前に止まっていたら、足し直さずに子を消す", async () => {
+	const root = childFrom("fresh");
+	write(root, {
+		"issue/i-1.md": "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\n---\n\n<!-- sub-issue\nid: abc123\nsummary: \"子\"\nstatus: open\nmigrated_from: i-2\n-->\n",
+		"issue/i-2.md": "---\ntype: issue\nid: i-2\nsummary: 子\nstatus: open\nparent: i-1\n---\n",
+		"issue/i-3.md": "---\ntype: issue\nid: i-3\nsummary: 参照\nstatus: open\nrelated: [i-2]\n---\n",
+	});
+	const before = readFileSync(join(root, "issue/i-1.md"), "utf8");
+	await runMigrations(root);
+	assert.equal(readFileSync(join(root, "issue/i-1.md"), "utf8"), before);
+	assert.ok(!existsSync(join(root, "issue/i-2.md")));
+	assert.match(readFileSync(join(root, "issue/i-3.md"), "utf8"), /^related: \["i-1#abc123"\]$/m);
 });
