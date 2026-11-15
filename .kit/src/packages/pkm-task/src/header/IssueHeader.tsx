@@ -11,7 +11,7 @@ import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
-import { PickToggle } from "../obsidian/pick-toggle";
+import { PickTimer } from "../obsidian/pick-toggle";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
 import { DateForm, DayCell, WorklogForm } from "../ui/forms";
@@ -167,7 +167,6 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 						revisit {issue.revisit ? formatShortDate(issue.revisit) : "—"}
 					</button>
 				)}
-				{isActive(issue) && <PickToggle ctx={ctx} keyOf={issue.id} chip />}
 				<button class={`vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`} onClick={editDetail}>
 					<Icon name="pencil" />
 					{issue.statusDetail || "Add detail"}
@@ -372,6 +371,7 @@ export function Worklog(props: { ctx: TaskContext; taskId: string; index: TaskIn
 		<section class="vt-worklog">
 			<div class="vt-section-head">
 				<span class="vt-field-label">worklog</span>
+				{props.index.issues.has(taskId) && isActive(props.index.issues.get(taskId)!) && <PickTimer ctx={ctx} keyOf={taskId} />}
 				{logs.length > 0 && <span class="vt-count">{logs.length}</span>}
 				<span class="vt-spacer" />
 				<button class="vt-text-button" onClick={add}>

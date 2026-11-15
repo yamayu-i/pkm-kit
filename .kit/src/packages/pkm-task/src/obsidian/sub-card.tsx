@@ -10,7 +10,7 @@ import { Icon } from "../ui/Icon";
 import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
-import { PickToggle } from "./pick-toggle";
+import { PickTimer } from "./pick-toggle";
 import { SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
 
 /** issue の md のパスから、親の issue の ID（`issue/i-12.md` → `i-12`） */
@@ -121,7 +121,7 @@ export function SubCard(props: SubCardProps) {
 						<span class="vt-subissue-summary-text">{sub.summary}</span>
 						{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 					</button>
-					{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
+					{!isDoneStatus(sub.status) && <PickTimer ctx={ctx} keyOf={sub.key} />}
 				</div>
 				{open && <SubFields {...props} save={save} error={error} />}
 			</div>

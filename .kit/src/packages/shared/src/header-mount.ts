@@ -19,6 +19,12 @@ export interface ElementLike {
 	remove(): void;
 }
 
+/** Reading の仮想スクロールが管理する兄弟要素を動かさない。標準ヘッダー内なら高さも Obsidian が測る。 */
+export function headerContainer<E extends ElementLike>(sizer: E): E | null {
+	if (!sizer.className.split(" ").includes("markdown-preview-sizer")) return sizer;
+	return (Array.from(sizer.children).find((c) => c.className.split(" ").includes("mod-header")) as E | undefined) ?? null;
+}
+
 function findHost<E extends ElementLike>(sizer: E, className: string): E | null {
 	for (const child of Array.from(sizer.children)) if (child.className === className) return child as E;
 	return null;
@@ -122,7 +128,11 @@ export function installHeaderMount<V extends { contentEl: HTMLElement }, M>(opti
 		for (const e of errors) console.error(`[${plugin.manifest.id}] header`, e);
 	};
 
-	const sizersOf = (view: V): HTMLElement[] => Array.from(view.contentEl.querySelectorAll<HTMLElement>(HEADER_SIZERS));
+	const sizersOf = (view: V): HTMLElement[] =>
+		Array.from(view.contentEl.querySelectorAll<HTMLElement>(HEADER_SIZERS)).flatMap((sizer) => {
+			const target = headerContainer(sizer);
+			return target ? [target] : [];
+		});
 
 	const watch = (view: V, sizer: HTMLElement, host: HTMLElement): void => {
 		unwatch(sizer);

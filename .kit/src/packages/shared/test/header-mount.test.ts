@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eachSafely, headerMissing, keepFirst, placeHeaders, type ElementLike } from "../src/header-mount.ts";
+import { headerContainer, eachSafely, headerMissing, keepFirst, placeHeaders, type ElementLike } from "../src/header-mount.ts";
 
 /** テスト用の最小の要素（DOM の環境を足さずに、差し込みの規則だけを確かめる） */
 class FakeElement implements ElementLike {
@@ -146,4 +146,15 @@ describe("eachSafely", () => {
 		expect(errors).toHaveLength(1);
 		expect(String(errors[0])).toContain("boom");
 	});
+});
+
+it("Reading は仮想スクロールの子と並べず mod-header の中に差し込む", () => {
+	const reading = sizer("markdown-preview-pusher", "mod-header", "el-p");
+	reading.className = "markdown-preview-sizer";
+	const target = headerContainer(reading);
+	placeHeaders([target!], HOST, true, create);
+	expect(reading.children.map(c => c.className)).toEqual(["markdown-preview-pusher", "mod-header", "el-p"]);
+	expect(target!.firstElementChild?.className).toBe(HOST);
+	expect(headerContainer(new FakeElement("markdown-preview-sizer"))).toBeNull();
+	expect(headerContainer(sizer())).not.toBeNull();
 });

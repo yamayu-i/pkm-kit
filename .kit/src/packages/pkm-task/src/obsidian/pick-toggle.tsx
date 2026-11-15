@@ -1,31 +1,62 @@
+import { useState } from "preact/hooks";
 import { isOnBoard } from "../core/board";
 import { localToday } from "../core/dates";
+import { formatMinutes } from "../core/format";
+import { pickIssuePatch, pickSubPatch } from "../core/pick";
 import { Icon } from "../ui/Icon";
-import { toggleOnBoard } from "./board-actions";
+import { useNow, useStoreVersion } from "../ui/hooks";
+import { addToBoard, startTimer, stopTimer } from "./board-actions";
 import type { TaskContext } from "./context";
+import { confirmModal } from "./sub-editor";
 
-/**
- * issue・サブの画面から、今日のボードに載せる（Pick）/ 外す。
- * 今からやるとわかっているものを、Today の Pick で選び直さなくてよいようにする。日付は書かない（ADR-0152）
- * chip: issue 画面のヘッダーの文字つき。なければサブの行の小さいアイコンだけ
- */
-export function PickToggle(props: { ctx: TaskContext; keyOf: string; chip?: boolean }) {
-	const { ctx } = props;
-	const today = localToday();
-	const on = isOnBoard(ctx.store.index, today, props.keyOf);
-	const title = on ? "On today's board. Click to remove" : "Add to today's board";
-	const run = () => void toggleOnBoard(ctx, today, props.keyOf);
-	if (props.chip) {
-		return (
-			<button type="button" class={`vt-field-chip vt-pick${on ? " is-on" : " is-placeholder"}`} aria-pressed={on} title={title} onClick={run}>
-				<Icon name="calendar-check" />
-				{on ? "On today's board" : "Add to today's board"}
-			</button>
-		);
-	}
+/** Next でなければプロパティ変更を確認し、保存できてから今日のボードへ載せる。 */
+export function PickToggle(props: { ctx: TaskContext; keyOf: string }) {
+	const { ctx, keyOf } = props;
+	const [busy, setBusy] = useState(false);
+	const run = () => {
+		const today = localToday();
+		const issue = ctx.store.index.issues.get(keyOf);
+		const sub = ctx.store.index.sub(keyOf);
+		const issuePatch = issue ? pickIssuePatch(issue) : null;
+		const subPatch = sub ? pickSubPatch(sub, today) : null;
+		const patch = issuePatch ?? subPatch;
+		const apply = async () => {
+			setBusy(true);
+			try {
+				if (issue && issuePatch) await ctx.writer.update(issue.path, issuePatch);
+				else if (sub && subPatch) await ctx.writer.updateSub(sub.key, subPatch);
+				await addToBoard(ctx, today, [keyOf]);
+			} catch (e) {
+				ctx.report("Pick できませんでした", e);
+			} finally {
+				setBusy(false);
+			}
+		};
+		if (!patch) return void apply();
+		const fields = Object.entries(patch).map(([key, value]) => `${key}: ${value === null ? "解除" : value}`).join("、");
+		confirmModal(ctx, "Next にして Pick", `Next にするため、次のプロパティを変更して今日のボードに載せます。${fields}`, "Pick", () => void apply());
+	};
 	return (
-		<button type="button" class={`vt-icon-button vt-pick${on ? " is-on" : ""}`} aria-label={title} aria-pressed={on} title={title} onClick={run}>
+		<button type="button" class="vt-icon-button vt-pick" aria-label="Pick" title="Add to today's board" disabled={busy} onClick={run}>
 			<Icon name="calendar-check" />
+		</button>
+	);
+}
+
+/** 未 Pick は Pick、今日のボードに載せたら同じ位置にタイマー。記録中は日付が変わっても停止できる。 */
+export function PickTimer(props: { ctx: TaskContext; keyOf: string }) {
+	const { ctx, keyOf } = props;
+	useStoreVersion(ctx.store);
+	const now = useNow();
+	const running = ctx.store.index.running(keyOf);
+	if (!running.length && !isOnBoard(ctx.store.index, localToday(), keyOf)) return <PickToggle {...props} />;
+	const elapsed = running.reduce((m, log) => Math.max(m, now - log.fromMs), 0);
+	const label = running.length ? "Stop timer" : "Start timer";
+	return (
+		<button type="button" class={`vt-play${running.length ? " is-running" : ""}`} aria-label={label} title={label}
+			onClick={() => void (running.length ? stopTimer(ctx, [keyOf]) : startTimer(ctx, [keyOf]))}>
+			<Icon name={running.length ? "square" : "play"} />
+			{running.length > 0 && <span class="vt-num">{formatMinutes(elapsed / 60_000)}</span>}
 		</button>
 	);
 }
