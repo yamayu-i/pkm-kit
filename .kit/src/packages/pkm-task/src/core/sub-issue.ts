@@ -391,6 +391,22 @@ export function subCounts(subs: readonly Pick<SubIssue, "status">[]): { open: nu
 
 const shortDate = (d: LocalDate) => `${d.slice(5, 7)}/${d.slice(8, 10)}`;
 
+/** Edit ダイアログの保存で書く項目。本文には触れない（本文は下部のカードで直す。ADR-0179） */
+export function subItemPatch(draft: SubIssue, estimated: number | null): SubIssuePatch {
+	return {
+		summary: draft.summary.trim(),
+		status: draft.status,
+		delegatedTo: draft.delegatedTo,
+		start: draft.start,
+		end: draft.end,
+		scheduled: draft.scheduled,
+		softDeadline: draft.softDeadline,
+		deadline: draft.deadline,
+		estimated,
+		dependsOn: draft.dependsOn,
+	};
+}
+
 /** 行の補足（ADR-0142）: 期間 → 今日以降の Calendar の日（ADR-0152）→ 期限（deadline、なければ soft_deadline）。なければ null */
 export function subHint(sub: Pick<SubIssue, "start" | "end" | "scheduled" | "deadline" | "softDeadline">, today: LocalDate): string | null {
 	if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}–${sub.end ? shortDate(sub.end) : ""}`;

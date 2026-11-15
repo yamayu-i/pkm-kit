@@ -1,9 +1,9 @@
-import { NoteEditor } from "./NoteEditor";
 import { useState } from "preact/hooks";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { STATUSES, type Status } from "../core/schema";
-import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
+import { subItemPatch, type SubIssue } from "../core/sub-issue";
+import { revealSub } from "../header/sub-reveal";
 import { DateForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { TaskContext } from "./context";
@@ -69,7 +69,7 @@ export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate 
 
 export const SUB_DATE_FIELDS = DATE_FIELDS;
 
-/** 「Edit sub-issue」のダイアログ（ADR-0142） */
+/** 「Edit sub-issue」のダイアログ（ADR-0142）。項目だけを直す。本文は「Open note」で下部のカードを開いて直す（ADR-0179） */
 export function openSubEditor(ctx: TaskContext, sub: SubIssue): void {
 	new PreactModal(ctx.app, "Edit sub-issue", (close) => <SubIssueForm ctx={ctx} sub={sub} close={close} />).open();
 }
@@ -93,19 +93,7 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 	const save = () => {
 		const minutes = estimated.trim() === "" ? null : parseDurationInput(estimated);
 		if (minutes === null && estimated.trim() !== "") return setError(`見積もりを時間として読めません: ${estimated}（例: 30m / 2h / 1h30m）`);
-		const patch: SubIssuePatch = {
-			summary: draft.summary.trim(),
-			status: draft.status,
-			delegatedTo: draft.delegatedTo,
-			start: draft.start,
-			end: draft.end,
-			scheduled: draft.scheduled,
-			softDeadline: draft.softDeadline,
-			deadline: draft.deadline,
-			estimated: minutes,
-			dependsOn: draft.dependsOn,
-			body: draft.body,
-		};
+		const patch = subItemPatch(draft, minutes);
 		setSaving(true);
 		ctx.writer
 			.updateSub(sub.key, patch)
@@ -179,16 +167,21 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 					))}
 				</fieldset>
 			)}
-			<div class="vt-text-field">
-				<span>Note</span>
-				<NoteEditor app={ctx.app} sourcePath={sub.path} initial={sub.body} onChange={(body) => set({ body })} />
-			</div>
 			{error !== null && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				<button type="button" class="vt-danger-text" onClick={() => deleteSubWithConfirm(ctx, sub, close)}>
 					Delete
 				</button>
 				<span class="vt-spacer" />
+				<button
+					type="button"
+					onClick={() => {
+						close();
+						revealSub(sub);
+					}}
+				>
+					Open note
+				</button>
 				<button type="button" onClick={close}>
 					Cancel
 				</button>

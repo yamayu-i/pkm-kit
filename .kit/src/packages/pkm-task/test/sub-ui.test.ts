@@ -18,6 +18,7 @@ import {
 	toggleSubOpen,
 	subCounts,
 	subHint,
+	subItemPatch,
 	visibleSubs,
 	type SubIssue,
 } from "../src/core/sub-issue";
@@ -261,5 +262,15 @@ describe("カーソルが範囲の中か（ADR-0161）", () => {
 		expect(cursorInside({ from: 0, to: 5 }, 5, 10)).toBe(false);
 		expect(cursorInside({ from: 0, to: 6 }, 5, 10)).toBe(true);
 		expect(cursorInside({ from: 0, to: 99 }, 5, 10)).toBe(true);
+	});
+});
+
+describe("Edit ダイアログの保存（ADR-0179）", () => {
+	it("項目だけを書き、本文には触れない", () => {
+		const s = { ...sub("estimated: 30\n"), summary: "  題  ", body: "本文" };
+		const patch = subItemPatch(s, 60);
+		expect(patch).not.toHaveProperty("body");
+		expect(patch.summary).toBe("題");
+		expect(patch.estimated).toBe(60);
 	});
 });
