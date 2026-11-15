@@ -48,11 +48,11 @@ describe("collectVault", () => {
 describe("newIssueContent", () => {
 	it("作った md は YAML として読めて、そのまま issue になる", () => {
 		const created = localDateTime(new Date("2026-10-31T01:02:03Z"));
-		const text = newIssueContent("i-5", 'コロン: と "引用符" と #', created, "i-1");
+		const text = newIssueContent("i-5", 'コロン: と "引用符" と #', created);
 		const fm = parse(/^---\n([\s\S]*?)\n---/.exec(text)![1]!) as Record<string, unknown>;
 		const { value, problems } = parseIssue("issue/i-5.md", fm);
 		expect(problems).toEqual([]);
-		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", parent: "i-1", created });
+		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", created });
 		expect(text).toContain("## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n");
 		expect(fm.updated).toBe(created);
 	});
@@ -83,5 +83,32 @@ describe("dueLevel", () => {
 		expect(dueLevel(open, null, "2026-10-31")).toBe("none");
 		expect(dueLevel(issue("closed"), "2026-10-31", "2026-10-31")).toBe("none");
 		expect(dueLevel(issue("someday"), "2026-10-31", "2026-10-31")).toBe("none");
+	});
+});
+
+describe("readVault（CLI）とサブイシュー", () => {
+	it("issue の md の本文からサブを読み、lint まで通る", async () => {
+		const { mkdtempSync, mkdirSync, rmSync, writeFileSync } = await import("node:fs");
+		const { tmpdir } = await import("node:os");
+		const { join } = await import("node:path");
+		const { readVault } = await import("../cli/read-vault");
+		const { lintVault } = await import("../src/core/lint");
+		const root = mkdtempSync(join(tmpdir(), "vault-sub-test-"));
+		try {
+			mkdirSync(join(root, "issue"));
+			writeFileSync(
+				join(root, "issue/i-1.md"),
+				"---\nschema: 1\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\n---\n\n## Note\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 子\nstatus: open\nscheduled: [2026-11-16]\n-->\n本文\n\n<!-- sub-issue\nid: aaaaaa\nsummary: 重なり\nstatus: open\n-->\n",
+			);
+			const { data, problems } = readVault(root);
+			expect(problems).toEqual([]);
+			expect(data.subIssues.map((s) => [s.key, s.summary, s.scheduled])).toEqual([
+				["i-1#aaaaaa", "子", ["2026-11-16"]],
+				["i-1#aaaaaa", "重なり", []],
+			]);
+			expect(lintVault(data).map((p) => p.code)).toEqual(["duplicate-sub-id"]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

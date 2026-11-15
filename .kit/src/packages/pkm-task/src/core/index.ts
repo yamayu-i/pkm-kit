@@ -7,11 +7,14 @@ import type { GroupDef } from "./groups";
 import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
-import { closedAtMap, statusBefore, type StatusLogEntry } from "./status-log";
-import type { WorklogEntry } from "./worklog";
+import { closedAtMap, isIssueStatusLog, statusBefore, type StatusLogEntry } from "./status-log";
+import type { SubIssue } from "./sub-issue";
+import { workKey, type WorklogEntry } from "./worklog";
 
 export interface VaultData {
 	issues: Issue[];
+	/** issue の md の中のサブイシュー（親の md の順 → md に書いた順。ADR-0135） */
+	subIssues: SubIssue[];
 	routines: Routine[];
 	members: Member[];
 	labels: LabelDef[];
@@ -29,7 +32,7 @@ export interface VaultData {
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */
@@ -88,13 +91,14 @@ export function organizeQueue(issues: Iterable<Issue>, today: LocalDate): Issue[
 	return [...inbox, ...revisitDue, ...someday];
 }
 
-/** メモリ上の索引（ADR-0002）。children など保存しない値はここで作る */
+/** メモリ上の索引（ADR-0002）。サブの引き当てなど保存しない値はここで作る */
 export class TaskIndex {
 	readonly issues = new Map<string, Issue>();
 	readonly routines = new Map<string, Routine>();
 	readonly members = new Map<string, Member>();
 	readonly issuesByPath = new Map<string, Issue>();
-	private readonly childrenOf = new Map<string, Issue[]>();
+	private readonly subsOf = new Map<string, SubIssue[]>();
+	private readonly subsByKey = new Map<string, SubIssue>();
 
 	constructor(readonly data: VaultData) {
 		// ID が重複していたら最初のものを使う（重複は lint で報告する）
@@ -102,43 +106,45 @@ export class TaskIndex {
 		for (const r of data.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
 		for (const m of data.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
 		for (const i of data.issues) this.issuesByPath.set(i.path, i);
-		for (const issue of this.issues.values()) {
-			if (issue.parent === null) continue;
-			const list = this.childrenOf.get(issue.parent) ?? [];
-			list.push(issue);
-			this.childrenOf.set(issue.parent, list);
+		for (const sub of data.subIssues) {
+			// 同じ親で id が重なったら最初のものを使う（重なりは lint で報告する）
+			if (this.subsByKey.has(sub.key)) continue;
+			this.subsByKey.set(sub.key, sub);
+			const list = this.subsOf.get(sub.parent) ?? [];
+			list.push(sub);
+			this.subsOf.set(sub.parent, list);
 		}
 	}
 
-	children(id: string): Issue[] {
-		return this.childrenOf.get(id) ?? [];
+	/** その issue のサブ（md に書いた順。ADR-0135） */
+	subs(parentId: string): SubIssue[] {
+		return this.subsOf.get(parentId) ?? [];
 	}
 
-	/** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-	ancestors(id: string): Issue[] {
-		const out: Issue[] = [];
-		const seen = new Set([id]);
-		let parent = this.issues.get(id)?.parent ?? null;
-		while (parent !== null && !seen.has(parent)) {
-			seen.add(parent);
-			const issue = this.issues.get(parent);
-			if (!issue) break;
-			out.push(issue);
-			parent = issue.parent;
-		}
-		return out;
+	/** 合成キー `i-12#k3f9a2` のサブ */
+	sub(key: string): SubIssue | undefined {
+		return this.subsByKey.get(key);
 	}
 
-	/** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-	canSetParent(childId: string, parentId: string): boolean {
-		if (childId === parentId || !this.issues.has(parentId)) return false;
-		return !this.ancestors(parentId).some((a) => a.id === childId);
+	/** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+	migrated(oldId: string): SubIssue | undefined {
+		if (this.issues.has(oldId)) return undefined;
+		return this.data.subIssues.find((s) => s.migratedFrom === oldId);
 	}
 
-	/** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+	/** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
 	effortMinutes(now: number): Map<string, number> {
 		const ms = prorateEffort(this.data.worklogs, now);
 		return new Map([...ms].map(([id, v]) => [id, v / 60_000]));
+	}
+
+	/**
+	 * 按分後の実績（分）。記録の鍵（workKey）ごと: サブは合成キー、親の ID は親に直接付けた行だけ（ADR-0135）。
+	 * 按分は同時に動いている区間の数で割るので、親の ID とそのサブの合計は effortMinutes の親の値と同じ
+	 */
+	effortByKey(now: number): Map<string, number> {
+		const ms = prorateEffort(this.data.worklogs.map((l) => ({ taskId: workKey(l), fromMs: l.fromMs, toMs: l.toMs })), now);
+		return new Map([...ms].map(([key, v]) => [key, v / 60_000]));
 	}
 
 	/** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
@@ -178,9 +184,9 @@ export class TaskIndex {
 		return lastOrder(this.data.orders, group, date);
 	}
 
-	/** 記録中（to が空）の worklog */
-	running(taskId?: string): WorklogEntry[] {
-		return this.data.worklogs.filter((l) => l.toMs === null && (taskId === undefined || l.taskId === taskId));
+	/** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
+	running(key?: string): WorklogEntry[] {
+		return this.data.worklogs.filter((l) => l.toMs === null && (key === undefined || workKey(l) === key));
 	}
 
 	/** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
@@ -192,7 +198,7 @@ export class TaskIndex {
 	/** その issue の最後の status の記録 */
 	lastStatusLog(id: string): StatusLogEntry | undefined {
 		const logs = this.data.statusLogs;
-		for (let i = logs.length - 1; i >= 0; i--) if (logs[i]!.task === id) return logs[i];
+		for (let i = logs.length - 1; i >= 0; i--) if (logs[i]!.task === id && isIssueStatusLog(logs[i]!)) return logs[i];
 		return undefined;
 	}
 

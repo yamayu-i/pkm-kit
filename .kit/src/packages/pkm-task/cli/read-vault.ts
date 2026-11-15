@@ -33,7 +33,7 @@ function readFrontmatter(text: string): Record<string, unknown> | null {
 /** Vault のタスク管理データを読む（CLI 用。プラグインは metadataCache から読む） */
 export function readVault(root: string): { data: VaultData; problems: Problem[]; paths: string[] } {
 	const paths = walk(root);
-	const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
+	const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: parse };
 	for (const path of paths) {
 		const kind = fileKind(path);
 		if (kind === null) continue;
@@ -43,7 +43,7 @@ export function readVault(root: string): { data: VaultData; problems: Problem[];
 		else if (kind === "statuslog") input.statusLogs!.push({ path, text });
 		else if (kind === "labels") input.labels = text;
 		else if (kind === "groups") input.groups = text;
-		else input.markdown.push({ path, frontmatter: readFrontmatter(text) });
+		else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...(kind === "issue" ? { text } : {}) });
 	}
 	const { data, problems } = collectVault(input);
 	return { data, problems, paths };

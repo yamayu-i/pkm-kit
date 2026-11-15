@@ -5,6 +5,7 @@ import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
 import type { Problem } from "./problem";
 import { parseIssue, parseMember, parseRoutine } from "./schema";
+import { parseSubIssues, type YamlParse } from "./sub-issue";
 import { STATUS_LOG_PATH_RE, compareStatusLog, parseStatusLog } from "./status-log";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
@@ -24,7 +25,9 @@ export function fileKind(path: string): FileKind | null {
 
 export interface VaultInput {
 	/** issue / routine / member / デイリーノートの md。frontmatter が読めなかったら null */
-	markdown: { path: string; frontmatter: Record<string, unknown> | null }[];
+	markdown: { path: string; frontmatter: Record<string, unknown> | null; text?: string }[];
+	/** issue の md の全文（text）からサブを読むための YAML の関数（ADR-0135）。ないならサブは読まない */
+	parseYaml?: YamlParse;
 	/** worklog の jsonl */
 	worklogs: { path: string; text: string }[];
 	/** `issue/labels.json` の中身（ないなら null） */
@@ -37,12 +40,33 @@ export interface VaultInput {
 	statusLogs?: { path: string; text: string }[];
 }
 
+/**
+ * 移行で子の issue をサブにした後も、旧 ID の worklog・statuslog の行をそのサブの行として読む（ADR-0135）。
+ * jsonl は追記だけの記録なので書き換えず、読むときに置き換える。旧 ID の issue がまだあるなら置き換えない
+ */
+function resolveMigrated(data: VaultData): void {
+	const issueIds = new Set(data.issues.map((i) => i.id));
+	const byOld = new Map<string, { parent: string; id: string }>();
+	for (const s of data.subIssues) {
+		if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
+	}
+	if (byOld.size === 0) return;
+	data.worklogs = data.worklogs.map((l) => {
+		const to = l.sub ? undefined : byOld.get(l.taskId);
+		return to ? { ...l, taskId: to.parent, sub: to.id } : l;
+	});
+	data.statusLogs = data.statusLogs.map((e) => {
+		const to = e.sub ? undefined : byOld.get(e.task);
+		return to ? { ...e, task: to.parent, sub: to.id } : e;
+	});
+}
+
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
-	for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
+	for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
 		const kind = fileKind(path);
 		if (kind === "daily") {
 			// 既存の board は読み取り専用の初期状態（ADR-0020）。board がないデイリーノートは対象外
@@ -59,7 +83,14 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		if (kind === "issue") {
 			const r = parseIssue(path, frontmatter);
 			problems.push(...r.problems);
-			if (r.value) data.issues.push(r.value);
+			if (r.value) {
+				data.issues.push(r.value);
+				if (text !== undefined && input.parseYaml) {
+					const s = parseSubIssues(path, r.value.id, text, input.parseYaml);
+					problems.push(...s.problems);
+					data.subIssues.push(...s.subs);
+				}
+			}
 		} else if (kind === "routine") {
 			const r = parseRoutine(path, frontmatter);
 			problems.push(...r.problems);
@@ -102,6 +133,7 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		data.statusLogs.push(...r.entries);
 	}
 	data.statusLogs.sort(compareStatusLog);
+	resolveMigrated(data);
 	if (input.labels !== null) {
 		const r = parseLabels(input.labels);
 		problems.push(...r.problems);

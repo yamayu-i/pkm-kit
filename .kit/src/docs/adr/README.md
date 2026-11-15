@@ -16,17 +16,17 @@
 | ADR | 状態 | 内容 |
 |---|---|---|
 | [0001](0001-task-plugin.md) | 承認 | タスク管理を自作プラグイン vault-task として作る |
-| [0002](0002-frontmatter-as-source-of-truth.md) | 承認（一部置換: 0032） | issue の正本は md の frontmatter。派生値は保存しない |
+| [0002](0002-frontmatter-as-source-of-truth.md) | 承認（一部置換: 0032, 0135） | issue の正本は md の frontmatter。派生値は保存しない |
 | [0003](0003-issue-id.md) | 承認 | issue の ID は `i-N` の連番 |
 | [0004](0004-worklog-storage.md) | 承認 | worklog は端末別・月別の jsonl |
 | [0005](0005-effort-proration.md) | 承認 | 実績工数は重複を按分して都度計算する |
 | [0006](0006-status-inbox-someday.md) | 承認（一部置換: 0032） | status の定義、Inbox と Someday |
 | [0007](0007-labels-and-members.md) | 承認（一部置換: 0024, 0035） | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認（一部置換: 0077） | UI は Preact。issue 画面は CodeMirror の widget |
-| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033, 0034） | View の一覧と各 View の振る舞い |
+| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033, 0034, 0135） | View の一覧と各 View の振る舞い |
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
-| [0012](0012-issue-screen.md) | 承認（一部置換: 0034, 0077） | issue 画面の構成と、親子関係の編集 |
+| [0012](0012-issue-screen.md) | 承認（一部置換: 0034, 0077, 0135） | issue 画面の構成と、親子関係の編集 |
 | [0013](0013-design-system.md) | 一部置換（ADR-0016） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
 | [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換） | DailyTaskView と task board の保存形式・細部 |
 | [0015](0015-board-layout-simplified.md) | 承認 | task board のグループの並べ方を簡単にし、カードの ID を外す |
@@ -84,4 +84,7 @@
 | [0128](0128-markdown-view.md) | 承認 | ノートの表示を自作プラグイン pkm-markdown で整える（インラインコードのコピー、本文のタグを文字に、見出しと箇条書き） |
 | [0129](0129-vault-theme-follow-primary.md) | 承認 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
+| [0135](0135-sub-issues-in-issue-file.md) | 承認 | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
+| [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
+| [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 <!-- adr-index:end -->

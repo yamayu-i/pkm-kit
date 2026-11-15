@@ -29,21 +29,6 @@ function data(partial: Partial<VaultData>): VaultData {
 }
 
 describe("TaskIndex", () => {
-	const issues = [issue("i-1"), issue("i-2", { parent: "i-1" }), issue("i-3", { parent: "i-2" }), issue("i-4", { parent: "i-1" })];
-	const index = new TaskIndex(data({ issues }));
-
-	it("children を parent から逆引きする", () => {
-		expect(index.children("i-1").map((i) => i.id)).toEqual(["i-2", "i-4"]);
-		expect(index.children("i-3")).toEqual([]);
-	});
-
-	it("自分自身と子孫は親に選べない", () => {
-		expect(index.canSetParent("i-1", "i-3")).toBe(false);
-		expect(index.canSetParent("i-1", "i-1")).toBe(false);
-		expect(index.canSetParent("i-3", "i-4")).toBe(true);
-		expect(index.canSetParent("i-3", "i-99")).toBe(false);
-	});
-
 	it("実績は按分後の分", () => {
 		const idx = new TaskIndex(
 			data({
@@ -101,7 +86,7 @@ describe("lintVault", () => {
 	const codes = (d: VaultData, paths?: Set<string>) => lintVault(d, { paths }).map((p) => `${p.path} ${p.code}`);
 
 	it("問題がなければ空", () => {
-		expect(codes(data({ issues: [issue("i-1"), issue("i-2", { parent: "i-1" })] }))).toEqual([]);
+		expect(codes(data({ issues: [issue("i-1"), issue("i-2")] }))).toEqual([]);
 	});
 
 	it("label の色が暗くて文字が読めない", () => {
@@ -120,16 +105,6 @@ describe("lintVault", () => {
 		expect(codes(data({ issues: [issue("i-1"), issue("i-1", {}, "issue/i-1 (conflict).md")] }))).toEqual([
 			"issue/i-1 (conflict).md duplicate-id",
 		]);
-	});
-
-	it("親子関係: ない親・自分自身・循環", () => {
-		expect(
-			codes(
-				data({
-					issues: [issue("i-1", { parent: "i-9" }), issue("i-2", { parent: "i-2" }), issue("i-3", { parent: "i-4" }), issue("i-4", { parent: "i-3" })],
-				}),
-			),
-		).toEqual(["issue/i-1.md dangling-parent", "issue/i-2.md self-parent", "issue/i-3.md parent-cycle", "issue/i-4.md parent-cycle"]);
 	});
 
 	it("related の参照先", () => {

@@ -30,8 +30,13 @@ import {
 	setRoutineResultOnDisk,
 	startTimerOnDisk,
 	stopTimerOnDisk,
+	createSubIssuesOnDisk,
+	deleteSubIssueOnDisk,
+	moveSubIssueOnDisk,
 	updateIssueOnDisk,
+	updateSubIssueOnDisk,
 } from "./vault-ops";
+import { splitSubIssueText, type NewSubIssue, type SubIssuePatch } from "../src/core/sub-issue";
 
 export interface McpContext {
 	root: string;
@@ -99,7 +104,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "list_issues",
-		description: "条件（status、priority、label、予定の有無、親、Inboxのみ、文字列検索、並び順）で絞った issue 一覧を取得する",
+		description: "条件（status、priority、label、予定の有無、Inboxのみ、文字列検索、並び順）で絞った issue 一覧を取得する",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -108,7 +113,6 @@ const TOOLS: McpToolDef[] = [
 				priorities: { type: "array", items: { type: "string" } },
 				labels: { type: "array", items: { type: "string" } },
 				scheduled: { type: "string", enum: ["any", "yes", "no"] },
-				parent: { type: "string" },
 				inbox_only: { type: "boolean", description: "true のとき Inbox の issue のみ返す" },
 				sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
 				desc: { type: "boolean" },
@@ -118,7 +122,8 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "get_issue",
-		description: "issue の詳細（frontmatter、Markdown本文、親・子タスク、按分後の実績工数、持ち越し回数）を取得する",
+		description:
+			"issue の詳細（frontmatter、Markdown本文、サブイシューの一覧、按分後の実績工数、持ち越し回数）を取得する。effortMinutes は親に直接付けた分とサブの分の合計、directEffortMinutes は親に直接付けた分だけ",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -243,7 +248,6 @@ const TOOLS: McpToolDef[] = [
 			type: "object",
 			properties: {
 				summary: { type: "string" },
-				parent: { type: ["string", "null"] },
 				scheduled: { type: "array", items: { type: "string" } },
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
@@ -257,7 +261,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "update_issue",
-		description: "issue の frontmatter（status, priority, scheduled, deadline, estimated, parent など）を検査付きで更新する",
+		description: "issue の frontmatter（status, priority, scheduled, deadline, estimated など）を検査付きで更新する。サブイシューは update_sub_issue で直す",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -268,7 +272,6 @@ const TOOLS: McpToolDef[] = [
 				delegated_to: { type: ["string", "null"] },
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
-				parent: { type: ["string", "null"] },
 				scheduled: { type: "array", items: { type: "string" } },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
@@ -280,8 +283,86 @@ const TOOLS: McpToolDef[] = [
 		},
 	},
 	{
+		name: "create_sub_issues",
+		description:
+			"issue の md の中にサブイシューを足す（ADR-0135。サブのサブは作れない）。items の順に、末尾か position の位置に置く。作ったサブの合成キー（i-12#k3f9a2）を返す。大きい issue を分けるときに使う",
+		inputSchema: {
+			type: "object",
+			properties: {
+				parent: { type: "string", description: "親の issue の ID（i-N）" },
+				items: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							summary: { type: "string" },
+							status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
+							delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
+							start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
+							end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
+							scheduled: { type: ["array", "null"], items: { type: "string" } },
+							soft_deadline: { type: ["string", "null"] },
+							deadline: { type: ["string", "null"] },
+							estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
+							depends_on: { type: ["array", "null"], items: { type: "string" }, description: "同じ親のサブの id（6 文字）" },
+							body: { type: "string", description: "サブの本文（Markdown）" },
+						},
+						required: ["summary"],
+					},
+				},
+				position: { type: "number", description: "差し込む位置（0 から。省くと末尾）" },
+			},
+			required: ["parent", "items"],
+		},
+	},
+	{
+		name: "update_sub_issue",
+		description: "サブイシューの項目と本文を検査付きで直す。null で項目を消す。status の変化は statuslog に記録し、closed / canceled ならそのサブのタイマーを止める。親の status は変えない",
+		inputSchema: {
+			type: "object",
+			properties: {
+				key: { type: "string", description: "合成キー（例: i-12#k3f9a2）" },
+				summary: { type: "string" },
+				status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
+				delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
+				start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
+				end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
+				scheduled: { type: ["array", "null"], items: { type: "string" } },
+				soft_deadline: { type: ["string", "null"] },
+				deadline: { type: ["string", "null"] },
+				estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
+				depends_on: { type: ["array", "null"], items: { type: "string" }, description: "同じ親のサブの id（6 文字）" },
+				body: { type: "string", description: "サブの本文（Markdown）" },
+			},
+			required: ["key"],
+		},
+	},
+	{
+		name: "move_sub_issue",
+		description: "サブイシューを、同じ親の中で position の位置（0 から）へ移す",
+		inputSchema: {
+			type: "object",
+			properties: {
+				key: { type: "string", description: "合成キー（例: i-12#k3f9a2）" },
+				position: { type: "number" },
+			},
+			required: ["key", "position"],
+		},
+	},
+	{
+		name: "delete_sub_issue",
+		description: "サブイシューを本文ごと消す。記録中のタイマーは止める。worklog の行は残り、親の実績に含まれる。ほかのサブの depends_on にあるときは消せない",
+		inputSchema: {
+			type: "object",
+			properties: {
+				key: { type: "string", description: "合成キー（例: i-12#k3f9a2）" },
+			},
+			required: ["key"],
+		},
+	},
+	{
 		name: "start_timer",
-		description: "指定した issue / routine の作業記録タイマーを開始する",
+		description: "指定した issue / routine / サブイシューの作業記録タイマーを開始する。サブは合成キー（i-12#k3f9a2）で指す。open のものは in-progress にする（サブのときは親の status を変えない）",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -292,7 +373,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "stop_timer",
-		description: "記録中のタイマーを停止する（task_ids 省略時はすべての記録中タイマーを止める）",
+		description: "記録中のタイマーを停止する（task_ids 省略時はすべての記録中タイマーを止める）。サブは合成キーで指す。親の ID では親に直接付けた記録だけを止める",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -328,10 +409,46 @@ function loadIndex(root: string) {
 	};
 }
 
+/** MCP の引数（snake_case）を、サブの項目にする。渡された項目だけを持つ。null は項目を消す（リストは空にする） */
+function subPatch(args: Record<string, unknown>): SubIssuePatch {
+	const out: SubIssuePatch = {};
+	const str = (key: string): string | null => {
+		const v = args[key];
+		if (v === null) return null;
+		if (typeof v !== "string") throw new Error(`${key} は文字列にしてください`);
+		return v.trim() || null;
+	};
+	const list = (key: string): string[] => {
+		const v = args[key];
+		if (v === null) return [];
+		if (!Array.isArray(v)) throw new Error(`${key} は配列にしてください`);
+		return v.map(String);
+	};
+	if (args.summary !== undefined) out.summary = String(args.summary);
+	if (args.status !== undefined) out.status = String(args.status) as Status;
+	if (args.delegated_to !== undefined) out.delegatedTo = str("delegated_to");
+	if (args.start !== undefined) out.start = str("start");
+	if (args.end !== undefined) out.end = str("end");
+	if (args.scheduled !== undefined) out.scheduled = [...new Set(list("scheduled"))].sort();
+	if (args.soft_deadline !== undefined) out.softDeadline = str("soft_deadline");
+	if (args.deadline !== undefined) out.deadline = str("deadline");
+	if (args.estimated !== undefined) {
+		if (args.estimated !== null && typeof args.estimated !== "number") throw new Error("estimated は数（分）にしてください");
+		out.estimated = args.estimated as number | null;
+	}
+	if (args.depends_on !== undefined) out.dependsOn = [...new Set(list("depends_on"))];
+	if (args.body !== undefined) out.body = String(args.body ?? "");
+	return out;
+}
+
 export function callMcpTool(ctx: McpContext, name: string, args: Record<string, unknown> = {}): unknown {
 	const now = ctx.now ? ctx.now() : new Date();
 	const today = localToday(now);
 	const { index, problems } = loadIndex(ctx.root);
+	// 親子関係は廃止した（ADR-0135）。黙って無視せず、サブイシューの操作を案内する
+	if ((name === "create_issue" || name === "update_issue" || name === "list_issues") && args.parent !== undefined) {
+		throw new Error("parent は廃止しました（ADR-0135）。分けるときは create_sub_issues でサブイシューを足してください");
+	}
 
 	switch (name) {
 		case "get_overview": {
@@ -406,7 +523,6 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(Array.isArray(args.priorities) ? { priorities: args.priorities as (Priority | "none")[] } : {}),
 				...(Array.isArray(args.labels) ? { labels: args.labels as string[] } : {}),
 				...(args.scheduled === "any" || args.scheduled === "yes" || args.scheduled === "no" ? { scheduled: args.scheduled } : {}),
-				...(typeof args.parent === "string" ? { parent: args.parent } : {}),
 				...(typeof args.sort === "string" ? { sort: args.sort as SortKey } : {}),
 				...(typeof args.desc === "boolean" ? { desc: args.desc } : {}),
 			};
@@ -417,13 +533,14 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 			const issue = index.issues.get(id);
 			if (!issue) throw new Error(`issue がありません: ${id}`);
 			const efforts = index.effortMinutes(now.getTime());
+			const byKey = index.effortByKey(now.getTime());
 			const counts = carryCounts(index.data.boards);
 			return {
 				...issue,
-				body: readMarkdownBody(ctx.root, issue.path),
-				ancestors: index.ancestors(id).map((a) => ({ id: a.id, summary: a.summary, status: a.status })),
-				children: index.children(id).map((c) => ({ id: c.id, summary: c.summary, status: c.status })),
+				body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,
+				subIssues: index.subs(id).map(({ path: _path, parent: _parent, ...s }) => ({ ...s, effortMinutes: Math.round(byKey.get(s.key) ?? 0) })),
 				effortMinutes: Math.round(efforts.get(id) ?? 0),
+				directEffortMinutes: Math.round(byKey.get(id) ?? 0),
 				carryCount: counts.get(id) ?? 0,
 			};
 		}
@@ -531,7 +648,6 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				index,
 				{
 					summary: String(args.summary ?? ""),
-					parent: (args.parent as string | null | undefined) ?? null,
 					scheduled: Array.isArray(args.scheduled) ? args.scheduled.map(String) : [],
 					priority: args.priority as Priority | null | undefined,
 					labels: Array.isArray(args.labels) ? args.labels.map(String) : undefined,
@@ -553,7 +669,6 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(args.delegated_to !== undefined ? { delegated_to: args.delegated_to as string | null } : {}),
 				...(args.priority !== undefined ? { priority: args.priority as Priority | null } : {}),
 				...(Array.isArray(args.labels) ? { labels: args.labels.map(String) } : {}),
-				...(args.parent !== undefined ? { parent: args.parent as string | null } : {}),
 				...(Array.isArray(args.scheduled) ? { scheduled: args.scheduled.map(String) } : {}),
 				...(args.soft_deadline !== undefined ? { soft_deadline: args.soft_deadline as LocalDate | null } : {}),
 				...(args.deadline !== undefined ? { deadline: args.deadline as LocalDate | null } : {}),
@@ -561,6 +676,27 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(args.reviewed !== undefined ? { reviewed: args.reviewed as LocalDate | null } : {}),
 				...(args.estimated !== undefined ? { estimated: args.estimated as number | null } : {}),
 			}, { device: ctx.device, now });
+		}
+		case "create_sub_issues": {
+			const items = Array.isArray(args.items) ? args.items.map((it) => subPatch(it as Record<string, unknown>)) : [];
+			const position = args.position === undefined ? undefined : Number(args.position);
+			const created = createSubIssuesOnDisk(ctx.root, index, String(args.parent ?? ""), items as NewSubIssue[], now, position);
+			return { ok: true, created };
+		}
+		case "update_sub_issue": {
+			const key = String(args.key ?? "");
+			const sub = updateSubIssueOnDisk(ctx.root, index, key, subPatch(args), { device: ctx.device, now, via: "mcp" });
+			return { ok: true, key, sub };
+		}
+		case "move_sub_issue": {
+			const key = String(args.key ?? "");
+			moveSubIssueOnDisk(ctx.root, index, key, Number(args.position));
+			return { ok: true, key, position: Number(args.position) };
+		}
+		case "delete_sub_issue": {
+			const key = String(args.key ?? "");
+			deleteSubIssueOnDisk(ctx.root, index, key, now);
+			return { ok: true, key, deleted: true };
 		}
 		case "start_timer": {
 			const ids = Array.isArray(args.task_ids) ? args.task_ids.map(String) : [];

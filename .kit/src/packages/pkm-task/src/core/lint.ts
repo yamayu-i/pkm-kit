@@ -5,6 +5,7 @@ import { LABELS_PATH } from "./labels";
 import { isId } from "./ids";
 import type { Problem } from "./problem";
 import { STATUS_DETAIL_MAX } from "./schema";
+import { parseSubKey, subKey, type SubIssue } from "./sub-issue";
 
 export interface LintOptions {
 	/** Vault にあるファイルのパス。related のパス参照を確かめるのに使う（省略時は確かめない） */
@@ -33,6 +34,61 @@ export function labelContrast(color: string): number {
 			return contrastRatio(parseHex(colors[mode]["color.on-label"]), bg);
 		}),
 	);
+}
+
+type Add = (severity: Problem["severity"], path: string, code: string, message: string) => void;
+
+/** サブイシューの検査（ADR-0135）。項目の型の誤りはパースのときに報告する */
+function lintSubIssues(data: VaultData, index: TaskIndex, add: Add): void {
+	const byParent = new Map<string, SubIssue[]>();
+	for (const sub of data.subIssues) byParent.set(sub.parent, [...(byParent.get(sub.parent) ?? []), sub]);
+	for (const subs of byParent.values()) {
+		const seen = new Set<string>();
+		for (const sub of subs) {
+			if (seen.has(sub.id)) add("error", sub.path, "duplicate-sub-id", `サブの id ${sub.id} が同じ issue の中で重なっています`);
+			seen.add(sub.id);
+		}
+	}
+	for (const sub of data.subIssues) {
+		const { path } = sub;
+		const where = `サブ ${sub.id}`;
+		if (index.sub(sub.key) !== sub) continue;
+		if (sub.status === "delegated" && sub.delegatedTo === null) add("error", path, "missing-delegated-to", `${where}: delegated なのに delegated_to がありません`);
+		if (sub.delegatedTo !== null) {
+			if (!index.members.has(sub.delegatedTo)) add("error", path, "dangling-member", `${where}: delegated_to の ${sub.delegatedTo} がありません`);
+			if (sub.status !== "delegated") add("warning", path, "stale-delegated-to", `${where}: delegated ではないのに delegated_to があります`);
+		}
+		for (const dep of sub.dependsOn) {
+			if (dep === sub.id) {
+				add("error", path, "self-depends-on", `${where}: depends_on が自分自身です`);
+				continue;
+			}
+			const target = index.sub(subKey(sub.parent, dep));
+			if (!target) {
+				add("error", path, "dangling-depends-on", `${where}: depends_on の ${dep} が同じ issue の中にありません`);
+				continue;
+			}
+			if (sub.start !== null && target.end !== null && sub.start < target.end) {
+				add("warning", path, "start-before-dependency", `${where}: start（${sub.start}）が依存先 ${dep} の end（${target.end}）より前です`);
+			}
+		}
+		if (dependsOnCycle(index, sub)) add("error", path, "depends-on-cycle", `${where}: depends_on が循環しています`);
+	}
+}
+
+/** そのサブから depends_on をたどって、自分に戻るか（自分自身への依存は self-depends-on で別に出す） */
+function dependsOnCycle(index: TaskIndex, start: SubIssue): boolean {
+	const seen = new Set<string>();
+	const stack = start.dependsOn.filter((d) => d !== start.id);
+	while (stack.length > 0) {
+		const id = stack.pop()!;
+		if (id === start.id) return true;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		const next = index.sub(subKey(start.parent, id));
+		if (next) stack.push(...next.dependsOn.filter((d) => d !== next.id));
+	}
+	return false;
 }
 
 /** 整合性の検査（ADR-0001）。パース時の問題とは別に、ファイルをまたいだ問題を見る */
@@ -64,15 +120,10 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 	}
 	for (const issue of data.issues) {
 		const { path } = issue;
-		if (issue.parent !== null) {
-			if (issue.parent === issue.id) add("error", path, "self-parent", "parent が自分自身です");
-			else if (!index.issues.has(issue.parent)) add("error", path, "dangling-parent", `parent の ${issue.parent} がありません`);
-			else if (!index.canSetParent(issue.id, issue.parent)) {
-				add("error", path, "parent-cycle", "親子関係が循環しています");
-			}
-		}
 		for (const ref of issue.related) {
-			if (isId(ref, "i")) {
+			if (parseSubKey(ref) !== null) {
+				if (!index.sub(ref)) add("error", path, "dangling-related", `related のサブ ${ref} がありません`);
+			} else if (isId(ref, "i")) {
 				if (!index.issues.has(ref)) add("error", path, "dangling-related", `related の ${ref} がありません`);
 			} else if (options.paths && !options.paths.has(safeDecode(ref))) {
 				add("error", path, "dangling-related", `related のノート ${ref} がありません`);
@@ -99,6 +150,8 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		}
 	}
 
+	lintSubIssues(data, index, add);
+
 	// member の label も issue と同じ定義を使う（ADR-0036）
 	for (const member of data.members) {
 		for (const label of member.labels) {
@@ -108,7 +161,8 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 
 	for (const b of data.boards) {
 		for (const id of b.board.issues) {
-			if (!index.issues.has(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
+			// 移行でサブにした子の ID は、過去のボードに残ってよい（ADR-0135）
+			if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `ボードに載っている ${id} がありません`);
 		}
 	}
 
@@ -120,6 +174,9 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		else logIds.set(log.id, where);
 		if (!index.issues.has(log.taskId) && !index.routines.has(log.taskId)) {
 			add("error", log.path, "dangling-task", `${log.line} 行目: task_id の ${log.taskId} がありません`);
+		} else if (log.sub && !index.sub(subKey(log.taskId, log.sub))) {
+			// 消したサブの行は消さず、集計では親に含める（ADR-0135）
+			add("warning", log.path, "dangling-sub-worklog", `${log.line} 行目: sub の ${log.sub} が ${log.taskId} にありません（削除済みとして親に含めます）`);
 		}
 		if (log.toMs !== null && log.toMs <= log.fromMs) {
 			add("error", log.path, "non-positive-worklog", `${log.line} 行目: to が from 以前です`);

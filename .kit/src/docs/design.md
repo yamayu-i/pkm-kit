@@ -232,6 +232,9 @@ packages/design/tokens.json（正本）
 | 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
 | 色の見本 | `.vt-color-swatch` | 44px の角丸の四角のカラーピッカー（`input[type=color]`）。`--vt-outline` の枠。隣に `#rrggbb` の `.vt-name-field` を置く |
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
+| サブイシューの行 | `.vt-subissue`（`.vt-subissue-row`） | issue 画面のカード「Sub-issues」（`.vt-subissues`）の 1 行（44px 以上）。左に status のアイコンのボタン（36px の丸）、題と弱い文字の補足（期間 / 次の予定日 / 期限。狭いときは補足から縮む）、実績、再生 / 停止、`⋯` のメニュー。ドラッグで並べ、落とす位置は primary の線（`.is-drop-before`）。済みは打ち消し線。記録中は緑の枠（ADR-0142） |
+| サブイシューの中身 | `.vt-subissue-detail` | 行を開いたアコーディオン。項目の一覧（`.vt-subissue-facts`）、Markdown の本文（Obsidian の描画）、Edit の text ボタン |
+| ガントチャート | `.vt-timeline`（`.vt-timeline-bar`・`.vt-timeline-arrow`・`.vt-timeline-today`） | カード「Sub-issues」の Timeline（ADR-0143）。左に題の列、右に日の列（カードの中で横にスクロール）。行は 36px。棒は status の印の色（`--vt-dot`）で、ドラッグでずらし、両端のつまみで伸ばす。予定日は点、期限は amber / red の短い縦線、今日は primary の縦線、土日は surface-container の面、週の区切り（日曜）は細い線。依存は矢印で、遅れは error の色。目盛りは Day（1 日 28px）と Week（日曜始まり、1 日 8px）。切り替え（List / Timeline、Day / Week）は絞り込みチップ |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
 
 アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。status のアイコンは例外で、Lucide にない形なので自作の SVG（`StatusIcon` 部品、`src/ui/StatusIcon.tsx`）を使う（ADR-0031）。
@@ -243,7 +246,7 @@ packages/design/tokens.json（正本）
 | 選択肢から選ぶ（status、priority、estimated） | 末尾に ▾（`chevron-down`） |
 | 文字を入力する（status-detail、summary） | 鉛筆（`pencil`）。summary はホバーで出す |
 | 日付を選ぶ（soft_deadline、deadline、revisit） | カレンダー（`calendar` / `calendar-clock`） |
-| 追加する（label、子 issue） | `plus` / `tag`、未入力なら点線 |
+| 追加する（label、サブイシュー） | `plus` / `tag`、未入力なら点線 |
 | 外す | `x` |
 | 押すと開く・編集する項目（worklog） | 影の付いたカード + 鉛筆。ホバーで影が強くなる |
 

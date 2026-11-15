@@ -11,13 +11,12 @@ export interface IssueQuery {
 	priorities: (Priority | "none")[];
 	labels: string[];
 	scheduled: "any" | "yes" | "no";
-	parent: string | null;
 	sort: SortKey;
 	desc: boolean;
 }
 
 export function defaultQuery(): IssueQuery {
-	return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", parent: null, sort: "id", desc: true };
+	return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", sort: "id", desc: true };
 }
 
 function nextScheduled(issue: Issue, today: string): string | null {
@@ -54,7 +53,6 @@ export function queryIssues(issues: Iterable<Issue>, q: IssueQuery, today: strin
 		if (q.labels.length > 0 && !q.labels.every((l) => i.labels.includes(l))) return false;
 		if (q.scheduled === "yes" && i.scheduled.length === 0) return false;
 		if (q.scheduled === "no" && i.scheduled.length > 0) return false;
-		if (q.parent !== null && i.parent !== q.parent) return false;
 		const hay = `${i.id} ${i.summary}`.toLowerCase();
 		return words.every((w) => hay.includes(w));
 	});

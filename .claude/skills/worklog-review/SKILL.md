@@ -24,6 +24,7 @@ TZ=Asia/Tokyo node .kit/bin/worklog-review.mjs . --json   # 日またぎの判�
   - `non-positive`: 終了が開始以前
   - `many-overlaps`: たくさんのログと時間が重なっている（グループで再生したまま、など）
   - `unknown-task`: `task_id` の issue / routine がない
+- サブイシューで記録した行は `sub`（サブの id）を持ち、そのサブの作業として数える（ADR-0135）。サブを消した後の行は、`node .kit/bin/lint.mjs .` が `dangling-sub-worklog` の警告にし、親の実績に含める。行は消さなくてよい。別のサブの作業だったなら `sub` を直す
 - `effort` は issue ごとの按分前（`raw`）と按分後（`prorated`）の実績（分）。按分は ADR-0005
 - CLI は issue を閉じた日時を取得しないため、閉じた後のログは検出しない。
 
@@ -39,7 +40,7 @@ TZ=Asia/Tokyo node .kit/bin/worklog-review.mjs . --json   # 日またぎの判�
 - 直し方を提案する（例: 「終了を 12:30 にする」「削除する」「task_id を i-12 にする」）。その日のほかのログ、デイリーノート（`daily/YYYY/MM/YYYY-MM-DD.md` の `## Task board`）、issue の本文を手がかりにする
 - **ユーザーが承認してから**書き換える。推測だけで直さない
 - 書き換えるのは該当する 1 行だけ。`id` は変えない。日時はタイムゾーン付き（`2026-10-31T12:30:00+09:00`）
-- 1 行は `{"id":…,"task_id":…,"from":…,"to":…,"description":…}` の JSON のまま保つ（キーの順もこのまま）
+- 1 行は `{"id":…,"task_id":…,"from":…,"to":…,"description":…}` の JSON のまま保つ（キーの順もこのまま）。`sub` のある行は `task_id` の次に `sub` を置く
 - 削除するときは行ごと消す（空行を残さない）
 - 開始日時を別の月に変えても、ファイルは移さない（プラグインと同じ）
 

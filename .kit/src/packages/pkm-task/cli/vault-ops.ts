@@ -18,8 +18,27 @@ import {
 	 sanitizeDeviceName,
 	serializeWorklogEntry,
 	stopWorklogLines,
+	workKey,
+	workTarget,
 	worklogPath,
 } from "../src/core/worklog";
+import {
+	insertSubIssuesText,
+	moveSubIssueText,
+	newSubId,
+	newSubIssueInput,
+	dependentsOf,
+	normalizeSubPatch,
+	touchedSubErrors,
+	type NewSubIssue,
+	parseSubKey,
+	removeSubIssueText,
+	subKey,
+	updateSubIssueText,
+	type SubIssue,
+	type SubIssueInput,
+	type SubIssuePatch,
+} from "../src/core/sub-issue";
 
 /** Vault ルート内の相対パスを安全に解決する（ルート外へのアクセスを防ぐ） */
 export function resolveInVault(root: string, relPath: string): string {
@@ -56,10 +75,10 @@ export interface StatusLogContext {
 }
 
 /** status の変化を statuslog に 1 行追記する（ADR-0031）。端末名がなければ書かない */
-export function appendStatusLogOnDisk(root: string, task: string, from: Status, to: Status, log: StatusLogContext): void {
+export function appendStatusLogOnDisk(root: string, task: string, from: Status, to: Status, log: StatusLogContext, sub: string | null = null): void {
 	const dev = sanitizeDeviceName(log.device);
 	if (!dev) return;
-	const line = statusLogLine(task, from, to, log.via, log.now);
+	const line = statusLogLine(task, from, to, log.via, log.now, Math.random, sub);
 	if (line === null) return;
 	const relPath = statusLogPath(dev, log.now);
 	writeTextInVault(root, relPath, appendWorklogLine(readTextOrEmpty(root, relPath), line));
@@ -256,7 +275,6 @@ export function closeBoardOnDisk(
 
 export interface CreateIssueInput {
 	summary: string;
-	parent?: string | null;
 	scheduled?: LocalDate[];
 	priority?: Priority | null;
 	labels?: string[];
@@ -275,8 +293,6 @@ export function createIssueOnDisk(
 ): Issue {
 	const summary = typeof input.summary === "string" ? input.summary.trim() : "";
 	if (!summary) throw new Error("summary を指定してください");
-	const parent = input.parent ?? null;
-	if (parent !== null && !index.issues.has(parent)) throw new Error(`parent の ${parent} がありません`);
 
 	const scheduled = input.scheduled ?? [];
 	for (const d of scheduled) {
@@ -311,7 +327,7 @@ export function createIssueOnDisk(
 			? [...scheduled, input.add_to_board_date].sort()
 			: [...scheduled].sort();
 
-	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), parent, allScheduled));
+	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), allScheduled));
 
 	const extra: Record<string, unknown> = {};
 	if (input.priority !== undefined) extra.priority = input.priority;
@@ -328,7 +344,6 @@ export function createIssueOnDisk(
 					id: id!,
 					summary,
 					status: "open",
-					parent,
 					scheduled: allScheduled,
 					created: localDateTime(now),
 				}).value!;
@@ -347,7 +362,6 @@ export interface UpdateIssueInput {
 	delegated_to?: string | null;
 	priority?: Priority | null;
 	labels?: string[];
-	parent?: string | null;
 	scheduled?: LocalDate[];
 	soft_deadline?: LocalDate | null;
 	deadline?: LocalDate | null;
@@ -408,12 +422,6 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		}
 		patch.labels = input.labels;
 	}
-	if (input.parent !== undefined) {
-		if (input.parent !== null && !index.canSetParent(current.id, input.parent)) {
-			throw new Error(`親に ${input.parent} は選べません（存在しないか、親子関係が循環します）`);
-		}
-		patch.parent = input.parent;
-	}
 	if (input.scheduled !== undefined) {
 		for (const d of input.scheduled) {
 			if (!isLocalDate(d)) throw new Error(`scheduled の日付が不正です: ${String(d)}`);
@@ -458,16 +466,83 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	return updated;
 }
 
+/**
+ * サブの項目を書き換える（ADR-0135）。status が変わったら statuslog に task と sub で書き、
+ * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+ */
+export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string, patch: SubIssuePatch, log?: StatusLogContext): SubIssue {
+	const current = index.sub(key);
+	if (!current) throw new Error(`サブがありません: ${key}`);
+	patch = normalizeSubPatch(patch);
+	const siblings = index.subs(current.parent).map((s) => (s.id === current.id ? { ...s, ...patch, id: s.id } : s));
+	assertSubIssues(index, siblings, [current.id]);
+	const text = readTextOrEmpty(root, current.path);
+	const r = updateSubIssueText(current.path, current.parent, text, current.id, patch, parse);
+	writeTextInVault(root, current.path, r.text);
+	if (log && r.before.status !== r.after.status) {
+		appendStatusLogOnDisk(root, current.parent, r.before.status, r.after.status, log, current.id);
+		if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
+	}
+	return r.after;
+}
+
+/** 書く前の検査（ADR-0135）。touched のサブ（足す・変えるもの）に関わる問題だけで止める（ほかのサブの既存の誤りは lint に任せる） */
+function assertSubIssues(index: TaskIndex, subs: readonly SubIssueInput[], touched: readonly string[]): void {
+	const errors = touchedSubErrors(subs, touched, new Set(index.members.keys()));
+	if (errors.length > 0) throw new Error(errors.join("\n"));
+}
+
+/** サブを足す（ADR-0135）。at を省くと末尾。作ったサブの合成キーを返す */
+export function createSubIssuesOnDisk(root: string, index: TaskIndex, parent: string, items: readonly NewSubIssue[], now: Date, at?: number): string[] {
+	const issue = index.issues.get(parent);
+	if (!issue) throw new Error(`issue がありません: ${parent}`);
+	if (!Array.isArray(items) || items.length === 0) throw new Error("items を 1 件以上指定してください");
+	const existing = index.subs(parent);
+	const taken = existing.map((s) => s.id);
+	const created = localDateTime(now);
+	const subs = items.map((item) => {
+		const id = newSubId(taken);
+		taken.push(id);
+		return newSubIssueInput(item, id, created);
+	});
+	assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
+	const text = readTextOrEmpty(root, issue.path);
+	writeTextInVault(root, issue.path, insertSubIssuesText(issue.path, parent, text, subs, parse, at));
+	return subs.map((s) => subKey(parent, s.id));
+}
+
+/** サブを to の位置へ移す（0 から） */
+export function moveSubIssueOnDisk(root: string, index: TaskIndex, key: string, to: number): void {
+	const sub = index.sub(key);
+	if (!sub) throw new Error(`サブがありません: ${key}`);
+	const text = readTextOrEmpty(root, sub.path);
+	writeTextInVault(root, sub.path, moveSubIssueText(sub.path, sub.parent, text, sub.id, to, parse));
+}
+
+/** サブを消す。記録中のタイマーは止める。worklog の行は消さない（ADR-0135） */
+export function deleteSubIssueOnDisk(root: string, index: TaskIndex, key: string, now: Date): void {
+	const sub = index.sub(key);
+	if (!sub) throw new Error(`サブがありません: ${key}`);
+	const dependents = dependentsOf(index.subs(sub.parent), sub.id);
+	if (dependents.length > 0) throw new Error(`サブ ${sub.id} は ${dependents.join(", ")} の depends_on にあります。先に外してください`);
+	stopTimerOnDisk(root, index, [key], now);
+	const text = readTextOrEmpty(root, sub.path);
+	writeTextInVault(root, sub.path, removeSubIssueText(sub.path, sub.parent, text, sub.id, parse));
+}
+
+/** 記録を始める。taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。すでに記録中のものは除く */
 export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string[], device: string, now: Date): string[] {
 	const dev = sanitizeDeviceName(device);
 	if (!dev) throw new Error("端末名が空です");
 	if (!Array.isArray(taskIds) || taskIds.length === 0) throw new Error("task_ids を 1 件以上指定してください");
 	for (const id of taskIds) {
-		if (!index.issues.has(id) && !index.routines.has(id)) {
+		if (parseSubKey(id) !== null) {
+			if (!index.sub(id)) throw new Error(`サブがありません: ${id}`);
+		} else if (!index.issues.has(id) && !index.routines.has(id)) {
 			throw new Error(`issue または routine がありません: ${id}`);
 		}
 	}
-	const running = new Set(index.running().map((l) => l.taskId));
+	const running = new Set(index.running().map(workKey));
 	const targets = taskIds.filter((id) => !running.has(id));
 	if (targets.length === 0) return [];
 
@@ -475,12 +550,17 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 	const relPath = worklogPath(dev, now);
 	const current = readTextOrEmpty(root, relPath);
 	const next = targets.reduce(
-		(acc, taskId) => appendWorklogLine(acc, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })),
+		(acc, key) => appendWorklogLine(acc, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })),
 		current,
 	);
 	writeTextInVault(root, relPath, next);
-	// open の issue は、記録を始めたら in-progress にする（ADR-0031）
+	// open の issue とサブは、記録を始めたら in-progress にする（ADR-0031, 0135）
 	for (const id of targets) {
+		const sub = index.sub(id);
+		if (sub) {
+			if (sub.status === "open") updateSubIssueOnDisk(root, index, id, { status: "in-progress" }, { device: dev, now, via: "timer" });
+			continue;
+		}
 		const issue = index.issues.get(id);
 		if (issue?.status === "open") updateIssueFrontmatter(root, issue.path, { status: "in-progress" }, { device: dev, now, via: "timer" });
 	}
@@ -488,7 +568,7 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 }
 
 export function stopTimerOnDisk(root: string, index: TaskIndex, taskIds: string[] | undefined, now: Date): string[] {
-	const running = index.running().filter((l) => !taskIds || taskIds.length === 0 || taskIds.includes(l.taskId));
+	const running = index.running().filter((l) => !taskIds || taskIds.length === 0 || taskIds.includes(workKey(l)));
 	if (running.length === 0) return [];
 
 	const to = localDateTime(now);
@@ -502,7 +582,7 @@ export function stopTimerOnDisk(root: string, index: TaskIndex, taskIds: string[
 		const next = stopWorklogLines(current, entries, to, toMs);
 		writeTextInVault(root, relPath, next);
 	}
-	return running.map((e) => e.taskId);
+	return running.map(workKey);
 }
 
 /** デイリーノート本文の末尾にセクションを追記する（既存の行は変更・削除しない。ADR-0025） */

@@ -7459,6 +7459,379 @@ function placementOf(board, id, fallback, keys, remembered) {
   return key !== "" && keys.includes(key) ? key : "";
 }
 
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m ? Number(m[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+
+// src/core/repeat.ts
+function parseWeekday(s) {
+  const i = WEEKDAY_NAMES.indexOf(s.toLowerCase());
+  return i < 0 ? null : i;
+}
+function parseMonthSpec(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
+  }
+  if (typeof value !== "string") return null;
+  const s = value.trim().toLowerCase();
+  if (/^\d+$/.test(s)) return parseMonthSpec(Number(s));
+  if (s === "last") return { kind: "last" };
+  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s);
+  if (nth) {
+    const weekday = parseWeekday(nth[2]);
+    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
+  }
+  const last = /^last-([a-z]{3})$/.exec(s);
+  if (last) {
+    const weekday = parseWeekday(last[1]);
+    return weekday === null ? null : { kind: "lastWeekday", weekday };
+  }
+  return null;
+}
+function asList(value) {
+  if (value === void 0 || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+function parseRepeat(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
+  }
+  const raw = value;
+  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
+  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
+    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
+  }
+  const on = asList(raw.on);
+  switch (raw.every) {
+    case "day":
+      return { ok: true, value: { every: "day", interval } };
+    case "week": {
+      const weekdays = [];
+      for (const v of on) {
+        const w = typeof v === "string" ? parseWeekday(v.trim()) : null;
+        if (w === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v)}` };
+        if (!weekdays.includes(w)) weekdays.push(w);
+      }
+      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "week", interval, weekdays } };
+    }
+    case "month": {
+      const days = [];
+      for (const v of on) {
+        const spec = parseMonthSpec(v);
+        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v)}` };
+        days.push(spec);
+      }
+      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "month", interval, days } };
+    }
+    default:
+      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
+  }
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function matchesMonthSpec(spec, year, month, day, weekday) {
+  const last = daysInMonth(year, month);
+  switch (spec.kind) {
+    case "day":
+      return spec.day === day;
+    case "last":
+      return day === last;
+    case "nth":
+      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
+    case "lastWeekday":
+      return weekday === spec.weekday && day + 7 > last;
+  }
+}
+function mondayOffset(date) {
+  return (weekdayOf(date) + 6) % 7;
+}
+function occursOn(rule, anchor, date) {
+  const elapsed = diffDays(date, anchor);
+  if (elapsed < 0) return false;
+  switch (rule.every) {
+    case "day":
+      return elapsed % rule.interval === 0;
+    case "week": {
+      if (!rule.weekdays.includes(weekdayOf(date))) return false;
+      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
+      return weeks % rule.interval === 0;
+    }
+    case "month": {
+      const [y, m, d] = date.split("-").map(Number);
+      const [ay, am] = anchor.split("-").map(Number);
+      const months = (y - ay) * 12 + (m - am);
+      if (months % rule.interval !== 0) return false;
+      const weekday = weekdayOf(date);
+      return rule.days.some((spec) => matchesMonthSpec(spec, y, m, d, weekday));
+    }
+  }
+}
+
+// src/core/schema.ts
+var SCHEMA_VERSION = 1;
+var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var PRIORITIES = ["high", "mid", "low", "chore"];
+var Reader = class {
+  constructor(path, fm) {
+    this.path = path;
+    this.fm = fm;
+  }
+  path;
+  fm;
+  problems = [];
+  problem(code, message, severity = "error") {
+    this.problems.push({ severity, path: this.path, code, message });
+  }
+  has(key) {
+    const v = this.fm[key];
+    return v !== void 0 && v !== null && v !== "";
+  }
+  string(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (typeof v === "string") return v.trim();
+    if (typeof v === "number") return String(v);
+    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    return null;
+  }
+  oneOf(key, values) {
+    const v = this.string(key);
+    if (v === null) return null;
+    if (values.includes(v)) return v;
+    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v}`);
+    return null;
+  }
+  date(key) {
+    if (!this.has(key)) return null;
+    const d = normalizeDate(this.fm[key]);
+    if (d === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
+    return d;
+  }
+  datetime(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+    if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return v.trim();
+    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
+    return null;
+  }
+  minutes(key) {
+    if (!this.has(key)) return null;
+    const v = this.fm[key];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
+    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v)}`);
+    return null;
+  }
+  list(key) {
+    if (!this.has(key)) return [];
+    const v = this.fm[key];
+    return Array.isArray(v) ? v.filter((x) => x !== null && x !== "") : [v];
+  }
+  strings(key) {
+    const out = [];
+    for (const v of this.list(key)) {
+      if (typeof v === "string" || typeof v === "number") {
+        const s = String(v).trim();
+        if (s && !out.includes(s)) out.push(s);
+      } else {
+        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
+      }
+    }
+    return out;
+  }
+  dates(key) {
+    const out = /* @__PURE__ */ new Set();
+    for (const v of this.list(key)) {
+      const d = normalizeDate(v);
+      if (d === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v)}`);
+      else out.add(d);
+    }
+    return [...out].sort();
+  }
+  ref(key, prefix) {
+    const v = this.string(key);
+    if (v === null) return null;
+    if (isId(v, prefix)) return v;
+    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v}`);
+    return null;
+  }
+  common(type, prefix) {
+    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
+      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
+    }
+    const id = this.string("id");
+    if (id === null || !isId(id, prefix)) {
+      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
+      return null;
+    }
+    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
+    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
+    return id;
+  }
+};
+function parseIssue(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("issue", "i");
+  const summary = r.string("summary") ?? "";
+  if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const status = r.oneOf("status", STATUSES);
+  if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (r.has("parent")) r.problem("legacy-parent", "parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u79FB\u884C 0135-sub-issues \u3067\u89AA\u306E\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306B\u5909\u63DB\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09");
+  const issue = {
+    path,
+    id: id ?? "",
+    summary,
+    status: status ?? "open",
+    statusDetail: r.string("status-detail") ?? "",
+    delegatedTo: r.ref("delegated_to", "m"),
+    priority: r.oneOf("priority", PRIORITIES),
+    labels: r.strings("label"),
+    related: r.strings("related"),
+    estimated: r.minutes("estimated"),
+    scheduled: r.dates("scheduled"),
+    softDeadline: r.date("soft_deadline"),
+    deadline: r.date("deadline"),
+    revisit: r.date("revisit"),
+    reviewed: r.date("reviewed"),
+    created: r.datetime("created")
+  };
+  return { value: id === null ? null : issue, problems: r.problems };
+}
+function parseRoutine(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("routine", "r");
+  let repeat = null;
+  const parsed = parseRepeat(fm.repeat);
+  if (parsed.ok) repeat = parsed.value;
+  else r.problem("invalid-repeat", parsed.error);
+  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
+  if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const routine = {
+    path,
+    id: id ?? "",
+    summary: r.string("summary") ?? "",
+    repeat,
+    start: r.date("start"),
+    end: r.date("end"),
+    active: active !== false,
+    group: r.string("group"),
+    priority: r.oneOf("priority", PRIORITIES),
+    labels: r.strings("label"),
+    estimated: r.minutes("estimated"),
+    created: r.datetime("created")
+  };
+  return { value: id === null ? null : routine, problems: r.problems };
+}
+function parseMember(path, fm) {
+  const r = new Reader(path, fm);
+  const id = r.common("member", "m");
+  const name = r.string("name") ?? "";
+  if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  const nickname = r.string("nickname") || name;
+  const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
+}
+
+// src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text) {
+  const fm = FRONTMATTER_RE.exec(text);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text.length) {
+    if (text.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text, blocks: [] };
+  const blocks = starts.map((s, i) => text.slice(s, starts[i + 1] ?? text.length));
+  return { head: text.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p) => ({ ...p, message: `\u30B5\u30D6 ${id}: ${p.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l, i) => i > 0 && l.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r = new Reader(path, fm);
+  const id = r.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r.oneOf("status", STATUSES);
+  if (status === null && !r.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r.ref("delegated_to", "m"),
+    start: r.date("start"),
+    end: r.date("end"),
+    scheduled: r.dates("scheduled"),
+    softDeadline: r.date("soft_deadline"),
+    deadline: r.date("deadline"),
+    estimated: r.minutes("estimated"),
+    dependsOn: r.strings("depends_on"),
+    created: r.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r.problems], id) };
+}
+function parseSubIssues(path, parent, text, parseYaml) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text).blocks) {
+    const r = parseBlock(path, parent, raw, blocks.length, parseYaml);
+    blocks.push({ raw: raw.trimEnd(), sub: r.sub });
+    problems.push(...r.problems);
+    if (r.sub) subs.push(r.sub);
+  }
+  return { subs, blocks, problems };
+}
+
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
 function parseWorklog(path, text) {
@@ -7482,6 +7855,8 @@ function parseWorklog(path, text) {
     const o = obj;
     if (typeof o.id !== "string" || !o.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
     if (typeof o.task_id !== "string" || !o.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o.sub === void 0 || o.sub === null ? null : o.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const fromMs = typeof o.from === "string" ? Date.parse(o.from) : Number.NaN;
     if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     let toMs = null;
@@ -7494,6 +7869,7 @@ function parseWorklog(path, text) {
       line,
       id: o.id,
       taskId: o.task_id,
+      sub,
       from: o.from,
       to: toMs === null ? null : o.to,
       description: typeof o.description === "string" ? o.description : "",
@@ -7502,6 +7878,9 @@ function parseWorklog(path, text) {
     });
   });
   return { entries, problems };
+}
+function workKey(e) {
+  return e.sub ? `${e.taskId}#${e.sub}` : e.taskId;
 }
 
 // src/core/board-log.ts
@@ -7681,290 +8060,6 @@ function prorateEffort(intervals, now2) {
   return result;
 }
 
-// src/core/repeat.ts
-function parseWeekday(s) {
-  const i = WEEKDAY_NAMES.indexOf(s.toLowerCase());
-  return i < 0 ? null : i;
-}
-function parseMonthSpec(value) {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
-  }
-  if (typeof value !== "string") return null;
-  const s = value.trim().toLowerCase();
-  if (/^\d+$/.test(s)) return parseMonthSpec(Number(s));
-  if (s === "last") return { kind: "last" };
-  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s);
-  if (nth) {
-    const weekday = parseWeekday(nth[2]);
-    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
-  }
-  const last = /^last-([a-z]{3})$/.exec(s);
-  if (last) {
-    const weekday = parseWeekday(last[1]);
-    return weekday === null ? null : { kind: "lastWeekday", weekday };
-  }
-  return null;
-}
-function asList(value) {
-  if (value === void 0 || value === null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-function parseRepeat(value) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
-  }
-  const raw = value;
-  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
-  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
-    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
-  }
-  const on = asList(raw.on);
-  switch (raw.every) {
-    case "day":
-      return { ok: true, value: { every: "day", interval } };
-    case "week": {
-      const weekdays = [];
-      for (const v of on) {
-        const w = typeof v === "string" ? parseWeekday(v.trim()) : null;
-        if (w === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v)}` };
-        if (!weekdays.includes(w)) weekdays.push(w);
-      }
-      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "week", interval, weekdays } };
-    }
-    case "month": {
-      const days = [];
-      for (const v of on) {
-        const spec = parseMonthSpec(v);
-        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v)}` };
-        days.push(spec);
-      }
-      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "month", interval, days } };
-    }
-    default:
-      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
-  }
-}
-function daysInMonth(year, month) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-function matchesMonthSpec(spec, year, month, day, weekday) {
-  const last = daysInMonth(year, month);
-  switch (spec.kind) {
-    case "day":
-      return spec.day === day;
-    case "last":
-      return day === last;
-    case "nth":
-      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
-    case "lastWeekday":
-      return weekday === spec.weekday && day + 7 > last;
-  }
-}
-function mondayOffset(date) {
-  return (weekdayOf(date) + 6) % 7;
-}
-function occursOn(rule, anchor, date) {
-  const elapsed = diffDays(date, anchor);
-  if (elapsed < 0) return false;
-  switch (rule.every) {
-    case "day":
-      return elapsed % rule.interval === 0;
-    case "week": {
-      if (!rule.weekdays.includes(weekdayOf(date))) return false;
-      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
-      return weeks % rule.interval === 0;
-    }
-    case "month": {
-      const [y, m, d] = date.split("-").map(Number);
-      const [ay, am] = anchor.split("-").map(Number);
-      const months = (y - ay) * 12 + (m - am);
-      if (months % rule.interval !== 0) return false;
-      const weekday = weekdayOf(date);
-      return rule.days.some((spec) => matchesMonthSpec(spec, y, m, d, weekday));
-    }
-  }
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m ? Number(m[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-
-// src/core/schema.ts
-var SCHEMA_VERSION = 1;
-var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
-var PRIORITIES = ["high", "mid", "low", "chore"];
-var Reader = class {
-  constructor(path, fm) {
-    this.path = path;
-    this.fm = fm;
-  }
-  path;
-  fm;
-  problems = [];
-  problem(code, message, severity = "error") {
-    this.problems.push({ severity, path: this.path, code, message });
-  }
-  has(key) {
-    const v = this.fm[key];
-    return v !== void 0 && v !== null && v !== "";
-  }
-  string(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (typeof v === "string") return v.trim();
-    if (typeof v === "number") return String(v);
-    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    return null;
-  }
-  oneOf(key, values) {
-    const v = this.string(key);
-    if (v === null) return null;
-    if (values.includes(v)) return v;
-    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v}`);
-    return null;
-  }
-  date(key) {
-    if (!this.has(key)) return null;
-    const d = normalizeDate(this.fm[key]);
-    if (d === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
-    return d;
-  }
-  datetime(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
-    if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return v.trim();
-    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
-    return null;
-  }
-  minutes(key) {
-    if (!this.has(key)) return null;
-    const v = this.fm[key];
-    if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
-    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v)}`);
-    return null;
-  }
-  list(key) {
-    if (!this.has(key)) return [];
-    const v = this.fm[key];
-    return Array.isArray(v) ? v.filter((x) => x !== null && x !== "") : [v];
-  }
-  strings(key) {
-    const out = [];
-    for (const v of this.list(key)) {
-      if (typeof v === "string" || typeof v === "number") {
-        const s = String(v).trim();
-        if (s && !out.includes(s)) out.push(s);
-      } else {
-        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
-      }
-    }
-    return out;
-  }
-  dates(key) {
-    const out = /* @__PURE__ */ new Set();
-    for (const v of this.list(key)) {
-      const d = normalizeDate(v);
-      if (d === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v)}`);
-      else out.add(d);
-    }
-    return [...out].sort();
-  }
-  ref(key, prefix) {
-    const v = this.string(key);
-    if (v === null) return null;
-    if (isId(v, prefix)) return v;
-    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v}`);
-    return null;
-  }
-  common(type, prefix) {
-    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
-      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
-    }
-    const id = this.string("id");
-    if (id === null || !isId(id, prefix)) {
-      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
-      return null;
-    }
-    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
-    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
-    return id;
-  }
-};
-function parseIssue(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("issue", "i");
-  const summary = r.string("summary") ?? "";
-  if (!summary) r.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
-  const status = r.oneOf("status", STATUSES);
-  if (status === null && !r.has("status")) r.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
-  if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
-  const issue = {
-    path,
-    id: id ?? "",
-    summary,
-    status: status ?? "open",
-    statusDetail: r.string("status-detail") ?? "",
-    delegatedTo: r.ref("delegated_to", "m"),
-    priority: r.oneOf("priority", PRIORITIES),
-    labels: r.strings("label"),
-    parent: r.ref("parent", "i"),
-    related: r.strings("related"),
-    estimated: r.minutes("estimated"),
-    scheduled: r.dates("scheduled"),
-    softDeadline: r.date("soft_deadline"),
-    deadline: r.date("deadline"),
-    revisit: r.date("revisit"),
-    reviewed: r.date("reviewed"),
-    created: r.datetime("created")
-  };
-  return { value: id === null ? null : issue, problems: r.problems };
-}
-function parseRoutine(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("routine", "r");
-  let repeat = null;
-  const parsed = parseRepeat(fm.repeat);
-  if (parsed.ok) repeat = parsed.value;
-  else r.problem("invalid-repeat", parsed.error);
-  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
-  if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const routine = {
-    path,
-    id: id ?? "",
-    summary: r.string("summary") ?? "",
-    repeat,
-    start: r.date("start"),
-    end: r.date("end"),
-    active: active !== false,
-    group: r.string("group"),
-    priority: r.oneOf("priority", PRIORITIES),
-    labels: r.strings("label"),
-    estimated: r.minutes("estimated"),
-    created: r.datetime("created")
-  };
-  return { value: id === null ? null : routine, problems: r.problems };
-}
-function parseMember(path, fm) {
-  const r = new Reader(path, fm);
-  const id = r.common("member", "m");
-  const name = r.string("name") ?? "";
-  if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  const nickname = r.string("nickname") || name;
-  const alias = (r.string("alias") ?? "").replace(/^@+/, "").trim();
-  if (id === null) return { value: null, problems: r.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -7992,10 +8087,12 @@ function parseStatusLog(path, text) {
     const atMs = typeof o.at === "string" ? Date.parse(o.at) : Number.NaN;
     if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (typeof o.task !== "string" || !o.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o.sub === void 0 || o.sub === null ? null : o.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-status-log", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (!isStatus(o.from) || !isStatus(o.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const via = STATUS_VIAS.includes(o.via) ? o.via : null;
     if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o.id, at: o.at, atMs, task: o.task, from: o.from, to: o.to, via });
+    entries.push({ path, line, id: o.id, at: o.at, atMs, task: o.task, sub, from: o.from, to: o.to, via });
   });
   return { entries, problems };
 }
@@ -8004,10 +8101,13 @@ function compareStatusLog(a, b) {
   if (a.path !== b.path) return a.path < b.path ? -1 : 1;
   return a.line - b.line;
 }
+function isIssueStatusLog(e) {
+  return !e.sub;
+}
 function statusBefore(logs, task, current) {
   for (let i = logs.length - 1; i >= 0; i--) {
     const e = logs[i];
-    if (e.task !== task) continue;
+    if (e.task !== task || !isIssueStatusLog(e)) continue;
     return e.to === current && e.from !== current ? e.from : null;
   }
   return null;
@@ -8015,7 +8115,7 @@ function statusBefore(logs, task, current) {
 function closedAtMap(logs, closedIds) {
   const ids = new Set(closedIds);
   const out = /* @__PURE__ */ new Map();
-  for (const e of logs) if (ids.has(e.task) && e.to === "closed") out.set(e.task, e.atMs);
+  for (const e of logs) if (ids.has(e.task) && isIssueStatusLog(e) && e.to === "closed") out.set(e.task, e.atMs);
   return out;
 }
 
@@ -8041,11 +8141,12 @@ var TaskIndex = class {
     for (const r of data2.routines) if (!this.routines.has(r.id)) this.routines.set(r.id, r);
     for (const m of data2.members) if (!this.members.has(m.id)) this.members.set(m.id, m);
     for (const i of data2.issues) this.issuesByPath.set(i.path, i);
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
+    for (const sub of data2.subIssues) {
+      if (this.subsByKey.has(sub.key)) continue;
+      this.subsByKey.set(sub.key, sub);
+      const list = this.subsOf.get(sub.parent) ?? [];
+      list.push(sub);
+      this.subsOf.set(sub.parent, list);
     }
   }
   data;
@@ -8053,33 +8154,33 @@ var TaskIndex = class {
   routines = /* @__PURE__ */ new Map();
   members = /* @__PURE__ */ new Map();
   issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
+  subsOf = /* @__PURE__ */ new Map();
+  subsByKey = /* @__PURE__ */ new Map();
+  /** その issue のサブ（md に書いた順。ADR-0135） */
+  subs(parentId) {
+    return this.subsOf.get(parentId) ?? [];
   }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
+  /** 合成キー `i-12#k3f9a2` のサブ */
+  sub(key) {
+    return this.subsByKey.get(key);
   }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a) => a.id === childId);
+  /** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+  migrated(oldId) {
+    if (this.issues.has(oldId)) return void 0;
+    return this.data.subIssues.find((s) => s.migratedFrom === oldId);
   }
-  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
   effortMinutes(now2) {
     const ms = prorateEffort(this.data.worklogs, now2);
     return new Map([...ms].map(([id, v]) => [id, v / 6e4]));
+  }
+  /**
+   * 按分後の実績（分）。記録の鍵（workKey）ごと: サブは合成キー、親の ID は親に直接付けた行だけ（ADR-0135）。
+   * 按分は同時に動いている区間の数で割るので、親の ID とそのサブの合計は effortMinutes の親の値と同じ
+   */
+  effortByKey(now2) {
+    const ms = prorateEffort(this.data.worklogs.map((l) => ({ taskId: workKey(l), fromMs: l.fromMs, toMs: l.toMs })), now2);
+    return new Map([...ms].map(([key, v]) => [key, v / 6e4]));
   }
   /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
   routineEffort(taskId, now2) {
@@ -8113,9 +8214,9 @@ var TaskIndex = class {
   order(date, group) {
     return lastOrder(this.data.orders, group, date);
   }
-  /** 記録中（to が空）の worklog */
-  running(taskId) {
-    return this.data.worklogs.filter((l) => l.toMs === null && (taskId === void 0 || l.taskId === taskId));
+  /** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
+  running(key) {
+    return this.data.worklogs.filter((l) => l.toMs === null && (key === void 0 || workKey(l) === key));
   }
   /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
   statusBefore(id) {
@@ -8125,7 +8226,7 @@ var TaskIndex = class {
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {
     const logs = this.data.statusLogs;
-    for (let i = logs.length - 1; i >= 0; i--) if (logs[i].task === id) return logs[i];
+    for (let i = logs.length - 1; i >= 0; i--) if (logs[i].task === id && isIssueStatusLog(logs[i])) return logs[i];
     return void 0;
   }
   /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
@@ -8284,11 +8385,27 @@ function fileKind(path) {
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
+function resolveMigrated(data2) {
+  const issueIds = new Set(data2.issues.map((i) => i.id));
+  const byOld = /* @__PURE__ */ new Map();
+  for (const s of data2.subIssues) {
+    if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
+  }
+  if (byOld.size === 0) return;
+  data2.worklogs = data2.worklogs.map((l) => {
+    const to = l.sub ? void 0 : byOld.get(l.taskId);
+    return to ? { ...l, taskId: to.parent, sub: to.id } : l;
+  });
+  data2.statusLogs = data2.statusLogs.map((e) => {
+    const to = e.sub ? void 0 : byOld.get(e.task);
+    return to ? { ...e, task: to.parent, sub: to.id } : e;
+  });
+}
 function collectVault(input) {
-  const data2 = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data2 = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
-  for (const { path, frontmatter } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
+  for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
@@ -8304,7 +8421,14 @@ function collectVault(input) {
     if (kind === "issue") {
       const r = parseIssue(path, frontmatter);
       problems.push(...r.problems);
-      if (r.value) data2.issues.push(r.value);
+      if (r.value) {
+        data2.issues.push(r.value);
+        if (text !== void 0 && input.parseYaml) {
+          const s = parseSubIssues(path, r.value.id, text, input.parseYaml);
+          problems.push(...s.problems);
+          data2.subIssues.push(...s.subs);
+        }
+      }
     } else if (kind === "routine") {
       const r = parseRoutine(path, frontmatter);
       problems.push(...r.problems);
@@ -8347,6 +8471,7 @@ function collectVault(input) {
     data2.statusLogs.push(...r.entries);
   }
   data2.statusLogs.sort(compareStatusLog);
+  resolveMigrated(data2);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems.push(...r.problems);
@@ -8370,9 +8495,9 @@ function walk(root2, dir = root2, out = []) {
   }
   return out;
 }
-var FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+var FRONTMATTER_RE2 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 function readFrontmatter(text) {
-  const m = FRONTMATTER_RE.exec(text);
+  const m = FRONTMATTER_RE2.exec(text);
   if (!m) return null;
   try {
     const value = (0, import_yaml.parse)(m[1]);
@@ -8383,7 +8508,7 @@ function readFrontmatter(text) {
 }
 function readVault(root2) {
   const paths = walk(root2);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
+  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
   for (const path of paths) {
     const kind = fileKind(path);
     if (kind === null) continue;
@@ -8393,7 +8518,7 @@ function readVault(root2) {
     else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
     else if (kind === "groups") input.groups = text;
-    else input.markdown.push({ path, frontmatter: readFrontmatter(text) });
+    else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...kind === "issue" ? { text } : {} });
   }
   const { data: data2, problems } = collectVault(input);
   return { data: data2, problems, paths };

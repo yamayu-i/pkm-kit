@@ -14,7 +14,6 @@ describe("parseIssue", () => {
 			delegated_to: "m-3",
 			priority: "mid",
 			label: ["仕事", "調査", "仕事"],
-			parent: "i-3",
 			related: ["i-5", "topics/foo.md"],
 			estimated: 120,
 			scheduled: ["2026-11-04", new Date("2026-11-02T00:00:00Z"), "2026-11-04"],
@@ -48,7 +47,7 @@ describe("parseIssue", () => {
 			summary: "x",
 			status: "doing",
 			priority: "urgent",
-			parent: "3",
+			delegated_to: "3",
 			deadline: "2026-02-30",
 			estimated: -5,
 		});

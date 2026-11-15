@@ -24,8 +24,7 @@ export interface Issue {
 	delegatedTo: string | null;
 	priority: Priority | null;
 	labels: string[];
-	parent: string | null;
-	/** issue の ID か、Vault ルートからのパス */
+	/** issue の ID、サブの合成キー（i-12#k3f9a2。ADR-0135）、Vault ルートからのパスのどれか */
 	related: string[];
 	/** 分 */
 	estimated: number | null;
@@ -74,9 +73,9 @@ export interface Parsed<T> {
 	problems: Problem[];
 }
 
-type Frontmatter = Record<string, unknown>;
+export type Frontmatter = Record<string, unknown>;
 
-class Reader {
+export class Reader {
 	readonly problems: Problem[] = [];
 	constructor(
 		private readonly path: string,
@@ -195,6 +194,8 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 	if (status === null && !r.has("status")) r.problem("missing-status", "status がありません");
 	// mid_due は soft_deadline に改名した（ADR-0032）。移行（0003-soft-deadline）で書き換える
 	if (r.has("mid_due")) r.problem("legacy-mid-due", "mid_due は soft_deadline に改名しました（ADR-0032）。キーを soft_deadline に直してください");
+	// 親子関係は廃止し、親の md のサブイシューにした（ADR-0135）。移行（0135-sub-issues）で変換する
+	if (r.has("parent")) r.problem("legacy-parent", "parent は廃止しました（ADR-0135）。移行 0135-sub-issues で親のサブイシューに変換してください（node .kit/migrate.mjs）");
 	const issue: Issue = {
 		path,
 		id: id ?? "",
@@ -204,7 +205,6 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 		delegatedTo: r.ref("delegated_to", "m"),
 		priority: r.oneOf("priority", PRIORITIES),
 		labels: r.strings("label"),
-		parent: r.ref("parent", "i"),
 		related: r.strings("related"),
 		estimated: r.minutes("estimated"),
 		scheduled: r.dates("scheduled"),

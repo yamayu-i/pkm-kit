@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // ../shared/src/legacy-data.ts
 function legacyDataPath(configDir, legacyId) {
@@ -861,6 +861,663 @@ function nextOrder(visible, previous) {
   return result;
 }
 
+// src/core/ids.ts
+function idNumber(id, prefix) {
+  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
+  return m3 ? Number(m3[1]) : null;
+}
+function isId(value, prefix) {
+  return typeof value === "string" && idNumber(value, prefix) !== null;
+}
+function nextIds(prefix, existing, count = 1) {
+  let max = 0;
+  for (const id of existing) {
+    const n2 = idNumber(id, prefix);
+    if (n2 !== null && n2 > max) max = n2;
+  }
+  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
+}
+function pathForId(id) {
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  return `${folder}/${id}.md`;
+}
+
+// src/core/repeat.ts
+function parseWeekday(s3) {
+  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
+  return i3 < 0 ? null : i3;
+}
+function parseMonthSpec(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
+  }
+  if (typeof value !== "string") return null;
+  const s3 = value.trim().toLowerCase();
+  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
+  if (s3 === "last") return { kind: "last" };
+  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
+  if (nth) {
+    const weekday = parseWeekday(nth[2]);
+    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
+  }
+  const last = /^last-([a-z]{3})$/.exec(s3);
+  if (last) {
+    const weekday = parseWeekday(last[1]);
+    return weekday === null ? null : { kind: "lastWeekday", weekday };
+  }
+  return null;
+}
+function asList(value) {
+  if (value === void 0 || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+function serializeMonthSpec(spec) {
+  switch (spec.kind) {
+    case "day":
+      return spec.day;
+    case "last":
+      return "last";
+    case "nth":
+      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
+    case "lastWeekday":
+      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
+  }
+}
+function serializeRepeat(rule) {
+  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
+  if (rule.every === "day") return { every: "day", ...interval };
+  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
+  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
+}
+function parseRepeat(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
+  }
+  const raw = value;
+  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
+  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
+    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
+  }
+  const on = asList(raw.on);
+  switch (raw.every) {
+    case "day":
+      return { ok: true, value: { every: "day", interval } };
+    case "week": {
+      const weekdays = [];
+      for (const v3 of on) {
+        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
+        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        if (!weekdays.includes(w3)) weekdays.push(w3);
+      }
+      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "week", interval, weekdays } };
+    }
+    case "month": {
+      const days = [];
+      for (const v3 of on) {
+        const spec = parseMonthSpec(v3);
+        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
+        days.push(spec);
+      }
+      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
+      return { ok: true, value: { every: "month", interval, days } };
+    }
+    default:
+      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
+  }
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function matchesMonthSpec(spec, year, month, day, weekday) {
+  const last = daysInMonth(year, month);
+  switch (spec.kind) {
+    case "day":
+      return spec.day === day;
+    case "last":
+      return day === last;
+    case "nth":
+      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
+    case "lastWeekday":
+      return weekday === spec.weekday && day + 7 > last;
+  }
+}
+function mondayOffset(date) {
+  return (weekdayOf(date) + 6) % 7;
+}
+function occursOn(rule, anchor, date) {
+  const elapsed = diffDays(date, anchor);
+  if (elapsed < 0) return false;
+  switch (rule.every) {
+    case "day":
+      return elapsed % rule.interval === 0;
+    case "week": {
+      if (!rule.weekdays.includes(weekdayOf(date))) return false;
+      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
+      return weeks % rule.interval === 0;
+    }
+    case "month": {
+      const [y3, m3, d3] = date.split("-").map(Number);
+      const [ay, am] = anchor.split("-").map(Number);
+      const months = (y3 - ay) * 12 + (m3 - am);
+      if (months % rule.interval !== 0) return false;
+      const weekday = weekdayOf(date);
+      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
+    }
+  }
+}
+var ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
+function describeRepeat(rule) {
+  const every = (unit, each) => rule.interval === 1 ? each : `Every ${rule.interval} ${unit}s`;
+  switch (rule.every) {
+    case "day":
+      return every("day", "Daily");
+    case "week":
+      return `${every("week", "Weekly")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
+    case "month": {
+      const days = rule.days.map((d3) => {
+        switch (d3.kind) {
+          case "day":
+            return `day ${d3.day}`;
+          case "last":
+            return "last day";
+          case "nth":
+            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
+          case "lastWeekday":
+            return `last ${WEEKDAY_NAMES[d3.weekday]}`;
+        }
+      });
+      return `${every("month", "Monthly")} ${days.join(", ")}`;
+    }
+  }
+}
+
+// src/core/schema.ts
+var SCHEMA_VERSION = 1;
+var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var PRIORITIES = ["high", "mid", "low", "chore"];
+var STATUS_DETAIL_MAX = 20;
+var Reader = class {
+  constructor(path, fm) {
+    this.path = path;
+    this.fm = fm;
+  }
+  path;
+  fm;
+  problems = [];
+  problem(code, message, severity = "error") {
+    this.problems.push({ severity, path: this.path, code, message });
+  }
+  has(key) {
+    const v3 = this.fm[key];
+    return v3 !== void 0 && v3 !== null && v3 !== "";
+  }
+  string(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "string") return v3.trim();
+    if (typeof v3 === "number") return String(v3);
+    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    return null;
+  }
+  oneOf(key, values) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (values.includes(v3)) return v3;
+    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
+    return null;
+  }
+  date(key) {
+    if (!this.has(key)) return null;
+    const d3 = normalizeDate(this.fm[key]);
+    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
+    return d3;
+  }
+  datetime(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
+    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
+    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
+    return null;
+  }
+  minutes(key) {
+    if (!this.has(key)) return null;
+    const v3 = this.fm[key];
+    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
+    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
+    return null;
+  }
+  list(key) {
+    if (!this.has(key)) return [];
+    const v3 = this.fm[key];
+    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
+  }
+  strings(key) {
+    const out = [];
+    for (const v3 of this.list(key)) {
+      if (typeof v3 === "string" || typeof v3 === "number") {
+        const s3 = String(v3).trim();
+        if (s3 && !out.includes(s3)) out.push(s3);
+      } else {
+        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
+      }
+    }
+    return out;
+  }
+  dates(key) {
+    const out = /* @__PURE__ */ new Set();
+    for (const v3 of this.list(key)) {
+      const d3 = normalizeDate(v3);
+      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
+      else out.add(d3);
+    }
+    return [...out].sort();
+  }
+  ref(key, prefix) {
+    const v3 = this.string(key);
+    if (v3 === null) return null;
+    if (isId(v3, prefix)) return v3;
+    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
+    return null;
+  }
+  common(type, prefix) {
+    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
+    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
+      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
+    }
+    const id = this.string("id");
+    if (id === null || !isId(id, prefix)) {
+      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
+      return null;
+    }
+    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
+    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
+    return id;
+  }
+};
+function parseIssue(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("issue", "i");
+  const summary = r3.string("summary") ?? "";
+  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
+  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (r3.has("parent")) r3.problem("legacy-parent", "parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u79FB\u884C 0135-sub-issues \u3067\u89AA\u306E\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306B\u5909\u63DB\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09");
+  const issue = {
+    path,
+    id: id ?? "",
+    summary,
+    status: status ?? "open",
+    statusDetail: r3.string("status-detail") ?? "",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    related: r3.strings("related"),
+    estimated: r3.minutes("estimated"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    revisit: r3.date("revisit"),
+    reviewed: r3.date("reviewed"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : issue, problems: r3.problems };
+}
+function parseRoutine(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("routine", "r");
+  let repeat = null;
+  const parsed = parseRepeat(fm.repeat);
+  if (parsed.ok) repeat = parsed.value;
+  else r3.problem("invalid-repeat", parsed.error);
+  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
+  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const routine = {
+    path,
+    id: id ?? "",
+    summary: r3.string("summary") ?? "",
+    repeat,
+    start: r3.date("start"),
+    end: r3.date("end"),
+    active: active !== false,
+    group: r3.string("group"),
+    priority: r3.oneOf("priority", PRIORITIES),
+    labels: r3.strings("label"),
+    estimated: r3.minutes("estimated"),
+    created: r3.datetime("created")
+  };
+  return { value: id === null ? null : routine, problems: r3.problems };
+}
+function parseMember(path, fm) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("member", "m");
+  const name = r3.string("name") ?? "";
+  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
+  const nickname = r3.string("nickname") || name;
+  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
+}
+
+// src/core/sub-issue.ts
+var SUB_ISSUE_MARKER = "<!-- sub-issue";
+var BLOCK_END = "-->";
+var SubIssueFormatError = class extends Error {
+};
+var SUB_ID_RE = /^[a-z0-9]{6}$/;
+var SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+function isSubId(value) {
+  return typeof value === "string" && SUB_ID_RE.test(value);
+}
+function subKey(parent, id) {
+  return `${parent}#${id}`;
+}
+function parseSubKey(key) {
+  const at = key.indexOf("#");
+  if (at < 0) return null;
+  const parent = key.slice(0, at);
+  const id = key.slice(at + 1);
+  return isId(parent, "i") && isSubId(id) ? { parent, id } : null;
+}
+function newSubId(existing, random = Math.random) {
+  const taken = new Set(existing);
+  for (; ; ) {
+    let id = "";
+    for (let i3 = 0; i3 < 6; i3++) id += SUB_ID_CHARS[Math.min(SUB_ID_CHARS.length - 1, Math.floor(random() * SUB_ID_CHARS.length))];
+    if (!taken.has(id)) return id;
+  }
+}
+var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
+function splitSubIssueText(text) {
+  const fm = FRONTMATTER_RE.exec(text);
+  const from = fm ? fm[0].length : 0;
+  const starts = [];
+  let pos = from;
+  while (pos <= text.length) {
+    if (text.startsWith(SUB_ISSUE_MARKER, pos)) {
+      const next = text[pos + SUB_ISSUE_MARKER.length];
+      if (next === void 0 || next === "\n" || next === "\r" || next === " ") starts.push(pos);
+    }
+    const nl = text.indexOf("\n", pos);
+    if (nl < 0) break;
+    pos = nl + 1;
+  }
+  if (starts.length === 0) return { head: text, blocks: [] };
+  const blocks = starts.map((s3, i3) => text.slice(s3, starts[i3 + 1] ?? text.length));
+  return { head: text.slice(0, starts[0]), blocks };
+}
+function prefixed(problems, id) {
+  return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
+}
+function parseBlock(path, parent, raw, order, parseYaml3) {
+  const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
+  const lines = raw.split(/\r?\n/);
+  const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
+  if (endLine < 0) return invalid(`\u9589\u3058\u306E ${BLOCK_END} \u304C\u3042\u308A\u307E\u305B\u3093`);
+  const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
+  let fm;
+  try {
+    fm = parseYaml3(yamlText);
+  } catch {
+    return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  if (typeof fm !== "object" || fm === null || Array.isArray(fm)) return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  const r3 = new Reader(path, fm);
+  const id = r3.string("id");
+  if (!isSubId(id)) return invalid(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(id)}`);
+  const extra = [];
+  const summary = r3.string("summary") ?? "";
+  if (!summary) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "summary \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const status = r3.oneOf("status", STATUSES);
+  if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
+  const migratedFrom = r3.ref("migrated_from", "i");
+  const sub = {
+    parent,
+    path,
+    id,
+    key: subKey(parent, id),
+    order,
+    summary,
+    status: status ?? "open",
+    delegatedTo: r3.ref("delegated_to", "m"),
+    start: r3.date("start"),
+    end: r3.date("end"),
+    scheduled: r3.dates("scheduled"),
+    softDeadline: r3.date("soft_deadline"),
+    deadline: r3.date("deadline"),
+    estimated: r3.minutes("estimated"),
+    dependsOn: r3.strings("depends_on"),
+    created: r3.datetime("created"),
+    migratedFrom,
+    body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
+  };
+  return { sub, problems: prefixed([...extra, ...r3.problems], id) };
+}
+function parseSubIssues(path, parent, text, parseYaml3) {
+  const blocks = [];
+  const problems = [];
+  const subs = [];
+  for (const raw of splitSubIssueText(text).blocks) {
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml3);
+    blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
+    problems.push(...r3.problems);
+    if (r3.sub) subs.push(r3.sub);
+  }
+  return { subs, blocks, problems };
+}
+function yamlString(s3) {
+  return JSON.stringify(s3);
+}
+function formatSubIssue(sub) {
+  if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
+  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
+  const put = (key, value) => {
+    if (value !== null) lines.push(`${key}: ${value}`);
+  };
+  put("delegated_to", sub.delegatedTo);
+  put("start", sub.start);
+  put("end", sub.end);
+  if (sub.scheduled.length > 0) put("scheduled", JSON.stringify(sub.scheduled));
+  put("soft_deadline", sub.softDeadline);
+  put("deadline", sub.deadline);
+  put("estimated", sub.estimated === null ? null : String(sub.estimated));
+  if (sub.dependsOn.length > 0) put("depends_on", JSON.stringify(sub.dependsOn));
+  put("created", sub.created);
+  put("migrated_from", sub.migratedFrom);
+  for (const line of lines.slice(1)) {
+    if (line.includes(BLOCK_END)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B ${BLOCK_END} \u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
+    if (/[\r\n]/.test(line)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
+  }
+  const body = sub.body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+  if (body.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) {
+    throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u672C\u6587\u306E\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`);
+  }
+  lines.push(BLOCK_END);
+  return `${lines.join("\n")}
+${body ? `${body}
+` : ""}`;
+}
+function replaceSubIssues(text, blocks) {
+  const { head, blocks: existing } = splitSubIssueText(text);
+  if (blocks.length === 0) return existing.length === 0 ? text : `${head.trimEnd()}
+`;
+  const parts = blocks.map((b2) => typeof b2 === "string" ? `${b2.trimEnd()}
+` : formatSubIssue(b2));
+  return `${head.trimEnd()}
+
+${parts.join("\n")}`;
+}
+function updateSubIssueText(path, parent, text, id, patch, parseYaml3) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+  const at = blocks.findIndex((b2) => b2.sub?.id === id);
+  if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  const before = blocks[at].sub;
+  const after = { ...before, ...patch, id: before.id };
+  const next = replaceSubIssues(
+    text,
+    blocks.map((b2, i3) => i3 === at ? after : b2.sub ?? b2.raw)
+  );
+  return { text: next, before, after };
+}
+function rebuild(path, parent, text, parseYaml3, edit) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+  const items = blocks.map((b2) => b2.sub ?? b2.raw);
+  edit(
+    items,
+    blocks.map((b2) => b2.sub?.id ?? null)
+  );
+  return replaceSubIssues(text, items);
+}
+function indexOfSub(ids, parent, id) {
+  const at = ids.indexOf(id);
+  if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  return at;
+}
+function insertSubIssuesText(path, parent, text, subs, parseYaml3, at) {
+  return rebuild(path, parent, text, parseYaml3, (items) => {
+    const pos = at ?? items.length;
+    if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${pos}`);
+    items.splice(pos, 0, ...subs);
+  });
+}
+function moveSubIssueText(path, parent, text, id, to, parseYaml3) {
+  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+    const from = indexOfSub(ids, parent, id);
+    if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length - 1} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${to}`);
+    const [moved] = items.splice(from, 1);
+    items.splice(to, 0, moved);
+  });
+}
+function removeSubIssueText(path, parent, text, id, parseYaml3) {
+  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+    items.splice(indexOfSub(ids, parent, id), 1);
+  });
+}
+function checkSubIssues(subs, memberIds) {
+  const errors = [];
+  const ids = /* @__PURE__ */ new Set();
+  const byId = new Map(subs.map((s3) => [s3.id, s3]));
+  const isDate = (v3) => v3 === null || typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3) && !Number.isNaN(Date.parse(v3));
+  for (const s3 of subs) {
+    const where = `\u30B5\u30D6 ${s3.id}`;
+    if (ids.has(s3.id)) errors.push(`${where}: id \u304C\u91CD\u306A\u3063\u3066\u3044\u307E\u3059`);
+    ids.add(s3.id);
+    if (!s3.summary.trim()) errors.push(`${where}: summary \u304C\u3042\u308A\u307E\u305B\u3093`);
+    if (!STATUSES.includes(s3.status)) errors.push(`${where}: status \u306F ${STATUSES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${s3.status}`);
+    for (const [key, value] of [
+      ["start", s3.start],
+      ["end", s3.end],
+      ["soft_deadline", s3.softDeadline],
+      ["deadline", s3.deadline]
+    ]) {
+      if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
+    }
+    for (const d3 of s3.scheduled) if (!isDate(d3)) errors.push(`${where}: scheduled \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${d3}`);
+    if (s3.start !== null && s3.end !== null && s3.end < s3.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
+    if (s3.estimated !== null && !(typeof s3.estimated === "number" && Number.isFinite(s3.estimated) && s3.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    if (s3.status === "delegated" && s3.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
+    if (s3.delegatedTo !== null) {
+      if (!memberIds.has(s3.delegatedTo)) errors.push(`${where}: delegated_to \u306E ${s3.delegatedTo} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (s3.status !== "delegated") errors.push(`${where}: delegated_to \u306F status \u304C delegated \u306E\u3068\u304D\u3060\u3051\u4ED8\u3051\u3089\u308C\u307E\u3059`);
+    }
+    for (const d3 of s3.dependsOn) {
+      if (d3 === s3.id) errors.push(`${where}: depends_on \u306B\u81EA\u5206\u81EA\u8EAB\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093`);
+      else if (!byId.has(d3)) errors.push(`${where}: depends_on \u306E ${d3} \u304C\u540C\u3058 issue \u306E\u4E2D\u306B\u3042\u308A\u307E\u305B\u3093`);
+    }
+    try {
+      formatSubIssue(s3);
+    } catch (e3) {
+      errors.push(`${where}: ${e3.message}`);
+    }
+  }
+  for (const s3 of subs) {
+    const seen = /* @__PURE__ */ new Set();
+    const stack2 = s3.dependsOn.filter((d3) => d3 !== s3.id);
+    let cycle = false;
+    while (stack2.length > 0 && !cycle) {
+      const id = stack2.pop();
+      if (id === s3.id) cycle = true;
+      else if (!seen.has(id)) {
+        seen.add(id);
+        stack2.push(...byId.get(id)?.dependsOn ?? []);
+      }
+    }
+    if (cycle) errors.push(`\u30B5\u30D6 ${s3.id}: depends_on \u304C\u5FAA\u74B0\u3057\u3066\u3044\u307E\u3059`);
+  }
+  return errors;
+}
+function newSubIssueInput(item, id, created) {
+  return {
+    id,
+    summary: String(item.summary ?? "").trim(),
+    status: item.status ?? "open",
+    delegatedTo: item.delegatedTo ?? null,
+    start: item.start ?? null,
+    end: item.end ?? null,
+    scheduled: [...new Set(item.scheduled ?? [])].sort(),
+    softDeadline: item.softDeadline ?? null,
+    deadline: item.deadline ?? null,
+    estimated: item.estimated ?? null,
+    dependsOn: item.dependsOn ?? [],
+    created,
+    migratedFrom: null,
+    body: item.body ?? ""
+  };
+}
+function dependentsOf(subs, id) {
+  return subs.filter((s3) => s3.dependsOn.includes(id)).map((s3) => s3.id);
+}
+var isDone = (s3) => s3.status === "closed" || s3.status === "canceled";
+function visibleSubs(subs, showClosed) {
+  return showClosed ? [...subs] : subs.filter((s3) => !isDone(s3));
+}
+function subCounts(subs) {
+  const closed = subs.filter(isDone).length;
+  return { open: subs.length - closed, total: subs.length, closed };
+}
+var shortDate = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
+function subHint(sub, today) {
+  if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}\u2013${sub.end ? shortDate(sub.end) : ""}`;
+  const next = sub.scheduled.find((d3) => d3 >= today);
+  if (next) return shortDate(next);
+  const due = sub.deadline ?? sub.softDeadline;
+  return due ? `Due ${shortDate(due)}` : null;
+}
+function dropPosition(ids, dragged, before) {
+  const from = ids.indexOf(dragged);
+  if (from < 0) return null;
+  const rest = ids.filter((_2, i3) => i3 !== from);
+  const to = before === null ? rest.length : rest.indexOf(before);
+  if (to < 0 || to === from) return null;
+  return to;
+}
+function stepPosition(ids, visible, id, dir) {
+  const at = visible.indexOf(id);
+  const neighbor = visible[at + dir];
+  if (at < 0 || neighbor === void 0) return null;
+  const from = ids.indexOf(id);
+  const rest = ids.filter((_2, i3) => i3 !== from);
+  const n2 = rest.indexOf(neighbor);
+  const to = dir < 0 ? n2 : n2 + 1;
+  return to === from ? null : to;
+}
+function splitQuickAdd(text) {
+  return text.split(/\r?\n/).map((l3) => l3.trim()).filter((l3) => l3 !== "");
+}
+function subAreaStartLine(text) {
+  const { head, blocks } = splitSubIssueText(text);
+  if (blocks.length === 0) return null;
+  return head.split("\n").length - 1;
+}
+function touchedSubErrors(subs, touched, memberIds) {
+  return checkSubIssues(subs, memberIds).filter((e3) => touched.some((id) => e3.startsWith(`\u30B5\u30D6 ${id}: `)));
+}
+function normalizeSubPatch(patch) {
+  return patch.status !== void 0 && patch.status !== "delegated" && patch.delegatedTo === void 0 ? { ...patch, delegatedTo: null } : patch;
+}
+
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
 function sanitizeDeviceName(name) {
@@ -893,6 +1550,8 @@ function parseWorklog(path, text) {
     const o3 = obj;
     if (typeof o3.id !== "string" || !o3.id) return problem(line, "invalid-worklog", "id \u304C\u3042\u308A\u307E\u305B\u3093");
     if (typeof o3.task_id !== "string" || !o3.task_id) return problem(line, "invalid-worklog", "task_id \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
     if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     let toMs2 = null;
@@ -905,6 +1564,7 @@ function parseWorklog(path, text) {
       line,
       id: o3.id,
       taskId: o3.task_id,
+      sub,
       from: o3.from,
       to: toMs2 === null ? null : o3.to,
       description: typeof o3.description === "string" ? o3.description : "",
@@ -915,7 +1575,14 @@ function parseWorklog(path, text) {
   return { entries, problems };
 }
 function serializeWorklogEntry(e3) {
-  return JSON.stringify({ id: e3.id, task_id: e3.taskId, from: e3.from, to: e3.to, description: e3.description });
+  return JSON.stringify({ id: e3.id, task_id: e3.taskId, ...e3.sub ? { sub: e3.sub } : {}, from: e3.from, to: e3.to, description: e3.description });
+}
+function workKey(e3) {
+  return e3.sub ? `${e3.taskId}#${e3.sub}` : e3.taskId;
+}
+function workTarget(key) {
+  const parsed = parseSubKey(key);
+  return parsed ? { taskId: parsed.parent, sub: parsed.id } : { taskId: key, sub: null };
 }
 function replaceWorklogLine(text, entry, next) {
   const lines = text.split("\n");
@@ -930,7 +1597,7 @@ function replaceWorklogLine(text, entry, next) {
     throw new Error("worklog \u306E\u30D5\u30A1\u30A4\u30EB\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u958B\u304D\u76F4\u3057\u3066\u304B\u3089\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044");
   }
   if (next === null) lines.splice(i3, 1);
-  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, ...next });
+  else lines[i3] = serializeWorklogEntry({ id: entry.id, taskId: entry.taskId, sub: entry.sub ?? null, ...next });
   return lines.join("\n");
 }
 var MIN_WORKLOG_MS = 6e4;
@@ -1160,346 +1827,6 @@ function prorateEffort(intervals, now) {
   return result;
 }
 
-// src/core/repeat.ts
-function parseWeekday(s3) {
-  const i3 = WEEKDAY_NAMES.indexOf(s3.toLowerCase());
-  return i3 < 0 ? null : i3;
-}
-function parseMonthSpec(value) {
-  if (typeof value === "number") {
-    return Number.isInteger(value) && value >= 1 && value <= 31 ? { kind: "day", day: value } : null;
-  }
-  if (typeof value !== "string") return null;
-  const s3 = value.trim().toLowerCase();
-  if (/^\d+$/.test(s3)) return parseMonthSpec(Number(s3));
-  if (s3 === "last") return { kind: "last" };
-  const nth = /^([1-5])(?:th|st|nd|rd)-([a-z]{3})$/.exec(s3);
-  if (nth) {
-    const weekday = parseWeekday(nth[2]);
-    return weekday === null ? null : { kind: "nth", n: Number(nth[1]), weekday };
-  }
-  const last = /^last-([a-z]{3})$/.exec(s3);
-  if (last) {
-    const weekday = parseWeekday(last[1]);
-    return weekday === null ? null : { kind: "lastWeekday", weekday };
-  }
-  return null;
-}
-function asList(value) {
-  if (value === void 0 || value === null) return [];
-  return Array.isArray(value) ? value : [value];
-}
-function serializeMonthSpec(spec) {
-  switch (spec.kind) {
-    case "day":
-      return spec.day;
-    case "last":
-      return "last";
-    case "nth":
-      return `${spec.n}th-${WEEKDAY_NAMES[spec.weekday]}`;
-    case "lastWeekday":
-      return `last-${WEEKDAY_NAMES[spec.weekday]}`;
-  }
-}
-function serializeRepeat(rule) {
-  const interval = rule.interval > 1 ? { interval: rule.interval } : {};
-  if (rule.every === "day") return { every: "day", ...interval };
-  if (rule.every === "week") return { every: "week", ...interval, on: rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]) };
-  return { every: "month", ...interval, on: rule.days.map(serializeMonthSpec) };
-}
-function parseRepeat(value) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return { ok: false, error: "repeat \u304C\u30AA\u30D6\u30B8\u30A7\u30AF\u30C8\u3067\u306F\u3042\u308A\u307E\u305B\u3093" };
-  }
-  const raw = value;
-  const interval = raw.interval === void 0 || raw.interval === null ? 1 : raw.interval;
-  if (typeof interval !== "number" || !Number.isInteger(interval) || interval < 1) {
-    return { ok: false, error: `repeat.interval \u306F 1 \u4EE5\u4E0A\u306E\u6574\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.interval)}` };
-  }
-  const on = asList(raw.on);
-  switch (raw.every) {
-    case "day":
-      return { ok: true, value: { every: "day", interval } };
-    case "week": {
-      const weekdays = [];
-      for (const v3 of on) {
-        const w3 = typeof v3 === "string" ? parseWeekday(v3.trim()) : null;
-        if (w3 === null) return { ok: false, error: `repeat.on \u306E\u66DC\u65E5\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        if (!weekdays.includes(w3)) weekdays.push(w3);
-      }
-      if (weekdays.length === 0) return { ok: false, error: "every: week \u306B\u306F repeat.on \u3067\u66DC\u65E5\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "week", interval, weekdays } };
-    }
-    case "month": {
-      const days = [];
-      for (const v3 of on) {
-        const spec = parseMonthSpec(v3);
-        if (spec === null) return { ok: false, error: `repeat.on \u306E\u65E5\u4ED8\u304C\u8AAD\u3081\u307E\u305B\u3093: ${String(v3)}` };
-        days.push(spec);
-      }
-      if (days.length === 0) return { ok: false, error: "every: month \u306B\u306F repeat.on \u3067\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044" };
-      return { ok: true, value: { every: "month", interval, days } };
-    }
-    default:
-      return { ok: false, error: `repeat.every \u306F day / week / month \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(raw.every)}` };
-  }
-}
-function daysInMonth(year, month) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-function matchesMonthSpec(spec, year, month, day, weekday) {
-  const last = daysInMonth(year, month);
-  switch (spec.kind) {
-    case "day":
-      return spec.day === day;
-    case "last":
-      return day === last;
-    case "nth":
-      return weekday === spec.weekday && Math.ceil(day / 7) === spec.n;
-    case "lastWeekday":
-      return weekday === spec.weekday && day + 7 > last;
-  }
-}
-function mondayOffset(date) {
-  return (weekdayOf(date) + 6) % 7;
-}
-function occursOn(rule, anchor, date) {
-  const elapsed = diffDays(date, anchor);
-  if (elapsed < 0) return false;
-  switch (rule.every) {
-    case "day":
-      return elapsed % rule.interval === 0;
-    case "week": {
-      if (!rule.weekdays.includes(weekdayOf(date))) return false;
-      const weeks = (elapsed + mondayOffset(anchor) - mondayOffset(date)) / 7;
-      return weeks % rule.interval === 0;
-    }
-    case "month": {
-      const [y3, m3, d3] = date.split("-").map(Number);
-      const [ay, am] = anchor.split("-").map(Number);
-      const months = (y3 - ay) * 12 + (m3 - am);
-      if (months % rule.interval !== 0) return false;
-      const weekday = weekdayOf(date);
-      return rule.days.some((spec) => matchesMonthSpec(spec, y3, m3, d3, weekday));
-    }
-  }
-}
-var ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
-function describeRepeat(rule) {
-  const every = (unit, each) => rule.interval === 1 ? each : `Every ${rule.interval} ${unit}s`;
-  switch (rule.every) {
-    case "day":
-      return every("day", "Daily");
-    case "week":
-      return `${every("week", "Weekly")} ${rule.weekdays.map((w3) => WEEKDAY_NAMES[w3]).join(", ")}`;
-    case "month": {
-      const days = rule.days.map((d3) => {
-        switch (d3.kind) {
-          case "day":
-            return `day ${d3.day}`;
-          case "last":
-            return "last day";
-          case "nth":
-            return `${ORDINAL[d3.n]} ${WEEKDAY_NAMES[d3.weekday]}`;
-          case "lastWeekday":
-            return `last ${WEEKDAY_NAMES[d3.weekday]}`;
-        }
-      });
-      return `${every("month", "Monthly")} ${days.join(", ")}`;
-    }
-  }
-}
-
-// src/core/ids.ts
-function idNumber(id, prefix) {
-  const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
-  return m3 ? Number(m3[1]) : null;
-}
-function isId(value, prefix) {
-  return typeof value === "string" && idNumber(value, prefix) !== null;
-}
-function nextIds(prefix, existing, count = 1) {
-  let max = 0;
-  for (const id of existing) {
-    const n2 = idNumber(id, prefix);
-    if (n2 !== null && n2 > max) max = n2;
-  }
-  return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
-}
-function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
-  return `${folder}/${id}.md`;
-}
-
-// src/core/schema.ts
-var SCHEMA_VERSION = 1;
-var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
-var PRIORITIES = ["high", "mid", "low", "chore"];
-var STATUS_DETAIL_MAX = 20;
-var Reader = class {
-  constructor(path, fm) {
-    this.path = path;
-    this.fm = fm;
-  }
-  path;
-  fm;
-  problems = [];
-  problem(code, message, severity = "error") {
-    this.problems.push({ severity, path: this.path, code, message });
-  }
-  has(key) {
-    const v3 = this.fm[key];
-    return v3 !== void 0 && v3 !== null && v3 !== "";
-  }
-  string(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "string") return v3.trim();
-    if (typeof v3 === "number") return String(v3);
-    this.problem("invalid-field", `${key} \u304C\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    return null;
-  }
-  oneOf(key, values) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (values.includes(v3)) return v3;
-    this.problem("invalid-field", `${key} \u306F ${values.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${v3}`);
-    return null;
-  }
-  date(key) {
-    if (!this.has(key)) return null;
-    const d3 = normalizeDate(this.fm[key]);
-    if (d3 === null) this.problem("invalid-date", `${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm[key])}`);
-    return d3;
-  }
-  datetime(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (v3 instanceof Date && !Number.isNaN(v3.getTime())) return v3.toISOString();
-    if (typeof v3 === "string" && !Number.isNaN(Date.parse(v3))) return v3.trim();
-    this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
-    return null;
-  }
-  minutes(key) {
-    if (!this.has(key)) return null;
-    const v3 = this.fm[key];
-    if (typeof v3 === "number" && Number.isFinite(v3) && v3 >= 0) return v3;
-    this.problem("invalid-field", `${key} \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(v3)}`);
-    return null;
-  }
-  list(key) {
-    if (!this.has(key)) return [];
-    const v3 = this.fm[key];
-    return Array.isArray(v3) ? v3.filter((x2) => x2 !== null && x2 !== "") : [v3];
-  }
-  strings(key) {
-    const out = [];
-    for (const v3 of this.list(key)) {
-      if (typeof v3 === "string" || typeof v3 === "number") {
-        const s3 = String(v3).trim();
-        if (s3 && !out.includes(s3)) out.push(s3);
-      } else {
-        this.problem("invalid-field", `${key} \u306B\u6587\u5B57\u5217\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059`);
-      }
-    }
-    return out;
-  }
-  dates(key) {
-    const out = /* @__PURE__ */ new Set();
-    for (const v3 of this.list(key)) {
-      const d3 = normalizeDate(v3);
-      if (d3 === null) this.problem("invalid-date", `${key} \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${String(v3)}`);
-      else out.add(d3);
-    }
-    return [...out].sort();
-  }
-  ref(key, prefix) {
-    const v3 = this.string(key);
-    if (v3 === null) return null;
-    if (isId(v3, prefix)) return v3;
-    this.problem("invalid-ref", `${key} \u304C ${prefix}-N \u306E ID \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${v3}`);
-    return null;
-  }
-  common(type, prefix) {
-    if (this.fm.type !== type) this.problem("invalid-type", `type \u304C ${type} \u3067\u306F\u3042\u308A\u307E\u305B\u3093`);
-    if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
-      this.problem("unknown-schema", `schema ${String(this.fm.schema)} \u306F\u6271\u3048\u307E\u305B\u3093\uFF08${SCHEMA_VERSION} \u306E\u307F\uFF09`);
-    }
-    const id = this.string("id");
-    if (id === null || !isId(id, prefix)) {
-      this.problem("invalid-id", `id \u304C ${prefix}-N \u306E\u5F62\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(this.fm.id)}`);
-      return null;
-    }
-    const expected = this.path.replace(/^.*\//, "").replace(/\.md$/, "");
-    if (expected !== id) this.problem("id-path-mismatch", `id\uFF08${id}\uFF09\u3068\u30D5\u30A1\u30A4\u30EB\u540D\uFF08${expected}\uFF09\u304C\u9055\u3044\u307E\u3059`);
-    return id;
-  }
-};
-function parseIssue(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("issue", "i");
-  const summary = r3.string("summary") ?? "";
-  if (!summary) r3.problem("missing-summary", "summary \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
-  const status = r3.oneOf("status", STATUSES);
-  if (status === null && !r3.has("status")) r3.problem("missing-status", "status \u304C\u3042\u308A\u307E\u305B\u3093");
-  if (r3.has("mid_due")) r3.problem("legacy-mid-due", "mid_due \u306F soft_deadline \u306B\u6539\u540D\u3057\u307E\u3057\u305F\uFF08ADR-0032\uFF09\u3002\u30AD\u30FC\u3092 soft_deadline \u306B\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
-  const issue = {
-    path,
-    id: id ?? "",
-    summary,
-    status: status ?? "open",
-    statusDetail: r3.string("status-detail") ?? "",
-    delegatedTo: r3.ref("delegated_to", "m"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    parent: r3.ref("parent", "i"),
-    related: r3.strings("related"),
-    estimated: r3.minutes("estimated"),
-    scheduled: r3.dates("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
-    revisit: r3.date("revisit"),
-    reviewed: r3.date("reviewed"),
-    created: r3.datetime("created")
-  };
-  return { value: id === null ? null : issue, problems: r3.problems };
-}
-function parseRoutine(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("routine", "r");
-  let repeat = null;
-  const parsed = parseRepeat(fm.repeat);
-  if (parsed.ok) repeat = parsed.value;
-  else r3.problem("invalid-repeat", parsed.error);
-  const active = fm.active === void 0 || fm.active === null ? true : fm.active;
-  if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
-  const routine = {
-    path,
-    id: id ?? "",
-    summary: r3.string("summary") ?? "",
-    repeat,
-    start: r3.date("start"),
-    end: r3.date("end"),
-    active: active !== false,
-    group: r3.string("group"),
-    priority: r3.oneOf("priority", PRIORITIES),
-    labels: r3.strings("label"),
-    estimated: r3.minutes("estimated"),
-    created: r3.datetime("created")
-  };
-  return { value: id === null ? null : routine, problems: r3.problems };
-}
-function parseMember(path, fm) {
-  const r3 = new Reader(path, fm);
-  const id = r3.common("member", "m");
-  const name = r3.string("name") ?? "";
-  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093");
-  const nickname = r3.string("nickname") || name;
-  const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
-  if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -1514,11 +1841,11 @@ function newStatusLogId(random = Math.random) {
   return `st_${Array.from({ length: 10 }, () => chars[Math.floor(random() * chars.length)]).join("")}`;
 }
 function serializeStatusLogEntry(e3) {
-  return JSON.stringify({ id: e3.id, at: e3.at, task: e3.task, from: e3.from, to: e3.to, via: e3.via });
+  return JSON.stringify({ id: e3.id, at: e3.at, task: e3.task, ...e3.sub ? { sub: e3.sub } : {}, from: e3.from, to: e3.to, via: e3.via });
 }
-function statusLogLine(task, from, to, via, at, random = Math.random) {
+function statusLogLine(task, from, to, via, at, random = Math.random, sub = null) {
   if (from === to) return null;
-  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, from, to, via });
+  return serializeStatusLogEntry({ id: newStatusLogId(random), at: at.toISOString(), task, sub, from, to, via });
 }
 var isStatus = (v3) => typeof v3 === "string" && STATUSES.includes(v3);
 function parseStatusLog(path, text) {
@@ -1544,10 +1871,12 @@ function parseStatusLog(path, text) {
     const atMs = typeof o3.at === "string" ? Date.parse(o3.at) : Number.NaN;
     if (Number.isNaN(atMs)) return problem(line, "invalid-status-log", "at \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (typeof o3.task !== "string" || !o3.task) return problem(line, "invalid-status-log", "task \u304C\u3042\u308A\u307E\u305B\u3093");
+    const sub = o3.sub === void 0 || o3.sub === null ? null : o3.sub;
+    if (sub !== null && !isSubId(sub)) return problem(line, "invalid-status-log", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     if (!isStatus(o3.from) || !isStatus(o3.to)) return problem(line, "invalid-status-log", "from / to \u304C status \u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const via = STATUS_VIAS.includes(o3.via) ? o3.via : null;
     if (via === null) return problem(line, "invalid-status-log", "via \u304C\u4E0D\u6B63\u3067\u3059");
-    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, from: o3.from, to: o3.to, via });
+    entries.push({ path, line, id: o3.id, at: o3.at, atMs, task: o3.task, sub, from: o3.from, to: o3.to, via });
   });
   return { entries, problems };
 }
@@ -1556,10 +1885,13 @@ function compareStatusLog(a3, b2) {
   if (a3.path !== b2.path) return a3.path < b2.path ? -1 : 1;
   return a3.line - b2.line;
 }
+function isIssueStatusLog(e3) {
+  return !e3.sub;
+}
 function statusBefore(logs, task, current) {
   for (let i3 = logs.length - 1; i3 >= 0; i3--) {
     const e3 = logs[i3];
-    if (e3.task !== task) continue;
+    if (e3.task !== task || !isIssueStatusLog(e3)) continue;
     return e3.to === current && e3.from !== current ? e3.from : null;
   }
   return null;
@@ -1567,7 +1899,7 @@ function statusBefore(logs, task, current) {
 function closedAtMap(logs, closedIds) {
   const ids = new Set(closedIds);
   const out = /* @__PURE__ */ new Map();
-  for (const e3 of logs) if (ids.has(e3.task) && e3.to === "closed") out.set(e3.task, e3.atMs);
+  for (const e3 of logs) if (ids.has(e3.task) && isIssueStatusLog(e3) && e3.to === "closed") out.set(e3.task, e3.atMs);
   return out;
 }
 function nextStatuses(status) {
@@ -1592,7 +1924,7 @@ function isDoneStatus(status) {
 
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -1643,11 +1975,12 @@ var TaskIndex = class {
     for (const r3 of data.routines) if (!this.routines.has(r3.id)) this.routines.set(r3.id, r3);
     for (const m3 of data.members) if (!this.members.has(m3.id)) this.members.set(m3.id, m3);
     for (const i3 of data.issues) this.issuesByPath.set(i3.path, i3);
-    for (const issue of this.issues.values()) {
-      if (issue.parent === null) continue;
-      const list = this.childrenOf.get(issue.parent) ?? [];
-      list.push(issue);
-      this.childrenOf.set(issue.parent, list);
+    for (const sub of data.subIssues) {
+      if (this.subsByKey.has(sub.key)) continue;
+      this.subsByKey.set(sub.key, sub);
+      const list = this.subsOf.get(sub.parent) ?? [];
+      list.push(sub);
+      this.subsOf.set(sub.parent, list);
     }
   }
   data;
@@ -1655,33 +1988,33 @@ var TaskIndex = class {
   routines = /* @__PURE__ */ new Map();
   members = /* @__PURE__ */ new Map();
   issuesByPath = /* @__PURE__ */ new Map();
-  childrenOf = /* @__PURE__ */ new Map();
-  children(id) {
-    return this.childrenOf.get(id) ?? [];
+  subsOf = /* @__PURE__ */ new Map();
+  subsByKey = /* @__PURE__ */ new Map();
+  /** その issue のサブ（md に書いた順。ADR-0135） */
+  subs(parentId) {
+    return this.subsOf.get(parentId) ?? [];
   }
-  /** 親をたどった一覧（近い順）。循環していたら、そこで止める */
-  ancestors(id) {
-    const out = [];
-    const seen = /* @__PURE__ */ new Set([id]);
-    let parent = this.issues.get(id)?.parent ?? null;
-    while (parent !== null && !seen.has(parent)) {
-      seen.add(parent);
-      const issue = this.issues.get(parent);
-      if (!issue) break;
-      out.push(issue);
-      parent = issue.parent;
-    }
-    return out;
+  /** 合成キー `i-12#k3f9a2` のサブ */
+  sub(key) {
+    return this.subsByKey.get(key);
   }
-  /** `childId` の親に `parentId` を選べるか（自分自身と子孫は選べない。ADR-0012） */
-  canSetParent(childId, parentId) {
-    if (childId === parentId || !this.issues.has(parentId)) return false;
-    return !this.ancestors(parentId).some((a3) => a3.id === childId);
+  /** 移行で子の issue から変換したサブ（元の ID → サブ。ADR-0135） */
+  migrated(oldId) {
+    if (this.issues.has(oldId)) return void 0;
+    return this.data.subIssues.find((s3) => s3.migratedFrom === oldId);
   }
-  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005） */
+  /** 按分後の実績（分）。タスクの ID ごと（ADR-0005）。親の issue は、親に直接付けた行とサブの行の合計（ADR-0135） */
   effortMinutes(now) {
     const ms = prorateEffort(this.data.worklogs, now);
     return new Map([...ms].map(([id, v3]) => [id, v3 / 6e4]));
+  }
+  /**
+   * 按分後の実績（分）。記録の鍵（workKey）ごと: サブは合成キー、親の ID は親に直接付けた行だけ（ADR-0135）。
+   * 按分は同時に動いている区間の数で割るので、親の ID とそのサブの合計は effortMinutes の親の値と同じ
+   */
+  effortByKey(now) {
+    const ms = prorateEffort(this.data.worklogs.map((l3) => ({ taskId: workKey(l3), fromMs: l3.fromMs, toMs: l3.toMs })), now);
+    return new Map([...ms].map(([key, v3]) => [key, v3 / 6e4]));
   }
   /** routine 画面の工数（ADR-0021）: 按分後の累計（分）・worklog がある日数・1 日あたりの平均（分、0 日なら null） */
   routineEffort(taskId, now) {
@@ -1715,9 +2048,9 @@ var TaskIndex = class {
   order(date, group) {
     return lastOrder(this.data.orders, group, date);
   }
-  /** 記録中（to が空）の worklog */
-  running(taskId) {
-    return this.data.worklogs.filter((l3) => l3.toMs === null && (taskId === void 0 || l3.taskId === taskId));
+  /** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
+  running(key) {
+    return this.data.worklogs.filter((l3) => l3.toMs === null && (key === void 0 || workKey(l3) === key));
   }
   /** issue が今の status になる前の status（記録から。分からなければ null。ADR-0031） */
   statusBefore(id) {
@@ -1727,7 +2060,7 @@ var TaskIndex = class {
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {
     const logs = this.data.statusLogs;
-    for (let i3 = logs.length - 1; i3 >= 0; i3--) if (logs[i3].task === id) return logs[i3];
+    for (let i3 = logs.length - 1; i3 >= 0; i3--) if (logs[i3].task === id && isIssueStatusLog(logs[i3])) return logs[i3];
     return void 0;
   }
   /** 今 closed の issue を、最後に closed にした時刻（ミリ秒。記録にあるものだけ。ADR-0031） */
@@ -2366,25 +2699,6 @@ var PreactModal = class extends import_obsidian2.Modal {
     R(null, this.contentEl);
   }
 };
-var IssueSuggestModal = class extends import_obsidian2.FuzzySuggestModal {
-  constructor(app, items, onChoose, placeholder = "Search issues (ID / summary)") {
-    super(app);
-    this.items = items;
-    this.onChoose = onChoose;
-    this.setPlaceholder(placeholder);
-  }
-  items;
-  onChoose;
-  getItems() {
-    return this.items;
-  }
-  getItemText(issue) {
-    return `${issue.id} ${issue.summary}`;
-  }
-  onChooseItem(issue) {
-    this.onChoose(issue);
-  }
-};
 var BoardIssueModal = class extends import_obsidian2.SuggestModal {
   constructor(app, items, onChoose) {
     super(app);
@@ -2569,87 +2883,6 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
-// src/obsidian/capture.tsx
-var import_obsidian4 = require("obsidian");
-
-// src/core/capture.ts
-var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
-function parseCaptureText(text) {
-  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
-}
-
-// src/obsidian/capture.tsx
-var NOTICE_MS = 5e3;
-function CaptureForm(props) {
-  const [text, setText] = d2("");
-  const ref = A2(null);
-  h2(() => ref.current?.focus(), []);
-  const summaries = parseCaptureText(text);
-  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
-  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
-    /* @__PURE__ */ u3(
-      "textarea",
-      {
-        ref,
-        rows: 6,
-        placeholder: "One summary per line\n- You can paste a bulleted list",
-        value: text,
-        onInput: (e3) => setText(e3.currentTarget.value),
-        onKeyDown: (e3) => {
-          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
-            e3.preventDefault();
-            submit();
-          }
-        }
-      }
-    ),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        "Create ",
-        summaries.length,
-        import_obsidian4.Platform.isMobile ? "" : " (Mod+Enter)"
-      ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
-    ] })
-  ] });
-}
-async function openAll(ctx, files) {
-  let first = null;
-  for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian4.Platform.isPhone });
-    first ??= leaf;
-  }
-  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
-}
-function showCreatedNotice(ctx, created, failed) {
-  const fragment = document.createDocumentFragment();
-  const ids = created.map((f4) => f4.basename);
-  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
-  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
-  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
-  let notice = null;
-  if (created.length > 0) {
-    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
-    button.addEventListener("click", (e3) => {
-      e3.stopPropagation();
-      notice?.hide();
-      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
-    });
-  }
-  notice = new import_obsidian4.Notice(fragment, NOTICE_MS);
-}
-function openCaptureModal(ctx, parent = null) {
-  new PreactModal(ctx.app, parent === null ? "Capture issues" : "Capture child issues", (close) => /* @__PURE__ */ u3(
-    CaptureForm,
-    {
-      onSubmit: (summaries) => {
-        close();
-        void ctx.writer.createIssues(summaries, parent).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-      }
-    }
-  )).open();
-}
-
 // src/ui/StatusIcon.tsx
 var SHAPES = {
   open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
@@ -2717,6 +2950,960 @@ function useNow(intervalMs = 3e4) {
   return now;
 }
 
+// src/header/SubIssues.tsx
+var import_obsidian4 = require("obsidian");
+
+// src/core/groups.ts
+var GROUPS_PATH = "issue/board-groups.json";
+var UNGROUPED = "";
+function parseGroup(value, depth, problems) {
+  const o3 = typeof value === "object" && value !== null ? value : {};
+  const name = typeof o3.name === "string" ? o3.name.trim() : "";
+  if (!name || name.includes("/")) {
+    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
+    return null;
+  }
+  const children = [];
+  if (Array.isArray(o3.children)) {
+    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
+    else
+      for (const c3 of o3.children) {
+        const g2 = parseGroup(c3, depth + 1, problems);
+        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
+      }
+  }
+  return { name, children };
+}
+function parseGroups(text) {
+  const messages = [];
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  const groups = [];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const g2 = parseGroup(item, 0, messages);
+      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
+    }
+  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
+}
+function serializeGroups(groups) {
+  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
+  return `${JSON.stringify(groups.map(strip), null, 2)}
+`;
+}
+function groupNameError(name, siblings, current) {
+  const n2 = name.trim();
+  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
+  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
+  return null;
+}
+function groupKeys(groups) {
+  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
+}
+function inGroup(key, group) {
+  return key === group || key.startsWith(`${group}/`);
+}
+
+// src/obsidian/issue-actions.tsx
+function askDate(ctx, title, initial = null) {
+  return new Promise((resolve) => {
+    let done = false;
+    const modal = new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
+      DateForm,
+      {
+        initial,
+        allowClear: false,
+        onSubmit: (v3) => {
+          done = true;
+          close();
+          resolve(v3);
+        }
+      }
+    ));
+    const onClose = modal.onClose.bind(modal);
+    modal.onClose = () => {
+      onClose();
+      if (!done) resolve(null);
+    };
+    modal.open();
+  });
+}
+async function patchAll(ctx, issues, patch, label) {
+  try {
+    await ctx.writer.updateMany(
+      issues.map((i3) => i3.path),
+      (path) => {
+        const issue = issues.find((i3) => i3.path === path);
+        return typeof patch === "function" ? patch(issue) : patch;
+      }
+    );
+  } catch (e3) {
+    ctx.report(`${label}\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`, e3);
+  }
+}
+var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
+var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
+var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
+var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
+async function scheduleToday(ctx, issues) {
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
+  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
+}
+async function scheduleIssues(ctx, issues) {
+  const date = await askDate(ctx, "Add Do Date");
+  if (date === null) return;
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
+}
+async function rescheduleIssues(ctx, issues, target, from = null) {
+  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
+  const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
+  if (date === null) return;
+  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
+}
+
+// src/obsidian/board-actions.ts
+function guard(ctx, label, p3) {
+  return p3.then(
+    () => void 0,
+    (e3) => ctx.report(label, e3)
+  );
+}
+var addToBoard = (ctx, date, ids) => guard(
+  ctx,
+  "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
+);
+async function createOnBoard(ctx, date, summary) {
+  try {
+    const { created } = await ctx.writer.createIssues([summary], [date]);
+    const file = created[0];
+    if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
+    await addToBoard(ctx, date, [file.basename]);
+  } catch (e3) {
+    ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
+var setPlacement = (ctx, date, id, group) => guard(
+  ctx,
+  "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
+);
+function moveCard(ctx, date, id, group, from, visible, before) {
+  const ops = [];
+  if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
+  const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
+  ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
+  return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
+}
+async function setRoutineResult(ctx, date, id, result, record2 = true) {
+  const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
+  try {
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
+  } catch (e3) {
+    ctx.report("routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    return;
+  }
+  if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
+}
+async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
+  let to = fixedTo;
+  if (kind === "reschedule" && to === null) {
+    to = await askDate(ctx, "Move Do Date");
+    if (to === null) return;
+  }
+  try {
+    for (const issue of issues) {
+      await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
+    }
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
+  } catch (e3) {
+    ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+async function closeBoard(ctx, date) {
+  try {
+    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
+  } catch (e3) {
+    ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
+function startTimer(ctx, ids) {
+  return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
+}
+function stopTimer(ctx, ids) {
+  const running = ctx.store.index.running().filter((l3) => ids.includes(workKey(l3)));
+  if (running.length === 0) return Promise.resolve();
+  return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
+}
+
+// src/obsidian/sub-editor.tsx
+var DATE_FIELDS = [
+  ["start", "Start"],
+  ["end", "End"],
+  ["softDeadline", "Soft deadline"],
+  ["deadline", "Deadline"]
+];
+function confirmModal(ctx, title, message, action, run) {
+  new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3("div", { children: [
+    /* @__PURE__ */ u3("p", { children: message }),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("button", { type: "button", onClick: close, children: "Cancel" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: "mod-warning",
+          onClick: () => {
+            close();
+            run();
+          },
+          children: action
+        }
+      )
+    ] })
+  ] })).open();
+}
+function deleteSubWithConfirm(ctx, sub, done) {
+  confirmModal(ctx, "Delete sub-issue", `\u30B5\u30D6\u300C${sub.summary}\u300D\u3092\u672C\u6587\u3054\u3068\u6D88\u3057\u307E\u3059\u3002\u4F5C\u696D\u6642\u9593\u306E\u8A18\u9332\u306F\u6B8B\u308A\u3001\u89AA\u306E\u5B9F\u7E3E\u306B\u542B\u307E\u308C\u307E\u3059\u3002`, "Delete", () => {
+    void ctx.writer.deleteSub(sub.key).then(() => done?.()).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  });
+}
+function openSubEditor(ctx, sub) {
+  new PreactModal(ctx.app, "Edit sub-issue", (close) => /* @__PURE__ */ u3(SubIssueForm, { ctx, sub, close })).open();
+}
+function SubIssueForm(props) {
+  const { ctx, sub, close } = props;
+  const [draft, setDraft] = d2(sub);
+  const [estimated, setEstimated] = d2(sub.estimated === null ? "" : formatMinutes(sub.estimated));
+  const [error, setError] = d2(null);
+  const [saving, setSaving] = d2(false);
+  const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
+  const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
+  const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
+  const editDate = (key, label) => new PreactModal(ctx.app, label, (closeDate) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial: draft[key],
+      allowClear: true,
+      onSubmit: (v3) => {
+        closeDate();
+        set({ [key]: v3 });
+      }
+    }
+  )).open();
+  const editScheduled2 = () => new PreactModal(ctx.app, "Do Date", (closeCal) => /* @__PURE__ */ u3(
+    CalendarForm,
+    {
+      initial: draft.scheduled,
+      softDeadline: draft.softDeadline,
+      deadline: draft.deadline,
+      onSubmit: (dates) => {
+        closeCal();
+        set({ scheduled: [...dates].sort() });
+      }
+    }
+  )).open();
+  const changeStatus = (status) => {
+    if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
+    else set({ status, ...status === "delegated" ? {} : { delegatedTo: null } });
+  };
+  const save = () => {
+    const minutes = estimated.trim() === "" ? null : parseDurationInput(estimated);
+    if (minutes === null && estimated.trim() !== "") return setError(`\u898B\u7A4D\u3082\u308A\u3092\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${estimated}\uFF08\u4F8B: 30m / 2h / 1h30m\uFF09`);
+    const patch = {
+      summary: draft.summary.trim(),
+      status: draft.status,
+      delegatedTo: draft.delegatedTo,
+      start: draft.start,
+      end: draft.end,
+      scheduled: draft.scheduled,
+      softDeadline: draft.softDeadline,
+      deadline: draft.deadline,
+      estimated: minutes,
+      dependsOn: draft.dependsOn,
+      body: draft.body
+    };
+    setSaving(true);
+    ctx.writer.updateSub(sub.key, patch).then(close).catch((e3) => {
+      setSaving(false);
+      setError(e3 instanceof Error ? e3.message : String(e3));
+    });
+  };
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-subissue-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        save();
+      },
+      children: [
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Summary" }),
+          /* @__PURE__ */ u3("input", { type: "text", value: draft.summary, onInput: (e3) => set({ summary: e3.currentTarget.value }) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Status" }),
+            /* @__PURE__ */ u3("select", { value: draft.status, onChange: (e3) => changeStatus(e3.currentTarget.value), children: STATUSES.map((s3) => /* @__PURE__ */ u3("option", { value: s3, children: s3 })) })
+          ] }),
+          draft.status === "delegated" && /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Delegated to" }),
+            /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${member ? "" : " is-placeholder"}`, onClick: () => pickMember(ctx, (id) => set({ delegatedTo: id })), children: [
+              /* @__PURE__ */ u3(Icon, { name: "user" }),
+              member ? member.nickname : "Choose a member"
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: label }),
+          /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${draft[key] ? "" : " is-placeholder"}`, onClick: () => editDate(key, label), children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+            draft[key] ? formatShortDate(draft[key]) : "Not set"
+          ] })
+        ] })) }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
+          /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Do dates" }),
+            /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${draft.scheduled.length > 0 ? "" : " is-placeholder"}`, onClick: editScheduled2, children: [
+              /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
+              draft.scheduled.length === 0 ? "Not set" : draft.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")
+            ] })
+          ] }),
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Estimated" }),
+            /* @__PURE__ */ u3("input", { type: "text", class: "vt-small-input", placeholder: "e.g. 2h", value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
+          ] })
+        ] }),
+        siblings.length > 0 && /* @__PURE__ */ u3("fieldset", { class: "vt-subissue-depends", children: [
+          /* @__PURE__ */ u3("legend", { children: "Depends on" }),
+          siblings.map((s3) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+            /* @__PURE__ */ u3(
+              "input",
+              {
+                type: "checkbox",
+                checked: draft.dependsOn.includes(s3.id),
+                onChange: (e3) => set({ dependsOn: e3.currentTarget.checked ? [...draft.dependsOn, s3.id] : draft.dependsOn.filter((d3) => d3 !== s3.id) })
+              }
+            ),
+            s3.summary
+          ] }))
+        ] }),
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Notes" }),
+          /* @__PURE__ */ u3("textarea", { class: "vt-subissue-body-input", value: draft.body, onInput: (e3) => set({ body: e3.currentTarget.value }) })
+        ] }),
+        error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-danger-text", onClick: () => deleteSubWithConfirm(ctx, sub, close), children: "Delete" }),
+          /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+          /* @__PURE__ */ u3("button", { type: "button", onClick: close, children: "Cancel" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: saving, children: "Save" })
+        ] })
+      ]
+    }
+  );
+}
+
+// src/ui/FilterChip.tsx
+function FilterChip(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
+    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
+    props.label
+  ] });
+}
+function toggle(list, v3) {
+  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+}
+
+// src/core/timeline.ts
+var DAY_PX = { day: 28, week: 8 };
+var PAD_DAYS = 2;
+var MIN_DAYS = 14;
+var MIN_WEEKS = 8;
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var minDate = (dates) => dates.reduce((a3, b2) => b2 < a3 ? b2 : a3);
+var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
+function timelineRange(subs, today, scale) {
+  const dates = [today];
+  for (const s3 of subs) {
+    for (const d3 of [s3.start, s3.end, s3.softDeadline, s3.deadline, ...s3.scheduled]) if (d3) dates.push(d3);
+  }
+  let from = addDays(minDate(dates), -PAD_DAYS);
+  let to = addDays(maxDate(dates), PAD_DAYS);
+  if (scale === "week") {
+    from = addDays(from, -weekdayOf(from));
+    to = addDays(to, 6 - weekdayOf(to));
+  }
+  const days = Math.max(diffDays(to, from) + 1, scale === "week" ? MIN_WEEKS * 7 : MIN_DAYS);
+  return { from, days };
+}
+function timelineColumns(range, scale) {
+  const out = [];
+  const step = scale === "week" ? 7 : 1;
+  let prevMonth = -1;
+  for (let i3 = 0; i3 < range.days; i3 += step) {
+    const date = addDays(range.from, i3);
+    const month = Number(date.slice(5, 7)) - 1;
+    const day = Number(date.slice(8, 10));
+    const wd = weekdayOf(date);
+    const showMonth = i3 === 0 || (scale === "day" ? day === 1 : month !== prevMonth);
+    out.push({
+      date,
+      label: scale === "week" ? `${month + 1}/${day}` : String(day),
+      month: showMonth ? MONTHS[month] : null,
+      weekend: scale === "day" && (wd === 0 || wd === 6),
+      weekStart: wd === 0,
+      span: Math.min(step, range.days - i3)
+    });
+    prevMonth = month;
+  }
+  return out;
+}
+function dayOffset(range, date) {
+  return diffDays(date, range.from);
+}
+function dateAtX(range, x2, scale) {
+  const i3 = Math.min(range.days - 1, Math.max(0, Math.floor(x2 / DAY_PX[scale])));
+  return addDays(range.from, i3);
+}
+function barOf(sub) {
+  const a3 = sub.start ?? sub.end;
+  const b2 = sub.end ?? sub.start;
+  if (a3 === null || b2 === null) return null;
+  return a3 <= b2 ? { start: a3, end: b2 } : { start: b2, end: a3 };
+}
+function dragBar(bar, mode, delta) {
+  if (mode === "move") return { start: addDays(bar.start, delta), end: addDays(bar.end, delta) };
+  if (mode === "start") {
+    const start = addDays(bar.start, delta);
+    return { start: start > bar.end ? bar.end : start, end: bar.end };
+  }
+  const end = addDays(bar.end, delta);
+  return { start: bar.start, end: end < bar.start ? bar.start : end };
+}
+function dependencyArrows(subs) {
+  const bars = new Map(subs.map((s3) => [s3.id, barOf(s3)]));
+  const out = [];
+  for (const s3 of subs) {
+    const to = bars.get(s3.id);
+    if (!to) continue;
+    for (const dep of s3.dependsOn) {
+      const from = bars.get(dep);
+      if (!from || dep === s3.id) continue;
+      out.push({ from: dep, to: s3.id, late: to.start < from.end });
+    }
+  }
+  return out;
+}
+var ARROW_GAP = 8;
+var LANE_V = 4;
+var BAND_OFFSETS = [0, -3, 3, -6, 6];
+var BAR_CLEAR = 4;
+function routeArrows(arrows, bars, rowHeight) {
+  const mid = (row) => row * rowHeight + rowHeight / 2;
+  const maxX = Math.max(0, ...bars.map((b2) => b2?.x1 ?? 0)) + ARROW_GAP * 4;
+  const verticals = [];
+  const bands = [];
+  const columnFree = (x2, rowA, rowB) => {
+    for (let r3 = Math.min(rowA, rowB) + 1; r3 < Math.max(rowA, rowB); r3++) {
+      const b2 = bars[r3];
+      if (b2 && x2 > b2.x0 - BAR_CLEAR && x2 < b2.x1 + BAR_CLEAR) return false;
+    }
+    return true;
+  };
+  const verticalFree = (x2, y0, y1, share) => !verticals.some((v3) => !share(v3) && Math.abs(v3.x - x2) < 3 && Math.min(v3.y1, Math.max(y0, y1)) - Math.max(v3.y0, Math.min(y0, y1)) > 1);
+  const pickX = (ideal, lo, hi, rowA, rowB, y0, y1, share = () => false) => {
+    const limit = Math.max(ideal - lo, hi - ideal);
+    for (let d3 = 0; d3 <= limit; d3 += LANE_V) {
+      for (const x2 of d3 === 0 ? [ideal] : [ideal - d3, ideal + d3]) {
+        if (x2 < lo || x2 > hi) continue;
+        if (columnFree(x2, rowA, rowB) && verticalFree(x2, y0, y1, share)) return x2;
+      }
+    }
+    return null;
+  };
+  const pickBand = (boundary, xa, xb) => {
+    const base = boundary * rowHeight;
+    const [x0, x1] = [Math.min(xa, xb), Math.max(xa, xb)];
+    for (const off of BAND_OFFSETS) {
+      const y3 = base + off;
+      if (!bands.some((b2) => Math.abs(b2.y - y3) < 2 && Math.min(b2.x1, x1) - Math.max(b2.x0, x0) > 1)) return y3;
+    }
+    return base;
+  };
+  const record2 = (points, from, to) => {
+    for (let i3 = 1; i3 < points.length; i3++) {
+      const [ax, ay] = points[i3 - 1];
+      const [bx, by] = points[i3];
+      if (ax === bx) verticals.push({ x: ax, y0: Math.min(ay, by), y1: Math.max(ay, by), from, to });
+      else if (Math.abs(ay - Math.round(ay / rowHeight) * rowHeight) <= 8 && ay === by) bands.push({ y: ay, x0: Math.min(ax, bx), x1: Math.max(ax, bx) });
+    }
+  };
+  return arrows.map(({ fromRow, toRow }) => {
+    const src = bars[fromRow];
+    const dst = bars[toRow];
+    const x1 = src.x1;
+    const y1 = mid(fromRow);
+    const x2 = dst.x0;
+    const y22 = mid(toRow);
+    const down = toRow > fromRow;
+    if (x2 - x1 >= ARROW_GAP * 2) {
+      const xv = pickX(x2 - ARROW_GAP, x1 + BAR_CLEAR, x2 - BAR_CLEAR, fromRow, toRow, y1, y22, (v3) => v3.to === toRow);
+      if (xv !== null) {
+        const points2 = [[x1, y1], [xv, y1], [xv, y22], [x2, y22]];
+        record2(points2, fromRow, toRow);
+        return points2;
+      }
+    }
+    const srcBoundary = down ? fromRow + 1 : fromRow;
+    const dstBoundary = down ? toRow : toRow + 1;
+    const ySrcBand = srcBoundary * rowHeight;
+    const yDstBand = dstBoundary * rowHeight;
+    const xa = pickX(x1 + ARROW_GAP, x1 + BAR_CLEAR, x1 + ARROW_GAP * 4, fromRow, fromRow, y1, ySrcBand, (v3) => v3.from === fromRow) ?? x1 + ARROW_GAP;
+    const xb = pickX(x2 - ARROW_GAP, x2 - ARROW_GAP * 4, x2 - BAR_CLEAR, toRow, toRow, yDstBand, y22, (v3) => v3.to === toRow) ?? x2 - ARROW_GAP;
+    let points;
+    if (srcBoundary === dstBoundary) {
+      const yb = pickBand(srcBoundary, xa, xb);
+      points = [[x1, y1], [xa, y1], [xa, yb], [xb, yb], [xb, y22], [x2, y22]];
+    } else {
+      const xc = pickX(xb, 0, maxX, fromRow, toRow, ySrcBand, yDstBand) ?? xb;
+      const ys = pickBand(srcBoundary, xa, xc);
+      const yt = pickBand(dstBoundary, xc, xb);
+      points = [[x1, y1], [xa, y1], [xa, ys], [xc, ys], [xc, yt], [xb, yt], [xb, y22], [x2, y22]];
+    }
+    points = simplify(points);
+    record2(points, fromRow, toRow);
+    return points;
+  });
+}
+function simplify(points) {
+  const out = [];
+  for (const p3 of points) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p3[0] && last[1] === p3[1]) continue;
+    const prev = out[out.length - 2];
+    if (prev && last && (prev[0] === last[0] && last[0] === p3[0] || prev[1] === last[1] && last[1] === p3[1])) out[out.length - 1] = p3;
+    else out.push(p3);
+  }
+  return out;
+}
+var num = (n2) => String(Math.round(n2 * 100) / 100);
+function roundedPath(points, radius) {
+  if (points.length === 0) return "";
+  let d3 = `M${num(points[0][0])} ${num(points[0][1])}`;
+  for (let i3 = 1; i3 < points.length - 1; i3++) {
+    const [px, py] = points[i3 - 1];
+    const [cx, cy] = points[i3];
+    const [nx, ny] = points[i3 + 1];
+    const lenPrev = Math.hypot(cx - px, cy - py);
+    const lenNext = Math.hypot(nx - cx, ny - cy);
+    const r3 = Math.min(radius, lenPrev / 2, lenNext / 2);
+    const ax = cx - (cx - px) / (lenPrev || 1) * r3;
+    const ay = cy - (cy - py) / (lenPrev || 1) * r3;
+    const bx = cx + (nx - cx) / (lenNext || 1) * r3;
+    const by = cy + (ny - cy) / (lenNext || 1) * r3;
+    d3 += ` L${num(ax)} ${num(ay)} Q${num(cx)} ${num(cy)} ${num(bx)} ${num(by)}`;
+  }
+  const last = points[points.length - 1];
+  return `${d3} L${num(last[0])} ${num(last[1])}`;
+}
+function incomingOf(arrows, id) {
+  if (id === null) return null;
+  const idx = arrows.flatMap((a3, i3) => a3.to === id ? [i3] : []);
+  if (idx.length === 0) return null;
+  return { arrows: idx, from: [...new Set(idx.map((i3) => arrows[i3].from))] };
+}
+
+// src/header/SubTimeline.tsx
+var ROW = 36;
+var HANDLE = 8;
+function SubTimeline(props) {
+  const { ctx, subs, scale } = props;
+  const today = localToday();
+  const px = DAY_PX[scale];
+  const range = timelineRange(subs, today, scale);
+  const cols = timelineColumns(range, scale);
+  const width = range.days * px;
+  const scroller = A2(null);
+  const [drag, setDrag] = d2(null);
+  const [hovered, setHovered] = d2(null);
+  const [focused, setFocused] = d2(null);
+  h2(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
+  }, [scale]);
+  const save = (sub, next) => ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e3) => ctx.report("\u671F\u9593\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const shown = (sub) => {
+    const bar = barOf(sub);
+    return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+  };
+  const xOf = (date) => dayOffset(range, date) * px;
+  const rowOf = new Map(subs.map((s3, i3) => [s3.id, i3]));
+  const arrows = dependencyArrows(subs.map((s3) => ({ ...s3, ...shown(s3) ?? {} }))).map((a3) => ({ ...a3, fromRow: rowOf.get(a3.from), toRow: rowOf.get(a3.to) }));
+  const spans = subs.map((s3) => {
+    const bar = shown(s3);
+    return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
+  });
+  const routes = routeArrows(arrows, spans, ROW);
+  const active = hovered ?? focused;
+  const related = incomingOf(arrows, active);
+  const routed = arrows.map((a3, i3) => ({ late: a3.late, related: related?.arrows.includes(i3) ?? false, d: roundedPath(routes[i3], 4) }));
+  const relatedFrom = new Set(related?.from ?? []);
+  const startDrag = (e3, sub, mode) => {
+    const bar = barOf(sub);
+    if (!bar || e3.button !== 0) return;
+    e3.preventDefault();
+    e3.stopPropagation();
+    e3.currentTarget.setPointerCapture(e3.pointerId);
+    setDrag({ key: sub.key, mode, x0: e3.clientX, bar, delta: 0 });
+  };
+  const moveDrag = (e3) => {
+    if (!drag) return;
+    const delta = Math.round((e3.clientX - drag.x0) / px);
+    if (delta !== drag.delta) setDrag({ ...drag, delta });
+  };
+  const endDrag = (sub) => {
+    if (!drag) return;
+    const d3 = drag;
+    setDrag(null);
+    if (d3.delta !== 0) void save(sub, dragBar(d3.bar, d3.mode, d3.delta));
+  };
+  const keyDown = (e3, sub) => {
+    const bar = barOf(sub);
+    if (e3.key === "Enter") {
+      e3.preventDefault();
+      openSubEditor(ctx, sub);
+    } else if (bar && (e3.key === "ArrowLeft" || e3.key === "ArrowRight")) {
+      e3.preventDefault();
+      void save(sub, dragBar(bar, e3.shiftKey ? "end" : "move", e3.key === "ArrowLeft" ? -1 : 1));
+    }
+  };
+  const pickDay = (e3, sub) => {
+    if (barOf(sub)) return;
+    const rect = e3.currentTarget.getBoundingClientRect();
+    const date = dateAtX(range, e3.clientX - rect.left, scale);
+    void save(sub, { start: date, end: date });
+  };
+  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}`, children: [
+    /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-corner" }),
+      subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Edit: ${sub.summary}`, onClick: () => openSubEditor(ctx, sub), children: [
+        /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+        /* @__PURE__ */ u3("span", { class: "vt-timeline-label-text", children: sub.summary })
+      ] }))
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-timeline-scroll", ref: scroller, children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
+        "div",
+        {
+          class: `vt-timeline-col${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}${c3.date === today ? " is-today" : ""}`,
+          style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` },
+          children: [
+            c3.month !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-month", children: c3.month }),
+            /* @__PURE__ */ u3("span", { class: "vt-timeline-day", children: c3.label })
+          ]
+        }
+      )) }),
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
+        cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
+        /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
+          /* @__PURE__ */ u3("defs", { children: ["", "-late", "-related"].map((suffix) => (
+            // 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
+            /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}` }) })
+          )) }),
+          routed.map((r3) => /* @__PURE__ */ u3(
+            "path",
+            {
+              class: `vt-timeline-arrow${r3.late ? " is-late" : ""}${r3.related ? " is-related" : ""}`,
+              d: r3.d,
+              "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : r3.related ? "-related" : ""})`
+            }
+          ))
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
+        subs.map((sub, i3) => {
+          const bar = shown(sub);
+          const left = bar ? xOf(bar.start) : 0;
+          const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
+          const handles = barWidth >= HANDLE * 3;
+          const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
+          const marks = [
+            ...sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : [],
+            ...sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []
+          ];
+          const nothing = !bar && sub.scheduled.length === 0 && marks.length === 0;
+          return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
+            nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
+            !bar && sub.scheduled.map((d3) => /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(d3) + px / 2}px` }, title: `Do date ${formatShortDate(d3)}` })),
+            marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
+            bar && /* @__PURE__ */ u3(
+              "div",
+              {
+                class: `vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`,
+                style: { left: `${left}px`, width: `${barWidth}px` },
+                tabIndex: 0,
+                role: "button",
+                "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
+                title: `${sub.summary}
+${period}`,
+                onPointerEnter: () => setHovered(sub.id),
+                onPointerLeave: () => setHovered((h3) => h3 === sub.id ? null : h3),
+                onFocus: () => setFocused(sub.id),
+                onBlur: () => setFocused((f4) => f4 === sub.id ? null : f4),
+                onPointerDown: (e3) => startDrag(e3, sub, "move"),
+                onPointerMove: moveDrag,
+                onPointerUp: () => endDrag(sub),
+                onPointerCancel: () => setDrag(null),
+                onKeyDown: (e3) => keyDown(e3, sub),
+                onClick: (e3) => e3.stopPropagation(),
+                children: handles && /* @__PURE__ */ u3(S, { children: [
+                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
+                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
+                ] })
+              }
+            )
+          ] });
+        })
+      ] })
+    ] }) })
+  ] });
+}
+
+// src/header/SubIssues.tsx
+var DRAG_TYPE = "application/x-pkm-sub-issue";
+function SubIssues(props) {
+  const { ctx, issue, index, now } = props;
+  const [showClosed, setShowClosed] = d2(false);
+  const [mode, setMode] = d2("list");
+  const [scale, setScale] = d2("day");
+  const [open, setOpen] = d2(/* @__PURE__ */ new Set());
+  const subs = index.subs(issue.id);
+  const shown = visibleSubs(subs, showClosed);
+  const counts = subCounts(subs);
+  const effort = index.effortByKey(now);
+  const visibleKeys = shown.map((s3) => s3.key);
+  const toggle2 = (key) => setOpen((o3) => o3.has(key) ? new Set([...o3].filter((k3) => k3 !== key)) : /* @__PURE__ */ new Set([...o3, key]));
+  const move2 = (key, before) => void ctx.writer.moveSubBefore(key, before).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  return /* @__PURE__ */ u3("section", { class: "vt-card vt-subissues", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
+      counts.total > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", title: `${counts.open} open of ${counts.total}`, children: [
+        counts.open,
+        " / ",
+        counts.total
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      counts.total > 0 && /* @__PURE__ */ u3("div", { class: "vt-subissues-modes", children: [
+        mode === "timeline" && /* @__PURE__ */ u3(S, { children: [
+          /* @__PURE__ */ u3(FilterChip, { label: "Day", on: scale === "day", onClick: () => setScale("day") }),
+          /* @__PURE__ */ u3(FilterChip, { label: "Week", on: scale === "week", onClick: () => setScale("week") }),
+          /* @__PURE__ */ u3("span", { class: "vt-subissues-modes-sep", "aria-hidden": "true" })
+        ] }),
+        /* @__PURE__ */ u3(FilterChip, { label: "List", on: mode === "list", onClick: () => setMode("list") }),
+        /* @__PURE__ */ u3(FilterChip, { label: "Timeline", on: mode === "timeline", onClick: () => setMode("timeline") })
+      ] })
+    ] }),
+    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale }),
+    mode === "list" && shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
+      SubRow,
+      {
+        ctx,
+        sub,
+        index,
+        now,
+        actual: effort.get(sub.key) ?? 0,
+        open: open.has(sub.key),
+        onToggle: () => toggle2(sub.key),
+        visible: visibleKeys,
+        onDrop: (dragged) => move2(dragged, sub.key)
+      },
+      sub.key
+    )) }),
+    counts.closed > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button vt-subissues-closed", onClick: () => setShowClosed((v3) => !v3), children: showClosed ? "Hide closed" : `Show ${counts.closed} closed` }),
+    /* @__PURE__ */ u3(QuickAdd, { ctx, issue, onDropEnd: (dragged) => move2(dragged, null) })
+  ] });
+}
+function readDrag(e3) {
+  return e3.dataTransfer?.getData(DRAG_TYPE) || null;
+}
+function SubRow(props) {
+  const { ctx, sub, index, now, actual, open } = props;
+  const [dropBefore, setDropBefore] = d2(false);
+  const running = index.running(sub.key);
+  const elapsed = running.reduce((m3, l3) => Math.max(m3, now - l3.fromMs), 0);
+  const hint = subHint(sub, localToday());
+  const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const changeStatus = (next) => {
+    if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
+    if (next === sub.status) return;
+    save(next === "someday" ? { status: next, scheduled: [], softDeadline: null, deadline: null } : { status: next });
+  };
+  const statusMenu2 = (e3) => {
+    const m3 = new import_obsidian4.Menu();
+    for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
+    m3.showAtMouseEvent(e3);
+  };
+  const moreMenu = (e3) => {
+    const m3 = new import_obsidian4.Menu();
+    const at = props.visible.indexOf(sub.key);
+    m3.addItem((mi) => mi.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
+    m3.addSeparator();
+    if (at > 0) m3.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void ctx.writer.stepSub(sub.key, props.visible, -1).catch((err) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err))));
+    if (at >= 0 && at < props.visible.length - 1) m3.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void ctx.writer.stepSub(sub.key, props.visible, 1).catch((err) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err))));
+    m3.addSeparator();
+    m3.addItem((mi) => mi.setTitle("Delete").setIcon("trash-2").onClick(() => deleteSubWithConfirm(ctx, sub)));
+    m3.showAtMouseEvent(e3);
+  };
+  return /* @__PURE__ */ u3(
+    "li",
+    {
+      class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}${open ? " is-open" : ""}`,
+      draggable: true,
+      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, sub.key),
+      onDragOver: (e3) => {
+        if (!e3.dataTransfer?.types.includes(DRAG_TYPE)) return;
+        e3.preventDefault();
+        setDropBefore(true);
+      },
+      onDragLeave: () => setDropBefore(false),
+      onDrop: (e3) => {
+        e3.preventDefault();
+        setDropBefore(false);
+        const dragged = readDrag(e3);
+        if (dragged && dragged !== sub.key) props.onDrop(dragged);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
+            /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
+            hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
+          ] }),
+          actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
+          /* @__PURE__ */ u3(
+            "button",
+            {
+              type: "button",
+              class: `vt-play${running.length > 0 ? " is-running" : ""}`,
+              "aria-label": running.length > 0 ? "Stop timer" : "Start timer",
+              title: running.length > 0 ? "Stop timer" : "Start timer",
+              onClick: () => void (running.length > 0 ? stopTimer(ctx, [sub.key]) : startTimer(ctx, [sub.key])),
+              children: [
+                /* @__PURE__ */ u3(Icon, { name: running.length > 0 ? "square" : "play" }),
+                running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+              ]
+            }
+          ),
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+        ] }),
+        open && /* @__PURE__ */ u3(SubDetail, { ctx, sub, index })
+      ]
+    }
+  );
+}
+function SubDetail(props) {
+  const { ctx, sub, index } = props;
+  const member = sub.delegatedTo === null ? null : index.members.get(sub.delegatedTo);
+  const deps = sub.dependsOn.map((d3) => index.sub(`${sub.parent}#${d3}`)?.summary ?? d3);
+  const facts = [
+    ...sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} \u2013 ${sub.end ? formatShortDate(sub.end) : "?"}`]] : [],
+    ...sub.scheduled.length > 0 ? [["Do dates", sub.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")]] : [],
+    ...sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)]] : [],
+    ...sub.deadline ? [["Deadline", formatShortDate(sub.deadline)]] : [],
+    ...sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)]] : [],
+    ...deps.length > 0 ? [["Depends on", deps.join(", ")]] : [],
+    ...member ? [["Delegated to", member.nickname]] : []
+  ];
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: [
+    facts.length > 0 && /* @__PURE__ */ u3("dl", { class: "vt-subissue-facts", children: facts.map(([k3, v3]) => /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("dt", { children: k3 }),
+      /* @__PURE__ */ u3("dd", { children: v3 })
+    ] })) }),
+    sub.body.trim() ? /* @__PURE__ */ u3(MarkdownBody, { ctx, markdown: sub.body, sourcePath: sub.path }) : /* @__PURE__ */ u3("p", { class: "vt-muted", children: "No notes" }),
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-detail-actions", children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openSubEditor(ctx, sub), children: [
+      /* @__PURE__ */ u3(Icon, { name: "pencil" }),
+      " Edit"
+    ] }) })
+  ] });
+}
+function MarkdownBody(props) {
+  const ref = A2(null);
+  h2(() => {
+    const el = ref.current;
+    if (!el) return;
+    const owner = new import_obsidian4.Component();
+    owner.load();
+    while (el.firstChild) el.removeChild(el.firstChild);
+    void import_obsidian4.MarkdownRenderer.render(props.ctx.app, props.markdown, el, props.sourcePath, owner);
+    return () => owner.unload();
+  }, [props.markdown, props.sourcePath]);
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-body markdown-rendered", ref });
+}
+function QuickAdd(props) {
+  const { ctx, issue } = props;
+  const [draft, setDraft] = d2("");
+  const [over2, setOver] = d2(false);
+  const create = (summaries) => {
+    if (summaries.length === 0) return;
+    void ctx.writer.createSubs(issue.id, summaries).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  };
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: `vt-quick-add vt-subissue-add${over2 ? " is-drop-before" : ""}`,
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        create(splitQuickAdd(draft));
+        setDraft("");
+      },
+      onDragOver: (e3) => {
+        if (!e3.dataTransfer?.types.includes(DRAG_TYPE)) return;
+        e3.preventDefault();
+        setOver(true);
+      },
+      onDragLeave: () => setOver(false),
+      onDrop: (e3) => {
+        e3.preventDefault();
+        setOver(false);
+        const dragged = readDrag(e3);
+        if (dragged) props.onDropEnd(dragged);
+      },
+      children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        /* @__PURE__ */ u3(
+          "input",
+          {
+            type: "text",
+            "aria-label": "Add a sub-issue",
+            placeholder: "Add a sub-issue",
+            value: draft,
+            onInput: (e3) => setDraft(e3.currentTarget.value),
+            onPaste: (e3) => {
+              const text = e3.clipboardData?.getData("text/plain") ?? "";
+              if (!/\r?\n/.test(text.trim())) return;
+              e3.preventDefault();
+              create(splitQuickAdd(text));
+            },
+            onKeyDown: (e3) => {
+              if (e3.key === "Escape") e3.currentTarget.blur();
+            }
+          }
+        )
+      ]
+    }
+  );
+}
+
 // src/ui/Pager.tsx
 function pageItems(current, pages) {
   if (pages <= 7) return Array.from({ length: pages }, (_2, i3) => i3);
@@ -2741,21 +3928,6 @@ function Pager(props) {
   ] });
 }
 
-// src/ui/a11y.ts
-function linkProps(open) {
-  return {
-    role: "link",
-    tabIndex: 0,
-    onClick: (e3) => open(e3),
-    onKeyDown: (e3) => {
-      if (e3.key === "Enter") {
-        e3.preventDefault();
-        open(e3);
-      }
-    }
-  };
-}
-
 // src/header/IssueHeader.tsx
 var WORKLOG_PAGE = 5;
 function formatDateTime(value) {
@@ -2765,12 +3937,10 @@ function formatDateTime(value) {
   const pad = (n2) => String(n2).padStart(2, "0");
   return `${d3.getFullYear()}-${pad(d3.getMonth() + 1)}-${pad(d3.getDate())} ${pad(d3.getHours())}:${pad(d3.getMinutes())}`;
 }
-function sortCandidates(issues) {
-  return [...issues].sort((a3, b2) => Number(!isActive(a3)) - Number(!isActive(b2)) || a3.id.localeCompare(b2.id, "en", { numeric: true }));
-}
 function IssueHeader(props) {
   const { ctx, path } = props;
   useStoreVersion(ctx.store);
+  const now = useNow();
   const index = ctx.store.index;
   const issue = index.issuesByPath.get(path);
   if (!issue) {
@@ -2800,7 +3970,7 @@ function IssueHeader(props) {
       /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save }),
       /* @__PURE__ */ u3(DueFields, { ctx, issue, save })
     ] }) }),
-    /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Relations, { ctx, issue, index, save }) }),
+    /* @__PURE__ */ u3(SubIssues, { ctx, issue, index, now }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
     /* @__PURE__ */ u3(Worklog, { ctx, taskId: issue.id, index }),
@@ -2952,57 +4122,6 @@ function DueFields(props) {
     row("deadline", "deadline", issue.deadline)
   ] });
 }
-function IssueLink(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-relation", children: [
-    /* @__PURE__ */ u3(IdBadge, { issue: props.issue }),
-    /* @__PURE__ */ u3("span", { class: "vt-link", ...linkProps((e3) => void props.ctx.openPath(props.issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: props.issue.summary }),
-    props.onRemove && /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Remove", title: "Remove", onClick: props.onRemove, children: /* @__PURE__ */ u3(Icon, { name: "x" }) })
-  ] });
-}
-function Relations(props) {
-  const { ctx, issue, index, save } = props;
-  const parent = issue.parent === null ? null : index.issues.get(issue.parent);
-  const children = index.children(issue.id);
-  const pickParent = () => {
-    const candidates = sortCandidates([...index.issues.values()].filter((c3) => index.canSetParent(issue.id, c3.id)));
-    new IssueSuggestModal(ctx.app, candidates, (p3) => save({ parent: p3.id }), "Search for a parent issue").open();
-  };
-  const addChild = (e3) => {
-    const m3 = new import_obsidian5.Menu();
-    m3.addItem(
-      (item) => item.setTitle("Make an existing issue a child").onClick(() => {
-        const candidates = sortCandidates([...index.issues.values()].filter((c3) => c3.parent !== issue.id && index.canSetParent(c3.id, issue.id)));
-        new IssueSuggestModal(ctx.app, candidates, (c3) => save({ parent: issue.id }, c3.path), "Search for a child issue").open();
-      })
-    );
-    m3.addItem(
-      (item) => item.setTitle("Create new").onClick(() => openCaptureModal(ctx, issue.id))
-    );
-    m3.showAtMouseEvent(e3);
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-row vt-halves vt-small vt-relations", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-        "Parent",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Choose parent", title: "Choose parent", onClick: pickParent, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) })
-      ] }),
-      parent ? /* @__PURE__ */ u3(IssueLink, { ctx, issue: parent, onRemove: () => save({ parent: null }) }) : issue.parent !== null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        issue.parent,
-        " (not found)"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-relation-col", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-field-label", children: [
-        "Children",
-        /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Add child", title: "Add child", onClick: addChild, children: /* @__PURE__ */ u3(Icon, { name: "plus" }) })
-      ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-wrap", children: [
-        children.length === 0 && /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }),
-        children.map((c3) => /* @__PURE__ */ u3(IssueLink, { ctx, issue: c3, onRemove: () => save({ parent: null }, c3.path) }))
-      ] })
-    ] })
-  ] });
-}
 function Effort(props) {
   const { ctx, issue, index, save } = props;
   const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
@@ -3032,6 +4151,7 @@ function WorklogItem(props) {
   const { ctx, log } = props;
   const date = formatDateTime(log.fromMs).slice(0, 10);
   const running = log.toMs === null;
+  const sub = log.sub ? ctx.store.index.sub(`${log.taskId}#${log.sub}`) ?? { summary: "Deleted sub-issue" } : null;
   const edit = () => new PreactModal(ctx.app, "Edit worklog", (close) => /* @__PURE__ */ u3(
     WorklogForm,
     {
@@ -3061,6 +4181,7 @@ function WorklogItem(props) {
         " \u2013 ",
         running ? "running" : formatTime(log.toMs)
       ] }),
+      sub && /* @__PURE__ */ u3("span", { class: "vt-log-sub", children: sub.summary }),
       /* @__PURE__ */ u3("span", { class: `vt-log-desc${log.description ? "" : " is-placeholder"}`, children: log.description || "No description" })
     ] }),
     /* @__PURE__ */ u3("span", { class: "vt-log-duration vt-num", children: [
@@ -3109,6 +4230,23 @@ function Worklog(props) {
 
 // src/header/MemberHeader.tsx
 var import_obsidian6 = require("obsidian");
+
+// src/ui/a11y.ts
+function linkProps(open) {
+  return {
+    role: "link",
+    tabIndex: 0,
+    onClick: (e3) => open(e3),
+    onKeyDown: (e3) => {
+      if (e3.key === "Enter") {
+        e3.preventDefault();
+        open(e3);
+      }
+    }
+  };
+}
+
+// src/header/MemberHeader.tsx
 function MemberField(props) {
   const { label, field, value, required, save } = props;
   const [draft, setDraft] = d2(value);
@@ -3206,64 +4344,6 @@ function MemberHeader(props) {
 
 // src/header/RoutineHeader.tsx
 var import_obsidian7 = require("obsidian");
-
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-var UNGROUPED = "";
-function parseGroup(value, depth, problems) {
-  const o3 = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o3.name === "string" ? o3.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o3.children)) {
-    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c3 of o3.children) {
-        const g2 = parseGroup(c3, depth + 1, problems);
-        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g2 = parseGroup(item, 0, messages);
-      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-function serializeGroups(groups) {
-  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
-  return `${JSON.stringify(groups.map(strip), null, 2)}
-`;
-}
-function groupNameError(name, siblings, current) {
-  const n2 = name.trim();
-  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
-  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
-  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
-  return null;
-}
-function groupKeys(groups) {
-  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
-}
-function inGroup(key, group) {
-  return key === group || key.startsWith(`${group}/`);
-}
 
 // src/ui/RepeatFields.tsx
 function defaultRepeatDraft() {
@@ -3522,10 +4602,103 @@ function installTaskHeaders(ctx, plugin) {
   });
 }
 
-// src/obsidian/settings.ts
+// src/header/hide-sub-area.ts
+var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
+function installSubAreaHiding(plugin) {
+  plugin.registerMarkdownPostProcessor((el, mctx) => {
+    if (!ISSUE_PATH_RE2.test(mctx.sourcePath)) return;
+    const info = mctx.getSectionInfo(el);
+    if (!info) return;
+    const start = subAreaStartLine(info.text);
+    if (start !== null && info.lineStart >= start) el.addClass("vt-subissue-area-hidden");
+  });
+}
+
+// src/obsidian/capture.tsx
 var import_obsidian9 = require("obsidian");
+
+// src/core/capture.ts
+var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
+function parseCaptureText(text) {
+  return text.split(/\r?\n/).map((line) => line.replace(LIST_MARKER_RE, "").trim()).filter((line) => line.length > 0);
+}
+
+// src/obsidian/capture.tsx
+var NOTICE_MS = 5e3;
+function CaptureForm(props) {
+  const [text, setText] = d2("");
+  const ref = A2(null);
+  h2(() => ref.current?.focus(), []);
+  const summaries = parseCaptureText(text);
+  const submit = () => summaries.length > 0 && props.onSubmit(summaries);
+  return /* @__PURE__ */ u3("div", { class: "vt-capture", children: [
+    /* @__PURE__ */ u3(
+      "textarea",
+      {
+        ref,
+        rows: 6,
+        placeholder: "One summary per line\n- You can paste a bulleted list",
+        value: text,
+        onInput: (e3) => setText(e3.currentTarget.value),
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter" && (e3.metaKey || e3.ctrlKey) && !e3.isComposing) {
+            e3.preventDefault();
+            submit();
+          }
+        }
+      }
+    ),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        "Create ",
+        summaries.length,
+        import_obsidian9.Platform.isMobile ? "" : " (Mod+Enter)"
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
+    ] })
+  ] });
+}
+async function openAll(ctx, files) {
+  let first = null;
+  for (const file of files) {
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian9.Platform.isPhone });
+    first ??= leaf;
+  }
+  if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
+}
+function showCreatedNotice(ctx, created, failed) {
+  const fragment = document.createDocumentFragment();
+  const ids = created.map((f4) => f4.basename);
+  const range = ids.length <= 1 ? ids.join("") : `${ids[0]}\u301C${ids[ids.length - 1]}`;
+  const message = created.length > 0 ? `${created.length} \u4EF6\u306E issue \u3092\u4F5C\u6210\u3057\u307E\u3057\u305F\uFF08${range}\uFF09` : "issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F";
+  fragment.createEl("div", { text: failed.length > 0 ? `${message}\u3002${failed.length} \u4EF6\u306F\u5931\u6557` : message });
+  let notice = null;
+  if (created.length > 0) {
+    const button = fragment.createEl("button", { text: "Open all in tabs", cls: "vt-notice-button" });
+    button.addEventListener("click", (e3) => {
+      e3.stopPropagation();
+      notice?.hide();
+      void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
+    });
+  }
+  notice = new import_obsidian9.Notice(fragment, NOTICE_MS);
+}
+function openCaptureModal(ctx) {
+  new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
+    CaptureForm,
+    {
+      onSubmit: (summaries) => {
+        close();
+        void ctx.writer.createIssues(summaries).then(({ created, failed }) => showCreatedNotice(ctx, created, failed)).catch((e3) => ctx.report("issue \u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
+}
+
+// src/obsidian/settings.ts
+var import_obsidian10 = require("obsidian");
 var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
-var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
+var TaskSettingTab = class extends import_obsidian10.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -3535,7 +4708,7 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian9.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+    new import_obsidian10.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
       (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
@@ -3545,7 +4718,7 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
 };
 
 // src/obsidian/status-bar.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/running.ts
 var SUMMARY_MAX = 24;
@@ -3553,11 +4726,12 @@ function runningStatus(index, now) {
   const elapsedByTask = /* @__PURE__ */ new Map();
   for (const l3 of index.running()) {
     const elapsed = Math.max(0, now - l3.fromMs);
-    elapsedByTask.set(l3.taskId, Math.max(elapsedByTask.get(l3.taskId) ?? 0, elapsed));
+    const key = workKey(l3);
+    elapsedByTask.set(key, Math.max(elapsedByTask.get(key) ?? 0, elapsed));
   }
   if (elapsedByTask.size === 0) return null;
   const rows = [...elapsedByTask.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([taskId, elapsed]) => {
-    const task = index.issues.get(taskId) ?? index.routines.get(taskId);
+    const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
     return { taskId, summary: task?.summary ?? "", path: task?.path ?? null, time: formatMinutes(Math.floor(elapsed / 6e4)) };
   });
   const tooltip = rows.map((r4) => [r4.taskId, r4.summary, r4.time].filter(Boolean).join(" ")).join("\n");
@@ -3578,7 +4752,7 @@ function registerRunningStatusBar(host, store, open) {
     path = s3?.path ?? null;
     el.toggle(s3 !== null);
     el.setText(s3?.text ?? "");
-    (0, import_obsidian10.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+    (0, import_obsidian11.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
   };
   el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
   host.register(store.subscribe(render));
@@ -3587,7 +4761,7 @@ function registerRunningStatusBar(host, store, open) {
 }
 
 // src/obsidian/status-undo.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -3669,7 +4843,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian11.setIcon)(icon, "chevron-right");
+      (0, import_obsidian12.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -3682,7 +4856,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -3734,11 +4908,27 @@ function fileKind(path) {
   const m3 = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m3 ? m3[1] : null;
 }
+function resolveMigrated(data) {
+  const issueIds = new Set(data.issues.map((i3) => i3.id));
+  const byOld = /* @__PURE__ */ new Map();
+  for (const s3 of data.subIssues) {
+    if (s3.migratedFrom !== null && !issueIds.has(s3.migratedFrom) && !byOld.has(s3.migratedFrom)) byOld.set(s3.migratedFrom, { parent: s3.parent, id: s3.id });
+  }
+  if (byOld.size === 0) return;
+  data.worklogs = data.worklogs.map((l3) => {
+    const to = l3.sub ? void 0 : byOld.get(l3.taskId);
+    return to ? { ...l3, taskId: to.parent, sub: to.id } : l3;
+  });
+  data.statusLogs = data.statusLogs.map((e3) => {
+    const to = e3.sub ? void 0 : byOld.get(e3.task);
+    return to ? { ...e3, task: to.parent, sub: to.id } : e3;
+  });
+}
 function collectVault(input) {
-  const data = { issues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
-  for (const { path, frontmatter } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
+  for (const { path, frontmatter, text } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
     const kind = fileKind(path);
     if (kind === "daily") {
       if (frontmatter && frontmatter[BOARD_KEY] !== void 0) {
@@ -3754,7 +4944,14 @@ function collectVault(input) {
     if (kind === "issue") {
       const r3 = parseIssue(path, frontmatter);
       problems.push(...r3.problems);
-      if (r3.value) data.issues.push(r3.value);
+      if (r3.value) {
+        data.issues.push(r3.value);
+        if (text !== void 0 && input.parseYaml) {
+          const s3 = parseSubIssues(path, r3.value.id, text, input.parseYaml);
+          problems.push(...s3.problems);
+          data.subIssues.push(...s3.subs);
+        }
+      }
     } else if (kind === "routine") {
       const r3 = parseRoutine(path, frontmatter);
       problems.push(...r3.problems);
@@ -3797,6 +4994,7 @@ function collectVault(input) {
     data.statusLogs.push(...r3.entries);
   }
   data.statusLogs.sort(compareStatusLog);
+  resolveMigrated(data);
   if (input.labels !== null) {
     const r3 = parseLabels(input.labels);
     problems.push(...r3.problems);
@@ -3828,15 +5026,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian13.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian13.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian12.TFile) this.touch(file);
+        if (file instanceof import_obsidian13.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian12.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian13.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3860,7 +5058,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -3873,15 +5071,17 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [] };
+    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian13.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
       const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-      input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null });
+      const text = kind === "issue" ? this.texts.get(file.path) : void 0;
+      input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null, ...text !== void 0 ? { text } : {} });
     }
     for (const [path, text] of this.texts) {
       const kind = fileKind(path);
+      if (kind === "issue") continue;
       if (kind === "worklog") input.worklogs.push({ path, text });
       else if (kind === "board") input.boardLogs.push({ path, text });
       else if (kind === "statuslog") input.statusLogs.push({ path, text });
@@ -3897,9 +5097,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian13.ItemView {
+  class PreactView extends import_obsidian14.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -3921,7 +5121,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -3997,12 +5197,11 @@ function closeBoardNote(text, date, index, board) {
 
 // src/core/issue-file.ts
 var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString(s3) {
+function yamlString2(s3) {
   return JSON.stringify(s3);
 }
-function newIssueContent(id, summary, created, parent = null, scheduled = []) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
-  if (parent !== null) lines.push(`parent: ${parent}`);
+function newIssueContent(id, summary, created, scheduled = []) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
   if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
@@ -4013,9 +5212,9 @@ function newMemberContent(id, name, created) {
     `schema: ${SCHEMA_VERSION}`,
     "type: member",
     `id: ${id}`,
-    `name: ${yamlString(name)}`,
-    `nickname: ${yamlString(name)}`,
-    `alias: ${yamlString(id)}`,
+    `name: ${yamlString2(name)}`,
+    `nickname: ${yamlString2(name)}`,
+    `alias: ${yamlString2(id)}`,
     `created: ${created}`,
     `updated: ${created}`,
     "---",
@@ -4023,10 +5222,10 @@ function newMemberContent(id, name, created) {
   ].join("\n");
 }
 function newRoutineContent(id, summary, repeat, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString2(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
   if (extra.start) lines.push(`start: ${extra.start}`);
   lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString(extra.group)}`);
+  if (extra.group) lines.push(`group: ${yamlString2(extra.group)}`);
   if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
   return lines.join("\n");
@@ -4331,15 +5530,101 @@ var TaskWriter = class {
     }
     this.onStatusChange?.({ path, id, from, to, before, via });
   }
+  /**
+   * サブの項目を書き換える（ADR-0135）。key は合成キー。status が変わったら statuslog に task と sub で書き、
+   * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+   */
+  async updateSub(key, patch, via = "ui") {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    const fixed = normalizeSubPatch(patch);
+    let change = null;
+    await this.app.vault.process(this.file(sub.path), (text) => {
+      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian15.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
+      this.assertSubs(siblings, [sub.id]);
+      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian15.parseYaml);
+      change = r3.before.status !== r3.after.status ? { from: r3.before.status, to: r3.after.status } : null;
+      return r3.text;
+    });
+    this.store.refreshSoon();
+    const done = change;
+    if (done === null) return;
+    await this.recordStatus(sub.parent, done.from, done.to, via, sub.id);
+    if (isDoneStatus(done.to)) {
+      const running = this.store.index.running(key);
+      if (running.length > 0) await this.stopTimer(running);
+    }
+  }
+  assertSubs(subs, touched) {
+    const errors = touchedSubErrors(subs, touched, new Set(this.store.index.members.keys()));
+    if (errors.length > 0) throw new Error(errors.join("\n"));
+  }
+  /** サブを足す（ADR-0142）。summaries の順に末尾へ。作ったサブの合成キーを返す */
+  async createSubs(parentId, summaries) {
+    const issue = this.store.index.issues.get(parentId);
+    if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parentId}`);
+    if (summaries.length === 0) return [];
+    const created = localDateTime();
+    let keys = [];
+    await this.app.vault.process(this.file(issue.path), (text) => {
+      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian15.parseYaml).subs;
+      const taken = existing.map((s3) => s3.id);
+      const subs = summaries.map((summary) => {
+        const id = newSubId(taken);
+        taken.push(id);
+        return newSubIssueInput({ summary }, id, created);
+      });
+      this.assertSubs([...existing, ...subs], subs.map((s3) => s3.id));
+      keys = subs.map((s3) => subKey(issue.id, s3.id));
+      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian15.parseYaml);
+    });
+    this.store.refreshSoon();
+    return keys;
+  }
+  /** サブを to の位置へ移す（md のブロックの並びで数える） */
+  async moveSub(key, to) {
+    await this.moveSubWith(key, () => to);
+  }
+  /** サブを before の前へ移す（null なら末尾。ドラッグ。ADR-0142）。位置は今の md のブロックの並び（読めないブロックを含む）で決める */
+  async moveSubBefore(key, before) {
+    const target = before === null ? null : this.store.index.sub(before);
+    await this.moveSubWith(key, (ids, id) => dropPosition(ids, id, target ? target.id : null));
+  }
+  /** サブを、出ている隣の行（visible の合成キー）をまたいで 1 つ上（-1）か下（1）へ移す（Move up / down） */
+  async stepSub(key, visible, dir) {
+    const ids = visible.map((k3) => this.store.index.sub(k3)?.id).filter((x2) => x2 !== void 0);
+    await this.moveSubWith(key, (all, id) => stepPosition(all, ids, id, dir));
+  }
+  async moveSubWith(key, position) {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    await this.app.vault.process(this.file(sub.path), (text) => {
+      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian15.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
+      const to = position(ids, sub.id);
+      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian15.parseYaml);
+    });
+    this.store.refreshSoon();
+  }
+  /** サブを本文ごと消す。記録中のタイマーは止める。worklog の行は残す（ADR-0135）。依存されていたら消さない */
+  async deleteSub(key) {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    const dependents = dependentsOf(this.store.index.subs(sub.parent), sub.id);
+    if (dependents.length > 0) throw new Error(`${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308B\u306E\u3067\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
+    const running = this.store.index.running(key);
+    if (running.length > 0) await this.stopTimer(running);
+    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian15.parseYaml));
+    this.store.refreshSoon();
+  }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
-  async recordStatus(task, from, to, via) {
+  async recordStatus(task, from, to, via, sub = null) {
     const device = this.deviceName();
     if (!device) return;
     try {
       const now = /* @__PURE__ */ new Date();
-      const line = statusLogLine(task, from, to, via, now);
+      const line = statusLogLine(task, from, to, via, now, Math.random, sub);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -4352,16 +5637,16 @@ var TaskWriter = class {
     return ids;
   }
   /** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
-  async createIssues(summaries, parent = null, scheduled = []) {
+  async createIssues(summaries, scheduled = []) {
     const ids = nextIds("i", this.takenIds(), summaries.length);
     const created = [];
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian14.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian15.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
-        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, parent, scheduled)));
+        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, scheduled)));
       } catch (e3) {
         console.error("pkm-task: issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", path, e3);
         failed.push(summary);
@@ -4372,7 +5657,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian15.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -4422,23 +5707,29 @@ var TaskWriter = class {
   }
   /**
    * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
-   * open の issue は in-progress にする（ADR-0031）
+   * taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。
+   * open の issue とサブは in-progress にする（ADR-0031）
    */
   async startTimer(taskIds, device) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const running = new Set(this.store.index.running().map((l3) => l3.taskId));
+    const running = new Set(this.store.index.running().map(workKey));
     const targets = taskIds.filter((id) => !running.has(id));
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian14.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian15.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
-      (text) => targets.reduce((t3, taskId) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), taskId, from, to: null, description: "" })), text)
+      (text) => targets.reduce((t3, key) => appendWorklogLine(t3, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), from, to: null, description: "" })), text)
     );
     this.store.refreshSoon();
     for (const id of targets) {
+      const sub = this.store.index.sub(id);
+      if (sub) {
+        if (sub.status === "open") await this.updateSub(id, { status: "in-progress" }, "timer");
+        continue;
+      }
       const issue = this.store.index.issues.get(id);
       if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
     }
@@ -4457,14 +5748,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -4482,7 +5773,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian14.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian15.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -4496,7 +5787,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian15.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -4514,142 +5805,8 @@ function stepperItems(steps, current, counts, passed) {
   });
 }
 
-// src/obsidian/issue-actions.tsx
-function askDate(ctx, title, initial = null) {
-  return new Promise((resolve) => {
-    let done = false;
-    const modal = new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
-      DateForm,
-      {
-        initial,
-        allowClear: false,
-        onSubmit: (v3) => {
-          done = true;
-          close();
-          resolve(v3);
-        }
-      }
-    ));
-    const onClose = modal.onClose.bind(modal);
-    modal.onClose = () => {
-      onClose();
-      if (!done) resolve(null);
-    };
-    modal.open();
-  });
-}
-async function patchAll(ctx, issues, patch, label) {
-  try {
-    await ctx.writer.updateMany(
-      issues.map((i3) => i3.path),
-      (path) => {
-        const issue = issues.find((i3) => i3.path === path);
-        return typeof patch === "function" ? patch(issue) : patch;
-      }
-    );
-  } catch (e3) {
-    ctx.report(`${label}\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`, e3);
-  }
-}
-var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
-var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
-var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
-async function scheduleToday(ctx, issues) {
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
-  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
-}
-async function scheduleIssues(ctx, issues) {
-  const date = await askDate(ctx, "Add Do Date");
-  if (date === null) return;
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
-}
-async function rescheduleIssues(ctx, issues, target, from = null) {
-  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
-  const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
-  if (date === null) return;
-  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
-}
-
-// src/obsidian/board-actions.ts
-function guard(ctx, label, p3) {
-  return p3.then(
-    () => void 0,
-    (e3) => ctx.report(label, e3)
-  );
-}
-var addToBoard = (ctx, date, ids) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
-);
-async function createOnBoard(ctx, date, summary) {
-  try {
-    const { created } = await ctx.writer.createIssues([summary], null, [date]);
-    const file = created[0];
-    if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
-    await addToBoard(ctx, date, [file.basename]);
-  } catch (e3) {
-    ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
-var setPlacement = (ctx, date, id, group) => guard(
-  ctx,
-  "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
-);
-function moveCard(ctx, date, id, group, from, visible, before) {
-  const ops = [];
-  if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
-  const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
-  ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
-  return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
-}
-async function setRoutineResult(ctx, date, id, result, record2 = true) {
-  const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
-  try {
-    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
-  } catch (e3) {
-    ctx.report("routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-    return;
-  }
-  if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
-}
-async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
-  let to = fixedTo;
-  if (kind === "reschedule" && to === null) {
-    to = await askDate(ctx, "Move Do Date");
-    if (to === null) return;
-  }
-  try {
-    for (const issue of issues) {
-      await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
-    }
-    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
-  } catch (e3) {
-    ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-async function closeBoard(ctx, date) {
-  try {
-    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
-  } catch (e3) {
-    ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
-function startTimer(ctx, ids) {
-  return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
-}
-function stopTimer(ctx, ids) {
-  const running = ctx.store.index.running().filter((l3) => ids.includes(l3.taskId));
-  if (running.length === 0) return Promise.resolve();
-  return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
-}
-
 // src/ui/IssueTable.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -4702,7 +5859,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `Select ${issue.id}` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -4723,7 +5880,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
@@ -4784,10 +5941,10 @@ function NextButtons(props) {
     }
   )) });
 }
-var DRAG_TYPE = "text/plain";
+var DRAG_TYPE2 = "text/plain";
 var dragValue = (id, from) => JSON.stringify({ id, from });
-function readDrag(e3) {
-  const raw = e3.dataTransfer?.getData(DRAG_TYPE);
+function readDrag2(e3) {
+  const raw = e3.dataTransfer?.getData(DRAG_TYPE2);
   if (!raw) return null;
   try {
     const v3 = JSON.parse(raw);
@@ -4810,7 +5967,7 @@ function TaskCard(props) {
   const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian16.Menu();
+    const m3 = new import_obsidian17.Menu();
     for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -4823,7 +5980,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian16.Menu();
+    const m3 = new import_obsidian17.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 Unsorted" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -4847,7 +6004,7 @@ function TaskCard(props) {
     {
       class: `vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`,
       draggable: true,
-      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, dragValue(id, props.placed)),
+      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE2, dragValue(id, props.placed)),
       ...order ? {
         // 別のカードの上に落とすと、そのカードの前に入る（ADR-0114）
         onDragOver: (e3) => {
@@ -4860,14 +6017,14 @@ function TaskCard(props) {
           e3.preventDefault();
           e3.stopPropagation();
           setDropBefore(false);
-          const drag = readDrag(e3);
+          const drag = readDrag2(e3);
           if (!drag || drag.id === id) return;
           void moveCard(ctx, date, drag.id, order.groupKey, drag.from, order.siblings, id);
         }
       } : {},
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -4905,7 +6062,7 @@ function GroupBox(props) {
   );
   const siblings = own.map(itemId);
   const ids = all.filter((it) => it.kind === "issue" ? isActive(it.issue) : routineStatus(props.board, it.routine) === "open").map(itemId);
-  const runningIds = ctx.store.index.running().map((l3) => l3.taskId).filter((id) => all.some((it) => itemId(it) === id));
+  const runningIds = ctx.store.index.running().map(workKey).filter((id) => all.some((it) => itemId(it) === id));
   return /* @__PURE__ */ u3(
     "section",
     {
@@ -4920,7 +6077,7 @@ function GroupBox(props) {
         e3.preventDefault();
         e3.stopPropagation();
         setOver(false);
-        const drag = readDrag(e3);
+        const drag = readDrag2(e3);
         if (drag) void moveCard(ctx, date, drag.id, groupKey, drag.from, siblings, null);
       },
       children: [
@@ -5561,20 +6718,7 @@ function LabelManagerView(props) {
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian17 = require("obsidian");
-
-// src/ui/FilterChip.tsx
-function FilterChip(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
-    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
-    props.label
-  ] });
-}
-function toggle(list, v3) {
-  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
-}
-
-// src/views/MemberListView.tsx
+var import_obsidian18 = require("obsidian");
 function MemberForm(props) {
   const [name, setName] = d2("");
   return /* @__PURE__ */ u3(
@@ -5652,7 +6796,7 @@ function MemberListView(props) {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
@@ -5666,11 +6810,11 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
-  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", parent: null, sort: "id", desc: true };
+  return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", sort: "id", desc: true };
 }
 function nextScheduled(issue, today) {
   return issue.scheduled.find((d3) => d3 >= today) ?? null;
@@ -5703,7 +6847,6 @@ function queryIssues(issues, q2, today) {
     if (q2.labels.length > 0 && !q2.labels.every((l3) => i3.labels.includes(l3))) return false;
     if (q2.scheduled === "yes" && i3.scheduled.length === 0) return false;
     if (q2.scheduled === "no" && i3.scheduled.length > 0) return false;
-    if (q2.parent !== null && i3.parent !== q2.parent) return false;
     const hay = `${i3.id} ${i3.summary}`.toLowerCase();
     return words.every((w3) => hay.includes(w3));
   });
@@ -5749,7 +6892,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian19.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -5840,7 +6983,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -5986,7 +7129,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian19.Menu();
+    const m3 = new import_obsidian20.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -6130,7 +7273,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -6202,7 +7345,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
@@ -6217,7 +7360,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -6243,7 +7386,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -6254,7 +7397,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -6265,7 +7408,8 @@ function SidebarView(props) {
   const runningByTask = /* @__PURE__ */ new Map();
   for (const l3 of index.running()) {
     const elapsed = Math.max(0, now - l3.fromMs);
-    runningByTask.set(l3.taskId, Math.max(runningByTask.get(l3.taskId) ?? 0, elapsed));
+    const key = workKey(l3);
+    runningByTask.set(key, Math.max(runningByTask.get(key) ?? 0, elapsed));
   }
   const items = [
     { type: "pkm-task-daily", title: "Today", icon: "sun", count: counts.daily },
@@ -6287,12 +7431,11 @@ function SidebarView(props) {
     runningByTask.size > 0 && /* @__PURE__ */ u3("section", { class: "vt-sidebar-section", children: [
       /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "Running" }),
       /* @__PURE__ */ u3("div", { class: "vt-sidebar-running", children: [...runningByTask.entries()].map(([taskId, elapsed]) => {
-        const issue = index.issues.get(taskId);
-        const routine = index.routines.get(taskId);
-        const summary = issue?.summary || routine?.summary || taskId;
-        const path = issue?.path ?? routine?.path ?? null;
+        const task = index.sub(taskId) ?? index.issues.get(taskId) ?? index.routines.get(taskId);
+        const summary = task?.summary || taskId;
+        const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian23.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -6396,7 +7539,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian23.Plugin {
+var PkmTaskPlugin = class extends import_obsidian24.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -6407,7 +7550,7 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian23.Notice(`${message}${detail}`);
+      new import_obsidian24.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -6425,9 +7568,9 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian23.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian24.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian23.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian24.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -6445,6 +7588,7 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
     this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     installTaskHeaders(ctx, this);
+    installSubAreaHiding(this);
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
     registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));

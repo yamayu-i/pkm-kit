@@ -836,47 +836,6 @@ button.vt-badge:disabled::after {
 .vt-due-0 .vt-due-label { color: inherit; }
 .vt-due-overdue { box-shadow: inset 0 0 0 2px var(--vt-red); }
 
-/* ---------- 親子 ---------- */
-
-.vt-relations {
-	align-items: flex-start;
-}
-
-.vt-relation-col {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 8px;
-	min-width: 0;
-}
-
-.vt-relation-col > .vt-wrap {
-	max-width: 100%;
-}
-
-.vt-wrap {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.vt-relation {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	min-width: 0;
-	max-width: 100%;
-	padding: 4px;
-	border-radius: var(--vt-radius-full);
-	background: var(--vt-surface-container-high);
-}
-
-.vt-relation .vt-link {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .vt-icon-button {
 	display: inline-flex;
 	align-items: center;
@@ -3192,6 +3151,533 @@ body.is-mobile .vt-toast {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 4px;
+}
+
+/* ---------- サブイシュー（ADR-0142） ---------- */
+
+.vt-subissues {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-subissue-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* 1 件の行。ボードのカードと同じく 1 行に収める */
+.vt-subissue {
+	position: relative;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	cursor: grab;
+}
+
+.vt-subissue:hover {
+	border-color: var(--vt-outline);
+}
+
+.vt-subissue.is-running {
+	border-color: var(--vt-green);
+	box-shadow: 0 0 0 1px var(--vt-green);
+}
+
+/* 落とすと、その行の前に入る（ボードと同じ。ADR-0114） */
+.vt-subissue.is-drop-before::before,
+.vt-subissue-add.is-drop-before::before {
+	content: "";
+	position: absolute;
+	top: -4px;
+	right: 0;
+	left: 0;
+	border-top: 2px solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-subissue-add {
+	position: relative;
+}
+
+.vt-subissue-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 44px;
+	padding: 2px 4px;
+	min-width: 0;
+}
+
+.vt-subissue-status {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.vt-subissue-status:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-subissue-summary {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	height: auto;
+	min-height: 36px;
+	padding: 0 4px;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-subissue-summary:hover .vt-subissue-summary-text {
+	color: var(--vt-primary);
+}
+
+/* 狭いときは、補足が先に縮む（題を優先する） */
+.vt-subissue-summary-text {
+	flex: 0 1 auto;
+	min-width: 3em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-subissue-hint {
+	flex: 0 100 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-subissue-hint,
+.vt-subissue-actual {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 済み（closed / canceled を出したとき）: 打ち消し線（色は 4.5:1 を保つ） */
+.vt-subissue.is-done .vt-subissue-summary-text {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-subissue .vt-play,
+.vt-subissue-actual {
+	flex: none;
+}
+
+/* 開いた行の中身 */
+.vt-subissue-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 4px 12px 8px 40px;
+	cursor: auto;
+}
+
+.vt-subissue-facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 2px 12px;
+	margin: 0;
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-subissue-facts dt {
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-subissue-facts dd {
+	margin: 0;
+}
+
+.vt-subissue-body > :first-child {
+	margin-top: 0;
+}
+
+.vt-subissue-body > :last-child {
+	margin-bottom: 0;
+}
+
+.vt-subissue-detail-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.vt-subissues-closed {
+	align-self: flex-start;
+}
+
+/* 「Edit sub-issue」のダイアログ */
+.vt-subissue-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-subissue-form-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.vt-subissue-form select {
+	height: 40px;
+	border-radius: var(--vt-radius-s);
+}
+
+.vt-subissue-depends {
+	margin: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-s);
+}
+
+.vt-subissue-depends legend {
+	padding: 0 4px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+.vt-subissue-body-input {
+	width: 100%;
+	min-height: 120px;
+	padding: 12px;
+	border-radius: var(--vt-radius-m);
+	font-family: var(--font-text);
+	line-height: var(--vt-type-body-medium-line-height);
+	resize: vertical;
+}
+
+/* 表示（List / Timeline）と目盛り（Day / Week）の切り替え（ADR-0143） */
+.vt-subissues-modes {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+
+.vt-subissues-modes-sep {
+	height: 20px;
+	margin: 0 4px;
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+/* ---------- サブイシューのガントチャート（ADR-0143） ----------
+ * 左に題の列、右に日の列（カードの中で横にスクロール）。行の高さは 36px（SubTimeline.tsx の ROW と同じ） */
+.vt-timeline {
+	display: flex;
+	min-width: 0;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	overflow: hidden;
+}
+
+.vt-timeline-labels {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	width: clamp(96px, 30%, 200px);
+	border-right: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-corner {
+	height: 36px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 36px;
+	min-width: 0;
+	padding: 0 8px;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-small-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-timeline-label:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-timeline-label .vt-status-icon {
+	flex: none;
+}
+
+.vt-timeline-label-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-timeline-label.is-done .vt-timeline-label-text {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-timeline-scroll {
+	flex: 1;
+	min-width: 0;
+	overflow-x: auto;
+}
+
+.vt-timeline-grid {
+	position: relative;
+}
+
+.vt-timeline-head {
+	position: relative;
+	height: 36px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-col {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding-bottom: 2px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+	white-space: nowrap;
+}
+
+.vt-timeline.is-week .vt-timeline-col {
+	padding-left: 4px;
+	text-align: left;
+}
+
+.vt-timeline-col.is-week-start {
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-col.is-today .vt-timeline-day {
+	color: var(--vt-primary);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-month {
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-body {
+	position: relative;
+}
+
+/* 日の縞（土日の面、週の区切りの線） */
+.vt-timeline-stripe {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.vt-timeline-stripe.is-weekend {
+	background: var(--vt-surface-container);
+}
+
+.vt-timeline-stripe.is-week-start {
+	border-left: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-today {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	border-left: 2px solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-timeline-row {
+	position: absolute;
+	right: 0;
+	left: 0;
+	height: 36px;
+}
+
+.vt-timeline-row.is-empty {
+	cursor: copy;
+}
+
+.vt-timeline-none {
+	position: sticky;
+	left: 0;
+	display: inline-block;
+	padding: 8px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+/* 棒: status の印の色。ドラッグで動かす。両端はつまみ */
+.vt-timeline-bar {
+	position: absolute;
+	top: 8px;
+	height: 20px;
+	border: 1px solid var(--vt-dot);
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-dot);
+	cursor: grab;
+	touch-action: none;
+}
+
+.vt-timeline-bar.is-dragging {
+	box-shadow: var(--vt-elevation-3);
+	cursor: grabbing;
+}
+
+.vt-timeline-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 8px;
+	cursor: ew-resize;
+	touch-action: none;
+}
+
+.vt-timeline-handle.is-start {
+	left: 0;
+}
+
+.vt-timeline-handle.is-end {
+	right: 0;
+}
+
+/* 予定日の点と、期限の印 */
+.vt-timeline-dot {
+	position: absolute;
+	top: 12px;
+	width: 8px;
+	height: 8px;
+	transform: translateX(-50%);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-on-surface-variant);
+}
+
+.vt-timeline-mark {
+	position: absolute;
+	top: 4px;
+	bottom: 4px;
+	border-left: 2px solid;
+}
+
+.vt-timeline-mark.is-soft {
+	border-color: var(--vt-amber);
+}
+
+.vt-timeline-mark.is-hard {
+	border-color: var(--vt-red);
+}
+
+/* 依存の矢印。遅れ（依存先の end より前に始まる）は error の色 */
+.vt-timeline-arrows {
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+
+/* 依存の矢印は控えめに: 細く、outline の色。先端は塗らない小さな「>」 */
+.vt-timeline-arrow {
+	fill: none;
+	stroke: var(--vt-outline);
+	stroke-width: 1;
+}
+
+.vt-timeline-arrowhead {
+	fill: none;
+	stroke: var(--vt-outline);
+	stroke-width: 1.2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.vt-timeline-arrow.is-late,
+.vt-timeline-arrowhead.is-late {
+	stroke: var(--vt-error);
+}
+
+/* ホバー・フォーカスした棒に入る矢印と、依存先の棒を強調し、ほかの矢印と棒を薄くする */
+.vt-timeline-arrow,
+.vt-timeline-bar {
+	transition: opacity var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-timeline.has-focus .vt-timeline-arrow:not(.is-related),
+.vt-timeline.has-focus .vt-timeline-bar:not(.is-related, .is-active) {
+	opacity: var(--vt-opacity-disabled);
+}
+
+.vt-timeline-arrow.is-related {
+	stroke: var(--vt-primary);
+	stroke-width: 1.5;
+}
+
+.vt-timeline-arrow.is-related.is-late {
+	stroke: var(--vt-error);
+}
+
+.vt-timeline-arrowhead.is-related {
+	stroke: var(--vt-primary);
+}
+
+.vt-timeline-bar.is-related {
+	outline: var(--vt-border-width-thick) solid var(--vt-primary);
+	outline-offset: 2px;
+}
+
+.vt-timeline-bar.is-active {
+	box-shadow: var(--vt-elevation-3);
+}
+
+/* worklog の行の、記録したサブの題 */
+.vt-log-sub {
+	overflow: hidden;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* リーディング表示のサブの領域（ヘッダーで読む） */
+.vt-subissue-area-hidden {
+	display: none;
 }
 
 /* ---------- 月のカレンダー（ADR-0078。packages/shared/src/month-calendar.tsx。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */

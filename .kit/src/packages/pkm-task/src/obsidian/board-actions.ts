@@ -6,6 +6,7 @@ import { UNGROUPED } from "../core/groups";
 import type { Issue } from "../core/schema";
 import type { TaskContext } from "./context";
 import { askDate } from "./issue-actions";
+import { workKey } from "../core/worklog";
 
 function guard(ctx: TaskContext, label: string, p: Promise<unknown>): Promise<void> {
 	return p.then(
@@ -24,7 +25,7 @@ export const addToBoard = (ctx: TaskContext, date: LocalDate, ids: string[]) =>
 /** その日を実行日にした issue を作って、ボードに載せる */
 export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: string): Promise<void> {
 	try {
-		const { created } = await ctx.writer.createIssues([summary], null, [date]);
+		const { created } = await ctx.writer.createIssues([summary], [date]);
 		const file = created[0];
 		if (!file) throw new Error(`作成に失敗しました: ${summary}`);
 		await addToBoard(ctx, date, [file.basename]);
@@ -104,7 +105,7 @@ export function startTimer(ctx: TaskContext, ids: string[]): Promise<void> {
 }
 
 export function stopTimer(ctx: TaskContext, ids: string[]): Promise<void> {
-	const running = ctx.store.index.running().filter((l) => ids.includes(l.taskId));
+	const running = ctx.store.index.running().filter((l) => ids.includes(workKey(l)));
 	if (running.length === 0) return Promise.resolve();
 	return guard(ctx, "記録を止められませんでした", ctx.writer.stopTimer(running));
 }

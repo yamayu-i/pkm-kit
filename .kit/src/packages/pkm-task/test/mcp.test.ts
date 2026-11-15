@@ -97,15 +97,14 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(readVault(root).problems).toEqual([]);
 	});
 
-	it("不正な操作（存在しない issue、未定義のグループ、未完了がある状態での close、親子の循環）を拒否して書き込まない", () => {
+	it("不正な操作（存在しない issue、未定義のグループ、未完了がある状態での close、廃止した parent）を拒否して書き込まない", () => {
 		expect(() => callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-999"] })).toThrow(/i-999/);
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1"] });
 		expect(() => callMcpTool(ctx, "move_card", { date, id: "i-1", group: "存在しないグループ" })).toThrow(/グループ/);
 		expect(() => callMcpTool(ctx, "close_board", { date })).toThrow(/未完了/);
 
-		// 親子循環の拒否
-		callMcpTool(ctx, "update_issue", { id: "i-2", parent: "i-1" });
-		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", parent: "i-2" })).toThrow(/親/);
+		// 親子関係は廃止した（ADR-0135）。parent は受け付けない
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", parent: "i-1" })).toThrow(/parent/);
 	});
 
 	it("carry_issues と update_issue で未完了を解消してから close_board で要約を書き、append_daily_note で末尾に助言を追記できる", () => {
