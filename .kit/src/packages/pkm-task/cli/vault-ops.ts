@@ -6,7 +6,7 @@ import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
 import { isLocalDate, localDateTime, localToday, type LocalDate } from "../src/core/dates";
-import { boardLanes, canStar, moveOps, type OrderedLane } from "../src/core/board-lanes";
+import { boardLanes, canStar, moveOps, TOP_LIMIT, type OrderedLane } from "../src/core/board-lanes";
 import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
 import { frontmatterRange, newDailyContent, newIssueContent } from "../src/core/issue-file";
@@ -191,19 +191,20 @@ function laneOfKey(index: TaskIndex, date: LocalDate, key: string) {
 	return { board, lanes, lane };
 }
 
-/** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 3・Up next・Waiting の欄だけ */
+/** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 4・Up next・Waiting の欄だけ */
 export function orderCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, before: string | null, device: string, now: Date): void {
 	const { board, lanes, lane } = laneOfKey(index, date, key);
-	if (lane === "working" || lane === "done") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
+	if (lane === "working" || lane === "done" || lane === "routine") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
 	if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before（${before}）は ${key} と同じ欄にありません`);
 	appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane as OrderedLane, before, index.order(date)), now);
 }
 
-/** ★ 今日の最重要を付け外しする。付けるのは 3 件まで */
+/** ★ 今日の最重要を付け外しする。付けるのは TOP_LIMIT 件まで */
 export function starCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, on: boolean, device: string, now: Date): void {
 	if (typeof on !== "boolean") throw new Error("on は true か false にしてください");
-	const { board, lanes } = laneOfKey(index, date, key);
-	if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error("★ は 3 件までです。ほかの ★ を外してから付けてください");
+	const { board, lanes, lane } = laneOfKey(index, date, key);
+	if (on && lane === "routine") throw new Error(`${key} は routine なので ★ を付けられません`);
+	if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから付けてください`);
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
 

@@ -147,7 +147,7 @@ const TOOLS: McpToolDef[] = [
 	{
 		name: "get_board",
 		description:
-			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（3 件まで）、next: 次にやる順、waiting: waiting / delegated、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
+			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（4 件まで）、routine: routine すべて（issue と混ぜない。★ は付けられない）、next: 次にやる順、waiting: waiting / delegated、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -257,7 +257,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "star_card",
-		description: "ボードのカードに ★ 今日の最重要を付ける（on: true）か外す（on: false）。★ は 3 件まで。その日だけで翌日には引き継がない",
+		description: "ボードのカードに ★ 今日の最重要を付ける（on: true）か外す（on: false）。★ は 4 件まで。その日だけで翌日には引き継がない",
 		inputSchema: {
 			type: "object",
 			properties: {

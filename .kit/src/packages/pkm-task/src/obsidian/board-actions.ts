@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
 import { backToNextPatch, inboxPatch, ticklerPatch } from "../core/actions";
 import { emptyBoard, isOnBoard, type RoutineResult } from "../core/board";
-import { boardLanes, canStar, moveOps, stepOps, type OrderedLane } from "../core/board-lanes";
+import { boardLanes, canStar, moveOps, stepOps, TOP_LIMIT, type OrderedLane } from "../core/board-lanes";
 import type { BoardOp } from "../core/board-log";
 import { addDays, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
@@ -59,24 +59,25 @@ function lanesOn(ctx: TaskContext, date: LocalDate) {
 	return { board, lanes: boardLanes(index, date, board), previous: index.order(date) };
 }
 
-/** ★ 今日の最重要を付け外しする。3 件あるときは付けない（ADR-0137） */
+/** ★ 今日の最重要を付け外しする。上限（TOP_LIMIT 件）あるときは付けない（ADR-0137, 0164） */
 export function setStar(ctx: TaskContext, date: LocalDate, key: string, on: boolean): Promise<void> {
 	const { board, lanes } = lanesOn(ctx, date);
+	if (on && lanes.routine.some((c) => c.key === key)) return Promise.resolve();
 	if (on && !board.stars.includes(key) && !canStar(lanes)) {
-		new Notice("★ は 3 件までです。ほかの ★ を外してから付けてください");
+		new Notice(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから付けてください`);
 		return Promise.resolve();
 	}
 	return guard(ctx, "★ を変えられませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "star", task: key, on }]));
 }
 
 /**
- * カードを欄（Top 3 / Up next / Waiting）の before の前（null なら末尾）へ動かす（ADR-0137）。
- * Top 3 に入れると ★ を付け、Top 3 から Up next に出すと外す。3 件あるときは Top 3 に入れない
+ * カードを欄（Top 4 / Up next / Waiting）の before の前（null なら末尾）へ動かす（ADR-0137）。
+ * Top 4 に入れると ★ を付け、Top 4 から Up next に出すと外す。上限のときは Top 4 に入れない
  */
 export function moveCard(ctx: TaskContext, date: LocalDate, key: string, lane: OrderedLane, before: string | null): Promise<void> {
 	const { board, lanes, previous } = lanesOn(ctx, date);
 	if (lane === "top" && !board.stars.includes(key) && !canStar(lanes)) {
-		new Notice("★ は 3 件までです。ほかの ★ を外してから入れてください");
+		new Notice(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから入れてください`);
 		return Promise.resolve();
 	}
 	return guard(ctx, "カードを動かせませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, moveOps(lanes, board, key, lane, before, previous)));

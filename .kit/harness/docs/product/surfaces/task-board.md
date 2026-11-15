@@ -6,10 +6,11 @@
 
 ## 今の振る舞い
 
-- 1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 3（★ 今日の最重要。3 件まで）・Up next（残り。in-progress も open もここ）・Waiting（waiting / delegated。件数を出して開いたまま）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる
+- 1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（routine だけ。issue・サブと混ぜない。開いたまま始め、見出しで開閉。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Waiting（waiting / delegated。件数を出して開いたまま）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる
 - カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。`delegated…` も選べる）・題・再生 / 停止・`···` のメニューだけを出す。ID はマウスを乗せると出る
 - 同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る
-- `···` のメニュー: Add to Top 3 / Remove from Top 3、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 3 と Up next の間と中をドラッグで並べ替えられ、Top 3 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
+- 星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる
+- `···` のメニュー: Add to Top 4 / Remove from Top 4、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
 - Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも `i-12 › 題` の形で候補に出る。載せても日付は書かない（ADR-0152）
 - status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる
 - 未完了の一覧: issue は Back to Next、Tickler、Move date（Calendar の日を持つものだけ）、Close、Cancel、Inbox。サブイシューは Back to Next、Close、Move date、Cancel（Tickler と Inbox はない）。持ち越したものはボードに残るが未完了に数えない
