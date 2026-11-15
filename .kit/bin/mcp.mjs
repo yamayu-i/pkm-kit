@@ -7746,6 +7746,31 @@ function parseMember(path, fm) {
   return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
 }
 
+// src/core/issue-file.ts
+var ISSUE_BODY_TEMPLATE = "# Note\n\n";
+function yamlString(s) {
+  return JSON.stringify(s);
+}
+function newIssueContent(id, summary, created, extra = {}) {
+  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString(summary)}`, "status: open"];
+  if (extra.scheduled) lines.push(`scheduled: ${extra.scheduled}`);
+  if (extra.clarified) lines.push("clarified: true");
+  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
+  return lines.join("\n");
+}
+function frontmatterRange(text) {
+  const m = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
+  return m ? { from: 0, to: m[0].length } : null;
+}
+function newDailyContent(created) {
+  return `---
+type: daily
+created: ${created}
+updated: ${created}
+---
+`;
+}
+
 // src/core/sub-issue.ts
 var SUB_ISSUE_MARKER = "<!-- sub-issue";
 var BLOCK_END = "-->";
@@ -7852,12 +7877,12 @@ function parseSubIssues(path, parent, text, parseYaml) {
   }
   return { subs, blocks, problems };
 }
-function yamlString(s) {
+function yamlString2(s) {
   return JSON.stringify(s);
 }
 function formatSubHead(sub) {
   if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
-  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
+  const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString2(sub.summary)}`, `status: ${sub.status}`];
   const put = (key, value) => {
     if (value !== null) lines.push(`${key}: ${value}`);
   };
@@ -7886,7 +7911,7 @@ function formatSubIssue(sub) {
   }
   return `${head}
 ${body ? `${body}
-` : ""}`;
+${sub.body.endsWith("\n\n") ? "\n" : ""}` : ""}`;
 }
 function replaceSubIssues(text, blocks) {
   const { head, blocks: existing } = splitSubIssueText(text);
@@ -8012,7 +8037,7 @@ function newSubIssueInput(item, id, created) {
     dependsOn: item.dependsOn ?? [],
     created,
     migratedFrom: null,
-    body: item.body ?? ""
+    body: item.body ?? ISSUE_BODY_TEMPLATE
   };
 }
 function dependentsOf(subs, id) {
@@ -9556,31 +9581,6 @@ function closeBoardNote(text, date, index, board) {
   const remaining = unfinished(index, date, board);
   if (unfinishedCount(remaining) > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
-}
-
-// src/core/issue-file.ts
-var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
-function yamlString2(s) {
-  return JSON.stringify(s);
-}
-function newIssueContent(id, summary, created, extra = {}) {
-  const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
-  if (extra.scheduled) lines.push(`scheduled: ${extra.scheduled}`);
-  if (extra.clarified) lines.push("clarified: true");
-  lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
-  return lines.join("\n");
-}
-function frontmatterRange(text) {
-  const m = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?=\r?\n|$)/.exec(text);
-  return m ? { from: 0, to: m[0].length } : null;
-}
-function newDailyContent(created) {
-  return `---
-type: daily
-created: ${created}
-updated: ${created}
----
-`;
 }
 
 // cli/vault-ops.ts

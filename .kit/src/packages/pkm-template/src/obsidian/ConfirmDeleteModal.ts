@@ -1,4 +1,5 @@
 import { Modal, Setting, type App } from "obsidian";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 /** 一覧からファイルを消す前の確認（ADR-0045）。Delete を押したときだけ onConfirm を呼ぶ */
 export class ConfirmDeleteModal extends Modal {
@@ -8,6 +9,7 @@ export class ConfirmDeleteModal extends Modal {
 		private readonly onConfirm: () => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {

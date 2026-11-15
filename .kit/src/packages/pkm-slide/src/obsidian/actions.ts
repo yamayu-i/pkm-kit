@@ -8,6 +8,7 @@ import { openInNotePane, openViewInNotePane } from "../../../shared/src/list-pan
 import { folderLabel, markdownLink, movedDecks, moveTarget, nameError, renameTarget, retargetDeck, type SlideTree } from "../core/decks.ts";
 import type { Deck } from "./model.ts";
 import { NOTES_VIEW_TYPE } from "./notes-view.ts";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 const KEEP = ".gitkeep";
 
@@ -137,6 +138,7 @@ class NameModal extends Modal {
 		private readonly submit: (name: string) => Promise<void>,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -198,6 +200,7 @@ class FolderModal extends FuzzySuggestModal<string> {
 		private readonly choose: (folder: string) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.setPlaceholder("Move to folder…");
 	}
 

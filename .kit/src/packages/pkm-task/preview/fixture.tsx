@@ -1,4 +1,5 @@
 /** プレビュー用のデータ。#header / #daily などで描く画面を選ぶ（preview.mjs が順に撮る） */
+import { NoteEditor } from "../src/obsidian/NoteEditor";
 import { h, render, type FunctionComponent } from "preact";
 import { parse } from "yaml";
 import { serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
@@ -149,6 +150,7 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	),
 };
 
+VIEWS["note-editor"] = () => h(NoteEditor, { app: {} as never, sourcePath: "issue/i-2.md", initial: "# Note\n\nfirst paragraph\n\nlast paragraph", onChange: (text: string) => { document.body.dataset.note = text; } });
 const name = location.hash.slice(1) || "header";
 const headerPaths: Record<string, string> = {
 	header: "issue/i-2.md",

@@ -1,3 +1,4 @@
+import { NoteEditor } from "./NoteEditor";
 import { useState } from "preact/hooks";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes, parseDurationInput } from "../core/format";
@@ -178,10 +179,10 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 					))}
 				</fieldset>
 			)}
-			<label class="vt-text-field">
-				<span>Notes</span>
-				<textarea class="vt-subissue-body-input" value={draft.body} onInput={(e) => set({ body: e.currentTarget.value })} />
-			</label>
+			<div class="vt-text-field">
+				<span>Note</span>
+				<NoteEditor app={ctx.app} sourcePath={sub.path} initial={sub.body} onChange={(body) => set({ body })} />
+			</div>
 			{error !== null && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				<button type="button" class="vt-danger-text" onClick={() => deleteSubWithConfirm(ctx, sub, close)}>

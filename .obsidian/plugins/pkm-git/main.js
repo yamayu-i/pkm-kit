@@ -22593,11 +22593,23 @@ var SyncLog = class {
 // src/obsidian/modals.ts
 init_buffer();
 var import_obsidian = require("obsidian");
+
+// ../shared/src/modal-keys.ts
+init_buffer();
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
+// src/obsidian/modals.ts
 var ConflictsModal = class extends import_obsidian.Modal {
   constructor(app, title, items) {
     super(app);
     this.title = title;
     this.items = items;
+    registerCloseKey(this);
   }
   title;
   items;
@@ -22643,6 +22655,7 @@ var ConfirmModal = class extends import_obsidian.Modal {
     this.title = title;
     this.message = message;
     this.onConfirm = onConfirm;
+    registerCloseKey(this);
   }
   title;
   message;
@@ -22665,6 +22678,7 @@ var KeepVersionModal = class extends import_obsidian.Modal {
   constructor(app, onKeep) {
     super(app);
     this.onKeep = onKeep;
+    registerCloseKey(this);
   }
   onKeep;
   name = "";
@@ -22693,6 +22707,7 @@ var SyncLogModal = class extends import_obsidian.Modal {
   constructor(app, entries) {
     super(app);
     this.entries = entries;
+    registerCloseKey(this);
   }
   entries;
   onOpen() {
@@ -22732,6 +22747,7 @@ var ResolveConflictsModal = class extends import_obsidian.Modal {
     this.path = path;
     this.segments = segments;
     this.onApply = onApply;
+    registerCloseKey(this);
     this.choices = segments.filter((s) => s.type === "conflict").map(() => void 0);
   }
   path;
@@ -22794,6 +22810,7 @@ var FileHistoryModal = class extends import_obsidian.Modal {
     this.path = path;
     this.first = first;
     this.actions = actions;
+    registerCloseKey(this);
   }
   path;
   first;
@@ -22843,6 +22860,7 @@ var PreviewModal = class extends import_obsidian.Modal {
     this.heading = heading;
     this.text = text;
     this.size = size;
+    registerCloseKey(this);
   }
   heading;
   text;

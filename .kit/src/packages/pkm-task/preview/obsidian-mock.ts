@@ -1,6 +1,6 @@
 /** プレビュー用の Obsidian API のモック（見た目の確認だけに使う。プラグインには入らない） */
 export class Menu { items: any[] = []; addItem(cb: any) { const it: any = { setTitle(t: string) { it.t = t; return it; }, setChecked() { return it; }, setIcon() { return it; }, onClick(f: any) { it.f = f; return it; } }; cb(it); this.items.push(it); return this; } addSeparator() { return this; } showAtMouseEvent() { (window as any).lastMenu = this.items.map((i) => i.t); return this; } }
-export class Modal { contentEl = document.createElement("div"); constructor(public app: any) {} setTitle() {} open() { document.body.append(this.contentEl); (this as any).onOpen?.(); } close() { (this as any).onClose?.(); this.contentEl.remove(); } }
+export class Modal { contentEl = document.createElement("div"); modalEl = document.createElement("div"); scope = { register: () => ({}), unregister: () => {} }; constructor(public app: any) {} setTitle() {} open() { document.body.append(this.contentEl); (this as any).onOpen?.(); } close() { (this as any).onClose?.(); this.contentEl.remove(); } }
 export class SuggestModal extends Modal { setPlaceholder() {} }
 export class FuzzySuggestModal extends SuggestModal {}
 export const prepareFuzzySearch = (q: string) => (t: string) => (t.includes(q) ? { score: 0 } : null);

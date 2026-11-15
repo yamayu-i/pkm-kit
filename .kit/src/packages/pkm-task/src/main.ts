@@ -107,7 +107,7 @@ export default class PkmTaskPlugin extends Plugin {
 			name: "Open Tasks Now",
 			icon: "timer",
 			callback: () => {
-				const modal = new PreactModal(this.app, "Tasks Now", () => h(TasksNowDialog, { ctx }));
+				const modal = new PreactModal(this.app, "Tasks Now", (_close, scope) => h(TasksNowDialog, { ctx, scope }));
 				modal.modalEl.addClass("vt-now-modal");
 				modal.open();
 			},

@@ -53,7 +53,7 @@ describe("newIssueContent", () => {
 		const { value, problems } = parseIssue("issue/i-5.md", fm);
 		expect(problems).toEqual([]);
 		expect(value).toMatchObject({ id: "i-5", summary: 'コロン: と "引用符" と #', status: "open", created });
-		expect(text).toContain("## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n");
+		expect(text.split("---\n").at(-1)).toBe("\n# Note\n\n");
 		expect(fm.updated).toBe(created);
 	});
 
