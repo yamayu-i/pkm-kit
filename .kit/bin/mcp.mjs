@@ -7696,6 +7696,7 @@ function parseRoutine(path, fm) {
   const parsed = parseRepeat(fm.repeat);
   if (parsed.ok) repeat = parsed.value;
   else r.problem("invalid-repeat", parsed.error);
+  if (r.has("group")) r.problem("legacy-routine-group", "group \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0137\uFF09\u3002\u79FB\u884C 0137-board-lanes \u3067\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09", "warning");
   const active = fm.active === void 0 || fm.active === null ? true : fm.active;
   if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const routine = {
@@ -7706,7 +7707,6 @@ function parseRoutine(path, fm) {
     start: r.date("start"),
     end: r.date("end"),
     active: active !== false,
-    group: r.string("group"),
     priority: r.oneOf("priority", PRIORITIES),
     labels: r.strings("label"),
     estimated: r.minutes("estimated"),
@@ -8105,6 +8105,7 @@ function boardLogPath(device, date) {
 function nextBoardAt(nowMs, latestMs) {
   return latestMs === null ? nowMs : Math.max(nowMs, latestMs + 1);
 }
+var IGNORED = "ignored";
 function parseOp(o) {
   const task = typeof o.task === "string" && o.task ? o.task : null;
   switch (o.op) {
@@ -8113,7 +8114,9 @@ function parseOp(o) {
     case "carry":
       return task ? { op: o.op, task } : null;
     case "place":
-      return task && (o.group === null || typeof o.group === "string" && o.group) ? { op: "place", task, group: o.group } : null;
+      return IGNORED;
+    case "star":
+      return task && typeof o.on === "boolean" ? { op: "star", task, on: o.on } : null;
     case "routine":
       return task && (o.result === null || o.result === "closed" || o.result === "canceled") ? { op: "routine", task, result: o.result } : null;
     case "close":
@@ -8121,7 +8124,8 @@ function parseOp(o) {
     case "reopen":
       return { op: "reopen" };
     case "order":
-      return (o.group === null || typeof o.group === "string" && o.group) && Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", group: o.group, tasks: o.tasks } : null;
+      if ("group" in o) return IGNORED;
+      return Array.isArray(o.tasks) && o.tasks.every((id) => typeof id === "string" && id) ? { op: "order", tasks: o.tasks } : null;
     default:
       return null;
   }
@@ -8151,6 +8155,7 @@ function parseBoardLog(path, text) {
     if (typeof o.date !== "string" || !isLocalDate(o.date)) return problem(line, "invalid-board-log", "date \u304C\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const op = parseOp(o);
     if (!op) return problem(line, "invalid-board-log", "\u64CD\u4F5C\u304C\u4E0D\u6B63\u3067\u3059");
+    if (op === IGNORED) return;
     entries.push({ path, line, id: o.id, at: o.at, atMs, date: o.date, op });
   });
   return { entries, problems };
@@ -8177,11 +8182,11 @@ function apply(board, op) {
     case "remove":
       board.issues = board.issues.filter((id) => id !== op.task);
       board.carried = board.carried.filter((id) => id !== op.task);
-      delete board.groups[op.task];
+      board.stars = board.stars.filter((id) => id !== op.task);
       break;
-    case "place":
-      if (op.group === null) delete board.groups[op.task];
-      else board.groups[op.task] = op.group;
+    case "star":
+      board.stars = board.stars.filter((id) => id !== op.task);
+      if (op.on) board.stars.push(op.task);
       break;
     case "routine":
       if (op.result === null) delete board.routines[op.task];
@@ -8196,6 +8201,18 @@ function apply(board, op) {
       break;
     case "order":
       break;
+  }
+}
+function renameBoardOp(op, rename) {
+  switch (op.op) {
+    case "close":
+      return { op: "close", tasks: op.tasks.map(rename) };
+    case "order":
+      return { op: "order", tasks: op.tasks.map(rename) };
+    case "reopen":
+      return op;
+    default:
+      return { ...op, task: rename(op.task) };
   }
 }
 function replayBoard(initial, entries) {
@@ -8216,36 +8233,18 @@ function removedTasks(entries) {
   }
   return [...last].filter(([, op]) => op === "remove").map(([id]) => id);
 }
-function placementHistory(initial, entries) {
-  const records = [];
-  for (const [date, board] of initial) {
-    for (const [task, group] of Object.entries(board.groups)) records.push({ task, date, atMs: Number.NEGATIVE_INFINITY, group });
-  }
-  for (const e of [...entries].sort(compareEntries)) {
-    if (e.op.op === "place") records.push({ task: e.op.task, date: e.date, atMs: e.atMs, group: e.op.group });
-  }
-  return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
-}
-function lastPlacement(history, task, date) {
-  let found;
-  for (const r of history) {
-    if (r.date > date) break;
-    if (r.task === task) found = r.group;
-  }
-  return found;
-}
 function orderHistory(entries) {
   const records = [];
   for (const e of [...entries].sort(compareEntries)) {
-    if (e.op.op === "order") records.push({ group: e.op.group ?? "", date: e.date, atMs: e.atMs, tasks: e.op.tasks });
+    if (e.op.op === "order") records.push({ date: e.date, atMs: e.atMs, tasks: e.op.tasks });
   }
   return records.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : a.atMs - b.atMs);
 }
-function lastOrder(history, group, date) {
+function lastOrder(history, date) {
   let found;
   for (const r of history) {
     if (r.date > date) break;
-    if (r.group === group) found = r.tasks;
+    found = r.tasks;
   }
   return found;
 }
@@ -8470,21 +8469,18 @@ var TaskIndex = class {
     return this.data.boards.find((b) => b.date === date);
   }
   /**
-   * その日のボードに自動で載せる issue（ADR-0034）: その日が実行日で、まだ載っておらず、その日に外してもいないもの
+   * その日のボードに自動で載せる issue の ID とサブの合成キー（ADR-0034, 0137）:
+   * その日が実行日で active で、まだ載っておらず、その日に外してもいないもの。issue（ID の順）→ サブ（親の md の順）
    */
   toAutoAdd(date) {
     const daily = this.board(date);
-    return scheduledOn(this.issues.values(), date, /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]));
+    const skip = /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]);
+    const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled.includes(date) && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
+    return [...scheduledOn(this.issues.values(), date, skip).map((i) => i.id), ...subs.map((s) => s.key)];
   }
-  /**
-   * カードの置き場所（ADR-0034）。その日に移した場所 → 前に置いた場所（その日までで最後）→ 既定（routine の group）→ 未分類
-   */
-  placement(date, board, id, fallback, keys) {
-    return placementOf(board, id, fallback, keys, lastPlacement(this.data.placements, id, date));
-  }
-  /** グループ（鍵。未分類は ""）の中の並び（ADR-0114）。その日までで最後に並べたもの。なければ undefined */
-  order(date, group) {
-    return lastOrder(this.data.orders, group, date);
+  /** ボードの並び（ADR-0114, 0137）。その日までで最後に並べたもの。なければ undefined */
+  order(date) {
+    return lastOrder(this.data.orders, date);
   }
   /** 記録中（to が空）の worklog。鍵（workKey）の完全一致で選ぶ: 親の ID なら親に直接付けた記録だけ（ADR-0135） */
   running(key) {
@@ -8514,7 +8510,7 @@ var TaskIndex = class {
 // src/core/board.ts
 var BOARD_KEY = "board";
 function emptyBoard() {
-  return { issues: [], groups: {}, routines: {}, carried: [], closed: false };
+  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
 }
 function record(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
@@ -8528,7 +8524,6 @@ function parseBoard(value) {
   if (Array.isArray(raw.carried)) {
     for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
   }
-  for (const [id, g] of Object.entries(record(raw.groups))) if (typeof g === "string" && g) board.groups[id] = g;
   for (const [id, r] of Object.entries(record(raw.routines))) if (r === "closed" || r === "canceled") board.routines[id] = r;
   board.closed = raw.closed === true;
   return board;
@@ -8539,14 +8534,19 @@ function dailyNotePath(date) {
 var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
 function boardItems(index, date, board) {
   const issues = board.issues.map((id) => index.issues.get(id)).filter((i) => i !== void 0);
-  return { issues, routines: index.routinesOn(date) };
+  const subs = board.issues.map((key) => index.sub(key)).filter((s) => s !== void 0);
+  return { issues, subs, routines: index.routinesOn(date) };
 }
 function unfinished(index, date, board) {
   const items = boardItems(index, date, board);
   return {
     issues: items.issues.filter((i) => isActive(i) && !board.carried.includes(i.id)),
+    subs: items.subs.filter((s) => isActive(s) && !board.carried.includes(s.key)),
     routines: items.routines.filter((r) => board.routines[r.id] === void 0)
   };
+}
+function unfinishedCount(u) {
+  return u.issues.length + u.subs.length + u.routines.length;
 }
 function markCarried(board, ids) {
   for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
@@ -8561,12 +8561,8 @@ function routineResults(index, routine, today, days) {
 function pendingBoards(index, boards, today) {
   return boards.filter((b) => b.date < today && !b.board.closed).filter((b) => {
     const u = unfinished(index, b.date, b.board);
-    return u.issues.length > 0 || u.routines.length > 0;
+    return unfinishedCount(u) > 0;
   }).sort((a, b) => a.date.localeCompare(b.date));
-}
-function placementOf(board, id, fallback, keys, remembered) {
-  const key = board.groups[id] ?? (remembered !== void 0 ? remembered ?? "" : fallback ?? "");
-  return key !== "" && keys.includes(key) ? key : "";
 }
 function sortByOrder(items, idOf, order) {
   if (!order || order.length === 0) return [...items];
@@ -8574,48 +8570,98 @@ function sortByOrder(items, idOf, order) {
   const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a, b) => (rank.get(idOf(a)) ?? 0) - (rank.get(idOf(b)) ?? 0));
   return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
 }
-
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-var UNGROUPED = "";
-function parseGroup(value, depth, problems) {
-  const o = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o.name === "string" ? o.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o.children)) {
-    if (depth >= 1 && o.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c of o.children) {
-        const g = parseGroup(c, depth + 1, problems);
-        if (g && !children.some((x) => x.name === g.name)) children.push(g);
-      }
-  }
-  return { name, children };
+function reorder(visible, id, before) {
+  const rest = visible.filter((x) => x !== id);
+  const at = before === null ? -1 : rest.indexOf(before);
+  return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)];
 }
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g = parseGroup(item, 0, messages);
-      if (g && !groups.some((x) => x.name === g.name)) groups.push(g);
+function nextOrder(visible, previous) {
+  const result = [...visible];
+  if (!previous) return result;
+  const shown = new Set(visible);
+  let prev = null;
+  let headAt = 0;
+  for (const id of previous) {
+    if (!shown.has(id) && !result.includes(id)) {
+      if (prev === null) result.splice(headAt++, 0, id);
+      else result.splice(result.indexOf(prev) + 1, 0, id);
     }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
+    prev = id;
+  }
+  return result;
 }
-function groupKeys(groups) {
-  return groups.flatMap((g) => [g.name, ...g.children.map((c) => `${g.name}/${c.name}`)]);
+
+// src/core/board-lanes.ts
+var LANES = ["working", "top", "next", "waiting", "done"];
+var TOP_LIMIT = 3;
+function boardCards(index, date, board) {
+  const cards = [];
+  for (const key of board.issues) {
+    const issue = index.issues.get(key);
+    if (issue) {
+      cards.push({ kind: "issue", key, issue });
+      continue;
+    }
+    const sub = index.sub(key);
+    if (sub) cards.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
+  }
+  for (const routine of index.routinesOn(date)) cards.push({ kind: "routine", key: routine.id, routine });
+  return cards;
+}
+function cardStatus(board, card) {
+  if (card.kind === "issue") return card.issue.status;
+  if (card.kind === "sub") return card.sub.status;
+  return board.routines[card.routine.id] ?? "open";
+}
+function cardSummary(card) {
+  return card.kind === "issue" ? card.issue.summary : card.kind === "sub" ? card.sub.summary : card.routine.summary;
+}
+function isSettled(board, card) {
+  if (card.kind === "routine") return board.routines[card.routine.id] !== void 0;
+  const status = cardStatus(board, card);
+  return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
+}
+function laneOf(index, board, card) {
+  if (index.running(card.key).length > 0) return "working";
+  if (isSettled(board, card)) return "done";
+  const status = cardStatus(board, card);
+  if (status === "waiting" || status === "delegated") return "waiting";
+  if (board.stars.includes(card.key)) return "top";
+  return "next";
+}
+function boardLanes(index, date, board) {
+  const lanes = { working: [], top: [], next: [], waiting: [], done: [] };
+  const order = index.order(date);
+  for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) lanes[laneOf(index, board, card)].push(card);
+  const startedAt = (c) => Math.min(...index.running(c.key).map((l) => l.fromMs));
+  lanes.working.sort((a, b) => startedAt(a) - startedAt(b));
+  const added = boardCards(index, date, board).map((c) => c.key);
+  lanes.done.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
+  return lanes;
+}
+function canStar(lanes) {
+  return lanes.top.length < TOP_LIMIT;
+}
+function orderedKeys(lanes) {
+  return [...lanes.top, ...lanes.next, ...lanes.waiting].map((c) => c.key);
+}
+function endOf(lanes, lane, key) {
+  const after = lane === "top" ? ["next", "waiting"] : lane === "next" ? ["waiting"] : [];
+  for (const l of after) {
+    const first = lanes[l].find((c) => c.key !== key);
+    if (first) return first.key;
+  }
+  return null;
+}
+function moveOps(lanes, board, key, lane, before, previous) {
+  const ops = [];
+  const starred = board.stars.includes(key);
+  if (lane === "top" && !starred) ops.push({ op: "star", task: key, on: true });
+  if (lane === "next" && starred) ops.push({ op: "star", task: key, on: false });
+  const visible = orderedKeys(lanes);
+  const target = before ?? endOf(lanes, lane, key);
+  ops.push({ op: "order", tasks: nextOrder(reorder(visible.includes(key) ? visible : [...visible, key], key, target), previous) });
+  return ops;
 }
 
 // ../design/src/color.ts
@@ -8938,7 +8984,7 @@ function lintVault(data, options = {}) {
   }
   for (const b of data.boards) {
     for (const id of b.board.issues) {
-      if (!index.issues.has(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (!index.issues.has(id) && !index.sub(id) && !index.migrated(id)) add("warning", b.path, "dangling-board-issue", `\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B ${id} \u304C\u3042\u308A\u307E\u305B\u3093`);
     }
   }
   const logIds = /* @__PURE__ */ new Map();
@@ -9015,10 +9061,11 @@ function boardWorkload(index, date, availableMinutes = DEFAULT_AVAILABLE_MINUTES
   const board = index.board(date)?.board ?? emptyBoard();
   const items = boardItems(index, date, board);
   const activeBoardIssues = items.issues.filter((i) => !board.carried.includes(i.id));
-  const totalEstimatedMinutes = activeBoardIssues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) + items.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
+  const activeBoardSubs = items.subs.filter((x) => !board.carried.includes(x.key));
+  const totalEstimatedMinutes = activeBoardIssues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) + activeBoardSubs.reduce((sum, x) => sum + (x.estimated ?? 0), 0) + items.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
   const rem = unfinished(index, date, board);
-  const unfinishedEstimatedMinutes = rem.issues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) + rem.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
-  const unestimatedCount = rem.issues.filter((i) => i.estimated === null).length + rem.routines.filter((r) => r.estimated === null).length;
+  const unfinishedEstimatedMinutes = rem.issues.reduce((sum, i) => sum + (i.estimated ?? 0), 0) + rem.subs.reduce((sum, x) => sum + (x.estimated ?? 0), 0) + rem.routines.reduce((sum, r) => sum + (r.estimated ?? 0), 0);
+  const unestimatedCount = rem.issues.filter((i) => i.estimated === null).length + rem.subs.filter((x) => x.estimated === null).length + rem.routines.filter((r) => r.estimated === null).length;
   const overloadedByMinutes = Math.max(0, unfinishedEstimatedMinutes - availableMinutes);
   const loadRatio = availableMinutes > 0 ? Math.round(unfinishedEstimatedMinutes / availableMinutes * 100) / 100 : null;
   return {
@@ -9113,6 +9160,7 @@ function buildOverview(index, date, now, options = {}) {
     return {
       date: b.date,
       unfinishedIssues: u.issues.map((i) => i.id),
+      unfinishedSubs: u.subs.map((x) => x.key),
       unfinishedRoutines: u.routines.map((r) => r.id)
     };
   });
@@ -9133,10 +9181,11 @@ function buildOverview(index, date, now, options = {}) {
     board: {
       closed: board.closed,
       issues: items.issues,
+      subs: items.subs,
       routines: items.routines,
       unfinished: rem,
       carried: [...board.carried],
-      groups: { ...board.groups },
+      stars: [...board.stars],
       routineResults: { ...board.routines }
     },
     workload,
@@ -9217,7 +9266,6 @@ import { join, relative, sep } from "node:path";
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
-  if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -9225,12 +9273,15 @@ function fileKind(path) {
   const m = /^(issue|routine|member)\/[^/]+\.md$/.exec(path);
   return m ? m[1] : null;
 }
-function resolveMigrated(data) {
+function migratedIds(data) {
   const issueIds = new Set(data.issues.map((i) => i.id));
   const byOld = /* @__PURE__ */ new Map();
   for (const s of data.subIssues) {
     if (s.migratedFrom !== null && !issueIds.has(s.migratedFrom) && !byOld.has(s.migratedFrom)) byOld.set(s.migratedFrom, { parent: s.parent, id: s.id });
   }
+  return byOld;
+}
+function resolveMigrated(data, byOld) {
   if (byOld.size === 0) return;
   data.worklogs = data.worklogs.map((l) => {
     const to = l.sub ? void 0 : byOld.get(l.taskId);
@@ -9242,7 +9293,7 @@ function resolveMigrated(data) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], placements: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -9284,13 +9335,22 @@ function collectVault(input) {
     problems.push(...r.problems);
     data.worklogs.push(...r.entries);
   }
+  const byOld = migratedIds(data);
+  const renameKey = (key) => {
+    const to = byOld.get(key);
+    return to ? subKey(to.parent, to.id) : key;
+  };
+  for (const [date, board] of initialBoards) {
+    initialBoards.set(date, { ...board, issues: board.issues.map(renameKey), carried: board.carried.map(renameKey) });
+  }
   const logsByDate = /* @__PURE__ */ new Map();
   const allLogs = [];
   for (const { path, text } of [...input.boardLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseBoardLog(path, text);
     problems.push(...r.problems);
-    allLogs.push(...r.entries);
-    for (const e of r.entries) logsByDate.set(e.date, [...logsByDate.get(e.date) ?? [], e]);
+    const entries = byOld.size === 0 ? r.entries : r.entries.map((e) => ({ ...e, op: renameBoardOp(e.op, renameKey) }));
+    allLogs.push(...entries);
+    for (const e of entries) logsByDate.set(e.date, [...logsByDate.get(e.date) ?? [], e]);
   }
   for (const date of [.../* @__PURE__ */ new Set([...initialBoards.keys(), ...logsByDate.keys()])].sort()) {
     const logs = logsByDate.get(date) ?? [];
@@ -9303,7 +9363,6 @@ function collectVault(input) {
       ...removed.length > 0 ? { removed } : {}
     });
   }
-  data.placements = placementHistory(initialBoards, allLogs);
   data.orders = orderHistory(allLogs);
   for (const { path, text } of [...input.statusLogs ?? []].sort((a, b) => a.path.localeCompare(b.path))) {
     const r = parseStatusLog(path, text);
@@ -9311,16 +9370,11 @@ function collectVault(input) {
     data.statusLogs.push(...r.entries);
   }
   data.statusLogs.sort(compareStatusLog);
-  resolveMigrated(data);
+  resolveMigrated(data, byOld);
   if (input.labels !== null) {
     const r = parseLabels(input.labels);
     problems.push(...r.problems);
     data.labels = r.labels;
-  }
-  if (input.groups) {
-    const r = parseGroups(input.groups);
-    problems.push(...r.problems);
-    data.groups = r.groups;
   }
   return { data, problems };
 }
@@ -9348,7 +9402,7 @@ function readFrontmatter(text) {
 }
 function readVault(root) {
   const paths = walk(root);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
+  const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
   for (const path of paths) {
     const kind = fileKind(path);
     if (kind === null) continue;
@@ -9357,7 +9411,6 @@ function readVault(root) {
     else if (kind === "board") input.boardLogs.push({ path, text });
     else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
-    else if (kind === "groups") input.groups = text;
     else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...kind === "issue" ? { text } : {} });
   }
   const { data, problems } = collectVault(input);
@@ -9417,12 +9470,16 @@ function boardSummary(index, date, board) {
   const link = (id) => {
     const issue = index.issues.get(id);
     if (issue) return `[${issue.id} ${issue.summary}](${issue.path})`;
+    const sub = index.sub(id);
+    if (sub) return `[${sub.parent} \u203A ${sub.summary}](${sub.path})`;
     const routine = index.routines.get(id);
     return routine ? `[${routine.id} ${routine.summary}](${routine.path})` : id;
   };
   const lines = [SECTION, ""];
-  const closed = board.issues.filter((id) => index.issues.get(id)?.status === "closed");
-  const others = board.issues.filter((id) => !closed.includes(id));
+  const present = board.issues.filter((id) => index.issues.has(id) || index.sub(id) !== void 0);
+  const statusOf = (id) => index.issues.get(id)?.status ?? index.sub(id)?.status;
+  const closed = present.filter((id) => statusOf(id) === "closed");
+  const others = present.filter((id) => !closed.includes(id));
   const routines = Object.entries(board.routines);
   lines.push("### \u5B8C\u4E86", "");
   if (closed.length === 0 && routines.every(([, r]) => r !== "closed")) lines.push("- \u306A\u3057");
@@ -9431,7 +9488,7 @@ function boardSummary(index, date, board) {
   if (others.length > 0 || routines.some(([, r]) => r === "canceled")) {
     lines.push("", "### \u6301\u3061\u8D8A\u3057\u30FB\u4E2D\u6B62", "");
     for (const id of others) {
-      const note = board.carried.includes(id) ? "\u6301\u3061\u8D8A\u3057" : index.issues.get(id)?.status ?? "?";
+      const note = board.carried.includes(id) ? "\u6301\u3061\u8D8A\u3057" : statusOf(id) ?? "?";
       lines.push(`- ${link(id)}\uFF08${note}\uFF09`);
     }
     for (const [id, r] of routines) if (r === "canceled") lines.push(`- ${link(id)}\uFF08canceled\uFF09`);
@@ -9441,7 +9498,7 @@ function boardSummary(index, date, board) {
     lines.push("", "### worklog", "");
     for (const l of logs) {
       const desc = l.description ? ` ${l.description}` : "";
-      lines.push(`- ${hm(l.fromMs)}\u2013${hm(l.toMs)}\uFF08${formatMinutes((l.toMs - l.fromMs) / 6e4)}\uFF09 ${link(l.taskId)}${desc}`);
+      lines.push(`- ${hm(l.fromMs)}\u2013${hm(l.toMs)}\uFF08${formatMinutes((l.toMs - l.fromMs) / 6e4)}\uFF09 ${link(l.sub ? `${l.taskId}#${l.sub}` : l.taskId)}${desc}`);
     }
   }
   return `${lines.join("\n")}
@@ -9467,11 +9524,8 @@ function upsertSummary(text, summary) {
 function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  for (const id of board.issues) {
-    if (!index.issues.has(id)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
-  }
   const remaining = unfinished(index, date, board);
-  if (remaining.issues.length + remaining.routines.length > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
+  if (unfinishedCount(remaining) > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
@@ -9587,10 +9641,16 @@ function appendBoardOpsOnDisk(root, index, date, device, ops, now) {
   }, current);
   writeTextInVault(root, relPath, next);
 }
+function assertBoardKey(index, key) {
+  if (!index.issues.has(key) && !index.sub(key)) throw new Error(`issue \u307E\u305F\u306F\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+}
 function addToBoardOnDisk(root, index, date, issueIds, device, now) {
+  if (!isLocalDate(date)) throw new Error(`\u65E5\u4ED8\u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(date)}`);
   if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids \u3092 1 \u4EF6\u4EE5\u4E0A\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+  for (const id of issueIds) assertBoardKey(index, id);
   for (const id of issueIds) {
-    if (!index.issues.has(id)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
+    const sub = index.sub(id);
+    if (sub && !sub.scheduled.includes(date)) updateSubIssueOnDisk(root, index, id, { scheduled: [...sub.scheduled, date].sort() });
   }
   appendBoardOpsOnDisk(
     root,
@@ -9602,21 +9662,28 @@ function addToBoardOnDisk(root, index, date, issueIds, device, now) {
   );
 }
 function removeFromBoardOnDisk(root, index, date, issueId, device, now) {
-  if (!index.issues.has(issueId)) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${issueId}`);
+  assertBoardKey(index, issueId);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "remove", task: issueId }], now);
 }
-function moveCardOnDisk(root, index, date, id, group, device, now) {
-  if (!index.issues.has(id) && !index.routines.has(id)) {
-    throw new Error(`issue \u307E\u305F\u306F routine \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
-  }
-  const normalized = group === null || group === UNGROUPED ? null : group.trim();
-  if (normalized !== null) {
-    const validGroups = groupKeys(index.data.groups);
-    if (!validGroups.includes(normalized)) {
-      throw new Error(`\u5B9A\u7FA9\u3055\u308C\u3066\u3044\u306A\u3044\u30B0\u30EB\u30FC\u30D7\u3067\u3059: ${normalized}\uFF08\u6709\u52B9\u306A\u30B0\u30EB\u30FC\u30D7: ${validGroups.join(", ") || "\u306A\u3057"}\uFF09`);
-    }
-  }
-  appendBoardOpsOnDisk(root, index, date, device, [{ op: "place", task: id, group: normalized }], now);
+function laneOfKey(index, date, key) {
+  if (!isLocalDate(date)) throw new Error(`\u65E5\u4ED8\u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(date)}`);
+  const board = index.board(date)?.board ?? emptyBoard();
+  const lanes = boardLanes(index, date, board);
+  const lane = Object.keys(lanes).find((l) => lanes[l].some((c) => c.key === key));
+  if (!lane) throw new Error(`${key} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
+  return { board, lanes, lane };
+}
+function orderCardOnDisk(root, index, date, key, before, device, now) {
+  const { board, lanes, lane } = laneOfKey(index, date, key);
+  if (lane === "working" || lane === "done") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
+  if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before\uFF08${before}\uFF09\u306F ${key} \u3068\u540C\u3058\u6B04\u306B\u3042\u308A\u307E\u305B\u3093`);
+  appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane, before, index.order(date)), now);
+}
+function starCardOnDisk(root, index, date, key, on, device, now) {
+  if (typeof on !== "boolean") throw new Error("on \u306F true \u304B false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  const { board, lanes } = laneOfKey(index, date, key);
+  if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error("\u2605 \u306F 3 \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044");
+  appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
 function setRoutineResultOnDisk(root, index, date, routineId, result, device, now) {
   if (!index.routines.has(routineId)) throw new Error(`routine \u304C\u3042\u308A\u307E\u305B\u3093: ${routineId}`);
@@ -9633,23 +9700,30 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, rescheduleTo, devi
     throw new Error(`reschedule_to \u306B YYYY-MM-DD \u306E\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044: ${String(rescheduleTo)}`);
   }
   const board = index.board(date)?.board ?? emptyBoard();
-  const issues = [];
+  for (const id of issueIds) {
+    assertBoardKey(index, id);
+    if (!board.issues.includes(id)) throw new Error(`${id} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
+    if (mode === "inbox" && index.sub(id)) throw new Error(`\u30B5\u30D6\u306F Inbox \u306B\u623B\u305B\u307E\u305B\u3093: ${id}`);
+  }
   for (const id of issueIds) {
     const issue = index.issues.get(id);
-    if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
-    if (!board.issues.includes(id)) throw new Error(`${id} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
-    issues.push(issue);
-  }
-  for (const issue of issues) {
-    const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo, date);
-    updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
+    if (issue) {
+      const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo, date);
+      updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
+      continue;
+    }
+    const sub = index.sub(id);
+    const dates = new Set(sub.scheduled);
+    dates.delete(date);
+    dates.add(rescheduleTo);
+    updateSubIssueOnDisk(root, index, id, { scheduled: [...dates].sort() });
   }
   appendBoardOpsOnDisk(
     root,
     index,
     date,
     device,
-    issues.map((i) => ({ op: "carry", task: i.id })),
+    issueIds.map((task) => ({ op: "carry", task })),
     now
   );
 }
@@ -9931,7 +10005,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\uFF08issue / routine\u3001\u30B0\u30EB\u30FC\u30D7\u3054\u3068\u306E\u4E26\u3073\uFF08byGroup \u306E cards \u304C\u753B\u9762\u306E\u9806\uFF09\u3001\u672A\u5B8C\u4E86\u3001\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3001\u7DE0\u3081\u305F\u304B\uFF09\u3092\u53D6\u5F97\u3059\u308B",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF083 \u4EF6\u307E\u3067\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
     inputSchema: {
       type: "object",
       properties: {
@@ -10003,39 +10077,52 @@ var TOOLS = [
   },
   {
     name: "add_to_board",
-    description: "\u6307\u5B9A\u65E5\u306E\u30DC\u30FC\u30C9\u306B issue \u3092\u8F09\u305B\u308B",
+    description: "\u6307\u5B9A\u65E5\u306E\u30DC\u30FC\u30C9\u306B issue \u304B\u30B5\u30D6\uFF08\u5408\u6210\u30AD\u30FC i-N#xxxxxx\uFF09\u3092\u8F09\u305B\u308B\u3002\u305D\u306E\u65E5\u304C scheduled \u3067\u306A\u3044\u30B5\u30D6\u306F\u3001scheduled \u306B\u8DB3\u3057\u3066\u304B\u3089\u8F09\u305B\u308B",
     inputSchema: {
       type: "object",
       properties: {
         date: { type: "string", description: "YYYY-MM-DD" },
-        issue_ids: { type: "array", items: { type: "string" } }
+        issue_ids: { type: "array", items: { type: "string" }, description: "issue \u306E ID \u304B\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC" }
       },
       required: ["date", "issue_ids"]
     }
   },
   {
     name: "remove_from_board",
-    description: "\u6307\u5B9A\u65E5\u306E\u30DC\u30FC\u30C9\u304B\u3089 issue \u3092\u5916\u3059",
+    description: "\u6307\u5B9A\u65E5\u306E\u30DC\u30FC\u30C9\u304B\u3089 issue \u304B\u30B5\u30D6\uFF08\u5408\u6210\u30AD\u30FC\uFF09\u3092\u5916\u3059",
     inputSchema: {
       type: "object",
       properties: {
         date: { type: "string", description: "YYYY-MM-DD" },
-        issue_id: { type: "string" }
+        issue_id: { type: "string", description: "issue \u306E ID \u304B\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC" }
       },
       required: ["date", "issue_id"]
     }
   },
   {
-    name: "move_card",
-    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u30AB\u30FC\u30C9\uFF08issue / routine\uFF09\u306E\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u308B\uFF08null \u307E\u305F\u306F\u7A7A\u6587\u5B57\u3067\u672A\u5206\u985E\uFF09",
+    name: "order_card",
+    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u3092\u3001\u540C\u3058\u6B04\uFF08top / next / waiting\uFF09\u306E before \u306E\u524D\u306B\u52D5\u304B\u3059\uFF08before \u304C null \u306A\u3089\u6B04\u306E\u672B\u5C3E\uFF09\u3002\u4E26\u3073\u306F\u7FCC\u65E5\u4EE5\u964D\u306B\u3082\u5F15\u304D\u7D99\u3050",
     inputSchema: {
       type: "object",
       properties: {
         date: { type: "string", description: "YYYY-MM-DD" },
-        id: { type: "string" },
-        group: { type: ["string", "null"] }
+        key: { type: "string", description: "\u30AB\u30FC\u30C9\u306E key\uFF08issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\u30FBroutine \u306E ID\uFF09" },
+        before: { type: ["string", "null"], description: "\u524D\u306B\u6765\u308B\u30AB\u30FC\u30C9\u306E key\u3002null \u306A\u3089\u6B04\u306E\u672B\u5C3E" }
       },
-      required: ["date", "id", "group"]
+      required: ["date", "key", "before"]
+    }
+  },
+  {
+    name: "star_card",
+    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u306B \u2605 \u4ECA\u65E5\u306E\u6700\u91CD\u8981\u3092\u4ED8\u3051\u308B\uFF08on: true\uFF09\u304B\u5916\u3059\uFF08on: false\uFF09\u3002\u2605 \u306F 3 \u4EF6\u307E\u3067\u3002\u305D\u306E\u65E5\u3060\u3051\u3067\u7FCC\u65E5\u306B\u306F\u5F15\u304D\u7D99\u304C\u306A\u3044",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "YYYY-MM-DD" },
+        key: { type: "string", description: "\u30AB\u30FC\u30C9\u306E key" },
+        on: { type: "boolean" }
+      },
+      required: ["date", "key", "on"]
     }
   },
   {
@@ -10053,12 +10140,12 @@ var TOOLS = [
   },
   {
     name: "carry_issues",
-    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue \u3092\u30EA\u30B9\u30B1\uFF08\u5225\u306E\u65E5\u3078\u79FB\u52D5\uFF09\u307E\u305F\u306F Inbox \u623B\u3057\u3067\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B",
+    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u30EA\u30B9\u30B1\uFF08\u5225\u306E\u65E5\u3078\u79FB\u52D5\uFF09\u307E\u305F\u306F Inbox \u623B\u3057\u3067\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\u3002\u30B5\u30D6\u306F Inbox \u306B\u623B\u305B\u306A\u3044",
     inputSchema: {
       type: "object",
       properties: {
         date: { type: "string", description: "\u30DC\u30FC\u30C9\u306E\u65E5\u4ED8 YYYY-MM-DD" },
-        issue_ids: { type: "array", items: { type: "string" } },
+        issue_ids: { type: "array", items: { type: "string" }, description: "issue \u306E ID \u304B\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC" },
         mode: { type: "string", enum: ["reschedule", "inbox"] },
         reschedule_to: { type: "string", description: "mode=reschedule \u306E\u3068\u304D\u306E\u79FB\u52D5\u5148 YYYY-MM-DD" }
       },
@@ -10303,34 +10390,23 @@ function callMcpTool(ctx, name, args = {}) {
       const date = typeof args.date === "string" ? args.date : today;
       if (!isLocalDate(date)) throw new Error(`date \u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(args.date)}`);
       const board = index.board(date)?.board ?? emptyBoard();
-      const keys = groupKeys(index.data.groups);
-      const items = boardItems(index, date, board);
-      const rem = unfinished(index, date, board);
-      const issuesWithGroup = items.issues.map((i) => ({
-        ...i,
-        group: index.placement(date, board, i.id, null, keys),
-        carried: board.carried.includes(i.id)
-      }));
-      const routinesWithGroup = items.routines.map((r) => ({
-        ...r,
-        group: index.placement(date, board, r.id, r.group, keys),
-        result: board.routines[r.id] ?? null
-      }));
-      const byGroup = {};
-      for (const k of [UNGROUPED, ...keys]) {
-        const ids = [...issuesWithGroup.filter((i) => i.group === k).map((i) => i.id), ...routinesWithGroup.filter((r) => r.group === k).map((r) => r.id)];
-        const cards = sortByOrder(ids, (id) => id, index.order(date, k));
-        const issueIds = new Set(issuesWithGroup.map((i) => i.id));
-        byGroup[k] = { issues: cards.filter((id) => issueIds.has(id)), routines: cards.filter((id) => !issueIds.has(id)), cards };
-      }
+      const lanes = boardLanes(index, date, board);
+      const card = (c) => ({
+        key: c.key,
+        kind: c.kind,
+        ...c.kind === "sub" ? { parent: c.sub.parent, parentSummary: c.parent?.summary ?? null } : {},
+        summary: cardSummary(c),
+        status: cardStatus(board, c),
+        starred: board.stars.includes(c.key),
+        carried: board.carried.includes(c.key)
+      });
       return {
         date,
         closed: board.closed,
-        groups: keys,
-        items: { issues: issuesWithGroup, routines: routinesWithGroup },
-        byGroup,
-        unfinished: rem,
+        lanes: Object.fromEntries(LANES.map((l) => [l, lanes[l].map(card)])),
+        unfinished: unfinished(index, date, board),
         carried: board.carried,
+        stars: board.stars,
         routineResults: board.routines,
         runningTimers: index.running()
       };
@@ -10343,6 +10419,7 @@ function callMcpTool(ctx, name, args = {}) {
         return {
           date: b.date,
           unfinishedIssues: u.issues,
+          unfinishedSubs: u.subs,
           unfinishedRoutines: u.routines
         };
       });
@@ -10444,12 +10521,18 @@ function callMcpTool(ctx, name, args = {}) {
       removeFromBoardOnDisk(ctx.root, index, date, issueId, ctx.device, now);
       return { ok: true, date, removed: issueId };
     }
-    case "move_card": {
+    case "order_card": {
       const date = String(args.date ?? "");
-      const id = String(args.id ?? "");
-      const group = args.group === null || args.group === void 0 ? null : String(args.group);
-      moveCardOnDisk(ctx.root, index, date, id, group, ctx.device, now);
-      return { ok: true, date, id, group };
+      const key = String(args.key ?? "");
+      const before = args.before === null || args.before === void 0 ? null : String(args.before);
+      orderCardOnDisk(ctx.root, index, date, key, before, ctx.device, now);
+      return { ok: true, date, key, before };
+    }
+    case "star_card": {
+      const date = String(args.date ?? "");
+      const key = String(args.key ?? "");
+      starCardOnDisk(ctx.root, index, date, key, args.on, ctx.device, now);
+      return { ok: true, date, key, on: args.on };
     }
     case "set_routine_result": {
       const date = String(args.date ?? "");

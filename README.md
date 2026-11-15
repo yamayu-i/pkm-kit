@@ -46,7 +46,7 @@ git add -A && git commit -m "vault: セットアップ" && git push
    - `none`: 評価のレポートに残すだけ
 2. `.kit-local/upstream.json` に、取り込んだ上流のコミットを書く（なければ）。上流のものを変えていないかの検査は、ここを基準にする
 3. `.obsidian/*.json` に、`.kit/obsidian-required.json` の必要なキーだけを合わせる（自作プラグインの有効化を含む。ほかの設定は残す）
-4. `issue/labels.json`、`issue/board-groups.json`、`.claude/local/CLAUDE.md`（この Vault だけの規約）の初期値を置く（なければ）
+4. `issue/labels.json`、`.claude/local/CLAUDE.md`（この Vault だけの規約）の初期値を置く（なければ）
 5. git の作業ツリーなら、PC の Git CLI でも `updated` を付けるため、`git config core.hooksPath .githooks` を実行する
 6. 未適用の移行（`.kit/migrations/`）を実行する。新しい Vault では何も変えずに適用済みになる。`--dry-run` のときは実行しない
 

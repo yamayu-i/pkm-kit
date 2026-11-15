@@ -12,7 +12,6 @@ import { TaskStore } from "./obsidian/store";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
 import { TaskWriter } from "./obsidian/writer";
 import { DailyView } from "./views/DailyView";
-import { GroupManagerView } from "./views/GroupManagerView";
 import { InboxView } from "./views/InboxView";
 import { LabelManagerView } from "./views/LabelManagerView";
 import { MemberListView } from "./views/MemberListView";
@@ -32,7 +31,6 @@ const VIEWS: ViewSpec[] = [
 	{ type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", component: ScheduledView },
 	{ type: "pkm-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
 	{ type: "pkm-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
-	{ type: "pkm-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
 	{ type: "pkm-task-members", title: "Members", icon: "users", component: MemberListView },
 	{ type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView },
 ];

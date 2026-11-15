@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
-import { emptyBoard, unfinished, pendingBoards, type DailyBoard } from "../core/board";
+import { emptyBoard, unfinished, unfinishedCount, pendingBoards, type DailyBoard } from "../core/board";
 import { cautionIssues, deadIssues, type DueLists } from "../core/daily";
 import { formatShortDate, localToday } from "../core/dates";
 import { stepperItems } from "../core/stepper";
@@ -12,7 +12,7 @@ import { cancelIssues, closeIssues, inboxIssues, rescheduleIssues, scheduleIssue
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow, useStoreVersion } from "../ui/hooks";
-import { Board, RoutineRows } from "./Board";
+import { Board, RoutineRows, SubRows } from "./Board";
 
 type Step = "dead" | "previous" | "caution" | "board";
 
@@ -76,6 +76,9 @@ function PreviousStep(props: { ctx: TaskContext; boards: DailyBoard[] }) {
 				<PreviousBoard ctx={ctx} board={b} key={b.date} issues={unfinished(index, b.date, b.board).issues} />
 			))}
 			{props.boards.map((b) => (
+				<SubRows ctx={ctx} date={b.date} subs={unfinished(index, b.date, b.board).subs} next={localToday()} nextLabel="Do Today" showDate />
+			))}
+			{props.boards.map((b) => (
 				<RoutineRows ctx={ctx} date={b.date} routines={unfinished(index, b.date, b.board).routines} showDate />
 			))}
 		</>
@@ -131,11 +134,10 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const counts: Record<Step, number> = {
 		dead: dead.deadline.length + dead.softDeadline.length,
 		previous: pending.reduce((n, b) => {
-			const u = unfinished(index, b.date, b.board);
-			return n + u.issues.length + u.routines.length;
+			return n + unfinishedCount(unfinished(index, b.date, b.board));
 		}, 0),
 		caution: caution.deadline.length + caution.softDeadline.length,
-		board: todayLeft.issues.length + todayLeft.routines.length,
+		board: unfinishedCount(todayLeft),
 	};
 
 	// 「次へ」で通り過ぎた段階（caution は片付けなくても進める）
@@ -149,10 +151,10 @@ export function DailyView(props: { ctx: TaskContext }) {
 		if (manual !== null && manual !== "caution" && manual !== "board" && counts[manual] === 0) setManual(null);
 	});
 
-	// 今日が実行日で、まだ載っておらず、今日外してもいない issue をボードに載せる（ADR-0034）
+	// 今日が実行日で、まだ載っておらず、今日外してもいない issue とサブをボードに載せる（ADR-0034, 0137）
 	const adding = useRef(new Set<string>());
 	useEffect(() => {
-		const ids = toAdd.map((i) => i.id).filter((id) => !adding.current.has(`${today}/${id}`));
+		const ids = toAdd.filter((id) => !adding.current.has(`${today}/${id}`));
 		if (ids.length === 0) return;
 		for (const id of ids) adding.current.add(`${today}/${id}`);
 		void addToBoard(ctx, today, ids).finally(() => {
@@ -165,8 +167,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	useEffect(() => {
 		for (const b of index.data.boards) {
 			if (b.date >= today || b.board.closed || closing.current.has(b.date)) continue;
-			const u = unfinished(index, b.date, b.board);
-			if (u.issues.length + u.routines.length > 0) continue;
+			if (unfinishedCount(unfinished(index, b.date, b.board)) > 0) continue;
 			closing.current.add(b.date);
 			void ctx.writer
 				.closeBoard(b.date, ctx.settings.deviceName)

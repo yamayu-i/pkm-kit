@@ -6,7 +6,7 @@
  * 1. .kit-local/config.json に、エスカレーションの方法を書く（なければ尋ねる）
  * 2. .kit-local/upstream.json に、取り込んだ上流のコミットを書く（なければ）
  * 3. .obsidian/*.json に、.kit/obsidian-required.json の必要なキーだけを合わせる
- * 4. 子のものの初期値を置く（issue/labels.json、issue/board-groups.json、.claude/local/CLAUDE.md。なければ）
+ * 4. 子のものの初期値を置く（issue/labels.json、.claude/local/CLAUDE.md。なければ）
  * 5. git の作業ツリーなら、pre-commit フック（.githooks）を有効にする
  * 6. 未適用の移行（.kit/migrations/）を実行する（.kit/migrate.mjs。新しい Vault では何も変えずに適用済みになる）
  *
@@ -34,7 +34,6 @@ export const SEEDS = {
 		null,
 		2,
 	)}\n`,
-	"issue/board-groups.json": `${JSON.stringify([{ name: "午前" }, { name: "午後" }], null, 2)}\n`,
 	// 子の追加のハーネス（ADR-0011）。上流の .claude/CLAUDE.md が末尾で読み込む
 	".claude/local/CLAUDE.md": `# この Vault だけの規約
 

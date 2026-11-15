@@ -5,7 +5,7 @@ import { collectVault, fileKind } from "../src/core/load";
 import { lintVault } from "../src/core/lint";
 
 const date = "2026-11-01";
-const initial = { issues: ["i-6", "i-8", "i-9"], groups: { "i-8": "午前" }, routines: {}, carried: [], closed: false };
+const initial = { issues: ["i-6", "i-8", "i-9"], stars: ["i-8"], routines: {}, carried: [], closed: false };
 
 /** 1 端末分のログを作る。分は at の分（並び順を決める） */
 function log(device: string, ops: [number, BoardOp][]): BoardLogEntry[] {
@@ -27,12 +27,12 @@ describe("操作ログの再生", () => {
 		expect(b.routines).toEqual({ "r-1": "closed" });
 		expect(b.carried).toEqual(["i-9"]);
 	});
-	it("隣のカードをそれぞれ移しても両方残り、同じカードは後の操作が勝つ", () => {
+	it("隣のカードにそれぞれ ★ を付け外ししても両方残り、同じカードは後の操作が勝つ", () => {
 		const b = replayBoard(initial, [
-			...log("pc", [[1, { op: "place", task: "i-6", group: "午後" }], [3, { op: "place", task: "i-8", group: "午後" }]]),
-			...log("phone", [[2, { op: "place", task: "i-8", group: "夜" }]]),
+			...log("pc", [[1, { op: "star", task: "i-6", on: true }], [3, { op: "star", task: "i-8", on: true }]]),
+			...log("phone", [[2, { op: "star", task: "i-8", on: false }]]),
 		]);
-		expect(b.groups).toEqual({ "i-6": "午後", "i-8": "午後" });
+		expect(b.stars).toEqual(["i-6", "i-8"]);
 	});
 	it("外すと持ち越しが重なっても、どの順でも carried は issues の中に収まる", () => {
 		const remove: BoardOp = { op: "remove", task: "i-8" };
@@ -42,7 +42,7 @@ describe("操作ログの再生", () => {
 		for (const b of [removeFirst, carryFirst]) {
 			expect(b.issues).toEqual(["i-6", "i-9"]);
 			expect(b.carried).toEqual([]);
-			expect(b.groups).toEqual({});
+			expect(b.stars).toEqual([]);
 		}
 	});
 	it("読み込みの順によらず同じ結果になる", () => {
@@ -51,18 +51,18 @@ describe("操作ログの再生", () => {
 		expect(replayBoard(emptyBoard(), [...a, ...b])).toEqual(replayBoard(emptyBoard(), [...b, ...a]));
 	});
 	it("同じ時刻は端末名 → 行番号の順に並ぶ", () => {
-		const entries = [...log("phone", [[1, { op: "place", task: "i-6", group: "B" }]]), ...log("pc", [[1, { op: "place", task: "i-6", group: "A" }], [1, { op: "place", task: "i-6", group: "C" }]])];
+		const entries = [...log("phone", [[1, { op: "star", task: "i-6", on: false }]]), ...log("pc", [[1, { op: "star", task: "i-6", on: true }], [1, { op: "star", task: "i-6", on: true }]])];
 		// pc < phone なので phone が最後
-		expect(replayBoard(initial, entries).groups["i-6"]).toBe("B");
+		expect(replayBoard(emptyBoard(), entries).stars).toEqual([]);
 	});
-	it("空のグループや null で未分類・結果なしに戻す", () => {
+	it("★ を外し、null で結果なしに戻す", () => {
 		const b = replayBoard(emptyBoard(), log("pc", [
-			[1, { op: "place", task: "i-6", group: "午後" }],
-			[2, { op: "place", task: "i-6", group: null }],
+			[1, { op: "star", task: "i-6", on: true }],
+			[2, { op: "star", task: "i-6", on: false }],
 			[3, { op: "routine", task: "r-1", result: "closed" }],
 			[4, { op: "routine", task: "r-1", result: null }],
 		]));
-		expect(b.groups).toEqual({});
+		expect(b.stars).toEqual([]);
 		expect(b.routines).toEqual({});
 	});
 	it("add は持ち越しを外し、締めを解く。順番は変えない", () => {
@@ -113,7 +113,7 @@ describe("ログの読み書き", () => {
 	});
 	it("書いた行を読み戻せる", () => {
 		const ops: BoardOp[] = [
-			{ op: "add", task: "i-1" }, { op: "remove", task: "i-1" }, { op: "place", task: "i-1", group: "午前/集中" }, { op: "place", task: "i-1", group: null },
+			{ op: "add", task: "i-1" }, { op: "remove", task: "i-1" }, { op: "star", task: "i-1#aaaaaa", on: true }, { op: "star", task: "i-1", on: false }, { op: "order", tasks: ["i-1", "r-1"] },
 			{ op: "routine", task: "r-1", result: "closed" }, { op: "routine", task: "r-1", result: null }, { op: "carry", task: "i-1" }, { op: "close", tasks: ["i-1"] }, { op: "reopen" },
 		];
 		const text = ops.map((op, i) => serializeBoardLogEntry({ id: `bo_${i}`, at: "2026-11-01T00:00:00.000Z", date, ...op })).join("\n");

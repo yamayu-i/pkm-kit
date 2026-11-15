@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cancelPatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
-import { boardItems, dailyNotePath, placementOf, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
+import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
-import { groupKeys, groupNameError, inGroup, parseGroups, serializeGroups } from "../src/core/groups";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
 import { defaultQuery, queryIssues } from "../src/core/list";
 import { describeRepeat, parseRepeat } from "../src/core/repeat";
@@ -75,7 +74,8 @@ describe("dead / caution / scheduled", () => {
 describe("board", () => {
 	it("既存の frontmatter を読む。壊れた値は捨てる", () => {
 		const b = parseBoard({ issues: ["i-1", "i-1", 3], groups: { "i-1": "午前", "r-1": 5 }, routines: { "r-1": "closed", "r-2": "done" }, closed: true });
-		expect(b).toEqual({ issues: ["i-1"], groups: { "i-1": "午前" }, routines: { "r-1": "closed" }, carried: [], closed: true });
+		// 以前の groups は読まない（ADR-0137）
+		expect(b).toEqual({ issues: ["i-1"], stars: [], routines: { "r-1": "closed" }, carried: [], closed: true });
 		expect(dailyNotePath("2026-10-31")).toBe("daily/2026/10/2026-10-31.md");
 	});
 
@@ -98,62 +98,6 @@ describe("board", () => {
 			{ date: "2026-10-31", path: "d", board },
 		];
 		expect(pendingBoards(index, boards, "2026-10-31").map((b) => b.date)).toEqual(["2026-10-29"]);
-	});
-});
-
-describe("placementOf", () => {
-	const keys = ["午前", "午前/集中", "午後"];
-	const board = { ...emptyBoard(), groups: { "i-1": "午前/集中", "i-2": "消えたグループ", "r-1": "午後" } };
-
-	it("ボードの置き場所、なければ既定（routine の group）、どちらもなければ未分類", () => {
-		expect(placementOf(board, "i-1", null, keys)).toBe("午前/集中");
-		expect(placementOf(board, "r-1", "午前", keys)).toBe("午後");
-		expect(placementOf(board, "r-2", "午前", keys)).toBe("午前");
-		expect(placementOf(board, "i-3", null, keys)).toBe("");
-	});
-
-	it("今はないグループを指していたら未分類", () => {
-		expect(placementOf(board, "i-2", null, keys)).toBe("");
-		expect(placementOf(board, "r-3", "消えたグループ", keys)).toBe("");
-	});
-});
-
-describe("groups", () => {
-	it("2 階層まで。古い span は読み捨てる", () => {
-		const { groups, problems } = parseGroups(
-			JSON.stringify([
-				{ name: "午前", span: 2, children: [{ name: "集中" }, { name: "雑務", children: [{ name: "深い" }] }] },
-				{ name: "午後" },
-				{ name: "a/b" },
-			]),
-		);
-		expect(groups).toEqual([
-			{ name: "午前", children: [{ name: "集中", children: [] }, { name: "雑務", children: [] }] },
-			{ name: "午後", children: [] },
-		]);
-		expect(groupKeys(groups)).toEqual(["午前", "午前/集中", "午前/雑務", "午後"]);
-		expect(problems.map((p) => p.message)).toEqual(["グループは 2 階層までです: 雑務", expect.stringContaining("/ を含んでいます")]);
-		expect(serializeGroups(groups)).not.toContain("span");
-		expect(parseGroups(serializeGroups(groups)).groups).toEqual(groups);
-	});
-
-	it("名前の検査（グループ管理の入力欄）", () => {
-		const groups = [
-			{ name: "午前", children: [{ name: "集中", children: [] }] },
-			{ name: "午後", children: [] },
-		];
-		expect(groupNameError("", groups)).toBe("名前を入れてください");
-		expect(groupNameError("a/b", groups)).toBe("/ は使えません");
-		expect(groupNameError("午後", groups)).toBe("同じ名前があります");
-		expect(groupNameError("午後", groups, "午後")).toBeNull();
-		expect(groupNameError("集中", groups[0]!.children)).toBe("同じ名前があります");
-		expect(groupNameError("夜", groups)).toBeNull();
-	});
-
-	it("inGroup は子のグループも含む", () => {
-		expect(inGroup("午前/集中", "午前")).toBe(true);
-		expect(inGroup("午前", "午前")).toBe(true);
-		expect(inGroup("午前中", "午前")).toBe(false);
 	});
 });
 

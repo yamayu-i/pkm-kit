@@ -1718,33 +1718,14 @@ button.vt-badge:disabled::after {
 	gap: 8px;
 }
 
-/* 1 階層目は横に並べる。狭いペインでは縦（ADR-0015） */
-.vt-board-columns {
+/* 欄を上から縦に並べる（ADR-0137） */
+.vt-lanes {
 	display: flex;
-	align-items: flex-start;
+	flex-direction: column;
 	gap: 12px;
-	overflow-x: auto;
-	padding-bottom: 4px;
 }
 
-.vt-board-columns > .vt-group {
-	flex: 1 1 0;
-	min-width: 240px;
-}
-
-@container (max-width: 720px) {
-	.vt-board-columns {
-		flex-direction: column;
-		align-items: stretch;
-		overflow-x: visible;
-	}
-
-	.vt-board-columns > .vt-group {
-		min-width: 0;
-	}
-}
-
-.vt-group {
+.vt-lane {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -1756,49 +1737,101 @@ button.vt-badge:disabled::after {
 	transition: border-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
-/* 未分類: ボードの上に横長に置き、カードを横に並べる */
-.vt-group.is-ungrouped {
-	border-style: dashed;
-	border-color: var(--vt-outline);
+/* 作業中: 記録中のカードと同じ緑の枠 */
+.vt-lane.is-working {
+	border-color: var(--vt-green);
 }
 
-.vt-group.is-ungrouped > .vt-group-cards {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-
-.vt-group.is-sub {
+/* 片付いた: 面を沈める */
+.vt-lane.is-done {
 	background: var(--vt-surface);
 }
 
 /* カードを落とせるとき */
-.vt-group.is-over {
+.vt-lane.is-over {
 	border-color: var(--vt-primary);
 	background: var(--vt-secondary-container);
 }
 
-.vt-group-head {
+.vt-lane-head {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 0 2px 0 4px;
+	min-height: 32px;
+	padding: 0 4px;
 }
 
-.vt-group-name {
+.vt-lane-name {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
 	font-weight: var(--vt-weight-semibold);
 }
 
-.vt-group-cards {
+.vt-lane-name .vt-icon svg,
+.vt-lane-toggle .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-lane-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 32px;
+	padding: 0 8px 0 4px;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	cursor: pointer;
+}
+
+.vt-lane-toggle:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-lane-toggle:focus-visible {
+	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
+	outline-offset: var(--vt-space-2);
+}
+
+.vt-lane-cards {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
-/* 2 階層目はグループの中に縦に並べる */
-.vt-subgroups {
+/* 隣り合った同じ親のサブのまとまり（ADR-0137） */
+.vt-lane-run {
 	display: flex;
 	flex-direction: column;
+	gap: 4px;
+	padding-left: 12px;
+	border-left: var(--vt-border-width-thick) solid var(--vt-outline-variant);
+}
+
+.vt-lane-parent {
+	display: flex;
+	align-items: center;
 	gap: 8px;
+	min-width: 0;
+	min-height: 24px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+.vt-lane-parent-summary {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.vt-lane-parent-summary:hover {
+	color: var(--vt-primary);
 }
 
 /* カードの上に落とすと、その前に入る（ADR-0114）。入る位置を、カードの間の primary の線で出す */
@@ -1812,16 +1845,8 @@ button.vt-badge:disabled::after {
 	top: -4px;
 	right: 0;
 	left: 0;
-	border-top: 2px solid var(--vt-primary);
+	border-top: var(--vt-border-width-thick) solid var(--vt-primary);
 	pointer-events: none;
-}
-
-.vt-group.is-ungrouped .vt-task.is-drop-before::before {
-	top: 0;
-	bottom: 0;
-	left: -4px;
-	border-top: none;
-	border-left: 2px solid var(--vt-primary);
 }
 
 .vt-drop-hint {
@@ -1833,11 +1858,13 @@ button.vt-badge:disabled::after {
 	text-align: center;
 }
 
+/* カード 1 枚（ADR-0137）: status のバッジ・題・再生・メニューを 1 行に */
 .vt-task {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
 	gap: 8px;
-	padding: 12px 12px 8px;
+	min-width: 0;
+	padding: 8px 8px 8px 12px;
 	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
 	background: var(--vt-surface);
@@ -1864,36 +1891,26 @@ button.vt-badge:disabled::after {
 	text-decoration: line-through;
 }
 
-.vt-task-top,
-.vt-task-bottom {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	min-width: 0;
-}
-
-.vt-task-bottom {
-	flex-wrap: wrap;
-}
-
 .vt-task .vt-badge {
 	height: 24px;
 }
 
-.vt-task .vt-play {
+.vt-task .vt-badge,
+.vt-task .vt-play,
+.vt-task .vt-icon-button {
 	flex: none;
 }
 
-/* delegated のカードの委任先（ADR-0032）。名前が長いときは省略する */
-.vt-task .vt-delegate {
-	min-width: 0;
-	max-width: 12em;
+/* ★ の印（題の前） */
+.vt-task-star {
+	margin-right: 4px;
+	color: var(--vt-primary);
+	vertical-align: -2px;
 }
 
-.vt-delegate-name {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.vt-task-star svg {
+	width: 16px;
+	height: 16px;
 }
 
 .vt-task-summary {
@@ -1961,62 +1978,6 @@ button.vt-badge:disabled::after {
 
 .vt-unfinished {
 	gap: 12px;
-}
-
-/* ---------- 次の status のボタンと、完了の欄（ADR-0031） ---------- */
-
-/* 押した後の status の色の、小さい丸い tonal ボタン。アイコンは押した後の status */
-.vt-next {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	border: none;
-	border-radius: var(--vt-radius-full);
-	box-shadow: none;
-	cursor: pointer;
-	transition: transform var(--vt-duration-short2) var(--vt-easing-standard);
-}
-
-.vt-next:hover {
-	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
-}
-
-.vt-next:active {
-	transform: scale(var(--vt-scale-press-small));
-}
-
-.vt-next:focus-visible {
-	outline: var(--vt-border-width-thick) solid var(--vt-focus-ring);
-	outline-offset: var(--vt-space-2);
-}
-
-/* 戻す: 枠線だけ */
-.vt-next.is-undo {
-	background: transparent;
-	box-shadow: inset 0 0 0 1px var(--vt-outline-variant);
-	color: var(--vt-on-surface-variant);
-}
-
-.vt-next.is-undo:hover {
-	color: var(--vt-on-surface);
-}
-
-.vt-next .vt-icon svg {
-	width: 16px;
-	height: 16px;
-}
-
-.vt-done {
-	gap: 12px;
-}
-
-.vt-done-cards {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-	gap: 8px;
 }
 
 /* ---------- 取り消しのトースト（ADR-0031） ---------- */
@@ -2093,8 +2054,7 @@ body.is-mobile .vt-toast {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.vt-toast,
-	.vt-next {
+	.vt-toast {
 		animation: none;
 		transition: none;
 	}
@@ -2115,6 +2075,24 @@ body.is-mobile .vt-toast {
 	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
 	background: var(--vt-surface);
+}
+
+/* 未完了のサブ（ADR-0137）: ボタンが多いので、狭いときは題の下に折り返す */
+.vt-sub-rows .vt-routine-row {
+	flex-wrap: wrap;
+	row-gap: 4px;
+}
+
+.vt-sub-rows .vt-cell-summary {
+	flex: 1 1 160px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-sub-rows .vt-button {
+	white-space: nowrap;
 }
 
 .vt-date-chip,
@@ -2788,93 +2766,13 @@ body.is-mobile .vt-toast {
 	background: var(--vt-on-primary);
 }
 
-/* ---------- グループの編集（ADR-0015） ---------- */
-
-.vt-group-manager {
-	max-width: 760px;
-}
-
-.vt-layout-preview {
-	gap: 8px;
-}
-
-.vt-preview-columns {
-	display: flex;
-	gap: 8px;
-	overflow-x: auto;
-}
-
-.vt-preview-col {
-	display: flex;
-	flex: 1 1 0;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 72px;
-	padding: 8px;
-	border-radius: var(--vt-radius-s);
-	background: var(--vt-surface);
-	border: 1px solid var(--vt-outline-variant);
-	font-size: var(--vt-type-label-small-size);
-	font-weight: var(--vt-weight-semibold);
-}
-
-.vt-preview-col.is-ungrouped {
-	color: var(--vt-on-surface-variant);
-	border-style: dashed;
-	border-color: var(--vt-outline);
-}
-
-.vt-preview-sub {
-	padding: 4px 8px;
-	border-radius: var(--vt-radius-xs);
-	background: var(--vt-surface-container-high);
-	color: var(--vt-on-surface-variant);
-	font-weight: var(--vt-weight-medium);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.vt-group-editor {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.vt-group-edit {
-	gap: 12px;
-}
-
-.vt-group-edit-head,
-.vt-sub-edit {
-	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-}
+/* ---------- 編集画面の共通の部品（label の編集で使う） ---------- */
 
 .vt-row-tools {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
 	padding-top: 8px;
-}
-
-.vt-sub-list {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin-left: 12px;
-	padding-left: 12px;
-	border-left: 2px solid var(--vt-outline-variant);
-}
-
-.vt-sub-mark {
-	padding-top: 12px;
-	color: var(--vt-on-surface-variant);
-}
-
-.vt-add-sub {
-	align-self: flex-start;
 }
 
 /* M3 の outlined text field 風: 枠の上にラベル */

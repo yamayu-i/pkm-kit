@@ -6,7 +6,7 @@
 
 ## 状態
 
-`routine/r-N.md`: `summary`、`repeat`（every / interval / on）、`start`、`end`、`active`、`group`、`priority`、[label](task-label.md)、[estimated](task-estimate.md)。その日の結果（closed / canceled）はボードの操作ログにあり、routine のノートには書かない。
+`routine/r-N.md`: `summary`、`repeat`（every / interval / on）、`start`、`end`、`active`、`priority`、[label](task-label.md)、[estimated](task-estimate.md)。その日の結果（closed / canceled）はボードの操作ログにあり、routine のノートには書かない。
 
 ## 操作
 

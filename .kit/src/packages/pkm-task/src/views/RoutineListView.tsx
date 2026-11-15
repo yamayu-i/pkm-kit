@@ -2,7 +2,6 @@ import { Keymap } from "obsidian";
 import { useState } from "preact/hooks";
 import { localToday } from "../core/dates";
 import { formatMinutes, parseDurationInput } from "../core/format";
-import { groupKeys } from "../core/groups";
 import { routineOccursOn } from "../core/index";
 import { describeRepeat } from "../core/repeat";
 import type { Routine } from "../core/schema";
@@ -14,10 +13,9 @@ import { useStoreVersion } from "../ui/hooks";
 import { linkProps } from "../ui/a11y";
 
 /** routine を作るフォーム。月は `15, last, 2th-tue, last-fri` のように書く（ADR-0010） */
-function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repeat: Record<string, unknown>, extra: { group: string | null; estimated: number | null }) => void }) {
+function RoutineForm(props: { onSubmit: (summary: string, repeat: Record<string, unknown>, extra: { estimated: number | null }) => void }) {
 	const [summary, setSummary] = useState("");
 	const [draft, setDraft] = useState(defaultRepeatDraft());
-	const [group, setGroup] = useState("");
 	const [estimated, setEstimated] = useState("");
 	const read = readRepeatDraft(draft);
 	const minutes = estimated.trim() ? parseDurationInput(estimated) : null;
@@ -27,7 +25,7 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 			class="vt-worklog-form"
 			onSubmit={(e) => {
 				e.preventDefault();
-				if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: minutes });
+				if (error === null) props.onSubmit(summary.trim(), read.repeat, { estimated: minutes });
 			}}
 		>
 			<label class="vt-text-field">
@@ -36,15 +34,6 @@ function RoutineForm(props: { groups: string[]; onSubmit: (summary: string, repe
 			</label>
 			<RepeatFields draft={draft} onChange={setDraft} />
 			<div class="vt-chip-row">
-				<label class="vt-text-field">
-					<span>Group (optional)</span>
-					<select class="dropdown" value={group} onChange={(e) => setGroup(e.currentTarget.value)}>
-						<option value="">Unsorted</option>
-						{props.groups.map((g) => (
-							<option value={g}>{g}</option>
-						))}
-					</select>
-				</label>
 				<label class="vt-text-field">
 					<span>estimated (optional)</span>
 					<input class="vt-small-input" type="text" value={estimated} placeholder="30m / 2h / 1d" onInput={(e) => setEstimated(e.currentTarget.value)} />
@@ -70,7 +59,6 @@ export function RoutineListView(props: { ctx: TaskContext }) {
 	const create = () =>
 		new PreactModal(ctx.app, "Create routine", (close) => (
 			<RoutineForm
-				groups={groupKeys(index.data.groups)}
 				onSubmit={(summary, repeat, extra) => {
 					close();
 					void ctx.writer.createRoutine(summary, repeat, { ...extra, start: today }).catch((e) => ctx.report("routine を作れませんでした", e));
@@ -97,7 +85,6 @@ export function RoutineListView(props: { ctx: TaskContext }) {
 							<span class="vt-routine-summary">{r.summary || "(no summary)"}</span>
 							<span class="vt-muted">
 								{r.repeat ? describeRepeat(r.repeat) : "Invalid repeat"}
-								{r.group ? ` · ${r.group}` : ""}
 								{r.estimated ? ` · ${formatMinutes(r.estimated)}` : ""}
 							</span>
 						</div>
