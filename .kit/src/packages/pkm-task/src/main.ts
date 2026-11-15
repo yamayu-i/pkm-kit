@@ -3,10 +3,11 @@ import { h } from "preact";
 import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data.ts";
 import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
 import { installTaskHeaders } from "./header/extension";
-import { installSubAreaHiding } from "./header/hide-sub-area";
+import { installSubArea } from "./header/sub-area";
 import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
+import { sanitizeSubOpen } from "./core/sub-issue";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
 import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { workKey } from "./core/worklog";
@@ -98,7 +99,7 @@ export default class PkmTaskPlugin extends Plugin {
 		this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
 		this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
 		installTaskHeaders(ctx, this);
-		installSubAreaHiding(this);
+		installSubArea(ctx, this);
 		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
 		// リボンの「Tasks Now」（pkm-ribbon がこのコマンドを呼ぶ。ADR-0154）
 		this.addCommand({
@@ -146,6 +147,7 @@ export default class PkmTaskPlugin extends Plugin {
 	private async loadSettings(): Promise<void> {
 		const saved = ((await loadPluginDataOrLegacy(this, "vault-task")) ?? {}) as Partial<TaskSettings>;
 		Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
+		this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
 		if (!this.taskSettings.deviceName) {
 			// 端末名の初期値は pkm-git の端末名にする（同じ端末なら同じ名前がよい）
 			const git = (this.app as unknown as { plugins?: { plugins?: Record<string, { data?: { deviceName?: unknown } }> } }).plugins?.plugins?.["pkm-git"];

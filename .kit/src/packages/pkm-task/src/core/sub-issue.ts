@@ -432,6 +432,61 @@ export function subAreaStartLine(text: string): number | null {
 	return head.split("\n").length - 1;
 }
 
+/** md のサブの領域の始まりの位置（文字数。最初のマーカーの行頭）。サブがなければ null（ADR-0158） */
+export function subAreaOffset(text: string): number | null {
+	const { head, blocks } = splitSubIssueText(text);
+	return blocks.length === 0 ? null : head.length;
+}
+
+/** リーディング表示の 1 つのセクション（行 lineStart〜lineEnd。終わりを含む）の、サブの領域との関係（ADR-0158） */
+export type SubAreaRole = "before" | "mount" | "hide";
+
+/**
+ * サブの領域の最初のセクション（マーカーの行を含む）には、アコーディオンを描く。
+ * それより後ろのセクションは隠す。前のセクションは何もしない
+ */
+export function subAreaRole(startLine: number | null, lineStart: number, lineEnd: number): SubAreaRole {
+	if (startLine === null) return "before";
+	if (lineStart > startLine) return "hide";
+	return lineEnd >= startLine ? "mount" : "before";
+}
+
+/**
+ * Live Preview で、サブの領域の中にカーソルがあるか（ADR-0158）。
+ * 領域の先頭と終わりの位置は「中」に数えない（文書の下をクリックして終わりにカーソルが来ても、描き替えを外さない）
+ */
+export function cursorInsideSubArea(sel: { from: number; to: number }, from: number, to: number): boolean {
+	return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
+}
+
+/** 開いているサブの id（ノートのパスごと）。この端末だけに保存する（ADR-0158） */
+export type SubOpenMap = Record<string, string[]>;
+
+/** 保存された値を読む。形が違うものは捨てる */
+export function sanitizeSubOpen(value: unknown): SubOpenMap {
+	const out: SubOpenMap = {};
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return out;
+	for (const [path, ids] of Object.entries(value)) {
+		if (!Array.isArray(ids)) continue;
+		const valid = ids.filter(isSubId);
+		if (valid.length > 0) out[path] = [...new Set(valid)];
+	}
+	return out;
+}
+
+export function isSubOpen(map: SubOpenMap, path: string, id: string): boolean {
+	return map[path]?.includes(id) ?? false;
+}
+
+/** id の開閉を入れ替えた新しい値。existing にない id（消えたサブ）は取り除く。元の値は変えない */
+export function toggleSubOpen(map: SubOpenMap, path: string, id: string, existing: Iterable<string>): SubOpenMap {
+	const alive = new Set(existing);
+	const current = (map[path] ?? []).filter((x) => alive.has(x));
+	const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+	const { [path]: _drop, ...rest } = map;
+	return next.length === 0 ? rest : { ...rest, [path]: next };
+}
+
 /** 書く前の検査で、touched のサブ（足す・変えるもの）に関わる問題だけを返す。ほかのサブの既存の誤りは lint に任せる */
 export function touchedSubErrors(subs: readonly SubIssueInput[], touched: readonly string[], memberIds: ReadonlySet<string>): string[] {
 	return checkSubIssues(subs, memberIds).filter((e) => touched.some((id) => e.startsWith(`サブ ${id}: `)));

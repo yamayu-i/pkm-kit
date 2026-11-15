@@ -8,8 +8,14 @@ import {
 	dropPosition,
 	parseSubIssues,
 	splitQuickAdd,
+	cursorInsideSubArea,
+	isSubOpen,
+	sanitizeSubOpen,
 	stepPosition,
+	subAreaOffset,
+	subAreaRole,
 	subAreaStartLine,
+	toggleSubOpen,
 	subCounts,
 	subHint,
 	visibleSubs,
@@ -173,5 +179,51 @@ describe("writer のサブの操作", () => {
 		expect(f.subs()[1]).toMatchObject({ status: "closed", body: "終わった" });
 		const logs = [...f.texts].filter(([p]) => p.startsWith("statuslog/")).flatMap(([p, t]) => parseStatusLog(p, t).entries);
 		expect(logs.map((e) => [e.task, e.sub, e.from, e.to])).toEqual([["i-1", "bbbbbb", "open", "closed"]]);
+	});
+});
+
+describe("本文のサブの領域（ADR-0158）", () => {
+	const text = `${HEAD}\n${block("aaaaaa")}${block("bbbbbb")}`;
+	it("領域の始まりは最初のマーカーの行頭。サブがなければ null", () => {
+		const at = subAreaOffset(text)!;
+		expect(text.slice(at).startsWith("<!-- sub-issue")).toBe(true);
+		expect(text[at - 1]).toBe("\n");
+		expect(subAreaOffset(HEAD)).toBeNull();
+	});
+	it("リーディング: マーカーの行を含むセクションに描き、後ろは隠し、前は触らない", () => {
+		expect(subAreaRole(10, 0, 8)).toBe("before");
+		expect(subAreaRole(10, 10, 14)).toBe("mount");
+		expect(subAreaRole(10, 8, 10)).toBe("mount");
+		expect(subAreaRole(10, 15, 20)).toBe("hide");
+		expect(subAreaRole(null, 15, 20)).toBe("before");
+	});
+});
+
+describe("展開の状態（ADR-0158）", () => {
+	it("ノートごとに開閉を入れ替え、消えたサブは取り除く。元の値は変えない", () => {
+		const base = { "issue/i-1.md": ["aaaaaa", "gone00"] };
+		const opened = toggleSubOpen(base, "issue/i-1.md", "bbbbbb", ["aaaaaa", "bbbbbb"]);
+		expect(opened).toEqual({ "issue/i-1.md": ["aaaaaa", "bbbbbb"] });
+		expect(base["issue/i-1.md"]).toEqual(["aaaaaa", "gone00"]);
+		expect(isSubOpen(opened, "issue/i-1.md", "bbbbbb")).toBe(true);
+		const closed = toggleSubOpen(opened, "issue/i-1.md", "aaaaaa", ["aaaaaa", "bbbbbb"]);
+		expect(closed).toEqual({ "issue/i-1.md": ["bbbbbb"] });
+		// 最後の 1 件を閉じるとノートの項目ごとなくす
+		expect(toggleSubOpen(closed, "issue/i-1.md", "bbbbbb", ["bbbbbb"])).toEqual({});
+	});
+	it("保存された値は、形の違うものを捨てて読む", () => {
+		expect(sanitizeSubOpen({ "issue/i-1.md": ["aaaaaa", "AAA", 3, "aaaaaa"], "issue/i-2.md": "x", "issue/i-3.md": [] })).toEqual({ "issue/i-1.md": ["aaaaaa"] });
+		expect(sanitizeSubOpen(null)).toEqual({});
+		expect(sanitizeSubOpen([])).toEqual({});
+	});
+});
+
+describe("Live Preview のカーソルとサブの領域（ADR-0158）", () => {
+	it("領域の先頭と終わりは中に数えず、中の位置と、領域にかかる選択は中に数える", () => {
+		expect(cursorInsideSubArea({ from: 10, to: 10 }, 10, 50)).toBe(false);
+		expect(cursorInsideSubArea({ from: 50, to: 50 }, 10, 50)).toBe(false);
+		expect(cursorInsideSubArea({ from: 11, to: 11 }, 10, 50)).toBe(true);
+		expect(cursorInsideSubArea({ from: 0, to: 20 }, 10, 50)).toBe(true);
+		expect(cursorInsideSubArea({ from: 0, to: 10 }, 10, 50)).toBe(false);
 	});
 });

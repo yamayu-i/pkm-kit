@@ -52,6 +52,22 @@ export function deleteSubWithConfirm(ctx: TaskContext, sub: SubIssue, done?: () 
 	});
 }
 
+/** 日付を選ぶダイアログ（サブの項目。ダイアログと本文の一覧で使う） */
+export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate | null, onPick: (value: LocalDate | null) => void): void {
+	new PreactModal(ctx.app, label, (close) => (
+		<DateForm
+			initial={initial}
+			allowClear
+			onSubmit={(v) => {
+				close();
+				onPick(v);
+			}}
+		/>
+	)).open();
+}
+
+export const SUB_DATE_FIELDS = DATE_FIELDS;
+
 /** 「Edit sub-issue」のダイアログ（ADR-0142） */
 export function openSubEditor(ctx: TaskContext, sub: SubIssue): void {
 	new PreactModal(ctx.app, "Edit sub-issue", (close) => <SubIssueForm ctx={ctx} sub={sub} close={close} />).open();
@@ -67,17 +83,7 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 	const siblings = ctx.store.index.subs(sub.parent).filter((s) => s.id !== sub.id);
 	const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
 
-	const editDate = (key: DateKey, label: string) =>
-		new PreactModal(ctx.app, label, (closeDate) => (
-			<DateForm
-				initial={draft[key]}
-				allowClear
-				onSubmit={(v: LocalDate | null) => {
-					closeDate();
-					set({ [key]: v });
-				}}
-			/>
-		)).open();
+	const editDate = (key: DateKey, label: string) => pickSubDate(ctx, label, draft[key], (v) => set({ [key]: v }));
 	const changeStatus = (status: Status) => {
 		if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
 		else set({ status, ...(status === "delegated" ? {} : { delegatedTo: null }) });

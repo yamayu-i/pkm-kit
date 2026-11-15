@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian25 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -1272,7 +1272,7 @@ function splitSubIssueText(text) {
 function prefixed(problems, id) {
   return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
 }
-function parseBlock(path, parent, raw, order, parseYaml3) {
+function parseBlock(path, parent, raw, order, parseYaml4) {
   const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
   const lines = raw.split(/\r?\n/);
   const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
@@ -1280,7 +1280,7 @@ function parseBlock(path, parent, raw, order, parseYaml3) {
   const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
   let fm;
   try {
-    fm = parseYaml3(yamlText);
+    fm = parseYaml4(yamlText);
   } catch {
     return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
   }
@@ -1316,12 +1316,12 @@ function parseBlock(path, parent, raw, order, parseYaml3) {
   };
   return { sub, problems: prefixed([...extra, ...r3.problems], id) };
 }
-function parseSubIssues(path, parent, text, parseYaml3) {
+function parseSubIssues(path, parent, text, parseYaml4) {
   const blocks = [];
   const problems = [];
   const subs = [];
   for (const raw of splitSubIssueText(text).blocks) {
-    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml3);
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml4);
     blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
     problems.push(...r3.problems);
     if (r3.sub) subs.push(r3.sub);
@@ -1370,8 +1370,8 @@ function replaceSubIssues(text, blocks) {
 
 ${parts.join("\n")}`;
 }
-function updateSubIssueText(path, parent, text, id, patch, parseYaml3) {
-  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+function updateSubIssueText(path, parent, text, id, patch, parseYaml4) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml4);
   const at = blocks.findIndex((b2) => b2.sub?.id === id);
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   const before = blocks[at].sub;
@@ -1382,8 +1382,8 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml3) {
   );
   return { text: next, before, after };
 }
-function rebuild(path, parent, text, parseYaml3, edit) {
-  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+function rebuild(path, parent, text, parseYaml4, edit) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml4);
   const items = blocks.map((b2) => b2.sub ?? b2.raw);
   edit(
     items,
@@ -1396,23 +1396,23 @@ function indexOfSub(ids, parent, id) {
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   return at;
 }
-function insertSubIssuesText(path, parent, text, subs, parseYaml3, at) {
-  return rebuild(path, parent, text, parseYaml3, (items) => {
+function insertSubIssuesText(path, parent, text, subs, parseYaml4, at) {
+  return rebuild(path, parent, text, parseYaml4, (items) => {
     const pos = at ?? items.length;
     if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${pos}`);
     items.splice(pos, 0, ...subs);
   });
 }
-function moveSubIssueText(path, parent, text, id, to, parseYaml3) {
-  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+function moveSubIssueText(path, parent, text, id, to, parseYaml4) {
+  return rebuild(path, parent, text, parseYaml4, (items, ids) => {
     const from = indexOfSub(ids, parent, id);
     if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length - 1} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${to}`);
     const [moved] = items.splice(from, 1);
     items.splice(to, 0, moved);
   });
 }
-function removeSubIssueText(path, parent, text, id, parseYaml3) {
-  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+function removeSubIssueText(path, parent, text, id, parseYaml4) {
+  return rebuild(path, parent, text, parseYaml4, (items, ids) => {
     items.splice(indexOfSub(ids, parent, id), 1);
   });
 }
@@ -1530,6 +1530,38 @@ function subAreaStartLine(text) {
   const { head, blocks } = splitSubIssueText(text);
   if (blocks.length === 0) return null;
   return head.split("\n").length - 1;
+}
+function subAreaOffset(text) {
+  const { head, blocks } = splitSubIssueText(text);
+  return blocks.length === 0 ? null : head.length;
+}
+function subAreaRole(startLine, lineStart, lineEnd) {
+  if (startLine === null) return "before";
+  if (lineStart > startLine) return "hide";
+  return lineEnd >= startLine ? "mount" : "before";
+}
+function cursorInsideSubArea(sel, from, to) {
+  return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
+}
+function sanitizeSubOpen(value) {
+  const out = {};
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return out;
+  for (const [path, ids] of Object.entries(value)) {
+    if (!Array.isArray(ids)) continue;
+    const valid = ids.filter(isSubId);
+    if (valid.length > 0) out[path] = [...new Set(valid)];
+  }
+  return out;
+}
+function isSubOpen(map, path, id) {
+  return map[path]?.includes(id) ?? false;
+}
+function toggleSubOpen(map, path, id, existing) {
+  const alive = new Set(existing);
+  const current = (map[path] ?? []).filter((x2) => alive.has(x2));
+  const next = current.includes(id) ? current.filter((x2) => x2 !== id) : [...current, id];
+  const { [path]: _drop, ...rest } = map;
+  return next.length === 0 ? rest : { ...rest, [path]: next };
 }
 function touchedSubErrors(subs, touched, memberIds) {
   return checkSubIssues(subs, memberIds).filter((e3) => touched.some((id) => e3.startsWith(`\u30B5\u30D6 ${id}: `)));
@@ -3255,6 +3287,20 @@ function deleteSubWithConfirm(ctx, sub, done) {
     void ctx.writer.deleteSub(sub.key).then(() => done?.()).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   });
 }
+function pickSubDate(ctx, label, initial, onPick) {
+  new PreactModal(ctx.app, label, (close) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial,
+      allowClear: true,
+      onSubmit: (v3) => {
+        close();
+        onPick(v3);
+      }
+    }
+  )).open();
+}
+var SUB_DATE_FIELDS = DATE_FIELDS;
 function openSubEditor(ctx, sub) {
   new PreactModal(ctx.app, "Edit sub-issue", (close) => /* @__PURE__ */ u3(SubIssueForm, { ctx, sub, close })).open();
 }
@@ -3267,17 +3313,7 @@ function SubIssueForm(props) {
   const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
   const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
   const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
-  const editDate = (key, label) => new PreactModal(ctx.app, label, (closeDate) => /* @__PURE__ */ u3(
-    DateForm,
-    {
-      initial: draft[key],
-      allowClear: true,
-      onSubmit: (v3) => {
-        closeDate();
-        set({ [key]: v3 });
-      }
-    }
-  )).open();
+  const editDate = (key, label) => pickSubDate(ctx, label, draft[key], (v3) => set({ [key]: v3 }));
   const changeStatus = (status) => {
     if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
     else set({ status, ...status === "delegated" ? {} : { delegatedTo: null } });
@@ -4667,20 +4703,289 @@ function installTaskHeaders(ctx, plugin) {
   });
 }
 
-// src/header/hide-sub-area.ts
+// src/header/sub-area.ts
+var import_state = require("@codemirror/state");
+var import_view = require("@codemirror/view");
+var import_obsidian11 = require("obsidian");
+
+// src/obsidian/sub-body.tsx
+var import_obsidian10 = require("obsidian");
+function issueIdOf(path) {
+  return path.replace(/^issue\//, "").replace(/\.md$/, "");
+}
+function useDraft(value, commit, delayMs) {
+  const [draft, setDraft] = d2(value);
+  const s3 = A2({ draft: value, dirty: false, value, commit, timer: 0 });
+  s3.current.value = value;
+  s3.current.commit = commit;
+  h2(() => {
+    const c3 = s3.current;
+    if (value === c3.draft) c3.dirty = false;
+    else if (!c3.dirty) {
+      c3.draft = value;
+      setDraft(value);
+    }
+  }, [value]);
+  const flush = () => {
+    const c3 = s3.current;
+    window.clearTimeout(c3.timer);
+    if (!c3.dirty || c3.draft === c3.value) return;
+    const sent = c3.draft;
+    void c3.commit(sent).then((ok) => {
+      if (ok && s3.current.draft === sent) s3.current.dirty = false;
+    });
+  };
+  h2(() => () => flush(), []);
+  const input = (v3) => {
+    const c3 = s3.current;
+    c3.draft = v3;
+    c3.dirty = true;
+    setDraft(v3);
+    window.clearTimeout(c3.timer);
+    if (delayMs !== null) c3.timer = window.setTimeout(flush, delayMs);
+  };
+  return { draft, input, flush };
+}
+function SubBody(props) {
+  const { ctx, path, delayMs } = props;
+  const [, setTick] = d2(0);
+  const redraw = () => setTick((n2) => n2 + 1);
+  h2(() => ctx.store.subscribe(redraw), [ctx]);
+  const parent = issueIdOf(path);
+  const blocks = parseSubIssues(path, parent, ctx.store.text(path) ?? "", import_obsidian10.parseYaml).blocks;
+  const subs = blocks.flatMap((b2) => b2.sub ? [b2.sub] : []);
+  const counts = subCounts(subs);
+  if (blocks.length === 0) return null;
+  const toggle2 = (id) => {
+    ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, subs.map((s3) => s3.id));
+    void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+    redraw();
+  };
+  return /* @__PURE__ */ u3("section", { class: "vt-sub-body vt-ui", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
+      /* @__PURE__ */ u3("span", { class: "vt-count", title: `${counts.open} open of ${counts.total}`, children: [
+        counts.open,
+        " / ",
+        counts.total
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      props.onShowSource && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: props.onShowSource, children: "Show source" })
+    ] }),
+    /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: blocks.map(
+      (b2, i3) => b2.sub ? /* @__PURE__ */ u3(SubItem, { ctx, sub: b2.sub, siblings: subs, open: isSubOpen(ctx.settings.subOpen, path, b2.sub.id), onToggle: () => toggle2(b2.sub.id), delayMs }, b2.sub.id) : /* @__PURE__ */ u3(UnreadableItem, { raw: b2.raw }, `raw-${i3}`)
+    ) })
+  ] });
+}
+function UnreadableItem(props) {
+  const [open, setOpen] = d2(false);
+  return /* @__PURE__ */ u3("li", { class: "vt-subissue is-unreadable", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-subissue-status", "aria-hidden": "true", children: /* @__PURE__ */ u3(Icon, { name: "alert-triangle" }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, onClick: () => setOpen((v3) => !v3), children: [
+        /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
+        /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: "Could not read this block" })
+      ] })
+    ] }),
+    open && /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: /* @__PURE__ */ u3("pre", { class: "vt-subissue-raw", children: props.raw }) })
+  ] });
+}
+function SubItem(props) {
+  const { ctx, sub, open } = props;
+  const [error, setError] = d2(null);
+  const save = (patch) => ctx.writer.updateSub(sub.key, patch).then(() => {
+    setError(null);
+    return true;
+  }).catch((e3) => {
+    setError(e3 instanceof Error ? e3.message : String(e3));
+    return false;
+  });
+  const changeStatus = (next) => {
+    if (next === "delegated") return pickMember(ctx, (id) => void save({ status: next, delegatedTo: id }));
+    if (next === sub.status) return;
+    void save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
+  };
+  const statusMenu2 = (e3) => {
+    const m3 = new import_obsidian10.Menu();
+    for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
+    m3.showAtMouseEvent(e3);
+  };
+  const hint = subHint(sub, localToday());
+  return /* @__PURE__ */ u3("li", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
+        /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
+        /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
+        hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
+      ] })
+    ] }),
+    open && /* @__PURE__ */ u3(SubFields, { ctx, sub, siblings: props.siblings, save, error, delayMs: props.delayMs })
+  ] });
+}
+function SubFields(props) {
+  const { ctx, sub, save, delayMs } = props;
+  const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
+  const others = props.siblings.filter((s3) => s3.id !== sub.id);
+  const summary = useDraft(sub.summary, (v3) => v3.trim() === "" ? Promise.resolve(false) : save({ summary: v3.trim() }), delayMs);
+  const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
+  const [estimatedError, setEstimatedError] = d2(null);
+  const estimated = useDraft(
+    estimatedText,
+    (v3) => {
+      const minutes = v3.trim() === "" ? null : parseDurationInput(v3);
+      if (minutes === null && v3.trim() !== "") {
+        setEstimatedError(`\u898B\u7A4D\u3082\u308A\u3092\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}\uFF08\u4F8B: 30m / 2h / 1h30m\uFF09`);
+        return Promise.resolve(false);
+      }
+      setEstimatedError(null);
+      return save({ estimated: minutes });
+    },
+    null
+  );
+  const body = useDraft(sub.body, (v3) => save({ body: v3 }), delayMs);
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail vt-subissue-form", children: [
+    /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Summary" }),
+      /* @__PURE__ */ u3(
+        "input",
+        {
+          type: "text",
+          value: summary.draft,
+          onInput: (e3) => summary.input(e3.currentTarget.value),
+          onBlur: summary.flush,
+          onKeyDown: (e3) => {
+            if (e3.key === "Enter" && !e3.isComposing) summary.flush();
+          }
+        }
+      )
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
+      sub.status === "delegated" && /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+        /* @__PURE__ */ u3("span", { children: "Delegated to" }),
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${member ? "" : " is-placeholder"}`, onClick: () => pickMember(ctx, (id) => void save({ delegatedTo: id })), children: [
+          /* @__PURE__ */ u3(Icon, { name: "user" }),
+          member ? member.nickname : "Choose a member"
+        ] })
+      ] }),
+      SUB_DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+        /* @__PURE__ */ u3("span", { children: label }),
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${sub[key] ? "" : " is-placeholder"}`, onClick: () => pickSubDate(ctx, label, sub[key], (v3) => void save({ [key]: v3 })), children: [
+          /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+          sub[key] ? formatShortDate(sub[key]) : "Not set"
+        ] })
+      ] })),
+      /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+        /* @__PURE__ */ u3("span", { children: "Estimated" }),
+        /* @__PURE__ */ u3(
+          "input",
+          {
+            type: "text",
+            class: "vt-small-input",
+            placeholder: "e.g. 2h",
+            value: estimated.draft,
+            onInput: (e3) => estimated.input(e3.currentTarget.value),
+            onBlur: estimated.flush,
+            onKeyDown: (e3) => {
+              if (e3.key === "Enter" && !e3.isComposing) estimated.flush();
+            }
+          }
+        )
+      ] })
+    ] }),
+    others.length > 0 && /* @__PURE__ */ u3("fieldset", { class: "vt-subissue-depends", children: [
+      /* @__PURE__ */ u3("legend", { children: "Depends on" }),
+      others.map((s3) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+        /* @__PURE__ */ u3(
+          "input",
+          {
+            type: "checkbox",
+            checked: sub.dependsOn.includes(s3.id),
+            onChange: (e3) => void save({ dependsOn: e3.currentTarget.checked ? [...sub.dependsOn, s3.id] : sub.dependsOn.filter((d3) => d3 !== s3.id) })
+          }
+        ),
+        s3.summary
+      ] }))
+    ] }),
+    /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Notes" }),
+      /* @__PURE__ */ u3("textarea", { class: "vt-subissue-body-input", value: body.draft, onInput: (e3) => body.input(e3.currentTarget.value), onBlur: body.flush })
+    ] }),
+    (props.error ?? estimatedError) !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: props.error ?? estimatedError })
+  ] });
+}
+
+// src/header/sub-area.ts
 var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
-function installSubAreaHiding(plugin) {
+var LIVE_PREVIEW_SAVE_MS = 600;
+function areaOf(state) {
+  const from = subAreaOffset(state.doc.toString());
+  return from === null ? null : { from, to: state.doc.length };
+}
+var SubAreaWidget = class extends import_view.WidgetType {
+  constructor(ctx, path) {
+    super();
+    this.ctx = ctx;
+    this.path = path;
+  }
+  ctx;
+  path;
+  // 中身はストアの変更で自分で描き直すので、同じノートの間は DOM を作り直さない（入力中のフォーカスを失わないため）
+  eq(other) {
+    return other.path === this.path;
+  }
+  toDOM(view) {
+    const dom = document.createElement("div");
+    dom.className = "vt-sub-area";
+    const showSource = () => {
+      const area = areaOf(view.state);
+      if (area) view.dispatch({ selection: { anchor: Math.min(area.from + 1, area.to) }, scrollIntoView: true });
+      view.focus();
+    };
+    R(k(SubBody, { ctx: this.ctx, path: this.path, delayMs: LIVE_PREVIEW_SAVE_MS, onShowSource: showSource }), dom);
+    return dom;
+  }
+  destroy(dom) {
+    R(null, dom);
+  }
+  // 入力欄やボタンの操作はエディタに渡さない
+  ignoreEvent() {
+    return true;
+  }
+};
+function build(ctx, state) {
+  const path = state.field(import_obsidian11.editorInfoField, false)?.file?.path;
+  if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian11.editorLivePreviewField, false)) return import_view.Decoration.none;
+  const area = areaOf(state);
+  if (!area || cursorInsideSubArea(state.selection.main, area.from, area.to)) return import_view.Decoration.none;
+  return import_view.Decoration.set([import_view.Decoration.replace({ widget: new SubAreaWidget(ctx, path), block: true }).range(area.from, area.to)]);
+}
+function installSubArea(ctx, plugin) {
+  plugin.registerEditorExtension(
+    import_state.StateField.define({
+      create: (state) => build(ctx, state),
+      update: (_value, tr) => build(ctx, tr.state),
+      provide: (field) => import_view.EditorView.decorations.from(field)
+    })
+  );
   plugin.registerMarkdownPostProcessor((el, mctx) => {
     if (!ISSUE_PATH_RE2.test(mctx.sourcePath)) return;
     const info = mctx.getSectionInfo(el);
     if (!info) return;
-    const start = subAreaStartLine(info.text);
-    if (start !== null && info.lineStart >= start) el.addClass("vt-subissue-area-hidden");
+    const role = subAreaRole(subAreaStartLine(info.text), info.lineStart, info.lineEnd);
+    if (role === "hide") el.addClass("vt-subissue-area-hidden");
+    else if (role === "mount") {
+      const host = el.createDiv({ cls: "vt-sub-area" });
+      R(k(SubBody, { ctx, path: mctx.sourcePath, delayMs: null }), host);
+      const child = new import_obsidian11.MarkdownRenderChild(host);
+      child.onunload = () => R(null, host);
+      mctx.addChild(child);
+    }
   });
 }
 
 // src/obsidian/capture.tsx
-var import_obsidian10 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/capture.ts
 var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
@@ -4717,7 +5022,7 @@ function CaptureForm(props) {
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         "Create ",
         summaries.length,
-        import_obsidian10.Platform.isMobile ? "" : " (Mod+Enter)"
+        import_obsidian12.Platform.isMobile ? "" : " (Mod+Enter)"
       ] }),
       /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
     ] })
@@ -4726,7 +5031,7 @@ function CaptureForm(props) {
 async function openAll(ctx, files) {
   let first = null;
   for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian10.Platform.isPhone });
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian12.Platform.isPhone });
     first ??= leaf;
   }
   if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
@@ -4746,7 +5051,7 @@ function showCreatedNotice(ctx, created, failed) {
       void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
     });
   }
-  notice = new import_obsidian10.Notice(fragment, NOTICE_MS);
+  notice = new import_obsidian12.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
   new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
@@ -4761,9 +5066,9 @@ function openCaptureModal(ctx) {
 }
 
 // src/obsidian/settings.ts
-var import_obsidian11 = require("obsidian");
-var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [] };
-var TaskSettingTab = class extends import_obsidian11.PluginSettingTab {
+var import_obsidian13 = require("obsidian");
+var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {} };
+var TaskSettingTab = class extends import_obsidian13.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -4773,7 +5078,7 @@ var TaskSettingTab = class extends import_obsidian11.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian11.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+    new import_obsidian13.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
       (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
@@ -4783,7 +5088,7 @@ var TaskSettingTab = class extends import_obsidian11.PluginSettingTab {
 };
 
 // src/obsidian/status-bar.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/core/running.ts
 var SUMMARY_MAX = 24;
@@ -4817,7 +5122,7 @@ function registerRunningStatusBar(host, store, open) {
     path = s3?.path ?? null;
     el.toggle(s3 !== null);
     el.setText(s3?.text ?? "");
-    (0, import_obsidian12.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+    (0, import_obsidian14.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
   };
   el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
   host.register(store.subscribe(render));
@@ -4826,7 +5131,7 @@ function registerRunningStatusBar(host, store, open) {
 }
 
 // src/obsidian/status-undo.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -4908,7 +5213,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian13.setIcon)(icon, "chevron-right");
+      (0, import_obsidian15.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -4921,7 +5226,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -5096,15 +5401,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian14.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian14.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian16.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian16.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian14.TFile) this.touch(file);
+        if (file instanceof import_obsidian16.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian14.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian16.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -5121,6 +5426,10 @@ var TaskStore = class {
   /** 書き込んだ直後に UI へ反映したいとき用（metadataCache の更新を待たない） */
   refreshSoon() {
     this.schedule();
+  }
+  /** 読み込み済みの issue / worklog などの本文（なければ null）。issue の本文のサブの領域を描くのに使う（ADR-0158） */
+  text(path) {
+    return this.texts.get(path) ?? null;
   }
   mtime(path) {
     const file = this.app.vault.getFileByPath(path);
@@ -5141,7 +5450,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian14.parseYaml };
+    const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian16.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -5166,9 +5475,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian15.ItemView {
+  class PreactView extends import_obsidian17.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -5190,7 +5499,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -5610,9 +5919,9 @@ var TaskWriter = class {
     const fixed = normalizeSubPatch(patch);
     let change = null;
     await this.app.vault.process(this.file(sub.path), (text) => {
-      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian16.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
+      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian18.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
       this.assertSubs(siblings, [sub.id]);
-      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian16.parseYaml);
+      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian18.parseYaml);
       change = r3.before.status !== r3.after.status ? { from: r3.before.status, to: r3.after.status } : null;
       return r3.text;
     });
@@ -5637,7 +5946,7 @@ var TaskWriter = class {
     const created = localDateTime();
     let keys = [];
     await this.app.vault.process(this.file(issue.path), (text) => {
-      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian16.parseYaml).subs;
+      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian18.parseYaml).subs;
       const taken = existing.map((s3) => s3.id);
       const subs = summaries.map((summary) => {
         const id = newSubId(taken);
@@ -5646,7 +5955,7 @@ var TaskWriter = class {
       });
       this.assertSubs([...existing, ...subs], subs.map((s3) => s3.id));
       keys = subs.map((s3) => subKey(issue.id, s3.id));
-      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian16.parseYaml);
+      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian18.parseYaml);
     });
     this.store.refreshSoon();
     return keys;
@@ -5669,9 +5978,9 @@ var TaskWriter = class {
     const sub = this.store.index.sub(key);
     if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
     await this.app.vault.process(this.file(sub.path), (text) => {
-      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian16.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
+      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian18.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
       const to = position(ids, sub.id);
-      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian16.parseYaml);
+      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian18.parseYaml);
     });
     this.store.refreshSoon();
   }
@@ -5683,7 +5992,7 @@ var TaskWriter = class {
     if (dependents.length > 0) throw new Error(`${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308B\u306E\u3067\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
     const running = this.store.index.running(key);
     if (running.length > 0) await this.stopTimer(running);
-    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian16.parseYaml));
+    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian18.parseYaml));
     this.store.refreshSoon();
   }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
@@ -5694,7 +6003,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now, Math.random, sub);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian16.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -5713,7 +6022,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian16.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian18.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, extra)));
@@ -5727,7 +6036,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian16.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian18.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -5787,7 +6096,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian16.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian18.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -5818,14 +6127,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian16.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian16.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian18.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -5843,14 +6152,14 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian16.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian18.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian16.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian18.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -5869,7 +6178,7 @@ function stepperItems(steps, current, counts, passed) {
 }
 
 // src/ui/IssueTable.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -5922,7 +6231,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `Select ${issue.id}` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -5943,7 +6252,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var ENTER_MS = 3e3;
 var LANE_TITLE = {
   working: "Working",
@@ -5985,7 +6294,7 @@ function TaskCard(props) {
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const starred = board.stars.includes(key);
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian20.Menu();
     for (const s3 of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -5999,7 +6308,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian20.Menu();
     if (!done) {
       if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 3").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
       else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 3").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
@@ -6039,7 +6348,7 @@ function TaskCard(props) {
       } : {},
       children: [
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
-        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
           starred && !done && /* @__PURE__ */ u3(Icon, { name: "star", class: "vt-task-star" }),
           summary
         ] }),
@@ -6065,7 +6374,7 @@ function ParentHead(props) {
   const parent = props.ctx.store.index.issues.get(props.parentId);
   return /* @__PURE__ */ u3("div", { class: "vt-lane-parent", children: [
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: props.parentId }),
-    parent ? /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", title: parent.summary, ...linkProps((e3) => void props.ctx.openPath(parent.path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: parent.summary }) : /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", children: "Deleted issue" })
+    parent ? /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", title: parent.summary, ...linkProps((e3) => void props.ctx.openPath(parent.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: parent.summary }) : /* @__PURE__ */ u3("span", { class: "vt-lane-parent-summary", children: "Deleted issue" })
   ] });
 }
 function Lane(props) {
@@ -6741,7 +7050,7 @@ function LabelManagerView(props) {
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 function MemberForm(props) {
   const [name, setName] = d2("");
   return /* @__PURE__ */ u3(
@@ -6819,7 +7128,7 @@ function MemberListView(props) {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian19.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
@@ -6833,7 +7142,7 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -6915,7 +7224,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian20.Menu();
+    const m3 = new import_obsidian22.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -7006,7 +7315,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var FIELD_OF = {
@@ -7134,7 +7443,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian21.Menu();
+    const m3 = new import_obsidian23.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -7282,7 +7591,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian22 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -7343,7 +7652,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
@@ -7357,7 +7666,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian23 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -7382,7 +7691,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian23.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -7393,7 +7702,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian24 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -7430,7 +7739,7 @@ function SidebarView(props) {
         const summary = task?.summary || taskId;
         const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian26.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -7739,7 +8048,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian25.Plugin {
+var PkmTaskPlugin = class extends import_obsidian27.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -7750,7 +8059,7 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian25.Notice(`${message}${detail}`);
+      new import_obsidian27.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -7768,9 +8077,9 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian25.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian27.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian25.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian27.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -7788,7 +8097,7 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
     this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     installTaskHeaders(ctx, this);
-    installSubAreaHiding(this);
+    installSubArea(ctx, this);
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
     this.addCommand({
       id: "open-tasks-now",
@@ -7829,6 +8138,7 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
   async loadSettings() {
     const saved = await loadPluginDataOrLegacy(this, "vault-task") ?? {};
     Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
+    this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
     if (!this.taskSettings.deviceName) {
       const git = this.app.plugins?.plugins?.["pkm-git"];
       const name = git?.data?.deviceName;

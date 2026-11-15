@@ -3573,9 +3573,47 @@ body.is-mobile .vt-toast {
 	white-space: nowrap;
 }
 
-/* リーディング表示のサブの領域（ヘッダーで読む） */
+/* リーディング表示で、サブの領域の最初のセクション以外は隠す（そこにアコーディオンを描く。ADR-0158） */
 .vt-subissue-area-hidden {
 	display: none;
+}
+
+/* 本文のサブの領域（Live Preview と Reading のアコーディオン。ADR-0158） */
+.vt-sub-area {
+	margin: 16px 0 8px;
+	user-select: text;
+	font-size: var(--vt-type-body-medium-size);
+}
+
+.vt-sub-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-sub-body .vt-subissue {
+	cursor: auto;
+}
+
+.vt-sub-body .vt-subissue-summary .vt-icon {
+	flex: none;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-sub-body .vt-subissue-detail {
+	padding-left: 12px;
+}
+
+.vt-subissue.is-unreadable .vt-subissue-status {
+	color: var(--vt-red);
+	cursor: auto;
+}
+
+.vt-subissue-raw {
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-all;
+	font-size: var(--vt-type-body-small-size);
 }
 
 /* Tasks Now（ADR-0154）: リボンから開くダイアログ */
