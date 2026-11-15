@@ -7605,6 +7605,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v = this.fm[key];
+    if (typeof v === "boolean") return v;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v = this.fm[key];
@@ -7685,6 +7693,7 @@ function parseIssue(path, fm) {
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),
+    clarified: r.boolean("clarified", false),
     created: r.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r.problems };
@@ -8393,7 +8402,7 @@ function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
 function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+  return issue.status === "open" && !issue.clarified;
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -9430,7 +9439,7 @@ function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null };
 }
 function inboxPatch() {
-  return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "open", clarified: null, delegated_to: null, revisit: null };
 }
 function somedayPatch(revisit = null) {
   return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
@@ -9764,6 +9773,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   if (input.deadline !== void 0 && input.deadline !== null && !isLocalDate(input.deadline)) {
     throw new Error(`deadline \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.deadline)}`);
   }
+  if (input.clarified !== void 0 && typeof input.clarified !== "boolean") throw new Error("clarified \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const taken = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys()];
   const [id] = nextIds("i", taken, 1);
   const relPath = pathForId(id);
@@ -9775,6 +9785,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   if (input.estimated !== void 0) extra.estimated = input.estimated;
   if (input.soft_deadline !== void 0) extra.soft_deadline = input.soft_deadline;
   if (input.deadline !== void 0) extra.deadline = input.deadline;
+  if (input.clarified === true) extra.clarified = true;
   const issue = Object.keys(extra).length > 0 ? updateIssueFrontmatter(root, relPath, extra) : parseIssue(relPath, {
     type: "issue",
     id,
@@ -9861,6 +9872,10 @@ function updateIssueOnDisk(root, index, input, log) {
       throw new Error(`estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(input.estimated)}`);
     }
     patch.estimated = input.estimated;
+  }
+  if (input.clarified !== void 0) {
+    if (input.clarified !== null && typeof input.clarified !== "boolean") throw new Error("clarified \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+    patch.clarified = input.clarified === true ? true : null;
   }
   const hasDatesAdded = Array.isArray(patch.scheduled) && patch.scheduled.length > 0 || patch.soft_deadline !== void 0 && patch.soft_deadline !== null || patch.deadline !== void 0 && patch.deadline !== null;
   if (current.status === "someday" && input.status === void 0 && hasDatesAdded) {
@@ -10034,7 +10049,7 @@ var TOOLS = [
         priorities: { type: "array", items: { type: "string" } },
         labels: { type: "array", items: { type: "string" } },
         scheduled: { type: "string", enum: ["any", "yes", "no"] },
-        inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox \u306E issue \u306E\u307F\u8FD4\u3059" },
+        inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox\uFF08open \u3067 clarified \u3067\u306A\u3044\u3002\u65E5\u4ED8\u306F\u898B\u306A\u3044\u3002ADR-0148\uFF09\u306E issue \u306E\u307F\u8FD4\u3059" },
         sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
         desc: { type: "boolean" },
         limit: { type: "number", description: "\u6700\u5927\u4EF6\u6570\uFF08\u65E2\u5B9A 100\uFF09" }
@@ -10140,7 +10155,7 @@ var TOOLS = [
   },
   {
     name: "carry_issues",
-    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u30EA\u30B9\u30B1\uFF08\u5225\u306E\u65E5\u3078\u79FB\u52D5\uFF09\u307E\u305F\u306F Inbox \u623B\u3057\u3067\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\u3002\u30B5\u30D6\u306F Inbox \u306B\u623B\u305B\u306A\u3044",
+    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u30EA\u30B9\u30B1\uFF08\u5225\u306E\u65E5\u3078\u79FB\u52D5\uFF09\u307E\u305F\u306F Inbox \u623B\u3057\uFF08clarified \u3092\u5916\u3059\u3002\u65E5\u4ED8\u306F\u6B8B\u3059\uFF09\u3067\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\u3002\u30B5\u30D6\u306F Inbox \u306B\u623B\u305B\u306A\u3044",
     inputSchema: {
       type: "object",
       properties: {
@@ -10187,6 +10202,7 @@ var TOOLS = [
         estimated: { type: ["number", "null"] },
         soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
+        clarified: { type: "boolean", description: "\u6574\u7406\u6E08\u307F\uFF08\u4F55\u3092\u3059\u308B\u304B\u6C7A\u3081\u305F\uFF09\u3067\u4F5C\u308B\u3002\u7701\u304F\u3068 Inbox\uFF08\u672A\u6574\u7406\uFF09\u306B\u5165\u308B\uFF08ADR-0148\uFF09" },
         add_to_board_date: { type: ["string", "null"], description: "\u6307\u5B9A\u3057\u305F\u65E5\u4ED8\uFF08YYYY-MM-DD\uFF09\u306E\u30DC\u30FC\u30C9\u306B\u3082\u8F09\u305B\u308B" }
       },
       required: ["summary"]
@@ -10210,7 +10226,8 @@ var TOOLS = [
         deadline: { type: ["string", "null"] },
         revisit: { type: ["string", "null"] },
         reviewed: { type: ["string", "null"] },
-        estimated: { type: ["number", "null"] }
+        estimated: { type: ["number", "null"] },
+        clarified: { type: ["boolean", "null"], description: "\u6574\u7406\u6E08\u307F\u304B\uFF08ADR-0148\uFF09\u3002true \u3067 Inbox \u304B\u3089\u51FA\u308B\u3002false / null \u3067 Inbox \u306B\u623B\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u308B\uFF09" }
       },
       required: ["id"]
     }
@@ -10570,6 +10587,7 @@ function callMcpTool(ctx, name, args = {}) {
           estimated: args.estimated,
           soft_deadline: args.soft_deadline,
           deadline: args.deadline,
+          clarified: args.clarified,
           add_to_board_date: args.add_to_board_date
         },
         ctx.device,
@@ -10590,7 +10608,8 @@ function callMcpTool(ctx, name, args = {}) {
         ...args.deadline !== void 0 ? { deadline: args.deadline } : {},
         ...args.revisit !== void 0 ? { revisit: args.revisit } : {},
         ...args.reviewed !== void 0 ? { reviewed: args.reviewed } : {},
-        ...args.estimated !== void 0 ? { estimated: args.estimated } : {}
+        ...args.estimated !== void 0 ? { estimated: args.estimated } : {},
+        ...args.clarified !== void 0 ? { clarified: args.clarified } : {}
       }, { device: ctx.device, now });
     }
     case "create_sub_issues": {

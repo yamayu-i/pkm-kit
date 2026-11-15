@@ -62,7 +62,7 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 
 ### 週次（Inbox 仕分け・停滞タスクと持ち越し常連の見直し）
 
-1. `get_overview` と `list_issues(inbox_only: true)` を呼ぶ
+1. `get_overview` と `list_issues(inbox_only: true)` を呼ぶ。Inbox は「open で `clarified` でない issue」で、日付は見ない（締切だけある未整理の issue も入る）。整理できたら `update_issue` で `clarified: true` にする（日付を決めない次の行動なら日付は入れない）。曖昧に戻ったものは `clarified: false` で Inbox に戻す（日付は残る）
 2. **持ち越し常連（`frequentlyCarried`）**: なぜ進まないのか（粒度が大きすぎる、前提条件が揃っていない、実はやらなくてよい）を一緒に確認し、サブイシューへの分割（`create_sub_issues` で親の md の中に足す。サブのサブは作れない）や `someday` / `canceled` への変更を提案する
 3. **停滞タスク（`stalled.inProgressStale` / `revisitDue` / `waitingOrDelegated`）**: 状況を確認し、`status_detail` の更新や次アクションの設定を行う
 4. **見積もり精度（`estimation`）**: 見積もりに対して実績が恒常的に膨らんでいないかを確認し、今後の見積もりの目安を調整する

@@ -7763,6 +7763,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v = this.fm[key];
+    if (typeof v === "boolean") return v;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v = this.fm[key];
@@ -7843,6 +7851,7 @@ function parseIssue(path, fm) {
     deadline: r.date("deadline"),
     revisit: r.date("revisit"),
     reviewed: r.date("reviewed"),
+    clarified: r.boolean("clarified", false),
     created: r.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r.problems };

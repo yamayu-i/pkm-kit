@@ -1081,6 +1081,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v3 = this.fm[key];
+    if (typeof v3 === "boolean") return v3;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v3 = this.fm[key];
@@ -1161,6 +1169,7 @@ function parseIssue(path, fm) {
     deadline: r3.date("deadline"),
     revisit: r3.date("revisit"),
     reviewed: r3.date("reviewed"),
+    clarified: r3.boolean("clarified", false),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r3.problems };
@@ -1917,7 +1926,7 @@ function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
 function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+  return issue.status === "open" && !issue.clarified;
 }
 function isScheduledAhead(issue, today) {
   return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);
@@ -2129,7 +2138,10 @@ function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null };
 }
 function inboxPatch() {
-  return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "open", clarified: null, delegated_to: null, revisit: null };
+}
+function nextPatch(issue) {
+  return { clarified: true, ...issue.status === "someday" ? reopenPatch() : {} };
 }
 function somedayPatch(revisit = null) {
   return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
@@ -2155,6 +2167,7 @@ function canConfirmSchedule(selectedCount, needEstimate, estimated) {
 function organizeSchedulePatch(issue, dates, estimated) {
   const patch = scheduledPatch(issue, [...new Set(dates)].sort());
   if (estimated !== null) patch.estimated = estimated;
+  patch.clarified = true;
   return patch;
 }
 function reschedulePatch(issue, target, to, from = null) {
@@ -4113,6 +4126,20 @@ function StatusField(props) {
         /* @__PURE__ */ u3(Icon, { name: "user" }),
         member ? member.nickname : issue.delegatedTo ?? "Choose delegate"
       ] }),
+      issue.status === "open" && // 整理したか（ADR-0148）。open のときだけ Inbox に関わるので、そのときだけ出す
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: `vt-field-chip${issue.clarified ? "" : " is-placeholder"}`,
+          "aria-pressed": issue.clarified,
+          title: issue.clarified ? "Clarified. Click to return to Inbox" : "In Inbox (not clarified). Click to mark as clarified",
+          onClick: () => save({ clarified: issue.clarified ? null : true }),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: issue.clarified ? "list-todo" : "inbox" }),
+            issue.clarified ? "Clarified" : "Inbox"
+          ]
+        }
+      ),
       issue.status === "someday" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRevisit, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-clock" }),
         "revisit ",
@@ -6873,7 +6900,8 @@ var FIELD_OF = {
   estimated: (i3) => i3.estimated,
   delegated_to: (i3) => i3.delegatedTo,
   priority: (i3) => i3.priority,
-  label: (i3) => i3.labels
+  label: (i3) => i3.labels,
+  clarified: (i3) => i3.clarified ? true : null
 };
 function snapshot(issue, patch) {
   const prev = {};
@@ -6946,9 +6974,9 @@ function OrganizeView(props) {
     if (!undo) return;
     try {
       await ctx.writer.update(undo.path, undo.prev);
-      const next = new Set(handled);
-      next.delete(undo.id);
-      setHandled(next);
+      const next2 = new Set(handled);
+      next2.delete(undo.id);
+      setHandled(next2);
       setCount(Math.max(0, count - 1));
       setUndo(null);
     } catch (e3) {
@@ -6962,7 +6990,7 @@ function OrganizeView(props) {
       ScheduleSheet,
       {
         issue: target,
-        requireEstimate: isInbox(target),
+        requireEstimate: false,
         onSubmit: (dates, est) => {
           close2();
           const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0])}` : `Do Date: ${dates.length} days`;
@@ -6972,7 +7000,7 @@ function OrganizeView(props) {
     )).open();
   };
   const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
-  const later = () => void apply2({}, "Later");
+  const next = () => void apply2(issue ? nextPatch(issue) : {}, "Next");
   const cancel = () => void apply2(cancelPatch(), "Cancel");
   const close = () => void apply2(closePatch(), "Closed");
   h2(() => {
@@ -6980,7 +7008,7 @@ function OrganizeView(props) {
       if (!issue || !root.current || root.current.offsetParent === null) return;
       if (e3.target?.closest("input, textarea, select, [contenteditable='true'], .modal")) return;
       if (document.querySelector(".modal-container")) return;
-      const map = { ArrowRight: schedule, ArrowLeft: someday, ArrowUp: later, ArrowDown: cancel };
+      const map = { ArrowRight: next, ArrowLeft: someday, ArrowDown: cancel };
       const fn = map[e3.key];
       if (fn) {
         e3.preventDefault();
@@ -6998,9 +7026,8 @@ function OrganizeView(props) {
     setDrag(null);
     if (!d3) return;
     const dir = direction(d3);
-    if (dir === "right") schedule();
+    if (dir === "right") next();
     else if (dir === "left") someday();
-    else if (dir === "up") later();
     else if (dir === "down") cancel();
   };
   const priorityMenu2 = (e3) => {
@@ -7049,12 +7076,8 @@ function OrganizeView(props) {
         " Someday"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`, children: [
-        /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        " Do Date"
-      ] }),
-      /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`, children: [
-        /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        " Later"
+        /* @__PURE__ */ u3(Icon, { name: "list-todo" }),
+        " Next"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
@@ -7114,10 +7137,6 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "cloud" }),
         /* @__PURE__ */ u3("span", { children: "Someday" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: later, title: "Later (\u2191)", children: [
-        /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        /* @__PURE__ */ u3("span", { children: "Later" })
-      ] }),
       /* @__PURE__ */ u3("button", { class: "vt-round is-cancel", disabled: !issue, onClick: cancel, title: "Cancel\uFF08\u2193\uFF09", children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
         /* @__PURE__ */ u3("span", { children: "Cancel" })
@@ -7126,9 +7145,13 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "check" }),
         /* @__PURE__ */ u3("span", { children: "Closed" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Choose Do Date (\u2192)", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: schedule, title: "Choose Do Date", children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
         /* @__PURE__ */ u3("span", { children: "Do Date" })
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: next, title: "Next action, no date (\u2192)", children: [
+        /* @__PURE__ */ u3(Icon, { name: "list-todo" }),
+        /* @__PURE__ */ u3("span", { children: "Next" })
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
@@ -7139,7 +7162,7 @@ function OrganizeView(props) {
         ": ",
         undo.label,
         ")"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Do Date / \u2191 Later / \u2193 Cancel (swipe or arrow keys)" }),
+      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Next / \u2193 Cancel (swipe or arrow keys)" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
         /* @__PURE__ */ u3(Icon, { name: "external-link" }),
         " Open"

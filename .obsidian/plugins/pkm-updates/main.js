@@ -288,6 +288,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v3 = this.fm[key];
+    if (typeof v3 === "boolean") return v3;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v3 = this.fm[key];
@@ -368,6 +376,7 @@ function parseIssue(path, fm) {
     deadline: r3.date("deadline"),
     revisit: r3.date("revisit"),
     reviewed: r3.date("reviewed"),
+    clarified: r3.boolean("clarified", false),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r3.problems };
@@ -727,7 +736,7 @@ function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
 function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+  return issue.status === "open" && !issue.clarified;
 }
 function isScheduledAhead(issue, today) {
   return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);

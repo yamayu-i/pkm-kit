@@ -74,7 +74,7 @@ ADR へのリンク。
 | 委任先 | delegated、委任先 | `member/m-N.md`、issue の `delegated_to` | member、委任先 |
 | status | open / in-progress / waiting / delegated / someday / closed / canceled | `status`、補足は `status-detail` | status |
 | status の取り消し | 「N件のステータスが変更されました。 元に戻す ›」 | `statuslog/` の `via: undo` | 取り消し |
-| Inbox | Inbox、Inbox に戻す | 保存しない（open で日付がないもの） | Inbox |
+| Inbox | Inbox、Inbox に戻す、Next（整理済みにする） | `clarified`（真偽値。open で clarified でないものが Inbox） | Inbox |
 | Someday | Someday、Someday へ | `status: someday`、`revisit`、`reviewed` | Someday |
 | Do Date | Add Do Date、Move Do Date、Do Today、Do Tomorrow。Organize でも Do Date。一覧の View は Scheduled | `scheduled`（日付のリスト） | 実行日、予定、scheduled |
 | deadline | deadline、Change Deadline | `deadline` | deadline、固い締切 |
