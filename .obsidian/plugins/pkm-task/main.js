@@ -8248,7 +8248,7 @@ function TaskRow(props) {
   const { ctx, task, action } = props;
   const open = task.path ? () => void ctx.openPath(task.path) : null;
   return /* @__PURE__ */ u3("div", { class: `vt-task${task.elapsedMs !== null ? " is-running" : ""}${props.paused ? " is-paused" : ""}`, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-routine-id", children: task.id }),
+    /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: task.id }),
     open ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${task.id} ${task.summary}`, ...linkProps(open), children: task.summary || task.key }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: task.summary || task.key }),
     /* @__PURE__ */ u3("button", { class: `vt-play${action.running ? " is-running" : ""}`, "aria-label": action.label, title: action.label, onClick: action.onClick, children: [
       /* @__PURE__ */ u3(Icon, { name: action.icon }),

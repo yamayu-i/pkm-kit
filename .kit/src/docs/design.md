@@ -223,7 +223,7 @@ packages/design/tokens.json（正本）
 | 親の見出し | `.vt-lane-run`（`.vt-lane-parent`） | 同じ欄で隣り合った、同じ親のサブのまとまり。左に outline-variant の太い線、上に親の ID のバッジと弱い文字の親の題（押すと親を開く）（ADR-0137） |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
 | 変更の行 | `.vt-upd-row` | PKM Updates の行。押せるカード（48px 以上）で、タイトルと、右に弱い文字の日時。セクションの見出し（`.vt-upd-heading-link`）は一覧 View へのリンクで、primary の文字に下線 |
-| 確認のボタン | `.vt-upd-viewed` | PKM Updates の下に固定した帯（`.vt-upd-footer`、`position: sticky`）の右の filled（primary）の丸いボタン。一覧が短くても画面の下に置く |
+| 確認のボタン | `.vt-upd-viewed` | PKM Updates の最下部の帯（`.vt-upd-footer`）の右の filled（primary）の丸いボタン。一覧が短くても下に置く |
 | スイッチ | `.vt-switch` | M3 の switch（52×32、つまみは 16px → 24px）。routine の一時停止 |
 | 入力欄 | `.vt-ui` の中の `input` / `textarea` / `select` | M3 の outlined text field。`--vt-surface` の面 + `--vt-outline` の 1px の枠、影なし。ホバーで `--vt-on-surface` の枠、フォーカスで `--vt-primary` の 2px の枠（3 章）。View・ヘッダー・モーダルの根に `.vt-ui` を付ける |
 | 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下に説明（`.vt-name-hint`）かエラー。その場で作る・変える編集に使う |

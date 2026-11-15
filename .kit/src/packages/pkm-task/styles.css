@@ -3649,6 +3649,7 @@ body.is-mobile .vt-toast {
 	flex-direction: column;
 	gap: 8px;
 	max-height: 40vh;
+	padding: 2px;
 	overflow-y: auto;
 }
 
