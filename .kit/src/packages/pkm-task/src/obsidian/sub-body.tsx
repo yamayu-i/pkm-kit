@@ -9,6 +9,7 @@ import { Icon } from "../ui/Icon";
 import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
+import { PickToggle } from "./pick-toggle";
 import { SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
 
 /** issue の md のパスから、親の issue の ID（`issue/i-12.md` → `i-12`） */
@@ -164,6 +165,7 @@ function SubItem(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[];
 					<span class="vt-subissue-summary-text">{sub.summary}</span>
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 				</button>
+				{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
 			</div>
 			{open && <SubFields ctx={ctx} sub={sub} siblings={props.siblings} save={save} error={error} delayMs={props.delayMs} />}
 		</li>

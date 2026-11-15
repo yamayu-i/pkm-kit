@@ -9,6 +9,7 @@ import { splitQuickAdd, subCounts, subHint, visibleSubs, type SubIssue, type Sub
 import { startTimer, stopTimer } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { pickMember } from "../obsidian/issue-editors";
+import { PickToggle } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import type { TimelineScale } from "../core/timeline";
 import { FilterChip } from "../ui/FilterChip";
@@ -157,6 +158,7 @@ function SubRow(props: {
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 				</button>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
+				{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
 				<button
 					type="button"
 					class={`vt-play${running.length > 0 ? " is-running" : ""}`}

@@ -5,11 +5,13 @@ import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, wee
 import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
+import { isActive } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
 import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
+import { PickToggle } from "../obsidian/pick-toggle";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
 import { DateForm, DayCell, WorklogForm } from "../ui/forms";
@@ -165,6 +167,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 						revisit {issue.revisit ? formatShortDate(issue.revisit) : "—"}
 					</button>
 				)}
+				{isActive(issue) && <PickToggle ctx={ctx} keyOf={issue.id} chip />}
 				<button class={`vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`} onClick={editDetail}>
 					<Icon name="pencil" />
 					{issue.statusDetail || "Add detail"}

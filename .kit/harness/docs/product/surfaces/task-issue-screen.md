@@ -10,10 +10,10 @@
 
 1. created と更新日時（小さく）
 2. ID のバッジと summary（押して編集）
-3. status（メニュー）と status-detail。delegated なら委任先
+3. status（メニュー）と status-detail。delegated なら委任先。active なら「Add to today's board」（押すと今日のボードに載せる。載せている間は「On today's board」で、もう一度押すと外す。日付は書かない。Today の Pick で選び直さなくてよい）
 4. priority と label
 5. 今日からの 7 日のストリップ（押すとその日を Calendar の日にする。もう一度押すと消す。「calendar >」で先の日も選べる）、tickler（その日に Inbox に戻す）、soft deadline・deadline
-6. Parent と Children（検索して選ぶ、新しく作る、外す。循環は作れない）
+6. Parent と Children（検索して選ぶ、新しく作る、外す。循環は作れない）。サブイシューの行にも、終わっていなければ同じ「今日のボードに載せる」アイコンがある（本文の一覧の行も同じ）
 7. estimated（プリセットか単位付きの入力）、実績、残り
 8. worklog（新しい順に 5 件ずつ。押して編集）
 9. 本文（ふつうのエディタ。新しい issue は ToDo / Description / Note の見出し）

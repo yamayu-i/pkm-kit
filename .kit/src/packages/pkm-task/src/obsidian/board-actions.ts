@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 import { backToNextPatch, inboxPatch, ticklerPatch } from "../core/actions";
-import { emptyBoard, type RoutineResult } from "../core/board";
+import { emptyBoard, isOnBoard, type RoutineResult } from "../core/board";
 import { boardLanes, canStar, moveOps, stepOps, type OrderedLane } from "../core/board-lanes";
 import type { BoardOp } from "../core/board-log";
 import { addDays, localToday, type LocalDate } from "../core/dates";
@@ -23,6 +23,11 @@ export const addToBoard = (ctx: TaskContext, date: LocalDate, ids: string[]) =>
 		"ボードに載せられませんでした",
 		ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task }))),
 	);
+
+/** issue・サブの画面から、今日のボードに載せる（Pick）/ 外す。日付は書かない（ADR-0152）。載せたものは Pick の候補から消える */
+export function toggleOnBoard(ctx: TaskContext, date: LocalDate, key: string): Promise<void> {
+	return isOnBoard(ctx.store.index, date, key) ? removeFromBoard(ctx, date, key) : addToBoard(ctx, date, [key]);
+}
 
 /** issue を作って、その日のボードに載せる。ボードで作るのは今やると決めたものなので整理済みにする。日付は書かない（ADR-0152） */
 export async function createOnBoard(ctx: TaskContext, date: LocalDate, summary: string): Promise<void> {

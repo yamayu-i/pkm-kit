@@ -64,6 +64,11 @@ export interface DailyBoard {
 	removed?: string[];
 }
 
+/** issue の ID かサブの合成キーが、その日のボードに載っているか */
+export function isOnBoard(index: TaskIndex, date: LocalDate, key: string): boolean {
+	return index.board(date)?.board.issues.includes(key) ?? false;
+}
+
 /** ボードに載っているもの（その日に出てくる routine も含む）。鍵が指すものがなくなったものは除く（ADR-0137） */
 export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const issues = board.issues.map((id) => index.issues.get(id)).filter((i): i is Issue => i !== undefined);

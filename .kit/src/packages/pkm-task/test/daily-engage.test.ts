@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { emptyBoard } from "../src/core/board";
+import { emptyBoard, isOnBoard } from "../src/core/board";
+import { serializeBoardLogEntry } from "../src/core/board-log";
 import { cautionSubs, currentStep, deadSubs, pickCandidates } from "../src/core/daily";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
@@ -80,5 +81,36 @@ describe("Pick の候補", () => {
 		const { issues, groups } = pickCandidates(index, today, board);
 		expect(issues.map((i) => i.id)).toEqual(["i-2", "i-8", "i-1"]);
 		expect(groups.find((g) => g.parent.id === "i-7")?.subs.map((s) => s.id)).toEqual(["dddddd"]);
+	});
+});
+
+describe("issue・サブの画面から今日のボードに載せる（Pick）", () => {
+	const subs = sub("aaaaaa", "サブ");
+	const withBoard = (keys: string[]) => {
+		const boardLogs = [
+			{
+				path: "board/pc/2026-11.jsonl",
+				text: keys.map((task, n) => serializeBoardLogEntry({ id: `b${n}`, at: `2026-11-16T0${n}:00:00.000Z`, date: today, op: "add", task })).join("\n") + "\n",
+			},
+		];
+		return new TaskIndex(collectVault({ markdown: [issue("i-1", { clarified: true }), issue("i-2", { clarified: true }, subs)], worklogs: [], labels: null, boardLogs, parseYaml: parse }).data);
+	};
+
+	it("ボードに載せた issue とサブを、載っていると判定する", () => {
+		const index = withBoard(["i-1", "i-2#aaaaaa"]);
+		expect(isOnBoard(index, today, "i-1")).toBe(true);
+		expect(isOnBoard(index, today, "i-2#aaaaaa")).toBe(true);
+		expect(isOnBoard(index, today, "i-2")).toBe(false);
+		expect(isOnBoard(index, "2026-11-17", "i-1")).toBe(false);
+	});
+
+	it("載せると Pick の候補から消える", () => {
+		const before = withBoard([]);
+		expect(pickCandidates(before, today, emptyBoard()).groups.flatMap((g) => g.subs.map((s) => s.key))).toEqual(["i-2#aaaaaa"]);
+		const after = withBoard(["i-1", "i-2#aaaaaa"]);
+		const board = after.board(today)!.board;
+		const left = pickCandidates(after, today, board);
+		expect(left.issues).toEqual([]);
+		expect(left.groups).toEqual([]);
 	});
 });
