@@ -6,10 +6,10 @@
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { boardItems, emptyBoard, pendingBoards, routineResults, sortByOrder, unfinished, type RoutineResult } from "../src/core/board";
+import { emptyBoard, pendingBoards, routineResults, unfinished, type RoutineResult } from "../src/core/board";
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
 import { prorateEffort } from "../src/core/effort";
-import { UNGROUPED, groupKeys } from "../src/core/groups";
+import { LANES, boardLanes, cardStatus, cardSummary, type BoardCard } from "../src/core/board-lanes";
 import { isInbox, TaskIndex } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../src/core/list";
@@ -24,7 +24,8 @@ import {
 	carryIssuesOnDisk,
 	closeBoardOnDisk,
 	createIssueOnDisk,
-	moveCardOnDisk,
+	orderCardOnDisk,
+	starCardOnDisk,
 	readMarkdownBody,
 	removeFromBoardOnDisk,
 	setRoutineResultOnDisk,
@@ -84,7 +85,8 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "get_board",
-		description: "指定日（既定は今日）のタスクボードの状態（issue / routine、グループごとの並び（byGroup の cards が画面の順）、未完了、記録中のタイマー、締めたか）を取得する",
+		description:
+			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（3 件まで）、next: 次にやる順、waiting: waiting / delegated、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -157,39 +159,52 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "add_to_board",
-		description: "指定日のボードに issue を載せる",
+		description: "指定日のボードに issue かサブ（合成キー i-N#xxxxxx）を載せる。その日が scheduled でないサブは、scheduled に足してから載せる",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "YYYY-MM-DD" },
-				issue_ids: { type: "array", items: { type: "string" } },
+				issue_ids: { type: "array", items: { type: "string" }, description: "issue の ID かサブの合成キー" },
 			},
 			required: ["date", "issue_ids"],
 		},
 	},
 	{
 		name: "remove_from_board",
-		description: "指定日のボードから issue を外す",
+		description: "指定日のボードから issue かサブ（合成キー）を外す",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "YYYY-MM-DD" },
-				issue_id: { type: "string" },
+				issue_id: { type: "string", description: "issue の ID かサブの合成キー" },
 			},
 			required: ["date", "issue_id"],
 		},
 	},
 	{
-		name: "move_card",
-		description: "ボード上のカード（issue / routine）のグループを変える（null または空文字で未分類）",
+		name: "order_card",
+		description: "ボードのカードを、同じ欄（top / next / waiting）の before の前に動かす（before が null なら欄の末尾）。並びは翌日以降にも引き継ぐ",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "YYYY-MM-DD" },
-				id: { type: "string" },
-				group: { type: ["string", "null"] },
+				key: { type: "string", description: "カードの key（issue の ID・サブの合成キー・routine の ID）" },
+				before: { type: ["string", "null"], description: "前に来るカードの key。null なら欄の末尾" },
 			},
-			required: ["date", "id", "group"],
+			required: ["date", "key", "before"],
+		},
+	},
+	{
+		name: "star_card",
+		description: "ボードのカードに ★ 今日の最重要を付ける（on: true）か外す（on: false）。★ は 3 件まで。その日だけで翌日には引き継がない",
+		inputSchema: {
+			type: "object",
+			properties: {
+				date: { type: "string", description: "YYYY-MM-DD" },
+				key: { type: "string", description: "カードの key" },
+				on: { type: "boolean" },
+			},
+			required: ["date", "key", "on"],
 		},
 	},
 	{
@@ -207,12 +222,12 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue をリスケ（別の日へ移動）または Inbox 戻しで片付け、carried にする",
+		description: "ボード上の未完了 issue・サブをリスケ（別の日へ移動）または Inbox 戻しで片付け、carried にする。サブは Inbox に戻せない",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "ボードの日付 YYYY-MM-DD" },
-				issue_ids: { type: "array", items: { type: "string" } },
+				issue_ids: { type: "array", items: { type: "string" }, description: "issue の ID かサブの合成キー" },
 				mode: { type: "string", enum: ["reschedule", "inbox"] },
 				reschedule_to: { type: "string", description: "mode=reschedule のときの移動先 YYYY-MM-DD" },
 			},
@@ -465,36 +480,23 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 			const date = typeof args.date === "string" ? args.date : today;
 			if (!isLocalDate(date)) throw new Error(`date が YYYY-MM-DD ではありません: ${String(args.date)}`);
 			const board = index.board(date)?.board ?? emptyBoard();
-			const keys = groupKeys(index.data.groups);
-			const items = boardItems(index, date, board);
-			const rem = unfinished(index, date, board);
-			const issuesWithGroup = items.issues.map((i) => ({
-				...i,
-				group: index.placement(date, board, i.id, null, keys),
-				carried: board.carried.includes(i.id),
-			}));
-			const routinesWithGroup = items.routines.map((r) => ({
-				...r,
-				group: index.placement(date, board, r.id, r.group, keys),
-				result: board.routines[r.id] ?? null,
-			}));
-			// グループの中は手で並べた順（ADR-0114）。cards は issue と routine を合わせた画面の並び
-			const byGroup: Record<string, { issues: string[]; routines: string[]; cards: string[] }> = {};
-			for (const k of [UNGROUPED, ...keys]) {
-				const ids = [...issuesWithGroup.filter((i) => i.group === k).map((i) => i.id), ...routinesWithGroup.filter((r) => r.group === k).map((r) => r.id)];
-				const cards = sortByOrder(ids, (id) => id, index.order(date, k));
-				const issueIds = new Set(issuesWithGroup.map((i) => i.id));
-				byGroup[k] = { issues: cards.filter((id) => issueIds.has(id)), routines: cards.filter((id) => !issueIds.has(id)), cards };
-			}
-
+			const lanes = boardLanes(index, date, board);
+			const card = (c: BoardCard) => ({
+				key: c.key,
+				kind: c.kind,
+				...(c.kind === "sub" ? { parent: c.sub.parent, parentSummary: c.parent?.summary ?? null } : {}),
+				summary: cardSummary(c),
+				status: cardStatus(board, c),
+				starred: board.stars.includes(c.key),
+				carried: board.carried.includes(c.key),
+			});
 			return {
 				date,
 				closed: board.closed,
-				groups: keys,
-				items: { issues: issuesWithGroup, routines: routinesWithGroup },
-				byGroup,
-				unfinished: rem,
+				lanes: Object.fromEntries(LANES.map((l) => [l, lanes[l].map(card)])),
+				unfinished: unfinished(index, date, board),
 				carried: board.carried,
+				stars: board.stars,
 				routineResults: board.routines,
 				runningTimers: index.running(),
 			};
@@ -507,6 +509,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				return {
 					date: b.date,
 					unfinishedIssues: u.issues,
+					unfinishedSubs: u.subs,
 					unfinishedRoutines: u.routines,
 				};
 			});
@@ -611,12 +614,18 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 			removeFromBoardOnDisk(ctx.root, index, date, issueId, ctx.device, now);
 			return { ok: true, date, removed: issueId };
 		}
-		case "move_card": {
+		case "order_card": {
 			const date = String(args.date ?? "");
-			const id = String(args.id ?? "");
-			const group = args.group === null || args.group === undefined ? null : String(args.group);
-			moveCardOnDisk(ctx.root, index, date, id, group, ctx.device, now);
-			return { ok: true, date, id, group };
+			const key = String(args.key ?? "");
+			const before = args.before === null || args.before === undefined ? null : String(args.before);
+			orderCardOnDisk(ctx.root, index, date, key, before, ctx.device, now);
+			return { ok: true, date, key, before };
+		}
+		case "star_card": {
+			const date = String(args.date ?? "");
+			const key = String(args.key ?? "");
+			starCardOnDisk(ctx.root, index, date, key, args.on as boolean, ctx.device, now);
+			return { ok: true, date, key, on: args.on };
 		}
 		case "set_routine_result": {
 			const date = String(args.date ?? "");

@@ -33,7 +33,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `statuslog/<端末名>/YYYY-MM.jsonl` | issue の status の変化の記録（1 行 1 件。追記だけ。分析用で、status の正本は frontmatter） |
 | `updates/<端末名>/YYYY-MM.jsonl` | PKM Updates の Viewed を押した記録（1 行 1 件。追記だけ。基準は全端末の最大。[ADR-0070](../../.kit/src/docs/adr/0070-pkm-updates.md)） |
-| `issue/labels.json` / `issue/board-groups.json` | label の色、task board のグループ |
+| `issue/labels.json` | label の色 |
 | `sources/` | LLM wiki に取り込んだ元資料（サブフォルダを作らない） |
 | `wiki/` | LLM がまとめる wiki のページと、目次・記録・フィードバック（サブフォルダを作らない） |
 | `slide/<…>/<デッキ>/` | スライド（[slide](../skills/slide/SKILL.md)、[ADR-0117](../../.kit/src/docs/adr/0117-slides.md)）。`deck.html`（ソース）、`index.html`（ビルドしたもの。ブラウザで開く。手で編集しない）、添付を 1 つのフォルダに置く。整理のためにフォルダを入れ子にしてよい。フォルダ名は英小文字・数字・ハイフン。md を置かない。この規約（frontmatter、添付の置き場所）の対象外 |

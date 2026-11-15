@@ -25,10 +25,6 @@ describe("MCP サーバーと検査付き操作", () => {
 			JSON.stringify([{ name: "dev", color: DEFAULT_LABEL_COLOR }], null, 2),
 		);
 		writeFileSync(
-			join(root, "issue/board-groups.json"),
-			JSON.stringify([{ name: "午前", children: [{ name: "集中" }] }, { name: "午後" }], null, 2),
-		);
-		writeFileSync(
 			join(root, "issue/i-1.md"),
 			"---\ntype: issue\nid: i-1\nsummary: 最初のタスク\nstatus: open\nestimated: 60\nscheduled:\n  - 2026-11-01\ncreated: 2026-10-30T10:00:00+09:00\n---\n## ToDo\n\n- [ ] サブタスク\n",
 		);
@@ -38,7 +34,7 @@ describe("MCP サーバーと検査付き操作", () => {
 		);
 		writeFileSync(
 			join(root, "routine/r-1.md"),
-			"---\ntype: routine\nid: r-1\nsummary: 朝会\nrepeat:\n  every: day\nstart: 2026-10-01\nactive: true\ngroup: 午前\nestimated: 15\ncreated: 2026-10-01T09:00:00+09:00\n---\n",
+			"---\ntype: routine\nid: r-1\nsummary: 朝会\nrepeat:\n  every: day\nstart: 2026-10-01\nactive: true\nestimated: 15\ncreated: 2026-10-01T09:00:00+09:00\n---\n",
 		);
 		writeFileSync(
 			join(root, "member/m-1.md"),
@@ -51,22 +47,27 @@ describe("MCP サーバーと検査付き操作", () => {
 		rmSync(root, { recursive: true, force: true });
 	});
 
-	it("ボードへの追加・グループ移動・routine 結果記録・get_board が正しく動き、Obsidian 側の readVault でも整合する", () => {
+	it("ボードへの追加・★・並べ替え・routine 結果記録・get_board が正しく動き、Obsidian 側の readVault でも整合する（ADR-0137）", () => {
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
-		callMcpTool(ctx, "move_card", { date, id: "i-1", group: "午前/集中" });
-		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
+		callMcpTool(ctx, "star_card", { date, key: "i-2", on: true });
+		callMcpTool(ctx, "order_card", { date, key: "r-1", before: "i-1" });
+		callMcpTool(ctx, "update_issue", { id: "i-1", status: "waiting" });
 
-		const board = callMcpTool(ctx, "get_board", { date }) as {
-			closed: boolean;
-			items: { issues: { id: string; group: string }[]; routines: { id: string; result: string | null }[] };
-			unfinished: { issues: { id: string }[]; routines: { id: string }[] };
-		};
+		type Card = { key: string; kind: string; status: string; starred: boolean };
+		const read = () =>
+			callMcpTool(ctx, "get_board", { date }) as {
+				closed: boolean;
+				lanes: Record<"working" | "top" | "next" | "waiting" | "done", Card[]>;
+				unfinished: { issues: { id: string }[]; routines: { id: string }[] };
+			};
+		let board = read();
 		expect(board.closed).toBe(false);
-		expect(board.items.issues.map((i) => ({ id: i.id, group: i.group }))).toEqual([
-			{ id: "i-1", group: "午前/集中" },
-			{ id: "i-2", group: "" },
-		]);
-		expect(board.items.routines[0]!.result).toBe("closed");
+		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], next: ["r-1"], waiting: ["i-1"], done: [] });
+		expect(board.lanes.top[0]).toMatchObject({ key: "i-2", kind: "issue", status: "open", starred: true });
+
+		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
+		board = read();
+		expect(board.lanes.done.map((c) => c.key)).toEqual(["r-1"]);
 		expect(board.unfinished.issues.map((i) => i.id)).toEqual(["i-1", "i-2"]);
 		expect(board.unfinished.routines).toEqual([]);
 
@@ -76,31 +77,29 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(lintVault(data, { paths: new Set(paths) })).toEqual([]);
 		const index = new TaskIndex(data);
 		expect(index.board(date)?.board.issues).toEqual(["i-1", "i-2"]);
-		expect(index.board(date)?.board.groups["i-1"]).toBe("午前/集中");
+		expect(index.board(date)?.board.stars).toEqual(["i-2"]);
+		expect(index.order(date)).toEqual(["i-2", "r-1", "i-1"]);
 	});
 
-	it("get_board はグループの中を手で並べた順で返す（ADR-0114）", () => {
-		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
-		callMcpTool(ctx, "move_card", { date, id: "i-1", group: "午前" });
-		callMcpTool(ctx, "move_card", { date, id: "i-2", group: "午前" });
-		mkdirSync(join(root, "board/pc"), { recursive: true });
-		writeFileSync(
-			join(root, "board/pc/2026-11.jsonl"),
-			`${JSON.stringify({ id: "bo_order00001", at: "2026-11-01T11:00:00.000Z", date, op: "order", group: "午前", tasks: ["i-2", "r-1", "i-1"] })}\n`,
-		);
-		const board = callMcpTool(ctx, "get_board", { date }) as {
-			items: { issues: { id: string }[] };
-			byGroup: Record<string, { issues: string[]; routines: string[]; cards: string[] }>;
-		};
-		expect(board.byGroup["午前"]).toEqual({ issues: ["i-2", "i-1"], routines: ["r-1"], cards: ["i-2", "r-1", "i-1"] });
-		expect(board.byGroup[""]!.cards).toEqual([]);
-		expect(readVault(root).problems).toEqual([]);
+	it("★ は 3 件まで。order_card は同じ欄の中だけ（ADR-0137）", () => {
+		for (const n of [3, 4, 5]) {
+			writeFileSync(join(root, `issue/i-${n}.md`), `---\ntype: issue\nid: i-${n}\nsummary: t${n}\nstatus: open\ncreated: 2026-10-30T10:00:00+09:00\n---\n`);
+		}
+		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2", "i-3", "i-4", "i-5"] });
+		for (const key of ["i-1", "i-2", "i-3"]) callMcpTool(ctx, "star_card", { date, key, on: true });
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-4", on: true })).toThrow(/3 件/);
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-4", before: "i-1" })).toThrow(/同じ欄/);
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-9", before: null })).toThrow(/載っていません/);
+		callMcpTool(ctx, "star_card", { date, key: "i-1", on: false });
+		callMcpTool(ctx, "star_card", { date, key: "i-4", on: true });
+		const board = callMcpTool(ctx, "get_board", { date }) as { stars: string[] };
+		expect(board.stars).toEqual(["i-2", "i-3", "i-4"]);
 	});
 
-	it("不正な操作（存在しない issue、未定義のグループ、未完了がある状態での close、廃止した parent）を拒否して書き込まない", () => {
+	it("不正な操作（存在しない issue、廃止した move_card、未完了がある状態での close、廃止した parent）を拒否して書き込まない", () => {
 		expect(() => callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-999"] })).toThrow(/i-999/);
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1"] });
-		expect(() => callMcpTool(ctx, "move_card", { date, id: "i-1", group: "存在しないグループ" })).toThrow(/グループ/);
+		expect(() => callMcpTool(ctx, "move_card", { date, id: "i-1", group: "午前" })).toThrow();
 		expect(() => callMcpTool(ctx, "close_board", { date })).toThrow(/未完了/);
 
 		// 親子関係は廃止した（ADR-0135）。parent は受け付けない

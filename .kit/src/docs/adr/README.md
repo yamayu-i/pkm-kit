@@ -28,8 +28,8 @@
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認（一部置換: 0034, 0077, 0135） | issue 画面の構成と、親子関係の編集 |
 | [0013](0013-design-system.md) | 一部置換（ADR-0016） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
-| [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換） | DailyTaskView と task board の保存形式・細部 |
-| [0015](0015-board-layout-simplified.md) | 承認 | task board のグループの並べ方を簡単にし、カードの ID を外す |
+| [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換。一部置換: 0137） | DailyTaskView と task board の保存形式・細部 |
+| [0015](0015-board-layout-simplified.md) | 承認（一部置換: 0137） | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
 | [0017](0017-date-input.md) | 承認（一部置換: 0078） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
 | [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032, 0077） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
@@ -45,10 +45,10 @@
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる |
 | [0030](0030-organize-schedule-calendar.md) | 承認（ADR-0009 の Organize の「右: 予定を入れる」を一部置換。一部置換: 0078） | Organize の予定入れを、複数日を選べるカレンダーにする |
-| [0031](0031-status-quick-change.md) | 承認（一部置換: 0032。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
+| [0031](0031-status-quick-change.md) | 承認（一部置換: 0032, 0137。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
 | [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認（ADR-0002 と ADR-0006 の `mid_due` の名前、ADR-0009 / ADR-0014 / ADR-0018 のアクション名、ADR-0031 のカードの status メニューを一部置換） | 日付のアクション名の整理、mid_due の改名（soft_deadline）、ボードからの delegated |
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
-| [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認（ADR-0012 の estimated の入力と換算、ADR-0009 / ADR-0014 の DailyTaskView の「今日の予定」の段階、ADR-0014 のカードの置き場所を一部置換） | estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
+| [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認（ADR-0012 の estimated の入力と換算、ADR-0009 / ADR-0014 の DailyTaskView の「今日の予定」の段階、ADR-0014 のカードの置き場所を一部置換。一部置換: 0137） | estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
 | [0035](0035-member-view-and-fields.md) | 承認（一部置換: 0077） | member の項目（name / nickname / alias）と、member の専用 View |
 | [0036](0036-member-labels-and-list-sort.md) | 承認 | member の label と、Members の一覧の絞り込み・並べ替え |
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する |
@@ -75,7 +75,7 @@
 | [0106](0106-git-shallow-clone.md) | 承認 | PKM Git の clone は最新の版だけを取る（shallow clone） |
 | [0110](0110-git-resolve-and-history.md) | 承認 | PKM Git で、衝突を Obsidian の中で解き、ファイルの前の版に戻せるようにする |
 | [0111](0111-remove-drawio.md) | 承認 | Draw.io 関連をすべて除き、既存の .drawio.svg は普通の SVG の図として扱う |
-| [0114](0114-board-manual-order.md) | 承認 | task board のグループの中でカードを手で並べ替える |
+| [0114](0114-board-manual-order.md) | 承認（一部置換: 0137） | task board のグループの中でカードを手で並べ替える |
 | [0117](0117-slides.md) | 承認 | スライドを slide/ に HTML で作り、共通の閲覧機能をビルドで入れ、デザインは規約とパターンのスキルで決める |
 | [0120](0120-slide-list-view-and-patterns.md) | 承認（一部置換: 0124） | スライドのプラグイン pkm-slide の一覧の View でフォルダを作ってデッキを動かし、パターンを増やす |
 | [0121](0121-vault-theme.md) | 承認（一部置換: 0125, 0129） | 子の Vault ごとに基本の色を変えられるようにする |
@@ -85,6 +85,7 @@
 | [0129](0129-vault-theme-follow-primary.md) | 承認 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
 | [0135](0135-sub-issues-in-issue-file.md) | 承認 | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
+| [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認 | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 提案 | Inbox は日付ではなく clarified（整理済み）で決める |

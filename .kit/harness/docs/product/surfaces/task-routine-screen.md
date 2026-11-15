@@ -9,7 +9,7 @@
 1. created と更新日時
 2. ID と summary（押して編集）、active のスイッチ
 3. くり返し、start、end
-4. group、priority、label
+4. priority、label
 5. 直近 14 日の結果（closed / canceled / 未記録 / 予定なし）。読み取りだけ
 6. estimated / total / average
 7. worklog、本文

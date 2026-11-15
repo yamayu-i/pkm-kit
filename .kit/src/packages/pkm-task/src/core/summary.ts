@@ -20,12 +20,17 @@ export function boardSummary(index: TaskIndex, date: LocalDate, board: BoardStat
 	const link = (id: string) => {
 		const issue = index.issues.get(id);
 		if (issue) return `[${issue.id} ${issue.summary}](${issue.path})`;
+		const sub = index.sub(id);
+		if (sub) return `[${sub.parent} › ${sub.summary}](${sub.path})`;
 		const routine = index.routines.get(id);
 		return routine ? `[${routine.id} ${routine.summary}](${routine.path})` : id;
 	};
 	const lines = [SECTION, ""];
-	const closed = board.issues.filter((id) => index.issues.get(id)?.status === "closed");
-	const others = board.issues.filter((id) => !closed.includes(id));
+	// 鍵が指すものがなくなったもの（消したサブなど）は書かない（ADR-0137）
+	const present = board.issues.filter((id) => index.issues.has(id) || index.sub(id) !== undefined);
+	const statusOf = (id: string) => index.issues.get(id)?.status ?? index.sub(id)?.status;
+	const closed = present.filter((id) => statusOf(id) === "closed");
+	const others = present.filter((id) => !closed.includes(id));
 	const routines = Object.entries(board.routines);
 	lines.push("### 完了", "");
 	if (closed.length === 0 && routines.every(([, r]) => r !== "closed")) lines.push("- なし");
@@ -34,7 +39,7 @@ export function boardSummary(index: TaskIndex, date: LocalDate, board: BoardStat
 	if (others.length > 0 || routines.some(([, r]) => r === "canceled")) {
 		lines.push("", "### 持ち越し・中止", "");
 		for (const id of others) {
-			const note = board.carried.includes(id) ? "持ち越し" : (index.issues.get(id)?.status ?? "?");
+			const note = board.carried.includes(id) ? "持ち越し" : (statusOf(id) ?? "?");
 			lines.push(`- ${link(id)}（${note}）`);
 		}
 		for (const [id, r] of routines) if (r === "canceled") lines.push(`- ${link(id)}（canceled）`);
@@ -44,7 +49,7 @@ export function boardSummary(index: TaskIndex, date: LocalDate, board: BoardStat
 		lines.push("", "### worklog", "");
 		for (const l of logs) {
 			const desc = l.description ? ` ${l.description}` : "";
-			lines.push(`- ${hm(l.fromMs)}–${hm(l.toMs!)}（${formatMinutes((l.toMs! - l.fromMs) / 60_000)}） ${link(l.taskId)}${desc}`);
+			lines.push(`- ${hm(l.fromMs)}–${hm(l.toMs!)}（${formatMinutes((l.toMs! - l.fromMs) / 60_000)}） ${link(l.sub ? `${l.taskId}#${l.sub}` : l.taskId)}${desc}`);
 		}
 	}
 	return `${lines.join("\n")}\n`;

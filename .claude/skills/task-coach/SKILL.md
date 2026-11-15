@@ -28,10 +28,10 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 
 最初に `get_overview` を 1 回呼ぶ。個別のファイルを先に読まない。
 
-- `board`: 今日のボードに載っている issue / routine、未完了、グループ配置（置いたことのあるカードは、前に置いたグループに初めから出る）
+- `board`: 今日のボードに載っている issue・サブイシュー（`subs`）・routine、未完了、★（`stars`。今日の最重要、3 件まで）。欄ごとの並び（Working / Top 3 / Up next / Waiting / Done）は `get_board` の `lanes` で見る
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
-- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
+- `scheduledNotOnBoard`: 今日が実行日だがまだボードに載っていない issue の ID とサブイシューの合成キー（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
 - `pendingBoards`: 今日より前で締めていないボード
 - `frequentlyCarried`: 2 回以上持ち越されている issue（分割・見直し候補）
 - `stalled`: `in-progress` なのに直近 3 日以上 worklog がない issue、`revisit` が来た someday、`waiting` / `delegated`
@@ -43,7 +43,7 @@ pkm-task の MCP サーバー（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-00
 
 1. `pendingBoards` があれば、昨日の未完了を今日に移す（`carry_issues` で `reschedule`）か Inbox に戻して、過去のボードを `close_board` で締めることを先に提案する
 2. `dead`（期限切れ）、`caution`（期限間近）、`scheduledNotOnBoard`（今日の予定）を提示し、今日やるべき候補を挙げる
-3. 今日やると決めたものは実行日を今日にする（ボードには自動で載る。すぐ載せたいときは `add_to_board`）。グループ（午前 / 午後など）を変えるなら `move_card` で配置する
+3. 今日やると決めたものは実行日を今日にする（ボードには自動で載る。すぐ載せたいときは `add_to_board`）。今日の最重要を 3 件まで選んで `star_card` で ★ を付け、やる順を `order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱い、その日が実行日でないサブを `add_to_board` すると実行日に今日が足される
 4. `workload.overloadedByMinutes > 0`（詰め込みすぎ）または `unestimatedCount > 0`（見積もりなし）なら指摘し、優先度の低いものを別日にリスケするか、見積もりを設定する（`update_issue`）よう提案する
 
 ### 日中（優先度の相談・割り込み対応）

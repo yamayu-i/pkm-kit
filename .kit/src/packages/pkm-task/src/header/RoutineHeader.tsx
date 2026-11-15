@@ -3,7 +3,6 @@ import { useState } from "preact/hooks";
 import { routineResults, type RoutineDayResult } from "../core/board";
 import { formatShortDate, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { groupKeys } from "../core/groups";
 import { describeRepeat, type RepeatRule } from "../core/repeat";
 import type { Routine } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
@@ -94,18 +93,6 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 				}}
 			/>
 		)).open();
-	const groupMenu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const key of ["", ...groupKeys(index.data.groups)]) {
-			m.addItem((item) =>
-				item
-					.setTitle(key || "Unsorted")
-					.setChecked((routine.group ?? "") === key)
-					.onClick(() => save({ group: key || null })),
-			);
-		}
-		m.showAtMouseEvent(e);
-	};
 	const effort = index.routineEffort(routine.id, Date.now());
 	return (
 		<div class="vt-issue">
@@ -142,10 +129,6 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					</button>
 				</div>
 				<div class="vt-row vt-chips">
-					<button class="vt-field-chip" onClick={groupMenu}>
-						<Icon name="layout-grid" />
-						{routine.group ?? "Unsorted"}
-					</button>
 					<PriorityBadge priority={routine.priority} onClick={(e) => priorityMenu(e, routine.priority, save)} />
 					<LabelsField ctx={ctx} labels={routine.labels} index={index} save={save} />
 				</div>

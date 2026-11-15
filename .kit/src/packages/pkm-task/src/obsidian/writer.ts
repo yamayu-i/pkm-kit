@@ -3,7 +3,6 @@ import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
 import { localDateTime, type LocalDate } from "../core/dates";
-import { GROUPS_PATH, serializeGroups, type GroupDef } from "../core/groups";
 import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { fileKind } from "../core/load";
@@ -389,19 +388,11 @@ export class TaskWriter {
 		await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
 	}
 
-	/** task board のグループの定義を保存する */
-	async saveGroups(groups: GroupDef[]): Promise<void> {
-		if (this.store.problems.some((p) => p.path === GROUPS_PATH)) throw new Error(`${GROUPS_PATH} を直してから保存してください`);
-		const file = await this.getOrCreate(GROUPS_PATH, "[]\n");
-		await this.app.vault.modify(file, serializeGroups(groups));
-		this.store.refreshSoon();
-	}
-
 	/** routine を作る（ADR-0010） */
 	async createRoutine(
 		summary: string,
 		repeat: Record<string, unknown>,
-		extra: { group?: string | null; estimated?: number | null; start?: string | null } = {},
+		extra: { estimated?: number | null; start?: string | null } = {},
 	): Promise<TFile> {
 		const [id] = nextIds("r", this.takenIds());
 		const path = normalizePath(pathForId(id!));

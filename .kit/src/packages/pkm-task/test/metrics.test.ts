@@ -111,7 +111,7 @@ describe("estimationStats と buildOverview", () => {
 		expect(overview.date).toBe(today);
 		expect(overview.workload.overloadedByMinutes).toBe(30);
 		expect(overview.dead.deadline.map((i) => i.id)).toEqual(["i-2"]);
-		expect(overview.scheduledNotOnBoard.map((i) => i.id)).toEqual(["i-3"]);
+		expect(overview.scheduledNotOnBoard).toEqual(["i-3"]);
 		expect(overview.inboxCount).toBe(1);
 	});
 });

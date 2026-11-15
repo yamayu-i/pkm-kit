@@ -6,7 +6,7 @@
 
 ## 今の振る舞い
 
-- routine の一覧と作成のフォーム（summary、くり返し、group、estimated）。estimated は単位付きで入れられる。ほかの項目は routine 画面で入れる
+- routine の一覧と作成のフォーム（summary、くり返し、estimated）。estimated は単位付きで入れられる。ほかの項目は routine 画面で入れる
 - 一時停止（active）を切り替えられる。行を押すと [routine 画面](task-routine-screen.md) を開く
 
 ## 使う概念
