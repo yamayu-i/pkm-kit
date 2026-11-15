@@ -7,8 +7,6 @@ import { sanitizeDeviceName } from "./worklog";
 export type BoardOp =
 	| { op: "add"; task: string }
 	| { op: "remove"; task: string }
-	/** 以前のグループの置き場所（ADR-0034）。ADR-0137 で廃止。読むが再生では使わない */
-	| { op: "place"; task: string; group: string | null }
 	| { op: "routine"; task: string; result: RoutineResult | null }
 	| { op: "carry"; task: string }
 	| { op: "close"; tasks: string[] }
@@ -57,6 +55,7 @@ function parseOp(o: Record<string, unknown>): BoardOp | typeof IGNORED | null {
 		case "carry":
 			return task ? { op: o.op, task } : null;
 		case "place":
+			// 以前のグループの置き場所（ADR-0034）。ADR-0137 で廃止したので読んでも捨てる
 			return IGNORED;
 		case "star":
 			return task && typeof o.on === "boolean" ? { op: "star", task, on: o.on } : null;
@@ -136,8 +135,6 @@ function apply(board: BoardState, op: BoardOp): void {
 			board.issues = board.issues.filter((id) => id !== op.task);
 			board.carried = board.carried.filter((id) => id !== op.task);
 			board.stars = board.stars.filter((id) => id !== op.task);
-			break;
-		case "place":
 			break;
 		case "star":
 			board.stars = board.stars.filter((id) => id !== op.task);

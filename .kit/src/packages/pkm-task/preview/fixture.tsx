@@ -13,7 +13,6 @@ import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
 import { CalendarForm, DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
-import { GroupManagerView } from "../src/views/GroupManagerView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
 import { LabelManagerView } from "../src/views/LabelManagerView";
@@ -88,7 +87,7 @@ const { data } = collectVault({
 		issue("i-12", { summary: "経費を精算する", status: "closed", scheduled: [t], priority: "chore" }),
 		issue("i-13", { summary: "先方の返事を待つ", status: "waiting", scheduled: [t], priority: "mid" }),
 		issue("i-11", { summary: "部屋の掃除", scheduled: [addDays(t, 3), addDays(t, 5)], priority: "chore", soft_deadline: addDays(t, -2) }),
-		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), group: "午前", estimated: 15 } },
+		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
@@ -99,10 +98,6 @@ const { data } = collectVault({
 	parseYaml: parse,
 	boardLogs: [{ path: "board/pc/2026-10.jsonl", text: boardLog.join("\n") }],
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"},{"name":"読書","color":"#f5e6c8"}]',
-	groups: JSON.stringify([
-		{ name: "午前", children: [{ name: "集中" }, { name: "雑務" }] },
-		{ name: "午後" },
-	]),
 });
 
 const store = { index: new TaskIndex(data), version: 1, subscribe: () => () => {}, mtime: () => Date.now(), problems: [] };
@@ -128,7 +123,6 @@ const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	scheduled: ScheduledView,
 	someday: SomedayView,
 	routines: RoutineListView,
-	groups: GroupManagerView,
 	labels: LabelManagerView,
 	members: MemberListView,
 	sidebar: SidebarView,

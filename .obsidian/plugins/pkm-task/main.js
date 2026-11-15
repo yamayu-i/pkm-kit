@@ -1172,6 +1172,7 @@ function parseRoutine(path, fm) {
   const parsed = parseRepeat(fm.repeat);
   if (parsed.ok) repeat = parsed.value;
   else r3.problem("invalid-repeat", parsed.error);
+  if (r3.has("group")) r3.problem("legacy-routine-group", "group \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0137\uFF09\u3002\u79FB\u884C 0137-board-lanes \u3067\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09", "warning");
   const active = fm.active === void 0 || fm.active === null ? true : fm.active;
   if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const routine = {
@@ -1182,7 +1183,6 @@ function parseRoutine(path, fm) {
     start: r3.date("start"),
     end: r3.date("end"),
     active: active !== false,
-    group: r3.string("group"),
     priority: r3.oneOf("priority", PRIORITIES),
     labels: r3.strings("label"),
     estimated: r3.minutes("estimated"),
@@ -1702,8 +1702,6 @@ function apply(board, op) {
       board.carried = board.carried.filter((id) => id !== op.task);
       board.stars = board.stars.filter((id) => id !== op.task);
       break;
-    case "place":
-      break;
     case "star":
       board.stars = board.stars.filter((id) => id !== op.task);
       if (op.on) board.stars.push(op.task);
@@ -1912,7 +1910,7 @@ function isDoneStatus(status) {
 
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+  return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -4419,60 +4417,6 @@ function MemberHeader(props) {
 // src/header/RoutineHeader.tsx
 var import_obsidian8 = require("obsidian");
 
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-function parseGroup(value, depth, problems) {
-  const o3 = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o3.name === "string" ? o3.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o3.children)) {
-    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c3 of o3.children) {
-        const g2 = parseGroup(c3, depth + 1, problems);
-        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g2 = parseGroup(item, 0, messages);
-      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-function serializeGroups(groups) {
-  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
-  return `${JSON.stringify(groups.map(strip), null, 2)}
-`;
-}
-function groupNameError(name, siblings, current) {
-  const n2 = name.trim();
-  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
-  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
-  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
-  return null;
-}
-function groupKeys(groups) {
-  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
-}
-
 // src/ui/RepeatFields.tsx
 function defaultRepeatDraft() {
   return { every: "week", interval: 1, weekdays: ["mon"], monthText: "1" };
@@ -4607,15 +4551,6 @@ function RoutineHeader(props) {
       }
     }
   )).open();
-  const groupMenu = (e3) => {
-    const m3 = new import_obsidian8.Menu();
-    for (const key of ["", ...groupKeys(index.data.groups)]) {
-      m3.addItem(
-        (item) => item.setTitle(key || "Unsorted").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
-      );
-    }
-    m3.showAtMouseEvent(e3);
-  };
   const effort = index.routineEffort(routine.id, Date.now());
   return /* @__PURE__ */ u3("div", { class: "vt-issue", children: [
     /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
@@ -4661,10 +4596,6 @@ function RoutineHeader(props) {
         ] })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-row vt-chips", children: [
-        /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: groupMenu, children: [
-          /* @__PURE__ */ u3(Icon, { name: "layout-grid" }),
-          routine.group ?? "Unsorted"
-        ] }),
         /* @__PURE__ */ u3(PriorityBadge, { priority: routine.priority, onClick: (e3) => priorityMenu(e3, routine.priority, save) }),
         /* @__PURE__ */ u3(LabelsField, { ctx, labels: routine.labels, index, save })
       ] })
@@ -5028,7 +4959,6 @@ function serializeLabels(labels) {
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
-  if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -5056,7 +4986,7 @@ function resolveMigrated(data, byOld) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -5139,11 +5069,6 @@ function collectVault(input) {
     problems.push(...r3.problems);
     data.labels = r3.labels;
   }
-  if (input.groups) {
-    const r3 = parseGroups(input.groups);
-    problems.push(...r3.problems);
-    data.groups = r3.groups;
-  }
   return { data, problems };
 }
 
@@ -5197,7 +5122,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -5210,7 +5135,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian14.parseYaml };
+    const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian14.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -5225,7 +5150,6 @@ var TaskStore = class {
       else if (kind === "board") input.boardLogs.push({ path, text });
       else if (kind === "statuslog") input.statusLogs.push({ path, text });
       else if (kind === "labels") input.labels = text;
-      else if (kind === "groups") input.groups = text;
     }
     const { data, problems } = collectVault(input);
     this.index = new TaskIndex(data);
@@ -5365,7 +5289,6 @@ function newRoutineContent(id, summary, repeat, created, extra = {}) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString2(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
   if (extra.start) lines.push(`start: ${extra.start}`);
   lines.push("active: true");
-  if (extra.group) lines.push(`group: ${yamlString2(extra.group)}`);
   if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
   return lines.join("\n");
@@ -5917,13 +5840,6 @@ var TaskWriter = class {
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
-  /** task board のグループの定義を保存する */
-  async saveGroups(groups) {
-    if (this.store.problems.some((p3) => p3.path === GROUPS_PATH)) throw new Error(`${GROUPS_PATH} \u3092\u76F4\u3057\u3066\u304B\u3089\u4FDD\u5B58\u3057\u3066\u304F\u3060\u3055\u3044`);
-    const file = await this.getOrCreate(GROUPS_PATH, "[]\n");
-    await this.app.vault.modify(file, serializeGroups(groups));
-    this.store.refreshSoon();
-  }
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
@@ -6473,155 +6389,6 @@ function DailyView(props) {
   ] });
 }
 
-// src/ui/EditRow.tsx
-function move(list, i3, d3) {
-  const j3 = i3 + d3;
-  if (j3 < 0 || j3 >= list.length) return list;
-  const next = [...list];
-  [next[i3], next[j3]] = [next[j3], next[i3]];
-  return next;
-}
-function NameField(props) {
-  const ref = A2(null);
-  h2(() => {
-    if (props.autoFocus) ref.current?.focus();
-  }, []);
-  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
-    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "Name", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
-    props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
-  ] });
-}
-function RowTools(props) {
-  const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
-  return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move up", "aria-label": "Move up", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move down", "aria-label": "Move down", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
-  ] });
-}
-
-// src/views/GroupManagerView.tsx
-var nextKey = 1;
-var toDraft = (g2) => ({ key: nextKey++, name: g2.name, children: g2.children.map(toDraft) });
-var toDef = (d3) => ({ name: d3.name.trim(), children: d3.children.map(toDef) });
-function errorOf(d3, siblings) {
-  return groupNameError(
-    d3.name,
-    siblings.filter((s3) => s3.key !== d3.key).map(toDef)
-  );
-}
-function GroupManagerView(props) {
-  const { ctx } = props;
-  const version = useStoreVersion(ctx.store);
-  const [drafts, setDrafts] = d2(() => ctx.store.index.data.groups.map(toDraft));
-  const [dirty, setDirty] = d2(false);
-  const [focusKey, setFocusKey] = d2(null);
-  h2(() => {
-    if (!dirty) setDrafts(ctx.store.index.data.groups.map(toDraft));
-  }, [version]);
-  const update = (next) => {
-    setDrafts(next);
-    setDirty(true);
-  };
-  const setGroup = (key, fn) => update(drafts.map((d3) => d3.key === key ? fn(d3) : d3));
-  const addGroup = () => {
-    const d3 = { key: nextKey++, name: "", children: [] };
-    setFocusKey(d3.key);
-    update([...drafts, d3]);
-  };
-  const addSub = (parent) => {
-    const c3 = { key: nextKey++, name: "", children: [] };
-    setFocusKey(c3.key);
-    setGroup(parent, (g2) => ({ ...g2, children: [...g2.children, c3] }));
-  };
-  const hasError = drafts.some((g2) => errorOf(g2, drafts) !== null || g2.children.some((c3) => errorOf(c3, g2.children) !== null));
-  const save = () => void ctx.writer.saveGroups(drafts.map(toDef)).then(
-    () => setDirty(false),
-    (e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
-  );
-  return /* @__PURE__ */ u3("div", { class: "vt-page vt-group-manager", children: [
-    /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
-      /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Board groups" }),
-      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      dirty ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => {
-        setDrafts(ctx.store.index.data.groups.map(toDraft));
-        setDirty(false);
-      }, children: "Revert" }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Saved" }),
-      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: !dirty || hasError, onClick: save, children: [
-        /* @__PURE__ */ u3(Icon, { name: "save" }),
-        " Save"
-      ] })
-    ] }),
-    /* @__PURE__ */ u3("section", { class: "vt-card vt-layout-preview", "aria-label": "Layout on the board", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Layout on the board" }),
-      /* @__PURE__ */ u3("div", { class: "vt-preview-columns", children: [
-        /* @__PURE__ */ u3("div", { class: "vt-preview-col is-ungrouped", children: /* @__PURE__ */ u3("span", { children: "Unsorted" }) }),
-        drafts.map((g2) => /* @__PURE__ */ u3("div", { class: "vt-preview-col", children: [
-          /* @__PURE__ */ u3("span", { children: g2.name || "(no name)" }),
-          g2.children.map((c3) => /* @__PURE__ */ u3("span", { class: "vt-preview-sub", children: c3.name || "(no name)" }))
-        ] }))
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: "Groups are laid out side by side on the board (stacked on narrow screens). Subgroups stack inside their group." })
-    ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-group-editor", children: [
-      drafts.map((g2, i3) => /* @__PURE__ */ u3("section", { class: "vt-card vt-group-edit", children: [
-        /* @__PURE__ */ u3("div", { class: "vt-group-edit-head", children: [
-          /* @__PURE__ */ u3(
-            NameField,
-            {
-              label: "Group name",
-              value: g2.name,
-              error: errorOf(g2, drafts),
-              autoFocus: focusKey === g2.key,
-              onInput: (v3) => setGroup(g2.key, (x2) => ({ ...x2, name: v3 }))
-            }
-          ),
-          /* @__PURE__ */ u3(RowTools, { what: "group", index: i3, count: drafts.length, onMove: (d3) => update(move(drafts, i3, d3)), onDelete: () => update(drafts.filter((x2) => x2.key !== g2.key)) })
-        ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-sub-list", children: [
-          g2.children.map((c3, j3) => /* @__PURE__ */ u3("div", { class: "vt-sub-edit", children: [
-            /* @__PURE__ */ u3(Icon, { name: "corner-down-right", class: "vt-sub-mark" }),
-            /* @__PURE__ */ u3(
-              NameField,
-              {
-                label: "Subgroup name",
-                value: c3.name,
-                error: errorOf(c3, g2.children),
-                autoFocus: focusKey === c3.key,
-                onInput: (v3) => setGroup(g2.key, (x2) => ({ ...x2, children: x2.children.map((y3) => y3.key === c3.key ? { ...y3, name: v3 } : y3) }))
-              }
-            ),
-            /* @__PURE__ */ u3(
-              RowTools,
-              {
-                what: "subgroup",
-                index: j3,
-                count: g2.children.length,
-                onMove: (d3) => setGroup(g2.key, (x2) => ({ ...x2, children: move(x2.children, j3, d3) })),
-                onDelete: () => setGroup(g2.key, (x2) => ({ ...x2, children: x2.children.filter((y3) => y3.key !== c3.key) }))
-              }
-            )
-          ] }, c3.key)),
-          /* @__PURE__ */ u3("button", { class: "vt-button is-text vt-add-sub", onClick: () => addSub(g2.key), children: [
-            /* @__PURE__ */ u3(Icon, { name: "plus" }),
-            " Add subgroup"
-          ] })
-        ] })
-      ] }, g2.key)),
-      /* @__PURE__ */ u3("button", { class: "vt-add-group", onClick: addGroup, children: [
-        /* @__PURE__ */ u3(Icon, { name: "plus" }),
-        " Add group"
-      ] })
-    ] }),
-    dirty && /* @__PURE__ */ u3("div", { class: "vt-banner", children: [
-      "Unsaved changes",
-      hasError ? " (fix the name errors to save)" : ""
-    ] }),
-    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "Renaming a group does not move cards placed in it on past boards (they show up in Unsorted)." })
-  ] });
-}
-
 // src/views/InboxView.tsx
 function InboxView(props) {
   const { ctx } = props;
@@ -6670,9 +6437,37 @@ function InboxView(props) {
   ] });
 }
 
+// src/ui/EditRow.tsx
+function move(list, i3, d3) {
+  const j3 = i3 + d3;
+  if (j3 < 0 || j3 >= list.length) return list;
+  const next = [...list];
+  [next[i3], next[j3]] = [next[j3], next[i3]];
+  return next;
+}
+function NameField(props) {
+  const ref = A2(null);
+  h2(() => {
+    if (props.autoFocus) ref.current?.focus();
+  }, []);
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
+    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "Name", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
+    props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
+  ] });
+}
+function RowTools(props) {
+  const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
+  return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move up", "aria-label": "Move up", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move down", "aria-label": "Move down", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
+  ] });
+}
+
 // src/views/LabelManagerView.tsx
-var nextKey2 = 1;
-var toDraft2 = (l3) => ({ key: nextKey2++, from: l3.name, name: l3.name, color: l3.color });
+var nextKey = 1;
+var toDraft = (l3) => ({ key: nextKey++, from: l3.name, name: l3.name, color: l3.color });
 var HEX2 = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 function pickerValue(color) {
   const m3 = HEX2.exec(color);
@@ -6684,12 +6479,12 @@ function pickerValue(color) {
 function LabelManagerView(props) {
   const { ctx } = props;
   const version = useStoreVersion(ctx.store);
-  const [drafts, setDrafts] = d2(() => ctx.store.index.data.labels.map(toDraft2));
+  const [drafts, setDrafts] = d2(() => ctx.store.index.data.labels.map(toDraft));
   const [dirty, setDirty] = d2(false);
   const [saving, setSaving] = d2(false);
   const [focusKey, setFocusKey] = d2(null);
   h2(() => {
-    if (!dirty) setDrafts(ctx.store.index.data.labels.map(toDraft2));
+    if (!dirty) setDrafts(ctx.store.index.data.labels.map(toDraft));
   }, [version]);
   const usage = labelUsage(ctx.store.index);
   const update = (next) => {
@@ -6698,7 +6493,7 @@ function LabelManagerView(props) {
   };
   const setLabel = (key, patch) => update(drafts.map((d3) => d3.key === key ? { ...d3, ...patch } : d3));
   const add = () => {
-    const d3 = { key: nextKey2++, from: null, name: "", color: DEFAULT_LABEL_COLOR };
+    const d3 = { key: nextKey++, from: null, name: "", color: DEFAULT_LABEL_COLOR };
     setFocusKey(d3.key);
     update([...drafts, d3]);
   };
@@ -6721,7 +6516,7 @@ function LabelManagerView(props) {
         {
           class: "vt-button is-text",
           onClick: () => {
-            setDrafts(ctx.store.index.data.labels.map(toDraft2));
+            setDrafts(ctx.store.index.data.labels.map(toDraft));
             setDirty(false);
           },
           children: "Revert"
@@ -7358,7 +7153,6 @@ var import_obsidian22 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
-  const [group, setGroup] = d2("");
   const [estimated, setEstimated] = d2("");
   const read = readRepeatDraft(draft);
   const minutes = estimated.trim() ? parseDurationInput(estimated) : null;
@@ -7369,7 +7163,7 @@ function RoutineForm(props) {
       class: "vt-worklog-form",
       onSubmit: (e3) => {
         e3.preventDefault();
-        if (error === null) props.onSubmit(summary.trim(), read.repeat, { group: group || null, estimated: minutes });
+        if (error === null) props.onSubmit(summary.trim(), read.repeat, { estimated: minutes });
       },
       children: [
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
@@ -7377,19 +7171,10 @@ function RoutineForm(props) {
           /* @__PURE__ */ u3("input", { type: "text", value: summary, placeholder: "e.g. Weekly review", onInput: (e3) => setSummary(e3.currentTarget.value) })
         ] }),
         /* @__PURE__ */ u3(RepeatFields, { draft, onChange: setDraft }),
-        /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: [
-          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "Group (optional)" }),
-            /* @__PURE__ */ u3("select", { class: "dropdown", value: group, onChange: (e3) => setGroup(e3.currentTarget.value), children: [
-              /* @__PURE__ */ u3("option", { value: "", children: "Unsorted" }),
-              props.groups.map((g2) => /* @__PURE__ */ u3("option", { value: g2, children: g2 }))
-            ] })
-          ] }),
-          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "estimated (optional)" }),
-            /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "text", value: estimated, placeholder: "30m / 2h / 1d", onInput: (e3) => setEstimated(e3.currentTarget.value) })
-          ] })
-        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "estimated (optional)" }),
+          /* @__PURE__ */ u3("input", { class: "vt-small-input", type: "text", value: estimated, placeholder: "30m / 2h / 1d", onInput: (e3) => setEstimated(e3.currentTarget.value) })
+        ] }) }),
         error !== null && summary && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: error !== null, children: "Create" }) })
       ]
@@ -7405,7 +7190,6 @@ function RoutineListView(props) {
   const create = () => new PreactModal(ctx.app, "Create routine", (close) => /* @__PURE__ */ u3(
     RoutineForm,
     {
-      groups: groupKeys(index.data.groups),
       onSubmit: (summary, repeat, extra) => {
         close();
         void ctx.writer.createRoutine(summary, repeat, { ...extra, start: today }).catch((e3) => ctx.report("routine \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
@@ -7430,7 +7214,6 @@ function RoutineListView(props) {
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
-          r3.group ? ` \xB7 ${r3.group}` : "",
           r3.estimated ? ` \xB7 ${formatMinutes(r3.estimated)}` : ""
         ] })
       ] }),
@@ -7500,7 +7283,6 @@ function SidebarView(props) {
     { type: "pkm-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
     { type: "pkm-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
     { type: "pkm-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
-    { type: "pkm-task-groups", title: "Board groups", icon: "layout-grid" },
     { type: "pkm-task-members", title: "Members", icon: "users" },
     { type: "pkm-task-labels", title: "Labels", icon: "tag" }
   ];
@@ -7615,7 +7397,6 @@ var VIEWS = [
   { type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", component: ScheduledView },
   { type: "pkm-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
   { type: "pkm-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
-  { type: "pkm-task-groups", title: "Board groups", icon: "layout-grid", component: GroupManagerView },
   { type: "pkm-task-members", title: "Members", icon: "users", component: MemberListView },
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];

@@ -38,7 +38,6 @@ ADR へのリンク。
 | [Organize](task-organize.md) | View |
 | [Scheduled](task-scheduled.md) | View |
 | [Routines](task-routines.md) | View |
-| [Board groups](task-board-groups.md) | View |
 | [Labels](task-labels.md) | View |
 | [Capture issues](task-capture.md) | コマンド |
 | [Tasks サイドバー](task-sidebar.md) | View（左サイドバー） |

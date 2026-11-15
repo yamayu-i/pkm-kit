@@ -6,7 +6,7 @@ import { boardLanes, canStar, cardRuns, moveOps, stepOps, type BoardLanes } from
 import { closeBoardNote } from "../src/core/board-note";
 import { TaskIndex } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
-import { collectVault } from "../src/core/load";
+import { collectVault, fileKind } from "../src/core/load";
 import { boardSummary } from "../src/core/summary";
 
 /** ADR-0137: status とタイマーで決まる欄、★、1 つの並び、サブのカード */
@@ -231,5 +231,19 @@ describe("サブのカード（ADR-0137）", () => {
 		const { index } = load([parent], [line(DATE, { op: "add", task: "i-1#zzzzzz" }), line(DATE, { op: "add", task: "i-1#aaaaaa" })]);
 		const codes = lintVault(index.data).filter((p) => p.code === "dangling-board-issue");
 		expect(codes.map((p) => p.message)).toEqual(["ボードに載っている i-1#zzzzzz がありません"]);
+	});
+});
+
+describe("グループの廃止（ADR-0137）", () => {
+	it("routine に group が残っていれば warning を出す（routine はそのまま読める）", () => {
+		const r = { path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", name: "朝", repeat: { every: "day" }, start: "2026-10-01", group: "午前" } };
+		const { index, problems } = load([r], []);
+		expect(problems.map((p) => [p.severity, p.code, p.path])).toEqual([["warning", "legacy-routine-group", "routine/r-1.md"]]);
+		expect(problems[0]!.message).toContain("node .kit/migrate.mjs");
+		expect(index.routines.get("r-1")).toBeDefined();
+	});
+
+	it("issue/board-groups.json はタスク管理のファイルとして読まない", () => {
+		expect(fileKind("issue/board-groups.json")).toBeNull();
 	});
 });

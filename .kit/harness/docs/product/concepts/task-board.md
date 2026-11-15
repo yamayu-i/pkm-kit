@@ -10,12 +10,12 @@
 
 ## 操作
 
-載せる・外す、グループに置く、status を変える、持ち越す（Do Tomorrow、Move Do Date、Inbox）、締める。
+載せる・外す、★ を付ける、並べ替える、status を変える、持ち越す（Do Tomorrow、Move Do Date、Inbox）、締める。
 
 ## 使い方の筋道
 
-今日が Do Date の issue と今日の routine は自動で載る。カードは前に置いたグループに出る。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。未完了が 0 になると締められ、締めなかったボードは翌日「Previous boards」に出る。
+今日が Do Date の issue とサブイシュー、今日の routine は自動で載る。カードは status とタイマーで欄に分かれる（[ボードの欄と ★](task-board-lane.md)）。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。未完了が 0 になると締められ、締めなかったボードは翌日「Previous boards」に出る。
 
 ## 根拠
 
-[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)
+[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)

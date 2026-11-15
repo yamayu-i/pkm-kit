@@ -45,7 +45,6 @@ export interface Routine {
 	start: LocalDate | null;
 	end: LocalDate | null;
 	active: boolean;
-	group: string | null;
 	priority: Priority | null;
 	labels: string[];
 	estimated: number | null;
@@ -224,6 +223,8 @@ export function parseRoutine(path: string, fm: Frontmatter): Parsed<Routine> {
 	const parsed = parseRepeat(fm.repeat);
 	if (parsed.ok) repeat = parsed.value;
 	else r.problem("invalid-repeat", parsed.error);
+	// グループは廃止した（ADR-0137）。移行（0137-board-lanes）で消す
+	if (r.has("group")) r.problem("legacy-routine-group", "group は廃止しました（ADR-0137）。移行 0137-board-lanes で消してください（node .kit/migrate.mjs）", "warning");
 	const active = fm.active === undefined || fm.active === null ? true : fm.active;
 	if (typeof active !== "boolean") r.problem("invalid-field", "active は true / false にしてください");
 	const routine: Routine = {
@@ -234,7 +235,6 @@ export function parseRoutine(path: string, fm: Frontmatter): Parsed<Routine> {
 		start: r.date("start"),
 		end: r.date("end"),
 		active: active !== false,
-		group: r.string("group"),
 		priority: r.oneOf("priority", PRIORITIES),
 		labels: r.strings("label"),
 		estimated: r.minutes("estimated"),

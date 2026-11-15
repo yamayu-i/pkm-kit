@@ -3,7 +3,6 @@ import { emptyBoard, pendingBoards, unfinished, unfinishedCount, type DailyBoard
 import { lastOrder, type OrderRecord } from "./board-log";
 import { deadIssues, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
-import type { GroupDef } from "./groups";
 import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
@@ -21,8 +20,6 @@ export interface VaultData {
 	worklogs: WorklogEntry[];
 	/** ボードの状態（操作ログの再生結果。ADR-0020） */
 	boards: DailyBoard[];
-	/** task board のグループ（issue/board-groups.json） */
-	groups: GroupDef[];
 	/** status の記録（古い順。ADR-0031） */
 	statusLogs: StatusLogEntry[];
 	/** ボードを並べた記録（ボードの日付 → 時刻の順。ADR-0114, 0137） */
@@ -30,7 +27,7 @@ export interface VaultData {
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */

@@ -11,12 +11,12 @@
 
 1. リボンの「Open Today」（[リボン](../surfaces/ribbon.md)）か、左サイドバーの Today（[Tasks サイドバー](../surfaces/task-sidebar.md)）を押す。Today は一覧ペインに開く（[一覧ペインとノートペイン](../surfaces/layout-panes.md)）
 2. [Today](../surfaces/task-today.md) の段階を順に片付ける: Overdue → Previous boards → Due soon → Board。今日が Do Date の issue と今日の routine は、自動でボードに載っている
-3. [task board](../surfaces/task-board.md) で、カードをグループ（午前・午後など）に置く。前に置いたグループに初めから出る
+3. [task board](../surfaces/task-board.md) で、今日の最重要を 3 件まで Top 3 に入れ、Up next を並べる。並びは前の日から引き継ぐ。今日が Do Date のサブイシューもカードとして載る
 4. AI と相談するときは、task-coach が MCP で状況を読み、負荷（見積もりの合計と使える時間）を見て、載せすぎを減らす（[MCP と task-coach](../surfaces/task-mcp.md)）
 
 ## 関わる概念
 
-[issue](../concepts/task-issue.md)、[routine](../concepts/task-routine.md)、[Do Date](../concepts/task-do-date.md)、[deadline と soft deadline](../concepts/task-deadline.md)、[task board](../concepts/task-board.md)、[ボードのグループ](../concepts/task-board-group.md)、[estimated](../concepts/task-estimate.md)
+[issue](../concepts/task-issue.md)、[routine](../concepts/task-routine.md)、[Do Date](../concepts/task-do-date.md)、[deadline と soft deadline](../concepts/task-deadline.md)、[task board](../concepts/task-board.md)、[ボードの欄と ★](../concepts/task-board-lane.md)、[estimated](../concepts/task-estimate.md)
 
 ## うまくいっている兆し
 

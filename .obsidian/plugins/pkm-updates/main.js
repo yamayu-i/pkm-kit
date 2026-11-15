@@ -379,6 +379,7 @@ function parseRoutine(path, fm) {
   const parsed = parseRepeat(fm.repeat);
   if (parsed.ok) repeat = parsed.value;
   else r3.problem("invalid-repeat", parsed.error);
+  if (r3.has("group")) r3.problem("legacy-routine-group", "group \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0137\uFF09\u3002\u79FB\u884C 0137-board-lanes \u3067\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09", "warning");
   const active = fm.active === void 0 || fm.active === null ? true : fm.active;
   if (typeof active !== "boolean") r3.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const routine = {
@@ -389,7 +390,6 @@ function parseRoutine(path, fm) {
     start: r3.date("start"),
     end: r3.date("end"),
     active: active !== false,
-    group: r3.string("group"),
     priority: r3.oneOf("priority", PRIORITIES),
     labels: r3.strings("label"),
     estimated: r3.minutes("estimated"),
@@ -622,8 +622,6 @@ function apply(board, op) {
       board.carried = board.carried.filter((id) => id !== op.task);
       board.stars = board.stars.filter((id) => id !== op.task);
       break;
-    case "place":
-      break;
     case "star":
       board.stars = board.stars.filter((id) => id !== op.task);
       if (op.on) board.stars.push(op.task);
@@ -757,45 +755,6 @@ function organizeQueue(issues, today) {
   return [...inbox, ...revisitDue, ...someday];
 }
 
-// ../pkm-task/src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-function parseGroup(value, depth, problems) {
-  const o3 = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o3.name === "string" ? o3.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o3.children)) {
-    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c3 of o3.children) {
-        const g2 = parseGroup(c3, depth + 1, problems);
-        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text2) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text2);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g2 = parseGroup(item, 0, messages);
-      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-
 // ../pkm-task/src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
 var DEFAULT_LABEL_COLOR = "#d0d0d0";
@@ -834,7 +793,6 @@ function parseLabels(text2) {
 // ../pkm-task/src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
-  if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -862,7 +820,7 @@ function resolveMigrated(data, byOld) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text: text2 } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -944,11 +902,6 @@ function collectVault(input) {
     const r3 = parseLabels(input.labels);
     problems.push(...r3.problems);
     data.labels = r3.labels;
-  }
-  if (input.groups) {
-    const r3 = parseGroups(input.groups);
-    problems.push(...r3.problems);
-    data.groups = r3.groups;
   }
   return { data, problems };
 }

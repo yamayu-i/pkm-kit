@@ -64,7 +64,7 @@ export class TaskStore {
 
 	private async readText(file: TFile): Promise<void> {
 		const kind = fileKind(file.path);
-		if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "groups") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+		if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels") this.texts.set(file.path, await this.app.vault.cachedRead(file));
 	}
 
 	private touch(file: TFile): void {
@@ -80,7 +80,7 @@ export class TaskStore {
 	}
 
 	private rebuild(): void {
-		const input: VaultInput = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml };
+		const input: VaultInput = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml };
 		for (const file of this.app.vault.getMarkdownFiles()) {
 			const kind = fileKind(file.path);
 			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -95,7 +95,6 @@ export class TaskStore {
 			else if (kind === "board") input.boardLogs!.push({ path, text });
 			else if (kind === "statuslog") input.statusLogs!.push({ path, text });
 			else if (kind === "labels") input.labels = text;
-			else if (kind === "groups") input.groups = text;
 		}
 		const { data, problems } = collectVault(input);
 		this.index = new TaskIndex(data);

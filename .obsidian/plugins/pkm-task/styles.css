@@ -2766,93 +2766,13 @@ body.is-mobile .vt-toast {
 	background: var(--vt-on-primary);
 }
 
-/* ---------- グループの編集（ADR-0015） ---------- */
-
-.vt-group-manager {
-	max-width: 760px;
-}
-
-.vt-layout-preview {
-	gap: 8px;
-}
-
-.vt-preview-columns {
-	display: flex;
-	gap: 8px;
-	overflow-x: auto;
-}
-
-.vt-preview-col {
-	display: flex;
-	flex: 1 1 0;
-	flex-direction: column;
-	gap: 4px;
-	min-width: 72px;
-	padding: 8px;
-	border-radius: var(--vt-radius-s);
-	background: var(--vt-surface);
-	border: 1px solid var(--vt-outline-variant);
-	font-size: var(--vt-type-label-small-size);
-	font-weight: var(--vt-weight-semibold);
-}
-
-.vt-preview-col.is-ungrouped {
-	color: var(--vt-on-surface-variant);
-	border-style: dashed;
-	border-color: var(--vt-outline);
-}
-
-.vt-preview-sub {
-	padding: 4px 8px;
-	border-radius: var(--vt-radius-xs);
-	background: var(--vt-surface-container-high);
-	color: var(--vt-on-surface-variant);
-	font-weight: var(--vt-weight-medium);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.vt-group-editor {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-
-.vt-group-edit {
-	gap: 12px;
-}
-
-.vt-group-edit-head,
-.vt-sub-edit {
-	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-}
+/* ---------- 編集画面の共通の部品（label の編集で使う） ---------- */
 
 .vt-row-tools {
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
 	padding-top: 8px;
-}
-
-.vt-sub-list {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	margin-left: 12px;
-	padding-left: 12px;
-	border-left: 2px solid var(--vt-outline-variant);
-}
-
-.vt-sub-mark {
-	padding-top: 12px;
-	color: var(--vt-on-surface-variant);
-}
-
-.vt-add-sub {
-	align-self: flex-start;
 }
 
 /* M3 の outlined text field 風: 枠の上にラベル */

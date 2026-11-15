@@ -25,10 +25,6 @@ describe("MCP サーバーと検査付き操作", () => {
 			JSON.stringify([{ name: "dev", color: DEFAULT_LABEL_COLOR }], null, 2),
 		);
 		writeFileSync(
-			join(root, "issue/board-groups.json"),
-			JSON.stringify([{ name: "午前", children: [{ name: "集中" }] }, { name: "午後" }], null, 2),
-		);
-		writeFileSync(
 			join(root, "issue/i-1.md"),
 			"---\ntype: issue\nid: i-1\nsummary: 最初のタスク\nstatus: open\nestimated: 60\nscheduled:\n  - 2026-11-01\ncreated: 2026-10-30T10:00:00+09:00\n---\n## ToDo\n\n- [ ] サブタスク\n",
 		);
@@ -38,7 +34,7 @@ describe("MCP サーバーと検査付き操作", () => {
 		);
 		writeFileSync(
 			join(root, "routine/r-1.md"),
-			"---\ntype: routine\nid: r-1\nsummary: 朝会\nrepeat:\n  every: day\nstart: 2026-10-01\nactive: true\ngroup: 午前\nestimated: 15\ncreated: 2026-10-01T09:00:00+09:00\n---\n",
+			"---\ntype: routine\nid: r-1\nsummary: 朝会\nrepeat:\n  every: day\nstart: 2026-10-01\nactive: true\nestimated: 15\ncreated: 2026-10-01T09:00:00+09:00\n---\n",
 		);
 		writeFileSync(
 			join(root, "member/m-1.md"),

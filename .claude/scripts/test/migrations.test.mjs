@@ -441,8 +441,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -724,3 +724,46 @@ test("0135: 親に足し終えて子を消す前に止まっていたら、足�
 	assert.ok(!existsSync(join(root, "issue/i-2.md")));
 	assert.match(readFileSync(join(root, "issue/i-3.md"), "utf8"), /^related: \["i-1#abc123"\]$/m);
 });
+
+test("0137: board-groups.json を消し、routine と routine のテンプレートの group の行だけを消す。ほかの routine と board の jsonl は変えない", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		"routine/r-2.md": "---\r\ntype: routine\r\nid: r-2\r\nsummary: 週次\r\nrepeat: {\"every\": \"week\", \"on\": [\"fri\"]}\r\nstart: 2026-01-01\r\ngroup: \"午後\"\r\n---\r\n本文\r\n",
+		"routine/r-3.md": "---\ntype: routine\nid: r-3\nsummary: 群れ\nrepeat: {\"every\": \"day\"}\nstart: 2026-01-01\n---\n\ngroup: 本文の group は変えない\n",
+		"template/file/routine.md": "---\ntype: routine\nid: \"{{id:r}}\"\ngroup: 午前\nsummary: \"{{title}}\"\n---\n",
+		"board/pc/2026-01.jsonl": '{"id":"bo_1","at":"2026-01-05T00:00:00.000Z","date":"2026-01-05","op":"place","task":"r-1","group":"午前"}\n',
+	});
+	const r3 = readFileSync(join(root, "routine/r-3.md"), "utf8");
+	const log = readFileSync(join(root, "board/pc/2026-01.jsonl"), "utf8");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	assert.ok(!existsSync(join(root, "issue/board-groups.json")));
+	assert.equal(readFileSync(join(root, "routine/r-1.md"), "utf8"), "---\nschema: 1\ntype: routine\nid: r-1\nsummary: 朝のメール確認\nrepeat: {\"every\": \"day\"}\nstart: 2026-01-01\nactive: true\nestimated: 15\ncreated: 2026-01-01T09:00:00+09:00\nupdated: 2026-01-01T09:00:00+09:00\n---\n\n## 手順\n\n- [ ] 受信箱を空にする\n");
+	assert.equal(readFileSync(join(root, "routine/r-2.md"), "utf8"), "---\r\ntype: routine\r\nid: r-2\r\nsummary: 週次\r\nrepeat: {\"every\": \"week\", \"on\": [\"fri\"]}\r\nstart: 2026-01-01\r\n---\r\n本文\r\n");
+	assert.equal(readFileSync(join(root, "routine/r-3.md"), "utf8"), r3);
+	assert.equal(readFileSync(join(root, "template/file/routine.md"), "utf8"), "---\ntype: routine\nid: \"{{id:r}}\"\nsummary: \"{{title}}\"\n---\n");
+	assert.equal(readFileSync(join(root, "board/pc/2026-01.jsonl"), "utf8"), log);
+	// pkm-task で読むと、routine の group の警告も、board の jsonl の問題もない
+	assert.deepEqual(taskLint(root).filter((p) => p.startsWith("routine/") || p.startsWith("board/")), []);
+});
+
+test("0137: --dry-run は書かずに、消すファイルと行を一覧にする", () => {
+	const root = childFrom("legacy");
+	const before = snapshot(root);
+	const dry = node(root, "--dry-run");
+	assert.equal(dry.status, 0, dry.stderr);
+	assert.match(dry.stdout, /issue\/board-groups\.json: グループを廃止したので消す/);
+	assert.match(dry.stdout, /routine\/r-1\.md: frontmatter の group を消す/);
+	assert.deepEqual(snapshot(root), before);
+});
+
+test("0137: group が 1 行の値でない routine は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	const files = { "routine/r-2.md": "---\ntype: routine\nid: r-2\nsummary: x\ngroup:\n  name: 午前\n---\n" };
+	write(root, files);
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0137-board-lanes");
+	assert.match(failed.problems.join("\n"), /routine\/r-2\.md: group が 1 行の値ではなく/);
+	assert.equal(readFileSync(join(root, "routine/r-2.md"), "utf8"), files["routine/r-2.md"]);
+});
+

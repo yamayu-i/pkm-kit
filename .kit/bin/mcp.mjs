@@ -7696,6 +7696,7 @@ function parseRoutine(path, fm) {
   const parsed = parseRepeat(fm.repeat);
   if (parsed.ok) repeat = parsed.value;
   else r.problem("invalid-repeat", parsed.error);
+  if (r.has("group")) r.problem("legacy-routine-group", "group \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0137\uFF09\u3002\u79FB\u884C 0137-board-lanes \u3067\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09", "warning");
   const active = fm.active === void 0 || fm.active === null ? true : fm.active;
   if (typeof active !== "boolean") r.problem("invalid-field", "active \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const routine = {
@@ -7706,7 +7707,6 @@ function parseRoutine(path, fm) {
     start: r.date("start"),
     end: r.date("end"),
     active: active !== false,
-    group: r.string("group"),
     priority: r.oneOf("priority", PRIORITIES),
     labels: r.strings("label"),
     estimated: r.minutes("estimated"),
@@ -8183,8 +8183,6 @@ function apply(board, op) {
       board.issues = board.issues.filter((id) => id !== op.task);
       board.carried = board.carried.filter((id) => id !== op.task);
       board.stars = board.stars.filter((id) => id !== op.task);
-      break;
-    case "place":
       break;
     case "star":
       board.stars = board.stars.filter((id) => id !== op.task);
@@ -9265,49 +9263,9 @@ var import_yaml = __toESM(require_dist(), 1);
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-function parseGroup(value, depth, problems) {
-  const o = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o.name === "string" ? o.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o.children)) {
-    if (depth >= 1 && o.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c of o.children) {
-        const g = parseGroup(c, depth + 1, problems);
-        if (g && !children.some((x) => x.name === g.name)) children.push(g);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g = parseGroup(item, 0, messages);
-      if (g && !groups.some((x) => x.name === g.name)) groups.push(g);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
-  if (path === GROUPS_PATH) return "groups";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -9335,7 +9293,7 @@ function resolveMigrated(data, byOld) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -9418,11 +9376,6 @@ function collectVault(input) {
     problems.push(...r.problems);
     data.labels = r.labels;
   }
-  if (input.groups) {
-    const r = parseGroups(input.groups);
-    problems.push(...r.problems);
-    data.groups = r.groups;
-  }
   return { data, problems };
 }
 
@@ -9449,7 +9402,7 @@ function readFrontmatter(text) {
 }
 function readVault(root) {
   const paths = walk(root);
-  const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
+  const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_yaml.parse };
   for (const path of paths) {
     const kind = fileKind(path);
     if (kind === null) continue;
@@ -9458,7 +9411,6 @@ function readVault(root) {
     else if (kind === "board") input.boardLogs.push({ path, text });
     else if (kind === "statuslog") input.statusLogs.push({ path, text });
     else if (kind === "labels") input.labels = text;
-    else if (kind === "groups") input.groups = text;
     else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...kind === "issue" ? { text } : {} });
   }
   const { data, problems } = collectVault(input);

@@ -42,7 +42,6 @@ export function SidebarView(props: { ctx: TaskContext }) {
 		{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
 		{ type: "pkm-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
 		{ type: "pkm-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
-		{ type: "pkm-task-groups", title: "Board groups", icon: "layout-grid" },
 		{ type: "pkm-task-members", title: "Members", icon: "users" },
 		{ type: "pkm-task-labels", title: "Labels", icon: "tag" },
 	];

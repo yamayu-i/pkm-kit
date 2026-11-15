@@ -1,6 +1,5 @@
 import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type BoardState } from "./board";
 import { BOARD_LOG_PATH_RE, orderHistory, parseBoardLog, removedTasks, renameBoardOp, replayBoard, type BoardLogEntry } from "./board-log";
-import { GROUPS_PATH, parseGroups } from "./groups";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
 import type { Problem } from "./problem";
@@ -9,12 +8,11 @@ import { parseSubIssues, subKey, type YamlParse } from "./sub-issue";
 import { STATUS_LOG_PATH_RE, compareStatusLog, parseStatusLog } from "./status-log";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
-export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "groups" | "daily" | "board" | "statuslog";
+export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "daily" | "board" | "statuslog";
 
 /** パスからどのデータのファイルかを決める（ADR-0002, 0004, 0007, 0010, 0020, 0031） */
 export function fileKind(path: string): FileKind | null {
 	if (path === LABELS_PATH) return "labels";
-	if (path === GROUPS_PATH) return "groups";
 	if (DAILY_PATH_RE.test(path)) return "daily";
 	if (WORKLOG_PATH_RE.test(path)) return "worklog";
 	if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -32,8 +30,6 @@ export interface VaultInput {
 	worklogs: { path: string; text: string }[];
 	/** `issue/labels.json` の中身（ないなら null） */
 	labels: string | null;
-	/** `issue/board-groups.json` の中身（ないなら null） */
-	groups?: string | null;
 	/** ボードの操作ログの jsonl */
 	boardLogs?: { path: string; text: string }[];
 	/** status の記録の jsonl（ADR-0031） */
@@ -67,7 +63,7 @@ function resolveMigrated(data: VaultData, byOld: Map<string, { parent: string; i
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], groups: [], statusLogs: [], orders: [] };
+	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -151,11 +147,6 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 		const r = parseLabels(input.labels);
 		problems.push(...r.problems);
 		data.labels = r.labels;
-	}
-	if (input.groups) {
-		const r = parseGroups(input.groups);
-		problems.push(...r.problems);
-		data.groups = r.groups;
 	}
 	return { data, problems };
 }
