@@ -123,8 +123,8 @@ describe("左サイドバーの件数集計（ADR-0021）", () => {
 			...emptyVaultData(),
 			issues: [
 				issue({ id: "i-1", created: "2026-10-20T09:00:00+09:00" }), // inbox
-				issue({ id: "i-2", scheduled: ["2026-11-01"] }), // today scheduled
-				issue({ id: "i-3", deadline: "2026-10-31" }), // dead
+				issue({ id: "i-2", scheduled: ["2026-11-01"], clarified: true }), // today scheduled
+				issue({ id: "i-3", deadline: "2026-10-31", clarified: true }), // dead
 				issue({ id: "i-4", status: "someday", revisit: "2026-10-31" }), // someday (organize queue)
 				issue({ id: "i-5", status: "closed" }), // closed
 			],

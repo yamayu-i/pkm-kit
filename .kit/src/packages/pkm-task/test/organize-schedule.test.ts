@@ -21,15 +21,16 @@ describe("Organize の予定入れ（ADR-0030）", () => {
 
 	it("選んだ日付で実行日を置き換える（外した既存の日付は戻らない）。並びは日付の順", () => {
 		const i = issue({ scheduled: ["2026-11-03", "2026-11-05"] });
-		expect(organizeSchedulePatch(i, ["2026-11-10", "2026-11-05"], null)).toEqual({ scheduled: ["2026-11-05", "2026-11-10"] });
+		expect(organizeSchedulePatch(i, ["2026-11-10", "2026-11-05"], null)).toEqual({ scheduled: ["2026-11-05", "2026-11-10"], clarified: true });
 	});
 
 	it("estimated を選んだら入れる。someday なら open に戻す", () => {
-		expect(organizeSchedulePatch(issue(), ["2026-11-04"], 30)).toEqual({ scheduled: ["2026-11-04"], estimated: 30 });
+		expect(organizeSchedulePatch(issue(), ["2026-11-04"], 30)).toEqual({ scheduled: ["2026-11-04"], estimated: 30, clarified: true });
 		expect(organizeSchedulePatch(issue({ status: "someday", revisit: "2026-12-01" }), ["2026-11-04"], null)).toEqual({
 			scheduled: ["2026-11-04"],
 			status: "open",
 			revisit: null,
+			clarified: true,
 		});
 	});
 });

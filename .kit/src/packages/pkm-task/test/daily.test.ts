@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancelPatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
+import { cancelPatch, inboxPatch, nextPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
 import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
@@ -23,10 +23,22 @@ function log(id: string, taskId: string, from: string, to: string | null): Workl
 }
 
 describe("actions", () => {
-	it("Cancel / Inbox / Someday は期限を外す", () => {
+	it("Cancel / Someday は期限を外す", () => {
 		expect(cancelPatch()).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
-		expect(inboxPatch()).toMatchObject({ status: "open", scheduled: null, soft_deadline: null, deadline: null });
 		expect(somedayPatch("2026-12-01")).toMatchObject({ status: "someday", scheduled: null, deadline: null, revisit: "2026-12-01" });
+	});
+
+	it("Inbox に戻すと clarified を外すだけで、予定と期限は残す（ADR-0148）", () => {
+		const patch = inboxPatch();
+		expect(patch).toMatchObject({ status: "open", clarified: null });
+		expect(patch).not.toHaveProperty("scheduled");
+		expect(patch).not.toHaveProperty("soft_deadline");
+		expect(patch).not.toHaveProperty("deadline");
+	});
+
+	it("Next にすると clarified を付ける。someday なら open に戻す（ADR-0148）", () => {
+		expect(nextPatch(issue("i-1"))).toEqual({ clarified: true });
+		expect(nextPatch(issue("i-1", { status: "someday", revisit: "2026-12-01" }))).toEqual({ clarified: true, status: "open", revisit: null });
 	});
 
 	it("リスケ: 期限は置き換え、実行日は from を外して to を足す", () => {

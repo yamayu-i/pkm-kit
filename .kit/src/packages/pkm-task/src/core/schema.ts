@@ -34,6 +34,8 @@ export interface Issue {
 	deadline: LocalDate | null;
 	revisit: LocalDate | null;
 	reviewed: LocalDate | null;
+	/** 何をするか・何が済めば終わりかを決めた（整理した）。ないときは false（ADR-0148） */
+	clarified: boolean;
 	created: string | null;
 }
 
@@ -121,6 +123,15 @@ export class Reader {
 		if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return v.trim();
 		this.problem("invalid-date", `${key} が日時ではありません: ${String(v)}`);
 		return null;
+	}
+
+	/** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+	boolean(key: string, fallback: boolean): boolean {
+		if (!this.has(key)) return fallback;
+		const v = this.fm[key];
+		if (typeof v === "boolean") return v;
+		this.problem("invalid-field", `${key} は true / false にしてください`);
+		return fallback;
 	}
 
 	minutes(key: string): number | null {
@@ -211,6 +222,7 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 		deadline: r.date("deadline"),
 		revisit: r.date("revisit"),
 		reviewed: r.date("reviewed"),
+		clarified: r.boolean("clarified", false),
 		created: r.datetime("created"),
 	};
 	return { value: id === null ? null : issue, problems: r.problems };

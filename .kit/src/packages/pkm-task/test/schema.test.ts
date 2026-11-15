@@ -34,6 +34,15 @@ describe("parseIssue", () => {
 		});
 	});
 
+	it("clarified は真偽値。ないときは false。真偽値でなければ問題にする（ADR-0148）", () => {
+		const base = { type: "issue", id: "i-5", summary: "x", status: "open" };
+		expect(parseIssue("issue/i-5.md", { ...base, clarified: true }).value?.clarified).toBe(true);
+		expect(parseIssue("issue/i-5.md", base).value?.clarified).toBe(false);
+		const bad = parseIssue("issue/i-5.md", { ...base, clarified: "yes" });
+		expect(bad.value?.clarified).toBe(false);
+		expect(bad.problems).toEqual([expect.objectContaining({ code: "invalid-field" })]);
+	});
+
 	it("旧名の mid_due が残っていたら、移行を促す（ADR-0032）。値は読まない", () => {
 		const { value, problems } = parseIssue("issue/i-4.md", { type: "issue", id: "i-4", summary: "x", status: "open", mid_due: "2026-11-05" });
 		expect(value?.softDeadline).toBeNull();

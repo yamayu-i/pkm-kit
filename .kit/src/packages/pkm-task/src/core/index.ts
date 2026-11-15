@@ -37,9 +37,14 @@ export function isActive(issue: Pick<Issue, "status">): boolean {
 	return !INACTIVE_STATUSES.includes(issue.status);
 }
 
-/** open で、scheduled・soft_deadline・deadline がどれもない（ADR-0006） */
+/** Inbox（未整理）: open で、clarified でない。日付は見ない（ADR-0148） */
 export function isInbox(issue: Issue): boolean {
-	return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+	return issue.status === "open" && !issue.clarified;
+}
+
+/** Next Actions: open で、clarified で、今日以降の scheduled がない（ADR-0148）。過去の scheduled だけのものも入れる */
+export function isNext(issue: Issue, today: LocalDate): boolean {
+	return issue.status === "open" && issue.clarified && !issue.scheduled.some((d) => d >= today);
 }
 
 /** Scheduled に出す issue: 有効で、今日以降に Do Date がある（ADR-0009）。PKM Updates も同じ規則を使う（ADR-0070） */

@@ -14,9 +14,14 @@ export function closePatch(): Patch {
 	return { status: "closed", delegated_to: null, revisit: null };
 }
 
-/** Inbox に戻す: 予定と期限をすべて外す（ADR-0006） */
+/** Inbox に戻す: clarified を外すだけ。予定と期限は残す（ADR-0148） */
 export function inboxPatch(): Patch {
-	return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+	return { status: "open", clarified: null, delegated_to: null, revisit: null };
+}
+
+/** Next（整理済み・日付なし）にする。someday なら open に戻す（ADR-0148） */
+export function nextPatch(issue: Issue): Patch {
+	return { clarified: true, ...(issue.status === "someday" ? reopenPatch() : {}) };
 }
 
 /** Someday へ: 予定と期限を外す。revisit は任意（ADR-0006） */
@@ -56,6 +61,8 @@ export function canConfirmSchedule(selectedCount: number, needEstimate: boolean,
 export function organizeSchedulePatch(issue: Issue, dates: LocalDate[], estimated: number | null): Patch {
 	const patch = scheduledPatch(issue, [...new Set(dates)].sort());
 	if (estimated !== null) patch.estimated = estimated;
+	// 日付を決めたことが整理の結果（ADR-0148）
+	patch.clarified = true;
 	return patch;
 }
 
