@@ -20,7 +20,7 @@ function note(path: string, type: string, updated: unknown, extra: Record<string
 	return { path, basename, frontmatter: { type, created: OLD, updated, ...extra } };
 }
 
-const ids = (notes: NoteRecord[], s = since) => Object.fromEntries(buildSections(notes, s, today).map((x) => [x.id, x.items.map((i) => i.path)]));
+const ids = (notes: NoteRecord[], s = since) => Object.fromEntries(buildSections(notes, s, today).filter((x) => x.items.length > 0).map((x) => [x.id, x.items.map((i) => i.path)]));
 
 describe("セクションの定義（ADR-0070 の 2）", () => {
 	it("並びと、見出しが開く一覧のコマンド", () => {
@@ -91,6 +91,13 @@ describe("載せる規則", () => {
 		expect(titles.issues).toEqual(["i-7 課題 7"]);
 		expect(titles.daily).toEqual(["2026-11-01 SUN"]);
 		expect(sections[0]?.items[0]?.updatedMs).toBe(Date.parse(NEW));
+	});
+});
+
+describe("0 件のセクション", () => {
+	it("変更がなくても全セクションを SECTIONS の順に返す（モバイルの入口）", () => {
+		expect(buildSections([], since, today).map((s) => [s.id, s.items.length])).toEqual(SECTIONS.map((s) => [s.id, 0]));
+		expect(buildSections([note("a.md", "note", OLD)], since, today).every((s) => s.items.length === 0)).toBe(true);
 	});
 });
 
