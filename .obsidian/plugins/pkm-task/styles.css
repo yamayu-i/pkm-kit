@@ -856,6 +856,21 @@ button.vt-badge:disabled::after {
 	color: var(--vt-on-surface);
 }
 
+/* 今日のボードに載せる（Pick）: 載せているあいだは色をつける */
+.vt-icon-button.vt-pick.is-on,
+.vt-field-chip.vt-pick.is-on {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-field-chip.vt-pick.is-on .vt-icon {
+	color: inherit;
+}
+
+.vt-subissue .vt-pick {
+	flex: none;
+}
+
 /* ---------- 工数 ---------- */
 
 .vt-effort {

@@ -802,6 +802,9 @@ function dailyNotePath(date) {
   return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
 }
 var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function isOnBoard(index, date, key) {
+  return index.board(date)?.board.issues.includes(key) ?? false;
+}
 function boardItems(index, date, board) {
   const issues = board.issues.map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0);
   const subs = board.issues.map((key) => index.sub(key)).filter((s3) => s3 !== void 0);
@@ -2910,76 +2913,6 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
-// src/ui/StatusIcon.tsx
-var SHAPES = {
-  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-  "in-progress": /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
-  ] }),
-  waiting: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
-  ] }),
-  delegated: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
-  ] }),
-  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
-  closed: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
-  ] }),
-  canceled: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
-  ] })
-};
-function StatusIcon(props) {
-  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
-}
-
-// src/ui/badges.tsx
-function StatusBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
-    props.status,
-    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function IdBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
-}
-var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
-function PriorityBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
-    props.priority ?? "priority",
-    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function LabelBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
-}
-
-// src/ui/hooks.ts
-function useStoreVersion(store) {
-  const [version, setVersion] = d2(store.version);
-  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
-  return version;
-}
-function useNow(intervalMs = 3e4) {
-  const [now, setNow] = d2(Date.now());
-  h2(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
-
-// src/header/SubIssues.tsx
-var import_obsidian5 = require("obsidian");
-
 // src/obsidian/board-actions.ts
 var import_obsidian4 = require("obsidian");
 
@@ -3147,6 +3080,9 @@ var addToBoard = (ctx, date, ids) => guard(
   "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
   ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
 );
+function toggleOnBoard(ctx, date, key) {
+  return isOnBoard(ctx.store.index, date, key) ? removeFromBoard(ctx, date, key) : addToBoard(ctx, date, [key]);
+}
 async function createOnBoard(ctx, date, summary) {
   try {
     const { created } = await ctx.writer.createIssues([summary], { clarified: true });
@@ -3253,6 +3189,92 @@ function stopTimer(ctx, ids) {
   if (running.length === 0) return Promise.resolve();
   return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
 }
+
+// src/obsidian/pick-toggle.tsx
+function PickToggle(props) {
+  const { ctx } = props;
+  const today = localToday();
+  const on = isOnBoard(ctx.store.index, today, props.keyOf);
+  const title = on ? "On today's board. Click to remove" : "Add to today's board";
+  const run = () => void toggleOnBoard(ctx, today, props.keyOf);
+  if (props.chip) {
+    return /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip vt-pick${on ? " is-on" : " is-placeholder"}`, "aria-pressed": on, title, onClick: run, children: [
+      /* @__PURE__ */ u3(Icon, { name: "calendar-check" }),
+      on ? "On today's board" : "Add to today's board"
+    ] });
+  }
+  return /* @__PURE__ */ u3("button", { type: "button", class: `vt-icon-button vt-pick${on ? " is-on" : ""}`, "aria-label": title, "aria-pressed": on, title, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
+}
+
+// src/ui/StatusIcon.tsx
+var SHAPES = {
+  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+  "in-progress": /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
+  ] }),
+  waiting: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
+  ] }),
+  delegated: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
+  ] }),
+  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
+  closed: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
+  ] }),
+  canceled: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
+  ] })
+};
+function StatusIcon(props) {
+  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
+}
+
+// src/ui/badges.tsx
+function StatusBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
+    props.status,
+    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function IdBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
+}
+var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
+function PriorityBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    props.priority ?? "priority",
+    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function LabelBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
+}
+
+// src/ui/hooks.ts
+function useStoreVersion(store) {
+  const [version, setVersion] = d2(store.version);
+  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
+  return version;
+}
+function useNow(intervalMs = 3e4) {
+  const [now, setNow] = d2(Date.now());
+  h2(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+// src/header/SubIssues.tsx
+var import_obsidian5 = require("obsidian");
 
 // src/obsidian/sub-editor.tsx
 var DATE_FIELDS = [
@@ -3883,6 +3905,7 @@ function SubRow(props) {
             hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
           ] }),
           actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
+          !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: sub.key }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -4153,6 +4176,7 @@ function StatusField(props) {
         "revisit ",
         issue.revisit ? formatShortDate(issue.revisit) : "\u2014"
       ] }),
+      isActive(issue) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: issue.id, chip: true }),
       /* @__PURE__ */ u3("button", { class: `vt-field-chip${issue.statusDetail ? "" : " is-placeholder"}`, onClick: editDetail, children: [
         /* @__PURE__ */ u3(Icon, { name: "pencil" }),
         issue.statusDetail || "Add detail"
@@ -4818,7 +4842,8 @@ function SubItem(props) {
         /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
         /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
         hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
-      ] })
+      ] }),
+      !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: sub.key })
     ] }),
     open && /* @__PURE__ */ u3(SubFields, { ctx, sub, siblings: props.siblings, save, error, delayMs: props.delayMs })
   ] });
