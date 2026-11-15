@@ -28,11 +28,11 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 	afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 	it("create_sub_issues で続けて足し、位置を指定して差し込める", () => {
-		const r = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "仕様" }, { summary: "実装", estimated: 120, scheduled: ["2026-11-16"], body: "メモ" }] }) as { created: string[] };
+		const r = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "仕様" }, { summary: "実装", estimated: 120, scheduled: "2026-11-16", body: "メモ" }] }) as { created: string[] };
 		expect(r.created).toHaveLength(2);
 		expect(subs().map((s) => [s.summary, s.status, s.estimated, s.scheduled, s.body, s.created])).toEqual([
-			["仕様", "open", null, [], "", subs()[0]!.created],
-			["実装", "open", 120, ["2026-11-16"], "メモ", subs()[1]!.created],
+			["仕様", "open", null, null, "", subs()[0]!.created],
+			["実装", "open", 120, "2026-11-16", "メモ", subs()[1]!.created],
 		]);
 		expect(subs().every((s) => s.created !== null)).toBe(true);
 		callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "前提" }], position: 0 });

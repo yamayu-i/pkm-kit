@@ -59,7 +59,7 @@ describe("載せる規則", () => {
 		const notes = [
 			issue(1, NEW),
 			issue(2, NEW, { status: "someday" }),
-			issue(3, NEW, { scheduled: ["2026-11-09"] }),
+			issue(3, NEW, { scheduled: "2026-11-09", clarified: true }),
 			issue(4, NEW, { status: "closed" }),
 			issue(5, OLD),
 		];

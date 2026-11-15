@@ -8,11 +8,11 @@
 
 - 1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 3（★ 今日の最重要。3 件まで）・Up next（残り。in-progress も open もここ）・Waiting（waiting / delegated。件数を出して開いたまま）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる
 - カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。`delegated…` も選べる）・題・再生 / 停止・`···` のメニューだけを出す。ID はマウスを乗せると出る
-- 同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Do Date のときだけ載る
+- 同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る
 - `···` のメニュー: Add to Top 3 / Remove from Top 3、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 3 と Up next の間と中をドラッグで並べ替えられ、Top 3 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
-- Add issue: issue を検索して載せるか、新しく作って載せる。今日が Do Date でないサブイシューも `i-12 › 題` の形で候補に出て、選ぶと Do Date に今日を足して載せる
+- Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも `i-12 › 題` の形で候補に出る。載せても日付は書かない（ADR-0152）
 - status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる
-- 未完了の一覧: issue は Close、Cancel、Inbox、Do Tomorrow、Move Do Date。サブイシューは Do Tomorrow、Close、Move Do Date、Cancel（Inbox はない）。持ち越したものはボードに残るが未完了に数えない
+- 未完了の一覧: issue は Back to Next、Tickler、Move date（Calendar の日を持つものだけ）、Close、Cancel、Inbox。サブイシューは Back to Next、Close、Move date、Cancel（Tickler と Inbox はない）。持ち越したものはボードに残るが未完了に数えない
 - 未完了が 0 になると「Close board」が押せる。デイリーノートの `## Task board` 節に要約が入る（サブイシューは `i-12 › 題`）
 
 ## 使う概念

@@ -3,7 +3,7 @@ import { useState } from "preact/hooks";
 import { statusPatch } from "../core/actions";
 import { unfinished, unfinishedCount, type BoardState } from "../core/board";
 import { boardLanes, canStar, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
-import { addDays, formatShortDate, type LocalDate } from "../core/dates";
+import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
@@ -64,7 +64,7 @@ function changeSubStatus(ctx: TaskContext, sub: SubIssue, to: Status): void {
 	const save = (patch: SubIssuePatch) => void ctx.writer.updateSub(sub.key, patch).catch((e) => ctx.report("サブを保存できませんでした", e));
 	if (to === "delegated") return pickMember(ctx, (id) => save({ status: to, delegatedTo: id }));
 	if (to === sub.status) return;
-	save(to === "someday" ? { status: to, scheduled: [], softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
+	save(to === "someday" ? { status: to, scheduled: null, softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
 }
 
 /** ドラッグで運ぶ値（カードの鍵） */
@@ -172,7 +172,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 }
 
 /** 隣り合った同じ親のサブの見出し（ADR-0137）。押すと親を開く */
-function ParentHead(props: { ctx: TaskContext; parentId: string }) {
+export function ParentHead(props: { ctx: TaskContext; parentId: string }) {
 	const parent = props.ctx.store.index.issues.get(props.parentId);
 	return (
 		<div class="vt-lane-parent">
@@ -255,11 +255,11 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 	);
 }
 
-/** 「Add issue」の候補: ボードにない active な issue と、その日が scheduled でない active なサブ（ADR-0137） */
+/** 「Add issue」の候補: ボードにない active な issue と、その日が Calendar の日でない active なサブ（今日の Calendar のものは自動で載る。ADR-0137, 0152） */
 export function boardCandidates(index: TaskIndex, date: LocalDate, board: BoardState): Exclude<BoardChoice, { kind: "create" }>[] {
 	const on = new Set(board.issues);
 	const issues = [...index.issues.values()].filter((i) => isActive(i) && !on.has(i.id));
-	const subs = index.data.subIssues.filter((s) => isActive(s) && !on.has(s.key) && !s.scheduled.includes(date) && index.sub(s.key) === s);
+	const subs = index.data.subIssues.filter((s) => isActive(s) && !on.has(s.key) && s.scheduled !== date && index.sub(s.key) === s);
 	return [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...subs.map((sub) => ({ kind: "sub" as const, sub }))];
 }
 
@@ -332,20 +332,16 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					<>
 						{leftIssues.length > 0 && (
 							<>
-								<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "next", "deadline", "estimated"]} empty="All issues are done" />
+								<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "calendar", "deadline", "estimated"]} empty="All issues are done" />
 								<ActionBar
 									count={sel.length}
 									actions={[
-										{ label: "Do Tomorrow", icon: "sunrise", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(new Set())) },
-										{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(new Set())) },
-										{ label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(new Set())) },
-										{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(new Set())) },
-										{ label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, date, sel, "inbox").then(() => setSelected(new Set())) },
+										...carryActions(ctx, date, sel, "next", () => setSelected(new Set())),
 									]}
 								/>
 							</>
 						)}
-						<SubRows ctx={ctx} date={date} subs={left.subs} next={addDays(date, 1)} nextLabel="Do Tomorrow" />
+						<SubRows ctx={ctx} date={date} subs={left.subs} primary="next" />
 						<RoutineRows ctx={ctx} date={date} routines={left.routines} />
 					</>
 				)}
@@ -354,8 +350,25 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	);
 }
 
-/** 未完了のサブ（ADR-0137）。Close・Cancel・リスケ。Inbox はない */
-export function SubRows(props: { ctx: TaskContext; date: LocalDate; subs: SubIssue[]; next: LocalDate; nextLabel: string; showDate?: boolean }) {
+/**
+ * 未完了の issue の片付け（ADR-0152）。primary が today なら今日のボードに載せる（前のボード）、next なら Next に戻す（今日のボード）。
+ * Move date は Calendar の日（scheduled）を持つものだけのとき出す
+ */
+export function carryActions(ctx: TaskContext, date: LocalDate, sel: Issue[], primary: "today" | "next", done: () => void) {
+	const run = (p: Promise<void>) => void p.then(done);
+	return [
+		...(primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary" as const, run: () => run(carryIssues(ctx, date, sel, "today")) }] : []),
+		{ label: "Back to Next", icon: "list-todo", ...(primary === "next" ? { tone: "primary" as const } : {}), run: () => run(carryIssues(ctx, date, sel, "next")) },
+		{ label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+		...(sel.length > 0 && sel.every((i) => i.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : []),
+		{ label: "Close", icon: "check", run: () => run(closeIssues(ctx, sel)) },
+		{ label: "Cancel", icon: "x", run: () => run(cancelIssues(ctx, sel)) },
+		{ label: "Inbox", icon: "inbox", run: () => run(carryIssues(ctx, date, sel, "inbox")) },
+	];
+}
+
+/** 未完了のサブ（ADR-0137, 0152）。Close・Cancel・Next に戻す・Calendar の日を選び直す。Tickler と Inbox はない（サブは整理の対象外。ADR-0148） */
+export function SubRows(props: { ctx: TaskContext; date: LocalDate; subs: SubIssue[]; primary: "today" | "next"; showDate?: boolean }) {
 	const { ctx, date } = props;
 	if (props.subs.length === 0) return null;
 	return (
@@ -368,15 +381,22 @@ export function SubRows(props: { ctx: TaskContext; date: LocalDate; subs: SubIss
 						{s.summary}
 					</span>
 					<span class="vt-spacer" />
-					<button class="vt-button" onClick={() => void carrySubs(ctx, date, [s], props.next)}>
-						{props.nextLabel}
+					{props.primary === "today" && (
+						<button class="vt-button" onClick={() => void carrySubs(ctx, date, [s], "today")}>
+							Add to today's board
+						</button>
+					)}
+					<button class={`vt-button${props.primary === "next" ? "" : " is-text"}`} onClick={() => void carrySubs(ctx, date, [s], "next")}>
+						Back to Next
 					</button>
 					<button class="vt-button is-text" onClick={() => changeSubStatus(ctx, s, "closed")}>
 						Close
 					</button>
-					<button class="vt-button is-text" onClick={() => void carrySubs(ctx, date, [s])}>
-						Move Do Date
-					</button>
+					{s.scheduled !== null && (
+						<button class="vt-button is-text" onClick={() => void carrySubs(ctx, date, [s], "move")}>
+							Move date
+						</button>
+					)}
 					<button class="vt-button is-text" onClick={() => changeSubStatus(ctx, s, "canceled")}>
 						Cancel
 					</button>

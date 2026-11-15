@@ -40,8 +40,8 @@ const { addSubToBoard, carrySubs, moveCard, setStar, stepCard } = await import("
 const DATE = "2026-11-16";
 let seq = 0;
 const line = (op: BoardOp, date = DATE) => serializeBoardLogEntry({ id: `bo_${++seq}`, at: `2026-11-16T00:00:00.${String(seq).padStart(3, "0")}Z`, date, ...op });
-const sub = (id: string, summary: string, status = "open", scheduled: string[] = []) =>
-	`<!-- sub-issue\nid: ${id}\nsummary: ${summary}\nstatus: ${status}\n${scheduled.length ? `scheduled: [${scheduled.join(", ")}]\n` : ""}-->\n\n`;
+const sub = (id: string, summary: string, status = "open", scheduled: string | null = null) =>
+	`<!-- sub-issue\nid: ${id}\nsummary: ${summary}\nstatus: ${status}\n${scheduled ? `scheduled: ${scheduled}\n` : ""}-->\n\n`;
 function issue(id: string, status = "open", subs = "") {
 	const fm = { type: "issue", id, summary: `s${id}`, status };
 	return { path: `issue/${id}.md`, frontmatter: fm, text: `---\n${JSON.stringify(fm)}\n---\n\n${subs}` };
@@ -49,7 +49,7 @@ function issue(id: string, status = "open", subs = "") {
 
 function setup(lines: string[]) {
 	const markdown = [
-		issue("i-1", "open", sub("aaaaaa", "仕様", "open", [DATE]) + sub("bbbbbb", "実装") + sub("cccccc", "試験", "closed")),
+		issue("i-1", "open", sub("aaaaaa", "仕様", "open", DATE) + sub("bbbbbb", "実装") + sub("cccccc", "試験", "closed")),
 		issue("i-2"),
 		issue("i-3"),
 		issue("i-4"),
@@ -85,26 +85,26 @@ describe("Add issue の候補（ADR-0137）", () => {
 	});
 });
 
-describe("サブを載せる・持ち越す（ADR-0137）", () => {
-	it("その日が scheduled でないサブは、scheduled に今日を足してから載せる", async () => {
+describe("サブを載せる・持ち越す（ADR-0137, 0152）", () => {
+	it("サブを載せても日付（scheduled）は書かない", async () => {
 		const { index, ctx, ops, patches } = setup([]);
 		await addSubToBoard(ctx, DATE, index.sub("i-1#bbbbbb")!);
-		expect(patches).toEqual([["i-1#bbbbbb", { scheduled: [DATE] }]]);
+		expect(patches).toEqual([]);
 		expect(ops).toEqual([{ op: "add", task: "i-1#bbbbbb" }]);
 	});
 
-	it("scheduled のサブはそのまま載せる", async () => {
-		const { index, ctx, ops, patches } = setup([]);
-		await addSubToBoard(ctx, DATE, index.sub("i-1#aaaaaa")!);
-		expect(patches).toEqual([]);
-		expect(ops).toEqual([{ op: "add", task: "i-1#aaaaaa" }]);
+	it("Back to Next: Calendar の日を消し、carry を書く", async () => {
+		const { index, ctx, ops, patches } = setup([line({ op: "add", task: "i-1#aaaaaa" })]);
+		await carrySubs(ctx, DATE, [index.sub("i-1#aaaaaa")!], "next");
+		expect(patches).toEqual([["i-1#aaaaaa", { scheduled: null }]]);
+		expect(ops).toEqual([{ op: "carry", task: "i-1#aaaaaa" }]);
 	});
 
-	it("Do Tomorrow: その日を外して翌日を足し、carry を書く", async () => {
-		const { index, ctx, ops, patches } = setup([line({ op: "add", task: "i-1#aaaaaa" })]);
-		await carrySubs(ctx, DATE, [index.sub("i-1#aaaaaa")!], "2026-11-17");
-		expect(patches).toEqual([["i-1#aaaaaa", { scheduled: ["2026-11-17"] }]]);
-		expect(ops).toEqual([{ op: "carry", task: "i-1#aaaaaa" }]);
+	it("Calendar の日がないサブを Back to Next にしても、項目は書かない", async () => {
+		const { index, ctx, ops, patches } = setup([line({ op: "add", task: "i-1#bbbbbb" })]);
+		await carrySubs(ctx, DATE, [index.sub("i-1#bbbbbb")!], "next");
+		expect(patches).toEqual([]);
+		expect(ops).toEqual([{ op: "carry", task: "i-1#bbbbbb" }]);
 	});
 });
 

@@ -14,7 +14,7 @@
 
 ## 使い方の筋道
 
-タイマーを始めると open は in-progress になる。closed か canceled にすると、記録中のタイマーが止まる。someday にすると Do Date と期限が消える（[Someday](task-someday.md)）。
+タイマーを始めると open は in-progress になる。closed か canceled にすると、記録中のタイマーが止まる。someday にすると Calendar の日・期限・Tickler が消える（[Someday](task-someday.md)）。
 
 ## 根拠
 

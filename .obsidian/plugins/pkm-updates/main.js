@@ -288,6 +288,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v3 = this.fm[key];
+    if (typeof v3 === "boolean") return v3;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v3 = this.fm[key];
@@ -311,6 +319,17 @@ var Reader = class {
       }
     }
     return out;
+  }
+  /**
+   * Calendar の日付 1 つ（ADR-0152）。以前のリストなら最も早い日を読み、移行を促す警告を出す
+   * （移行 0152-calendar-tickler で日付 1 つに書き直す）
+   */
+  calendarDate(key) {
+    const v3 = this.fm[key];
+    if (!Array.isArray(v3)) return this.date(key);
+    const dates = this.dates(key);
+    if (v3.length > 0) this.problem("legacy-scheduled-list", `${key} \u306F\u65E5\u4ED8 1 \u3064\u306B\u3057\u307E\u3057\u305F\uFF08ADR-0152\uFF09\u3002\u79FB\u884C 0152-calendar-tickler \u3067\u66F8\u304D\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09`, "warning");
+    return dates[0] ?? null;
   }
   dates(key) {
     const out = /* @__PURE__ */ new Set();
@@ -363,11 +382,13 @@ function parseIssue(path, fm) {
     labels: r3.strings("label"),
     related: r3.strings("related"),
     estimated: r3.minutes("estimated"),
-    scheduled: r3.dates("scheduled"),
+    scheduled: r3.calendarDate("scheduled"),
     softDeadline: r3.date("soft_deadline"),
     deadline: r3.date("deadline"),
     revisit: r3.date("revisit"),
     reviewed: r3.date("reviewed"),
+    clarified: r3.boolean("clarified", false),
+    tickler: r3.date("tickler"),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r3.problems };
@@ -473,7 +494,7 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     delegatedTo: r3.ref("delegated_to", "m"),
     start: r3.date("start"),
     end: r3.date("end"),
-    scheduled: r3.dates("scheduled"),
+    scheduled: r3.calendarDate("scheduled"),
     softDeadline: r3.date("soft_deadline"),
     deadline: r3.date("deadline"),
     estimated: r3.minutes("estimated"),
@@ -726,11 +747,13 @@ var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
-function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+function isInbox(issue, today) {
+  if (issue.status !== "open") return false;
+  if (issue.tickler !== null) return issue.tickler <= today;
+  return !issue.clarified;
 }
 function isScheduledAhead(issue, today) {
-  return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);
+  return isActive(issue) && issue.scheduled !== null && issue.scheduled >= today;
 }
 function compareNullableAsc(a3, b2) {
   if (a3 === b2) return 0;
@@ -743,7 +766,7 @@ function organizeQueue(issues, today) {
   const revisitDue = [];
   const someday = [];
   for (const issue of issues) {
-    if (isInbox(issue)) inbox.push(issue);
+    if (isInbox(issue, today)) inbox.push(issue);
     else if (issue.status === "someday") {
       if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
       else someday.push(issue);
@@ -931,7 +954,7 @@ var issuePaths = (issues) => [...issues].map((i3) => i3.path);
 var SECTIONS = [
   // 閉じた変更も見えるよう、Issues は closed / canceled / someday も含むすべて
   { id: "issues", title: "Issues", command: "pkm-task:open-issues", paths: (p3) => issuePaths(p3.issues) },
-  { id: "inbox", title: "Inbox", command: "pkm-task:open-inbox", paths: (p3) => issuePaths(p3.issues.filter(isInbox)) },
+  { id: "inbox", title: "Inbox", command: "pkm-task:open-inbox", paths: (p3) => issuePaths(p3.issues.filter((i3) => isInbox(i3, p3.today))) },
   { id: "organize", title: "Organize", command: "pkm-task:open-organize", paths: (p3) => issuePaths(organizeQueue(p3.issues, p3.today)) },
   { id: "scheduled", title: "Scheduled", command: "pkm-task:open-scheduled", paths: (p3) => issuePaths(p3.issues.filter((i3) => isScheduledAhead(i3, p3.today))) },
   { id: "someday", title: "Someday", command: "pkm-task:open-someday", paths: (p3) => issuePaths(p3.issues.filter((i3) => i3.status === "someday")) },

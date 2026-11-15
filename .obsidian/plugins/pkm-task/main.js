@@ -1081,6 +1081,14 @@ var Reader = class {
     this.problem("invalid-date", `${key} \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(v3)}`);
     return null;
   }
+  /** 真偽値。ないときは fallback。真偽値でなければ問題にして fallback */
+  boolean(key, fallback) {
+    if (!this.has(key)) return fallback;
+    const v3 = this.fm[key];
+    if (typeof v3 === "boolean") return v3;
+    this.problem("invalid-field", `${key} \u306F true / false \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return fallback;
+  }
   minutes(key) {
     if (!this.has(key)) return null;
     const v3 = this.fm[key];
@@ -1104,6 +1112,17 @@ var Reader = class {
       }
     }
     return out;
+  }
+  /**
+   * Calendar の日付 1 つ（ADR-0152）。以前のリストなら最も早い日を読み、移行を促す警告を出す
+   * （移行 0152-calendar-tickler で日付 1 つに書き直す）
+   */
+  calendarDate(key) {
+    const v3 = this.fm[key];
+    if (!Array.isArray(v3)) return this.date(key);
+    const dates = this.dates(key);
+    if (v3.length > 0) this.problem("legacy-scheduled-list", `${key} \u306F\u65E5\u4ED8 1 \u3064\u306B\u3057\u307E\u3057\u305F\uFF08ADR-0152\uFF09\u3002\u79FB\u884C 0152-calendar-tickler \u3067\u66F8\u304D\u76F4\u3057\u3066\u304F\u3060\u3055\u3044\uFF08node .kit/migrate.mjs\uFF09`, "warning");
+    return dates[0] ?? null;
   }
   dates(key) {
     const out = /* @__PURE__ */ new Set();
@@ -1156,11 +1175,13 @@ function parseIssue(path, fm) {
     labels: r3.strings("label"),
     related: r3.strings("related"),
     estimated: r3.minutes("estimated"),
-    scheduled: r3.dates("scheduled"),
+    scheduled: r3.calendarDate("scheduled"),
     softDeadline: r3.date("soft_deadline"),
     deadline: r3.date("deadline"),
     revisit: r3.date("revisit"),
     reviewed: r3.date("reviewed"),
+    clarified: r3.boolean("clarified", false),
+    tickler: r3.date("tickler"),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : issue, problems: r3.problems };
@@ -1284,7 +1305,7 @@ function parseBlock(path, parent, raw, order, parseYaml3) {
     delegatedTo: r3.ref("delegated_to", "m"),
     start: r3.date("start"),
     end: r3.date("end"),
-    scheduled: r3.dates("scheduled"),
+    scheduled: r3.calendarDate("scheduled"),
     softDeadline: r3.date("soft_deadline"),
     deadline: r3.date("deadline"),
     estimated: r3.minutes("estimated"),
@@ -1319,7 +1340,7 @@ function formatSubIssue(sub) {
   put("delegated_to", sub.delegatedTo);
   put("start", sub.start);
   put("end", sub.end);
-  if (sub.scheduled.length > 0) put("scheduled", JSON.stringify(sub.scheduled));
+  put("scheduled", sub.scheduled);
   put("soft_deadline", sub.softDeadline);
   put("deadline", sub.deadline);
   put("estimated", sub.estimated === null ? null : String(sub.estimated));
@@ -1409,12 +1430,12 @@ function checkSubIssues(subs, memberIds) {
     for (const [key, value] of [
       ["start", s3.start],
       ["end", s3.end],
+      ["scheduled", s3.scheduled],
       ["soft_deadline", s3.softDeadline],
       ["deadline", s3.deadline]
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
-    for (const d3 of s3.scheduled) if (!isDate(d3)) errors.push(`${where}: scheduled \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${d3}`);
     if (s3.start !== null && s3.end !== null && s3.end < s3.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
     if (s3.estimated !== null && !(typeof s3.estimated === "number" && Number.isFinite(s3.estimated) && s3.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
     if (s3.status === "delegated" && s3.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
@@ -1456,7 +1477,7 @@ function newSubIssueInput(item, id, created) {
     delegatedTo: item.delegatedTo ?? null,
     start: item.start ?? null,
     end: item.end ?? null,
-    scheduled: [...new Set(item.scheduled ?? [])].sort(),
+    scheduled: item.scheduled ?? null,
     softDeadline: item.softDeadline ?? null,
     deadline: item.deadline ?? null,
     estimated: item.estimated ?? null,
@@ -1480,8 +1501,7 @@ function subCounts(subs) {
 var shortDate = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
 function subHint(sub, today) {
   if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}\u2013${sub.end ? shortDate(sub.end) : ""}`;
-  const next = sub.scheduled.find((d3) => d3 >= today);
-  if (next) return shortDate(next);
+  if (sub.scheduled !== null && sub.scheduled >= today) return shortDate(sub.scheduled);
   const due = sub.deadline ?? sub.softDeadline;
   return due ? `Due ${shortDate(due)}` : null;
 }
@@ -1791,7 +1811,49 @@ function cautionIssues(issues, today, days = 3) {
   return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
 }
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i3) => isActive(i3) && i3.scheduled.includes(date) && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+  return [...issues].filter((i3) => isActive(i3) && i3.scheduled === date && !exclude.has(i3.id)).sort((a3, b2) => a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+function missedIssues(issues, today) {
+  return [...issues].filter((i3) => isActive(i3) && i3.scheduled !== null && i3.scheduled < today).sort((a3, b2) => a3.scheduled.localeCompare(b2.scheduled) || a3.id.localeCompare(b2.id, "en", { numeric: true }));
+}
+function missedSubs(index, today) {
+  return index.data.subIssues.filter((s3) => isActive(s3) && s3.scheduled !== null && s3.scheduled < today && index.sub(s3.key) === s3).sort((a3, b2) => a3.scheduled.localeCompare(b2.scheduled) || a3.key.localeCompare(b2.key, "en", { numeric: true }));
+}
+function subDue(index, hit) {
+  const live = index.data.subIssues.filter((s3) => isActive(s3) && index.sub(s3.key) === s3);
+  const by = (key) => live.filter((s3) => s3[key] !== null && hit(s3[key])).sort((a3, b2) => a3[key].localeCompare(b2[key]) || a3.key.localeCompare(b2.key, "en", { numeric: true }));
+  return { deadline: by("deadline"), softDeadline: by("softDeadline") };
+}
+function deadSubs(index, today) {
+  return subDue(index, (d3) => d3 < today);
+}
+function cautionSubs(index, today, days = 3) {
+  return subDue(index, (d3) => diffDays(d3, today) >= 0 && diffDays(d3, today) <= days);
+}
+function currentStep(steps, counts, passed, manual) {
+  const last = steps[steps.length - 1];
+  if (manual !== null && (manual === last || counts[manual] > 0)) return manual;
+  return steps.find((s3) => s3 !== last && counts[s3] > 0 && !passed.has(s3)) ?? last;
+}
+var priorityRank = (p3) => p3 === null ? PRIORITIES.length : PRIORITIES.indexOf(p3);
+var nullsLast = (a3, b2) => a3 === b2 ? 0 : a3 === null ? 1 : b2 === null ? -1 : a3.localeCompare(b2);
+var byPick = (a3, b2) => priorityRank(a3.priority) - priorityRank(b2.priority) || nullsLast(a3.deadline, b2.deadline) || nullsLast(a3.reviewed ?? "", b2.reviewed ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true });
+function pickCandidates(index, today, board) {
+  const on = new Set(board.issues);
+  const groups = /* @__PURE__ */ new Map();
+  for (const s3 of index.data.subIssues) {
+    if (on.has(s3.key) || index.sub(s3.key) !== s3) continue;
+    if (s3.status !== "open" || s3.scheduled !== null || s3.start !== null && s3.start > today) continue;
+    const parent = index.issues.get(s3.parent);
+    if (!parent || !isActive(parent)) continue;
+    groups.set(s3.parent, [...groups.get(s3.parent) ?? [], s3]);
+  }
+  const projects = new Set(index.data.subIssues.filter((s3) => isActive(s3) && index.sub(s3.key) === s3).map((s3) => s3.parent));
+  const issues = [...index.issues.values()].filter((i3) => !on.has(i3.id) && !projects.has(i3.id) && isNext(i3)).sort(byPick);
+  return {
+    issues,
+    groups: [...groups.entries()].map(([id, subs]) => ({ parent: index.issues.get(id), subs: subs.sort((a3, b2) => a3.order - b2.order) })).sort((a3, b2) => byPick(a3.parent, b2.parent))
+  };
 }
 
 // src/core/effort.ts
@@ -1916,11 +1978,16 @@ var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
-function isInbox(issue) {
-  return issue.status === "open" && issue.scheduled.length === 0 && issue.softDeadline === null && issue.deadline === null;
+function isInbox(issue, today) {
+  if (issue.status !== "open") return false;
+  if (issue.tickler !== null) return issue.tickler <= today;
+  return !issue.clarified;
+}
+function isNext(issue, _today) {
+  return issue.status === "open" && issue.clarified && issue.scheduled === null && issue.tickler === null;
 }
 function isScheduledAhead(issue, today) {
-  return isActive(issue) && issue.scheduled.some((d3) => d3 >= today);
+  return isActive(issue) && issue.scheduled !== null && issue.scheduled >= today;
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -1943,7 +2010,7 @@ function organizeQueue(issues, today) {
   const revisitDue = [];
   const someday = [];
   for (const issue of issues) {
-    if (isInbox(issue)) inbox.push(issue);
+    if (isInbox(issue, today)) inbox.push(issue);
     else if (issue.status === "someday") {
       if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
       else someday.push(issue);
@@ -2024,7 +2091,7 @@ var TaskIndex = class {
   toAutoAdd(date) {
     const daily = this.board(date);
     const skip = /* @__PURE__ */ new Set([...daily?.board.issues ?? [], ...daily?.removed ?? []]);
-    const subs = this.data.subIssues.filter((s3) => isActive(s3) && s3.scheduled.includes(date) && !skip.has(s3.key) && this.subsByKey.get(s3.key) === s3);
+    const subs = this.data.subIssues.filter((s3) => isActive(s3) && s3.scheduled === date && !skip.has(s3.key) && this.subsByKey.get(s3.key) === s3);
     return [...scheduledOn(this.issues.values(), date, skip).map((i3) => i3.id), ...subs.map((s3) => s3.key)];
   }
   /** ボードの並び（ADR-0114, 0137）。その日までで最後に並べたもの。なければ undefined */
@@ -2058,6 +2125,8 @@ var TaskIndex = class {
 function sidebarCounts(index, today) {
   const issues = [...index.issues.values()];
   const dead = deadIssues(issues, today);
+  const deadSub = deadSubs(index, today);
+  const missed = missedIssues(issues, today).length + missedSubs(index, today).length;
   const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
   const scheduledToday = index.toAutoAdd(today);
@@ -2067,10 +2136,11 @@ function sidebarCounts(index, today) {
     return n2 + unfinishedCount(u4);
   }, 0);
   return {
-    daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
-    inbox: issues.filter(isInbox).length,
+    // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・前のボード・今日の Calendar・今日の未完了
+    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
+    inbox: issues.filter((i3) => isInbox(i3, today)).length,
     organize: organizeQueue(issues, today).length,
-    scheduled: issues.filter((i3) => isActive(i3) && i3.scheduled.some((d3) => d3 >= today)).length,
+    scheduled: issues.filter((i3) => isScheduledAhead(i3, today)).length,
     issues: issues.filter(isActive).length,
     someday: issues.filter((i3) => i3.status === "someday").length,
     routines: [...index.routines.values()].filter((r3) => r3.active).length
@@ -2118,21 +2188,30 @@ function parseDurationInput(input) {
   return min > 0 ? min : null;
 }
 
-// src/obsidian/issue-editors.tsx
-var import_obsidian3 = require("obsidian");
-
 // src/core/actions.ts
 function cancelPatch() {
-  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
 }
 function closePatch() {
-  return { status: "closed", delegated_to: null, revisit: null };
+  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
 }
 function inboxPatch() {
-  return { status: "open", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+  return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
+}
+function nextPatch(issue) {
+  return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function backToNextPatch() {
+  return { scheduled: null, tickler: null, clarified: true };
+}
+function ticklerPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function calendarPatch(issue, date) {
+  return { scheduled: date, clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
 }
 function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
 }
 function reopenPatch() {
   return { status: "open", revisit: null };
@@ -2146,30 +2225,18 @@ function statusPatch(status, delegatedTo = null) {
 function duePatch(issue, key, date) {
   return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
 }
-function scheduledPatch(issue, dates) {
-  return { scheduled: dates, ...issue.status === "someday" && dates.length > 0 ? reopenPatch() : {} };
+function scheduledPatch(issue, date) {
+  return { scheduled: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
 }
-function canConfirmSchedule(selectedCount, needEstimate, estimated) {
-  return selectedCount > 0 && (!needEstimate || estimated !== null);
+function ticklerFieldPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
 }
-function organizeSchedulePatch(issue, dates, estimated) {
-  const patch = scheduledPatch(issue, [...new Set(dates)].sort());
-  if (estimated !== null) patch.estimated = estimated;
-  return patch;
+function reschedulePatch(target, to) {
+  return { [target]: to };
 }
-function reschedulePatch(issue, target, to, from = null) {
-  if (target !== "scheduled") return { [target]: to };
-  const dates = new Set(issue.scheduled);
-  if (from !== null) dates.delete(from);
-  dates.add(to);
-  return { scheduled: [...dates].sort() };
-}
-function schedulePatch(issue, dates, estimated = null) {
-  const patch = { scheduled: [.../* @__PURE__ */ new Set([...issue.scheduled, ...dates])].sort() };
-  if (issue.status === "someday") Object.assign(patch, reopenPatch());
-  if (estimated !== null) patch.estimated = estimated;
-  return patch;
-}
+
+// src/obsidian/issue-editors.tsx
+var import_obsidian3 = require("obsidian");
 
 // ../shared/src/date-input.ts
 function ymd(year, month, day) {
@@ -2330,14 +2397,6 @@ function TextForm(props) {
     }
   );
 }
-function dueMark(date, softDeadline, deadline) {
-  const classes = [];
-  const notes = [];
-  if (date === softDeadline) classes.push("is-soft-deadline"), notes.push("soft_deadline");
-  if (date === deadline) classes.push("is-deadline"), notes.push("deadline");
-  if (deadline !== null && date > deadline) classes.push("is-after-deadline");
-  return classes.length > 0 ? { classes, notes } : null;
-}
 function DateHint(props) {
   if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "e.g. 15 / 1224 / +1d / mon / +2w / +m" });
   if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
@@ -2392,70 +2451,6 @@ function DateForm(props) {
       ]
     }
   );
-}
-function CalendarForm(props) {
-  const today = localToday();
-  const [selected, setSelected] = d2(new Set(props.initial));
-  const [month, setMonth] = d2(today.slice(0, 7));
-  const [text, setText] = d2("");
-  const parsed = parseDateInput(text, today);
-  const enabled = props.canSubmit?.(selected.size) ?? true;
-  const toggle2 = (d3) => {
-    const next = new Set(selected);
-    if (next.has(d3)) next.delete(d3);
-    else next.add(d3);
-    setSelected(next);
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-calendar", children: [
-    /* @__PURE__ */ u3(
-      "form",
-      {
-        class: "vt-date-add",
-        onSubmit: (e3) => {
-          e3.preventDefault();
-          if (parsed === null) return;
-          setSelected(new Set(selected).add(parsed));
-          setMonth(parsed.slice(0, 7));
-          setText("");
-        },
-        children: [
-          /* @__PURE__ */ u3(
-            DateTextField,
-            {
-              text,
-              parsed,
-              placeholder: "Type a date and press Enter",
-              onText: (value) => {
-                setText(value);
-                const next = parseDateInput(value, today);
-                if (next !== null) setMonth(next.slice(0, 7));
-              }
-            }
-          ),
-          /* @__PURE__ */ u3("button", { type: "submit", disabled: parsed === null, children: "Add" })
-        ]
-      }
-    ),
-    /* @__PURE__ */ u3(
-      MonthCalendar,
-      {
-        month,
-        onMonth: setMonth,
-        today,
-        isSelected: (d3) => selected.has(d3),
-        onPick: toggle2,
-        mark: (d3) => dueMark(d3, props.softDeadline, props.deadline)
-      }
-    ),
-    props.children,
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
-        selected.size,
-        " days"
-      ] }),
-      /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: !enabled, onClick: () => enabled && props.onSubmit([...selected].sort()), children: props.submitLabel ?? "Save" })
-    ] })
-  ] });
 }
 function DayCell(props) {
   const w3 = weekdayOf(props.date);
@@ -2831,15 +2826,25 @@ function editDue(ctx, issue, key) {
   )).open();
 }
 function editScheduled(ctx, issue) {
-  new PreactModal(ctx.app, "Do Date", (close) => /* @__PURE__ */ u3(
-    CalendarForm,
+  new PreactModal(ctx.app, "Calendar (must be done on this day)", (close) => /* @__PURE__ */ u3(
+    DateForm,
     {
       initial: issue.scheduled,
-      softDeadline: issue.softDeadline,
-      deadline: issue.deadline,
-      onSubmit: (dates) => {
+      onSubmit: (v3) => {
         close();
-        saveIssue(ctx, issue)(scheduledPatch(issue, dates));
+        saveIssue(ctx, issue)(scheduledPatch(issue, v3));
+      }
+    }
+  )).open();
+}
+function editTickler(ctx, issue) {
+  new PreactModal(ctx.app, "Tickler (back to Inbox on this date)", (close) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial: issue.tickler,
+      onSubmit: (v3) => {
+        close();
+        saveIssue(ctx, issue)(ticklerFieldPatch(issue, v3));
       }
     }
   )).open();
@@ -2865,7 +2870,8 @@ function issueRowMenu(ctx, e3, issue) {
   m3.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e3, issue.priority, save)));
   m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
   m3.addSeparator();
-  m3.addItem((item) => item.setTitle("Do Date").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+  m3.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+  m3.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
   m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
   m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
@@ -3083,20 +3089,18 @@ var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u
 var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
 var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
 var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
-async function scheduleToday(ctx, issues) {
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
-  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
-}
-async function scheduleIssues(ctx, issues) {
-  const date = await askDate(ctx, "Add Do Date");
+async function ticklerIssues(ctx, issues) {
+  const date = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
   if (date === null) return;
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
+  await patchAll(ctx, issues, (i3) => ticklerPatch(i3, date), "Tickler \u3092\u4ED8\u3051\u308B\u3053\u3068\u304C");
 }
-async function rescheduleIssues(ctx, issues, target, from = null) {
-  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
-  const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
+var nextIssues = (ctx, issues) => patchAll(ctx, issues, (i3) => nextPatch(i3), "Next \u306B\u3059\u308B\u3053\u3068\u304C");
+var backToNextIssues = (ctx, issues) => patchAll(ctx, issues, backToNextPatch(), "Next \u306B\u623B\u3059\u3053\u3068\u304C");
+async function rescheduleIssues(ctx, issues, target) {
+  const title = target === "scheduled" ? "Move date (must be done on this day)" : `Change ${target}`;
+  const date = await askDate(ctx, title, localToday());
   if (date === null) return;
-  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
+  await patchAll(ctx, issues, () => reschedulePatch(target, date), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
 }
 
 // src/obsidian/board-actions.ts
@@ -3113,7 +3117,7 @@ var addToBoard = (ctx, date, ids) => guard(
 );
 async function createOnBoard(ctx, date, summary) {
   try {
-    const { created } = await ctx.writer.createIssues([summary], [date]);
+    const { created } = await ctx.writer.createIssues([summary], { clarified: true });
     const file = created[0];
     if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
     await addToBoard(ctx, date, [file.basename]);
@@ -3124,7 +3128,6 @@ async function createOnBoard(ctx, date, summary) {
 var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
 async function addSubToBoard(ctx, date, sub) {
   try {
-    if (!sub.scheduled.includes(date)) await ctx.writer.updateSub(sub.key, { scheduled: [...sub.scheduled, date].sort() });
     await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: sub.key }]);
   } catch (e3) {
     ctx.report("\u30B5\u30D6\u3092\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -3167,35 +3170,37 @@ async function setRoutineResult(ctx, date, id, result, record2 = true) {
   }
   if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
 }
-async function carrySubs(ctx, date, subs, fixedTo = null) {
-  let to = fixedTo;
-  if (to === null) {
-    to = await askDate(ctx, "Move Do Date");
+async function carrySubs(ctx, date, subs, kind) {
+  let to = null;
+  if (kind === "move") {
+    to = await askDate(ctx, "Move date (must be done on this day)", localToday());
     if (to === null) return;
   }
   try {
     for (const sub of subs) {
-      const dates = new Set(sub.scheduled);
-      dates.delete(date);
-      dates.add(to);
-      await ctx.writer.updateSub(sub.key, { scheduled: [...dates].sort() });
+      if (kind === "next" && sub.scheduled !== null) await ctx.writer.updateSub(sub.key, { scheduled: null });
+      if (kind === "move") await ctx.writer.updateSub(sub.key, { scheduled: to });
     }
     await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, subs.map((s3) => ({ op: "carry", task: s3.key })));
+    if (kind === "today") await ctx.writer.appendBoardOps(localToday(), ctx.settings.deviceName, subs.map((s3) => ({ op: "add", task: s3.key })));
   } catch (e3) {
     ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
-async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
-  let to = fixedTo;
-  if (kind === "reschedule" && to === null) {
-    to = await askDate(ctx, "Move Do Date");
-    if (to === null) return;
-  }
+async function carryIssues(ctx, date, issues, kind) {
+  let to = null;
+  if (kind === "move") to = await askDate(ctx, "Move date (must be done on this day)", localToday());
+  if (kind === "tickler") to = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
+  if ((kind === "move" || kind === "tickler") && to === null) return;
   try {
     for (const issue of issues) {
-      await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
+      if (kind === "inbox") await ctx.writer.update(issue.path, inboxPatch());
+      else if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
+      else if (kind === "move") await ctx.writer.update(issue.path, { scheduled: to });
+      else if (kind === "tickler") await ctx.writer.update(issue.path, ticklerPatch(issue, to));
     }
     await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
+    if (kind === "today") await ctx.writer.appendBoardOps(localToday(), ctx.settings.deviceName, issues.map((i3) => ({ op: "add", task: i3.id })));
   } catch (e3) {
     ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
@@ -3222,7 +3227,8 @@ var DATE_FIELDS = [
   ["start", "Start"],
   ["end", "End"],
   ["softDeadline", "Soft deadline"],
-  ["deadline", "Deadline"]
+  ["deadline", "Deadline"],
+  ["scheduled", "Calendar"]
 ];
 function confirmModal(ctx, title, message, action, run) {
   new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3("div", { children: [
@@ -3269,18 +3275,6 @@ function SubIssueForm(props) {
       onSubmit: (v3) => {
         closeDate();
         set({ [key]: v3 });
-      }
-    }
-  )).open();
-  const editScheduled2 = () => new PreactModal(ctx.app, "Do Date", (closeCal) => /* @__PURE__ */ u3(
-    CalendarForm,
-    {
-      initial: draft.scheduled,
-      softDeadline: draft.softDeadline,
-      deadline: draft.deadline,
-      onSubmit: (dates) => {
-        closeCal();
-        set({ scheduled: [...dates].sort() });
       }
     }
   )).open();
@@ -3343,19 +3337,10 @@ function SubIssueForm(props) {
             draft[key] ? formatShortDate(draft[key]) : "Not set"
           ] })
         ] })) }),
-        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
-          /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "Do dates" }),
-            /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${draft.scheduled.length > 0 ? "" : " is-placeholder"}`, onClick: editScheduled2, children: [
-              /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
-              draft.scheduled.length === 0 ? "Not set" : draft.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")
-            ] })
-          ] }),
-          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-            /* @__PURE__ */ u3("span", { children: "Estimated" }),
-            /* @__PURE__ */ u3("input", { type: "text", class: "vt-small-input", placeholder: "e.g. 2h", value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
-          ] })
-        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Estimated" }),
+          /* @__PURE__ */ u3("input", { type: "text", class: "vt-small-input", placeholder: "e.g. 2h", value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
+        ] }) }),
         siblings.length > 0 && /* @__PURE__ */ u3("fieldset", { class: "vt-subissue-depends", children: [
           /* @__PURE__ */ u3("legend", { children: "Depends on" }),
           siblings.map((s3) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
@@ -3408,7 +3393,7 @@ var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
 function timelineRange(subs, today, scale) {
   const dates = [today];
   for (const s3 of subs) {
-    for (const d3 of [s3.start, s3.end, s3.softDeadline, s3.deadline, ...s3.scheduled]) if (d3) dates.push(d3);
+    for (const d3 of [s3.start, s3.end, s3.softDeadline, s3.deadline, s3.scheduled]) if (d3) dates.push(d3);
   }
   let from = addDays(minDate(dates), -PAD_DAYS);
   let to = addDays(maxDate(dates), PAD_DAYS);
@@ -3713,10 +3698,10 @@ function SubTimeline(props) {
             ...sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : [],
             ...sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []
           ];
-          const nothing = !bar && sub.scheduled.length === 0 && marks.length === 0;
+          const nothing = !bar && sub.scheduled === null && marks.length === 0;
           return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
             nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
-            !bar && sub.scheduled.map((d3) => /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(d3) + px / 2}px` }, title: `Do date ${formatShortDate(d3)}` })),
+            !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
             marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
             bar && /* @__PURE__ */ u3(
               "div",
@@ -3818,7 +3803,7 @@ function SubRow(props) {
   const changeStatus = (next) => {
     if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
     if (next === sub.status) return;
-    save(next === "someday" ? { status: next, scheduled: [], softDeadline: null, deadline: null } : { status: next });
+    save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
   };
   const statusMenu2 = (e3) => {
     const m3 = new import_obsidian5.Menu();
@@ -3889,7 +3874,7 @@ function SubDetail(props) {
   const deps = sub.dependsOn.map((d3) => index.sub(`${sub.parent}#${d3}`)?.summary ?? d3);
   const facts = [
     ...sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} \u2013 ${sub.end ? formatShortDate(sub.end) : "?"}`]] : [],
-    ...sub.scheduled.length > 0 ? [["Do dates", sub.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")]] : [],
+    ...sub.scheduled !== null ? [["Calendar", sub.scheduled.slice(5).replace("-", "/")]] : [],
     ...sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)]] : [],
     ...sub.deadline ? [["Deadline", formatShortDate(sub.deadline)]] : [],
     ...sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)]] : [],
@@ -4085,7 +4070,7 @@ function StatusField(props) {
       return;
     }
     const fields = { status: next, delegated_to: null };
-    if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null });
+    if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null, tickler: null });
     else fields.revisit = null;
     save(fields);
   };
@@ -4113,6 +4098,20 @@ function StatusField(props) {
         /* @__PURE__ */ u3(Icon, { name: "user" }),
         member ? member.nickname : issue.delegatedTo ?? "Choose delegate"
       ] }),
+      issue.status === "open" && // 整理したか（ADR-0148）。open のときだけ Inbox に関わるので、そのときだけ出す
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: `vt-field-chip${issue.clarified ? "" : " is-placeholder"}`,
+          "aria-pressed": issue.clarified,
+          title: issue.clarified ? "Clarified. Click to return to Inbox" : "In Inbox (not clarified). Click to mark as clarified",
+          onClick: () => save({ clarified: issue.clarified ? null : true }),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: issue.clarified ? "list-todo" : "inbox" }),
+            issue.clarified ? "Clarified" : "Inbox"
+          ]
+        }
+      ),
       issue.status === "someday" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: editRevisit, children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-clock" }),
         "revisit ",
@@ -4140,34 +4139,41 @@ function ScheduleStrip(props) {
   const { ctx, issue, save } = props;
   const today = localToday();
   const days = Array.from({ length: 7 }, (_2, i3) => addDays(today, i3));
-  const scheduled = new Set(issue.scheduled);
-  const toggle2 = (d3) => {
-    const next = new Set(scheduled);
-    if (next.has(d3)) next.delete(d3);
-    else next.add(d3);
-    save({ scheduled: [...next].sort() });
-  };
-  const openCalendar = () => new PreactModal(ctx.app, "Do Date", (close) => /* @__PURE__ */ u3(
-    CalendarForm,
+  const setCalendar = (d3) => save(scheduledPatch(issue, d3));
+  const pick = (title, initial, onPick) => () => new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
+    DateForm,
     {
-      initial: issue.scheduled,
-      softDeadline: issue.softDeadline,
-      deadline: issue.deadline,
-      onSubmit: (dates) => {
+      initial,
+      onSubmit: (v3) => {
         close();
-        save({ scheduled: dates });
+        onPick(v3);
       }
     }
   )).open();
-  const later = issue.scheduled.filter((d3) => d3 > days[6]).length;
+  const later = issue.scheduled !== null && issue.scheduled > days[6];
   return /* @__PURE__ */ u3("div", { class: "vt-strip", children: [
     /* @__PURE__ */ u3("div", { class: "vt-strip-days", children: days.map((d3) => /* @__PURE__ */ u3("div", { class: "vt-strip-col", children: [
       /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
-      /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: scheduled.has(d3), softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => toggle2(d3) })
+      /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: issue.scheduled === d3, softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => setCalendar(issue.scheduled === d3 ? null : d3) })
     ] })) }),
-    /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: openCalendar, children: [
-      "calendar >",
-      later > 0 ? ` (+${later} days)` : ""
+    /* @__PURE__ */ u3("div", { class: "vt-row", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: pick("Calendar (must be done on this day)", issue.scheduled, setCalendar), children: [
+        "calendar >",
+        issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""
+      ] }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: `vt-field-chip${issue.tickler ? "" : " is-placeholder"}`,
+          title: "Tickler: hidden until this date, then back to Inbox",
+          onClick: pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d3) => save(ticklerFieldPatch(issue, d3))),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
+            "tickler ",
+            issue.tickler ? formatShortDate(issue.tickler) : "\u2014"
+          ]
+        }
+      )
     ] })
   ] });
 }
@@ -5264,9 +5270,10 @@ var ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
 function yamlString2(s3) {
   return JSON.stringify(s3);
 }
-function newIssueContent(id, summary, created, scheduled = []) {
+function newIssueContent(id, summary, created, extra = {}) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: issue", `id: ${id}`, `summary: ${yamlString2(summary)}`, "status: open"];
-  if (scheduled.length > 0) lines.push(`scheduled: ${JSON.stringify(scheduled)}`);
+  if (extra.scheduled) lines.push(`scheduled: ${extra.scheduled}`);
+  if (extra.clarified) lines.push("clarified: true");
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", ISSUE_BODY_TEMPLATE);
   return lines.join("\n");
 }
@@ -5699,8 +5706,8 @@ var TaskWriter = class {
     for (const f4 of this.app.vault.getMarkdownFiles()) ids.push(f4.basename);
     return ids;
   }
-  /** issue を作る。scheduled がなければ Inbox に入る（ADR-0011）。作れなかった summary は failed に入る */
-  async createIssues(summaries, scheduled = []) {
+  /** issue を作る。clarified を渡さなければ Inbox に入る（ADR-0011, 0148）。作れなかった summary は failed に入る */
+  async createIssues(summaries, extra = {}) {
     const ids = nextIds("i", this.takenIds(), summaries.length);
     const created = [];
     const failed = [];
@@ -5709,7 +5716,7 @@ var TaskWriter = class {
       const path = (0, import_obsidian16.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
-        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, scheduled)));
+        created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, extra)));
       } catch (e3) {
         console.error("pkm-task: issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", path, e3);
         failed.push(summary);
@@ -5892,9 +5899,9 @@ function IssueTable(props) {
         return editable(issue, c3, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
       case "estimated":
         return editable(issue, c3, (e3) => estimateMenu(ctx, e3, issue.estimated, save), issue.estimated === null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }) : /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(issue.estimated) }));
-      case "next": {
-        const next = issue.scheduled.find((d3) => d3 >= today);
-        return editable(issue, c3, () => editScheduled(ctx, issue), next ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(next) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }));
+      case "calendar": {
+        const d3 = issue.scheduled;
+        return editable(issue, c3, () => editScheduled(ctx, issue), d3 ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(d3) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }));
       }
       case "revisit":
         return issue.revisit ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(issue.revisit) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" });
@@ -5958,7 +5965,7 @@ function changeSubStatus(ctx, sub, to) {
   const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   if (to === "delegated") return pickMember(ctx, (id) => save({ status: to, delegatedTo: id }));
   if (to === sub.status) return;
-  save(to === "someday" ? { status: to, scheduled: [], softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
+  save(to === "someday" ? { status: to, scheduled: null, softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
 }
 var DRAG_TYPE2 = "text/plain";
 var readDrag2 = (e3) => e3.dataTransfer?.getData(DRAG_TYPE2) || null;
@@ -6115,7 +6122,7 @@ function Lane(props) {
 function boardCandidates(index, date, board) {
   const on = new Set(board.issues);
   const issues = [...index.issues.values()].filter((i3) => isActive(i3) && !on.has(i3.id));
-  const subs = index.data.subIssues.filter((s3) => isActive(s3) && !on.has(s3.key) && !s3.scheduled.includes(date) && index.sub(s3.key) === s3);
+  const subs = index.data.subIssues.filter((s3) => isActive(s3) && !on.has(s3.key) && s3.scheduled !== date && index.sub(s3.key) === s3);
   return [...issues.map((issue) => ({ kind: "issue", issue })), ...subs.map((sub) => ({ kind: "sub", sub }))];
 }
 function Board(props) {
@@ -6176,26 +6183,34 @@ function Board(props) {
       ] }),
       leftCount === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: total === 0 ? "\u2014" : "All done" }) : /* @__PURE__ */ u3(S, { children: [
         leftIssues.length > 0 && /* @__PURE__ */ u3(S, { children: [
-          /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"], empty: "All issues are done" }),
+          /* @__PURE__ */ u3(IssueTable, { ctx, issues: leftIssues, selected, onSelect: setSelected, columns: ["status-detail", "calendar", "deadline", "estimated"], empty: "All issues are done" }),
           /* @__PURE__ */ u3(
             ActionBar,
             {
               count: sel.length,
               actions: [
-                { label: "Do Tomorrow", icon: "sunrise", tone: "primary", run: () => void carryIssues(ctx, date, sel, "reschedule", addDays(date, 1)).then(() => setSelected(/* @__PURE__ */ new Set())) },
-                { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
-                { label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, date, sel, "reschedule").then(() => setSelected(/* @__PURE__ */ new Set())) },
-                { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(() => setSelected(/* @__PURE__ */ new Set())) },
-                { label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, date, sel, "inbox").then(() => setSelected(/* @__PURE__ */ new Set())) }
+                ...carryActions(ctx, date, sel, "next", () => setSelected(/* @__PURE__ */ new Set()))
               ]
             }
           )
         ] }),
-        /* @__PURE__ */ u3(SubRows, { ctx, date, subs: left.subs, next: addDays(date, 1), nextLabel: "Do Tomorrow" }),
+        /* @__PURE__ */ u3(SubRows, { ctx, date, subs: left.subs, primary: "next" }),
         /* @__PURE__ */ u3(RoutineRows, { ctx, date, routines: left.routines })
       ] })
     ] })
   ] });
+}
+function carryActions(ctx, date, sel, primary, done) {
+  const run = (p3) => void p3.then(done);
+  return [
+    ...primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => run(carryIssues(ctx, date, sel, "today")) }] : [],
+    { label: "Back to Next", icon: "list-todo", ...primary === "next" ? { tone: "primary" } : {}, run: () => run(carryIssues(ctx, date, sel, "next")) },
+    { label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+    ...sel.length > 0 && sel.every((i3) => i3.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : [],
+    { label: "Close", icon: "check", run: () => run(closeIssues(ctx, sel)) },
+    { label: "Cancel", icon: "x", run: () => run(cancelIssues(ctx, sel)) },
+    { label: "Inbox", icon: "inbox", run: () => run(carryIssues(ctx, date, sel, "inbox")) }
+  ];
 }
 function SubRows(props) {
   const { ctx, date } = props;
@@ -6205,9 +6220,10 @@ function SubRows(props) {
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: s3.parent }),
     /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: `${s3.parent} \u203A ${s3.summary}`, children: s3.summary }),
     /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-    /* @__PURE__ */ u3("button", { class: "vt-button", onClick: () => void carrySubs(ctx, date, [s3], props.next), children: props.nextLabel }),
+    props.primary === "today" && /* @__PURE__ */ u3("button", { class: "vt-button", onClick: () => void carrySubs(ctx, date, [s3], "today"), children: "Add to today's board" }),
+    /* @__PURE__ */ u3("button", { class: `vt-button${props.primary === "next" ? "" : " is-text"}`, onClick: () => void carrySubs(ctx, date, [s3], "next"), children: "Back to Next" }),
     /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => changeSubStatus(ctx, s3, "closed"), children: "Close" }),
-    /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void carrySubs(ctx, date, [s3]), children: "Move Do Date" }),
+    s3.scheduled !== null && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void carrySubs(ctx, date, [s3], "move"), children: "Move date" }),
     /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => changeSubStatus(ctx, s3, "canceled"), children: "Cancel" })
   ] }, s3.key)) });
 }
@@ -6225,81 +6241,206 @@ function RoutineRows(props) {
 
 // src/views/DailyView.tsx
 var STEPS = [
-  { key: "dead", label: "Overdue", icon: "alarm-clock-off" },
+  { key: "calendar", label: "Calendar", icon: "calendar" },
   { key: "previous", label: "Previous boards", icon: "history" },
-  { key: "caution", label: "Due soon", icon: "alert-triangle" },
+  { key: "pick", label: "Pick", icon: "list-todo" },
   { key: "board", label: "Board", icon: "layout-dashboard" }
 ];
-function DueStep(props) {
-  const sections = [
-    { key: "deadline", title: "deadline", issues: props.lists.deadline },
-    { key: "soft_deadline", title: "soft_deadline", issues: props.lists.softDeadline }
-  ];
-  return /* @__PURE__ */ u3(S, { children: sections.map((s3) => /* @__PURE__ */ u3(DueSection, { ctx: props.ctx, target: s3.key, title: s3.title, issues: s3.issues, empty: props.empty, canScheduleToday: props.canScheduleToday })) });
+function SubLines(props) {
+  const { ctx, subs } = props;
+  if (subs.length === 0) return null;
+  const runs = [];
+  for (const s3 of [...subs].sort((a3, b2) => a3.parent.localeCompare(b2.parent, "en", { numeric: true }) || a3.order - b2.order)) {
+    const last = runs[runs.length - 1];
+    if (last && last.parent === s3.parent) last.subs.push(s3);
+    else runs.push({ parent: s3.parent, subs: [s3] });
+  }
+  return /* @__PURE__ */ u3("div", { class: "vt-routine-rows vt-sub-rows", children: runs.map((run) => /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
+    /* @__PURE__ */ u3(ParentHead, { ctx, parentId: run.parent }),
+    run.subs.map((s3) => {
+      const note = props.note?.(s3) ?? null;
+      return /* @__PURE__ */ u3("div", { class: "vt-routine-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: `${s3.parent} \u203A ${s3.summary}`, children: s3.summary }),
+        note && /* @__PURE__ */ u3("span", { class: "vt-muted vt-num", children: note }),
+        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+        props.actions(s3).map((a3) => /* @__PURE__ */ u3("button", { class: `vt-button${a3.primary ? "" : " is-text"}`, onClick: a3.run, children: a3.label }))
+      ] }, s3.key);
+    })
+  ] }, run.parent)) });
 }
 function DueSection(props) {
   const { ctx, target, issues } = props;
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
   const sel = issues.filter((i3) => selected.has(i3.id));
   const done = () => setSelected(/* @__PURE__ */ new Set());
+  const today = localToday();
   return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: props.title }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length + props.subs.length })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "soft_deadline", "deadline"], empty: props.empty }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "soft_deadline", "deadline"], empty: props.subs.length > 0 ? "" : props.empty }),
     issues.length > 0 && /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          ...props.canScheduleToday ? [{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) }] : [],
-          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
           { label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
+          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
         ]
       }
+    ),
+    /* @__PURE__ */ u3(
+      SubLines,
+      {
+        ctx,
+        subs: props.subs,
+        note: (s3) => {
+          const d3 = target === "deadline" ? s3.deadline : s3.softDeadline;
+          return d3 ? formatShortDate(d3) : null;
+        },
+        actions: (s3) => [{ label: "Add to today's board", primary: true, run: () => void addSubToBoard(ctx, today, s3) }]
+      }
     )
+  ] });
+}
+function CalendarStep(props) {
+  const { ctx } = props;
+  const total = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
+  if (total(props.dead, props.deadSub) + total(props.caution, props.cautionSub) + props.missed.length + props.missedSub.length === 0) {
+    return /* @__PURE__ */ u3("div", { class: "vt-empty", children: "Nothing overdue, due soon, or missed" });
+  }
+  return /* @__PURE__ */ u3(S, { children: [
+    total(props.dead, props.deadSub) > 0 && /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("h3", { class: "vt-h", children: "Overdue" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.dead.deadline, subs: props.deadSub.deadline, empty: "Nothing is overdue" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.dead.softDeadline, subs: props.deadSub.softDeadline, empty: "Nothing is overdue" })
+    ] }),
+    total(props.caution, props.cautionSub) > 0 && /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("h3", { class: "vt-h", children: "Due soon" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.caution.deadline, subs: props.cautionSub.deadline, empty: "No deadlines in the next 3 days" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.caution.softDeadline, subs: props.cautionSub.softDeadline, empty: "No deadlines in the next 3 days" })
+    ] }),
+    props.missed.length + props.missedSub.length > 0 && /* @__PURE__ */ u3(MissedSection, { ctx, issues: props.missed, subs: props.missedSub })
+  ] });
+}
+function MissedSection(props) {
+  const { ctx, issues } = props;
+  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
+  const sel = issues.filter((i3) => selected.has(i3.id));
+  const done = () => setSelected(/* @__PURE__ */ new Set());
+  const today = localToday();
+  return /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("h3", { class: "vt-h", children: "Missed" }),
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Calendar" }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length + props.subs.length })
+      ] }),
+      /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["calendar", "deadline", "estimated"], empty: "" }),
+      issues.length > 0 && /* @__PURE__ */ u3(
+        ActionBar,
+        {
+          count: sel.length,
+          actions: [
+            { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
+            { label: "Move date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled").then(done) },
+            { label: "Back to Next", icon: "list-todo", run: () => void backToNextIssues(ctx, sel).then(done) },
+            { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
+            { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
+            { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
+          ]
+        }
+      ),
+      /* @__PURE__ */ u3(
+        SubLines,
+        {
+          ctx,
+          subs: props.subs,
+          note: (s3) => s3.scheduled ? formatShortDate(s3.scheduled) : null,
+          actions: (s3) => [
+            { label: "Add to today's board", primary: true, run: () => void addSubToBoard(ctx, today, s3) },
+            {
+              label: "Move date",
+              run: () => void askDate(ctx, "Move date (must be done on this day)", today).then((d3) => {
+                if (d3) void ctx.writer.updateSub(s3.key, { scheduled: d3 }).catch((e3) => ctx.report("\u65E5\u4ED8\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+              })
+            },
+            { label: "Back to Next", run: () => void ctx.writer.updateSub(s3.key, { scheduled: null }).catch((e3) => ctx.report("Next \u306B\u623B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3)) }
+          ]
+        }
+      )
+    ] })
   ] });
 }
 function PreviousStep(props) {
   const { ctx } = props;
   const index = ctx.store.index;
+  return /* @__PURE__ */ u3(S, { children: props.boards.map((b2) => {
+    const left = unfinished(index, b2.date, b2.board);
+    if (unfinishedCount(left) === 0) return null;
+    return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
+          "Board of ",
+          formatShortDate(b2.date)
+        ] }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: unfinishedCount(left) })
+      ] }),
+      /* @__PURE__ */ u3(PreviousIssues, { ctx, date: b2.date, issues: left.issues }),
+      /* @__PURE__ */ u3(SubRows, { ctx, date: b2.date, subs: left.subs, primary: "today" }),
+      /* @__PURE__ */ u3(RoutineRows, { ctx, date: b2.date, routines: left.routines })
+    ] }, b2.date);
+  }) });
+}
+function PreviousIssues(props) {
+  const { ctx, date, issues } = props;
+  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
+  const sel = issues.filter((i3) => selected.has(i3.id));
+  if (issues.length === 0) return null;
   return /* @__PURE__ */ u3(S, { children: [
-    props.boards.map((b2) => /* @__PURE__ */ u3(PreviousBoard, { ctx, board: b2, issues: unfinished(index, b2.date, b2.board).issues }, b2.date)),
-    props.boards.map((b2) => /* @__PURE__ */ u3(SubRows, { ctx, date: b2.date, subs: unfinished(index, b2.date, b2.board).subs, next: localToday(), nextLabel: "Do Today", showDate: true })),
-    props.boards.map((b2) => /* @__PURE__ */ u3(RoutineRows, { ctx, date: b2.date, routines: unfinished(index, b2.date, b2.board).routines, showDate: true }))
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "calendar", "deadline", "estimated"] }),
+    /* @__PURE__ */ u3(ActionBar, { count: sel.length, actions: carryActions(ctx, date, sel, "today", () => setSelected(/* @__PURE__ */ new Set())) })
   ] });
 }
-function PreviousBoard(props) {
-  const { ctx, board, issues } = props;
+function PickStep(props) {
+  const { ctx, issues } = props;
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
   const sel = issues.filter((i3) => selected.has(i3.id));
   const done = () => setSelected(/* @__PURE__ */ new Set());
-  if (issues.length === 0) return null;
-  return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-        "Board of ",
-        formatShortDate(board.date)
+  const today = localToday();
+  if (issues.length === 0 && props.groups.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No next actions to pick" });
+  return /* @__PURE__ */ u3(S, { children: [
+    issues.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Next actions" }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
       ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
+      /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "estimated", "deadline", "reviewed"] }),
+      /* @__PURE__ */ u3(
+        ActionBar,
+        {
+          count: sel.length,
+          actions: [
+            { label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
+            { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+            { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
+            { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
+            { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
+          ]
+        }
+      )
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "next", "deadline", "estimated"] }),
-    /* @__PURE__ */ u3(
-      ActionBar,
-      {
-        count: sel.length,
-        actions: [
-          { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void carryIssues(ctx, board.date, sel, "reschedule", localToday()).then(done) },
-          { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-          { label: "Move Do Date", icon: "calendar-clock", run: () => void carryIssues(ctx, board.date, sel, "reschedule").then(done) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", run: () => void carryIssues(ctx, board.date, sel, "inbox").then(done) }
-        ]
-      }
-    )
+    props.groups.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: props.groups.reduce((n2, g2) => n2 + g2.subs.length, 0) })
+      ] }),
+      /* @__PURE__ */ u3(SubLines, { ctx, subs: props.groups.flatMap((g2) => g2.subs), actions: (s3) => [{ label: "Add to board", primary: true, run: () => void addSubToBoard(ctx, today, s3) }] })
+    ] })
   ] });
 }
 function DailyView(props) {
@@ -6310,26 +6451,31 @@ function DailyView(props) {
   const index = ctx.store.index;
   const issues = [...index.issues.values()];
   const dead = deadIssues(issues, today);
-  const pending = pendingBoards(index, index.data.boards, today);
+  const deadSub = deadSubs(index, today);
   const caution = cautionIssues(issues, today);
+  const cautionSub = cautionSubs(index, today);
+  const missed = missedIssues(issues, today);
+  const missedSub = missedSubs(index, today);
+  const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
+  const pick = pickCandidates(index, today, todayBoard);
   const toAdd = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
+  const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
   const counts = {
-    dead: dead.deadline.length + dead.softDeadline.length,
-    previous: pending.reduce((n2, b2) => {
-      return n2 + unfinishedCount(unfinished(index, b2.date, b2.board));
-    }, 0),
-    caution: caution.deadline.length + caution.softDeadline.length,
+    calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
+    previous: pending.reduce((n2, b2) => n2 + unfinishedCount(unfinished(index, b2.date, b2.board)), 0),
+    pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0),
     board: unfinishedCount(todayLeft)
   };
   const [passed, setPassed] = d2(/* @__PURE__ */ new Set());
   const [manual, setManual] = d2(null);
-  const auto = ["dead", "previous", "caution"].find((s3) => counts[s3] > 0 && !passed.has(s3)) ?? "board";
-  const step = manual ?? auto;
-  h2(() => {
-    if (manual !== null && manual !== "caution" && manual !== "board" && counts[manual] === 0) setManual(null);
-  });
+  const step = currentStep(
+    STEPS.map((s3) => s3.key),
+    counts,
+    passed,
+    manual
+  );
   const adding = A2(/* @__PURE__ */ new Set());
   h2(() => {
     const ids = toAdd.filter((id) => !adding.current.has(`${today}/${id}`));
@@ -6375,12 +6521,12 @@ function DailyView(props) {
         }
       )
     ] }, s3.key)) }),
-    step === "dead" && /* @__PURE__ */ u3(DueStep, { ctx, lists: dead, empty: "Nothing is overdue" }),
+    step === "calendar" && /* @__PURE__ */ u3(CalendarStep, { ctx, dead, deadSub, caution, cautionSub, missed, missedSub }),
     step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No boards left open" })),
-    step === "caution" && /* @__PURE__ */ u3(DueStep, { ctx, lists: caution, empty: "No deadlines in the next 3 days", canScheduleToday: true }),
+    step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
-      step === "dead" || step === "previous" ? /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: next, children: "Later (skip)" }) : /* @__PURE__ */ u3("span", {}),
+      /* @__PURE__ */ u3("span", {}),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: next, children: [
         "Next ",
         /* @__PURE__ */ u3(Icon, { name: "arrow-right" })
@@ -6395,7 +6541,8 @@ function InboxView(props) {
   useStoreVersion(ctx.store);
   const [draft, setDraft] = d2("");
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
-  const issues = [...ctx.store.index.issues.values()].filter(isInbox).sort((a3, b2) => (b2.created ?? "").localeCompare(a3.created ?? ""));
+  const today = localToday();
+  const issues = [...ctx.store.index.issues.values()].filter((i3) => isInbox(i3, today)).sort((a3, b2) => (b2.created ?? "").localeCompare(a3.created ?? ""));
   const sel = issues.filter((i3) => selected.has(i3.id));
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const create = (e3) => {
@@ -6426,8 +6573,8 @@ function InboxView(props) {
       {
         count: sel.length,
         actions: [
-          { label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
-          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
@@ -6693,7 +6840,7 @@ function defaultQuery() {
   return { text: "", statuses: [], priorities: [], labels: [], scheduled: "any", sort: "id", desc: true };
 }
 function nextScheduled(issue, today) {
-  return issue.scheduled.find((d3) => d3 >= today) ?? null;
+  return issue.scheduled !== null && issue.scheduled >= today ? issue.scheduled : null;
 }
 function sortValue2(issue, key, today) {
   switch (key) {
@@ -6711,7 +6858,7 @@ function sortValue2(issue, key, today) {
       return issue.deadline;
     case "created":
       return issue.created;
-    case "next_scheduled":
+    case "scheduled":
       return nextScheduled(issue, today);
   }
 }
@@ -6721,8 +6868,8 @@ function queryIssues(issues, q2, today) {
     if (q2.statuses.length > 0 ? !q2.statuses.includes(i3.status) : !isActive(i3)) return false;
     if (q2.priorities.length > 0 && !q2.priorities.includes(i3.priority ?? "none")) return false;
     if (q2.labels.length > 0 && !q2.labels.every((l3) => i3.labels.includes(l3))) return false;
-    if (q2.scheduled === "yes" && i3.scheduled.length === 0) return false;
-    if (q2.scheduled === "no" && i3.scheduled.length > 0) return false;
+    if (q2.scheduled === "yes" && i3.scheduled === null) return false;
+    if (q2.scheduled === "no" && i3.scheduled !== null) return false;
     const hay = `${i3.id} ${i3.summary}`.toLowerCase();
     return words.every((w3) => hay.includes(w3));
   });
@@ -6744,7 +6891,7 @@ var SORTS = [
   { key: "summary", label: "summary" },
   { key: "status", label: "status" },
   { key: "priority", label: "priority" },
-  { key: "next_scheduled", label: "Next Do Date" },
+  { key: "scheduled", label: "Calendar date" },
   { key: "soft_deadline", label: "soft_deadline" },
   { key: "deadline", label: "deadline" },
   { key: "created", label: "Created" }
@@ -6827,7 +6974,7 @@ function IssueListView(props) {
         labels.map((l3) => /* @__PURE__ */ u3(FilterChip, { label: l3, on: q2.labels.includes(l3), onClick: () => set({ labels: toggle(q2.labels, l3) }) }))
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-filter-row", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Do Date" }),
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Calendar" }),
         [
           ["any", "Any"],
           ["yes", "Set"],
@@ -6840,13 +6987,13 @@ function IssueListView(props) {
         /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => set(defaultQuery()), children: "Reset" })
       ] })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "next", "soft_deadline", "deadline", "estimated"], empty: "No issues match" }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues: shown, selected, onSelect: setSelected, columns: ["status-detail", "labels", "calendar", "soft_deadline", "deadline", "estimated"], empty: "No issues match" }),
     /* @__PURE__ */ u3(
       ActionBar,
       {
         count: sel.length,
         actions: [
-          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
@@ -6862,7 +7009,6 @@ function IssueListView(props) {
 var import_obsidian21 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
-var ESTIMATES = [15, 30, 60, 120, 300, 480];
 var FIELD_OF = {
   status: (i3) => i3.status,
   scheduled: (i3) => i3.scheduled,
@@ -6873,31 +7019,14 @@ var FIELD_OF = {
   estimated: (i3) => i3.estimated,
   delegated_to: (i3) => i3.delegatedTo,
   priority: (i3) => i3.priority,
-  label: (i3) => i3.labels
+  label: (i3) => i3.labels,
+  clarified: (i3) => i3.clarified ? true : null,
+  tickler: (i3) => i3.tickler
 };
 function snapshot(issue, patch) {
   const prev = {};
   for (const key of Object.keys(patch)) prev[key] = FIELD_OF[key]?.(issue) ?? null;
   return prev;
-}
-function ScheduleSheet(props) {
-  const needEstimate = props.requireEstimate && props.issue.estimated === null;
-  const [estimated, setEstimated] = d2(props.issue.estimated);
-  return /* @__PURE__ */ u3(
-    CalendarForm,
-    {
-      initial: props.issue.scheduled,
-      softDeadline: props.issue.softDeadline,
-      deadline: props.issue.deadline,
-      submitLabel: "Done",
-      canSubmit: (count) => canConfirmSchedule(count, needEstimate, estimated),
-      onSubmit: (dates) => props.onSubmit(dates, estimated),
-      children: needEstimate && /* @__PURE__ */ u3("div", { class: "vt-sheet", children: [
-        /* @__PURE__ */ u3("div", { class: "vt-field-label", children: "estimated (required)" }),
-        /* @__PURE__ */ u3("div", { class: "vt-chip-row", children: ESTIMATES.map((m3) => /* @__PURE__ */ u3("button", { class: `vt-filter-chip${estimated === m3 ? " is-on" : ""}`, "aria-pressed": estimated === m3, onClick: () => setEstimated(m3), children: formatMinutes(m3) })) })
-      ] })
-    }
-  );
 }
 function useExcerpt(ctx, issue) {
   const [text, setText] = d2("");
@@ -6948,33 +7077,31 @@ function OrganizeView(props) {
     if (!undo) return;
     try {
       await ctx.writer.update(undo.path, undo.prev);
-      const next = new Set(handled);
-      next.delete(undo.id);
-      setHandled(next);
+      const next2 = new Set(handled);
+      next2.delete(undo.id);
+      setHandled(next2);
       setCount(Math.max(0, count - 1));
       setUndo(null);
     } catch (e3) {
       ctx.report("\u53D6\u308A\u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3);
     }
   };
-  const schedule = () => {
+  const calendar = () => {
     if (!issue) return;
     const target = issue;
-    new PreactModal(ctx.app, "Choose Do Date", (close2) => /* @__PURE__ */ u3(
-      ScheduleSheet,
-      {
-        issue: target,
-        requireEstimate: isInbox(target),
-        onSubmit: (dates, est) => {
-          close2();
-          const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0])}` : `Do Date: ${dates.length} days`;
-          void apply2(organizeSchedulePatch(target, dates, est), label);
-        }
-      }
-    )).open();
+    void askDate(ctx, "Calendar (must be done on this day)", localToday()).then((d3) => {
+      if (d3) void apply2(calendarPatch(target, d3), `Calendar: ${formatShortDate(d3)}`);
+    });
   };
-  const someday = () => void apply2(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
-  const later = () => void apply2({}, "Later");
+  const tickler = () => {
+    if (!issue) return;
+    const target = issue;
+    void askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1)).then((d3) => {
+      if (d3) void apply2(ticklerPatch(target, d3), `Tickler: ${formatShortDate(d3)}`);
+    });
+  };
+  const someday = () => void apply2(issue?.status === "someday" ? { tickler: null } : somedayPatch(), "To Someday");
+  const next = () => void apply2(issue ? nextPatch(issue) : {}, "Next");
   const cancel = () => void apply2(cancelPatch(), "Cancel");
   const close = () => void apply2(closePatch(), "Closed");
   h2(() => {
@@ -6982,7 +7109,7 @@ function OrganizeView(props) {
       if (!issue || !root.current || root.current.offsetParent === null) return;
       if (e3.target?.closest("input, textarea, select, [contenteditable='true'], .modal")) return;
       if (document.querySelector(".modal-container")) return;
-      const map = { ArrowRight: schedule, ArrowLeft: someday, ArrowUp: later, ArrowDown: cancel };
+      const map = { ArrowRight: next, ArrowLeft: someday, ArrowUp: tickler, ArrowDown: cancel };
       const fn = map[e3.key];
       if (fn) {
         e3.preventDefault();
@@ -7000,9 +7127,9 @@ function OrganizeView(props) {
     setDrag(null);
     if (!d3) return;
     const dir = direction(d3);
-    if (dir === "right") schedule();
+    if (dir === "right") next();
     else if (dir === "left") someday();
-    else if (dir === "up") later();
+    else if (dir === "up") tickler();
     else if (dir === "down") cancel();
   };
   const priorityMenu2 = (e3) => {
@@ -7051,12 +7178,12 @@ function OrganizeView(props) {
         " Someday"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`, children: [
-        /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        " Do Date"
+        /* @__PURE__ */ u3(Icon, { name: "list-todo" }),
+        " Next"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`, children: [
-        /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        " Later"
+        /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
+        " Tickler"
       ] }),
       /* @__PURE__ */ u3("div", { class: `vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`, children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
@@ -7081,7 +7208,7 @@ function OrganizeView(props) {
           children: [
             /* @__PURE__ */ u3("div", { class: "vt-organize-meta", children: [
               /* @__PURE__ */ u3(IdBadge, { issue }),
-              /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: isInbox(issue) ? "Inbox" : "Someday" }),
+              /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: issue.status === "someday" ? "Someday" : "Inbox" }),
               issue.revisit && /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: [
                 "revisit ",
                 formatShortDate(issue.revisit)
@@ -7116,10 +7243,6 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "cloud" }),
         /* @__PURE__ */ u3("span", { children: "Someday" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: later, title: "Later (\u2191)", children: [
-        /* @__PURE__ */ u3(Icon, { name: "clock" }),
-        /* @__PURE__ */ u3("span", { children: "Later" })
-      ] }),
       /* @__PURE__ */ u3("button", { class: "vt-round is-cancel", disabled: !issue, onClick: cancel, title: "Cancel\uFF08\u2193\uFF09", children: [
         /* @__PURE__ */ u3(Icon, { name: "x" }),
         /* @__PURE__ */ u3("span", { children: "Cancel" })
@@ -7128,9 +7251,17 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "check" }),
         /* @__PURE__ */ u3("span", { children: "Closed" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: schedule, title: "Choose Do Date (\u2192)", children: [
+      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: tickler, title: "Tickler: decide later, back to Inbox on a date (\u2191)", children: [
+        /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
+        /* @__PURE__ */ u3("span", { children: "Tickler" })
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: calendar, title: "Calendar: must be done on a specific day", children: [
         /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        /* @__PURE__ */ u3("span", { children: "Do Date" })
+        /* @__PURE__ */ u3("span", { children: "Calendar" })
+      ] }),
+      /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: next, title: "Next action, no date (\u2192)", children: [
+        /* @__PURE__ */ u3(Icon, { name: "list-todo" }),
+        /* @__PURE__ */ u3("span", { children: "Next" })
       ] })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-organize-foot", children: [
@@ -7141,7 +7272,7 @@ function OrganizeView(props) {
         ": ",
         undo.label,
         ")"
-      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Do Date / \u2191 Later / \u2193 Cancel (swipe or arrow keys)" }),
+      ] }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2190 Someday / \u2192 Next / \u2191 Tickler / \u2193 Cancel (swipe or arrow keys)" }),
       issue && /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(issue.path, true), children: [
         /* @__PURE__ */ u3(Icon, { name: "external-link" }),
         " Open"
@@ -7233,17 +7364,16 @@ function ScheduledView(props) {
   useStoreVersion(ctx.store);
   const today = localToday(new Date(useNow(6e4)));
   const days = Array.from({ length: DAYS }, (_2, i3) => addDays(today, i3));
-  const issues = [...ctx.store.index.issues.values()].filter((i3) => isScheduledAhead(i3, today)).sort((a3, b2) => (a3.scheduled.find((d3) => d3 >= today) ?? "").localeCompare(b2.scheduled.find((d3) => d3 >= today) ?? "") || a3.id.localeCompare(b2.id, "en", { numeric: true }));
+  const issues = [...ctx.store.index.issues.values()].filter((i3) => isScheduledAhead(i3, today)).sort((a3, b2) => a3.scheduled.localeCompare(b2.scheduled) || a3.id.localeCompare(b2.id, "en", { numeric: true }));
   const toggle2 = (path, scheduled, d3) => {
-    const next = scheduled.includes(d3) ? scheduled.filter((x2) => x2 !== d3) : [...scheduled, d3].sort();
-    void ctx.writer.update(path, { scheduled: next }).catch((e3) => ctx.report("\u5B9F\u884C\u65E5\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+    void ctx.writer.update(path, { scheduled: scheduled === d3 ? null : d3 }).catch((e3) => ctx.report("Calendar \u306E\u65E5\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   };
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Scheduled" }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    issues.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No issues with a Do Date from today on" }) : /* @__PURE__ */ u3("div", { class: "vt-sched-scroll", children: /* @__PURE__ */ u3("table", { class: "vt-sched", children: [
+    issues.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No issues on the Calendar from today on" }) : /* @__PURE__ */ u3("div", { class: "vt-sched-scroll", children: /* @__PURE__ */ u3("table", { class: "vt-sched", children: [
       /* @__PURE__ */ u3("thead", { children: /* @__PURE__ */ u3("tr", { children: [
         /* @__PURE__ */ u3("th", { class: "vt-sched-sticky" }),
         days.map((d3) => /* @__PURE__ */ u3("th", { class: weekdayOf(d3) % 6 === 0 ? "is-weekend" : "", children: [
@@ -7256,7 +7386,7 @@ function ScheduledView(props) {
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
-        days.map((d3) => /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: i3.scheduled.includes(d3), softDeadline: i3.softDeadline, deadline: i3.deadline, today, onClick: () => toggle2(i3.path, i3.scheduled, d3) }) }))
+        days.map((d3) => /* @__PURE__ */ u3("td", { children: /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: i3.scheduled === d3, softDeadline: i3.softDeadline, deadline: i3.deadline, today, onClick: () => toggle2(i3.path, i3.scheduled, d3) }) }))
       ] }, i3.id)) })
     ] }) })
   ] });
@@ -7334,9 +7464,9 @@ var ORDERS = [
 ];
 function sortSomeday(issues, order) {
   const nullsFirst = (a3, b2) => a3 === b2 ? 0 : a3 === null ? -1 : b2 === null ? 1 : a3.localeCompare(b2);
-  const nullsLast = (a3, b2) => a3 === b2 ? 0 : a3 === null ? 1 : b2 === null ? -1 : a3.localeCompare(b2);
+  const nullsLast2 = (a3, b2) => a3 === b2 ? 0 : a3 === null ? 1 : b2 === null ? -1 : a3.localeCompare(b2);
   return [...issues].sort(
-    (a3, b2) => order === "reviewed" ? nullsFirst(a3.reviewed, b2.reviewed) : order === "revisit" ? nullsLast(a3.revisit, b2.revisit) : (b2.created ?? "").localeCompare(a3.created ?? "")
+    (a3, b2) => order === "reviewed" ? nullsFirst(a3.reviewed, b2.reviewed) : order === "revisit" ? nullsLast2(a3.revisit, b2.revisit) : (b2.created ?? "").localeCompare(a3.created ?? "")
   );
 }
 function SomedayView(props) {
@@ -7381,7 +7511,7 @@ function SomedayView(props) {
         count: sel.length,
         actions: [
           { label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
-          { label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
         ]

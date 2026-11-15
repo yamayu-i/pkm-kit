@@ -55,7 +55,7 @@ const issuePaths = (issues: Iterable<Issue>) => [...issues].map((i) => i.path);
 export const SECTIONS: readonly SectionDef[] = [
 	// 閉じた変更も見えるよう、Issues は closed / canceled / someday も含むすべて
 	{ id: "issues", title: "Issues", command: "pkm-task:open-issues", paths: (p) => issuePaths(p.issues) },
-	{ id: "inbox", title: "Inbox", command: "pkm-task:open-inbox", paths: (p) => issuePaths(p.issues.filter(isInbox)) },
+	{ id: "inbox", title: "Inbox", command: "pkm-task:open-inbox", paths: (p) => issuePaths(p.issues.filter((i) => isInbox(i, p.today))) },
 	{ id: "organize", title: "Organize", command: "pkm-task:open-organize", paths: (p) => issuePaths(organizeQueue(p.issues, p.today)) },
 	{ id: "scheduled", title: "Scheduled", command: "pkm-task:open-scheduled", paths: (p) => issuePaths(p.issues.filter((i) => isScheduledAhead(i, p.today))) },
 	{ id: "someday", title: "Someday", command: "pkm-task:open-someday", paths: (p) => issuePaths(p.issues.filter((i) => i.status === "someday")) },

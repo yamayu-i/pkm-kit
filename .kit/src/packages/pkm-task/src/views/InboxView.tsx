@@ -1,19 +1,21 @@
 import { useState } from "preact/hooks";
+import { localToday } from "../core/dates";
 import { isInbox } from "../core/index";
 import { openCaptureModal } from "../obsidian/capture";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, scheduleIssues, scheduleToday, somedayIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, nextIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
 
-/** Inbox（ADR-0009）: Inbox の一覧と、summary だけで作る入力欄 */
+/** Inbox（ADR-0009, 0148, 0152）: Inbox の一覧と、summary だけで作る入力欄 */
 export function InboxView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
 	const [draft, setDraft] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(new Set());
-	const issues = [...ctx.store.index.issues.values()].filter(isInbox).sort((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
+	const today = localToday();
+	const issues = [...ctx.store.index.issues.values()].filter((i) => isInbox(i, today)).sort((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
 	const sel = issues.filter((i) => selected.has(i.id));
 	const done = () => setSelected(new Set());
 	const create = (e: Event) => {
@@ -44,8 +46,8 @@ export function InboxView(props: { ctx: TaskContext }) {
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Do Today", icon: "calendar-check", tone: "primary", run: () => void scheduleToday(ctx, sel).then(done) },
-					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },

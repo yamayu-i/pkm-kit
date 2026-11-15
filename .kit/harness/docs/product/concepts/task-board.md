@@ -10,11 +10,11 @@
 
 ## 操作
 
-載せる・外す、★ を付ける、並べ替える、status を変える、持ち越す（Do Tomorrow、Move Do Date、Inbox）、締める。
+載せる・外す、★ を付ける、並べ替える、status を変える、持ち越す（Back to Next、Tickler、Move date、Inbox）、締める。
 
 ## 使い方の筋道
 
-今日が Do Date の issue とサブイシュー、今日の routine は自動で載る。カードは status とタイマーで欄に分かれる（[ボードの欄と ★](task-board-lane.md)）。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。未完了が 0 になると締められ、締めなかったボードは翌日「Previous boards」に出る。
+今日が Calendar の日の issue とサブイシュー、今日の routine は自動で載る。カードは status とタイマーで欄に分かれる（[ボードの欄と ★](task-board-lane.md)）。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。未完了が 0 になると締められ、締めなかったボードは翌日「Previous boards」に出る。
 
 ## 根拠
 

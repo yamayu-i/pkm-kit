@@ -10,7 +10,7 @@ import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
 import { Icon } from "./Icon";
 import { linkProps } from "./a11y";
 
-export type Column = "status-detail" | "soft_deadline" | "deadline" | "labels" | "next" | "revisit" | "reviewed" | "created" | "estimated";
+export type Column = "status-detail" | "soft_deadline" | "deadline" | "labels" | "calendar" | "revisit" | "reviewed" | "created" | "estimated";
 
 /** 選択できる issue の一覧（ADR-0009 の行表示）。summary をクリックすると issue を開き、ほかのセルと「…」で編集する（ADR-0018） */
 export function IssueTable(props: {
@@ -56,9 +56,10 @@ export function IssueTable(props: {
 				return editable(issue, c, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
 			case "estimated":
 				return editable(issue, c, (e) => estimateMenu(ctx, e, issue.estimated, save), issue.estimated === null ? <span class="vt-muted">—</span> : <span class="vt-num">{formatMinutes(issue.estimated)}</span>);
-			case "next": {
-				const next = issue.scheduled.find((d) => d >= today);
-				return editable(issue, c, () => editScheduled(ctx, issue), next ? <span class="vt-num">{formatShortDate(next)}</span> : <span class="vt-muted">—</span>);
+			case "calendar": {
+				// Calendar の日（ADR-0152）。過ぎたものも出す（Missed）
+				const d = issue.scheduled;
+				return editable(issue, c, () => editScheduled(ctx, issue), d ? <span class="vt-num">{formatShortDate(d)}</span> : <span class="vt-muted">—</span>);
 			}
 			case "revisit":
 				return issue.revisit ? <span class="vt-num">{formatShortDate(issue.revisit)}</span> : <span class="vt-muted">—</span>;

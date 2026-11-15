@@ -87,8 +87,8 @@ describe("carryCounts と stalledIssues", () => {
 describe("estimationStats と buildOverview", () => {
 	it("見積もりと実績の比較、および 1 日の全体状況をまとめて返す", () => {
 		const i1 = makeIssue("i-1", { status: "closed", estimated: 60 });
-		const i2 = makeIssue("i-2", { status: "open", deadline: "2026-10-30", estimated: 90 });
-		const i3 = makeIssue("i-3", { status: "open", scheduled: [today], estimated: 45 });
+		const i2 = makeIssue("i-2", { status: "open", deadline: "2026-10-30", estimated: 90, clarified: true });
+		const i3 = makeIssue("i-3", { status: "open", scheduled: [today], estimated: 45, clarified: true });
 		const i4 = makeIssue("i-4", { status: "open" }); // Inbox
 		const worklogs = parseWorklog(
 			"worklog/pc/2026-11.jsonl",
