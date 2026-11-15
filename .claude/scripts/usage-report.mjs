@@ -5,7 +5,8 @@
  *
  * 集計するもの: コミットの種類（端末ごとの snapshot、wiki の操作、開発）、よく編集されたノート、
  * wiki のページの状態（更新されていない、他のページから参照されていない）、log.md の操作、
- * feedback.md への追記、未処理の気づき、未処理のデイリーノート、出力の記録（output-log.mjs の集計）
+ * feedback.md への追記、未処理の気づき、未処理のデイリーノート、出力の記録（output-log.mjs の集計）、
+ * MCP の利用（.kit/bin/mcp.mjs report の集計。.kit/src/docs/adr/0156-pkm-mcp.md）
  *
  * 使い方: node .claude/scripts/usage-report.mjs [--since YYYY-MM-DD]（既定は 30 日前）
  */
@@ -33,6 +34,17 @@ export function commitKind(subject) {
 function daysAgo(n) {
 	const d = new Date(Date.now() - n * 86_400_000);
 	return d.toISOString().slice(0, 10);
+}
+
+/** MCP の利用ログの集計（ツールごとの回数・エラー・時間・応答の大きさ、MCP を通さない読み書き、フィードバック） */
+export function mcpSummary(root, since, until) {
+	const bin = fileURLToPath(new URL("../../.kit/bin/mcp.mjs", import.meta.url));
+	if (!existsSync(bin)) return "（.kit/bin/mcp.mjs がないので集計できない）";
+	try {
+		return execFileSync(process.execPath, [bin, "report", root, `--since=${since}`, `--until=${until}`], { encoding: "utf8" }).trimEnd();
+	} catch (e) {
+		return `（集計に失敗した: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}）`;
+	}
 }
 
 export function usageReport(root, since = daysAgo(30), today = new Date().toISOString().slice(0, 10)) {
@@ -113,6 +125,7 @@ export function usageReport(root, since = daysAgo(30), today = new Date().toISOS
 	// 出力の記録（write-for-reader の段階ごと）
 	const outputs = outputSummary(root, since, today).split("\n").slice(1);
 	out.push("", "## 出力の記録（output-log）", ...outputs.map((l) => l.replace(/^## /, "### ")));
+	out.push("", "## MCP の利用（mcp-log）", "", mcpSummary(root, since, today));
 	return out.join("\n");
 }
 

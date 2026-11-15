@@ -138,7 +138,7 @@ const plugins = [
 		id: "pkm-task",
 		outdirEnv: "PKM_TASK_OUTDIR",
 		files: ["main.js", "manifest.json", "styles.css"],
-		bins: ["lint.mjs", "worklog-review.mjs", "mcp.mjs"],
+		bins: ["lint.mjs", "worklog-review.mjs", "mcp.mjs", "mcp-hook.mjs"],
 		// CodeMirror は Obsidian 本体が提供するもの（同梱しない）
 		allowedRequires: ["obsidian", "@codemirror/state", "@codemirror/view"],
 	},

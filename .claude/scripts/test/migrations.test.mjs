@@ -441,8 +441,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -835,4 +835,36 @@ test("0152: 日付でない値のあるリストは変えずに、check が失�
 	assert.equal(failed?.name, "0152-calendar-tickler");
 	assert.match(failed.problems.join("\n"), /issue\/i-30\.md: scheduled のリストに日付でない値があり/);
 	assert.equal(readFileSync(join(root, "issue/i-30.md"), "utf8"), files["issue/i-30.md"]);
+});
+
+test("0156: .mcp.json で .kit/bin/mcp.mjs を登録している名前を pkm にする。ほかのサーバーと引数は残す", async () => {
+	const root = childFrom("legacy");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	assert.deepEqual(readJsonFile(root, ".mcp.json"), {
+		mcpServers: { other: { command: "other-server" }, pkm: { command: "node", args: [".kit/bin/mcp.mjs", ".", "--device=ai"] } },
+	});
+	const again = await runMigrations(root);
+	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
+});
+
+test("0156: pkm がすでにあれば古い名前を消すだけにし、.mcp.json がなければ何もしない", async () => {
+	const root = childFrom("legacy");
+	write(root, {
+		".mcp.json": JSON.stringify({ mcpServers: { pkm: { command: "node", args: [".kit/bin/mcp.mjs", ".", "--device=pc-ai"] }, "pkm-task": { command: "node", args: [".kit/bin/mcp.mjs"] } } }),
+	});
+	assert.equal((await runMigrations(root)).failed, null);
+	assert.deepEqual(readJsonFile(root, ".mcp.json").mcpServers, { pkm: { command: "node", args: [".kit/bin/mcp.mjs", ".", "--device=pc-ai"] } });
+	const fresh = childFrom("fresh");
+	assert.equal((await runMigrations(fresh)).failed, null);
+	assert.equal(existsSync(join(fresh, ".mcp.json")), false);
+});
+
+test("0156: 読めない .mcp.json は変えずに、check が失敗して止まる", async () => {
+	const root = childFrom("legacy");
+	write(root, { ".mcp.json": "{ 壊れている" });
+	const { failed } = await runMigrations(root);
+	assert.equal(failed?.name, "0156-pkm-mcp");
+	assert.match(failed.problems.join(), /JSON として読めない/);
+	assert.equal(readFileSync(join(root, ".mcp.json"), "utf8"), "{ 壊れている");
 });

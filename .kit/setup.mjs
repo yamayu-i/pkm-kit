@@ -26,6 +26,8 @@ import { runMigrations } from "./migrate.mjs";
 export const METHODS = ["issue", "file", "none"];
 
 export const SEEDS = {
+	// PKM の MCP サーバー（ADR-0156）。Claude Code が Vault を開いたときに読む。端末名 ai で記録する
+	".mcp.json": `${JSON.stringify({ mcpServers: { pkm: { command: "node", args: [".kit/bin/mcp.mjs", ".", "--device=ai"] } } }, null, 2)}\n`,
 	"issue/labels.json": `${JSON.stringify(
 		[
 			{ name: "仕事", color: "#c6e6ff" },

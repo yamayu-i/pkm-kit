@@ -1,8 +1,11 @@
 /**
- * pkm-task の MCP サーバー（ADR-0025）。
+ * PKM の MCP サーバー（ADR-0025、ADR-0156）。
  * 外部依存を追加せず、Node 標準機能のみで JSON-RPC 2.0 over stdio を実装する。
+ * ツールは群ごとの接頭辞（task_ / note_ / daily_ / wiki_ / check_ / meta_）を持つ。task_ の旧名（接頭辞なし）も 1 版のあいだ受け付ける
  *
- * 使い方: node .kit/bin/mcp.mjs [Vault のルート] [--device=ai]
+ * 使い方:
+ *   node .kit/bin/mcp.mjs [Vault のルート] [--device=ai] [--toolset=task,note,daily,wiki,check]   サーバー（meta は常に公開する）
+ *   node .kit/bin/mcp.mjs report [Vault のルート] [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--json]   利用ログの集計
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -39,11 +42,68 @@ import {
 	updateSubIssueOnDisk,
 } from "./vault-ops";
 import { splitSubIssueText, type NewSubIssue, type SubIssuePatch } from "../src/core/sub-issue";
+import type { Problem } from "../src/core/problem";
+import { fileKind } from "../src/core/load";
+import { buildReport, errorKind, formatReport, logEnabled, McpLogger, readLogLines, summarizeArgs, withErrorKind } from "./mcp-log";
+import { callPkmTool, isPkmTool, PKM_TOOLS, TOOLSETS, type Toolset } from "./mcp-pkm";
+import { NoteStore, walkStats } from "./notes";
 
 export interface McpContext {
 	root: string;
 	device: string;
 	now?: () => Date;
+	/** 公開する群（省略時はすべて。meta は常に公開する） */
+	toolsets?: Toolset[];
+	/** 起動中のサーバーが持つ索引（ADR-0156 の 5）。ないなら呼び出しのたびに読み直す */
+	cache?: VaultCache;
+	/** 利用ログ（ADR-0156 の 6）。ないなら記録しない */
+	log?: McpLogger | null;
+	/** initialize で受け取ったクライアントの名前と版 */
+	client?: { name?: string; version?: string } | null;
+}
+
+/** task_ の群で、Vault を変えないツール。これ以外を呼んだら索引を作り直す */
+const TASK_READ_TOOLS = new Set(["get_overview", "get_board", "list_pending_boards", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
+const TASK_PREFIX = "task_";
+/** get_overview の一覧を切る件数（ADR-0156 の 3） */
+const OVERVIEW_TOP = 5;
+
+/**
+ * 起動中のサーバーが持つ索引。呼び出しのたびにファイルの mtime と大きさを見て、
+ * ノートは変わったものだけを、タスク管理のデータはどれかが変わったら全体を読み直す
+ */
+export class VaultCache {
+	readonly notes: NoteStore;
+	private taskSig = "";
+	private task: { index: TaskIndex; problems: Problem[] } | null = null;
+	fileCount = 0;
+
+	constructor(private readonly root: string) {
+		this.notes = new NoteStore(root);
+	}
+
+	refresh(): void {
+		const files = walkStats(this.root);
+		this.fileCount = files.size;
+		this.notes.refresh(files);
+		const parts: string[] = [];
+		for (const [p, st] of files) if (fileKind(p) !== null) parts.push(`${p}\t${st.mtimeMs}\t${st.size}`);
+		const sig = parts.join("\n");
+		if (sig !== this.taskSig) {
+			this.taskSig = sig;
+			this.task = null;
+		}
+	}
+
+	taskIndex(): { index: TaskIndex; problems: Problem[] } {
+		this.task ??= loadIndex(this.root);
+		return this.task;
+	}
+
+	invalidate(): void {
+		this.taskSig = "";
+		this.task = null;
+	}
 }
 
 export interface McpToolDef {
@@ -416,8 +476,23 @@ const TOOLS: McpToolDef[] = [
 	},
 ];
 
-export function listMcpTools(): McpToolDef[] {
-	return TOOLS;
+const TASK_NAMES = new Set(TOOLS.map((t) => t.name));
+
+/** 公開するツールの定義（接頭辞付き）。toolsets を省略したらすべて */
+export function listMcpTools(toolsets?: Toolset[]): McpToolDef[] {
+	const on = (g: Toolset) => g === "meta" || !toolsets || toolsets.includes(g);
+	const out: McpToolDef[] = [];
+	if (on("task")) out.push(...TOOLS.map((t) => ({ ...t, name: `${TASK_PREFIX}${t.name}` })));
+	for (const g of TOOLSETS) if (g !== "task" && on(g)) out.push(...PKM_TOOLS[g]);
+	return out;
+}
+
+/** 呼ばれた名前を解決する。旧名（task_ の接頭辞なし）なら alias */
+export function resolveTool(name: string): { group: Toolset; base: string; alias: boolean } | null {
+	if (name.startsWith(TASK_PREFIX) && TASK_NAMES.has(name.slice(TASK_PREFIX.length))) return { group: "task", base: name.slice(TASK_PREFIX.length), alias: false };
+	if (TASK_NAMES.has(name)) return { group: "task", base: name, alias: true };
+	if (isPkmTool(name)) return { group: name.split("_")[0] as Toolset, base: name, alias: false };
+	return null;
 }
 
 function loadIndex(root: string) {
@@ -474,9 +549,33 @@ function subPatch(args: Record<string, unknown>): SubIssuePatch {
 }
 
 export function callMcpTool(ctx: McpContext, name: string, args: Record<string, unknown> = {}): unknown {
+	const resolved = resolveTool(name);
+	if (!resolved) throw new Error(`[unknown_tool] 未知のツールです: ${name}`);
+	if (resolved.group !== "meta" && ctx.toolsets && !ctx.toolsets.includes(resolved.group)) {
+		throw new Error(`[unknown_tool] ${resolved.group} の群は公開していません（--toolset）: ${name}`);
+	}
 	const now = ctx.now ? ctx.now() : new Date();
 	const today = localToday(now);
-	const { index, problems } = loadIndex(ctx.root);
+	const cache = ctx.cache ?? new VaultCache(ctx.root);
+	cache.refresh();
+	if (resolved.group !== "task") {
+		return callPkmTool({ root: ctx.root, today, notes: cache.notes, taskProblems: () => cache.taskIndex().problems, log: ctx.log }, name, args);
+	}
+	try {
+		return callTaskTool(ctx, resolved.base, args, now, today, cache.taskIndex());
+	} finally {
+		if (!TASK_READ_TOOLS.has(resolved.base)) cache.invalidate();
+	}
+}
+
+function callTaskTool(
+	ctx: McpContext,
+	name: string,
+	args: Record<string, unknown>,
+	now: Date,
+	today: LocalDate,
+	{ index, problems }: { index: TaskIndex; problems: Problem[] },
+): unknown {
 	// 親子関係は廃止した（ADR-0135）。黙って無視せず、サブイシューの操作を案内する
 	if ((name === "create_issue" || name === "update_issue" || name === "list_issues") && args.parent !== undefined) {
 		throw new Error("parent は廃止しました（ADR-0135）。分けるときは create_sub_issues でサブイシューを足してください");
@@ -491,7 +590,20 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				staleDays: typeof args.stale_days === "number" ? args.stale_days : undefined,
 				cautionDays: typeof args.caution_days === "number" ? args.caution_days : undefined,
 			});
-			return { ...overview, problems };
+			// 一覧は件数と上位だけにする。全件は check_vault と task_list_issues で取る（ADR-0156 の 3）
+			const top = <T>(xs: T[]) => xs.slice(0, OVERVIEW_TOP);
+			const { stalled } = overview;
+			return {
+				...overview,
+				stalled: { inProgressStale: top(stalled.inProgressStale), revisitDue: top(stalled.revisitDue), waitingOrDelegated: top(stalled.waitingOrDelegated) },
+				stalledCounts: {
+					inProgressStale: stalled.inProgressStale.length,
+					revisitDue: stalled.revisitDue.length,
+					waitingOrDelegated: stalled.waitingOrDelegated.length,
+				},
+				problems: top(problems),
+				problemCount: problems.length,
+			};
 		}
 		case "get_board": {
 			const date = typeof args.date === "string" ? args.date : today;
@@ -745,8 +857,55 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 			return appendDailyNoteOnDisk(ctx.root, date, heading, content, now);
 		}
 		default:
-			throw new Error(`未知のツールです: ${name}`);
+			throw new Error(`[unknown_tool] 未知のツールです: ${name}`);
 	}
+}
+
+/** 結果から、ログに残す件数・切り詰め・検索の件数を取り出す */
+function resultMeta(name: string, out: unknown): Record<string, unknown> {
+	const meta: Record<string, unknown> = {};
+	if (Array.isArray(out)) meta.count = out.length;
+	else if (out && typeof out === "object") {
+		const o = out as Record<string, unknown>;
+		if (typeof o.total === "number") meta.count = o.total;
+		if (o.truncated === true) meta.truncated = true;
+	}
+	if (name === "note_search" && typeof meta.count === "number") meta.hits = meta.count;
+	return meta;
+}
+
+function toolsCall(ctx: McpContext, id: JsonRpcResponse["id"], params: Record<string, unknown>): JsonRpcResponse {
+	const name = String(params.name ?? "");
+	const args =
+		typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments)
+			? (params.arguments as Record<string, unknown>)
+			: {};
+	const resolved = resolveTool(name);
+	const started = performance.now();
+	let result: JsonRpcResponse["result"];
+	let logFields: Record<string, unknown>;
+	try {
+		const out = callMcpTool(ctx, name, args);
+		// 整形しない（ADR-0156 の 3）
+		const text = JSON.stringify(out) ?? "null";
+		result = { content: [{ type: "text", text }] };
+		logFields = { bytes: Buffer.byteLength(text), ...resultMeta(resolved?.base ?? name, out) };
+	} catch (e) {
+		const raw = e instanceof Error ? e.message : String(e);
+		// 想定していない例外（TypeError など）は internal にする
+		const kind = /^\[[a-z_]+\]/.test(raw) || !(e instanceof TypeError || e instanceof RangeError) ? errorKind(raw) : "internal";
+		const message = withErrorKind(raw, kind);
+		result = { isError: true, content: [{ type: "text", text: message }] };
+		logFields = { bytes: Buffer.byteLength(message), error: kind };
+	}
+	ctx.log?.write("call", {
+		tool: resolved ? (resolved.group === "task" ? `${TASK_PREFIX}${resolved.base}` : resolved.base) : name,
+		...(resolved?.alias ? { alias: true } : {}),
+		args: summarizeArgs(args),
+		ms: Math.round(performance.now() - started),
+		...logFields,
+	});
+	return { jsonrpc: "2.0", id, result };
 }
 
 export function handleMcpRequest(ctx: McpContext, req: JsonRpcRequest): JsonRpcResponse | null {
@@ -755,13 +914,15 @@ export function handleMcpRequest(ctx: McpContext, req: JsonRpcRequest): JsonRpcR
 		return null;
 	}
 	if (req.method === "initialize") {
+		const info = req.params?.clientInfo;
+		ctx.client = info && typeof info === "object" ? (info as McpContext["client"]) : null;
 		return {
 			jsonrpc: "2.0",
 			id,
 			result: {
 				protocolVersion: "2024-11-05",
 				capabilities: { tools: {} },
-				serverInfo: { name: "pkm-task-mcp", version: "1.0.0" },
+				serverInfo: { name: "pkm", version: SERVER_VERSION },
 			},
 		};
 	}
@@ -769,35 +930,10 @@ export function handleMcpRequest(ctx: McpContext, req: JsonRpcRequest): JsonRpcR
 		return { jsonrpc: "2.0", id, result: {} };
 	}
 	if (req.method === "tools/list") {
-		return { jsonrpc: "2.0", id, result: { tools: TOOLS } };
+		return { jsonrpc: "2.0", id, result: { tools: listMcpTools(ctx.toolsets) } };
 	}
 	if (req.method === "tools/call") {
-		const params = req.params ?? {};
-		const name = String(params.name ?? "");
-		const args =
-			typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments)
-				? (params.arguments as Record<string, unknown>)
-				: {};
-		try {
-			const out = callMcpTool(ctx, name, args);
-			return {
-				jsonrpc: "2.0",
-				id,
-				result: {
-					content: [{ type: "text", text: JSON.stringify(out, null, 2) }],
-				},
-			};
-		} catch (e) {
-			const message = e instanceof Error ? e.message : String(e);
-			return {
-				jsonrpc: "2.0",
-				id,
-				result: {
-					isError: true,
-					content: [{ type: "text", text: message }],
-				},
-			};
-		}
+		return toolsCall(ctx, id, req.params ?? {});
 	}
 	return {
 		jsonrpc: "2.0",
@@ -806,23 +942,65 @@ export function handleMcpRequest(ctx: McpContext, req: JsonRpcRequest): JsonRpcR
 	};
 }
 
-function parseMcpArgs(argv: string[]): { root: string; device: string } {
+export const SERVER_VERSION = "2.0.0";
+
+/** 起動の記録（initialize の後）。索引を先に作っておき、最初の呼び出しを速くする */
+export function logStart(ctx: McpContext): void {
+	const started = performance.now();
+	ctx.cache?.refresh();
+	ctx.cache?.taskIndex();
+	ctx.log?.write("start", {
+		version: SERVER_VERSION,
+		client: ctx.client ?? null,
+		toolsets: ctx.toolsets ?? "all",
+		device: ctx.device,
+		fileCount: ctx.cache?.fileCount ?? null,
+		noteCount: ctx.cache?.notes.notes.size ?? null,
+		indexMs: Math.round(performance.now() - started),
+	});
+}
+
+export function parseMcpArgs(argv: string[]): { root: string; device: string; toolsets?: Toolset[]; flags: Record<string, string | true> } {
 	// VAULT_TASK_DEVICE は改名前の名前（ADR-0058）
 	let device = process.env.PKM_TASK_DEVICE ?? process.env.VAULT_TASK_DEVICE ?? "ai";
 	let root = process.cwd();
+	let toolsets: Toolset[] | undefined;
+	const flags: Record<string, string | true> = {};
 	for (const a of argv) {
 		if (a.startsWith("--device=")) {
 			device = a.slice("--device=".length);
-		} else if (!a.startsWith("--")) {
+		} else if (a.startsWith("--toolset=")) {
+			const names = a.slice("--toolset=".length).split(",").map((s) => s.trim()).filter(Boolean);
+			const bad = names.filter((n) => !(TOOLSETS as readonly string[]).includes(n));
+			if (bad.length) throw new Error(`未知の群です: ${bad.join(", ")}（${TOOLSETS.join(", ")}）`);
+			toolsets = names as Toolset[];
+		} else if (a.startsWith("--")) {
+			const eq = a.indexOf("=");
+			if (eq === -1) flags[a.slice(2)] = true;
+			else flags[a.slice(2, eq)] = a.slice(eq + 1);
+		} else {
 			root = a;
 		}
 	}
-	return { root, device };
+	return { root, device, toolsets, flags };
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-	const { root, device } = parseMcpArgs(process.argv.slice(2));
-	const ctx: McpContext = { root, device };
+function daysAgo(n: number, now = new Date()): string {
+	return localToday(new Date(now.getTime() - n * 86_400_000));
+}
+
+function runReport(argv: string[]): void {
+	const { root, flags } = parseMcpArgs(argv);
+	const since = typeof flags.since === "string" ? flags.since : daysAgo(30);
+	const until = typeof flags.until === "string" ? flags.until : localToday(new Date());
+	const report = buildReport(readLogLines(root), since, until);
+	process.stdout.write(flags.json ? `${JSON.stringify(report)}\n` : `${formatReport(report)}\n`);
+}
+
+function runServer(argv: string[]): void {
+	const { root, device, toolsets } = parseMcpArgs(argv);
+	const ctx: McpContext = { root, device, toolsets, cache: new VaultCache(root), log: logEnabled() ? McpLogger.forServer(root) : null };
+	let started = false;
 	const rl = createInterface({ input: process.stdin, terminal: false });
 	rl.on("line", (line) => {
 		const trimmed = line.trim();
@@ -831,9 +1009,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 			const req = JSON.parse(trimmed) as JsonRpcRequest;
 			const res = handleMcpRequest(ctx, req);
 			if (res !== null) process.stdout.write(`${JSON.stringify(res)}\n`);
+			if (req.method === "initialize" && !started) {
+				started = true;
+				setImmediate(() => logStart(ctx));
+			}
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message } })}\n`);
 		}
 	});
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+	const argv = process.argv.slice(2);
+	if (argv[0] === "report") runReport(argv.slice(1));
+	else runServer(argv);
 }
