@@ -60,7 +60,6 @@ export function checkGuide(root:string):string[]{
   if(entry.kind!=="visual"&&!entry.reason) errors.push(path+": 対象外の理由がない");
   for(const p of entry.source) if(!existsSync(join(root,p))) errors.push(path+": 実装がない "+p);
  }
- if(manifest.fingerprint!==fingerprint(root)) errors.push("UI の入力が変わっています。pnpm --filter product-guide capture を実行してください");
  for(const image of manifest.images){
   if(!/^pkm-guide\/ui\/[a-z0-9-]+\.png$/.test(image.file)) {errors.push("画像パスが不正: "+image.file);continue}
   const path=safeOutput(root,image.file);
@@ -69,6 +68,9 @@ export function checkGuide(root:string):string[]{
  const expected=renderDocuments(docs,css,catalog,manifest);
  if(!existsSync(join(root,guidePath))||readFileSync(join(root,guidePath),"utf8")!==expected) errors.push(guidePath+": 原本と一致しません。node .kit/bin/product-guide.mjs build を実行してください");
  return errors;
+}
+export function uiDrift(root:string):boolean{
+ return read(root).manifest.fingerprint!==fingerprint(root);
 }
 export function buildGuide(root:string){
  const data=read(root);
@@ -83,6 +85,7 @@ export async function main(args:string[]){
  if(command==="build") console.log("体験定義書: "+buildGuide(root)+" 文書を生成");
  else if(command==="check"){
   const errors=checkGuide(root);if(errors.length) throw Error(errors.join("\n"));console.log("体験定義書: 原本・画像・生成物は一致");
+  if(uiDrift(root)) console.warn("警告: UI の入力が画面例を撮った時から変わっています。月 1 回か任意のタイミングで pnpm --filter product-guide capture と build を実行して反映してください");
  }else if(command==="inventory"){
   const {docs,catalog}=read(root);
   console.log(JSON.stringify({documents:docs.map(d=>d.path),surfaces:catalog},null,2));
