@@ -146,6 +146,18 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 						{member ? member.nickname : issue.delegatedTo ?? "Choose delegate"}
 					</button>
 				)}
+				{issue.status === "open" && (
+					// 整理したか（ADR-0148）。open のときだけ Inbox に関わるので、そのときだけ出す
+					<button
+						class={`vt-field-chip${issue.clarified ? "" : " is-placeholder"}`}
+						aria-pressed={issue.clarified}
+						title={issue.clarified ? "Clarified. Click to return to Inbox" : "In Inbox (not clarified). Click to mark as clarified"}
+						onClick={() => save({ clarified: issue.clarified ? null : true })}
+					>
+						<Icon name={issue.clarified ? "list-todo" : "inbox"} />
+						{issue.clarified ? "Clarified" : "Inbox"}
+					</button>
+				)}
 				{issue.status === "someday" && (
 					<button class="vt-field-chip" onClick={editRevisit}>
 						<Icon name="calendar-clock" />

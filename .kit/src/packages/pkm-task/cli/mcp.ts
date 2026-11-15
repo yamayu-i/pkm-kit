@@ -115,7 +115,7 @@ const TOOLS: McpToolDef[] = [
 				priorities: { type: "array", items: { type: "string" } },
 				labels: { type: "array", items: { type: "string" } },
 				scheduled: { type: "string", enum: ["any", "yes", "no"] },
-				inbox_only: { type: "boolean", description: "true のとき Inbox の issue のみ返す" },
+				inbox_only: { type: "boolean", description: "true のとき Inbox（open で clarified でない。日付は見ない。ADR-0148）の issue のみ返す" },
 				sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
 				desc: { type: "boolean" },
 				limit: { type: "number", description: "最大件数（既定 100）" },
@@ -222,7 +222,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue・サブをリスケ（別の日へ移動）または Inbox 戻しで片付け、carried にする。サブは Inbox に戻せない",
+		description: "ボード上の未完了 issue・サブをリスケ（別の日へ移動）または Inbox 戻し（clarified を外す。日付は残す）で片付け、carried にする。サブは Inbox に戻せない",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -269,6 +269,7 @@ const TOOLS: McpToolDef[] = [
 				estimated: { type: ["number", "null"] },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
+				clarified: { type: "boolean", description: "整理済み（何をするか決めた）で作る。省くと Inbox（未整理）に入る（ADR-0148）" },
 				add_to_board_date: { type: ["string", "null"], description: "指定した日付（YYYY-MM-DD）のボードにも載せる" },
 			},
 			required: ["summary"],
@@ -293,6 +294,7 @@ const TOOLS: McpToolDef[] = [
 				revisit: { type: ["string", "null"] },
 				reviewed: { type: ["string", "null"] },
 				estimated: { type: ["number", "null"] },
+				clarified: { type: ["boolean", "null"], description: "整理済みか（ADR-0148）。true で Inbox から出る。false / null で Inbox に戻す（日付は残る）" },
 			},
 			required: ["id"],
 		},
@@ -663,6 +665,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 					estimated: args.estimated as number | null | undefined,
 					soft_deadline: args.soft_deadline as LocalDate | null | undefined,
 					deadline: args.deadline as LocalDate | null | undefined,
+					clarified: args.clarified as boolean | undefined,
 					add_to_board_date: args.add_to_board_date as LocalDate | null | undefined,
 				},
 				ctx.device,
@@ -684,6 +687,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(args.revisit !== undefined ? { revisit: args.revisit as LocalDate | null } : {}),
 				...(args.reviewed !== undefined ? { reviewed: args.reviewed as LocalDate | null } : {}),
 				...(args.estimated !== undefined ? { estimated: args.estimated as number | null } : {}),
+				...(args.clarified !== undefined ? { clarified: args.clarified as boolean | null } : {}),
 			}, { device: ctx.device, now });
 		}
 		case "create_sub_issues": {

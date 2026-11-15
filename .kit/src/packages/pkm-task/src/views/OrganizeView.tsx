@@ -1,6 +1,6 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { canConfirmSchedule, cancelPatch, closePatch, organizeSchedulePatch, somedayPatch, type Patch } from "../core/actions";
+import { canConfirmSchedule, cancelPatch, closePatch, nextPatch, organizeSchedulePatch, somedayPatch, type Patch } from "../core/actions";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isInbox, organizeQueue } from "../core/index";
@@ -29,6 +29,7 @@ const FIELD_OF: Record<string, (i: Issue) => Patch[string]> = {
 	delegated_to: (i) => i.delegatedTo,
 	priority: (i) => i.priority,
 	label: (i) => i.labels,
+	clarified: (i) => (i.clarified ? true : null),
 };
 
 function snapshot(issue: Issue, patch: Patch): Patch {
@@ -39,7 +40,7 @@ function snapshot(issue: Issue, patch: Patch): Patch {
 
 /**
  * Do Date を選ぶ（ADR-0030。呼び方は ADR-0032 の Do Date にそろえる）: カレンダーだけを出し、日付を複数選んで決定する。
- * Inbox で estimated がまだないときだけ、estimated も選ぶ（ADR-0009 の必須は残す）
+ * requireEstimate のときだけ estimated も選ぶ。Organize は求めない（ADR-0148。GTD は見積もりを整理の条件にしない）
  */
 export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; onSubmit: (dates: LocalDate[], estimated: number | null) => void }) {
 	const needEstimate = props.requireEstimate && props.issue.estimated === null;
@@ -93,7 +94,7 @@ function useExcerpt(ctx: TaskContext, issue: Issue | undefined): string {
 	return text;
 }
 
-/** Organize（ADR-0009）: Inbox と Someday を 1 枚ずつ整理する */
+/** Organize（ADR-0009, 0148）: Inbox と Someday を 1 枚ずつ整理する。→ Next / ← Someday / ↓ Cancel */
 export function OrganizeView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
@@ -141,7 +142,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		new PreactModal(ctx.app, "Choose Do Date", (close) => (
 			<ScheduleSheet
 				issue={target}
-				requireEstimate={isInbox(target)}
+				requireEstimate={false}
 				onSubmit={(dates, est) => {
 					close();
 					const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0]!)}` : `Do Date: ${dates.length} days`;
@@ -151,7 +152,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		)).open();
 	};
 	const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
-	const later = () => void apply({}, "Later");
+	const next = () => void apply(issue ? nextPatch(issue) : {}, "Next");
 	const cancel = () => void apply(cancelPatch(), "Cancel");
 	const close = () => void apply(closePatch(), "Closed");
 
@@ -162,7 +163,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 			if (!issue || !root.current || root.current.offsetParent === null) return;
 			if ((e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable='true'], .modal")) return;
 			if (document.querySelector(".modal-container")) return;
-			const map: Record<string, () => void> = { ArrowRight: schedule, ArrowLeft: someday, ArrowUp: later, ArrowDown: cancel };
+			const map: Record<string, () => void> = { ArrowRight: next, ArrowLeft: someday, ArrowDown: cancel };
 			const fn = map[e.key];
 			if (fn) {
 				e.preventDefault();
@@ -182,9 +183,8 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		setDrag(null);
 		if (!d) return;
 		const dir = direction(d);
-		if (dir === "right") schedule();
+		if (dir === "right") next();
 		else if (dir === "left") someday();
-		else if (dir === "up") later();
 		else if (dir === "down") cancel();
 	};
 
@@ -232,10 +232,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="cloud" /> Someday
 					</div>
 					<div class={`vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`}>
-						<Icon name="calendar-plus" /> Do Date
-					</div>
-					<div class={`vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`}>
-						<Icon name="clock" /> Later
+						<Icon name="list-todo" /> Next
 					</div>
 					<div class={`vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`}>
 						<Icon name="x" /> Cancel
@@ -289,10 +286,6 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<Icon name="cloud" />
 					<span>Someday</span>
 				</button>
-				<button class="vt-round" disabled={!issue} onClick={later} title="Later (↑)">
-					<Icon name="clock" />
-					<span>Later</span>
-				</button>
 				<button class="vt-round is-cancel" disabled={!issue} onClick={cancel} title="Cancel（↓）">
 					<Icon name="x" />
 					<span>Cancel</span>
@@ -301,9 +294,13 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<Icon name="check" />
 					<span>Closed</span>
 				</button>
-				<button class="vt-round is-schedule" disabled={!issue} onClick={schedule} title="Choose Do Date (→)">
+				<button class="vt-round" disabled={!issue} onClick={schedule} title="Choose Do Date">
 					<Icon name="calendar-plus" />
 					<span>Do Date</span>
+				</button>
+				<button class="vt-round is-schedule" disabled={!issue} onClick={next} title="Next action, no date (→)">
+					<Icon name="list-todo" />
+					<span>Next</span>
 				</button>
 			</div>
 			<div class="vt-organize-foot">
@@ -312,7 +309,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="undo-2" /> Undo ({undo.id}: {undo.label})
 					</button>
 				) : (
-					<span class="vt-muted">← Someday / → Do Date / ↑ Later / ↓ Cancel (swipe or arrow keys)</span>
+					<span class="vt-muted">← Someday / → Next / ↓ Cancel (swipe or arrow keys)</span>
 				)}
 				{issue && (
 					<button class="vt-button is-text" onClick={() => void ctx.openPath(issue.path, true)}>

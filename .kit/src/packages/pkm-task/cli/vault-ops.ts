@@ -302,6 +302,8 @@ export interface CreateIssueInput {
 	estimated?: number | null;
 	soft_deadline?: LocalDate | null;
 	deadline?: LocalDate | null;
+	/** 整理済みで作る（ADR-0148）。省くと未整理（Inbox） */
+	clarified?: boolean;
 	add_to_board_date?: LocalDate | null;
 }
 
@@ -339,6 +341,7 @@ export function createIssueOnDisk(
 	if (input.deadline !== undefined && input.deadline !== null && !isLocalDate(input.deadline)) {
 		throw new Error(`deadline の日付が不正です: ${String(input.deadline)}`);
 	}
+	if (input.clarified !== undefined && typeof input.clarified !== "boolean") throw new Error("clarified は true / false にしてください");
 
 	const taken = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys()];
 	const [id] = nextIds("i", taken, 1);
@@ -356,6 +359,7 @@ export function createIssueOnDisk(
 	if (input.estimated !== undefined) extra.estimated = input.estimated;
 	if (input.soft_deadline !== undefined) extra.soft_deadline = input.soft_deadline;
 	if (input.deadline !== undefined) extra.deadline = input.deadline;
+	if (input.clarified === true) extra.clarified = true;
 
 	const issue =
 		Object.keys(extra).length > 0
@@ -389,6 +393,8 @@ export interface UpdateIssueInput {
 	revisit?: LocalDate | null;
 	reviewed?: LocalDate | null;
 	estimated?: number | null;
+	/** false / null は項目を消す（未設定が未整理。ADR-0148） */
+	clarified?: boolean | null;
 }
 
 /**
@@ -470,6 +476,10 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 			throw new Error(`estimated は 0 以上の数（分）にしてください: ${String(input.estimated)}`);
 		}
 		patch.estimated = input.estimated;
+	}
+	if (input.clarified !== undefined) {
+		if (input.clarified !== null && typeof input.clarified !== "boolean") throw new Error("clarified は true / false にしてください");
+		patch.clarified = input.clarified === true ? true : null;
 	}
 
 	// someday の issue に実行日や期限を入れたら open に戻す（ADR-0018）

@@ -106,6 +106,22 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", parent: "i-1" })).toThrow(/parent/);
 	});
 
+	it("clarified を create_issue と update_issue で読み書きでき、Inbox の一覧は clarified でない open の issue になる（ADR-0148）", () => {
+		const inbox = () => (callMcpTool(ctx, "list_issues", { inbox_only: true }) as { id: string }[]).map((i) => i.id);
+		// i-1 は実行日があっても未整理なので Inbox
+		expect(inbox()).toEqual(["i-1", "i-2"]);
+		callMcpTool(ctx, "update_issue", { id: "i-1", clarified: true });
+		expect(readFileSync(join(root, "issue/i-1.md"), "utf8")).toMatch(/^clarified: true$/m);
+		expect(inbox()).toEqual(["i-2"]);
+		// false は項目を消す（未設定が未整理）
+		callMcpTool(ctx, "update_issue", { id: "i-1", clarified: false });
+		expect(readFileSync(join(root, "issue/i-1.md"), "utf8")).not.toMatch(/clarified/);
+		const created = callMcpTool(ctx, "create_issue", { summary: "整理済みで作る", clarified: true }) as { id: string; clarified: boolean };
+		expect(created.clarified).toBe(true);
+		expect(inbox()).toEqual(["i-1", "i-2"]);
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", clarified: "yes" })).toThrow(/clarified/);
+	});
+
 	it("carry_issues と update_issue で未完了を解消してから close_board で要約を書き、append_daily_note で末尾に助言を追記できる", () => {
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
 		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
