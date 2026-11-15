@@ -27,6 +27,7 @@ var import_obsidian4 = require("obsidian");
 
 // src/core/policy.ts
 var HTML_EXTENSIONS = ["html", "htm"];
+var GUIDE_PATH = "pkm-guide/user-experience.html";
 var CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; form-action 'none'";
 var IMAGE_TYPES = {
   png: "image/png",
@@ -615,6 +616,19 @@ var PkmHtmlPlugin = class extends import_obsidian4.Plugin {
         if (!isHtml(file)) return false;
         if (!checking) void exportHtmlToTmp(this.app, file);
         return true;
+      }
+    });
+    this.addCommand({
+      id: "open-user-experience-guide",
+      name: "Open user experience guide",
+      icon: "book-open",
+      callback: () => {
+        const file = this.app.vault.getAbstractFileByPath(GUIDE_PATH);
+        if (!isHtml(file)) {
+          new import_obsidian4.Notice(`pkm-html: ${GUIDE_PATH} \u304C\u3042\u308A\u307E\u305B\u3093\u3002\u4E0A\u6D41\u306E\u53D6\u308A\u8FBC\u307F\u3068\u540C\u671F\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044`);
+          return;
+        }
+        void this.app.workspace.getLeaf("tab").openFile(file);
       }
     });
     this.addCommand({

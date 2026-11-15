@@ -4,7 +4,7 @@
 
 ## 使う人の入口
 
-子 Vault のファイル一覧で pkm-guide/user-experience.html を開く。PKM HTML が必要。外部に渡すときは Export HTML to tmp/ を使い、色と画像を埋め込む。
+子 Vault のコマンドパレットで「Open user experience guide」を実行するか、ファイル一覧で pkm-guide/user-experience.html を開く。PKM HTML が必要。外部に渡すときは Export HTML to tmp/ を使い、色と画像を埋め込む。
 
 ## 更新する人の手順
 
