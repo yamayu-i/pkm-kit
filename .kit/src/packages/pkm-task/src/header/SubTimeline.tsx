@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import type { SubIssue } from "../core/sub-issue";
-import { barOf, dateAtX, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
+import { barOf, dateAtX, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { StatusIcon } from "../ui/StatusIcon";
@@ -44,7 +44,14 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	};
 	const xOf = (date: LocalDate) => dayOffset(range, date) * px;
 	const rowOf = new Map(subs.map((s, i) => [s.id, i]));
-	const arrows = dependencyArrows(subs.map((s) => ({ ...s, ...(shown(s) ?? {}) })));
+	const arrows = dependencyArrows(subs.map((s) => ({ ...s, ...(shown(s) ?? {}) }))).map((a) => ({ ...a, fromRow: rowOf.get(a.from)!, toRow: rowOf.get(a.to)! }));
+	// 各行の棒の左右（px）。矢印は途中の棒をよけて引く（timeline.ts の routeArrows）
+	const spans = subs.map((s) => {
+		const bar = shown(s);
+		return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
+	});
+	const routes = routeArrows(arrows, spans, ROW);
+	const routed = arrows.map((a, i) => ({ late: a.late, d: roundedPath(routes[i]!, 4) }));
 
 	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
 		const bar = barOf(sub);
@@ -111,6 +118,19 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 						{cols.map((c) => (
 							<div class={`vt-timeline-stripe${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} />
 						))}
+						{/* 矢印は棒の下に描く（棒を塗りつぶさない）。経路は timeline.ts の routeArrows（途中の棒をよけ、線どうしが重ならないようにずらす） */}
+						<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
+							<defs>
+								{(["", "-late"] as const).map((suffix) => (
+									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+										<path d="M0 0 L8 4 L0 8 z" class={`vt-timeline-arrowhead${suffix ? " is-late" : ""}`} />
+									</marker>
+								))}
+							</defs>
+							{routed.map((r) => (
+								<path class={`vt-timeline-arrow${r.late ? " is-late" : ""}`} d={r.d} marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : ""})`} />
+							))}
+						</svg>
 						<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
 						{subs.map((sub, i) => {
 							const bar = shown(sub);
@@ -159,25 +179,6 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 								</div>
 							);
 						})}
-						<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
-							<defs>
-								{(["", "-late"] as const).map((suffix) => (
-									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-										<path d="M0 0 L8 4 L0 8 z" class={`vt-timeline-arrowhead${suffix ? " is-late" : ""}`} />
-									</marker>
-								))}
-							</defs>
-							{arrows.map((a) => {
-								const from = shown(subs[rowOf.get(a.from)!]!)!;
-								const to = shown(subs[rowOf.get(a.to)!]!)!;
-								const x1 = xOf(from.end) + px;
-								const y1 = rowOf.get(a.from)! * ROW + ROW / 2;
-								const x2 = xOf(to.start);
-								const y2 = rowOf.get(a.to)! * ROW + ROW / 2;
-								const elbow = Math.max(x1, x2 - 6);
-								return <path class={`vt-timeline-arrow${a.late ? " is-late" : ""}`} d={`M${x1} ${y1} H${elbow} V${y2} H${x2}`} marker-end={`url(#vt-timeline-arrowhead${a.late ? "-late" : ""})`} />;
-							})}
-						</svg>
 					</div>
 				</div>
 			</div>

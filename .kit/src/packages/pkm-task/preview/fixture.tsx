@@ -45,7 +45,9 @@ const i2Subs = [
 	sub("cccccc", `summary: "経理に確認してもらう（長めの表題がここに入るとどうなるか）"\nstatus: delegated\ndelegated_to: m-1\nscheduled: [${addDays(t, 2)}]\ndepends_on: [bbbbbb]\n`),
 	sub("dddddd", `summary: "旧フローの資料を片付ける"\nstatus: open\ndeadline: ${addDays(t, 6)}\n`),
 	sub("eeeeee", `summary: "新しいフローで試しに送る"\nstatus: open\nstart: ${addDays(t, 4)}\nend: ${addDays(t, 9)}\nsoft_deadline: ${addDays(t, 8)}\ndepends_on: [bbbbbb]\n`),
-	sub("ffffff", `summary: "結果を共有する"\nstatus: waiting\nstart: ${addDays(t, 7)}\nend: ${addDays(t, 24)}\ndepends_on: [eeeeee]\n`),
+	sub("ffffff", `summary: "結果を共有する"\nstatus: waiting\nstart: ${addDays(t, 7)}\nend: ${addDays(t, 24)}\ndepends_on: [eeeeee, bbbbbb]\n`),
+	sub("gggggg", `summary: "例外の扱いを決める"\nstatus: open\nstart: ${addDays(t, 1)}\nend: ${addDays(t, 5)}\ndepends_on: [bbbbbb]\n`),
+	sub("hhhhhh", `summary: "手順書を清書する"\nstatus: open\nstart: ${addDays(t, 10)}\nend: ${addDays(t, 12)}\ndepends_on: [gggggg, eeeeee, bbbbbb]\n`),
 ].join("\n");
 const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
 const boardLog = [

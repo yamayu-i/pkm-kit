@@ -3405,6 +3405,118 @@ function dependencyArrows(subs) {
   }
   return out;
 }
+var ARROW_GAP = 8;
+var LANE_V = 4;
+var BAND_OFFSETS = [0, -3, 3, -6, 6];
+var BAR_CLEAR = 4;
+function routeArrows(arrows, bars, rowHeight) {
+  const mid = (row) => row * rowHeight + rowHeight / 2;
+  const maxX = Math.max(0, ...bars.map((b2) => b2?.x1 ?? 0)) + ARROW_GAP * 4;
+  const verticals = [];
+  const bands = [];
+  const columnFree = (x2, rowA, rowB) => {
+    for (let r3 = Math.min(rowA, rowB) + 1; r3 < Math.max(rowA, rowB); r3++) {
+      const b2 = bars[r3];
+      if (b2 && x2 > b2.x0 - BAR_CLEAR && x2 < b2.x1 + BAR_CLEAR) return false;
+    }
+    return true;
+  };
+  const verticalFree = (x2, y0, y1, share) => !verticals.some((v3) => !share(v3) && Math.abs(v3.x - x2) < 3 && Math.min(v3.y1, Math.max(y0, y1)) - Math.max(v3.y0, Math.min(y0, y1)) > 1);
+  const pickX = (ideal, lo, hi, rowA, rowB, y0, y1, share = () => false) => {
+    const limit = Math.max(ideal - lo, hi - ideal);
+    for (let d3 = 0; d3 <= limit; d3 += LANE_V) {
+      for (const x2 of d3 === 0 ? [ideal] : [ideal - d3, ideal + d3]) {
+        if (x2 < lo || x2 > hi) continue;
+        if (columnFree(x2, rowA, rowB) && verticalFree(x2, y0, y1, share)) return x2;
+      }
+    }
+    return null;
+  };
+  const pickBand = (boundary, xa, xb) => {
+    const base = boundary * rowHeight;
+    const [x0, x1] = [Math.min(xa, xb), Math.max(xa, xb)];
+    for (const off of BAND_OFFSETS) {
+      const y3 = base + off;
+      if (!bands.some((b2) => Math.abs(b2.y - y3) < 2 && Math.min(b2.x1, x1) - Math.max(b2.x0, x0) > 1)) return y3;
+    }
+    return base;
+  };
+  const record2 = (points, from, to) => {
+    for (let i3 = 1; i3 < points.length; i3++) {
+      const [ax, ay] = points[i3 - 1];
+      const [bx, by] = points[i3];
+      if (ax === bx) verticals.push({ x: ax, y0: Math.min(ay, by), y1: Math.max(ay, by), from, to });
+      else if (Math.abs(ay - Math.round(ay / rowHeight) * rowHeight) <= 8 && ay === by) bands.push({ y: ay, x0: Math.min(ax, bx), x1: Math.max(ax, bx) });
+    }
+  };
+  return arrows.map(({ fromRow, toRow }) => {
+    const src = bars[fromRow];
+    const dst = bars[toRow];
+    const x1 = src.x1;
+    const y1 = mid(fromRow);
+    const x2 = dst.x0;
+    const y22 = mid(toRow);
+    const down = toRow > fromRow;
+    if (x2 - x1 >= ARROW_GAP * 2) {
+      const xv = pickX(x2 - ARROW_GAP, x1 + BAR_CLEAR, x2 - BAR_CLEAR, fromRow, toRow, y1, y22, (v3) => v3.to === toRow);
+      if (xv !== null) {
+        const points2 = [[x1, y1], [xv, y1], [xv, y22], [x2, y22]];
+        record2(points2, fromRow, toRow);
+        return points2;
+      }
+    }
+    const srcBoundary = down ? fromRow + 1 : fromRow;
+    const dstBoundary = down ? toRow : toRow + 1;
+    const ySrcBand = srcBoundary * rowHeight;
+    const yDstBand = dstBoundary * rowHeight;
+    const xa = pickX(x1 + ARROW_GAP, x1 + BAR_CLEAR, x1 + ARROW_GAP * 4, fromRow, fromRow, y1, ySrcBand, (v3) => v3.from === fromRow) ?? x1 + ARROW_GAP;
+    const xb = pickX(x2 - ARROW_GAP, x2 - ARROW_GAP * 4, x2 - BAR_CLEAR, toRow, toRow, yDstBand, y22, (v3) => v3.to === toRow) ?? x2 - ARROW_GAP;
+    let points;
+    if (srcBoundary === dstBoundary) {
+      const yb = pickBand(srcBoundary, xa, xb);
+      points = [[x1, y1], [xa, y1], [xa, yb], [xb, yb], [xb, y22], [x2, y22]];
+    } else {
+      const xc = pickX(xb, 0, maxX, fromRow, toRow, ySrcBand, yDstBand) ?? xb;
+      const ys = pickBand(srcBoundary, xa, xc);
+      const yt = pickBand(dstBoundary, xc, xb);
+      points = [[x1, y1], [xa, y1], [xa, ys], [xc, ys], [xc, yt], [xb, yt], [xb, y22], [x2, y22]];
+    }
+    points = simplify(points);
+    record2(points, fromRow, toRow);
+    return points;
+  });
+}
+function simplify(points) {
+  const out = [];
+  for (const p3 of points) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p3[0] && last[1] === p3[1]) continue;
+    const prev = out[out.length - 2];
+    if (prev && last && (prev[0] === last[0] && last[0] === p3[0] || prev[1] === last[1] && last[1] === p3[1])) out[out.length - 1] = p3;
+    else out.push(p3);
+  }
+  return out;
+}
+var num = (n2) => String(Math.round(n2 * 100) / 100);
+function roundedPath(points, radius) {
+  if (points.length === 0) return "";
+  let d3 = `M${num(points[0][0])} ${num(points[0][1])}`;
+  for (let i3 = 1; i3 < points.length - 1; i3++) {
+    const [px, py] = points[i3 - 1];
+    const [cx, cy] = points[i3];
+    const [nx, ny] = points[i3 + 1];
+    const lenPrev = Math.hypot(cx - px, cy - py);
+    const lenNext = Math.hypot(nx - cx, ny - cy);
+    const r3 = Math.min(radius, lenPrev / 2, lenNext / 2);
+    const ax = cx - (cx - px) / (lenPrev || 1) * r3;
+    const ay = cy - (cy - py) / (lenPrev || 1) * r3;
+    const bx = cx + (nx - cx) / (lenNext || 1) * r3;
+    const by = cy + (ny - cy) / (lenNext || 1) * r3;
+    d3 += ` L${num(ax)} ${num(ay)} Q${num(cx)} ${num(cy)} ${num(bx)} ${num(by)}`;
+  }
+  const last = points[points.length - 1];
+  return `${d3} L${num(last[0])} ${num(last[1])}`;
+}
 
 // src/header/SubTimeline.tsx
 var ROW = 36;
@@ -3429,7 +3541,13 @@ function SubTimeline(props) {
   };
   const xOf = (date) => dayOffset(range, date) * px;
   const rowOf = new Map(subs.map((s3, i3) => [s3.id, i3]));
-  const arrows = dependencyArrows(subs.map((s3) => ({ ...s3, ...shown(s3) ?? {} })));
+  const arrows = dependencyArrows(subs.map((s3) => ({ ...s3, ...shown(s3) ?? {} }))).map((a3) => ({ ...a3, fromRow: rowOf.get(a3.from), toRow: rowOf.get(a3.to) }));
+  const spans = subs.map((s3) => {
+    const bar = shown(s3);
+    return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
+  });
+  const routes = routeArrows(arrows, spans, ROW);
+  const routed = arrows.map((a3, i3) => ({ late: a3.late, d: roundedPath(routes[i3], 4) }));
   const startDrag = (e3, sub, mode) => {
     const bar = barOf(sub);
     if (!bar || e3.button !== 0) return;
@@ -3487,6 +3605,10 @@ function SubTimeline(props) {
       )) }),
       /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
         cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
+        /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
+          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M0 0 L8 4 L0 8 z", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })) }),
+          routed.map((r3) => /* @__PURE__ */ u3("path", { class: `vt-timeline-arrow${r3.late ? " is-late" : ""}`, d: r3.d, "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : ""})` }))
+        ] }),
         /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
         subs.map((sub, i3) => {
           const bar = shown(sub);
@@ -3526,20 +3648,7 @@ ${period}`,
               }
             )
           ] });
-        }),
-        /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
-          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M0 0 L8 4 L0 8 z", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })) }),
-          arrows.map((a3) => {
-            const from = shown(subs[rowOf.get(a3.from)]);
-            const to = shown(subs[rowOf.get(a3.to)]);
-            const x1 = xOf(from.end) + px;
-            const y1 = rowOf.get(a3.from) * ROW + ROW / 2;
-            const x2 = xOf(to.start);
-            const y22 = rowOf.get(a3.to) * ROW + ROW / 2;
-            const elbow = Math.max(x1, x2 - 6);
-            return /* @__PURE__ */ u3("path", { class: `vt-timeline-arrow${a3.late ? " is-late" : ""}`, d: `M${x1} ${y1} H${elbow} V${y22} H${x2}`, "marker-end": `url(#vt-timeline-arrowhead${a3.late ? "-late" : ""})` });
-          })
-        ] })
+        })
       ] })
     ] }) })
   ] });
