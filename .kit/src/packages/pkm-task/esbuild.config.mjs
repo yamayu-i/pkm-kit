@@ -31,7 +31,7 @@ const plugin = {
  */
 const bindir = process.env.KIT_BINDIR ?? fileURLToPath(new URL("../../../bin/", import.meta.url));
 const cli = {
-	entryPoints: ["cli/lint.ts", "cli/worklog-review.ts", "cli/mcp.ts"],
+	entryPoints: ["cli/lint.ts", "cli/worklog-review.ts", "cli/mcp.ts", "cli/mcp-hook.ts"],
 	outdir: bindir,
 	outExtension: { ".js": ".mjs" },
 	bundle: true,

@@ -31,6 +31,7 @@ git diff <前回の commit> HEAD -- wiki/feedback.md
 
 - `.claude/notes/` のファイルをすべて読む（「直す先」も見る）
 - `usage-report.mjs` の「出力の記録」を読む（段階ごとの回数・時間・モデル・問題。見方は [write-for-reader の記録](../write-for-reader/recording.md#評価で使う)）
+- `usage-report.mjs` の「MCP の利用」を読む。エラーの多いツール、遅い・大きいツール（p95）、切り詰めと 0 件の検索の多さ、旧名の呼び出し、MCP を通さない読み書き（bypass）の多い区分、フィードバックを見る。上流の MCP を直すものは escalate にし、数値・ツール名・種類だけを書く（検索語とフィードバックの要約は個人の内容を含みうるので書かない）
 - `wiki/log.md` の前回からの記録を読む（特に、query で答えられなかったもの、lint で繰り返し出た問題）
 - `wiki/feedback.md` の前回からの追記を読む
 - 前回のレポート（`.claude/reviews/`）の改善案がどうなったか（Issue の状態）
