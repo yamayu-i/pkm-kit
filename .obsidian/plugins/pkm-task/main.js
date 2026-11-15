@@ -521,7 +521,7 @@ function installHeaderMount(options) {
     listenScroll(view, model !== null);
     if (model !== null) report(eachSafely(hosts, (host) => options.draw(host, model, view)));
   };
-  const refresh = () => {
+  const refresh2 = () => {
     const views = options.views();
     report(eachSafely(views, mount));
     for (const sizer of Array.from(observers.keys())) if (!sizer.isConnected) unwatch(sizer);
@@ -536,7 +536,7 @@ function installHeaderMount(options) {
   let timer;
   const schedule = () => {
     window.clearTimeout(timer);
-    timer = window.setTimeout(refresh, 100);
+    timer = window.setTimeout(refresh2, 100);
   };
   const now = () => {
     const view = options.activeView();
@@ -549,7 +549,7 @@ function installHeaderMount(options) {
   on(app.workspace.on("layout-change", schedule));
   on(app.metadataCache.on("changed", schedule));
   on(app.metadataCache.on("resolved", schedule));
-  app.workspace.onLayoutReady(refresh);
+  app.workspace.onLayoutReady(refresh2);
   plugin.register(() => {
     window.clearTimeout(timer);
     if (frame !== void 0) window.cancelAnimationFrame(frame);
@@ -1275,7 +1275,7 @@ function splitSubIssueText(text) {
 function prefixed(problems, id) {
   return problems.map((p3) => ({ ...p3, message: `\u30B5\u30D6 ${id}: ${p3.message}` }));
 }
-function parseBlock(path, parent, raw, order, parseYaml4) {
+function parseBlock(path, parent, raw, order, parseYaml5) {
   const invalid = (message) => ({ sub: null, problems: [{ severity: "error", path, code: "invalid-sub-issue", message: `${order + 1} \u4EF6\u76EE\u306E\u30B5\u30D6: ${message}` }] });
   const lines = raw.split(/\r?\n/);
   const endLine = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
@@ -1283,7 +1283,7 @@ function parseBlock(path, parent, raw, order, parseYaml4) {
   const yamlText = [lines[0].slice(SUB_ISSUE_MARKER.length), ...lines.slice(1, endLine)].join("\n");
   let fm;
   try {
-    fm = parseYaml4(yamlText);
+    fm = parseYaml5(yamlText);
   } catch {
     return invalid("\u9805\u76EE\u304C YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
   }
@@ -1319,12 +1319,12 @@ function parseBlock(path, parent, raw, order, parseYaml4) {
   };
   return { sub, problems: prefixed([...extra, ...r3.problems], id) };
 }
-function parseSubIssues(path, parent, text, parseYaml4) {
+function parseSubIssues(path, parent, text, parseYaml5) {
   const blocks = [];
   const problems = [];
   const subs = [];
   for (const raw of splitSubIssueText(text).blocks) {
-    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml4);
+    const r3 = parseBlock(path, parent, raw, blocks.length, parseYaml5);
     blocks.push({ raw: raw.trimEnd(), sub: r3.sub });
     problems.push(...r3.problems);
     if (r3.sub) subs.push(r3.sub);
@@ -1334,7 +1334,7 @@ function parseSubIssues(path, parent, text, parseYaml4) {
 function yamlString(s3) {
   return JSON.stringify(s3);
 }
-function formatSubIssue(sub) {
+function formatSubHead(sub) {
   if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
   const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
   const put = (key, value) => {
@@ -1354,12 +1354,16 @@ function formatSubIssue(sub) {
     if (line.includes(BLOCK_END)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B ${BLOCK_END} \u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
     if (/[\r\n]/.test(line)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
   }
+  lines.push(BLOCK_END);
+  return lines.join("\n");
+}
+function formatSubIssue(sub) {
+  const head = formatSubHead(sub);
   const body = sub.body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
   if (body.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) {
     throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u672C\u6587\u306E\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`);
   }
-  lines.push(BLOCK_END);
-  return `${lines.join("\n")}
+  return `${head}
 ${body ? `${body}
 ` : ""}`;
 }
@@ -1373,8 +1377,8 @@ function replaceSubIssues(text, blocks) {
 
 ${parts.join("\n")}`;
 }
-function updateSubIssueText(path, parent, text, id, patch, parseYaml4) {
-  const { blocks } = parseSubIssues(path, parent, text, parseYaml4);
+function updateSubIssueText(path, parent, text, id, patch, parseYaml5) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml5);
   const at = blocks.findIndex((b2) => b2.sub?.id === id);
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   const before = blocks[at].sub;
@@ -1385,8 +1389,8 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml4) {
   );
   return { text: next, before, after };
 }
-function rebuild(path, parent, text, parseYaml4, edit) {
-  const { blocks } = parseSubIssues(path, parent, text, parseYaml4);
+function rebuild(path, parent, text, parseYaml5, edit) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml5);
   const items = blocks.map((b2) => b2.sub ?? b2.raw);
   edit(
     items,
@@ -1399,23 +1403,23 @@ function indexOfSub(ids, parent, id) {
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   return at;
 }
-function insertSubIssuesText(path, parent, text, subs, parseYaml4, at) {
-  return rebuild(path, parent, text, parseYaml4, (items) => {
+function insertSubIssuesText(path, parent, text, subs, parseYaml5, at) {
+  return rebuild(path, parent, text, parseYaml5, (items) => {
     const pos = at ?? items.length;
     if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${pos}`);
     items.splice(pos, 0, ...subs);
   });
 }
-function moveSubIssueText(path, parent, text, id, to, parseYaml4) {
-  return rebuild(path, parent, text, parseYaml4, (items, ids) => {
+function moveSubIssueText(path, parent, text, id, to, parseYaml5) {
+  return rebuild(path, parent, text, parseYaml5, (items, ids) => {
     const from = indexOfSub(ids, parent, id);
     if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length - 1} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${to}`);
     const [moved] = items.splice(from, 1);
     items.splice(to, 0, moved);
   });
 }
-function removeSubIssueText(path, parent, text, id, parseYaml4) {
-  return rebuild(path, parent, text, parseYaml4, (items, ids) => {
+function removeSubIssueText(path, parent, text, id, parseYaml5) {
+  return rebuild(path, parent, text, parseYaml5, (items, ids) => {
     items.splice(indexOfSub(ids, parent, id), 1);
   });
 }
@@ -1529,21 +1533,71 @@ function stepPosition(ids, visible, id, dir) {
 function splitQuickAdd(text) {
   return text.split(/\r?\n/).map((l3) => l3.trim()).filter((l3) => l3 !== "");
 }
-function subAreaStartLine(text) {
+function layoutSubIssues(path, parent, text, parseYaml5) {
   const { head, blocks } = splitSubIssueText(text);
-  if (blocks.length === 0) return null;
-  return head.split("\n").length - 1;
+  const parsed = parseSubIssues(path, parent, text, parseYaml5).blocks;
+  const out = [];
+  let pos = head.length;
+  let line = head.split("\n").length - 1;
+  blocks.forEach((raw, index) => {
+    const lines = raw.split("\n");
+    const lineEnd = (i3) => lines[i3].replace(/\r$/, "").length;
+    const startOf = (i3) => lines.slice(0, i3).reduce((n2, l3) => n2 + l3.length + 1, 0);
+    const endIdx = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
+    const id = parsed[index]?.sub?.id ?? null;
+    if (endIdx < 0) {
+      out.push({ index, id, startLine: line, endLine: null, bodyStartLine: line + 1, bodyEndLine: line, from: pos, cardTo: null, bodyFrom: null, bodyTo: null });
+    } else {
+      let last = lines.length - 1;
+      while (last > endIdx && lines[last].trim() === "") last--;
+      const bodyFrom = Math.min(pos + startOf(endIdx + 1), pos + raw.length);
+      out.push({
+        index,
+        id,
+        startLine: line,
+        endLine: line + endIdx,
+        bodyStartLine: line + endIdx + 1,
+        bodyEndLine: line + last,
+        from: pos,
+        cardTo: pos + startOf(endIdx) + lineEnd(endIdx),
+        bodyFrom,
+        bodyTo: last > endIdx ? pos + startOf(last) + lineEnd(last) : bodyFrom
+      });
+    }
+    pos += raw.length;
+    line += lines.length - 1;
+  });
+  return out;
 }
-function subAreaOffset(text) {
-  const { head, blocks } = splitSubIssueText(text);
-  return blocks.length === 0 ? null : head.length;
+function subHeadChange(path, parent, text, id, patch, parseYaml5, memberIds) {
+  const fixed = normalizeSubPatch(patch);
+  const layout = layoutSubIssues(path, parent, text, parseYaml5).find((b2) => b2.id === id);
+  const { subs } = parseSubIssues(path, parent, text, parseYaml5);
+  const before = subs.find((s3) => s3.id === id);
+  if (!layout || !before || layout.cardTo === null) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  const after = { ...before, ...fixed, id };
+  const errors = touchedSubErrors(
+    subs.map((s3) => s3.id === id ? after : s3),
+    [id],
+    memberIds
+  );
+  if (errors.length > 0) throw new Error(errors.join("\n"));
+  return { change: { from: layout.from, to: layout.cardTo, insert: formatSubHead(after) }, before, after };
 }
-function subAreaRole(startLine, lineStart, lineEnd) {
-  if (startLine === null) return "before";
-  if (lineStart > startLine) return "hide";
-  return lineEnd >= startLine ? "mount" : "before";
+function subSectionRole(layout, lineStart, lineEnd) {
+  for (const b2 of layout) {
+    if (lineStart <= b2.startLine && b2.startLine <= lineEnd) return { role: "card", index: b2.index, id: b2.id };
+    if (b2.endLine !== null && lineStart > b2.startLine && lineStart <= b2.endLine) return { role: "hide" };
+  }
+  for (let i3 = layout.length - 1; i3 >= 0; i3--) {
+    const b2 = layout[i3];
+    if (b2.endLine !== null && lineStart > b2.endLine && lineStart > b2.startLine) {
+      return b2.id === null ? { role: "none" } : { role: "body", id: b2.id };
+    }
+  }
+  return { role: "none" };
 }
-function cursorInsideSubArea(sel, from, to) {
+function cursorInside(sel, from, to) {
   return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
 }
 function sanitizeSubOpen(value) {
@@ -4727,27 +4781,38 @@ function installTaskHeaders(ctx, plugin) {
   });
 }
 
-// src/header/sub-area.ts
+// src/header/sub-cards.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
 var import_obsidian11 = require("obsidian");
 
-// src/obsidian/sub-body.tsx
+// src/obsidian/sub-card.tsx
 var import_obsidian10 = require("obsidian");
+
+// src/core/draft.ts
+function adoptValue(state, value, normalize) {
+  if (value === state.draft || value === normalize(state.draft)) return { draft: state.draft, dirty: false };
+  if (!state.dirty) return { draft: value, dirty: false };
+  return state;
+}
+
+// src/obsidian/sub-card.tsx
 function issueIdOf(path) {
   return path.replace(/^issue\//, "").replace(/\.md$/, "");
 }
-function useDraft(value, commit, delayMs) {
+function useDraft(value, commit, delayMs, normalize = (v3) => v3) {
   const [draft, setDraft] = d2(value);
-  const s3 = A2({ draft: value, dirty: false, value, commit, timer: 0 });
+  const s3 = A2({ draft: value, dirty: false, value, commit, normalize, timer: 0 });
   s3.current.value = value;
   s3.current.commit = commit;
+  s3.current.normalize = normalize;
   h2(() => {
     const c3 = s3.current;
-    if (value === c3.draft) c3.dirty = false;
-    else if (!c3.dirty) {
-      c3.draft = value;
-      setDraft(value);
+    const next = adoptValue({ draft: c3.draft, dirty: c3.dirty }, value, c3.normalize);
+    c3.dirty = next.dirty;
+    if (next.draft !== c3.draft) {
+      c3.draft = next.draft;
+      setDraft(next.draft);
     }
   }, [value]);
   const flush = () => {
@@ -4770,54 +4835,10 @@ function useDraft(value, commit, delayMs) {
   };
   return { draft, input, flush };
 }
-function SubBody(props) {
-  const { ctx, path, delayMs } = props;
-  const [, setTick] = d2(0);
-  const redraw = () => setTick((n2) => n2 + 1);
-  h2(() => ctx.store.subscribe(redraw), [ctx]);
-  const parent = issueIdOf(path);
-  const blocks = parseSubIssues(path, parent, ctx.store.text(path) ?? "", import_obsidian10.parseYaml).blocks;
-  const subs = blocks.flatMap((b2) => b2.sub ? [b2.sub] : []);
-  const counts = subCounts(subs);
-  if (blocks.length === 0) return null;
-  const toggle2 = (id) => {
-    ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, subs.map((s3) => s3.id));
-    void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-    redraw();
-  };
-  return /* @__PURE__ */ u3("section", { class: "vt-sub-body vt-ui", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", title: `${counts.open} open of ${counts.total}`, children: [
-        counts.open,
-        " / ",
-        counts.total
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      props.onShowSource && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: props.onShowSource, children: "Show source" })
-    ] }),
-    /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: blocks.map(
-      (b2, i3) => b2.sub ? /* @__PURE__ */ u3(SubItem, { ctx, sub: b2.sub, siblings: subs, open: isSubOpen(ctx.settings.subOpen, path, b2.sub.id), onToggle: () => toggle2(b2.sub.id), delayMs }, b2.sub.id) : /* @__PURE__ */ u3(UnreadableItem, { raw: b2.raw }, `raw-${i3}`)
-    ) })
-  ] });
-}
-function UnreadableItem(props) {
-  const [open, setOpen] = d2(false);
-  return /* @__PURE__ */ u3("li", { class: "vt-subissue is-unreadable", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-subissue-status", "aria-hidden": "true", children: /* @__PURE__ */ u3(Icon, { name: "alert-triangle" }) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, onClick: () => setOpen((v3) => !v3), children: [
-        /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
-        /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: "Could not read this block" })
-      ] })
-    ] }),
-    open && /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: /* @__PURE__ */ u3("pre", { class: "vt-subissue-raw", children: props.raw }) })
-  ] });
-}
-function SubItem(props) {
+function SubCard(props) {
   const { ctx, sub, open } = props;
   const [error, setError] = d2(null);
-  const save = (patch) => ctx.writer.updateSub(sub.key, patch).then(() => {
+  const save = (patch) => props.save(patch).then(() => {
     setError(null);
     return true;
   }).catch((e3) => {
@@ -4835,7 +4856,7 @@ function SubItem(props) {
     m3.showAtMouseEvent(e3);
   };
   const hint = subHint(sub, localToday());
-  return /* @__PURE__ */ u3("li", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
     /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
       /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
       /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
@@ -4845,14 +4866,14 @@ function SubItem(props) {
       ] }),
       !isDoneStatus(sub.status) && /* @__PURE__ */ u3(PickToggle, { ctx, keyOf: sub.key })
     ] }),
-    open && /* @__PURE__ */ u3(SubFields, { ctx, sub, siblings: props.siblings, save, error, delayMs: props.delayMs })
-  ] });
+    open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
+  ] }) });
 }
 function SubFields(props) {
   const { ctx, sub, save, delayMs } = props;
   const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
   const others = props.siblings.filter((s3) => s3.id !== sub.id);
-  const summary = useDraft(sub.summary, (v3) => v3.trim() === "" ? Promise.resolve(false) : save({ summary: v3.trim() }), delayMs);
+  const summary = useDraft(sub.summary, (v3) => v3.trim() === "" ? Promise.resolve(false) : save({ summary: v3.trim() }), delayMs, (v3) => v3.trim());
   const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
   const [estimatedError, setEstimatedError] = d2(null);
   const estimated = useDraft(
@@ -4868,7 +4889,6 @@ function SubFields(props) {
     },
     null
   );
-  const body = useDraft(sub.body, (v3) => save({ body: v3 }), delayMs);
   return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail vt-subissue-form", children: [
     /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
       /* @__PURE__ */ u3("span", { children: "Summary" }),
@@ -4932,43 +4952,194 @@ function SubFields(props) {
         s3.summary
       ] }))
     ] }),
-    /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-      /* @__PURE__ */ u3("span", { children: "Notes" }),
-      /* @__PURE__ */ u3("textarea", { class: "vt-subissue-body-input", value: body.draft, onInput: (e3) => body.input(e3.currentTarget.value), onBlur: body.flush })
-    ] }),
-    (props.error ?? estimatedError) !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: props.error ?? estimatedError })
+    (props.error ?? estimatedError) !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: props.error ?? estimatedError }),
+    props.onShowSource && /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: props.onShowSource, children: "Show source" })
+    ] })
   ] });
 }
+function UnreadableCard(props) {
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: "vt-subissue is-unreadable", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-subissue-status", "aria-hidden": "true", children: /* @__PURE__ */ u3(Icon, { name: "alert-triangle" }) }),
+      /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: "Could not read this block" }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      props.onShowSource && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: props.onShowSource, children: "Show source" })
+    ] }),
+    !props.onShowSource && /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: /* @__PURE__ */ u3("pre", { class: "vt-subissue-raw", children: props.raw }) })
+  ] }) });
+}
+function ReadingCard(props) {
+  const { ctx, path } = props;
+  const [, setTick] = d2(0);
+  const redraw = () => setTick((n2) => n2 + 1);
+  h2(() => ctx.store.subscribe(redraw), [ctx]);
+  if (props.id === null) return /* @__PURE__ */ u3(UnreadableCard, { raw: props.raw });
+  const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", import_obsidian10.parseYaml).subs;
+  const sub = subs.find((s3) => s3.id === props.id);
+  if (!sub) return null;
+  return /* @__PURE__ */ u3(
+    SubCard,
+    {
+      ctx,
+      sub,
+      siblings: subs,
+      open: props.open(),
+      onToggle: () => {
+        props.onToggle(subs.map((s3) => s3.id));
+        redraw();
+      },
+      save: (patch) => ctx.writer.updateSub(sub.key, patch),
+      delayMs: null
+    }
+  );
+}
 
-// src/header/sub-area.ts
+// src/header/sub-cards.ts
 var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
 var LIVE_PREVIEW_SAVE_MS = 600;
-function areaOf(state) {
-  const from = subAreaOffset(state.doc.toString());
-  return from === null ? null : { from, to: state.doc.length };
+var refresh = import_state.StateEffect.define();
+function toggleOpen(ctx, path, id, ids) {
+  ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
+  void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
 }
-var SubAreaWidget = class extends import_view.WidgetType {
-  constructor(ctx, path) {
+var CLOSED_CLASS = "vt-sub-body-closed";
+var bodies = /* @__PURE__ */ new Map();
+function syncReading(ctx, path) {
+  for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b2.id));
+}
+function installReading(ctx, plugin) {
+  let memo = null;
+  const layoutOf = (path, text) => {
+    if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, import_obsidian11.parseYaml) };
+    return memo.layout;
+  };
+  plugin.registerMarkdownPostProcessor((el, mctx) => {
+    const path = mctx.sourcePath;
+    if (!ISSUE_PATH_RE2.test(path)) return;
+    const info = mctx.getSectionInfo(el);
+    if (!info) return;
+    const layout = layoutOf(path, info.text);
+    const r3 = subSectionRole(layout, info.lineStart, info.lineEnd);
+    if (r3.role === "hide") {
+      el.addClass("vt-subissue-area-hidden");
+    } else if (r3.role === "card") {
+      const b2 = layout[r3.index];
+      const raw = info.text.slice(b2.from, b2.cardTo ?? layout[r3.index + 1]?.from ?? info.text.length).trimEnd();
+      const host = el.createDiv();
+      R(
+        k(ReadingCard, {
+          ctx,
+          path,
+          id: r3.id,
+          raw,
+          open: () => r3.id !== null && isSubOpen(ctx.settings.subOpen, path, r3.id),
+          onToggle: (ids) => {
+            if (r3.id === null) return;
+            toggleOpen(ctx, path, r3.id, ids);
+            syncReading(ctx, path);
+          }
+        }),
+        host
+      );
+      const child = new import_obsidian11.MarkdownRenderChild(host);
+      child.onunload = () => R(null, host);
+      mctx.addChild(child);
+    } else if (r3.role === "body") {
+      const entry = { id: r3.id, el };
+      const set = bodies.get(path) ?? /* @__PURE__ */ new Set();
+      bodies.set(path, set);
+      set.add(entry);
+      el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id));
+      const child = new import_obsidian11.MarkdownRenderChild(el);
+      child.onunload = () => set.delete(entry);
+      mctx.addChild(child);
+    }
+  });
+}
+function editorSave(ctx, view, path, id) {
+  return async (patch) => {
+    const text = view.state.doc.toString();
+    const r3 = subHeadChange(path, issueIdOf(path), text, id, patch, import_obsidian11.parseYaml, new Set(ctx.store.index.members.keys()));
+    if (r3.change.insert !== text.slice(r3.change.from, r3.change.to)) view.dispatch({ changes: r3.change, userEvent: "input.sub-card" });
+    if (r3.before.status !== r3.after.status) await ctx.writer.afterSubStatusChange(r3.after, r3.before.status, r3.after.status);
+  };
+}
+function editorToggle(ctx, view, path, id) {
+  const parent = issueIdOf(path);
+  const layout = layoutSubIssues(path, parent, view.state.doc.toString(), import_obsidian11.parseYaml);
+  const wasOpen = isSubOpen(ctx.settings.subOpen, path, id);
+  toggleOpen(
+    ctx,
+    path,
+    id,
+    layout.flatMap((b3) => b3.id ? [b3.id] : [])
+  );
+  const b2 = layout.find((x2) => x2.id === id);
+  const inBody = wasOpen && b2 && b2.cardTo !== null && b2.bodyFrom !== null && b2.bodyTo !== null && view.state.selection.ranges.some((r3) => r3.from <= b2.bodyTo && r3.to >= b2.bodyFrom);
+  view.dispatch({ effects: refresh.of(null), ...inBody ? { selection: { anchor: b2.cardTo } } : {} });
+  syncReading(ctx, path);
+}
+function showSource(view, from, cardTo) {
+  view.dispatch({ selection: { anchor: Math.min(from + 1, cardTo) }, scrollIntoView: true });
+  view.focus();
+}
+var SubCardWidget = class extends import_view.WidgetType {
+  constructor(ctx, path, sub, siblings, open, raw, range) {
     super();
     this.ctx = ctx;
     this.path = path;
+    this.sub = sub;
+    this.siblings = siblings;
+    this.open = open;
+    this.raw = raw;
+    this.range = range;
   }
   ctx;
   path;
-  // 中身はストアの変更で自分で描き直すので、同じノートの間は DOM を作り直さない（入力中のフォーカスを失わないため）
+  sub;
+  siblings;
+  open;
+  raw;
+  range;
+  /** 同じ内容なら DOM に触れない。変わったら、DOM を作り直さず中身だけを更新する（入力中のフォーカスを失わないため） */
+  get signature() {
+    return [this.path, this.open, this.raw, this.siblings.map((s3) => `${s3.id}:${s3.summary}`).join("|")].join("\n");
+  }
   eq(other) {
-    return other.path === this.path;
+    return other.signature === this.signature;
+  }
+  mount(dom, view) {
+    const { ctx, path, sub } = this;
+    const onShowSource = () => showSource(view, this.range.from, this.range.cardTo);
+    if (sub === null) {
+      R(k(UnreadableCard, { raw: this.raw, onShowSource }), dom);
+      return;
+    }
+    R(
+      k(SubCard, {
+        ctx,
+        sub,
+        siblings: this.siblings,
+        open: this.open,
+        onToggle: () => editorToggle(ctx, view, path, sub.id),
+        save: editorSave(ctx, view, path, sub.id),
+        delayMs: LIVE_PREVIEW_SAVE_MS,
+        onShowSource
+      }),
+      dom
+    );
   }
   toDOM(view) {
     const dom = document.createElement("div");
-    dom.className = "vt-sub-area";
-    const showSource = () => {
-      const area = areaOf(view.state);
-      if (area) view.dispatch({ selection: { anchor: Math.min(area.from + 1, area.to) }, scrollIntoView: true });
-      view.focus();
-    };
-    R(k(SubBody, { ctx: this.ctx, path: this.path, delayMs: LIVE_PREVIEW_SAVE_MS, onShowSource: showSource }), dom);
+    dom.className = "vt-sub-card-host";
+    this.mount(dom, view);
     return dom;
+  }
+  updateDOM(dom, view) {
+    this.mount(dom, view);
+    return true;
   }
   destroy(dom) {
     R(null, dom);
@@ -4978,35 +5149,41 @@ var SubAreaWidget = class extends import_view.WidgetType {
     return true;
   }
 };
+var NONE = { all: import_view.Decoration.none, folds: import_view.Decoration.none };
 function build(ctx, state) {
   const path = state.field(import_obsidian11.editorInfoField, false)?.file?.path;
-  if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian11.editorLivePreviewField, false)) return import_view.Decoration.none;
-  const area = areaOf(state);
-  if (!area || cursorInsideSubArea(state.selection.main, area.from, area.to)) return import_view.Decoration.none;
-  return import_view.Decoration.set([import_view.Decoration.replace({ widget: new SubAreaWidget(ctx, path), block: true }).range(area.from, area.to)]);
-}
-function installSubArea(ctx, plugin) {
-  plugin.registerEditorExtension(
-    import_state.StateField.define({
-      create: (state) => build(ctx, state),
-      update: (_value, tr) => build(ctx, tr.state),
-      provide: (field) => import_view.EditorView.decorations.from(field)
-    })
-  );
-  plugin.registerMarkdownPostProcessor((el, mctx) => {
-    if (!ISSUE_PATH_RE2.test(mctx.sourcePath)) return;
-    const info = mctx.getSectionInfo(el);
-    if (!info) return;
-    const role = subAreaRole(subAreaStartLine(info.text), info.lineStart, info.lineEnd);
-    if (role === "hide") el.addClass("vt-subissue-area-hidden");
-    else if (role === "mount") {
-      const host = el.createDiv({ cls: "vt-sub-area" });
-      R(k(SubBody, { ctx, path: mctx.sourcePath, delayMs: null }), host);
-      const child = new import_obsidian11.MarkdownRenderChild(host);
-      child.onunload = () => R(null, host);
-      mctx.addChild(child);
+  if (!path || !ISSUE_PATH_RE2.test(path) || !state.field(import_obsidian11.editorLivePreviewField, false)) return NONE;
+  const text = state.doc.toString();
+  const parent = issueIdOf(path);
+  const layout = layoutSubIssues(path, parent, text, import_obsidian11.parseYaml);
+  if (layout.length === 0) return NONE;
+  const subs = parseSubIssues(path, parent, text, import_obsidian11.parseYaml).subs;
+  const touches = (from, to) => state.selection.ranges.some((r3) => cursorInside(r3, from, to));
+  const all = [];
+  const folds = [];
+  for (const b2 of layout) {
+    if (b2.cardTo === null || b2.bodyFrom === null || b2.bodyTo === null) continue;
+    const sub = b2.id === null ? null : subs.find((s3) => s3.id === b2.id) ?? null;
+    const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
+    if (!touches(b2.from, b2.cardTo)) {
+      all.push(import_view.Decoration.replace({ widget: new SubCardWidget(ctx, path, sub, subs, open, text.slice(b2.from, b2.cardTo), { from: b2.from, cardTo: b2.cardTo }), block: true }).range(b2.from, b2.cardTo));
     }
+    if (sub !== null && !open && b2.bodyTo > b2.bodyFrom && !touches(b2.bodyFrom, b2.bodyTo)) {
+      const fold = import_view.Decoration.replace({ block: true }).range(b2.bodyFrom, b2.bodyTo);
+      all.push(fold);
+      folds.push(fold);
+    }
+  }
+  return { all: import_view.Decoration.set(all, true), folds: import_view.Decoration.set(folds, true) };
+}
+function installSubCards(ctx, plugin) {
+  const field = import_state.StateField.define({
+    create: (state) => build(ctx, state),
+    update: (_value, tr) => build(ctx, tr.state),
+    provide: (f4) => [import_view.EditorView.decorations.from(f4, (v3) => v3.all), import_view.EditorView.atomicRanges.of((view) => view.state.field(f4).folds)]
   });
+  plugin.registerEditorExtension(field);
+  installReading(ctx, plugin);
 }
 
 // src/obsidian/capture.tsx
@@ -5953,9 +6130,16 @@ var TaskWriter = class {
     this.store.refreshSoon();
     const done = change;
     if (done === null) return;
-    await this.recordStatus(sub.parent, done.from, done.to, via, sub.id);
-    if (isDoneStatus(done.to)) {
-      const running = this.store.index.running(key);
+    await this.afterSubStatusChange(sub, done.from, done.to, via);
+  }
+  /**
+   * サブの status が変わった後の処理: statuslog に task と sub で書き、closed / canceled ならそのサブの記録中のタイマーを止める。
+   * エディタの文書を直接書き換えたとき（ADR-0161）も、ファイルを書き換えたときと同じにするために公開している
+   */
+  async afterSubStatusChange(sub, from, to, via = "ui") {
+    await this.recordStatus(sub.parent, from, to, via, sub.id);
+    if (isDoneStatus(to)) {
+      const running = this.store.index.running(sub.key);
       if (running.length > 0) await this.stopTimer(running);
     }
   }
@@ -8122,7 +8306,7 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
     this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     installTaskHeaders(ctx, this);
-    installSubArea(ctx, this);
+    installSubCards(ctx, this);
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
     this.addCommand({
       id: "open-tasks-now",

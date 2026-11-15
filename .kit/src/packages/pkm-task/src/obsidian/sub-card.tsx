@@ -1,10 +1,11 @@
 import { Menu, parseYaml } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday } from "../core/dates";
+import { adoptValue } from "../core/draft";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { STATUSES, type Status } from "../core/schema";
 import { isDoneStatus } from "../core/status-log";
-import { isSubOpen, parseSubIssues, subCounts, subHint, toggleSubOpen, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
+import { parseSubIssues, subHint, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
 import { Icon } from "../ui/Icon";
 import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
@@ -19,19 +20,22 @@ export function issueIdOf(path: string): string {
 
 /**
  * 入力欄の下書き。入力が止まって delayMs 後（null なら欄を離れたときだけ）と、欄を離れたときに commit する。
- * 保存で値が戻ってきても、入力中の欄は上書きしない（フォーカスとカーソルを失わない。ADR-0158）
+ * 保存で値が戻ってきても、入力中の欄は上書きしない（フォーカスとカーソルを失わない）。
+ * normalize は保存のときの整形（trim など）。整形した値が戻ったときも上書きしない（ADR-0161）
  */
-function useDraft(value: string, commit: (v: string) => Promise<boolean>, delayMs: number | null) {
+function useDraft(value: string, commit: (v: string) => Promise<boolean>, delayMs: number | null, normalize: (v: string) => string = (v) => v) {
 	const [draft, setDraft] = useState(value);
-	const s = useRef({ draft: value, dirty: false, value, commit, timer: 0 });
+	const s = useRef({ draft: value, dirty: false, value, commit, normalize, timer: 0 });
 	s.current.value = value;
 	s.current.commit = commit;
+	s.current.normalize = normalize;
 	useEffect(() => {
 		const c = s.current;
-		if (value === c.draft) c.dirty = false;
-		else if (!c.dirty) {
-			c.draft = value;
-			setDraft(value);
+		const next = adoptValue({ draft: c.draft, dirty: c.dirty }, value, c.normalize);
+		c.dirty = next.dirty;
+		if (next.draft !== c.draft) {
+			c.draft = next.draft;
+			setDraft(next.draft);
 		}
 	}, [value]);
 	const flush = () => {
@@ -55,85 +59,36 @@ function useDraft(value: string, commit: (v: string) => Promise<boolean>, delayM
 	return { draft, input, flush };
 }
 
-/** サブの項目や本文を保存する。通らなければ行の中に日本語の説明を出す */
+/** サブの項目を書く。通らなければ例外（日本語の説明）。書き方は描く場所で違う（Live Preview はエディタの文書、Reading はファイル。ADR-0161） */
+export type SaveSub = (patch: SubIssuePatch) => Promise<void>;
+
+/** 項目を保存する。通らなければカードの中に日本語の説明を出す */
 type Save = (patch: SubIssuePatch) => Promise<boolean>;
 
+export interface SubCardProps {
+	ctx: TaskContext;
+	sub: SubIssue;
+	/** 同じ親のサブ（依存先の候補） */
+	siblings: SubIssue[];
+	open: boolean;
+	onToggle: () => void;
+	save: SaveSub;
+	/** 題を、入力が止まってから保存するまでの時間。null なら欄を離れたときだけ（Reading は、保存で描き直されるため） */
+	delayMs: number | null;
+	/** 生の md を見せる（Live Preview だけ） */
+	onShowSource?: () => void;
+}
+
 /**
- * issue の本文のサブの領域を描くアコーディオン（ADR-0158）。Live Preview と Reading の両方がこれを描く。
- * 行は status のアイコンと題。開くと項目と本文をその場で直せる。開閉はこの端末に保存する。
- * delayMs: 題と本文を、入力が止まってから保存するまでの時間。null なら欄を離れたときだけ（Reading は、保存で描き直されるため）
+ * サブ 1 件の項目のカード（ADR-0161）。行は status のアイコンと題。開くと項目をその場で直せる。
+ * 本文は描かない（issue 本体の編集が描く）。開閉は、カードと本文の両方を開け閉めする
  */
-export function SubBody(props: { ctx: TaskContext; path: string; delayMs: number | null; onShowSource?: () => void }) {
-	const { ctx, path, delayMs } = props;
-	const [, setTick] = useState(0);
-	const redraw = () => setTick((n) => n + 1);
-	useEffect(() => ctx.store.subscribe(redraw), [ctx]);
-	const parent = issueIdOf(path);
-	const blocks = parseSubIssues(path, parent, ctx.store.text(path) ?? "", parseYaml).blocks;
-	const subs = blocks.flatMap((b) => (b.sub ? [b.sub] : []));
-	const counts = subCounts(subs);
-	if (blocks.length === 0) return null;
-	const toggle = (id: string) => {
-		ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, subs.map((s) => s.id));
-		void ctx.saveSettings().catch((e) => ctx.report("展開の状態を保存できませんでした", e));
-		redraw();
-	};
-	return (
-		<section class="vt-sub-body vt-ui">
-			<div class="vt-section-head">
-				<span class="vt-field-label">Sub-issues</span>
-				<span class="vt-count" title={`${counts.open} open of ${counts.total}`}>
-					{counts.open} / {counts.total}
-				</span>
-				<span class="vt-spacer" />
-				{props.onShowSource && (
-					<button type="button" class="vt-text-button" onClick={props.onShowSource}>
-						Show source
-					</button>
-				)}
-			</div>
-			<ul class="vt-subissue-list">
-				{blocks.map((b, i) =>
-					b.sub ? (
-						<SubItem key={b.sub.id} ctx={ctx} sub={b.sub} siblings={subs} open={isSubOpen(ctx.settings.subOpen, path, b.sub.id)} onToggle={() => toggle(b.sub!.id)} delayMs={delayMs} />
-					) : (
-						<UnreadableItem key={`raw-${i}`} raw={b.raw} />
-					),
-				)}
-			</ul>
-		</section>
-	);
-}
-
-/** 読めなかったブロック。原文を読み取り専用で見せ、書き換えない */
-function UnreadableItem(props: { raw: string }) {
-	const [open, setOpen] = useState(false);
-	return (
-		<li class="vt-subissue is-unreadable">
-			<div class="vt-subissue-row">
-				<span class="vt-subissue-status" aria-hidden="true">
-					<Icon name="alert-triangle" />
-				</span>
-				<button type="button" class="vt-subissue-summary" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-					<Icon name={open ? "chevron-down" : "chevron-right"} />
-					<span class="vt-subissue-summary-text">Could not read this block</span>
-				</button>
-			</div>
-			{open && (
-				<div class="vt-subissue-detail">
-					<pre class="vt-subissue-raw">{props.raw}</pre>
-				</div>
-			)}
-		</li>
-	);
-}
-
-function SubItem(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[]; open: boolean; onToggle: () => void; delayMs: number | null }) {
+export function SubCard(props: SubCardProps) {
 	const { ctx, sub, open } = props;
 	const [error, setError] = useState<string | null>(null);
 	const save: Save = (patch) =>
-		ctx.writer
-			.updateSub(sub.key, patch)
+		props
+			.save(patch)
 			.then(() => {
 				setError(null);
 				return true;
@@ -155,29 +110,31 @@ function SubItem(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[];
 	};
 	const hint = subHint(sub, localToday());
 	return (
-		<li class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`}>
-			<div class="vt-subissue-row">
-				<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
-					<StatusIcon status={sub.status} />
-				</button>
-				<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
-					<Icon name={open ? "chevron-down" : "chevron-right"} />
-					<span class="vt-subissue-summary-text">{sub.summary}</span>
-					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
-				</button>
-				{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
+		<div class="vt-sub-card vt-ui">
+			<div class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`}>
+				<div class="vt-subissue-row">
+					<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
+						<StatusIcon status={sub.status} />
+					</button>
+					<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
+						<Icon name={open ? "chevron-down" : "chevron-right"} />
+						<span class="vt-subissue-summary-text">{sub.summary}</span>
+						{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
+					</button>
+					{!isDoneStatus(sub.status) && <PickToggle ctx={ctx} keyOf={sub.key} />}
+				</div>
+				{open && <SubFields {...props} save={save} error={error} />}
 			</div>
-			{open && <SubFields ctx={ctx} sub={sub} siblings={props.siblings} save={save} error={error} delayMs={props.delayMs} />}
-		</li>
+		</div>
 	);
 }
 
-/** 開いた行の中身: 項目と本文を、その場で直す */
-function SubFields(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[]; save: Save; error: string | null; delayMs: number | null }) {
+/** 開いたカードの中身: 項目を、その場で直す */
+function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: string | null }) {
 	const { ctx, sub, save, delayMs } = props;
 	const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
 	const others = props.siblings.filter((s) => s.id !== sub.id);
-	const summary = useDraft(sub.summary, (v) => (v.trim() === "" ? Promise.resolve(false) : save({ summary: v.trim() })), delayMs);
+	const summary = useDraft(sub.summary, (v) => (v.trim() === "" ? Promise.resolve(false) : save({ summary: v.trim() })), delayMs, (v) => v.trim());
 	const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
 	const [estimatedError, setEstimatedError] = useState<string | null>(null);
 	const estimated = useDraft(
@@ -193,7 +150,6 @@ function SubFields(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[
 		},
 		null,
 	);
-	const body = useDraft(sub.body, (v) => save({ body: v }), delayMs);
 	return (
 		<div class="vt-subissue-detail vt-subissue-form">
 			<label class="vt-text-field">
@@ -257,11 +213,71 @@ function SubFields(props: { ctx: TaskContext; sub: SubIssue; siblings: SubIssue[
 					))}
 				</fieldset>
 			)}
-			<label class="vt-text-field">
-				<span>Notes</span>
-				<textarea class="vt-subissue-body-input" value={body.draft} onInput={(e) => body.input(e.currentTarget.value)} onBlur={body.flush} />
-			</label>
 			{(props.error ?? estimatedError) !== null && <div class="vt-error">{props.error ?? estimatedError}</div>}
+			{props.onShowSource && (
+				<div class="vt-form">
+					<span class="vt-spacer" />
+					<button type="button" class="vt-text-button" onClick={props.onShowSource}>
+						Show source
+					</button>
+				</div>
+			)}
 		</div>
+	);
+}
+
+/** 読めなかったブロックのカード。警告の行で、原文は Reading では読み取り専用で見せる。書き換えない */
+export function UnreadableCard(props: { raw: string; onShowSource?: () => void }) {
+	return (
+		<div class="vt-sub-card vt-ui">
+			<div class="vt-subissue is-unreadable">
+				<div class="vt-subissue-row">
+					<span class="vt-subissue-status" aria-hidden="true">
+						<Icon name="alert-triangle" />
+					</span>
+					<span class="vt-subissue-summary-text">Could not read this block</span>
+					<span class="vt-spacer" />
+					{props.onShowSource && (
+						<button type="button" class="vt-text-button" onClick={props.onShowSource}>
+							Show source
+						</button>
+					)}
+				</div>
+				{!props.onShowSource && (
+					<div class="vt-subissue-detail">
+						<pre class="vt-subissue-raw">{props.raw}</pre>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Reading のカード。保存済みの md（索引のストア）からサブを読み、ストアの変更で描き直す。
+ * 項目を直すとファイルを書き換える（Reading にはエディタがないので、食い違わない）
+ */
+export function ReadingCard(props: { ctx: TaskContext; path: string; id: string | null; raw: string; open: () => boolean; onToggle: (ids: string[]) => void }) {
+	const { ctx, path } = props;
+	const [, setTick] = useState(0);
+	const redraw = () => setTick((n) => n + 1);
+	useEffect(() => ctx.store.subscribe(redraw), [ctx]);
+	if (props.id === null) return <UnreadableCard raw={props.raw} />;
+	const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", parseYaml).subs;
+	const sub = subs.find((s) => s.id === props.id);
+	if (!sub) return null;
+	return (
+		<SubCard
+			ctx={ctx}
+			sub={sub}
+			siblings={subs}
+			open={props.open()}
+			onToggle={() => {
+				props.onToggle(subs.map((s) => s.id));
+				redraw();
+			}}
+			save={(patch) => ctx.writer.updateSub(sub.key, patch)}
+			delayMs={null}
+		/>
 	);
 }

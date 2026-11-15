@@ -232,7 +232,7 @@ packages/design/tokens.json（正本）
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
 | サブイシューの行 | `.vt-subissue`（`.vt-subissue-row`） | issue 画面のカード「Sub-issues」（`.vt-subissues`）の 1 行（44px 以上）。左に status のアイコンのボタン（36px の丸）、題と弱い文字の補足（期間 / 次の予定日 / 期限。狭いときは補足から縮む）、実績、再生 / 停止、`⋯` のメニュー。ドラッグで並べ、落とす位置は primary の線（`.is-drop-before`）。済みは打ち消し線。記録中は緑の枠（ADR-0142） |
 | サブイシューの中身 | `.vt-subissue-detail` | 行を開いたアコーディオン。項目の一覧（`.vt-subissue-facts`）、Markdown の本文（Obsidian の描画）、Edit の text ボタン |
-| 本文のサブの領域 | `.vt-sub-area`（`.vt-sub-body`） | issue の本文の下で、Live Preview と Reading に描くアコーディオン。行は同じ `.vt-subissue` で、左に開閉の矢印。開くと `.vt-subissue-form` の欄（題・日付と見積もりのチップ・依存先・Notes）をその場で直す。読めないブロックは警告の行（`.is-unreadable`）で、原文を読み取り専用で見せる。開閉はこの端末に保存する（ADR-0158） |
+| サブの項目のカード | `.vt-sub-card`（Live Preview は `.vt-sub-card-host` の中） | issue の本文の、サブごとの項目のブロック（`<!-- sub-issue` から `-->`）を置き換えて描く。本文は置き換えず、issue 本体の描画のまま。行は同じ `.vt-subissue` で、左に開閉の矢印。開くと `.vt-subissue-form` の欄（題・日付と見積もりのチップ・依存先）をその場で直し、「Show source」で生の md を見せる。閉じたサブの本文は隠す（Reading は `.vt-sub-body-closed`）。読めないブロックは警告の行（`.is-unreadable`）。開閉はこの端末に保存する（ADR-0161） |
 | ガントチャート | `.vt-timeline`（`.vt-timeline-bar`・`.vt-timeline-arrow`・`.vt-timeline-today`） | カード「Sub-issues」の Timeline（ADR-0143）。左に題の列、右に日の列（カードの中で横にスクロール）。行は 36px。棒は status の印の色（`--vt-dot`）で、ドラッグでずらし、両端のつまみで伸ばす。予定日は点、期限は amber / red の短い縦線、今日は primary の縦線、土日は surface-container の面、週の区切り（日曜）は細い線。依存は矢印で、遅れは error の色。目盛りは Day（1 日 28px）と Week（日曜始まり、1 日 8px）。切り替え（List / Timeline、Day / Week）は絞り込みチップ |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
 

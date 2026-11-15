@@ -172,8 +172,8 @@ function yamlString(s: string): string {
 	return JSON.stringify(s);
 }
 
-/** サブ 1 件のブロック（項目は ADR の表の順、空の項目は書かない）。書けない値なら SubIssueFormatError */
-export function formatSubIssue(sub: SubIssueInput): string {
+/** サブ 1 件の項目のブロック（`<!-- sub-issue` から `-->` まで。末尾の改行なし）。書けない値なら SubIssueFormatError */
+export function formatSubHead(sub: SubIssueInput): string {
 	if (!isSubId(sub.id)) throw new SubIssueFormatError(`id が英小文字と数字の 6 文字ではありません: ${sub.id}`);
 	const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
 	const put = (key: string, value: string | null) => {
@@ -193,12 +193,18 @@ export function formatSubIssue(sub: SubIssueInput): string {
 		if (line.includes(BLOCK_END)) throw new SubIssueFormatError(`サブの項目に ${BLOCK_END} は書けません: ${line}`);
 		if (/[\r\n]/.test(line)) throw new SubIssueFormatError(`サブの項目に改行は書けません: ${line}`);
 	}
+	lines.push(BLOCK_END);
+	return lines.join("\n");
+}
+
+/** サブ 1 件のブロック（項目は ADR の表の順、空の項目は書かない）。書けない値なら SubIssueFormatError */
+export function formatSubIssue(sub: SubIssueInput): string {
+	const head = formatSubHead(sub);
 	const body = sub.body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
 	if (body.split(/\r?\n/).some((l) => l.startsWith(SUB_ISSUE_MARKER))) {
 		throw new SubIssueFormatError(`サブの本文の行頭に ${SUB_ISSUE_MARKER} は書けません`);
 	}
-	lines.push(BLOCK_END);
-	return `${lines.join("\n")}\n${body ? `${body}\n` : ""}`;
+	return `${head}\n${body ? `${body}\n` : ""}`;
 }
 
 /**
@@ -425,37 +431,121 @@ export function splitQuickAdd(text: string): string[] {
 		.filter((l) => l !== "");
 }
 
-/** サブの領域の始まりの行（0 から。frontmatter の後ろの最初のマーカー）。なければ null。リーディング表示で隠すのに使う */
-export function subAreaStartLine(text: string): number | null {
-	const { head, blocks } = splitSubIssueText(text);
-	if (blocks.length === 0) return null;
-	return head.split("\n").length - 1;
+/** md の中のサブ 1 件の、項目と本文の位置（ADR-0161）。文字の位置は 0 から、行は 0 から */
+export interface SubLayout {
+	index: number;
+	/** 読めなかったブロックは null */
+	id: string | null;
+	/** マーカーの行と、`-->` の行（なければ null） */
+	startLine: number;
+	endLine: number | null;
+	/** 本文の最初の行と、最後の空でない行（本文がなければ bodyEndLine < bodyStartLine） */
+	bodyStartLine: number;
+	bodyEndLine: number;
+	/** 項目の範囲: マーカーの行頭から、`-->` の行の終わり（改行の前）まで。`-->` がなければ cardTo は null */
+	from: number;
+	cardTo: number | null;
+	/** 隠す本文の範囲: `-->` の次の行頭から、最後の空でない行の終わりまで（本文がなければ空）。`-->` がなければ null */
+	bodyFrom: number | null;
+	bodyTo: number | null;
 }
 
-/** md のサブの領域の始まりの位置（文字数。最初のマーカーの行頭）。サブがなければ null（ADR-0158） */
-export function subAreaOffset(text: string): number | null {
+/** md のサブの項目と本文の位置を、md に書いた順に返す。サブがなければ空 */
+export function layoutSubIssues(path: string, parent: string, text: string, parseYaml: YamlParse): SubLayout[] {
 	const { head, blocks } = splitSubIssueText(text);
-	return blocks.length === 0 ? null : head.length;
+	const parsed = parseSubIssues(path, parent, text, parseYaml).blocks;
+	const out: SubLayout[] = [];
+	let pos = head.length;
+	let line = head.split("\n").length - 1;
+	blocks.forEach((raw, index) => {
+		const lines = raw.split("\n");
+		const lineEnd = (i: number) => lines[i]!.replace(/\r$/, "").length;
+		const startOf = (i: number) => lines.slice(0, i).reduce((n, l) => n + l.length + 1, 0);
+		const endIdx = lines.findIndex((l, i) => i > 0 && l.trim() === BLOCK_END);
+		const id = parsed[index]?.sub?.id ?? null;
+		if (endIdx < 0) {
+			out.push({ index, id, startLine: line, endLine: null, bodyStartLine: line + 1, bodyEndLine: line, from: pos, cardTo: null, bodyFrom: null, bodyTo: null });
+		} else {
+			let last = lines.length - 1;
+			while (last > endIdx && lines[last]!.trim() === "") last--;
+			const bodyFrom = Math.min(pos + startOf(endIdx + 1), pos + raw.length);
+			out.push({
+				index,
+				id,
+				startLine: line,
+				endLine: line + endIdx,
+				bodyStartLine: line + endIdx + 1,
+				bodyEndLine: line + last,
+				from: pos,
+				cardTo: pos + startOf(endIdx) + lineEnd(endIdx),
+				bodyFrom,
+				bodyTo: last > endIdx ? pos + startOf(last) + lineEnd(last) : bodyFrom,
+			});
+		}
+		pos += raw.length;
+		line += lines.length - 1;
+	});
+	return out;
 }
-
-/** リーディング表示の 1 つのセクション（行 lineStart〜lineEnd。終わりを含む）の、サブの領域との関係（ADR-0158） */
-export type SubAreaRole = "before" | "mount" | "hide";
 
 /**
- * サブの領域の最初のセクション（マーカーの行を含む）には、アコーディオンを描く。
- * それより後ろのセクションは隠す。前のセクションは何もしない
+ * md の中のサブ 1 件の項目だけを書き換える変更（ADR-0161）。エディタの文書の、項目のブロックの範囲だけを置き換えるのに使う。
+ * 本文、ほかのサブ、親の部分には触れない。検査に通らなければ・サブがなければ・書けない値なら例外
  */
-export function subAreaRole(startLine: number | null, lineStart: number, lineEnd: number): SubAreaRole {
-	if (startLine === null) return "before";
-	if (lineStart > startLine) return "hide";
-	return lineEnd >= startLine ? "mount" : "before";
+export function subHeadChange(
+	path: string,
+	parent: string,
+	text: string,
+	id: string,
+	patch: SubIssuePatch,
+	parseYaml: YamlParse,
+	memberIds: ReadonlySet<string>,
+): { change: { from: number; to: number; insert: string }; before: SubIssue; after: SubIssue } {
+	const fixed = normalizeSubPatch(patch);
+	const layout = layoutSubIssues(path, parent, text, parseYaml).find((b) => b.id === id);
+	const { subs } = parseSubIssues(path, parent, text, parseYaml);
+	const before = subs.find((s) => s.id === id);
+	if (!layout || !before || layout.cardTo === null) throw new Error(`サブがありません: ${subKey(parent, id)}`);
+	const after: SubIssue = { ...before, ...fixed, id };
+	const errors = touchedSubErrors(
+		subs.map((s) => (s.id === id ? after : s)),
+		[id],
+		memberIds,
+	);
+	if (errors.length > 0) throw new Error(errors.join("\n"));
+	return { change: { from: layout.from, to: layout.cardTo, insert: formatSubHead(after) }, before, after };
+}
+
+/** リーディング表示の 1 つのセクション（行 lineStart〜lineEnd。終わりを含む）の、サブとの関係（ADR-0161） */
+export type SubSectionRole =
+	| { role: "none" }
+	/** マーカーの行を含むセクション。ここに項目のカードを描く（id は読めなければ null） */
+	| { role: "card"; index: number; id: string | null }
+	/** 項目の途中のセクション（隠す） */
+	| { role: "hide" }
+	/** 本文のセクション（そのサブが閉じていれば隠す） */
+	| { role: "body"; id: string };
+
+export function subSectionRole(layout: readonly SubLayout[], lineStart: number, lineEnd: number): SubSectionRole {
+	for (const b of layout) {
+		if (lineStart <= b.startLine && b.startLine <= lineEnd) return { role: "card", index: b.index, id: b.id };
+		if (b.endLine !== null && lineStart > b.startLine && lineStart <= b.endLine) return { role: "hide" };
+	}
+	// 本文: 項目の `-->` の後ろから、次のマーカーの前まで
+	for (let i = layout.length - 1; i >= 0; i--) {
+		const b = layout[i]!;
+		if (b.endLine !== null && lineStart > b.endLine && lineStart > b.startLine) {
+			return b.id === null ? { role: "none" } : { role: "body", id: b.id };
+		}
+	}
+	return { role: "none" };
 }
 
 /**
- * Live Preview で、サブの領域の中にカーソルがあるか（ADR-0158）。
- * 領域の先頭と終わりの位置は「中」に数えない（文書の下をクリックして終わりにカーソルが来ても、描き替えを外さない）
+ * カーソル（選択）が範囲の中にあるか（ADR-0161）。
+ * 範囲の先頭と終わりの位置は「中」に数えない（隣の位置にカーソルがあっても、描き替えを外さない）。選択は重なれば中
  */
-export function cursorInsideSubArea(sel: { from: number; to: number }, from: number, to: number): boolean {
+export function cursorInside(sel: { from: number; to: number }, from: number, to: number): boolean {
 	return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
 }
 
