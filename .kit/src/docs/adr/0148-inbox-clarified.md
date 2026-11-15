@@ -14,22 +14,38 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 また、Inbox に戻す操作（`inboxPatch`）は予定と期限をすべて消す。再整理したくなっても、外から与えられた締切は消えない。
 
+整理の定義は GTD（Getting Things Done）の Clarify に合わせる。Inbox は「まだ処理していないもの」だけを入れ、1 件ずつ処理して出す。処理の行き先は、捨てる・参照・Someday・その場でやる・Waiting For・Project・Calendar（日時が確定したもの）・Next Actions（日付なし）。
+
 ## 決定
 
 ### Inbox の定義
 
 - `isInbox(issue)` を「`status` が `open` で、`clarified` が `true` でない」に変える。日付は見ない
-- `clarified` は frontmatter の真偽値。「何をするか・何が済めば終わりかを自分で決めた」ことを表す。未設定は未整理（`false` と同じ）
+- `clarified` は frontmatter の真偽値。「何をするか・何が済めば終わりかを自分で決めた（処理した）」ことを表す。未設定は未整理（`false` と同じ）
 - 1 行の登録（クイックキャプチャ、Inbox 画面の入力欄、MCP の `create_issue`）は、これまでどおり `clarified` を書かない。登録は軽いままにする
 - status とは別の項目にする。`open` 以外の status（`in-progress`・`waiting` など）は、`clarified` が未設定でも Inbox に出ない（ADR-0006 のとおり）
 
+### Next Actions
+
+- 「`open` で、`clarified` で、`scheduled` がない」issue を Next（Next Actions）と呼ぶ。保存する項目は増やさず、算出する
+- Next は Inbox に出ない。選ぶ場所は DailyTaskView（#150）、見直す場所は Weekly Review（#151）
+
 ### clarified を付ける・外す
 
-- Organize で、Do Date・Later（soft_deadline）・期限のいずれかを決めたら、`clarified: true` を一緒に書く
-- Organize の Someday・Cancel・Already done は status が変わるので、`clarified` は触らない
-- 「Inbox に戻す」（View のアクション、ボードの Inbox 操作、MCP）は、`clarified` を消すだけにする。`scheduled`・`soft_deadline`・`deadline` は残す。status が `open` でなければ `open` に戻す
+- Organize の操作を次のようにする
+
+| 操作 | 書くもの | `clarified` |
+|---|---|---|
+| Next（新設） | `clarified: true` と `reviewed` | 付ける |
+| Do Date | `scheduled`（と任意の `estimated`）と `reviewed` | 付ける |
+| Someday / Cancel / Already done | status の変更 | 触らない |
+
+- `scheduled` を書く操作は、Organize 以外（issue 画面、一覧の Do Today / Add Do Date、ボード、MCP）でも `clarified: true` を一緒に書く。日付を決めることは整理の結果だから
+- `deadline`・`soft_deadline` だけを書く操作では、`clarified` を付けない。締切が分かっていて、中身が曖昧という状態を残すため
+- 「Inbox に戻す」（View のアクション、ボードの Inbox 操作、MCP）は、`clarified` を消すだけにする。`scheduled`・`soft_deadline`・`deadline` は残す。status が `open` でなければ `open` に戻す。GTD では処理したものを Inbox に戻さないが、実行中に曖昧さが見つかったときの人の逃げ道として残す
+- Later は廃止する。Later は何も変えずに `reviewed` を今日にして、そのセッションでキューから外すだけの操作だった。処理せずに Inbox に残すのは、GTD の「Inbox に戻さず、1 件ずつ処理する」に合わない。決められないものは、Someday か Next にする。↑ キー・上スワイプ・ボタン・取り消しの対応から外す
 - issue の画面と一覧から、`clarified` を直接切り替えられる
-- Organize で Do Date を決めるときの `estimated` は、要求しない（任意）。これまでは Inbox のときだけ要求していた（[ADR-0030](0030-organize-schedule-calendar.md)）
+- Organize で Do Date を決めるときの `estimated` は、要求しない（任意）。これまでは Inbox のときだけ要求していた（[ADR-0030](0030-organize-schedule-calendar.md)）。GTD は見積もりを整理の条件にしない
 
 ### 範囲
 
@@ -42,6 +58,11 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 - 見た目は移行の前後で変わらない。変わるのは、移行のあとに起きる操作から
 - 番号は Issue に合わせて `0148-inbox-clarified`。冪等にする
 
+### この ADR の外で扱うこと
+
+- Daily で Next から選ぶ、Daily の段階の整理: #150
+- Next・Project・Waiting For・Someday の見直し（Weekly Review）: #151
+
 ### 派生する変更
 
 - `isInbox` を使う Inbox 画面、Organize、PKM Updates の Inbox 欄、サイドバーの件数、MCP の Inbox の一覧、metrics、task-coach スキルを、新しい定義にそろえる
@@ -50,9 +71,10 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 ## 理由
 
 - 「整理したか」と「いつやるか」は別の問いなので、別の項目に持つ。締切の近さと仕事の明確さを独立に扱える（#134 §3.2、例 C）
-- 未設定を未整理にするので、登録は 1 行のまま。入力の負担を増やさない（#134 §5 の Bellotti の知見の、管理の手間を増やさないという点）
-- 日付を残す「Inbox に戻す」にすれば、再整理が締切を消さない
-- Organize で日付を決めることは整理の完了を意味するので、そこで `clarified` を付けるのが自然
+- 未設定を未整理にするので、登録は 1 行のまま。入力の負担を増やさない（#134 §5 の、管理の手間を増やさないという点）
+- GTD は、日時が確定したものだけを Calendar に置き、それ以外は日付のない Next に置く。日付のない Next を整理の出口として持たないと、Do Date を無理に決めるか、Inbox に残すしかなくなる
+- 日付を決めることは処理の結果なので、`scheduled` を書く操作は `clarified` を付ける。期限だけでは処理したとは言えないので付けない
+- 「戻す」で日付を残すので、再整理が締切を消さない
 - `estimated` を要求しないのは、見積もりは整理の条件ではなく、任意の情報だから。見積もりがないとボードの負荷計算は粗くなるが、それは別に扱う
 
 ## 却下した案
@@ -60,12 +82,15 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 - **Inbox を status にする**: ADR-0006 が却下した案。status の色・遷移・集計すべてに影響し、`open` と二重になる。今回は status とは別の真偽値で持つ
 - **現在の定義のまま、本文に「要明確化」と書いて運用する**: 期限付きで曖昧なものは Inbox に出ないまま残る。機械が読めないので、Organize・MCP・タスクコーチが使えない
 - **`needs_clarification: true` を書く（未設定が整理済み）**: 既存の issue を移行しなくて済むが、登録時に毎回この項目を書く必要が生じる。1 行の登録に反する
-- **「再整理」と「Inbox に戻す（日付も消す）」を別の操作にする**: 操作が増える。日付を消したいときは Someday か期限の編集で足りる
+- **Next を `status: next` や専用の項目で持つ**: `open` + `clarified` + 日付なし で算出できる。保存すると、日付を足したときなどに二重管理になる
+- **「Inbox に戻す」を廃止する**: GTD の原則には近いが、実行中に見つけた曖昧さを直す手段がなくなる。日付を残す形で残す
+- **Later を残す**: 処理せず Inbox に残す操作は、GTD に合わない。Someday か Next で足りる
 - **Do Date を決めるとき、見積もりが空なら常に要求する**: 整理の手間が増える。管理の手間を増やさない方針に反する
 
 ## 影響
 
-- 変更するもの: `core/schema.ts`（`clarified` の読み書き）、`core/index.ts`（`isInbox`）、`core/actions.ts`（`inboxPatch`、`organizeSchedulePatch`、`schedulePatch`）、`views/OrganizeView.tsx`（`requireEstimate`）、`cli/mcp.ts`・`cli/vault-ops.ts`、`core/lint.ts`、issue 画面・一覧の切り替え、`docs`（プロダクトの文書）、`task-coach` スキル
+- 変更するもの: `core/schema.ts`（`clarified` の読み書き）、`core/index.ts`（`isInbox`、Next の算出）、`core/actions.ts`（`inboxPatch`、`organizeSchedulePatch`、`schedulePatch`、`reschedulePatch` など `scheduled` を書く patch）、`views/OrganizeView.tsx`（Next の追加、Later の削除、`requireEstimate`）、`cli/mcp.ts`・`cli/vault-ops.ts`、`core/lint.ts`、issue 画面・一覧の切り替え、プロダクトの文書、`task-coach` スキル
 - 移行 `.kit/migrations/0148-inbox-clarified/`。子の Vault の issue の frontmatter を書き換えるので、`.kit/changes/` に変更のノートを書く
-- `clarified` は `sources` などと同じく通常のメタデータ。`updated` の自動付与（ADR-0028）の対象になる
+- Organize の操作が Later の廃止と Next の追加で入れ替わる。キーとスワイプの割り当て（今は 4 方向で埋まっている）は、Later の ↑ を Next に当てる
+- `clarified` は通常のメタデータ。`updated` の自動付与（ADR-0028）の対象になる
 - ADR-0006 の状態を `承認（一部置換: 0032, 0148）` にする（承認のとき）

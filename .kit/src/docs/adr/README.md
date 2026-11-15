@@ -89,4 +89,5 @@
 | [0142](0142-sub-issues-in-issue-screen.md) | 承認 | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 提案 | Inbox は日付ではなく clarified（整理済み）で決める |
+| [0150](0150-daily-engage-steps.md) | 提案 | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
 <!-- adr-index:end -->
