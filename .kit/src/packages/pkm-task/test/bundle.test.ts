@@ -86,6 +86,8 @@ function obsidianMock() {
 			Platform: { isMobile: false },
 			TFile: class {},
 			editorInfoField: {},
+			editorLivePreviewField: {},
+			MarkdownRenderChild: class {},
 			normalizePath: (p: string) => p,
 			setTooltip: () => {},
 		},
@@ -111,6 +113,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const req = (name: string) => {
 			required.add(name);
 			if (name === "obsidian") return mock.obsidian;
+			// CodeMirror は Obsidian が渡すもの。テストでは実物を使う（ADR-0158）
+			if (name === "@codemirror/state" || name === "@codemirror/view") return require(name);
 			throw new Error(`unexpected require: ${name}`);
 		};
 		const module = { exports: {} as { default: new () => { onload(): Promise<void> } } };
@@ -118,7 +122,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const plugin = new module.exports.default();
 		await plugin.onload();
 		mock.ready();
-		expect([...required].sort()).toEqual(["obsidian"]);
+		expect([...required].sort()).toEqual(["@codemirror/state", "@codemirror/view", "obsidian"]);
 		expect(mock.commands.map((c) => c.id)).toEqual([
 			"open-daily",
 			"open-issues",
@@ -135,9 +139,9 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		]);
 		// Board groups の View は廃止した（ADR-0137）
 		expect(mock.views).toHaveLength(10);
-		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む
-		expect(mock.extensions).toHaveLength(0);
-		// リーディング表示で、issue の md のサブの領域を隠す（ADR-0142）
+		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む。Live Preview のサブの領域の描き替えだけが拡張（ADR-0158）
+		expect(mock.extensions).toHaveLength(1);
+		// リーディング表示で、issue の md のサブの領域をアコーディオンに描く（ADR-0158）
 		expect(mock.postProcessors).toHaveLength(1);
 		expect(mock.events).toEqual(expect.arrayContaining(["workspace:file-open", "workspace:active-leaf-change", "workspace:layout-change"]));
 		// 記録中がなければ、ステータスバーの項目は隠れている（ADR-0075）

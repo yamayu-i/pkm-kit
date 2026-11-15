@@ -57,6 +57,11 @@ export class TaskStore {
 		this.schedule();
 	}
 
+	/** 読み込み済みの issue / worklog などの本文（なければ null）。issue の本文のサブの領域を描くのに使う（ADR-0158） */
+	text(path: string): string | null {
+		return this.texts.get(path) ?? null;
+	}
+
 	mtime(path: string): number | null {
 		const file = this.app.vault.getFileByPath(path);
 		return file ? file.stat.mtime : null;

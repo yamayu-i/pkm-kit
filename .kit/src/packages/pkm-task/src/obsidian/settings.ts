@@ -1,5 +1,6 @@
 import { PluginSettingTab, Setting, type App, type Plugin } from "obsidian";
 import type { IssueQuery } from "../core/list";
+import type { SubOpenMap } from "../core/sub-issue";
 import { sanitizeDeviceName } from "../core/worklog";
 
 /** 端末ごとの設定（data.json。git には入れない） */
@@ -12,9 +13,11 @@ export interface TaskSettings {
 	lastOrganizedAt: string | null;
 	/** Tasks Now で一時停止した記録の群（鍵の一覧。再開で一括して始める。ADR-0154） */
 	pausedTasks: string[];
+	/** 本文のサブの一覧で開いているサブ（ノートのパスごとのサブの id。この端末だけ。ADR-0158） */
+	subOpen: SubOpenMap;
 }
 
-export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [] };
+export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {} };
 
 export { sanitizeDeviceName } from "../core/worklog";
 
