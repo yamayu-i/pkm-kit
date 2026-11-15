@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barOf, dateAtX, incomingOf, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
+import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
 
 function s(id: string, extra: Partial<TimelineSub> = {}): TimelineSub {
 	return { id, start: null, end: null, scheduled: null, softDeadline: null, deadline: null, dependsOn: [], ...extra };
@@ -235,5 +235,36 @@ describe("ホバー・フォーカスで強調するもの", () => {
 		expect(incomingOf(arrows, "b")).toEqual({ arrows: [0], from: ["a"] });
 		expect(incomingOf(arrows, "a")).toBeNull();
 		expect(incomingOf(arrows, null)).toBeNull();
+	});
+});
+
+describe("依存を引く・消す（ADR-0163）", () => {
+	const bar = (id: string, dependsOn: string[] = [], start: string | null = "2026-11-16") => s(id, { start, end: start, dependsOn });
+
+	it("棒のある別のサブで、まだつないでおらず、循環にならなければつなげる", () => {
+		const subs = [bar("a"), bar("b"), bar("c")];
+		expect(canConnect(subs, "a", "b")).toBe(true);
+	});
+
+	it("自分自身・すでにある依存・棒のないサブにはつなげない", () => {
+		const subs = [bar("a"), bar("b", ["a"]), bar("c", [], null)];
+		expect(canConnect(subs, "a", "a")).toBe(false);
+		expect(canConnect(subs, "a", "b")).toBe(false);
+		expect(canConnect(subs, "a", "c")).toBe(false);
+		expect(canConnect(subs, "c", "a")).toBe(false);
+		expect(canConnect(subs, "a", "zzz")).toBe(false);
+	});
+
+	it("循環になるつなぎ方はできない（直接も、間にサブをはさんでも）", () => {
+		const subs = [bar("a"), bar("b", ["a"]), bar("c", ["b"])];
+		expect(canConnect(subs, "b", "a")).toBe(false);
+		expect(canConnect(subs, "c", "a")).toBe(false);
+		expect(canConnect(subs, "a", "c")).toBe(true);
+	});
+
+	it("矢印の中ほどの点（× ボタンの位置）は、折れ線の真ん中あたりの区間の中点", () => {
+		expect(arrowMidpoint([[0, 0], [10, 0]])).toEqual([5, 0]);
+		expect(arrowMidpoint([[0, 0], [10, 0], [10, 20], [30, 20]])).toEqual([10, 10]);
+		expect(arrowMidpoint([[0, 0], [10, 0], [10, 20]])).toEqual([10, 10]);
 	});
 });

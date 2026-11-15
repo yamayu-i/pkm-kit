@@ -94,4 +94,5 @@
 | [0154](0154-tasks-now-dialog.md) | 承認 | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
 | [0158](0158-sub-issues-in-body.md) | 承認 | 本文のサブ領域をアコーディオンに描き、その場で編集する |
+| [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
 <!-- adr-index:end -->

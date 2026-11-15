@@ -3398,6 +3398,94 @@ body.is-mobile .vt-toast {
 	box-shadow: var(--vt-elevation-3);
 }
 
+/* 依存を引く・消す（ADR-0163）。棒の右端のコネクタから別の棒へドラッグして引き、矢印を選んで消す */
+.vt-timeline-bar {
+	z-index: 2;
+}
+
+.vt-timeline-connector {
+	position: absolute;
+	top: 4px;
+	right: -16px;
+	width: 12px;
+	height: 12px;
+	border: 1px solid var(--vt-primary);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	cursor: crosshair;
+	opacity: 0;
+	touch-action: none;
+}
+
+.vt-timeline-bar:hover .vt-timeline-connector,
+.vt-timeline-bar:focus-visible .vt-timeline-connector,
+.vt-timeline-bar.is-active .vt-timeline-connector,
+.vt-timeline.has-link .vt-timeline-connector {
+	opacity: 1;
+}
+
+@media (pointer: coarse) {
+	.vt-timeline-connector {
+		opacity: 1;
+	}
+}
+
+.vt-timeline-link {
+	fill: none;
+	stroke: var(--vt-primary);
+	stroke-dasharray: 4 3;
+	stroke-width: 1.5;
+}
+
+.vt-timeline.has-link .vt-timeline-bar.is-link-no {
+	opacity: var(--vt-opacity-disabled);
+}
+
+.vt-timeline-bar.is-link-target {
+	outline: var(--vt-border-width-thick) solid var(--vt-primary);
+	outline-offset: 2px;
+}
+
+/* 矢印の広い当たり判定。棒の下、行の上（棒は z-index 2） */
+.vt-timeline-arrow-hits {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.vt-timeline-arrow-hit {
+	fill: none;
+	pointer-events: stroke;
+	stroke: transparent;
+	stroke-width: 12;
+}
+
+.vt-timeline-arrow-hit:hover,
+.vt-timeline-arrow-hit.is-selected {
+	stroke: var(--vt-primary);
+	stroke-opacity: 0.25;
+}
+
+.vt-timeline-arrow-remove {
+	position: absolute;
+	z-index: 3;
+	display: flex;
+	width: 24px;
+	height: 24px;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	color: var(--vt-error);
+	line-height: 1;
+	transform: translate(-50%, -50%);
+}
+
 /* worklog の行の、記録したサブの題 */
 .vt-log-sub {
 	overflow: hidden;
