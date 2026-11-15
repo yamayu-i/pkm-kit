@@ -1,6 +1,6 @@
 # セキュリティチェック 2026-11-15
 
-- 対象 commit: bec4716 と今回の issue-note-editor 差分
+- 対象 commit: b09ff80 と今回の issue-note-editor 差分
 - 前回: 2026-11-15（origin/main のレポート）
 - 結果: pass
 
