@@ -1,5 +1,6 @@
 import { Plugin, SuggestModal, setIcon, type App, type Command } from "obsidian";
 import { collectViews, matchViews, type ViewEntry } from "./views";
+import { registerCloseKey } from "../../shared/src/modal-keys";
 
 /**
  * pkm-task・pkm-template・pkm-updates の一覧の View を、1 つのダイアログから探して開く（ADR-0072）。
@@ -19,6 +20,7 @@ class ViewSelectorModal extends SuggestModal<ViewEntry> {
 		private readonly run: (entry: ViewEntry) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.setPlaceholder("Find a View (Issues, Inbox, Notes …)");
 		this.emptyStateText = entries.length ? "No matching Views" : "View がありません（pkm-task か pkm-template が有効になっていません）";
 		this.setInstructions([

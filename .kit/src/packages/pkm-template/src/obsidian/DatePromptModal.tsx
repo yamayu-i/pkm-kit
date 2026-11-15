@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { localToday } from "../../../shared/src/dates.ts";
 import { MonthCalendar } from "../../../shared/src/month-calendar.tsx";
 import { formatPromptDate, parseDatePromptInput } from "../core/date-prompt";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 /** 日付を 1 つ選ぶ（ADR-0065）。カレンダーは pkm-task と共有（ADR-0078）。短い書き方の入力欄（`-d` で曜日付き）、曜日のチェックボックス、カレンダー */
 function DatePromptForm(props: { onSubmit: (value: string) => void }) {
@@ -75,6 +76,7 @@ class DatePromptModal extends Modal {
 		private readonly resolve: (value: string | null) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {

@@ -1,4 +1,5 @@
-import { useState } from "preact/hooks";
+import type { Scope } from "obsidian";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import {
@@ -56,7 +57,7 @@ function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: strin
 /**
  * Tasks Now（ADR-0154）: リボンから開くダイアログ。今の日時・PKM State・実行中のタスク群・タスクリスト
  */
-export function TasksNowDialog(props: { ctx: TaskContext }) {
+export function TasksNowDialog(props: { ctx: TaskContext; scope?: Scope }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
 	const now = useNow(1000);
@@ -101,6 +102,23 @@ export function TasksNowDialog(props: { ctx: TaskContext }) {
 			await remember([]);
 		});
 	const discardPaused = () => guarded("破棄できませんでした", () => remember([]));
+
+	// キー操作（ダイアログを開いているあいだ）: Space は一時停止 / 再開、Shift + Space は停止 / 破棄。
+	// 描画のたびに最新の操作を ref に入れ、登録は 1 回だけにする
+	const keyActions = useRef({ toggle: () => {}, end: () => {} });
+	keyActions.current = {
+		toggle: () => void (running.length > 0 ? stopGroup(true) : paused.length > 0 ? resume() : undefined),
+		end: () => void (running.length > 0 ? stopGroup(false) : paused.length > 0 ? discardPaused() : undefined),
+	};
+	useEffect(() => {
+		const scope = props.scope;
+		if (!scope) return;
+		const handlers = [
+			scope.register([], " ", () => (keyActions.current.toggle(), false)),
+			scope.register(["Shift"], " ", () => (keyActions.current.end(), false)),
+		];
+		return () => handlers.forEach((handler) => scope.unregister(handler));
+	}, [props.scope]);
 
 	return (
 		<div class="vt-now">

@@ -6,6 +6,7 @@ import { ItemView, Modal, Scope, Setting, type App, type ViewStateResult, type W
 import { h, render } from "preact";
 import { baseName } from "../core/decks.ts";
 import { NotesView, type NotesController } from "../views/NotesView.tsx";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 export const NOTES_VIEW_TYPE = "pkm-slide-notes";
 
@@ -110,6 +111,7 @@ function confirmSave(app: App, deck: string): Promise<boolean> {
 				if (!answered) resolve(true);
 			}
 		})(app);
+		registerCloseKey(modal);
 		modal.open();
 	});
 }

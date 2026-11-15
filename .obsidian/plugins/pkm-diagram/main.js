@@ -684,6 +684,16 @@ async function renderPng(svg, doc) {
 
 // src/obsidian/dialogs.ts
 var import_obsidian2 = require("obsidian");
+
+// ../shared/src/modal-keys.ts
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
+// src/obsidian/dialogs.ts
 function pick(app, placeholder, items, label) {
   return new Promise((resolve) => {
     let chosen = false;
@@ -705,6 +715,7 @@ function pick(app, placeholder, items, label) {
         }, 0);
       }
     }(app);
+    registerCloseKey(modal);
     modal.setPlaceholder(placeholder);
     modal.open();
   });
@@ -1243,6 +1254,7 @@ var DiagramZoomModal = class extends import_obsidian6.Modal {
   constructor(app, source) {
     super(app);
     this.source = source;
+    registerCloseKey(this);
   }
   source;
   view = { scale: 1, x: 0, y: 0 };

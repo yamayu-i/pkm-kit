@@ -1,5 +1,6 @@
 /** ダイアログ（Obsidian の SuggestModal） */
 import { SuggestModal, type App } from "obsidian";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 /** 一覧から 1 つ選ぶ。閉じたら null */
 export function pick<T>(app: App, placeholder: string, items: readonly T[], label: (item: T) => string): Promise<T | null> {
@@ -24,6 +25,7 @@ export function pick<T>(app: App, placeholder: string, items: readonly T[], labe
 				}, 0);
 			}
 		})(app);
+		registerCloseKey(modal);
 		modal.setPlaceholder(placeholder);
 		modal.open();
 	});

@@ -4,6 +4,7 @@
  */
 import { Modal, setIcon, type App } from "obsidian";
 import { actualSize, fit, pan, pinch, wheelFactor, zoomAt, ZOOM_STEP, type Point, type Size, type View } from "../core/viewport.ts";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 /** 大きさが分からない図（幅と高さのない SVG）の仮の大きさ */
 const FALLBACK: Size = { width: 800, height: 600 };
@@ -31,6 +32,7 @@ export class DiagramZoomModal extends Modal {
 		private readonly source: ZoomSource,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {

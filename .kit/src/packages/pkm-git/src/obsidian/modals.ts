@@ -2,6 +2,7 @@ import { Modal, Notice, Setting, type App } from "obsidian";
 import type { FileHistory, FileVersion } from "../git/engine";
 import type { SyncLogEntry } from "../git/sync-log";
 import type { ConflictChoice, ConflictSegment } from "../merge/text-merge";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 export interface ConflictAction {
 	label: string;
@@ -25,6 +26,7 @@ export class ConflictsModal extends Modal {
 		private readonly items: ConflictItem[],
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -73,6 +75,7 @@ export class ConfirmModal extends Modal {
 		private readonly onConfirm: () => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -105,6 +108,7 @@ export class KeepVersionModal extends Modal {
 		private readonly onKeep: (name: string) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -140,6 +144,7 @@ export class SyncLogModal extends Modal {
 		private readonly entries: SyncLogEntry[],
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -189,6 +194,7 @@ export class ResolveConflictsModal extends Modal {
 		private readonly onApply: (choices: ConflictChoice[]) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.choices = segments.filter((s) => s.type === "conflict").map(() => undefined);
 	}
 
@@ -265,6 +271,7 @@ export class FileHistoryModal extends Modal {
 		private readonly actions: FileHistoryActions,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
@@ -318,6 +325,7 @@ export class PreviewModal extends Modal {
 		private readonly size: number,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {

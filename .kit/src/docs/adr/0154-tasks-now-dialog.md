@@ -22,6 +22,8 @@
      - 保持した群のうち、消えた・closed / canceled になったものは再開の対象から外す。別のタスクを始めた（記録中が 1 つでもある）あいだは、保持した群を出さない
   4. **タスクリスト**: 今日のボード（今日が実行日で自動で載るものを含む。ADR-0034）のうち、記録中でも保持中でも片付いてもいないものを、Top 3 → Up next → Waiting の順にリストで出す。行の再生ボタンで記録を始めると、実行中のタスク群に移る（ADR-0137 のボードの欄と同じ分け方）
 - **ホットキー**: コマンド `pkm-task:open-tasks-now`（Open Tasks Now）として登録するので、Obsidian の設定「ホットキー」で割り当てられる。上流は既定のキーを決めない（子ごとの `hotkeys.json` で、ほかの割り当てとぶつかるため）
+- **ダイアログのキー**（開いているあいだだけ）: **Space** は実行中なら Pause、保持中なら Resume（再生・一時停止のトグル）。**Shift + Space** は実行中なら Stop、保持中なら Discard。どちらも対象がなければ何もしない。操作中（`busy`）は押しても重ねて実行しない
+- **Cmd + W**: プラグインが作るすべてのダイアログ（モーダル）は、Cmd + W（Windows / Linux は Ctrl + W）で閉じられる。Obsidian の既定の Mod + W は背後のタブを閉じるので、モーダルの scope で先に受けて止める。共通の `registerCloseKey`（`packages/shared/src/modal-keys.ts`）を、モーダルを作る側が呼ぶ。新しいモーダルを足すときも呼ぶ
 - **バッジ**: リボンの Tasks Now に、記録中のタスクの数（同じ鍵は 1 つ。0 なら出さない）をバッジで出す。pkm-task が `getRibbonBadge` で数を答え、変わったときだけ pkm-ribbon に知らせる（ADR-0070 の 6）
 - 行の題を押すとそのノートを開く。再生・停止は既存の `startTimer` / `stopTimer`（open の issue とサブは in-progress にする。ADR-0031）を使う
 - 保持する群と前回の Organize は端末ごとの設定（`data.json`。git に入れない）に置く。worklog・board・statuslog の形式は変えない

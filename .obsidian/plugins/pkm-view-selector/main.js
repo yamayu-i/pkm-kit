@@ -68,12 +68,21 @@ function scoreOf(q, text) {
   return 100 - gaps;
 }
 
+// ../shared/src/modal-keys.ts
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
 // src/main.ts
 var ViewSelectorModal = class extends import_obsidian.SuggestModal {
   constructor(app, entries, run) {
     super(app);
     this.entries = entries;
     this.run = run;
+    registerCloseKey(this);
     this.setPlaceholder("Find a View (Issues, Inbox, Notes \u2026)");
     this.emptyStateText = entries.length ? "No matching Views" : "View \u304C\u3042\u308A\u307E\u305B\u3093\uFF08pkm-task \u304B pkm-template \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09";
     this.setInstructions([

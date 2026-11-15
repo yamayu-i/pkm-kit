@@ -197,6 +197,7 @@ export function createObsidianMock(root: string, secrets: Record<string, string>
 	}
 	class Modal {
 		contentEl = el();
+		scope = { register: () => ({}), unregister: () => {} };
 		constructor(public app: unknown) {}
 		setTitle(t: string) {
 			modals.push(t);

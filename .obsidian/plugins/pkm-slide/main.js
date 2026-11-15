@@ -23143,6 +23143,14 @@ function NotesView({ app, deckPath, register }) {
   ] });
 }
 
+// ../shared/src/modal-keys.ts
+function registerCloseKey(modal) {
+  modal.scope.register(["Mod"], "w", () => {
+    modal.close();
+    return false;
+  });
+}
+
 // src/obsidian/notes-view.ts
 var NOTES_VIEW_TYPE = "pkm-slide-notes";
 var SlideNotesView = class extends import_obsidian4.ItemView {
@@ -23227,6 +23235,7 @@ function confirmSave(app, deck) {
         if (!answered) resolve(true);
       }
     }(app);
+    registerCloseKey(modal);
     modal.open();
   });
 }
@@ -23344,6 +23353,7 @@ var NameModal = class extends import_obsidian5.Modal {
     super(app);
     this.spec = spec;
     this.submit = submit;
+    registerCloseKey(this);
   }
   spec;
   submit;
@@ -23398,6 +23408,7 @@ var FolderModal = class extends import_obsidian5.FuzzySuggestModal {
     super(app);
     this.folders = folders;
     this.choose = choose;
+    registerCloseKey(this);
     this.setPlaceholder("Move to folder\u2026");
   }
   folders;

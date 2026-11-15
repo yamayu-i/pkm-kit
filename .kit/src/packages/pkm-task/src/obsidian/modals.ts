@@ -1,24 +1,26 @@
-import { FuzzySuggestModal, Modal, SuggestModal, prepareFuzzySearch, type App } from "obsidian";
+import { FuzzySuggestModal, Modal, SuggestModal, prepareFuzzySearch, type App, type Scope } from "obsidian";
 import { h, render, type ComponentChild } from "preact";
 import { memberExactly, memberLabel, memberMatches, memberQuery, sortMembers } from "../core/member";
 import type { Issue, Member } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
+import { registerCloseKey } from "../../../shared/src/modal-keys";
 
 /** preact の部品を中身にするモーダル */
 export class PreactModal extends Modal {
 	constructor(
 		app: App,
 		private readonly title: string,
-		private readonly view: (close: () => void) => ComponentChild,
+		private readonly view: (close: () => void, scope: Scope) => ComponentChild,
 	) {
 		super(app);
+		registerCloseKey(this);
 	}
 
 	override onOpen(): void {
 		this.setTitle(this.title);
 		// vt-ui: 入力欄などの共通の見た目の範囲（#32）
 		this.modalEl.addClass("vt-ui");
-		render(h(() => this.view(() => this.close()) as never, {}), this.contentEl);
+		render(h(() => this.view(() => this.close(), this.scope) as never, {}), this.contentEl);
 	}
 
 	override onClose(): void {
@@ -35,6 +37,7 @@ export class IssueSuggestModal extends FuzzySuggestModal<Issue> {
 		placeholder = "Search issues (ID / summary)",
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.setPlaceholder(placeholder);
 	}
 
@@ -80,6 +83,7 @@ export class BoardIssueModal extends SuggestModal<BoardChoice> {
 		private readonly onChoose: (choice: BoardChoice) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.setPlaceholder("Search issues and sub-issues, or type a summary to create one");
 	}
 
@@ -107,6 +111,7 @@ export class MemberSuggestModal extends SuggestModal<MemberChoice> {
 		private readonly onChoose: (choice: MemberChoice) => void,
 	) {
 		super(app);
+		registerCloseKey(this);
 		this.setPlaceholder("Search delegates by @alias, nickname or name, or type a name to create one");
 	}
 
