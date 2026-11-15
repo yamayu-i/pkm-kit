@@ -1596,7 +1596,6 @@ function checkGuide(root) {
     if (entry.kind !== "visual" && !entry.reason) errors.push(path + ": \u5BFE\u8C61\u5916\u306E\u7406\u7531\u304C\u306A\u3044");
     for (const p of entry.source) if (!existsSync(join(root, p))) errors.push(path + ": \u5B9F\u88C5\u304C\u306A\u3044 " + p);
   }
-  if (manifest.fingerprint !== fingerprint(root)) errors.push("UI \u306E\u5165\u529B\u304C\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002pnpm --filter product-guide capture \u3092\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044");
   for (const image of manifest.images) {
     if (!/^pkm-guide\/ui\/[a-z0-9-]+\.png$/.test(image.file)) {
       errors.push("\u753B\u50CF\u30D1\u30B9\u304C\u4E0D\u6B63: " + image.file);
@@ -1608,6 +1607,9 @@ function checkGuide(root) {
   const expected = renderDocuments(docs, css, catalog, manifest);
   if (!existsSync(join(root, guidePath)) || readFileSync(join(root, guidePath), "utf8") !== expected) errors.push(guidePath + ": \u539F\u672C\u3068\u4E00\u81F4\u3057\u307E\u305B\u3093\u3002node .kit/bin/product-guide.mjs build \u3092\u5B9F\u884C\u3057\u3066\u304F\u3060\u3055\u3044");
   return errors;
+}
+function uiDrift(root) {
+  return read(root).manifest.fingerprint !== fingerprint(root);
 }
 function buildGuide(root) {
   const data = read(root);
@@ -1625,6 +1627,7 @@ async function main(args) {
     const errors = checkGuide(root);
     if (errors.length) throw Error(errors.join("\n"));
     console.log("\u4F53\u9A13\u5B9A\u7FA9\u66F8: \u539F\u672C\u30FB\u753B\u50CF\u30FB\u751F\u6210\u7269\u306F\u4E00\u81F4");
+    if (uiDrift(root)) console.warn("\u8B66\u544A: UI \u306E\u5165\u529B\u304C\u753B\u9762\u4F8B\u3092\u64AE\u3063\u305F\u6642\u304B\u3089\u5909\u308F\u3063\u3066\u3044\u307E\u3059\u3002\u6708 1 \u56DE\u304B\u4EFB\u610F\u306E\u30BF\u30A4\u30DF\u30F3\u30B0\u3067 pnpm --filter product-guide capture \u3068 build \u3092\u5B9F\u884C\u3057\u3066\u53CD\u6620\u3057\u3066\u304F\u3060\u3055\u3044");
   } else if (command === "inventory") {
     const { docs, catalog } = read(root);
     console.log(JSON.stringify({ documents: docs.map((d) => d.path), surfaces: catalog }, null, 2));
@@ -1645,5 +1648,6 @@ export {
   safeOutput,
   sha,
   slug,
+  uiDrift,
   walk
 };

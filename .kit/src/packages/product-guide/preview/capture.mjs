@@ -74,8 +74,11 @@ try{
    else {
     const old=JSON.parse(await readFile(join(root,"pkm-guide/ui/manifest.json"),"utf8"));
     const prev=old.images.find(r=>r.file===file);
-    if(!prev||prev.text!==record.text)throw Error("描画した内容が一致しない: "+file);
-    if(old.platform===platform()&&old.browser===browser.version()&&prev.sha256!==record.sha256)throw Error("固定環境の画像が一致しない: "+file);
+    // UI の入力が変わっていれば古さは想定どおり。警告にとどめ、反映は月 1 回か任意のタイミングで行う
+    const stale=old.fingerprint!==manifest.fingerprint;
+    const fail=message=>{if(!stale)throw Error(message);console.warn("警告: "+message)};
+    if(!prev||prev.text!==record.text)fail("描画した内容が一致しない: "+file);
+    else if(old.platform===platform()&&old.browser===browser.version()&&prev.sha256!==record.sha256)fail("固定環境の画像が一致しない: "+file);
     await writeFile(join(out,file.split("/").pop()),buffer);
    }
    manifest.images.push(record);await page.close();
