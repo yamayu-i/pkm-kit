@@ -7972,6 +7972,33 @@ function checkSubIssues(subs, memberIds) {
   }
   return errors;
 }
+function newSubIssueInput(item, id, created) {
+  return {
+    id,
+    summary: String(item.summary ?? "").trim(),
+    status: item.status ?? "open",
+    delegatedTo: item.delegatedTo ?? null,
+    start: item.start ?? null,
+    end: item.end ?? null,
+    scheduled: [...new Set(item.scheduled ?? [])].sort(),
+    softDeadline: item.softDeadline ?? null,
+    deadline: item.deadline ?? null,
+    estimated: item.estimated ?? null,
+    dependsOn: item.dependsOn ?? [],
+    created,
+    migratedFrom: null,
+    body: item.body ?? ""
+  };
+}
+function dependentsOf(subs, id) {
+  return subs.filter((s) => s.dependsOn.includes(id)).map((s) => s.id);
+}
+function touchedSubErrors(subs, touched, memberIds) {
+  return checkSubIssues(subs, memberIds).filter((e) => touched.some((id) => e.startsWith(`\u30B5\u30D6 ${id}: `)));
+}
+function normalizeSubPatch(patch) {
+  return patch.status !== void 0 && patch.status !== "delegated" && patch.delegatedTo === void 0 ? { ...patch, delegatedTo: null } : patch;
+}
 
 // src/core/worklog.ts
 var WORKLOG_PATH_RE = /^worklog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -9773,7 +9800,7 @@ function updateIssueOnDisk(root, index, input, log) {
 function updateSubIssueOnDisk(root, index, key, patch, log) {
   const current = index.sub(key);
   if (!current) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
-  if (patch.status !== void 0 && patch.status !== "delegated" && patch.delegatedTo === void 0) patch = { ...patch, delegatedTo: null };
+  patch = normalizeSubPatch(patch);
   const siblings = index.subs(current.parent).map((s) => s.id === current.id ? { ...s, ...patch, id: s.id } : s);
   assertSubIssues(index, siblings, [current.id]);
   const text = readTextOrEmpty(root, current.path);
@@ -9786,26 +9813,8 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
   return r.after;
 }
 function assertSubIssues(index, subs, touched) {
-  const errors = checkSubIssues(subs, new Set(index.members.keys())).filter((e) => touched.some((id) => e.startsWith(`\u30B5\u30D6 ${id}: `)));
+  const errors = touchedSubErrors(subs, touched, new Set(index.members.keys()));
   if (errors.length > 0) throw new Error(errors.join("\n"));
-}
-function newSubInput(item, id, created) {
-  return {
-    id,
-    summary: String(item.summary ?? "").trim(),
-    status: item.status ?? "open",
-    delegatedTo: item.delegatedTo ?? null,
-    start: item.start ?? null,
-    end: item.end ?? null,
-    scheduled: [...new Set(item.scheduled ?? [])].sort(),
-    softDeadline: item.softDeadline ?? null,
-    deadline: item.deadline ?? null,
-    estimated: item.estimated ?? null,
-    dependsOn: item.dependsOn ?? [],
-    created,
-    migratedFrom: null,
-    body: item.body ?? ""
-  };
 }
 function createSubIssuesOnDisk(root, index, parent, items, now, at) {
   const issue = index.issues.get(parent);
@@ -9817,7 +9826,7 @@ function createSubIssuesOnDisk(root, index, parent, items, now, at) {
   const subs = items.map((item) => {
     const id = newSubId(taken);
     taken.push(id);
-    return newSubInput(item, id, created);
+    return newSubIssueInput(item, id, created);
   });
   assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
   const text = readTextOrEmpty(root, issue.path);
@@ -9833,7 +9842,7 @@ function moveSubIssueOnDisk(root, index, key, to) {
 function deleteSubIssueOnDisk(root, index, key, now) {
   const sub = index.sub(key);
   if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
-  const dependents = index.subs(sub.parent).filter((s) => s.dependsOn.includes(sub.id)).map((s) => s.id);
+  const dependents = dependentsOf(index.subs(sub.parent), sub.id);
   if (dependents.length > 0) throw new Error(`\u30B5\u30D6 ${sub.id} \u306F ${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308A\u307E\u3059\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
   stopTimerOnDisk(root, index, [key], now);
   const text = readTextOrEmpty(root, sub.path);

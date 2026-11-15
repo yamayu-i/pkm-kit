@@ -11,7 +11,22 @@ import { STATUSES, type Status } from "../core/schema";
 import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
-import { updateSubIssueText, type SubIssuePatch } from "../core/sub-issue";
+import {
+	dependentsOf,
+	dropPosition,
+	insertSubIssuesText,
+	stepPosition,
+	moveSubIssueText,
+	newSubId,
+	newSubIssueInput,
+	normalizeSubPatch,
+	parseSubIssues,
+	removeSubIssueText,
+	subKey,
+	touchedSubErrors,
+	updateSubIssueText,
+	type SubIssuePatch,
+} from "../core/sub-issue";
 import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, workKey, workTarget, worklogPath, type WorklogEntry } from "../core/worklog";
 import type { TaskStore } from "./store";
 
@@ -110,9 +125,13 @@ export class TaskWriter {
 	async updateSub(key: string, patch: SubIssuePatch, via: StatusVia = "ui"): Promise<void> {
 		const sub = this.store.index.sub(key);
 		if (!sub) throw new Error(`サブがありません: ${key}`);
+		const fixed = normalizeSubPatch(patch);
 		let change: { from: Status; to: Status } | null = null;
 		await this.app.vault.process(this.file(sub.path), (text) => {
-			const r = updateSubIssueText(sub.path, sub.parent, text, sub.id, patch, parseYaml);
+			// 書く前に、今の md の姿で検査する（ADR-0135）。通らなければ書かない
+			const siblings = parseSubIssues(sub.path, sub.parent, text, parseYaml).subs.map((s) => (s.id === sub.id ? { ...s, ...fixed, id: s.id } : s));
+			this.assertSubs(siblings, [sub.id]);
+			const r = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, parseYaml);
 			change = r.before.status !== r.after.status ? { from: r.before.status, to: r.after.status } : null;
 			return r.text;
 		});
@@ -124,6 +143,74 @@ export class TaskWriter {
 			const running = this.store.index.running(key);
 			if (running.length > 0) await this.stopTimer(running);
 		}
+	}
+
+	private assertSubs(subs: Parameters<typeof touchedSubErrors>[0], touched: string[]): void {
+		const errors = touchedSubErrors(subs, touched, new Set(this.store.index.members.keys()));
+		if (errors.length > 0) throw new Error(errors.join("\n"));
+	}
+
+	/** サブを足す（ADR-0142）。summaries の順に末尾へ。作ったサブの合成キーを返す */
+	async createSubs(parentId: string, summaries: string[]): Promise<string[]> {
+		const issue = this.store.index.issues.get(parentId);
+		if (!issue) throw new Error(`issue がありません: ${parentId}`);
+		if (summaries.length === 0) return [];
+		const created = localDateTime();
+		let keys: string[] = [];
+		await this.app.vault.process(this.file(issue.path), (text) => {
+			const existing = parseSubIssues(issue.path, issue.id, text, parseYaml).subs;
+			const taken = existing.map((s) => s.id);
+			const subs = summaries.map((summary) => {
+				const id = newSubId(taken);
+				taken.push(id);
+				return newSubIssueInput({ summary }, id, created);
+			});
+			this.assertSubs([...existing, ...subs], subs.map((s) => s.id));
+			keys = subs.map((s) => subKey(issue.id, s.id));
+			return insertSubIssuesText(issue.path, issue.id, text, subs, parseYaml);
+		});
+		this.store.refreshSoon();
+		return keys;
+	}
+
+	/** サブを to の位置へ移す（md のブロックの並びで数える） */
+	async moveSub(key: string, to: number): Promise<void> {
+		await this.moveSubWith(key, () => to);
+	}
+
+	/** サブを before の前へ移す（null なら末尾。ドラッグ。ADR-0142）。位置は今の md のブロックの並び（読めないブロックを含む）で決める */
+	async moveSubBefore(key: string, before: string | null): Promise<void> {
+		const target = before === null ? null : this.store.index.sub(before);
+		await this.moveSubWith(key, (ids, id) => dropPosition(ids, id, target ? target.id : null));
+	}
+
+	/** サブを、出ている隣の行（visible の合成キー）をまたいで 1 つ上（-1）か下（1）へ移す（Move up / down） */
+	async stepSub(key: string, visible: readonly string[], dir: -1 | 1): Promise<void> {
+		const ids = visible.map((k) => this.store.index.sub(k)?.id).filter((x): x is string => x !== undefined);
+		await this.moveSubWith(key, (all, id) => stepPosition(all, ids, id, dir));
+	}
+
+	private async moveSubWith(key: string, position: (ids: (string | null)[], id: string) => number | null): Promise<void> {
+		const sub = this.store.index.sub(key);
+		if (!sub) throw new Error(`サブがありません: ${key}`);
+		await this.app.vault.process(this.file(sub.path), (text) => {
+			const ids = parseSubIssues(sub.path, sub.parent, text, parseYaml).blocks.map((b) => b.sub?.id ?? null);
+			const to = position(ids, sub.id);
+			return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, parseYaml);
+		});
+		this.store.refreshSoon();
+	}
+
+	/** サブを本文ごと消す。記録中のタイマーは止める。worklog の行は残す（ADR-0135）。依存されていたら消さない */
+	async deleteSub(key: string): Promise<void> {
+		const sub = this.store.index.sub(key);
+		if (!sub) throw new Error(`サブがありません: ${key}`);
+		const dependents = dependentsOf(this.store.index.subs(sub.parent), sub.id);
+		if (dependents.length > 0) throw new Error(`${dependents.join(", ")} の depends_on にあるので消せません。先に外してください`);
+		const running = this.store.index.running(key);
+		if (running.length > 0) await this.stopTimer(running);
+		await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, parseYaml));
+		this.store.refreshSoon();
 	}
 
 	/** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */

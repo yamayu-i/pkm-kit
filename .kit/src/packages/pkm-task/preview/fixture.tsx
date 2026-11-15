@@ -1,5 +1,6 @@
 /** プレビュー用のデータ。#header / #daily などで描く画面を選ぶ（preview.mjs が順に撮る） */
 import { h, render, type FunctionComponent } from "preact";
+import { parse } from "yaml";
 import { serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { addDays, localDateTime, localToday } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
@@ -25,6 +26,7 @@ const t = localToday();
 const at = (day: string, hm: string) => localDateTime(new Date(`${day}T${hm}:00`));
 const logs = [
 	JSON.stringify({ id: "run", task_id: "i-2", from: new Date(Date.now() - 30 * 60_000).toISOString(), to: null, description: "" }),
+	JSON.stringify({ id: "subrun", task_id: "i-2", sub: "bbbbbb", from: new Date(Date.now() - 50 * 60_000).toISOString(), to: null, description: "" }),
 	JSON.stringify({ id: "r1a", task_id: "r-1", from: at(addDays(t, -1), "08:00"), to: at(addDays(t, -1), "08:15"), description: "メール処理" }),
 	JSON.stringify({ id: "r1b", task_id: "r-1", from: at(addDays(t, -2), "08:00"), to: at(addDays(t, -2), "08:25"), description: "" }),
 	...Array.from({ length: 13 }, (_, i) => {
@@ -32,7 +34,15 @@ const logs = [
 		return JSON.stringify({ id: `w${i}`, task_id: "i-2", from: at(day, "10:00"), to: at(day, "11:30"), description: i % 3 ? `作業 ${i}` : "" });
 	}),
 ];
-const issue = (id: string, fm: Record<string, unknown>) => ({ path: `issue/${id}.md`, frontmatter: { type: "issue", id, status: "open", ...fm } });
+const issue = (id: string, fm: Record<string, unknown>, text?: string) => ({ path: `issue/${id}.md`, frontmatter: { type: "issue", id, status: "open", ...fm }, ...(text ? { text } : {}) });
+/** i-2 のサブイシュー（ADR-0142 のヘッダーの一覧。closed は既定で隠れる） */
+const sub = (id: string, fm: string, body = "") => `<!-- sub-issue\nid: ${id}\n${fm}-->\n${body}`;
+const i2Subs = [
+	sub("aaaaaa", `summary: "送付先の一覧を確かめる"\nstatus: closed\n`),
+	sub("bbbbbb", `summary: "新しいフローの手順を書く"\nstatus: in-progress\nstart: ${t}\nend: ${addDays(t, 3)}\nestimated: 120\n`, "下書きは共有フォルダにある。\n\n- 承認の段を 1 つ減らす\n"),
+	sub("cccccc", `summary: "経理に確認してもらう（長めの表題がここに入るとどうなるか）"\nstatus: delegated\ndelegated_to: m-1\nscheduled: [${addDays(t, 2)}]\ndepends_on: [bbbbbb]\n`),
+	sub("dddddd", `summary: "旧フローの資料を片付ける"\nstatus: open\ndeadline: ${addDays(t, 6)}\n`),
+].join("\n");
 const boardOp = (date: string, op: BoardOp) => serializeBoardLogEntry({ id: "bo_preview", at: `${date}T00:00:00.000Z`, date, ...op });
 const boardLog = [
 	...["i-6", "i-1", "i-2", "i-12", "i-13"].map((task) => boardOp(t, { op: "add", task })),
@@ -61,7 +71,7 @@ const { data } = collectVault({
 			soft_deadline: addDays(t, 1),
 			deadline: addDays(t, 4),
 			created: "2026-10-30T10:00:00+09:00",
-		}),
+		}, `---\n---\n\n${i2Subs}`),
 		issue("i-3", { summary: "請求先を確認する", status: "closed" }),
 		issue("i-4", { summary: "送付の手順を書く（長めの表題がここに入る）", scheduled: [t], priority: "low" }),
 		issue("i-5", { summary: "見積書を作る", scheduled: [t], priority: "high", deadline: addDays(t, -1) }),
@@ -82,6 +92,7 @@ const { data } = collectVault({
 		{ path: "member/m-3.md", frontmatter: { type: "member", id: "m-3", name: "鈴木" } },
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
+	parseYaml: parse,
 	boardLogs: [{ path: "board/pc/2026-10.jsonl", text: boardLog.join("\n") }],
 	labels: '[{"name":"仕事","color":"#c6e6ff"},{"name":"経理","color":"#ffd6e0"},{"name":"私用","color":"#d9f5d0"},{"name":"読書","color":"#f5e6c8"}]',
 	groups: JSON.stringify([

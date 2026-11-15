@@ -2971,3 +2971,236 @@ body.is-mobile .vt-toast {
 	flex-wrap: wrap;
 	gap: 4px;
 }
+
+/* ---------- サブイシュー（ADR-0142） ---------- */
+
+.vt-subissues {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-subissue-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* 1 件の行。ボードのカードと同じく 1 行に収める */
+.vt-subissue {
+	position: relative;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+	cursor: grab;
+}
+
+.vt-subissue:hover {
+	border-color: var(--vt-outline);
+}
+
+.vt-subissue.is-running {
+	border-color: var(--vt-green);
+	box-shadow: 0 0 0 1px var(--vt-green);
+}
+
+/* 落とすと、その行の前に入る（ボードと同じ。ADR-0114） */
+.vt-subissue.is-drop-before::before,
+.vt-subissue-add.is-drop-before::before {
+	content: "";
+	position: absolute;
+	top: -4px;
+	right: 0;
+	left: 0;
+	border-top: 2px solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-subissue-add {
+	position: relative;
+}
+
+.vt-subissue-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 44px;
+	padding: 2px 4px;
+	min-width: 0;
+}
+
+.vt-subissue-status {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.vt-subissue-status:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-subissue-summary {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	height: auto;
+	min-height: 36px;
+	padding: 0 4px;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-subissue-summary:hover .vt-subissue-summary-text {
+	color: var(--vt-primary);
+}
+
+/* 狭いときは、補足が先に縮む（題を優先する） */
+.vt-subissue-summary-text {
+	flex: 0 1 auto;
+	min-width: 3em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-subissue-hint {
+	flex: 0 100 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-subissue-hint,
+.vt-subissue-actual {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 済み（closed / canceled を出したとき）: 打ち消し線（色は 4.5:1 を保つ） */
+.vt-subissue.is-done .vt-subissue-summary-text {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-subissue .vt-play,
+.vt-subissue-actual {
+	flex: none;
+}
+
+/* 開いた行の中身 */
+.vt-subissue-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 4px 12px 8px 40px;
+	cursor: auto;
+}
+
+.vt-subissue-facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 2px 12px;
+	margin: 0;
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-subissue-facts dt {
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-subissue-facts dd {
+	margin: 0;
+}
+
+.vt-subissue-body > :first-child {
+	margin-top: 0;
+}
+
+.vt-subissue-body > :last-child {
+	margin-bottom: 0;
+}
+
+.vt-subissue-detail-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.vt-subissues-closed {
+	align-self: flex-start;
+}
+
+/* 「Edit sub-issue」のダイアログ */
+.vt-subissue-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-subissue-form-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.vt-subissue-form select {
+	height: 40px;
+	border-radius: var(--vt-radius-s);
+}
+
+.vt-subissue-depends {
+	margin: 0;
+	padding: 4px 8px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-s);
+}
+
+.vt-subissue-depends legend {
+	padding: 0 4px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+.vt-subissue-body-input {
+	width: 100%;
+	min-height: 120px;
+	padding: 12px;
+	border-radius: var(--vt-radius-m);
+	font-family: var(--font-text);
+	line-height: var(--vt-type-body-medium-line-height);
+	resize: vertical;
+}
+
+/* worklog の行の、記録したサブの題 */
+.vt-log-sub {
+	overflow: hidden;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* リーディング表示のサブの領域（ヘッダーで読む） */
+.vt-subissue-area-hidden {
+	display: none;
+}

@@ -340,3 +340,105 @@ export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: Readon
 	}
 	return errors;
 }
+
+/** 作るサブの項目（summary 以外は省略できる） */
+export type NewSubIssue = { summary: string } & Partial<Omit<SubIssueInput, "id" | "created" | "migratedFrom">>;
+
+/** 作るサブの既定値を埋める（status は open。ADR-0142） */
+export function newSubIssueInput(item: NewSubIssue, id: string, created: string): SubIssueInput {
+	return {
+		id,
+		summary: String(item.summary ?? "").trim(),
+		status: item.status ?? "open",
+		delegatedTo: item.delegatedTo ?? null,
+		start: item.start ?? null,
+		end: item.end ?? null,
+		scheduled: [...new Set(item.scheduled ?? [])].sort(),
+		softDeadline: item.softDeadline ?? null,
+		deadline: item.deadline ?? null,
+		estimated: item.estimated ?? null,
+		dependsOn: item.dependsOn ?? [],
+		created,
+		migratedFrom: null,
+		body: item.body ?? "",
+	};
+}
+
+/** そのサブに依存しているサブ（消す前に確かめる） */
+export function dependentsOf(subs: readonly SubIssue[], id: string): string[] {
+	return subs.filter((s) => s.dependsOn.includes(id)).map((s) => s.id);
+}
+
+const isDone = (s: Pick<SubIssue, "status">) => s.status === "closed" || s.status === "canceled";
+
+/** 一覧に出すサブ（ADR-0142）: closed と canceled は showClosed のときだけ。並びは md の順 */
+export function visibleSubs<T extends Pick<SubIssue, "status">>(subs: readonly T[], showClosed: boolean): T[] {
+	return showClosed ? [...subs] : subs.filter((s) => !isDone(s));
+}
+
+/** 見出しの件数: 未完了 / 全体、と隠している closed の数 */
+export function subCounts(subs: readonly Pick<SubIssue, "status">[]): { open: number; total: number; closed: number } {
+	const closed = subs.filter(isDone).length;
+	return { open: subs.length - closed, total: subs.length, closed };
+}
+
+const shortDate = (d: LocalDate) => `${d.slice(5, 7)}/${d.slice(8, 10)}`;
+
+/** 行の補足（ADR-0142）: 期間 → 今日以降の次の予定日 → 期限（deadline、なければ soft_deadline）。なければ null */
+export function subHint(sub: Pick<SubIssue, "start" | "end" | "scheduled" | "deadline" | "softDeadline">, today: LocalDate): string | null {
+	if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}–${sub.end ? shortDate(sub.end) : ""}`;
+	const next = sub.scheduled.find((d) => d >= today);
+	if (next) return shortDate(next);
+	const due = sub.deadline ?? sub.softDeadline;
+	return due ? `Due ${shortDate(due)}` : null;
+}
+
+/**
+ * ドラッグで落としたときの移す先（moveSubIssueText の to）。ids は md のブロックの並び（読めないブロックは null）。
+ * before の行の前に置く（null なら末尾）。変わらなければ null
+ */
+export function dropPosition(ids: readonly (string | null)[], dragged: string, before: string | null): number | null {
+	const from = ids.indexOf(dragged);
+	if (from < 0) return null;
+	const rest = ids.filter((_, i) => i !== from);
+	const to = before === null ? rest.length : rest.indexOf(before);
+	if (to < 0 || to === from) return null;
+	return to;
+}
+
+/** Move up / down（dir = -1 / 1）の移す先。出ている隣の行（visible）をまたぐ。端なら null */
+export function stepPosition(ids: readonly (string | null)[], visible: readonly string[], id: string, dir: -1 | 1): number | null {
+	const at = visible.indexOf(id);
+	const neighbor = visible[at + dir];
+	if (at < 0 || neighbor === undefined) return null;
+	const from = ids.indexOf(id);
+	const rest = ids.filter((_, i) => i !== from);
+	const n = rest.indexOf(neighbor);
+	const to = dir < 0 ? n : n + 1;
+	return to === from ? null : to;
+}
+
+/** 素早い追加の入力（貼り付けを含む）を、空でない行ごとの題にする */
+export function splitQuickAdd(text: string): string[] {
+	return text
+		.split(/\r?\n/)
+		.map((l) => l.trim())
+		.filter((l) => l !== "");
+}
+
+/** サブの領域の始まりの行（0 から。frontmatter の後ろの最初のマーカー）。なければ null。リーディング表示で隠すのに使う */
+export function subAreaStartLine(text: string): number | null {
+	const { head, blocks } = splitSubIssueText(text);
+	if (blocks.length === 0) return null;
+	return head.split("\n").length - 1;
+}
+
+/** 書く前の検査で、touched のサブ（足す・変えるもの）に関わる問題だけを返す。ほかのサブの既存の誤りは lint に任せる */
+export function touchedSubErrors(subs: readonly SubIssueInput[], touched: readonly string[], memberIds: ReadonlySet<string>): string[] {
+	return checkSubIssues(subs, memberIds).filter((e) => touched.some((id) => e.startsWith(`サブ ${id}: `)));
+}
+
+/** delegated から外したら、委任先も外す（issue と同じ。ADR-0032） */
+export function normalizeSubPatch(patch: SubIssuePatch): SubIssuePatch {
+	return patch.status !== undefined && patch.status !== "delegated" && patch.delegatedTo === undefined ? { ...patch, delegatedTo: null } : patch;
+}

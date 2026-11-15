@@ -7,6 +7,10 @@ export const prepareFuzzySearch = (q: string) => (t: string) => (t.includes(q) ?
 export const Keymap = { isModEvent: () => false };
 export class Notice { constructor(m: any) { console.log("notice", m); } }
 export const Platform = { isMobile: false };
+export class Component { load() {} unload() {} }
+/** Markdown は文字のまま段落にする（見た目の確認だけ） */
+export const MarkdownRenderer = { render: async (_app: any, md: string, el: HTMLElement) => { for (const para of md.split(/\n\n+/)) { const p = document.createElement("p"); p.textContent = para; el.append(p); } } };
+export const parseYaml = (_text: string) => ({});
 const PATHS: Record<string, string> = {
   "chevron-down": '<path d="m6 9 6 6 6-6"/>',
   "chevron-left": '<path d="m15 18-6-6 6-6"/>',

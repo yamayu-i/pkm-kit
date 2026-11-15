@@ -14,7 +14,8 @@ import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
 import { CalendarForm, DateForm, DayCell, WorklogForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
-import { useStoreVersion } from "../ui/hooks";
+import { useNow, useStoreVersion } from "../ui/hooks";
+import { SubIssues } from "./SubIssues";
 import { Pager } from "../ui/Pager";
 
 const WORKLOG_PAGE = 5;
@@ -31,6 +32,7 @@ export function formatDateTime(value: string | number | null): string {
 export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 	const { ctx, path } = props;
 	useStoreVersion(ctx.store);
+	const now = useNow();
 	const index = ctx.store.index;
 	const issue = index.issuesByPath.get(path);
 	if (!issue) {
@@ -60,6 +62,7 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 					<DueFields ctx={ctx} issue={issue} save={save} />
 				</div>
 			</section>
+			<SubIssues ctx={ctx} issue={issue} index={index} now={now} />
 			<Effort ctx={ctx} issue={issue} index={index} save={save} />
 			<hr class="vt-sep" />
 			<Worklog ctx={ctx} taskId={issue.id} index={index} />
@@ -276,6 +279,8 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 	const { ctx, log } = props;
 	const date = formatDateTime(log.fromMs).slice(0, 10);
 	const running = log.toMs === null;
+	// サブで記録した行は、どのサブかを出す（ADR-0135。消したサブは Deleted sub-issue）
+	const sub = log.sub ? (ctx.store.index.sub(`${log.taskId}#${log.sub}`) ?? { summary: "Deleted sub-issue" }) : null;
 	const edit = () =>
 		new PreactModal(ctx.app, "Edit worklog", (close) => (
 			<WorklogForm
@@ -306,6 +311,7 @@ function WorklogItem(props: { ctx: TaskContext; log: WorklogEntry }) {
 				<span class="vt-log-time vt-num">
 					{formatTime(log.fromMs)} – {running ? "running" : formatTime(log.toMs!)}
 				</span>
+				{sub && <span class="vt-log-sub">{sub.summary}</span>}
 				<span class={`vt-log-desc${log.description ? "" : " is-placeholder"}`}>{log.description || "No description"}</span>
 			</span>
 			<span class="vt-log-duration vt-num">

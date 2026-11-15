@@ -35,9 +35,8 @@ import {
 	moveSubIssueOnDisk,
 	updateIssueOnDisk,
 	updateSubIssueOnDisk,
-	type NewSubIssue,
 } from "./vault-ops";
-import { splitSubIssueText, type SubIssuePatch } from "../src/core/sub-issue";
+import { splitSubIssueText, type NewSubIssue, type SubIssuePatch } from "../src/core/sub-issue";
 
 export interface McpContext {
 	root: string;

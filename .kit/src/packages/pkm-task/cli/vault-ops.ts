@@ -23,10 +23,14 @@ import {
 	worklogPath,
 } from "../src/core/worklog";
 import {
-	checkSubIssues,
 	insertSubIssuesText,
 	moveSubIssueText,
 	newSubId,
+	newSubIssueInput,
+	dependentsOf,
+	normalizeSubPatch,
+	touchedSubErrors,
+	type NewSubIssue,
 	parseSubKey,
 	removeSubIssueText,
 	subKey,
@@ -469,8 +473,7 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string, patch: SubIssuePatch, log?: StatusLogContext): SubIssue {
 	const current = index.sub(key);
 	if (!current) throw new Error(`サブがありません: ${key}`);
-	// delegated から外したら、委任先も外す（issue と同じ。ADR-0032）
-	if (patch.status !== undefined && patch.status !== "delegated" && patch.delegatedTo === undefined) patch = { ...patch, delegatedTo: null };
+	patch = normalizeSubPatch(patch);
 	const siblings = index.subs(current.parent).map((s) => (s.id === current.id ? { ...s, ...patch, id: s.id } : s));
 	assertSubIssues(index, siblings, [current.id]);
 	const text = readTextOrEmpty(root, current.path);
@@ -485,30 +488,8 @@ export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string
 
 /** 書く前の検査（ADR-0135）。touched のサブ（足す・変えるもの）に関わる問題だけで止める（ほかのサブの既存の誤りは lint に任せる） */
 function assertSubIssues(index: TaskIndex, subs: readonly SubIssueInput[], touched: readonly string[]): void {
-	const errors = checkSubIssues(subs, new Set(index.members.keys())).filter((e) => touched.some((id) => e.startsWith(`サブ ${id}: `)));
+	const errors = touchedSubErrors(subs, touched, new Set(index.members.keys()));
 	if (errors.length > 0) throw new Error(errors.join("\n"));
-}
-
-/** 作るサブの項目（summary 以外は省略できる） */
-export type NewSubIssue = { summary: string } & Partial<Omit<SubIssueInput, "id" | "created" | "migratedFrom">>;
-
-function newSubInput(item: NewSubIssue, id: string, created: string): SubIssueInput {
-	return {
-		id,
-		summary: String(item.summary ?? "").trim(),
-		status: item.status ?? "open",
-		delegatedTo: item.delegatedTo ?? null,
-		start: item.start ?? null,
-		end: item.end ?? null,
-		scheduled: [...new Set(item.scheduled ?? [])].sort(),
-		softDeadline: item.softDeadline ?? null,
-		deadline: item.deadline ?? null,
-		estimated: item.estimated ?? null,
-		dependsOn: item.dependsOn ?? [],
-		created,
-		migratedFrom: null,
-		body: item.body ?? "",
-	};
 }
 
 /** サブを足す（ADR-0135）。at を省くと末尾。作ったサブの合成キーを返す */
@@ -522,7 +503,7 @@ export function createSubIssuesOnDisk(root: string, index: TaskIndex, parent: st
 	const subs = items.map((item) => {
 		const id = newSubId(taken);
 		taken.push(id);
-		return newSubInput(item, id, created);
+		return newSubIssueInput(item, id, created);
 	});
 	assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
 	const text = readTextOrEmpty(root, issue.path);
@@ -542,7 +523,7 @@ export function moveSubIssueOnDisk(root: string, index: TaskIndex, key: string, 
 export function deleteSubIssueOnDisk(root: string, index: TaskIndex, key: string, now: Date): void {
 	const sub = index.sub(key);
 	if (!sub) throw new Error(`サブがありません: ${key}`);
-	const dependents = index.subs(sub.parent).filter((s) => s.dependsOn.includes(sub.id)).map((s) => s.id);
+	const dependents = dependentsOf(index.subs(sub.parent), sub.id);
 	if (dependents.length > 0) throw new Error(`サブ ${sub.id} は ${dependents.join(", ")} の depends_on にあります。先に外してください`);
 	stopTimerOnDisk(root, index, [key], now);
 	const text = readTextOrEmpty(root, sub.path);

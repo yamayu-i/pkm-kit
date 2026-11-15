@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // ../shared/src/legacy-data.ts
 function legacyDataPath(configDir, legacyId) {
@@ -121,7 +121,7 @@ function notePaneLeaf(workspace, options) {
 }
 
 // src/header/extension.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -568,7 +568,7 @@ function installHeaderMount(options) {
 }
 
 // src/header/IssueHeader.tsx
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
@@ -1207,6 +1207,7 @@ var BLOCK_END = "-->";
 var SubIssueFormatError = class extends Error {
 };
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
+var SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 function isSubId(value) {
   return typeof value === "string" && SUB_ID_RE.test(value);
 }
@@ -1219,6 +1220,14 @@ function parseSubKey(key) {
   const parent = key.slice(0, at);
   const id = key.slice(at + 1);
   return isId(parent, "i") && isSubId(id) ? { parent, id } : null;
+}
+function newSubId(existing, random = Math.random) {
+  const taken = new Set(existing);
+  for (; ; ) {
+    let id = "";
+    for (let i3 = 0; i3 < 6; i3++) id += SUB_ID_CHARS[Math.min(SUB_ID_CHARS.length - 1, Math.floor(random() * SUB_ID_CHARS.length))];
+    if (!taken.has(id)) return id;
+  }
 }
 var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
 function splitSubIssueText(text) {
@@ -1351,6 +1360,162 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml3) {
     blocks.map((b2, i3) => i3 === at ? after : b2.sub ?? b2.raw)
   );
   return { text: next, before, after };
+}
+function rebuild(path, parent, text, parseYaml3, edit) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml3);
+  const items = blocks.map((b2) => b2.sub ?? b2.raw);
+  edit(
+    items,
+    blocks.map((b2) => b2.sub?.id ?? null)
+  );
+  return replaceSubIssues(text, items);
+}
+function indexOfSub(ids, parent, id) {
+  const at = ids.indexOf(id);
+  if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  return at;
+}
+function insertSubIssuesText(path, parent, text, subs, parseYaml3, at) {
+  return rebuild(path, parent, text, parseYaml3, (items) => {
+    const pos = at ?? items.length;
+    if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${pos}`);
+    items.splice(pos, 0, ...subs);
+  });
+}
+function moveSubIssueText(path, parent, text, id, to, parseYaml3) {
+  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+    const from = indexOfSub(ids, parent, id);
+    if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length - 1} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${to}`);
+    const [moved] = items.splice(from, 1);
+    items.splice(to, 0, moved);
+  });
+}
+function removeSubIssueText(path, parent, text, id, parseYaml3) {
+  return rebuild(path, parent, text, parseYaml3, (items, ids) => {
+    items.splice(indexOfSub(ids, parent, id), 1);
+  });
+}
+function checkSubIssues(subs, memberIds) {
+  const errors = [];
+  const ids = /* @__PURE__ */ new Set();
+  const byId = new Map(subs.map((s3) => [s3.id, s3]));
+  const isDate = (v3) => v3 === null || typeof v3 === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v3) && !Number.isNaN(Date.parse(v3));
+  for (const s3 of subs) {
+    const where = `\u30B5\u30D6 ${s3.id}`;
+    if (ids.has(s3.id)) errors.push(`${where}: id \u304C\u91CD\u306A\u3063\u3066\u3044\u307E\u3059`);
+    ids.add(s3.id);
+    if (!s3.summary.trim()) errors.push(`${where}: summary \u304C\u3042\u308A\u307E\u305B\u3093`);
+    if (!STATUSES.includes(s3.status)) errors.push(`${where}: status \u306F ${STATUSES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${s3.status}`);
+    for (const [key, value] of [
+      ["start", s3.start],
+      ["end", s3.end],
+      ["soft_deadline", s3.softDeadline],
+      ["deadline", s3.deadline]
+    ]) {
+      if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
+    }
+    for (const d3 of s3.scheduled) if (!isDate(d3)) errors.push(`${where}: scheduled \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${d3}`);
+    if (s3.start !== null && s3.end !== null && s3.end < s3.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
+    if (s3.estimated !== null && !(typeof s3.estimated === "number" && Number.isFinite(s3.estimated) && s3.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    if (s3.status === "delegated" && s3.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
+    if (s3.delegatedTo !== null) {
+      if (!memberIds.has(s3.delegatedTo)) errors.push(`${where}: delegated_to \u306E ${s3.delegatedTo} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (s3.status !== "delegated") errors.push(`${where}: delegated_to \u306F status \u304C delegated \u306E\u3068\u304D\u3060\u3051\u4ED8\u3051\u3089\u308C\u307E\u3059`);
+    }
+    for (const d3 of s3.dependsOn) {
+      if (d3 === s3.id) errors.push(`${where}: depends_on \u306B\u81EA\u5206\u81EA\u8EAB\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093`);
+      else if (!byId.has(d3)) errors.push(`${where}: depends_on \u306E ${d3} \u304C\u540C\u3058 issue \u306E\u4E2D\u306B\u3042\u308A\u307E\u305B\u3093`);
+    }
+    try {
+      formatSubIssue(s3);
+    } catch (e3) {
+      errors.push(`${where}: ${e3.message}`);
+    }
+  }
+  for (const s3 of subs) {
+    const seen = /* @__PURE__ */ new Set();
+    const stack2 = s3.dependsOn.filter((d3) => d3 !== s3.id);
+    let cycle = false;
+    while (stack2.length > 0 && !cycle) {
+      const id = stack2.pop();
+      if (id === s3.id) cycle = true;
+      else if (!seen.has(id)) {
+        seen.add(id);
+        stack2.push(...byId.get(id)?.dependsOn ?? []);
+      }
+    }
+    if (cycle) errors.push(`\u30B5\u30D6 ${s3.id}: depends_on \u304C\u5FAA\u74B0\u3057\u3066\u3044\u307E\u3059`);
+  }
+  return errors;
+}
+function newSubIssueInput(item, id, created) {
+  return {
+    id,
+    summary: String(item.summary ?? "").trim(),
+    status: item.status ?? "open",
+    delegatedTo: item.delegatedTo ?? null,
+    start: item.start ?? null,
+    end: item.end ?? null,
+    scheduled: [...new Set(item.scheduled ?? [])].sort(),
+    softDeadline: item.softDeadline ?? null,
+    deadline: item.deadline ?? null,
+    estimated: item.estimated ?? null,
+    dependsOn: item.dependsOn ?? [],
+    created,
+    migratedFrom: null,
+    body: item.body ?? ""
+  };
+}
+function dependentsOf(subs, id) {
+  return subs.filter((s3) => s3.dependsOn.includes(id)).map((s3) => s3.id);
+}
+var isDone = (s3) => s3.status === "closed" || s3.status === "canceled";
+function visibleSubs(subs, showClosed) {
+  return showClosed ? [...subs] : subs.filter((s3) => !isDone(s3));
+}
+function subCounts(subs) {
+  const closed = subs.filter(isDone).length;
+  return { open: subs.length - closed, total: subs.length, closed };
+}
+var shortDate = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
+function subHint(sub, today) {
+  if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}\u2013${sub.end ? shortDate(sub.end) : ""}`;
+  const next = sub.scheduled.find((d3) => d3 >= today);
+  if (next) return shortDate(next);
+  const due = sub.deadline ?? sub.softDeadline;
+  return due ? `Due ${shortDate(due)}` : null;
+}
+function dropPosition(ids, dragged, before) {
+  const from = ids.indexOf(dragged);
+  if (from < 0) return null;
+  const rest = ids.filter((_2, i3) => i3 !== from);
+  const to = before === null ? rest.length : rest.indexOf(before);
+  if (to < 0 || to === from) return null;
+  return to;
+}
+function stepPosition(ids, visible, id, dir) {
+  const at = visible.indexOf(id);
+  const neighbor = visible[at + dir];
+  if (at < 0 || neighbor === void 0) return null;
+  const from = ids.indexOf(id);
+  const rest = ids.filter((_2, i3) => i3 !== from);
+  const n2 = rest.indexOf(neighbor);
+  const to = dir < 0 ? n2 : n2 + 1;
+  return to === from ? null : to;
+}
+function splitQuickAdd(text) {
+  return text.split(/\r?\n/).map((l3) => l3.trim()).filter((l3) => l3 !== "");
+}
+function subAreaStartLine(text) {
+  const { head, blocks } = splitSubIssueText(text);
+  if (blocks.length === 0) return null;
+  return head.split("\n").length - 1;
+}
+function touchedSubErrors(subs, touched, memberIds) {
+  return checkSubIssues(subs, memberIds).filter((e3) => touched.some((id) => e3.startsWith(`\u30B5\u30D6 ${id}: `)));
+}
+function normalizeSubPatch(patch) {
+  return patch.status !== void 0 && patch.status !== "delegated" && patch.delegatedTo === void 0 ? { ...patch, delegatedTo: null } : patch;
 }
 
 // src/core/worklog.ts
@@ -2785,6 +2950,582 @@ function useNow(intervalMs = 3e4) {
   return now;
 }
 
+// src/header/SubIssues.tsx
+var import_obsidian4 = require("obsidian");
+
+// src/core/groups.ts
+var GROUPS_PATH = "issue/board-groups.json";
+var UNGROUPED = "";
+function parseGroup(value, depth, problems) {
+  const o3 = typeof value === "object" && value !== null ? value : {};
+  const name = typeof o3.name === "string" ? o3.name.trim() : "";
+  if (!name || name.includes("/")) {
+    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
+    return null;
+  }
+  const children = [];
+  if (Array.isArray(o3.children)) {
+    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
+    else
+      for (const c3 of o3.children) {
+        const g2 = parseGroup(c3, depth + 1, problems);
+        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
+      }
+  }
+  return { name, children };
+}
+function parseGroups(text) {
+  const messages = [];
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
+  }
+  const groups = [];
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const g2 = parseGroup(item, 0, messages);
+      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
+    }
+  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
+}
+function serializeGroups(groups) {
+  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
+  return `${JSON.stringify(groups.map(strip), null, 2)}
+`;
+}
+function groupNameError(name, siblings, current) {
+  const n2 = name.trim();
+  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
+  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
+  return null;
+}
+function groupKeys(groups) {
+  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
+}
+function inGroup(key, group) {
+  return key === group || key.startsWith(`${group}/`);
+}
+
+// src/obsidian/issue-actions.tsx
+function askDate(ctx, title, initial = null) {
+  return new Promise((resolve) => {
+    let done = false;
+    const modal = new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
+      DateForm,
+      {
+        initial,
+        allowClear: false,
+        onSubmit: (v3) => {
+          done = true;
+          close();
+          resolve(v3);
+        }
+      }
+    ));
+    const onClose = modal.onClose.bind(modal);
+    modal.onClose = () => {
+      onClose();
+      if (!done) resolve(null);
+    };
+    modal.open();
+  });
+}
+async function patchAll(ctx, issues, patch, label) {
+  try {
+    await ctx.writer.updateMany(
+      issues.map((i3) => i3.path),
+      (path) => {
+        const issue = issues.find((i3) => i3.path === path);
+        return typeof patch === "function" ? patch(issue) : patch;
+      }
+    );
+  } catch (e3) {
+    ctx.report(`${label}\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`, e3);
+  }
+}
+var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
+var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
+var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
+var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
+async function scheduleToday(ctx, issues) {
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
+  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
+}
+async function scheduleIssues(ctx, issues) {
+  const date = await askDate(ctx, "Add Do Date");
+  if (date === null) return;
+  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
+}
+async function rescheduleIssues(ctx, issues, target, from = null) {
+  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
+  const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
+  if (date === null) return;
+  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
+}
+
+// src/obsidian/board-actions.ts
+function guard(ctx, label, p3) {
+  return p3.then(
+    () => void 0,
+    (e3) => ctx.report(label, e3)
+  );
+}
+var addToBoard = (ctx, date, ids) => guard(
+  ctx,
+  "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
+);
+async function createOnBoard(ctx, date, summary) {
+  try {
+    const { created } = await ctx.writer.createIssues([summary], [date]);
+    const file = created[0];
+    if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
+    await addToBoard(ctx, date, [file.basename]);
+  } catch (e3) {
+    ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
+var setPlacement = (ctx, date, id, group) => guard(
+  ctx,
+  "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
+  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
+);
+function moveCard(ctx, date, id, group, from, visible, before) {
+  const ops = [];
+  if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
+  const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
+  ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
+  return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
+}
+async function setRoutineResult(ctx, date, id, result, record2 = true) {
+  const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
+  try {
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
+  } catch (e3) {
+    ctx.report("routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    return;
+  }
+  if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
+}
+async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
+  let to = fixedTo;
+  if (kind === "reschedule" && to === null) {
+    to = await askDate(ctx, "Move Do Date");
+    if (to === null) return;
+  }
+  try {
+    for (const issue of issues) {
+      await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
+    }
+    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
+  } catch (e3) {
+    ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+async function closeBoard(ctx, date) {
+  try {
+    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
+  } catch (e3) {
+    ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
+function startTimer(ctx, ids) {
+  return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
+}
+function stopTimer(ctx, ids) {
+  const running = ctx.store.index.running().filter((l3) => ids.includes(workKey(l3)));
+  if (running.length === 0) return Promise.resolve();
+  return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
+}
+
+// src/obsidian/sub-editor.tsx
+var DATE_FIELDS = [
+  ["start", "Start"],
+  ["end", "End"],
+  ["softDeadline", "Soft deadline"],
+  ["deadline", "Deadline"]
+];
+function confirmModal(ctx, title, message, action, run) {
+  new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3("div", { children: [
+    /* @__PURE__ */ u3("p", { children: message }),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("button", { type: "button", onClick: close, children: "Cancel" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: "mod-warning",
+          onClick: () => {
+            close();
+            run();
+          },
+          children: action
+        }
+      )
+    ] })
+  ] })).open();
+}
+function deleteSubWithConfirm(ctx, sub, done) {
+  confirmModal(ctx, "Delete sub-issue", `\u30B5\u30D6\u300C${sub.summary}\u300D\u3092\u672C\u6587\u3054\u3068\u6D88\u3057\u307E\u3059\u3002\u4F5C\u696D\u6642\u9593\u306E\u8A18\u9332\u306F\u6B8B\u308A\u3001\u89AA\u306E\u5B9F\u7E3E\u306B\u542B\u307E\u308C\u307E\u3059\u3002`, "Delete", () => {
+    void ctx.writer.deleteSub(sub.key).then(() => done?.()).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u6D88\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  });
+}
+function openSubEditor(ctx, sub) {
+  new PreactModal(ctx.app, "Edit sub-issue", (close) => /* @__PURE__ */ u3(SubIssueForm, { ctx, sub, close })).open();
+}
+function SubIssueForm(props) {
+  const { ctx, sub, close } = props;
+  const [draft, setDraft] = d2(sub);
+  const [estimated, setEstimated] = d2(sub.estimated === null ? "" : formatMinutes(sub.estimated));
+  const [error, setError] = d2(null);
+  const [saving, setSaving] = d2(false);
+  const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
+  const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
+  const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
+  const editDate = (key, label) => new PreactModal(ctx.app, label, (closeDate) => /* @__PURE__ */ u3(
+    DateForm,
+    {
+      initial: draft[key],
+      allowClear: true,
+      onSubmit: (v3) => {
+        closeDate();
+        set({ [key]: v3 });
+      }
+    }
+  )).open();
+  const editScheduled2 = () => new PreactModal(ctx.app, "Do Date", (closeCal) => /* @__PURE__ */ u3(
+    CalendarForm,
+    {
+      initial: draft.scheduled,
+      softDeadline: draft.softDeadline,
+      deadline: draft.deadline,
+      onSubmit: (dates) => {
+        closeCal();
+        set({ scheduled: [...dates].sort() });
+      }
+    }
+  )).open();
+  const changeStatus = (status) => {
+    if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
+    else set({ status, ...status === "delegated" ? {} : { delegatedTo: null } });
+  };
+  const save = () => {
+    const minutes = estimated.trim() === "" ? null : parseDurationInput(estimated);
+    if (minutes === null && estimated.trim() !== "") return setError(`\u898B\u7A4D\u3082\u308A\u3092\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${estimated}\uFF08\u4F8B: 30m / 2h / 1h30m\uFF09`);
+    const patch = {
+      summary: draft.summary.trim(),
+      status: draft.status,
+      delegatedTo: draft.delegatedTo,
+      start: draft.start,
+      end: draft.end,
+      scheduled: draft.scheduled,
+      softDeadline: draft.softDeadline,
+      deadline: draft.deadline,
+      estimated: minutes,
+      dependsOn: draft.dependsOn,
+      body: draft.body
+    };
+    setSaving(true);
+    ctx.writer.updateSub(sub.key, patch).then(close).catch((e3) => {
+      setSaving(false);
+      setError(e3 instanceof Error ? e3.message : String(e3));
+    });
+  };
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-subissue-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        save();
+      },
+      children: [
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Summary" }),
+          /* @__PURE__ */ u3("input", { type: "text", value: draft.summary, onInput: (e3) => set({ summary: e3.currentTarget.value }) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Status" }),
+            /* @__PURE__ */ u3("select", { value: draft.status, onChange: (e3) => changeStatus(e3.currentTarget.value), children: STATUSES.map((s3) => /* @__PURE__ */ u3("option", { value: s3, children: s3 })) })
+          ] }),
+          draft.status === "delegated" && /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Delegated to" }),
+            /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${member ? "" : " is-placeholder"}`, onClick: () => pickMember(ctx, (id) => set({ delegatedTo: id })), children: [
+              /* @__PURE__ */ u3(Icon, { name: "user" }),
+              member ? member.nickname : "Choose a member"
+            ] })
+          ] })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: label }),
+          /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${draft[key] ? "" : " is-placeholder"}`, onClick: () => editDate(key, label), children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+            draft[key] ? formatShortDate(draft[key]) : "Not set"
+          ] })
+        ] })) }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
+          /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Do dates" }),
+            /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${draft.scheduled.length > 0 ? "" : " is-placeholder"}`, onClick: editScheduled2, children: [
+              /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
+              draft.scheduled.length === 0 ? "Not set" : draft.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")
+            ] })
+          ] }),
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Estimated" }),
+            /* @__PURE__ */ u3("input", { type: "text", class: "vt-small-input", placeholder: "e.g. 2h", value: estimated, onInput: (e3) => setEstimated(e3.currentTarget.value) })
+          ] })
+        ] }),
+        siblings.length > 0 && /* @__PURE__ */ u3("fieldset", { class: "vt-subissue-depends", children: [
+          /* @__PURE__ */ u3("legend", { children: "Depends on" }),
+          siblings.map((s3) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+            /* @__PURE__ */ u3(
+              "input",
+              {
+                type: "checkbox",
+                checked: draft.dependsOn.includes(s3.id),
+                onChange: (e3) => set({ dependsOn: e3.currentTarget.checked ? [...draft.dependsOn, s3.id] : draft.dependsOn.filter((d3) => d3 !== s3.id) })
+              }
+            ),
+            s3.summary
+          ] }))
+        ] }),
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "Notes" }),
+          /* @__PURE__ */ u3("textarea", { class: "vt-subissue-body-input", value: draft.body, onInput: (e3) => set({ body: e3.currentTarget.value }) })
+        ] }),
+        error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-danger-text", onClick: () => deleteSubWithConfirm(ctx, sub, close), children: "Delete" }),
+          /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+          /* @__PURE__ */ u3("button", { type: "button", onClick: close, children: "Cancel" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: saving, children: "Save" })
+        ] })
+      ]
+    }
+  );
+}
+
+// src/header/SubIssues.tsx
+var DRAG_TYPE = "application/x-pkm-sub-issue";
+function SubIssues(props) {
+  const { ctx, issue, index, now } = props;
+  const [showClosed, setShowClosed] = d2(false);
+  const [open, setOpen] = d2(/* @__PURE__ */ new Set());
+  const subs = index.subs(issue.id);
+  const shown = visibleSubs(subs, showClosed);
+  const counts = subCounts(subs);
+  const effort = index.effortByKey(now);
+  const visibleKeys = shown.map((s3) => s3.key);
+  const toggle2 = (key) => setOpen((o3) => o3.has(key) ? new Set([...o3].filter((k3) => k3 !== key)) : /* @__PURE__ */ new Set([...o3, key]));
+  const move2 = (key, before) => void ctx.writer.moveSubBefore(key, before).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  return /* @__PURE__ */ u3("section", { class: "vt-card vt-subissues", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
+      counts.total > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", title: `${counts.open} open of ${counts.total}`, children: [
+        counts.open,
+        " / ",
+        counts.total
+      ] })
+    ] }),
+    shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
+      SubRow,
+      {
+        ctx,
+        sub,
+        index,
+        now,
+        actual: effort.get(sub.key) ?? 0,
+        open: open.has(sub.key),
+        onToggle: () => toggle2(sub.key),
+        visible: visibleKeys,
+        onDrop: (dragged) => move2(dragged, sub.key)
+      },
+      sub.key
+    )) }),
+    counts.closed > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button vt-subissues-closed", onClick: () => setShowClosed((v3) => !v3), children: showClosed ? "Hide closed" : `Show ${counts.closed} closed` }),
+    /* @__PURE__ */ u3(QuickAdd, { ctx, issue, onDropEnd: (dragged) => move2(dragged, null) })
+  ] });
+}
+function readDrag(e3) {
+  return e3.dataTransfer?.getData(DRAG_TYPE) || null;
+}
+function SubRow(props) {
+  const { ctx, sub, index, now, actual, open } = props;
+  const [dropBefore, setDropBefore] = d2(false);
+  const running = index.running(sub.key);
+  const elapsed = running.reduce((m3, l3) => Math.max(m3, now - l3.fromMs), 0);
+  const hint = subHint(sub, localToday());
+  const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const changeStatus = (next) => {
+    if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
+    if (next === sub.status) return;
+    save(next === "someday" ? { status: next, scheduled: [], softDeadline: null, deadline: null } : { status: next });
+  };
+  const statusMenu2 = (e3) => {
+    const m3 = new import_obsidian4.Menu();
+    for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
+    m3.showAtMouseEvent(e3);
+  };
+  const moreMenu = (e3) => {
+    const m3 = new import_obsidian4.Menu();
+    const at = props.visible.indexOf(sub.key);
+    m3.addItem((mi) => mi.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
+    m3.addSeparator();
+    if (at > 0) m3.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void ctx.writer.stepSub(sub.key, props.visible, -1).catch((err) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err))));
+    if (at >= 0 && at < props.visible.length - 1) m3.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void ctx.writer.stepSub(sub.key, props.visible, 1).catch((err) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err))));
+    m3.addSeparator();
+    m3.addItem((mi) => mi.setTitle("Delete").setIcon("trash-2").onClick(() => deleteSubWithConfirm(ctx, sub)));
+    m3.showAtMouseEvent(e3);
+  };
+  return /* @__PURE__ */ u3(
+    "li",
+    {
+      class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}${open ? " is-open" : ""}`,
+      draggable: true,
+      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, sub.key),
+      onDragOver: (e3) => {
+        if (!e3.dataTransfer?.types.includes(DRAG_TYPE)) return;
+        e3.preventDefault();
+        setDropBefore(true);
+      },
+      onDragLeave: () => setDropBefore(false),
+      onDrop: (e3) => {
+        e3.preventDefault();
+        setDropBefore(false);
+        const dragged = readDrag(e3);
+        if (dragged && dragged !== sub.key) props.onDrop(dragged);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
+            /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
+            hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
+          ] }),
+          actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
+          /* @__PURE__ */ u3(
+            "button",
+            {
+              type: "button",
+              class: `vt-play${running.length > 0 ? " is-running" : ""}`,
+              "aria-label": running.length > 0 ? "Stop timer" : "Start timer",
+              title: running.length > 0 ? "Stop timer" : "Start timer",
+              onClick: () => void (running.length > 0 ? stopTimer(ctx, [sub.key]) : startTimer(ctx, [sub.key])),
+              children: [
+                /* @__PURE__ */ u3(Icon, { name: running.length > 0 ? "square" : "play" }),
+                running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+              ]
+            }
+          ),
+          /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+        ] }),
+        open && /* @__PURE__ */ u3(SubDetail, { ctx, sub, index })
+      ]
+    }
+  );
+}
+function SubDetail(props) {
+  const { ctx, sub, index } = props;
+  const member = sub.delegatedTo === null ? null : index.members.get(sub.delegatedTo);
+  const deps = sub.dependsOn.map((d3) => index.sub(`${sub.parent}#${d3}`)?.summary ?? d3);
+  const facts = [
+    ...sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} \u2013 ${sub.end ? formatShortDate(sub.end) : "?"}`]] : [],
+    ...sub.scheduled.length > 0 ? [["Do dates", sub.scheduled.map((d3) => d3.slice(5).replace("-", "/")).join(", ")]] : [],
+    ...sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)]] : [],
+    ...sub.deadline ? [["Deadline", formatShortDate(sub.deadline)]] : [],
+    ...sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)]] : [],
+    ...deps.length > 0 ? [["Depends on", deps.join(", ")]] : [],
+    ...member ? [["Delegated to", member.nickname]] : []
+  ];
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail", children: [
+    facts.length > 0 && /* @__PURE__ */ u3("dl", { class: "vt-subissue-facts", children: facts.map(([k3, v3]) => /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("dt", { children: k3 }),
+      /* @__PURE__ */ u3("dd", { children: v3 })
+    ] })) }),
+    sub.body.trim() ? /* @__PURE__ */ u3(MarkdownBody, { ctx, markdown: sub.body, sourcePath: sub.path }) : /* @__PURE__ */ u3("p", { class: "vt-muted", children: "No notes" }),
+    /* @__PURE__ */ u3("div", { class: "vt-subissue-detail-actions", children: /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: () => openSubEditor(ctx, sub), children: [
+      /* @__PURE__ */ u3(Icon, { name: "pencil" }),
+      " Edit"
+    ] }) })
+  ] });
+}
+function MarkdownBody(props) {
+  const ref = A2(null);
+  h2(() => {
+    const el = ref.current;
+    if (!el) return;
+    const owner = new import_obsidian4.Component();
+    owner.load();
+    while (el.firstChild) el.removeChild(el.firstChild);
+    void import_obsidian4.MarkdownRenderer.render(props.ctx.app, props.markdown, el, props.sourcePath, owner);
+    return () => owner.unload();
+  }, [props.markdown, props.sourcePath]);
+  return /* @__PURE__ */ u3("div", { class: "vt-subissue-body markdown-rendered", ref });
+}
+function QuickAdd(props) {
+  const { ctx, issue } = props;
+  const [draft, setDraft] = d2("");
+  const [over2, setOver] = d2(false);
+  const create = (summaries) => {
+    if (summaries.length === 0) return;
+    void ctx.writer.createSubs(issue.id, summaries).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  };
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: `vt-quick-add vt-subissue-add${over2 ? " is-drop-before" : ""}`,
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        create(splitQuickAdd(draft));
+        setDraft("");
+      },
+      onDragOver: (e3) => {
+        if (!e3.dataTransfer?.types.includes(DRAG_TYPE)) return;
+        e3.preventDefault();
+        setOver(true);
+      },
+      onDragLeave: () => setOver(false),
+      onDrop: (e3) => {
+        e3.preventDefault();
+        setOver(false);
+        const dragged = readDrag(e3);
+        if (dragged) props.onDropEnd(dragged);
+      },
+      children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        /* @__PURE__ */ u3(
+          "input",
+          {
+            type: "text",
+            "aria-label": "Add a sub-issue",
+            placeholder: "Add a sub-issue",
+            value: draft,
+            onInput: (e3) => setDraft(e3.currentTarget.value),
+            onPaste: (e3) => {
+              const text = e3.clipboardData?.getData("text/plain") ?? "";
+              if (!/\r?\n/.test(text.trim())) return;
+              e3.preventDefault();
+              create(splitQuickAdd(text));
+            },
+            onKeyDown: (e3) => {
+              if (e3.key === "Escape") e3.currentTarget.blur();
+            }
+          }
+        )
+      ]
+    }
+  );
+}
+
 // src/ui/Pager.tsx
 function pageItems(current, pages) {
   if (pages <= 7) return Array.from({ length: pages }, (_2, i3) => i3);
@@ -2821,6 +3562,7 @@ function formatDateTime(value) {
 function IssueHeader(props) {
   const { ctx, path } = props;
   useStoreVersion(ctx.store);
+  const now = useNow();
   const index = ctx.store.index;
   const issue = index.issuesByPath.get(path);
   if (!issue) {
@@ -2850,6 +3592,7 @@ function IssueHeader(props) {
       /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save }),
       /* @__PURE__ */ u3(DueFields, { ctx, issue, save })
     ] }) }),
+    /* @__PURE__ */ u3(SubIssues, { ctx, issue, index, now }),
     /* @__PURE__ */ u3(Effort, { ctx, issue, index, save }),
     /* @__PURE__ */ u3("hr", { class: "vt-sep" }),
     /* @__PURE__ */ u3(Worklog, { ctx, taskId: issue.id, index }),
@@ -2897,7 +3640,7 @@ function StatusField(props) {
     save(fields);
   };
   const menu = (e3) => {
-    const m3 = new import_obsidian4.Menu();
+    const m3 = new import_obsidian5.Menu();
     for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
     m3.showAtMouseEvent(e3);
   };
@@ -3030,6 +3773,7 @@ function WorklogItem(props) {
   const { ctx, log } = props;
   const date = formatDateTime(log.fromMs).slice(0, 10);
   const running = log.toMs === null;
+  const sub = log.sub ? ctx.store.index.sub(`${log.taskId}#${log.sub}`) ?? { summary: "Deleted sub-issue" } : null;
   const edit = () => new PreactModal(ctx.app, "Edit worklog", (close) => /* @__PURE__ */ u3(
     WorklogForm,
     {
@@ -3059,6 +3803,7 @@ function WorklogItem(props) {
         " \u2013 ",
         running ? "running" : formatTime(log.toMs)
       ] }),
+      sub && /* @__PURE__ */ u3("span", { class: "vt-log-sub", children: sub.summary }),
       /* @__PURE__ */ u3("span", { class: `vt-log-desc${log.description ? "" : " is-placeholder"}`, children: log.description || "No description" })
     ] }),
     /* @__PURE__ */ u3("span", { class: "vt-log-duration vt-num", children: [
@@ -3106,7 +3851,7 @@ function Worklog(props) {
 }
 
 // src/header/MemberHeader.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/ui/a11y.ts
 function linkProps(open) {
@@ -3166,7 +3911,7 @@ function DelegatedIssues(props) {
     active.map((issue) => /* @__PURE__ */ u3("div", { class: "vt-member-issue", children: [
       /* @__PURE__ */ u3(StatusBadge, { status: issue.status }),
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: issue.id }),
-      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian5.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
+      /* @__PURE__ */ u3("span", { class: "vt-member-issue-summary", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian6.Keymap.isModEvent(e3) !== false)), children: issue.summary || "(no summary)" })
     ] }, issue.id)),
     done > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
       "Finished (closed / canceled) ",
@@ -3220,65 +3965,7 @@ function MemberHeader(props) {
 }
 
 // src/header/RoutineHeader.tsx
-var import_obsidian6 = require("obsidian");
-
-// src/core/groups.ts
-var GROUPS_PATH = "issue/board-groups.json";
-var UNGROUPED = "";
-function parseGroup(value, depth, problems) {
-  const o3 = typeof value === "object" && value !== null ? value : {};
-  const name = typeof o3.name === "string" ? o3.name.trim() : "";
-  if (!name || name.includes("/")) {
-    problems.push(`\u30B0\u30EB\u30FC\u30D7\u540D\u304C\u306A\u3044\u304B\u3001/ \u3092\u542B\u3093\u3067\u3044\u307E\u3059: ${JSON.stringify(value)}`);
-    return null;
-  }
-  const children = [];
-  if (Array.isArray(o3.children)) {
-    if (depth >= 1 && o3.children.length > 0) problems.push(`\u30B0\u30EB\u30FC\u30D7\u306F 2 \u968E\u5C64\u307E\u3067\u3067\u3059: ${name}`);
-    else
-      for (const c3 of o3.children) {
-        const g2 = parseGroup(c3, depth + 1, problems);
-        if (g2 && !children.some((x2) => x2.name === g2.name)) children.push(g2);
-      }
-  }
-  return { name, children };
-}
-function parseGroups(text) {
-  const messages = [];
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-    messages.push("JSON \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093");
-  }
-  const groups = [];
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      const g2 = parseGroup(item, 0, messages);
-      if (g2 && !groups.some((x2) => x2.name === g2.name)) groups.push(g2);
-    }
-  } else if (data !== null) messages.push("\u914D\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-  return { groups, problems: messages.map((message) => ({ severity: "error", path: GROUPS_PATH, code: "invalid-groups", message })) };
-}
-function serializeGroups(groups) {
-  const strip = (g2) => ({ name: g2.name, ...g2.children.length > 0 ? { children: g2.children.map(strip) } : {} });
-  return `${JSON.stringify(groups.map(strip), null, 2)}
-`;
-}
-function groupNameError(name, siblings, current) {
-  const n2 = name.trim();
-  if (!n2) return "\u540D\u524D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
-  if (n2.includes("/")) return "/ \u306F\u4F7F\u3048\u307E\u305B\u3093";
-  if (n2 !== current && siblings.some((g2) => g2.name === n2)) return "\u540C\u3058\u540D\u524D\u304C\u3042\u308A\u307E\u3059";
-  return null;
-}
-function groupKeys(groups) {
-  return groups.flatMap((g2) => [g2.name, ...g2.children.map((c3) => `${g2.name}/${c3.name}`)]);
-}
-function inGroup(key, group) {
-  return key === group || key.startsWith(`${group}/`);
-}
+var import_obsidian7 = require("obsidian");
 
 // src/ui/RepeatFields.tsx
 function defaultRepeatDraft() {
@@ -3415,7 +4102,7 @@ function RoutineHeader(props) {
     }
   )).open();
   const groupMenu = (e3) => {
-    const m3 = new import_obsidian6.Menu();
+    const m3 = new import_obsidian7.Menu();
     for (const key of ["", ...groupKeys(index.data.groups)]) {
       m3.addItem(
         (item) => item.setTitle(key || "Unsorted").setChecked((routine.group ?? "") === key).onClick(() => save({ group: key || null }))
@@ -3521,11 +4208,11 @@ function installTaskHeaders(ctx, plugin) {
     views: () => {
       const views = [];
       app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof import_obsidian7.MarkdownView) views.push(leaf.view);
+        if (leaf.view instanceof import_obsidian8.MarkdownView) views.push(leaf.view);
       });
       return views;
     },
-    activeView: () => app.workspace.getActiveViewOfType(import_obsidian7.MarkdownView),
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView),
     model: (view) => {
       const path = view.file?.path ?? null;
       return path !== null && isTaskNotePath(path) ? path : null;
@@ -3537,8 +4224,20 @@ function installTaskHeaders(ctx, plugin) {
   });
 }
 
+// src/header/hide-sub-area.ts
+var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
+function installSubAreaHiding(plugin) {
+  plugin.registerMarkdownPostProcessor((el, mctx) => {
+    if (!ISSUE_PATH_RE2.test(mctx.sourcePath)) return;
+    const info = mctx.getSectionInfo(el);
+    if (!info) return;
+    const start = subAreaStartLine(info.text);
+    if (start !== null && info.lineStart >= start) el.addClass("vt-subissue-area-hidden");
+  });
+}
+
 // src/obsidian/capture.tsx
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/core/capture.ts
 var LIST_MARKER_RE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/;
@@ -3575,7 +4274,7 @@ function CaptureForm(props) {
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         "Create ",
         summaries.length,
-        import_obsidian8.Platform.isMobile ? "" : " (Mod+Enter)"
+        import_obsidian9.Platform.isMobile ? "" : " (Mod+Enter)"
       ] }),
       /* @__PURE__ */ u3("button", { class: "mod-cta", disabled: summaries.length === 0, onClick: submit, children: "Create" })
     ] })
@@ -3584,7 +4283,7 @@ function CaptureForm(props) {
 async function openAll(ctx, files) {
   let first = null;
   for (const file of files) {
-    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian8.Platform.isPhone });
+    const leaf = await openInNotePane(ctx.app.workspace, file, { newTab: true, phone: import_obsidian9.Platform.isPhone });
     first ??= leaf;
   }
   if (first) ctx.app.workspace.setActiveLeaf(first, { focus: true });
@@ -3604,7 +4303,7 @@ function showCreatedNotice(ctx, created, failed) {
       void openAll(ctx, created).catch((err) => ctx.report("\u30BF\u30D6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", err));
     });
   }
-  notice = new import_obsidian8.Notice(fragment, NOTICE_MS);
+  notice = new import_obsidian9.Notice(fragment, NOTICE_MS);
 }
 function openCaptureModal(ctx) {
   new PreactModal(ctx.app, "Capture issues", (close) => /* @__PURE__ */ u3(
@@ -3619,9 +4318,9 @@ function openCaptureModal(ctx) {
 }
 
 // src/obsidian/settings.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
-var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
+var TaskSettingTab = class extends import_obsidian10.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
     this.settings = settings;
@@ -3631,7 +4330,7 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
   save;
   display() {
     this.containerEl.empty();
-    new import_obsidian9.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
+    new import_obsidian10.Setting(this.containerEl).setName("\u7AEF\u672B\u540D").setDesc("worklog \u3092 worklog/<\u7AEF\u672B\u540D>/ \u306B\u66F8\u304D\u307E\u3059\u3002\u7AEF\u672B\u3054\u3068\u306B\u9055\u3046\u540D\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08pkm-git \u306E\u7AEF\u672B\u540D\u3068\u540C\u3058\u304C\u304A\u3059\u3059\u3081\uFF09").addText(
       (t3) => t3.setPlaceholder("\u4F8B: iphone").setValue(this.settings.deviceName).onChange(async (v3) => {
         this.settings.deviceName = sanitizeDeviceName(v3);
         await this.save();
@@ -3641,7 +4340,7 @@ var TaskSettingTab = class extends import_obsidian9.PluginSettingTab {
 };
 
 // src/obsidian/status-bar.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/running.ts
 var SUMMARY_MAX = 24;
@@ -3675,7 +4374,7 @@ function registerRunningStatusBar(host, store, open) {
     path = s3?.path ?? null;
     el.toggle(s3 !== null);
     el.setText(s3?.text ?? "");
-    (0, import_obsidian10.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
+    (0, import_obsidian11.setTooltip)(el, s3?.tooltip ?? "", { placement: "top" });
   };
   el.addEventListener("click", () => path ? open.path(path) : open.sidebar());
   host.register(store.subscribe(render));
@@ -3684,7 +4383,7 @@ function registerRunningStatusBar(host, store, open) {
 }
 
 // src/obsidian/status-undo.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/core/undo.ts
 var UndoBatch = class {
@@ -3766,7 +4465,7 @@ var StatusUndo = class {
       const icon = document.createElement("span");
       icon.className = "vt-icon";
       icon.setAttribute("aria-hidden", "true");
-      (0, import_obsidian11.setIcon)(icon, "chevron-right");
+      (0, import_obsidian12.setIcon)(icon, "chevron-right");
       button.append(icon);
       button.addEventListener("click", () => void this.undo());
       el.append(text, button);
@@ -3779,7 +4478,7 @@ var StatusUndo = class {
 };
 
 // src/obsidian/store.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/core/labels.ts
 var LABELS_PATH = "issue/labels.json";
@@ -3949,15 +4648,15 @@ var TaskStore = class {
     const { vault, metadataCache } = this.app;
     for (const ref of [
       metadataCache.on("changed", (file) => this.touch(file)),
-      vault.on("create", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
-      vault.on("modify", (file) => file instanceof import_obsidian12.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("create", (file) => file instanceof import_obsidian13.TFile && void this.readText(file).then(() => this.touch(file))),
+      vault.on("modify", (file) => file instanceof import_obsidian13.TFile && void this.readText(file).then(() => this.touch(file))),
       vault.on("delete", (file) => {
         this.texts.delete(file.path);
-        if (file instanceof import_obsidian12.TFile) this.touch(file);
+        if (file instanceof import_obsidian13.TFile) this.touch(file);
       }),
       vault.on("rename", (file, oldPath) => {
         this.texts.delete(oldPath);
-        if (file instanceof import_obsidian12.TFile) void this.readText(file).then(() => this.schedule());
+        if (file instanceof import_obsidian13.TFile) void this.readText(file).then(() => this.schedule());
       })
     ])
       registerEvent(ref);
@@ -3994,7 +4693,7 @@ var TaskStore = class {
     }, 50);
   }
   rebuild() {
-    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian12.parseYaml };
+    const input = { markdown: [], worklogs: [], labels: null, groups: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian13.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
       if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
@@ -4020,9 +4719,9 @@ var TaskStore = class {
 };
 
 // src/obsidian/view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 function preactViewCreator(spec, ctx) {
-  class PreactView extends import_obsidian13.ItemView {
+  class PreactView extends import_obsidian14.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -4044,7 +4743,7 @@ function preactViewCreator(spec, ctx) {
 }
 
 // src/obsidian/writer.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
@@ -4460,9 +5159,12 @@ var TaskWriter = class {
   async updateSub(key, patch, via = "ui") {
     const sub = this.store.index.sub(key);
     if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    const fixed = normalizeSubPatch(patch);
     let change = null;
     await this.app.vault.process(this.file(sub.path), (text) => {
-      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, patch, import_obsidian14.parseYaml);
+      const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian15.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
+      this.assertSubs(siblings, [sub.id]);
+      const r3 = updateSubIssueText(sub.path, sub.parent, text, sub.id, fixed, import_obsidian15.parseYaml);
       change = r3.before.status !== r3.after.status ? { from: r3.before.status, to: r3.after.status } : null;
       return r3.text;
     });
@@ -4475,6 +5177,67 @@ var TaskWriter = class {
       if (running.length > 0) await this.stopTimer(running);
     }
   }
+  assertSubs(subs, touched) {
+    const errors = touchedSubErrors(subs, touched, new Set(this.store.index.members.keys()));
+    if (errors.length > 0) throw new Error(errors.join("\n"));
+  }
+  /** サブを足す（ADR-0142）。summaries の順に末尾へ。作ったサブの合成キーを返す */
+  async createSubs(parentId, summaries) {
+    const issue = this.store.index.issues.get(parentId);
+    if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parentId}`);
+    if (summaries.length === 0) return [];
+    const created = localDateTime();
+    let keys = [];
+    await this.app.vault.process(this.file(issue.path), (text) => {
+      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian15.parseYaml).subs;
+      const taken = existing.map((s3) => s3.id);
+      const subs = summaries.map((summary) => {
+        const id = newSubId(taken);
+        taken.push(id);
+        return newSubIssueInput({ summary }, id, created);
+      });
+      this.assertSubs([...existing, ...subs], subs.map((s3) => s3.id));
+      keys = subs.map((s3) => subKey(issue.id, s3.id));
+      return insertSubIssuesText(issue.path, issue.id, text, subs, import_obsidian15.parseYaml);
+    });
+    this.store.refreshSoon();
+    return keys;
+  }
+  /** サブを to の位置へ移す（md のブロックの並びで数える） */
+  async moveSub(key, to) {
+    await this.moveSubWith(key, () => to);
+  }
+  /** サブを before の前へ移す（null なら末尾。ドラッグ。ADR-0142）。位置は今の md のブロックの並び（読めないブロックを含む）で決める */
+  async moveSubBefore(key, before) {
+    const target = before === null ? null : this.store.index.sub(before);
+    await this.moveSubWith(key, (ids, id) => dropPosition(ids, id, target ? target.id : null));
+  }
+  /** サブを、出ている隣の行（visible の合成キー）をまたいで 1 つ上（-1）か下（1）へ移す（Move up / down） */
+  async stepSub(key, visible, dir) {
+    const ids = visible.map((k3) => this.store.index.sub(k3)?.id).filter((x2) => x2 !== void 0);
+    await this.moveSubWith(key, (all, id) => stepPosition(all, ids, id, dir));
+  }
+  async moveSubWith(key, position) {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    await this.app.vault.process(this.file(sub.path), (text) => {
+      const ids = parseSubIssues(sub.path, sub.parent, text, import_obsidian15.parseYaml).blocks.map((b2) => b2.sub?.id ?? null);
+      const to = position(ids, sub.id);
+      return to === null ? text : moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_obsidian15.parseYaml);
+    });
+    this.store.refreshSoon();
+  }
+  /** サブを本文ごと消す。記録中のタイマーは止める。worklog の行は残す（ADR-0135）。依存されていたら消さない */
+  async deleteSub(key) {
+    const sub = this.store.index.sub(key);
+    if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+    const dependents = dependentsOf(this.store.index.subs(sub.parent), sub.id);
+    if (dependents.length > 0) throw new Error(`${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308B\u306E\u3067\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
+    const running = this.store.index.running(key);
+    if (running.length > 0) await this.stopTimer(running);
+    await this.app.vault.process(this.file(sub.path), (text) => removeSubIssueText(sub.path, sub.parent, text, sub.id, import_obsidian15.parseYaml));
+    this.store.refreshSoon();
+  }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
   async recordStatus(task, from, to, via, sub = null) {
     const device = this.deviceName();
@@ -4483,7 +5246,7 @@ var TaskWriter = class {
       const now = /* @__PURE__ */ new Date();
       const line = statusLogLine(task, from, to, via, now, Math.random, sub);
       if (line === null) return;
-      const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(statusLogPath(device, now)), "");
+      const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(statusLogPath(device, now)), "");
       await this.app.vault.process(file, (text) => appendWorklogLine(text, line));
     } catch (e3) {
       console.error("pkm-task: status \u306E\u8A18\u9332\u3092\u66F8\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -4502,7 +5265,7 @@ var TaskWriter = class {
     const failed = [];
     const now = localDateTime();
     for (const [i3, summary] of summaries.entries()) {
-      const path = (0, import_obsidian14.normalizePath)(pathForId(ids[i3]));
+      const path = (0, import_obsidian15.normalizePath)(pathForId(ids[i3]));
       try {
         await this.ensureFolder(path);
         created.push(await this.app.vault.create(path, newIssueContent(ids[i3], summary, now, scheduled)));
@@ -4516,7 +5279,7 @@ var TaskWriter = class {
   }
   async createMember(name) {
     const [id] = nextIds("m", this.takenIds());
-    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian15.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     await this.app.vault.create(path, newMemberContent(id, name, localDateTime()));
     this.store.refreshSoon();
@@ -4576,7 +5339,7 @@ var TaskWriter = class {
     if (targets.length === 0) return;
     const now = /* @__PURE__ */ new Date();
     const from = localDateTime(now);
-    const path = (0, import_obsidian14.normalizePath)(worklogPath(device, now));
+    const path = (0, import_obsidian15.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
     await this.app.vault.process(
       file,
@@ -4607,14 +5370,14 @@ var TaskWriter = class {
   /** worklog を手で足す。保存先は開始日の月のファイル */
   async addWorklog(taskId, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(worklogPath(device, fromDate)), "");
+    const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(worklogPath(device, fromDate)), "");
     await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
   async appendBoardOps(date, device, ops) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
-    const file = await this.getOrCreate((0, import_obsidian14.normalizePath)(boardLogPath(device, date)), "");
+    const file = await this.getOrCreate((0, import_obsidian15.normalizePath)(boardLogPath(device, date)), "");
     let latest = Math.max(this.store.index.board(date)?.latestAt ?? 0, this.lastBoardAt) || null;
     const now = Date.now();
     const lines = ops.map((op) => {
@@ -4632,7 +5395,7 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
-    const note = await this.getOrCreate((0, import_obsidian14.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
+    const note = await this.getOrCreate((0, import_obsidian15.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
     await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
@@ -4646,7 +5409,7 @@ var TaskWriter = class {
   /** routine を作る（ADR-0010） */
   async createRoutine(summary, repeat, extra = {}) {
     const [id] = nextIds("r", this.takenIds());
-    const path = (0, import_obsidian14.normalizePath)(pathForId(id));
+    const path = (0, import_obsidian15.normalizePath)(pathForId(id));
     await this.ensureFolder(path);
     const file = await this.app.vault.create(path, newRoutineContent(id, summary, repeat, localDateTime(), extra));
     this.store.refreshSoon();
@@ -4664,142 +5427,8 @@ function stepperItems(steps, current, counts, passed) {
   });
 }
 
-// src/obsidian/issue-actions.tsx
-function askDate(ctx, title, initial = null) {
-  return new Promise((resolve) => {
-    let done = false;
-    const modal = new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3(
-      DateForm,
-      {
-        initial,
-        allowClear: false,
-        onSubmit: (v3) => {
-          done = true;
-          close();
-          resolve(v3);
-        }
-      }
-    ));
-    const onClose = modal.onClose.bind(modal);
-    modal.onClose = () => {
-      onClose();
-      if (!done) resolve(null);
-    };
-    modal.open();
-  });
-}
-async function patchAll(ctx, issues, patch, label) {
-  try {
-    await ctx.writer.updateMany(
-      issues.map((i3) => i3.path),
-      (path) => {
-        const issue = issues.find((i3) => i3.path === path);
-        return typeof patch === "function" ? patch(issue) : patch;
-      }
-    );
-  } catch (e3) {
-    ctx.report(`${label}\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F`, e3);
-  }
-}
-var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
-var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
-var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
-async function scheduleToday(ctx, issues) {
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [localToday()]), "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u308B\u3053\u3068\u304C");
-  ctx.report(`${issues.length} \u4EF6\u3092\u4ECA\u65E5\u306E\u4E88\u5B9A\u306B\u5165\u308C\u307E\u3057\u305F`);
-}
-async function scheduleIssues(ctx, issues) {
-  const date = await askDate(ctx, "Add Do Date");
-  if (date === null) return;
-  await patchAll(ctx, issues, (i3) => schedulePatch(i3, [date]), "\u5B9F\u884C\u65E5\u3092\u8DB3\u3059\u3053\u3068\u304C");
-}
-async function rescheduleIssues(ctx, issues, target, from = null) {
-  const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
-  const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
-  if (date === null) return;
-  await patchAll(ctx, issues, (i3) => reschedulePatch(i3, target, date, from), "\u65E5\u4ED8\u3092\u5909\u3048\u308B\u3053\u3068\u304C");
-}
-
-// src/obsidian/board-actions.ts
-function guard(ctx, label, p3) {
-  return p3.then(
-    () => void 0,
-    (e3) => ctx.report(label, e3)
-  );
-}
-var addToBoard = (ctx, date, ids) => guard(
-  ctx,
-  "\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ids.map((task) => ({ op: "add", task })))
-);
-async function createOnBoard(ctx, date, summary) {
-  try {
-    const { created } = await ctx.writer.createIssues([summary], [date]);
-    const file = created[0];
-    if (!file) throw new Error(`\u4F5C\u6210\u306B\u5931\u6557\u3057\u307E\u3057\u305F: ${summary}`);
-    await addToBoard(ctx, date, [file.basename]);
-  } catch (e3) {
-    ctx.report("issue \u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-var removeFromBoard = (ctx, date, id) => guard(ctx, "\u30DC\u30FC\u30C9\u304B\u3089\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "remove", task: id }]));
-var setPlacement = (ctx, date, id, group) => guard(
-  ctx,
-  "\u30B0\u30EB\u30FC\u30D7\u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
-  ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "place", task: id, group: group === UNGROUPED ? null : group }])
-);
-function moveCard(ctx, date, id, group, from, visible, before) {
-  const ops = [];
-  if (from !== group) ops.push({ op: "place", task: id, group: group === UNGROUPED ? null : group });
-  const tasks = nextOrder(reorder(visible, id, before), ctx.store.index.order(date, group));
-  ops.push({ op: "order", group: group === UNGROUPED ? null : group, tasks });
-  return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, ops));
-}
-async function setRoutineResult(ctx, date, id, result, record2 = true) {
-  const before = ctx.store.index.board(date)?.board.routines[id] ?? null;
-  try {
-    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "routine", task: id, result }]);
-  } catch (e3) {
-    ctx.report("routine \u3092\u66F4\u65B0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-    return;
-  }
-  if (record2 && before !== result) ctx.undo.push(`${date}/${id}`, () => setRoutineResult(ctx, date, id, before, false));
-}
-async function carryIssues(ctx, date, issues, kind, fixedTo = null) {
-  let to = fixedTo;
-  if (kind === "reschedule" && to === null) {
-    to = await askDate(ctx, "Move Do Date");
-    if (to === null) return;
-  }
-  try {
-    for (const issue of issues) {
-      await ctx.writer.update(issue.path, kind === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", to, date));
-    }
-    await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, issues.map((i3) => ({ op: "carry", task: i3.id })));
-  } catch (e3) {
-    ctx.report("\u7247\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-async function closeBoard(ctx, date) {
-  try {
-    await ctx.writer.closeBoard(date, ctx.settings.deviceName);
-  } catch (e3) {
-    ctx.report("\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-  }
-}
-var reopenBoard = (ctx, date) => guard(ctx, "\u30DC\u30FC\u30C9\u3092\u958B\u304D\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
-function startTimer(ctx, ids) {
-  return guard(ctx, "\u8A18\u9332\u3092\u59CB\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.startTimer(ids, ctx.settings.deviceName));
-}
-function stopTimer(ctx, ids) {
-  const running = ctx.store.index.running().filter((l3) => ids.includes(workKey(l3)));
-  if (running.length === 0) return Promise.resolve();
-  return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
-}
-
 // src/ui/IssueTable.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 function IssueTable(props) {
   const { ctx, issues, selected, onSelect } = props;
   const columns = props.columns ?? ["status-detail", "soft_deadline", "deadline"];
@@ -4852,7 +5481,7 @@ function IssueTable(props) {
     ] }),
     issues.map((issue) => /* @__PURE__ */ u3("div", { class: `vt-tr${selected?.has(issue.id) ? " is-selected" : ""}`, role: "row", children: [
       onSelect && /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected?.has(issue.id) ?? false, onChange: () => toggle2(issue.id), "aria-label": `Select ${issue.id}` }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian15.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("span", { class: "vt-col-main", ...linkProps((e3) => void ctx.openPath(issue.path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: [
         props.lead?.(issue),
         /* @__PURE__ */ u3(IdBadge, { issue }),
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
@@ -4873,7 +5502,7 @@ function ActionBar(props) {
 }
 
 // src/views/Board.tsx
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 var itemId = (it) => it.kind === "issue" ? it.issue.id : it.routine.id;
 function routineStatus(board, r3) {
   return board.routines[r3.id] ?? "open";
@@ -4934,10 +5563,10 @@ function NextButtons(props) {
     }
   )) });
 }
-var DRAG_TYPE = "text/plain";
+var DRAG_TYPE2 = "text/plain";
 var dragValue = (id, from) => JSON.stringify({ id, from });
-function readDrag(e3) {
-  const raw = e3.dataTransfer?.getData(DRAG_TYPE);
+function readDrag2(e3) {
+  const raw = e3.dataTransfer?.getData(DRAG_TYPE2);
   if (!raw) return null;
   try {
     const v3 = JSON.parse(raw);
@@ -4960,7 +5589,7 @@ function TaskCard(props) {
   const last = issue ? ctx.store.index.lastStatusLog(issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian16.Menu();
+    const m3 = new import_obsidian17.Menu();
     for (const s3 of boardMenuStatuses(issue ? "issue" : "routine")) {
       m3.addItem(
         (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
@@ -4973,7 +5602,7 @@ function TaskCard(props) {
     m3.showAtMouseEvent(e3);
   };
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian16.Menu();
+    const m3 = new import_obsidian17.Menu();
     for (const key of [UNGROUPED, ...props.keys]) {
       m3.addItem(
         (mi) => mi.setTitle(key === UNGROUPED ? "\u2192 Unsorted" : `\u2192 ${key}`).setChecked(props.placed === key).onClick(() => void setPlacement(ctx, date, id, key))
@@ -4997,7 +5626,7 @@ function TaskCard(props) {
     {
       class: `vt-task${done ? " is-done" : ""}${running.length > 0 ? " is-running" : ""}${dropBefore ? " is-drop-before" : ""}`,
       draggable: true,
-      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE, dragValue(id, props.placed)),
+      onDragStart: (e3) => e3.dataTransfer?.setData(DRAG_TYPE2, dragValue(id, props.placed)),
       ...order ? {
         // 別のカードの上に落とすと、そのカードの前に入る（ADR-0114）
         onDragOver: (e3) => {
@@ -5010,14 +5639,14 @@ function TaskCard(props) {
           e3.preventDefault();
           e3.stopPropagation();
           setDropBefore(false);
-          const drag = readDrag(e3);
+          const drag = readDrag2(e3);
           if (!drag || drag.id === id) return;
           void moveCard(ctx, date, drag.id, order.groupKey, drag.from, order.siblings, id);
         }
       } : {},
       children: [
         /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian16.Keymap.isModEvent(e3) !== false)), children: summary }),
+          /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${id} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -5070,7 +5699,7 @@ function GroupBox(props) {
         e3.preventDefault();
         e3.stopPropagation();
         setOver(false);
-        const drag = readDrag(e3);
+        const drag = readDrag2(e3);
         if (drag) void moveCard(ctx, date, drag.id, groupKey, drag.from, siblings, null);
       },
       children: [
@@ -5711,7 +6340,7 @@ function LabelManagerView(props) {
 }
 
 // src/views/MemberListView.tsx
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -5802,7 +6431,7 @@ function MemberListView(props) {
       const count = delegated.get(m3.id) ?? 0;
       return /* @__PURE__ */ u3("div", { class: "vt-routine-item", children: [
         /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: m3.id }),
-        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian17.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(m3.path, import_obsidian18.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: memberLabel(m3) }),
           m3.labels.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-member-row-labels", children: m3.labels.map((l3) => /* @__PURE__ */ u3(LabelBadge, { name: l3, color: colors2.get(l3) ?? DEFAULT_LABEL_COLOR })) })
         ] }),
@@ -5816,7 +6445,7 @@ function MemberListView(props) {
 }
 
 // src/views/IssueListView.tsx
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -5898,7 +6527,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian18.Menu();
+    const m3 = new import_obsidian19.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -5989,7 +6618,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var ESTIMATES = [15, 30, 60, 120, 300, 480];
@@ -6135,7 +6764,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian19.Menu();
+    const m3 = new import_obsidian20.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -6279,7 +6908,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -6351,7 +6980,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
@@ -6366,7 +6995,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -6392,7 +7021,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian21.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -6403,7 +7032,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -6441,7 +7070,7 @@ function SidebarView(props) {
         const summary = task?.summary || taskId;
         const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian23.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -6545,7 +7174,7 @@ var VIEWS = [
   { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian23.Plugin {
+var PkmTaskPlugin = class extends import_obsidian24.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -6556,7 +7185,7 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian23.Notice(`${message}${detail}`);
+      new import_obsidian24.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -6574,9 +7203,9 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian23.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian24.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian23.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian24.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal = true) => {
@@ -6594,6 +7223,7 @@ var PkmTaskPlugin = class extends import_obsidian23.Plugin {
     this.registerView(SIDEBAR_VIEW.type, preactViewCreator(SIDEBAR_VIEW, ctx));
     this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
     installTaskHeaders(ctx, this);
+    installSubAreaHiding(this);
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
     registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));

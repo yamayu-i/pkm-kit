@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 function obsidianMock() {
 	const commands: { id: string; name: string }[] = [];
 	const extensions: unknown[] = [];
+	const postProcessors: unknown[] = [];
 	const views: string[] = [];
 	const creators = new Map<string, (leaf: unknown) => { getViewType(): string; getDisplayText(): string; getIcon(): string }>();
 	const events: string[] = [];
@@ -35,6 +36,9 @@ function obsidianMock() {
 		};
 		registerEditorExtension(ext: unknown) {
 			extensions.push(ext);
+		}
+		registerMarkdownPostProcessor(fn: unknown) {
+			postProcessors.push(fn);
 		}
 		addCommand(c: { id: string; name: string }) {
 			commands.push(c);
@@ -88,6 +92,7 @@ function obsidianMock() {
 		statusItems,
 		commands,
 		extensions,
+		postProcessors,
 		events,
 		views,
 		creators,
@@ -131,6 +136,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		expect(mock.views).toHaveLength(11);
 		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む
 		expect(mock.extensions).toHaveLength(0);
+		// リーディング表示で、issue の md のサブの領域を隠す（ADR-0142）
+		expect(mock.postProcessors).toHaveLength(1);
 		expect(mock.events).toEqual(expect.arrayContaining(["workspace:file-open", "workspace:active-leaf-change", "workspace:layout-change"]));
 		// 記録中がなければ、ステータスバーの項目は隠れている（ADR-0075）
 		expect(mock.statusItems).toEqual([{ text: "", shown: false, classes: ["mod-clickable", "pkm-task-running-status"] }]);
