@@ -7595,6 +7595,8 @@ function TasksNowDialog(props) {
 }
 
 // src/main.ts
+var TASKS_NOW_COMMAND = "pkm-task:open-tasks-now";
+var BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 var VIEWS = [
   { type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
   { type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
@@ -7668,12 +7670,27 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
         modal.open();
       }
     });
+    let lastBadge = null;
+    this.register(
+      store.subscribe(() => {
+        const count = this.getRibbonBadge(TASKS_NOW_COMMAND);
+        if (count === lastBadge) return;
+        lastBadge = count;
+        this.app.workspace.trigger(BADGE_CHANGED_EVENT, TASKS_NOW_COMMAND);
+      })
+    );
     registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
       void openSidebar(false).catch((e3) => ctx.report("\u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
     });
+  }
+  /** pkm-ribbon が尋ねるバッジの数（ADR-0070 の 6）。Tasks Now は、記録中のタスクの数（なければ null） */
+  getRibbonBadge(command) {
+    if (command !== TASKS_NOW_COMMAND || !this.store) return null;
+    const n2 = new Set(this.store.index.running().map(workKey)).size;
+    return n2 > 0 ? n2 : null;
   }
   onunload() {
     this.store?.unload();

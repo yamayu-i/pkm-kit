@@ -9,6 +9,7 @@ import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
 import { registerRunningStatusBar } from "./obsidian/status-bar";
+import { workKey } from "./core/worklog";
 import { StatusUndo } from "./obsidian/status-undo";
 import { TaskStore } from "./obsidian/store";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
@@ -24,6 +25,10 @@ import { ScheduledView } from "./views/ScheduledView";
 import { SidebarView } from "./views/SidebarView";
 import { SomedayView } from "./views/SomedayView";
 import { TasksNowDialog } from "./views/TasksNowDialog";
+
+/** リボンのボタン（pkm-ribbon）が呼ぶコマンドの ID と、バッジの数が変わったことを知らせるイベント（ADR-0070 の 6） */
+const TASKS_NOW_COMMAND = "pkm-task:open-tasks-now";
+const BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 
 /** View の一覧（ADR-0009, 0010, 0021, 0035） */
 const VIEWS: ViewSpec[] = [
@@ -107,6 +112,16 @@ export default class PkmTaskPlugin extends Plugin {
 			},
 		});
 		// リボンのボタン（Open Today、Capture issues）は pkm-ribbon が並びの表で出し、コマンドを呼ぶ（ADR-0029、ADR-0070）
+		// 記録中のタスクの数を、リボンの Tasks Now のバッジに出す（ADR-0144）。数が変わったときだけ pkm-ribbon に知らせる
+		let lastBadge: number | null = null;
+		this.register(
+			store.subscribe(() => {
+				const count = this.getRibbonBadge(TASKS_NOW_COMMAND);
+				if (count === lastBadge) return;
+				lastBadge = count;
+				this.app.workspace.trigger(BADGE_CHANGED_EVENT, TASKS_NOW_COMMAND);
+			}),
+		);
 		// 記録中のタイマーを PC のステータスバーに出す（ADR-0075）
 		registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
 		this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
@@ -114,6 +129,13 @@ export default class PkmTaskPlugin extends Plugin {
 			void store.load((ref) => this.registerEvent(ref)).catch((e) => ctx.report("タスクの索引を作れませんでした", e));
 			void openSidebar(false).catch((e) => ctx.report("サイドバーを開けませんでした", e));
 		});
+	}
+
+	/** pkm-ribbon が尋ねるバッジの数（ADR-0070 の 6）。Tasks Now は、記録中のタスクの数（なければ null） */
+	getRibbonBadge(command: string): number | null {
+		if (command !== TASKS_NOW_COMMAND || !this.store) return null;
+		const n = new Set(this.store.index.running().map(workKey)).size;
+		return n > 0 ? n : null;
 	}
 
 	override onunload(): void {
