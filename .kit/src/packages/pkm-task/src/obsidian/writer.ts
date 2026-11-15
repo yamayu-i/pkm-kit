@@ -24,6 +24,7 @@ import {
 	subKey,
 	touchedSubErrors,
 	updateSubIssueText,
+	type SubIssue,
 	type SubIssuePatch,
 } from "../core/sub-issue";
 import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEntry, stopWorklogLines, workKey, workTarget, worklogPath, type WorklogEntry } from "../core/worklog";
@@ -137,9 +138,17 @@ export class TaskWriter {
 		this.store.refreshSoon();
 		const done = change as { from: Status; to: Status } | null;
 		if (done === null) return;
-		await this.recordStatus(sub.parent, done.from, done.to, via, sub.id);
-		if (isDoneStatus(done.to)) {
-			const running = this.store.index.running(key);
+		await this.afterSubStatusChange(sub, done.from, done.to, via);
+	}
+
+	/**
+	 * サブの status が変わった後の処理: statuslog に task と sub で書き、closed / canceled ならそのサブの記録中のタイマーを止める。
+	 * エディタの文書を直接書き換えたとき（ADR-0161）も、ファイルを書き換えたときと同じにするために公開している
+	 */
+	async afterSubStatusChange(sub: Pick<SubIssue, "parent" | "id" | "key">, from: Status, to: Status, via: StatusVia = "ui"): Promise<void> {
+		await this.recordStatus(sub.parent, from, to, via, sub.id);
+		if (isDoneStatus(to)) {
+			const running = this.store.index.running(sub.key);
 			if (running.length > 0) await this.stopTimer(running);
 		}
 	}

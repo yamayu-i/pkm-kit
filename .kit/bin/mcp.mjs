@@ -7855,7 +7855,7 @@ function parseSubIssues(path, parent, text, parseYaml) {
 function yamlString(s) {
   return JSON.stringify(s);
 }
-function formatSubIssue(sub) {
+function formatSubHead(sub) {
   if (!isSubId(sub.id)) throw new SubIssueFormatError(`id \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${sub.id}`);
   const lines = [SUB_ISSUE_MARKER, `id: ${sub.id}`, `summary: ${yamlString(sub.summary)}`, `status: ${sub.status}`];
   const put = (key, value) => {
@@ -7875,12 +7875,16 @@ function formatSubIssue(sub) {
     if (line.includes(BLOCK_END)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B ${BLOCK_END} \u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
     if (/[\r\n]/.test(line)) throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u9805\u76EE\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093: ${line}`);
   }
+  lines.push(BLOCK_END);
+  return lines.join("\n");
+}
+function formatSubIssue(sub) {
+  const head = formatSubHead(sub);
   const body = sub.body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
   if (body.split(/\r?\n/).some((l) => l.startsWith(SUB_ISSUE_MARKER))) {
     throw new SubIssueFormatError(`\u30B5\u30D6\u306E\u672C\u6587\u306E\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`);
   }
-  lines.push(BLOCK_END);
-  return `${lines.join("\n")}
+  return `${head}
 ${body ? `${body}
 ` : ""}`;
 }
