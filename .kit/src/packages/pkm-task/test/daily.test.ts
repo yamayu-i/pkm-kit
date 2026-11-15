@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancelPatch, inboxPatch, nextPatch, reschedulePatch, schedulePatch, somedayPatch } from "../src/core/actions";
+import { cancelPatch, inboxPatch, nextPatch, reschedulePatch, scheduledPatch, somedayPatch } from "../src/core/actions";
 import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
@@ -36,21 +36,20 @@ describe("actions", () => {
 		expect(patch).not.toHaveProperty("deadline");
 	});
 
-	it("Next にすると clarified を付ける。someday なら open に戻す（ADR-0148）", () => {
-		expect(nextPatch(issue("i-1"))).toEqual({ clarified: true });
-		expect(nextPatch(issue("i-1", { status: "someday", revisit: "2026-12-01" }))).toEqual({ clarified: true, status: "open", revisit: null });
+	it("Next にすると clarified を付け、Tickler を消す。someday なら open に戻す（ADR-0148, 0152）", () => {
+		expect(nextPatch(issue("i-1"))).toEqual({ clarified: true, tickler: null });
+		expect(nextPatch(issue("i-1", { status: "someday", revisit: "2026-12-01" }))).toEqual({ clarified: true, tickler: null, status: "open", revisit: null });
 	});
 
-	it("リスケ: 期限は置き換え、実行日は from を外して to を足す", () => {
-		const i = issue("i-1", { scheduled: ["2026-10-30", "2026-11-02"] });
-		expect(reschedulePatch(i, "deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10" });
-		expect(reschedulePatch(i, "scheduled", "2026-11-05", "2026-10-30")).toEqual({ scheduled: ["2026-11-02", "2026-11-05"] });
-		expect(reschedulePatch(i, "scheduled", "2026-11-01")).toEqual({ scheduled: ["2026-10-30", "2026-11-01", "2026-11-02"] });
+	it("リスケ: 期限も Calendar の日も、その日に置き換える（ADR-0152。Calendar は日付 1 つ）", () => {
+		expect(reschedulePatch("deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10" });
+		expect(reschedulePatch("scheduled", "2026-11-05")).toEqual({ scheduled: "2026-11-05" });
 	});
 
-	it("予定を入れると estimated も入れられる。someday なら open に戻す", () => {
-		expect(schedulePatch(issue("i-1"), ["2026-11-01"], 60)).toEqual({ scheduled: ["2026-11-01"], estimated: 60 });
-		expect(schedulePatch(issue("i-1", { status: "someday", revisit: "2026-11-01" }), ["2026-11-01"])).toMatchObject({ status: "open", revisit: null });
+	it("Calendar の日を入れる・消す。someday に入れるときは open に戻す（ADR-0018, 0152）", () => {
+		expect(scheduledPatch(issue("i-1"), "2026-11-01")).toEqual({ scheduled: "2026-11-01" });
+		expect(scheduledPatch(issue("i-1", { status: "someday", revisit: "2026-11-01" }), "2026-11-01")).toMatchObject({ status: "open", revisit: null });
+		expect(scheduledPatch(issue("i-1", { scheduled: "2026-11-01" }), null)).toEqual({ scheduled: null });
 	});
 });
 
@@ -60,9 +59,9 @@ describe("dead / caution / scheduled", () => {
 		issue("i-1", { deadline: "2026-10-30" }),
 		issue("i-2", { soft_deadline: "2026-10-29", deadline: "2026-11-02" }),
 		issue("i-3", { deadline: "2026-10-31", status: "closed" }),
-		issue("i-4", { soft_deadline: "2026-10-31", scheduled: [today] }),
-		issue("i-5", { deadline: "2026-11-04", scheduled: [today] }),
-		issue("i-6", { status: "someday", scheduled: [today] }),
+		issue("i-4", { soft_deadline: "2026-10-31", scheduled: today }),
+		issue("i-5", { deadline: "2026-11-04", scheduled: today }),
+		issue("i-6", { status: "someday", scheduled: today }),
 	];
 
 	it("期限を過ぎた閉じていない issue。deadline と soft_deadline は別", () => {
@@ -117,7 +116,7 @@ describe("queryIssues", () => {
 	const issues = [
 		issue("i-1", { summary: "請求書を送る", priority: "high", label: ["仕事"] }),
 		issue("i-2", { summary: "牛乳", status: "closed" }),
-		issue("i-3", { summary: "請求の確認", scheduled: ["2026-11-01"], deadline: "2026-11-03" }),
+		issue("i-3", { summary: "請求の確認", scheduled: "2026-11-01", deadline: "2026-11-03" }),
 		issue("i-10", { summary: "x", status: "someday" }),
 	];
 	const today = "2026-10-31";
@@ -294,14 +293,16 @@ describe("monthGridDays", () => {
 });
 
 describe("newIssueContent", () => {
-	it("scheduled を渡すと実行日の入った issue になり、Inbox に入らない", () => {
-		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", ["2026-11-01"]))![1]!;
-		const line = yaml.split("\n").find((l) => l.startsWith("scheduled:"));
-		expect(line).toBe('scheduled: ["2026-11-01"]');
-		expect(issue("i-1", { scheduled: ["2026-11-01"] }).scheduled).toEqual(["2026-11-01"]);
+	it("scheduled（Calendar の日 1 つ）と clarified を渡すと、その欄を書く（ADR-0152）", () => {
+		const yaml = /^---\n([\s\S]*?)\n---/.exec(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00", { scheduled: "2026-11-01", clarified: true }))![1]!;
+		const lines = yaml.split("\n");
+		expect(lines).toContain("scheduled: 2026-11-01");
+		expect(lines).toContain("clarified: true");
+		expect(issue("i-1", { scheduled: "2026-11-01" }).scheduled).toBe("2026-11-01");
 	});
 
-	it("scheduled がなければ欄を書かない", () => {
+	it("渡さなければ scheduled も clarified も書かない（Inbox に入る）", () => {
 		expect(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00")).not.toContain("scheduled");
+		expect(newIssueContent("i-1", "題", "2026-11-01T09:00:00+09:00")).not.toContain("clarified");
 	});
 });

@@ -83,7 +83,7 @@ describe("parseSubIssues", () => {
 			start: "2026-11-16",
 			end: "2026-11-20",
 			estimated: 120,
-			scheduled: [],
+			scheduled: null,
 			dependsOn: [],
 			delegatedTo: null,
 			migratedFrom: null,

@@ -28,14 +28,16 @@ export interface Issue {
 	related: string[];
 	/** 分 */
 	estimated: number | null;
-	/** 昇順・重複なし */
-	scheduled: LocalDate[];
+	/** Calendar: その日にやらなければならない日（ADR-0152）。日付 1 つ */
+	scheduled: LocalDate | null;
 	softDeadline: LocalDate | null;
 	deadline: LocalDate | null;
 	revisit: LocalDate | null;
 	reviewed: LocalDate | null;
 	/** 何をするか・何が済めば終わりかを決めた（整理した）。ないときは false（ADR-0148） */
 	clarified: boolean;
+	/** Tickler: この日まで出さず、この日に Inbox に戻す（ADR-0152） */
+	tickler: LocalDate | null;
 	created: string | null;
 }
 
@@ -161,6 +163,18 @@ export class Reader {
 		return out;
 	}
 
+	/**
+	 * Calendar の日付 1 つ（ADR-0152）。以前のリストなら最も早い日を読み、移行を促す警告を出す
+	 * （移行 0152-calendar-tickler で日付 1 つに書き直す）
+	 */
+	calendarDate(key: string): LocalDate | null {
+		const v = this.fm[key];
+		if (!Array.isArray(v)) return this.date(key);
+		const dates = this.dates(key);
+		if (v.length > 0) this.problem("legacy-scheduled-list", `${key} は日付 1 つにしました（ADR-0152）。移行 0152-calendar-tickler で書き直してください（node .kit/migrate.mjs）`, "warning");
+		return dates[0] ?? null;
+	}
+
 	dates(key: string): LocalDate[] {
 		const out = new Set<LocalDate>();
 		for (const v of this.list(key)) {
@@ -217,12 +231,13 @@ export function parseIssue(path: string, fm: Frontmatter): Parsed<Issue> {
 		labels: r.strings("label"),
 		related: r.strings("related"),
 		estimated: r.minutes("estimated"),
-		scheduled: r.dates("scheduled"),
+		scheduled: r.calendarDate("scheduled"),
 		softDeadline: r.date("soft_deadline"),
 		deadline: r.date("deadline"),
 		revisit: r.date("revisit"),
 		reviewed: r.date("reviewed"),
 		clarified: r.boolean("clarified", false),
+		tickler: r.date("tickler"),
 		created: r.datetime("created"),
 	};
 	return { value: id === null ? null : issue, problems: r.problems };

@@ -1,21 +1,20 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { canConfirmSchedule, cancelPatch, closePatch, nextPatch, organizeSchedulePatch, somedayPatch, type Patch } from "../core/actions";
-import { formatShortDate, localToday, type LocalDate } from "../core/dates";
+import { calendarPatch, cancelPatch, closePatch, nextPatch, somedayPatch, ticklerPatch, type Patch } from "../core/actions";
+import { addDays, formatShortDate, localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { isInbox, organizeQueue } from "../core/index";
+import { organizeQueue } from "../core/index";
 import { PRIORITIES, type Issue } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
+import { askDate } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { IdBadge, LabelBadge, PriorityBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { LabelForm } from "../ui/LabelForm";
-import { CalendarForm } from "../ui/forms";
 import { useStoreVersion } from "../ui/hooks";
 
 const CHUNK = 5;
 const SWIPE = 90;
-const ESTIMATES = [15, 30, 60, 120, 300, 480];
 
 /** 取り消し用に、変える欄の今の値を控える */
 const FIELD_OF: Record<string, (i: Issue) => Patch[string]> = {
@@ -30,44 +29,13 @@ const FIELD_OF: Record<string, (i: Issue) => Patch[string]> = {
 	priority: (i) => i.priority,
 	label: (i) => i.labels,
 	clarified: (i) => (i.clarified ? true : null),
+	tickler: (i) => i.tickler,
 };
 
 function snapshot(issue: Issue, patch: Patch): Patch {
 	const prev: Patch = {};
 	for (const key of Object.keys(patch)) prev[key] = FIELD_OF[key]?.(issue) ?? null;
 	return prev;
-}
-
-/**
- * Do Date を選ぶ（ADR-0030。呼び方は ADR-0032 の Do Date にそろえる）: カレンダーだけを出し、日付を複数選んで決定する。
- * requireEstimate のときだけ estimated も選ぶ。Organize は求めない（ADR-0148。GTD は見積もりを整理の条件にしない）
- */
-export function ScheduleSheet(props: { issue: Issue; requireEstimate: boolean; onSubmit: (dates: LocalDate[], estimated: number | null) => void }) {
-	const needEstimate = props.requireEstimate && props.issue.estimated === null;
-	const [estimated, setEstimated] = useState<number | null>(props.issue.estimated);
-	return (
-		<CalendarForm
-			initial={props.issue.scheduled}
-			softDeadline={props.issue.softDeadline}
-			deadline={props.issue.deadline}
-			submitLabel="Done"
-			canSubmit={(count) => canConfirmSchedule(count, needEstimate, estimated)}
-			onSubmit={(dates) => props.onSubmit(dates, estimated)}
-		>
-			{needEstimate && (
-				<div class="vt-sheet">
-					<div class="vt-field-label">estimated (required)</div>
-					<div class="vt-chip-row">
-						{ESTIMATES.map((m) => (
-							<button class={`vt-filter-chip${estimated === m ? " is-on" : ""}`} aria-pressed={estimated === m} onClick={() => setEstimated(m)}>
-								{formatMinutes(m)}
-							</button>
-						))}
-					</div>
-				</div>
-			)}
-		</CalendarForm>
-	);
 }
 
 /** 本文の冒頭（frontmatter と既定の見出しを除く） */
@@ -94,7 +62,7 @@ function useExcerpt(ctx: TaskContext, issue: Issue | undefined): string {
 	return text;
 }
 
-/** Organize（ADR-0009, 0148）: Inbox と Someday を 1 枚ずつ整理する。→ Next / ← Someday / ↓ Cancel */
+/** Organize（ADR-0009, 0148, 0152）: Inbox と Someday を 1 枚ずつ整理する。→ Next / ← Someday / ↑ Tickler / ↓ Cancel */
 export function OrganizeView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
@@ -136,22 +104,23 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		}
 	};
 
-	const schedule = () => {
+	/** Calendar（ADR-0152）: その日にやらなければならない日を 1 つ選ぶ。整理済みにする */
+	const calendar = () => {
 		if (!issue) return;
 		const target = issue;
-		new PreactModal(ctx.app, "Choose Do Date", (close) => (
-			<ScheduleSheet
-				issue={target}
-				requireEstimate={false}
-				onSubmit={(dates, est) => {
-					close();
-					const label = dates.length === 1 ? `Do Date: ${formatShortDate(dates[0]!)}` : `Do Date: ${dates.length} days`;
-					void apply(organizeSchedulePatch(target, dates, est), label);
-				}}
-			/>
-		)).open();
+		void askDate(ctx, "Calendar (must be done on this day)", localToday()).then((d) => {
+			if (d) void apply(calendarPatch(target, d), `Calendar: ${formatShortDate(d)}`);
+		});
 	};
-	const someday = () => void apply(issue?.status === "someday" ? {} : somedayPatch(), "To Someday");
+	/** Tickler（ADR-0152）: 今は決めず、選んだ日に Inbox に戻す。既定は明日 */
+	const tickler = () => {
+		if (!issue) return;
+		const target = issue;
+		void askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1)).then((d) => {
+			if (d) void apply(ticklerPatch(target, d), `Tickler: ${formatShortDate(d)}`);
+		});
+	};
+	const someday = () => void apply(issue?.status === "someday" ? { tickler: null } : somedayPatch(), "To Someday");
 	const next = () => void apply(issue ? nextPatch(issue) : {}, "Next");
 	const cancel = () => void apply(cancelPatch(), "Cancel");
 	const close = () => void apply(closePatch(), "Closed");
@@ -163,7 +132,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 			if (!issue || !root.current || root.current.offsetParent === null) return;
 			if ((e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable='true'], .modal")) return;
 			if (document.querySelector(".modal-container")) return;
-			const map: Record<string, () => void> = { ArrowRight: next, ArrowLeft: someday, ArrowDown: cancel };
+			const map: Record<string, () => void> = { ArrowRight: next, ArrowLeft: someday, ArrowUp: tickler, ArrowDown: cancel };
 			const fn = map[e.key];
 			if (fn) {
 				e.preventDefault();
@@ -185,6 +154,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 		const dir = direction(d);
 		if (dir === "right") next();
 		else if (dir === "left") someday();
+		else if (dir === "up") tickler();
 		else if (dir === "down") cancel();
 	};
 
@@ -234,6 +204,9 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<div class={`vt-swipe-hint is-right${hint === "right" ? " is-active" : ""}`}>
 						<Icon name="list-todo" /> Next
 					</div>
+					<div class={`vt-swipe-hint is-up${hint === "up" ? " is-active" : ""}`}>
+						<Icon name="alarm-clock" /> Tickler
+					</div>
 					<div class={`vt-swipe-hint is-down${hint === "down" ? " is-active" : ""}`}>
 						<Icon name="x" /> Cancel
 					</div>
@@ -255,7 +228,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					>
 						<div class="vt-organize-meta">
 							<IdBadge issue={issue} />
-							<span class="vt-chip-mini">{isInbox(issue) ? "Inbox" : "Someday"}</span>
+							<span class="vt-chip-mini">{issue.status === "someday" ? "Someday" : "Inbox"}</span>
 							{issue.revisit && <span class="vt-chip-mini">revisit {formatShortDate(issue.revisit)}</span>}
 							<span class="vt-spacer" />
 							<span class="vt-muted vt-num">{issue.created?.slice(0, 10)}</span>
@@ -294,9 +267,13 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<Icon name="check" />
 					<span>Closed</span>
 				</button>
-				<button class="vt-round" disabled={!issue} onClick={schedule} title="Choose Do Date">
+				<button class="vt-round" disabled={!issue} onClick={tickler} title="Tickler: decide later, back to Inbox on a date (↑)">
+					<Icon name="alarm-clock" />
+					<span>Tickler</span>
+				</button>
+				<button class="vt-round" disabled={!issue} onClick={calendar} title="Calendar: must be done on a specific day">
 					<Icon name="calendar-plus" />
-					<span>Do Date</span>
+					<span>Calendar</span>
 				</button>
 				<button class="vt-round is-schedule" disabled={!issue} onClick={next} title="Next action, no date (→)">
 					<Icon name="list-todo" />
@@ -309,7 +286,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 						<Icon name="undo-2" /> Undo ({undo.id}: {undo.label})
 					</button>
 				) : (
-					<span class="vt-muted">← Someday / → Next / ↓ Cancel (swipe or arrow keys)</span>
+					<span class="vt-muted">← Someday / → Next / ↑ Tickler / ↓ Cancel (swipe or arrow keys)</span>
 				)}
 				{issue && (
 					<button class="vt-button is-text" onClick={() => void ctx.openPath(issue.path, true)}>

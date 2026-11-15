@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { barOf, dateAtX, incomingOf, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
 
 function s(id: string, extra: Partial<TimelineSub> = {}): TimelineSub {
-	return { id, start: null, end: null, scheduled: [], softDeadline: null, deadline: null, dependsOn: [], ...extra };
+	return { id, start: null, end: null, scheduled: null, softDeadline: null, deadline: null, dependsOn: [], ...extra };
 }
 
 // 2026-11-15 は日曜
@@ -54,7 +54,7 @@ describe("棒と位置", () => {
 		expect(barOf(s("a", { start: "2026-11-16" }))).toEqual({ start: "2026-11-16", end: "2026-11-16" });
 		expect(barOf(s("a", { end: "2026-11-20" }))).toEqual({ start: "2026-11-20", end: "2026-11-20" });
 		expect(barOf(s("a", { start: "2026-11-20", end: "2026-11-16" }))).toEqual({ start: "2026-11-16", end: "2026-11-20" });
-		expect(barOf(s("a", { scheduled: ["2026-11-16"] }))).toBeNull();
+		expect(barOf(s("a", { scheduled: "2026-11-16" }))).toBeNull();
 	});
 
 	it("x 座標から日付（目盛りの 1 日の幅で）", () => {
@@ -87,7 +87,7 @@ describe("依存の矢印", () => {
 			s("a", { start: "2026-11-16", end: "2026-11-20" }),
 			s("b", { start: "2026-11-19", end: "2026-11-22", dependsOn: ["a"] }),
 			s("c", { start: "2026-11-21", dependsOn: ["a", "b", "zzzzzz"] }),
-			s("d", { scheduled: ["2026-11-25"], dependsOn: ["a"] }),
+			s("d", { scheduled: "2026-11-25", dependsOn: ["a"] }),
 		];
 		expect(dependencyArrows(subs)).toEqual([
 			{ from: "a", to: "b", late: true },

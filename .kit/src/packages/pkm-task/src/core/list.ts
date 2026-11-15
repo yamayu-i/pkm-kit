@@ -1,7 +1,7 @@
 import { isActive } from "./index";
 import { PRIORITIES, STATUSES, type Issue, type Priority, type Status } from "./schema";
 
-export type SortKey = "id" | "summary" | "status" | "priority" | "soft_deadline" | "deadline" | "created" | "next_scheduled";
+export type SortKey = "id" | "summary" | "status" | "priority" | "soft_deadline" | "deadline" | "created" | "scheduled";
 
 /** Issue List の条件（ADR-0009） */
 export interface IssueQuery {
@@ -20,7 +20,7 @@ export function defaultQuery(): IssueQuery {
 }
 
 function nextScheduled(issue: Issue, today: string): string | null {
-	return issue.scheduled.find((d) => d >= today) ?? null;
+	return issue.scheduled !== null && issue.scheduled >= today ? issue.scheduled : null;
 }
 
 function sortValue(issue: Issue, key: SortKey, today: string): string | number | null {
@@ -39,7 +39,7 @@ function sortValue(issue: Issue, key: SortKey, today: string): string | number |
 			return issue.deadline;
 		case "created":
 			return issue.created;
-		case "next_scheduled":
+		case "scheduled":
 			return nextScheduled(issue, today);
 	}
 }
@@ -51,8 +51,8 @@ export function queryIssues(issues: Iterable<Issue>, q: IssueQuery, today: strin
 		if (q.statuses.length > 0 ? !q.statuses.includes(i.status) : !isActive(i)) return false;
 		if (q.priorities.length > 0 && !q.priorities.includes(i.priority ?? "none")) return false;
 		if (q.labels.length > 0 && !q.labels.every((l) => i.labels.includes(l))) return false;
-		if (q.scheduled === "yes" && i.scheduled.length === 0) return false;
-		if (q.scheduled === "no" && i.scheduled.length > 0) return false;
+		if (q.scheduled === "yes" && i.scheduled === null) return false;
+		if (q.scheduled === "no" && i.scheduled !== null) return false;
 		const hay = `${i.id} ${i.summary}`.toLowerCase();
 		return words.every((w) => hay.includes(w));
 	});

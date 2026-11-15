@@ -6,12 +6,13 @@ import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
 import { STATUSES, type Issue, type Status } from "../core/schema";
+import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
 import type { FieldValue } from "../obsidian/writer";
 import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
-import { CalendarForm, DateForm, DayCell, WorklogForm } from "../ui/forms";
+import { DateForm, DayCell, WorklogForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useNow, useStoreVersion } from "../ui/hooks";
@@ -115,7 +116,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 		}
 		const fields: Record<string, FieldValue> = { status: next, delegated_to: null };
 		// someday にするときは予定と期限を外す。someday 以外では revisit は使わない（ADR-0006）
-		if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null });
+		if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null, tickler: null });
 		else fields.revisit = null;
 		save(fields);
 	};
@@ -189,43 +190,49 @@ export function LabelsField(props: { ctx: TaskContext; labels: string[]; index: 
 	);
 }
 
+/**
+ * Calendar（scheduled。その日にやらなければならない日 1 つ）と Tickler（この日に Inbox に戻す）。ADR-0152。
+ * 7 日のセルで Calendar の日を選ぶ（同じ日をもう一度押すと消す）。先の日はカレンダーから選ぶ
+ */
 function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	const { ctx, issue, save } = props;
 	const today = localToday();
 	const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
-	const scheduled = new Set(issue.scheduled);
-	const toggle = (d: LocalDate) => {
-		const next = new Set(scheduled);
-		if (next.has(d)) next.delete(d);
-		else next.add(d);
-		save({ scheduled: [...next].sort() });
-	};
-	const openCalendar = () =>
-		new PreactModal(ctx.app, "Do Date", (close) => (
-			<CalendarForm
-				initial={issue.scheduled}
-				softDeadline={issue.softDeadline}
-				deadline={issue.deadline}
-				onSubmit={(dates) => {
+	const setCalendar = (d: LocalDate | null) => save(scheduledPatch(issue, d));
+	const pick = (title: string, initial: LocalDate | null, onPick: (d: LocalDate | null) => void) => () =>
+		new PreactModal(ctx.app, title, (close) => (
+			<DateForm
+				initial={initial}
+				onSubmit={(v) => {
 					close();
-					save({ scheduled: dates });
+					onPick(v);
 				}}
 			/>
 		)).open();
-	const later = issue.scheduled.filter((d) => d > days[6]!).length;
+	const later = issue.scheduled !== null && issue.scheduled > days[6]!;
 	return (
 		<div class="vt-strip">
 			<div class="vt-strip-days">
 				{days.map((d) => (
 					<div class="vt-strip-col">
 						<span class="vt-weekday">{WEEKDAY_NAMES[weekdayOf(d)]}</span>
-						<DayCell date={d} scheduled={scheduled.has(d)} softDeadline={issue.softDeadline} deadline={issue.deadline} today={today} onClick={() => toggle(d)} />
+						<DayCell date={d} scheduled={issue.scheduled === d} softDeadline={issue.softDeadline} deadline={issue.deadline} today={today} onClick={() => setCalendar(issue.scheduled === d ? null : d)} />
 					</div>
 				))}
 			</div>
-			<button class="vt-text-button" onClick={openCalendar}>
-				calendar &gt;{later > 0 ? ` (+${later} days)` : ""}
-			</button>
+			<div class="vt-row">
+				<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
+					calendar &gt;{issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""}
+				</button>
+				<button
+					class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
+					title="Tickler: hidden until this date, then back to Inbox"
+					onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
+				>
+					<Icon name="alarm-clock" />
+					tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}
+				</button>
+			</div>
 		</div>
 	);
 }

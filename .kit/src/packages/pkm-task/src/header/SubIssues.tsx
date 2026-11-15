@@ -112,7 +112,7 @@ function SubRow(props: {
 		if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
 		if (next === sub.status) return;
 		// someday にするときは予定と期限を外す（issue と同じ。ADR-0006）
-		save(next === "someday" ? { status: next, scheduled: [], softDeadline: null, deadline: null } : { status: next });
+		save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
 	};
 	const statusMenu = (e: MouseEvent) => {
 		const m = new Menu();
@@ -183,7 +183,7 @@ function SubDetail(props: { ctx: TaskContext; sub: SubIssue; index: TaskIndex })
 	const deps = sub.dependsOn.map((d) => index.sub(`${sub.parent}#${d}`)?.summary ?? d);
 	const facts: [string, string][] = [
 		...(sub.start || sub.end ? [["Period", `${sub.start ? formatShortDate(sub.start) : "?"} – ${sub.end ? formatShortDate(sub.end) : "?"}`] as [string, string]] : []),
-		...(sub.scheduled.length > 0 ? [["Do dates", sub.scheduled.map((d) => d.slice(5).replace("-", "/")).join(", ")] as [string, string]] : []),
+		...(sub.scheduled !== null ? [["Calendar", sub.scheduled.slice(5).replace("-", "/")] as [string, string]] : []),
 		...(sub.softDeadline ? [["Soft deadline", formatShortDate(sub.softDeadline)] as [string, string]] : []),
 		...(sub.deadline ? [["Deadline", formatShortDate(sub.deadline)] as [string, string]] : []),
 		...(sub.estimated !== null ? [["Estimated", formatMinutes(sub.estimated)] as [string, string]] : []),

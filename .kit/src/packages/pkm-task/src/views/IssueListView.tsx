@@ -4,7 +4,7 @@ import { localToday } from "../core/dates";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../core/list";
 import { PRIORITIES, STATUSES } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, inboxIssues, scheduleIssues, somedayIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, inboxIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { TextForm } from "../ui/forms";
 import { FilterChip, toggle } from "../ui/FilterChip";
@@ -19,7 +19,7 @@ const SORTS: { key: SortKey; label: string }[] = [
 	{ key: "summary", label: "summary" },
 	{ key: "status", label: "status" },
 	{ key: "priority", label: "priority" },
-	{ key: "next_scheduled", label: "Next Do Date" },
+	{ key: "scheduled", label: "Calendar date" },
 	{ key: "soft_deadline", label: "soft_deadline" },
 	{ key: "deadline", label: "deadline" },
 	{ key: "created", label: "Created" },
@@ -119,7 +119,7 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					</div>
 				)}
 				<div class="vt-filter-row">
-					<span class="vt-field-label">Do Date</span>
+					<span class="vt-field-label">Calendar</span>
 					{(
 						[
 							["any", "Any"],
@@ -148,7 +148,7 @@ export function IssueListView(props: { ctx: TaskContext }) {
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Add Do Date", icon: "calendar-plus", run: () => void scheduleIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },

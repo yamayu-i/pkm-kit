@@ -1,5 +1,5 @@
-import { cancelPatch, closePatch, inboxPatch, reschedulePatch, schedulePatch, somedayPatch, type Patch, type RescheduleTarget } from "../core/actions";
-import { localToday, type LocalDate } from "../core/dates";
+import { backToNextPatch, cancelPatch, closePatch, inboxPatch, nextPatch, reschedulePatch, somedayPatch, ticklerPatch, type Patch, type RescheduleTarget } from "../core/actions";
+import { addDays, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
 import { DateForm } from "../ui/forms";
 import type { TaskContext } from "./context";
@@ -49,23 +49,23 @@ export const inboxIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, 
 export const somedayIssues = (ctx: TaskContext, issues: Issue[], revisit: LocalDate | null = null) =>
 	patchAll(ctx, issues, somedayPatch(revisit), "Someday に移すことが");
 
-/** 今日を実行日に足す（すでに入っていれば変わらない） */
-export async function scheduleToday(ctx: TaskContext, issues: Issue[]): Promise<void> {
-	await patchAll(ctx, issues, (i) => schedulePatch(i, [localToday()]), "今日の予定に入れることが");
-	ctx.report(`${issues.length} 件を今日の予定に入れました`);
+/** Tickler（ADR-0152）: 日付を選び、その日まで出さずにその日に Inbox に戻す。既定は明日 */
+export async function ticklerIssues(ctx: TaskContext, issues: Issue[]): Promise<void> {
+	const date = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
+	if (date === null) return;
+	await patchAll(ctx, issues, (i) => ticklerPatch(i, date), "Tickler を付けることが");
 }
 
-/** Add Do Date: 選んだ日を実行日に足す（ADR-0018、名前は ADR-0032）。既存の実行日は残す */
-export async function scheduleIssues(ctx: TaskContext, issues: Issue[]): Promise<void> {
-	const date = await askDate(ctx, "Add Do Date");
-	if (date === null) return;
-	await patchAll(ctx, issues, (i) => schedulePatch(i, [date]), "実行日を足すことが");
-}
+/** Next（ADR-0148）: 日付を決めずに整理済みにする */
+export const nextIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, (i) => nextPatch(i), "Next にすることが");
 
-/** Move Do Date / Change Deadline / Change Soft Deadline（ADR-0032）。実行日なら from（今日など）を外して選んだ日に移す */
-export async function rescheduleIssues(ctx: TaskContext, issues: Issue[], target: RescheduleTarget, from: LocalDate | null = null): Promise<void> {
-	const title = target === "scheduled" ? "Move Do Date" : `Change ${target}`;
-	const date = await askDate(ctx, title, target === "scheduled" ? null : localToday());
+/** Back to Next（ADR-0152）: Calendar と Tickler を消して、整理済みの次の行動に戻す */
+export const backToNextIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, backToNextPatch(), "Next に戻すことが");
+
+/** Move date / Change Deadline / Change Soft Deadline（ADR-0032, 0152）。選んだ日に置き換える */
+export async function rescheduleIssues(ctx: TaskContext, issues: Issue[], target: RescheduleTarget): Promise<void> {
+	const title = target === "scheduled" ? "Move date (must be done on this day)" : `Change ${target}`;
+	const date = await askDate(ctx, title, localToday());
 	if (date === null) return;
-	await patchAll(ctx, issues, (i) => reschedulePatch(i, target, date, from), "日付を変えることが");
+	await patchAll(ctx, issues, () => reschedulePatch(target, date), "日付を変えることが");
 }

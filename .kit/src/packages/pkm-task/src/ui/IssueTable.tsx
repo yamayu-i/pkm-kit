@@ -57,8 +57,9 @@ export function IssueTable(props: {
 			case "estimated":
 				return editable(issue, c, (e) => estimateMenu(ctx, e, issue.estimated, save), issue.estimated === null ? <span class="vt-muted">—</span> : <span class="vt-num">{formatMinutes(issue.estimated)}</span>);
 			case "next": {
-				const next = issue.scheduled.find((d) => d >= today);
-				return editable(issue, c, () => editScheduled(ctx, issue), next ? <span class="vt-num">{formatShortDate(next)}</span> : <span class="vt-muted">—</span>);
+				// Calendar の日（ADR-0152）。過ぎたものも出す（Missed）
+				const d = issue.scheduled;
+				return editable(issue, c, () => editScheduled(ctx, issue), d ? <span class="vt-num">{formatShortDate(d)}</span> : <span class="vt-muted">—</span>);
 			}
 			case "revisit":
 				return issue.revisit ? <span class="vt-num">{formatShortDate(issue.revisit)}</span> : <span class="vt-muted">—</span>;

@@ -16,7 +16,7 @@ describe("parseIssue", () => {
 			label: ["仕事", "調査", "仕事"],
 			related: ["i-5", "topics/foo.md"],
 			estimated: 120,
-			scheduled: ["2026-11-04", new Date("2026-11-02T00:00:00Z"), "2026-11-04"],
+			scheduled: new Date("2026-11-02T00:00:00Z"),
 			soft_deadline: "2026-11-05",
 			deadline: "2026-11-10",
 			created: "2026-10-31T10:00:00+09:00",
@@ -28,7 +28,7 @@ describe("parseIssue", () => {
 			statusDetail: "返事待ち",
 			delegatedTo: "m-3",
 			labels: ["仕事", "調査"],
-			scheduled: ["2026-11-02", "2026-11-04"],
+			scheduled: "2026-11-02",
 			softDeadline: "2026-11-05",
 			revisit: null,
 		});

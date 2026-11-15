@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
-import { cancelPatch, closePatch, inboxPatch, reschedulePatch, somedayPatch } from "../src/core/actions";
+import { backToNextPatch, cancelPatch, closePatch, inboxPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
-import { isLocalDate, localDateTime, type LocalDate } from "../src/core/dates";
+import { isLocalDate, localDateTime, localToday, type LocalDate } from "../src/core/dates";
 import { boardLanes, canStar, moveOps, type OrderedLane } from "../src/core/board-lanes";
 import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
@@ -161,15 +161,11 @@ function assertBoardKey(index: TaskIndex, key: string): void {
 	if (!index.issues.has(key) && !index.sub(key)) throw new Error(`issue またはサブがありません: ${key}`);
 }
 
-/** issue とサブ（合成キー）を載せる。その日が scheduled でないサブは、scheduled に足してから載せる（ADR-0137） */
+/** issue とサブ（合成キー）を載せる。日付は書かない（今日やると選んだだけ。ADR-0152） */
 export function addToBoardOnDisk(root: string, index: TaskIndex, date: LocalDate, issueIds: string[], device: string, now: Date): void {
 	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
 	if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids を 1 件以上指定してください");
 	for (const id of issueIds) assertBoardKey(index, id);
-	for (const id of issueIds) {
-		const sub = index.sub(id);
-		if (sub && !sub.scheduled.includes(date)) updateSubIssueOnDisk(root, index, id, { scheduled: [...sub.scheduled, date].sort() });
-	}
 	appendBoardOpsOnDisk(
 		root,
 		index,
@@ -227,43 +223,55 @@ export function setRoutineResultOnDisk(
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "routine", task: routineId, result }], now);
 }
 
+/** 持ち越しの片付け方（ADR-0152）。reschedule は以前の名前で move と同じ */
+export type CarryMode = "today" | "next" | "move" | "tickler" | "inbox" | "reschedule";
+
+/**
+ * ボードの未完了を片付けて carried にする（ADR-0137, 0152）。today: 今日のボードに載せる（日付を書かない）、
+ * next: Calendar・Tickler を消して Next に戻す、move: Calendar の日を to にする、tickler: Tickler の日を to にする、
+ * inbox: clarified を外す。サブは tickler と inbox を持たない
+ */
 export function carryIssuesOnDisk(
 	root: string,
 	index: TaskIndex,
 	date: LocalDate,
 	issueIds: string[],
-	mode: "reschedule" | "inbox",
-	rescheduleTo: LocalDate | null,
+	mode: CarryMode,
+	to: LocalDate | null,
 	device: string,
 	now: Date,
 ): void {
 	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
 	if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids を 1 件以上指定してください");
-	if (mode !== "reschedule" && mode !== "inbox") throw new Error("mode は reschedule か inbox にしてください");
-	if (mode === "reschedule" && (rescheduleTo === null || !isLocalDate(rescheduleTo))) {
-		throw new Error(`reschedule_to に YYYY-MM-DD の日付を指定してください: ${String(rescheduleTo)}`);
+	const kind = mode === "reschedule" ? "move" : mode;
+	if (!["today", "next", "move", "tickler", "inbox"].includes(kind)) throw new Error("mode は today / next / move / tickler / inbox のどれかにしてください");
+	if ((kind === "move" || kind === "tickler") && (to === null || !isLocalDate(to))) {
+		throw new Error(`reschedule_to に YYYY-MM-DD の日付を指定してください: ${String(to)}`);
 	}
 
 	const board = index.board(date)?.board ?? emptyBoard();
 	for (const id of issueIds) {
 		assertBoardKey(index, id);
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
-		// サブは親の中にあるので、Inbox には送らない（ADR-0137）
-		if (mode === "inbox" && index.sub(id)) throw new Error(`サブは Inbox に戻せません: ${id}`);
+		// サブは整理の対象ではないので、Tickler も Inbox も持たない（ADR-0148, 0152）
+		if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
 	}
 
 	for (const id of issueIds) {
 		const issue = index.issues.get(id);
 		if (issue) {
-			const patch = mode === "inbox" ? inboxPatch() : reschedulePatch(issue, "scheduled", rescheduleTo!, date);
-			updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
+			const patch =
+				kind === "inbox" ? inboxPatch() : kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to!) : null;
+			if (patch) updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
 			continue;
 		}
 		const sub = index.sub(id)!;
-		const dates = new Set(sub.scheduled);
-		dates.delete(date);
-		dates.add(rescheduleTo!);
-		updateSubIssueOnDisk(root, index, id, { scheduled: [...dates].sort() });
+		if (kind === "next" && sub.scheduled !== null) updateSubIssueOnDisk(root, index, id, { scheduled: null });
+		if (kind === "move") updateSubIssueOnDisk(root, index, id, { scheduled: to });
+	}
+	if (kind === "today") {
+		const today = localToday(now);
+		appendBoardOpsOnDisk(root, index, today, device, issueIds.map((task) => ({ op: "add", task })), now);
 	}
 	appendBoardOpsOnDisk(
 		root,
@@ -296,7 +304,10 @@ export function closeBoardOnDisk(
 
 export interface CreateIssueInput {
 	summary: string;
-	scheduled?: LocalDate[];
+	/** Calendar の日（その日にやらなければならない日。ADR-0152） */
+	scheduled?: LocalDate | null;
+	/** Tickler の日（その日に Inbox に戻す。ADR-0152） */
+	tickler?: LocalDate | null;
 	priority?: Priority | null;
 	labels?: string[];
 	estimated?: number | null;
@@ -317,10 +328,9 @@ export function createIssueOnDisk(
 	const summary = typeof input.summary === "string" ? input.summary.trim() : "";
 	if (!summary) throw new Error("summary を指定してください");
 
-	const scheduled = input.scheduled ?? [];
-	for (const d of scheduled) {
-		if (!isLocalDate(d)) throw new Error(`scheduled の日付が不正です: ${String(d)}`);
-	}
+	const scheduled = input.scheduled ?? null;
+	if (scheduled !== null && !isLocalDate(scheduled)) throw new Error(`scheduled の日付が不正です: ${String(scheduled)}`);
+	if (input.tickler !== undefined && input.tickler !== null && !isLocalDate(input.tickler)) throw new Error(`tickler の日付が不正です: ${String(input.tickler)}`);
 	if (input.add_to_board_date && !isLocalDate(input.add_to_board_date)) {
 		throw new Error(`add_to_board_date の日付が不正です: ${String(input.add_to_board_date)}`);
 	}
@@ -346,12 +356,8 @@ export function createIssueOnDisk(
 	const taken = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys()];
 	const [id] = nextIds("i", taken, 1);
 	const relPath = pathForId(id!);
-	const allScheduled =
-		input.add_to_board_date && !scheduled.includes(input.add_to_board_date)
-			? [...scheduled, input.add_to_board_date].sort()
-			: [...scheduled].sort();
-
-	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), allScheduled));
+	// ボードに載せても日付は書かない（ADR-0152）
+	writeTextInVault(root, relPath, newIssueContent(id!, summary, localDateTime(now), { scheduled }));
 
 	const extra: Record<string, unknown> = {};
 	if (input.priority !== undefined) extra.priority = input.priority;
@@ -360,6 +366,7 @@ export function createIssueOnDisk(
 	if (input.soft_deadline !== undefined) extra.soft_deadline = input.soft_deadline;
 	if (input.deadline !== undefined) extra.deadline = input.deadline;
 	if (input.clarified === true) extra.clarified = true;
+	if (input.tickler) extra.tickler = input.tickler;
 
 	const issue =
 		Object.keys(extra).length > 0
@@ -369,7 +376,7 @@ export function createIssueOnDisk(
 					id: id!,
 					summary,
 					status: "open",
-					scheduled: allScheduled,
+					scheduled,
 					created: localDateTime(now),
 				}).value!;
 
@@ -387,7 +394,8 @@ export interface UpdateIssueInput {
 	delegated_to?: string | null;
 	priority?: Priority | null;
 	labels?: string[];
-	scheduled?: LocalDate[];
+	scheduled?: LocalDate | null;
+	tickler?: LocalDate | null;
 	soft_deadline?: LocalDate | null;
 	deadline?: LocalDate | null;
 	revisit?: LocalDate | null;
@@ -450,10 +458,12 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		patch.labels = input.labels;
 	}
 	if (input.scheduled !== undefined) {
-		for (const d of input.scheduled) {
-			if (!isLocalDate(d)) throw new Error(`scheduled の日付が不正です: ${String(d)}`);
-		}
-		patch.scheduled = [...new Set(input.scheduled)].sort();
+		if (input.scheduled !== null && !isLocalDate(input.scheduled)) throw new Error(`scheduled の日付が不正です: ${String(input.scheduled)}`);
+		patch.scheduled = input.scheduled;
+	}
+	if (input.tickler !== undefined) {
+		if (input.tickler !== null && !isLocalDate(input.tickler)) throw new Error(`tickler の日付が不正です: ${String(input.tickler)}`);
+		patch.tickler = input.tickler;
 	}
 	if (input.soft_deadline !== undefined) {
 		if (input.soft_deadline !== null && !isLocalDate(input.soft_deadline)) throw new Error(`soft_deadline の日付が不正です: ${String(input.soft_deadline)}`);
@@ -484,7 +494,8 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 
 	// someday の issue に実行日や期限を入れたら open に戻す（ADR-0018）
 	const hasDatesAdded =
-		(Array.isArray(patch.scheduled) && patch.scheduled.length > 0) ||
+		(patch.scheduled !== undefined && patch.scheduled !== null) ||
+		(patch.tickler !== undefined && patch.tickler !== null) ||
 		(patch.soft_deadline !== undefined && patch.soft_deadline !== null) ||
 		(patch.deadline !== undefined && patch.deadline !== null);
 	if (current.status === "someday" && input.status === undefined && hasDatesAdded) {

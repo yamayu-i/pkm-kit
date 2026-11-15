@@ -3,18 +3,19 @@ import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { STATUSES, type Status } from "../core/schema";
 import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
-import { CalendarForm, DateForm } from "../ui/forms";
+import { DateForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PreactModal } from "./modals";
 
-type DateKey = "start" | "end" | "softDeadline" | "deadline";
+type DateKey = "start" | "end" | "softDeadline" | "deadline" | "scheduled";
 const DATE_FIELDS: [DateKey, string][] = [
 	["start", "Start"],
 	["end", "End"],
 	["softDeadline", "Soft deadline"],
 	["deadline", "Deadline"],
+	["scheduled", "Calendar"],
 ];
 
 /** 確認のモーダル（文は日本語、ボタンは英語。docs/design.md「文言」） */
@@ -74,18 +75,6 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 				onSubmit={(v: LocalDate | null) => {
 					closeDate();
 					set({ [key]: v });
-				}}
-			/>
-		)).open();
-	const editScheduled = () =>
-		new PreactModal(ctx.app, "Do Date", (closeCal) => (
-			<CalendarForm
-				initial={draft.scheduled}
-				softDeadline={draft.softDeadline}
-				deadline={draft.deadline}
-				onSubmit={(dates) => {
-					closeCal();
-					set({ scheduled: [...dates].sort() });
 				}}
 			/>
 		)).open();
@@ -163,13 +152,6 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 				))}
 			</div>
 			<div class="vt-subissue-form-row">
-				<div class="vt-text-field">
-					<span>Do dates</span>
-					<button type="button" class={`vt-field-chip${draft.scheduled.length > 0 ? "" : " is-placeholder"}`} onClick={editScheduled}>
-						<Icon name="calendar-range" />
-						{draft.scheduled.length === 0 ? "Not set" : draft.scheduled.map((d) => d.slice(5).replace("-", "/")).join(", ")}
-					</button>
-				</div>
 				<label class="vt-text-field">
 					<span>Estimated</span>
 					<input type="text" class="vt-small-input" placeholder="e.g. 2h" value={estimated} onInput={(e) => setEstimated(e.currentTarget.value)} />

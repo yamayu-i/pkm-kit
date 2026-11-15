@@ -59,25 +59,24 @@ describe("TaskIndex", () => {
 
 describe("Inbox と Organize", () => {
 	it("open で clarified でないものが Inbox。日付は見ない（ADR-0148）", () => {
-		expect(isInbox(issue("i-1"))).toBe(true);
+		const today = "2026-11-01";
+		expect(isInbox(issue("i-1"), today)).toBe(true);
 		// 締切だけ決まっていて、中身は未整理
-		expect(isInbox(issue("i-1", { deadline: "2026-11-01" }))).toBe(true);
-		expect(isInbox(issue("i-1", { scheduled: ["2026-11-01"] }))).toBe(true);
+		expect(isInbox(issue("i-1", { deadline: "2026-11-01" }), today)).toBe(true);
+		expect(isInbox(issue("i-1", { scheduled: "2026-11-01" }), today)).toBe(true);
 		// 整理済みで、日付は決めていない
-		expect(isInbox(issue("i-1", { clarified: true }))).toBe(false);
-		expect(isInbox(issue("i-1", { status: "someday" }))).toBe(false);
-		expect(isInbox(issue("i-1", { status: "in-progress" }))).toBe(false);
+		expect(isInbox(issue("i-1", { clarified: true }), today)).toBe(false);
+		expect(isInbox(issue("i-1", { status: "someday" }), today)).toBe(false);
+		expect(isInbox(issue("i-1", { status: "in-progress" }), today)).toBe(false);
 	});
 
-	it("Next は open で clarified で、今日以降の scheduled がないもの（ADR-0148）", () => {
-		const today = "2026-11-01";
-		expect(isNext(issue("i-1", { clarified: true }), today)).toBe(true);
-		expect(isNext(issue("i-1", { clarified: true, deadline: "2026-11-05" }), today)).toBe(true);
-		// 実行日が過ぎてやっていないものも Next に入る（どの一覧からも消えない）
-		expect(isNext(issue("i-1", { clarified: true, scheduled: ["2026-10-30"] }), today)).toBe(true);
-		expect(isNext(issue("i-1", { clarified: true, scheduled: [today] }), today)).toBe(false);
-		expect(isNext(issue("i-1"), today)).toBe(false);
-		expect(isNext(issue("i-1", { clarified: true, status: "waiting" }), today)).toBe(false);
+	it("Next は open で clarified で、Calendar（scheduled）も Tickler もないもの（ADR-0148, 0152）", () => {
+		expect(isNext(issue("i-1", { clarified: true }))).toBe(true);
+		expect(isNext(issue("i-1", { clarified: true, deadline: "2026-11-05" }))).toBe(true);
+		expect(isNext(issue("i-1", { clarified: true, scheduled: "2026-11-05" }))).toBe(false);
+		expect(isNext(issue("i-1", { clarified: true, tickler: "2026-11-05" }))).toBe(false);
+		expect(isNext(issue("i-1"))).toBe(false);
+		expect(isNext(issue("i-1", { clarified: true, status: "waiting" }))).toBe(false);
 	});
 
 	it("Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday", () => {

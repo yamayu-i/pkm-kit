@@ -26,7 +26,7 @@ describe("MCP サーバーと検査付き操作", () => {
 		);
 		writeFileSync(
 			join(root, "issue/i-1.md"),
-			"---\ntype: issue\nid: i-1\nsummary: 最初のタスク\nstatus: open\nestimated: 60\nscheduled:\n  - 2026-11-01\ncreated: 2026-10-30T10:00:00+09:00\n---\n## ToDo\n\n- [ ] サブタスク\n",
+			"---\ntype: issue\nid: i-1\nsummary: 最初のタスク\nstatus: open\nestimated: 60\nscheduled: 2026-11-01\ncreated: 2026-10-30T10:00:00+09:00\n---\n## ToDo\n\n- [ ] サブタスク\n",
 		);
 		writeFileSync(
 			join(root, "issue/i-2.md"),
@@ -122,11 +122,37 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", clarified: "yes" })).toThrow(/clarified/);
 	});
 
+	it("carry_issues の next・tickler・today と、create_issue・update_issue の tickler（ADR-0152）", () => {
+		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
+		// next: Calendar の日を消して整理済みの Next に戻す
+		callMcpTool(ctx, "carry_issues", { date, issue_ids: ["i-1"], mode: "next" });
+		// tickler: その日に Inbox に戻す
+		callMcpTool(ctx, "carry_issues", { date, issue_ids: ["i-2"], mode: "tickler", reschedule_to: "2026-11-05" });
+		let index = new TaskIndex(readVault(root).data);
+		expect(index.issues.get("i-1")).toMatchObject({ scheduled: null, clarified: true, tickler: null });
+		expect(index.issues.get("i-2")?.tickler).toBe("2026-11-05");
+		expect(index.board(date)?.board.carried).toEqual(["i-1", "i-2"]);
+		expect(() => callMcpTool(ctx, "carry_issues", { date, issue_ids: ["i-1"], mode: "tickler" })).toThrow(/reschedule_to/);
+
+		// today: 今日（now の日付）のボードに載せる。日付は書かない
+		const later: McpContext = { root, device: "ai", now: () => new Date("2026-11-03T10:00:00.000Z") };
+		callMcpTool(later, "carry_issues", { date, issue_ids: ["i-1"], mode: "today" });
+		index = new TaskIndex(readVault(root).data);
+		expect(index.board("2026-11-03")?.board.issues).toEqual(["i-1"]);
+		expect(index.issues.get("i-1")?.scheduled).toBeNull();
+
+		const created = callMcpTool(ctx, "create_issue", { summary: "返金を確かめる", tickler: "2026-11-10" }) as { tickler: string };
+		expect(created.tickler).toBe("2026-11-10");
+		callMcpTool(ctx, "update_issue", { id: "i-2", tickler: null, scheduled: "2026-11-04" });
+		expect(new TaskIndex(readVault(root).data).issues.get("i-2")).toMatchObject({ tickler: null, scheduled: "2026-11-04" });
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", scheduled: ["2026-11-04", "2026-11-05"] })).toThrow(/日付 1 つ/);
+	});
+
 	it("carry_issues と update_issue で未完了を解消してから close_board で要約を書き、append_daily_note で末尾に助言を追記できる", () => {
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2"] });
 		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
 		callMcpTool(ctx, "update_issue", { id: "i-1", status: "closed" });
-		callMcpTool(ctx, "carry_issues", { date, issue_ids: ["i-2"], mode: "reschedule", reschedule_to: "2026-11-02" });
+		callMcpTool(ctx, "carry_issues", { date, issue_ids: ["i-2"], mode: "move", reschedule_to: "2026-11-02" });
 
 		const closed = callMcpTool(ctx, "close_board", { date }) as { closed: boolean };
 		expect(closed.closed).toBe(true);
@@ -145,7 +171,7 @@ describe("MCP サーバーと検査付き操作", () => {
 		const { data, problems } = readVault(root);
 		expect(problems).toEqual([]);
 		const index = new TaskIndex(data);
-		expect(index.issues.get("i-2")?.scheduled).toEqual(["2026-11-02"]);
+		expect(index.issues.get("i-2")?.scheduled).toBe("2026-11-02");
 		expect(index.board(date)?.board.closed).toBe(true);
 	});
 

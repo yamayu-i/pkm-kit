@@ -4,29 +4,44 @@ import type { Issue, Status } from "./schema";
 /** frontmatter の更新内容。null / 空配列は欄ごと消す（TaskWriter.update と同じ） */
 export type Patch = Record<string, string | number | boolean | string[] | null>;
 
-/** Cancel: 期限は外す（ADR-0009） */
+/** Cancel: 期限は外す（ADR-0009）。Tickler も消す（ADR-0152） */
 export function cancelPatch(): Patch {
-	return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null };
+	return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
 }
 
 /** 終わっていた */
 export function closePatch(): Patch {
-	return { status: "closed", delegated_to: null, revisit: null };
+	return { status: "closed", delegated_to: null, revisit: null, tickler: null };
 }
 
-/** Inbox に戻す: clarified を外すだけ。予定と期限は残す（ADR-0148） */
+/** Inbox に戻す: clarified を外す。期限と Calendar（scheduled）は残す（ADR-0148）。Tickler は消す（残すと Inbox に出ない。ADR-0152） */
 export function inboxPatch(): Patch {
-	return { status: "open", clarified: null, delegated_to: null, revisit: null };
+	return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
 }
 
-/** Next（整理済み・日付なし）にする。someday なら open に戻す（ADR-0148） */
+/** Next（整理済み・日付なし）にする。someday なら open に戻す（ADR-0148）。整理したので Tickler を消す（ADR-0152） */
 export function nextPatch(issue: Issue): Patch {
-	return { clarified: true, ...(issue.status === "someday" ? reopenPatch() : {}) };
+	return { clarified: true, tickler: null, ...(issue.status === "someday" ? reopenPatch() : {}) };
 }
 
-/** Someday へ: 予定と期限を外す。revisit は任意（ADR-0006） */
+/** Back to Next（ADR-0152）: Calendar と Tickler を消し、整理済みのまま Next に戻す（持ち越し・Missed から） */
+export function backToNextPatch(): Patch {
+	return { scheduled: null, tickler: null, clarified: true };
+}
+
+/** Tickler（ADR-0152）: この日まで出さず、この日に Inbox に戻す。整理の先送りなので clarified は変えない。someday なら open に戻す */
+export function ticklerPatch(issue: Issue, date: LocalDate): Patch {
+	return { tickler: date, ...(issue.status === "someday" ? reopenPatch() : {}) };
+}
+
+/** Calendar（ADR-0152）: その日にやらなければならない日を 1 つ決める。整理の結果なので clarified を付け、Tickler を消す */
+export function calendarPatch(issue: Issue, date: LocalDate): Patch {
+	return { scheduled: date, clarified: true, tickler: null, ...(issue.status === "someday" ? reopenPatch() : {}) };
+}
+
+/** Someday へ: Calendar・期限・Tickler を外す。revisit は任意（ADR-0006, 0152） */
 export function somedayPatch(revisit: LocalDate | null = null): Patch {
-	return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit };
+	return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
 }
 
 /** someday から戻すときは open にして revisit を外す */
@@ -47,42 +62,19 @@ export function duePatch(issue: Issue, key: "soft_deadline" | "deadline", date: 
 	return { [key]: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };
 }
 
-/** 実行日を置き換える。someday に入れるときは open に戻す（ADR-0018） */
-export function scheduledPatch(issue: Issue, dates: LocalDate[]): Patch {
-	return { scheduled: dates, ...(issue.status === "someday" && dates.length > 0 ? reopenPatch() : {}) };
+/** Calendar の日（scheduled）を置き換える・消す。someday に入れるときは open に戻す（ADR-0018, 0152） */
+export function scheduledPatch(issue: Issue, date: LocalDate | null): Patch {
+	return { scheduled: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };
 }
 
-/** Organize の予定入れ（ADR-0030）: 決定を押せるか。1 日以上選び、estimated が必須ならそれも選んでいる */
-export function canConfirmSchedule(selectedCount: number, needEstimate: boolean, estimated: number | null): boolean {
-	return selectedCount > 0 && (!needEstimate || estimated !== null);
-}
-
-/** Organize の予定入れ（ADR-0030）: カレンダーで選んだ日付で実行日を置き換え、選んだ estimated を入れる */
-export function organizeSchedulePatch(issue: Issue, dates: LocalDate[], estimated: number | null): Patch {
-	const patch = scheduledPatch(issue, [...new Set(dates)].sort());
-	if (estimated !== null) patch.estimated = estimated;
-	// 日付を決めたことが整理の結果（ADR-0148）
-	patch.clarified = true;
-	return patch;
+/** Tickler の日を置き換える・消す（issue 画面。ADR-0152）。someday に入れるときは open に戻す */
+export function ticklerFieldPatch(issue: Issue, date: LocalDate | null): Patch {
+	return { tickler: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };
 }
 
 export type RescheduleTarget = "scheduled" | "soft_deadline" | "deadline";
 
-/**
- * リスケ。期限はその日に置き換える。実行日は `from` を外して `to` を足す（from が null なら足すだけ）
- */
-export function reschedulePatch(issue: Issue, target: RescheduleTarget, to: LocalDate, from: LocalDate | null = null): Patch {
-	if (target !== "scheduled") return { [target]: to };
-	const dates = new Set(issue.scheduled);
-	if (from !== null) dates.delete(from);
-	dates.add(to);
-	return { scheduled: [...dates].sort() };
-}
-
-/** 実行日を足す（Organize で Do Date を選ぶとき。estimated も一緒に入れられる） */
-export function schedulePatch(issue: Issue, dates: LocalDate[], estimated: number | null = null): Patch {
-	const patch: Patch = { scheduled: [...new Set([...issue.scheduled, ...dates])].sort() };
-	if (issue.status === "someday") Object.assign(patch, reopenPatch());
-	if (estimated !== null) patch.estimated = estimated;
-	return patch;
+/** リスケ: 期限・Calendar の日を、その日に置き換える（ADR-0152。Calendar は日付 1 つ） */
+export function reschedulePatch(target: RescheduleTarget, to: LocalDate): Patch {
+	return { [target]: to };
 }

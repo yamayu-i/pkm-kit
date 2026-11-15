@@ -1,7 +1,7 @@
 import { diffDays, localToday, type LocalDate } from "./dates";
 import { emptyBoard, pendingBoards, unfinished, unfinishedCount, type DailyBoard } from "./board";
 import { lastOrder, type OrderRecord } from "./board-log";
-import { deadIssues, scheduledOn } from "./daily";
+import { deadIssues, deadSubs, missedIssues, missedSubs, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
@@ -37,19 +37,24 @@ export function isActive(issue: Pick<Issue, "status">): boolean {
 	return !INACTIVE_STATUSES.includes(issue.status);
 }
 
-/** Inbox（未整理）: open で、clarified でない。日付は見ない（ADR-0148） */
-export function isInbox(issue: Issue): boolean {
-	return issue.status === "open" && !issue.clarified;
+/**
+ * Inbox（未整理）: open で、clarified でない。日付（期限・Calendar）は見ない（ADR-0148）。
+ * Tickler（ADR-0152）: 日付の前は出さず、日付が来たら clarified でも出す（整理を先送りしたものが戻る）
+ */
+export function isInbox(issue: Issue, today: LocalDate): boolean {
+	if (issue.status !== "open") return false;
+	if (issue.tickler !== null) return issue.tickler <= today;
+	return !issue.clarified;
 }
 
-/** Next Actions: open で、clarified で、今日以降の scheduled がない（ADR-0148）。過去の scheduled だけのものも入れる */
-export function isNext(issue: Issue, today: LocalDate): boolean {
-	return issue.status === "open" && issue.clarified && !issue.scheduled.some((d) => d >= today);
+/** Next Actions: open で、clarified で、Calendar（scheduled）も Tickler もない（ADR-0148, 0152）。日付は保存しない */
+export function isNext(issue: Issue, _today?: LocalDate): boolean {
+	return issue.status === "open" && issue.clarified && issue.scheduled === null && issue.tickler === null;
 }
 
-/** Scheduled に出す issue: 有効で、今日以降に Do Date がある（ADR-0009）。PKM Updates も同じ規則を使う（ADR-0070） */
+/** Scheduled に出す issue: 有効で、今日以降に Calendar の日がある（ADR-0009, 0152）。PKM Updates も同じ規則を使う（ADR-0070） */
 export function isScheduledAhead(issue: Issue, today: LocalDate): boolean {
-	return isActive(issue) && issue.scheduled.some((d) => d >= today);
+	return isActive(issue) && issue.scheduled !== null && issue.scheduled >= today;
 }
 
 /** routine の interval を数える起点: start、なければ created の日付 */
@@ -79,7 +84,7 @@ export function organizeQueue(issues: Iterable<Issue>, today: LocalDate): Issue[
 	const revisitDue: Issue[] = [];
 	const someday: Issue[] = [];
 	for (const issue of issues) {
-		if (isInbox(issue)) inbox.push(issue);
+		if (isInbox(issue, today)) inbox.push(issue);
 		else if (issue.status === "someday") {
 			if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
 			else someday.push(issue);
@@ -171,7 +176,7 @@ export class TaskIndex {
 	toAutoAdd(date: LocalDate): string[] {
 		const daily = this.board(date);
 		const skip = new Set([...(daily?.board.issues ?? []), ...(daily?.removed ?? [])]);
-		const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled.includes(date) && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
+		const subs = this.data.subIssues.filter((s) => isActive(s) && s.scheduled === date && !skip.has(s.key) && this.subsByKey.get(s.key) === s);
 		return [...scheduledOn(this.issues.values(), date, skip).map((i) => i.id), ...subs.map((s) => s.key)];
 	}
 
@@ -223,6 +228,8 @@ export interface SidebarCounts {
 export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts {
 	const issues = [...index.issues.values()];
 	const dead = deadIssues(issues, today);
+	const deadSub = deadSubs(index, today);
+	const missed = missedIssues(issues, today).length + missedSubs(index, today).length;
 	const pending = pendingBoards(index, index.data.boards, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
 	const scheduledToday = index.toAutoAdd(today);
@@ -232,10 +239,11 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 		return n + unfinishedCount(u);
 	}, 0);
 	return {
-		daily: dead.deadline.length + dead.softDeadline.length + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
-		inbox: issues.filter(isInbox).length,
+		// 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・前のボード・今日の Calendar・今日の未完了
+		daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
+		inbox: issues.filter((i) => isInbox(i, today)).length,
 		organize: organizeQueue(issues, today).length,
-		scheduled: issues.filter((i) => isActive(i) && i.scheduled.some((d) => d >= today)).length,
+		scheduled: issues.filter((i) => isScheduledAhead(i, today)).length,
 		issues: issues.filter(isActive).length,
 		someday: issues.filter((i) => i.status === "someday").length,
 		routines: [...index.routines.values()].filter((r) => r.active).length,

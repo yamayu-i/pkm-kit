@@ -22,6 +22,7 @@ import {
 	appendBoardOpsOnDisk,
 	appendDailyNoteOnDisk,
 	carryIssuesOnDisk,
+	type CarryMode,
 	closeBoardOnDisk,
 	createIssueOnDisk,
 	orderCardOnDisk,
@@ -116,7 +117,7 @@ const TOOLS: McpToolDef[] = [
 				labels: { type: "array", items: { type: "string" } },
 				scheduled: { type: "string", enum: ["any", "yes", "no"] },
 				inbox_only: { type: "boolean", description: "true のとき Inbox（open で clarified でない。日付は見ない。ADR-0148）の issue のみ返す" },
-				sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
+				sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "scheduled", "next_scheduled"], description: "next_scheduled は以前の名前（scheduled と同じ）" },
 				desc: { type: "boolean" },
 				limit: { type: "number", description: "最大件数（既定 100）" },
 			},
@@ -159,7 +160,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "add_to_board",
-		description: "指定日のボードに issue かサブ（合成キー i-N#xxxxxx）を載せる。その日が scheduled でないサブは、scheduled に足してから載せる",
+		description: "指定日のボードに issue かサブ（合成キー i-N#xxxxxx）を載せる。日付（scheduled）は書かない（ADR-0152）",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -222,14 +223,14 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue・サブをリスケ（別の日へ移動）または Inbox 戻し（clarified を外す。日付は残す）で片付け、carried にする。サブは Inbox に戻せない",
+		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す）。サブは tickler と inbox にできない",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "ボードの日付 YYYY-MM-DD" },
 				issue_ids: { type: "array", items: { type: "string" }, description: "issue の ID かサブの合成キー" },
-				mode: { type: "string", enum: ["reschedule", "inbox"] },
-				reschedule_to: { type: "string", description: "mode=reschedule のときの移動先 YYYY-MM-DD" },
+				mode: { type: "string", enum: ["today", "next", "move", "tickler", "inbox", "reschedule"], description: "reschedule は以前の名前（move と同じ）" },
+				reschedule_to: { type: "string", description: "mode が move / tickler のときの日付 YYYY-MM-DD" },
 			},
 			required: ["date", "issue_ids", "mode"],
 		},
@@ -263,7 +264,8 @@ const TOOLS: McpToolDef[] = [
 			type: "object",
 			properties: {
 				summary: { type: "string" },
-				scheduled: { type: "array", items: { type: "string" } },
+				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）。今日やると決めただけなら書かない" },
+				tickler: { type: ["string", "null"], description: "Tickler の日 YYYY-MM-DD（その日まで出さず、その日に Inbox に戻す）" },
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
 				estimated: { type: ["number", "null"] },
@@ -288,7 +290,8 @@ const TOOLS: McpToolDef[] = [
 				delegated_to: { type: ["string", "null"] },
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
-				scheduled: { type: "array", items: { type: "string" } },
+				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）。null で消す" },
+				tickler: { type: ["string", "null"], description: "Tickler の日 YYYY-MM-DD（その日に Inbox に戻す）。null で消す" },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
 				revisit: { type: ["string", "null"] },
@@ -317,7 +320,7 @@ const TOOLS: McpToolDef[] = [
 							delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
 							start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
 							end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
-							scheduled: { type: ["array", "null"], items: { type: "string" } },
+							scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
 							soft_deadline: { type: ["string", "null"] },
 							deadline: { type: ["string", "null"] },
 							estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
@@ -344,7 +347,7 @@ const TOOLS: McpToolDef[] = [
 				delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
 				start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
 				end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
-				scheduled: { type: ["array", "null"], items: { type: "string" } },
+				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
 				estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
@@ -426,6 +429,18 @@ function loadIndex(root: string) {
 	};
 }
 
+/** scheduled の引数（ADR-0152 で日付 1 つ）。以前の要素 1 つの配列も受け付ける。undefined は渡されていない */
+function calendarArg(v: unknown): LocalDate | null | undefined {
+	if (v === undefined) return undefined;
+	if (v === null) return null;
+	if (Array.isArray(v)) {
+		if (v.length === 0) return null;
+		if (v.length === 1) return String(v[0]);
+		throw new Error("scheduled は日付 1 つにしてください（ADR-0152）");
+	}
+	return String(v);
+}
+
 /** MCP の引数（snake_case）を、サブの項目にする。渡された項目だけを持つ。null は項目を消す（リストは空にする） */
 function subPatch(args: Record<string, unknown>): SubIssuePatch {
 	const out: SubIssuePatch = {};
@@ -446,7 +461,7 @@ function subPatch(args: Record<string, unknown>): SubIssuePatch {
 	if (args.delegated_to !== undefined) out.delegatedTo = str("delegated_to");
 	if (args.start !== undefined) out.start = str("start");
 	if (args.end !== undefined) out.end = str("end");
-	if (args.scheduled !== undefined) out.scheduled = [...new Set(list("scheduled"))].sort();
+	if (args.scheduled !== undefined) out.scheduled = calendarArg(args.scheduled) ?? null;
 	if (args.soft_deadline !== undefined) out.softDeadline = str("soft_deadline");
 	if (args.deadline !== undefined) out.deadline = str("deadline");
 	if (args.estimated !== undefined) {
@@ -519,7 +534,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 		case "list_issues": {
 			const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 100;
 			if (args.inbox_only === true) {
-				return index.data.issues.filter(isInbox).slice(0, limit);
+				return index.data.issues.filter((i) => isInbox(i, today)).slice(0, limit);
 			}
 			const q: IssueQuery = {
 				...defaultQuery(),
@@ -528,7 +543,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(Array.isArray(args.priorities) ? { priorities: args.priorities as (Priority | "none")[] } : {}),
 				...(Array.isArray(args.labels) ? { labels: args.labels as string[] } : {}),
 				...(args.scheduled === "any" || args.scheduled === "yes" || args.scheduled === "no" ? { scheduled: args.scheduled } : {}),
-				...(typeof args.sort === "string" ? { sort: args.sort as SortKey } : {}),
+				...(typeof args.sort === "string" ? { sort: (args.sort === "next_scheduled" ? "scheduled" : args.sort) as SortKey } : {}),
 				...(typeof args.desc === "boolean" ? { desc: args.desc } : {}),
 			};
 			return queryIssues(index.data.issues, q, today).slice(0, limit);
@@ -639,7 +654,7 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 		case "carry_issues": {
 			const date = String(args.date ?? "");
 			const ids = Array.isArray(args.issue_ids) ? args.issue_ids.map(String) : [];
-			const mode = args.mode as "reschedule" | "inbox";
+			const mode = args.mode as CarryMode;
 			const rescheduleTo = typeof args.reschedule_to === "string" ? args.reschedule_to : null;
 			carryIssuesOnDisk(ctx.root, index, date, ids, mode, rescheduleTo, ctx.device, now);
 			return { ok: true, date, carried: ids, mode, rescheduleTo };
@@ -659,7 +674,8 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				index,
 				{
 					summary: String(args.summary ?? ""),
-					scheduled: Array.isArray(args.scheduled) ? args.scheduled.map(String) : [],
+					scheduled: calendarArg(args.scheduled) ?? null,
+					tickler: args.tickler === undefined ? undefined : (args.tickler as LocalDate | null),
 					priority: args.priority as Priority | null | undefined,
 					labels: Array.isArray(args.labels) ? args.labels.map(String) : undefined,
 					estimated: args.estimated as number | null | undefined,
@@ -681,7 +697,8 @@ export function callMcpTool(ctx: McpContext, name: string, args: Record<string, 
 				...(args.delegated_to !== undefined ? { delegated_to: args.delegated_to as string | null } : {}),
 				...(args.priority !== undefined ? { priority: args.priority as Priority | null } : {}),
 				...(Array.isArray(args.labels) ? { labels: args.labels.map(String) } : {}),
-				...(Array.isArray(args.scheduled) ? { scheduled: args.scheduled.map(String) } : {}),
+				...(args.scheduled !== undefined ? { scheduled: calendarArg(args.scheduled) ?? null } : {}),
+				...(args.tickler !== undefined ? { tickler: args.tickler as LocalDate | null } : {}),
 				...(args.soft_deadline !== undefined ? { soft_deadline: args.soft_deadline as LocalDate | null } : {}),
 				...(args.deadline !== undefined ? { deadline: args.deadline as LocalDate | null } : {}),
 				...(args.revisit !== undefined ? { revisit: args.revisit as LocalDate | null } : {}),

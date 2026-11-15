@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { duePatch, reschedulePatch, schedulePatch, scheduledPatch, statusPatch } from "../src/core/actions";
+import { duePatch, reschedulePatch, scheduledPatch, statusPatch } from "../src/core/actions";
 import { emptyBoard, markCarried, routineResults } from "../src/core/board";
 import { TaskIndex, emptyVaultData, sidebarCounts } from "../src/core/index";
 import { parseRepeat, serializeRepeat } from "../src/core/repeat";
@@ -19,25 +19,19 @@ describe("リストの編集（ADR-0018）", () => {
 		expect(statusPatch("delegated", "m-1")).toEqual({ status: "delegated", delegated_to: "m-1", revisit: null });
 	});
 
-	it("someday に実行日や期限を入れると open に戻す。外すだけなら戻さない", () => {
+	it("someday に Calendar の日や期限を入れると open に戻す。外すだけなら戻さない（ADR-0018, 0152）", () => {
 		const someday = issue({ status: "someday", revisit: "2026-12-01" });
 		expect(duePatch(someday, "deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10", status: "open", revisit: null });
 		expect(duePatch(someday, "soft_deadline", null)).toEqual({ soft_deadline: null });
-		expect(scheduledPatch(someday, ["2026-11-02"])).toEqual({ scheduled: ["2026-11-02"], status: "open", revisit: null });
-		expect(scheduledPatch(someday, [])).toEqual({ scheduled: [] });
+		expect(scheduledPatch(someday, "2026-11-02")).toEqual({ scheduled: "2026-11-02", status: "open", revisit: null });
+		expect(scheduledPatch(someday, null)).toEqual({ scheduled: null });
 		expect(duePatch(issue(), "deadline", "2026-11-10")).toEqual({ deadline: "2026-11-10" });
-	});
-
-	it("Schedule: 選んだ issue ごとに、既存の実行日を残して足す", () => {
-		expect(schedulePatch(issue({ scheduled: ["2026-11-01"] }), ["2026-11-03"]).scheduled).toEqual(["2026-11-01", "2026-11-03"]);
-		expect(schedulePatch(issue(), ["2026-11-03"]).scheduled).toEqual(["2026-11-03"]);
 	});
 });
 
-describe("Do Today / Do Tomorrow（ADR-0018）", () => {
-	it("ボードの日付を実行日から外して移動先を足し、carried に入れる", () => {
-		const i = issue({ scheduled: ["2026-10-31", "2026-11-05"] });
-		expect(reschedulePatch(i, "scheduled", "2026-11-01", "2026-10-31").scheduled).toEqual(["2026-11-01", "2026-11-05"]);
+describe("持ち越し（ADR-0018, 0152）", () => {
+	it("Move date は Calendar の日を置き換え、carried に入れる", () => {
+		expect(reschedulePatch("scheduled", "2026-11-01").scheduled).toBe("2026-11-01");
 		const board = emptyBoard();
 		board.carried = ["i-2"];
 		markCarried(board, ["i-1", "i-2"]);

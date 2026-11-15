@@ -1,8 +1,8 @@
 import { Menu } from "obsidian";
-import { duePatch, scheduledPatch, statusPatch } from "../core/actions";
+import { duePatch, scheduledPatch, statusPatch, ticklerFieldPatch } from "../core/actions";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { PRIORITIES, STATUSES, STATUS_DETAIL_MAX, type Issue, type Priority } from "../core/schema";
-import { CalendarForm, DateForm, TextForm } from "../ui/forms";
+import { DateForm, TextForm } from "../ui/forms";
 import { LabelForm } from "../ui/LabelForm";
 import type { TaskContext } from "./context";
 import { MemberSuggestModal, PreactModal } from "./modals";
@@ -119,15 +119,27 @@ export function editDue(ctx: TaskContext, issue: Issue, key: "soft_deadline" | "
 	)).open();
 }
 
+/** Calendar の日（scheduled。その日にやらなければならない日。ADR-0152）を選ぶ・消す */
 export function editScheduled(ctx: TaskContext, issue: Issue): void {
-	new PreactModal(ctx.app, "Do Date", (close) => (
-		<CalendarForm
+	new PreactModal(ctx.app, "Calendar (must be done on this day)", (close) => (
+		<DateForm
 			initial={issue.scheduled}
-			softDeadline={issue.softDeadline}
-			deadline={issue.deadline}
-			onSubmit={(dates) => {
+			onSubmit={(v) => {
 				close();
-				saveIssue(ctx, issue)(scheduledPatch(issue, dates));
+				saveIssue(ctx, issue)(scheduledPatch(issue, v));
+			}}
+		/>
+	)).open();
+}
+
+/** Tickler の日（この日まで出さず、この日に Inbox に戻す。ADR-0152）を選ぶ・消す */
+export function editTickler(ctx: TaskContext, issue: Issue): void {
+	new PreactModal(ctx.app, "Tickler (back to Inbox on this date)", (close) => (
+		<DateForm
+			initial={issue.tickler}
+			onSubmit={(v) => {
+				close();
+				saveIssue(ctx, issue)(ticklerFieldPatch(issue, v));
 			}}
 		/>
 	)).open();
@@ -155,7 +167,8 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	m.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e, issue.priority, save)));
 	m.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
 	m.addSeparator();
-	m.addItem((item) => item.setTitle("Do Date").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+	m.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
+	m.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
 	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
 	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));
