@@ -7731,6 +7731,7 @@ var BLOCK_END = "-->";
 var SubIssueFormatError = class extends Error {
 };
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
+var SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 function isSubId(value) {
   return typeof value === "string" && SUB_ID_RE.test(value);
 }
@@ -7743,6 +7744,14 @@ function parseSubKey(key) {
   const parent = key.slice(0, at);
   const id = key.slice(at + 1);
   return isId(parent, "i") && isSubId(id) ? { parent, id } : null;
+}
+function newSubId(existing, random = Math.random) {
+  const taken = new Set(existing);
+  for (; ; ) {
+    let id = "";
+    for (let i = 0; i < 6; i++) id += SUB_ID_CHARS[Math.min(SUB_ID_CHARS.length - 1, Math.floor(random() * SUB_ID_CHARS.length))];
+    if (!taken.has(id)) return id;
+  }
 }
 var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
 function splitSubIssueText(text) {
@@ -7875,6 +7884,93 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml) {
     blocks.map((b, i) => i === at ? after : b.sub ?? b.raw)
   );
   return { text: next, before, after };
+}
+function rebuild(path, parent, text, parseYaml, edit) {
+  const { blocks } = parseSubIssues(path, parent, text, parseYaml);
+  const items = blocks.map((b) => b.sub ?? b.raw);
+  edit(
+    items,
+    blocks.map((b) => b.sub?.id ?? null)
+  );
+  return replaceSubIssues(text, items);
+}
+function indexOfSub(ids, parent, id) {
+  const at = ids.indexOf(id);
+  if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  return at;
+}
+function insertSubIssuesText(path, parent, text, subs, parseYaml, at) {
+  return rebuild(path, parent, text, parseYaml, (items) => {
+    const pos = at ?? items.length;
+    if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${pos}`);
+    items.splice(pos, 0, ...subs);
+  });
+}
+function moveSubIssueText(path, parent, text, id, to, parseYaml) {
+  return rebuild(path, parent, text, parseYaml, (items, ids) => {
+    const from = indexOfSub(ids, parent, id);
+    if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`\u4F4D\u7F6E\u306F 0 \u304B\u3089 ${items.length - 1} \u307E\u3067\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${to}`);
+    const [moved] = items.splice(from, 1);
+    items.splice(to, 0, moved);
+  });
+}
+function removeSubIssueText(path, parent, text, id, parseYaml) {
+  return rebuild(path, parent, text, parseYaml, (items, ids) => {
+    items.splice(indexOfSub(ids, parent, id), 1);
+  });
+}
+function checkSubIssues(subs, memberIds) {
+  const errors = [];
+  const ids = /* @__PURE__ */ new Set();
+  const byId = new Map(subs.map((s) => [s.id, s]));
+  const isDate = (v) => v === null || typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+  for (const s of subs) {
+    const where = `\u30B5\u30D6 ${s.id}`;
+    if (ids.has(s.id)) errors.push(`${where}: id \u304C\u91CD\u306A\u3063\u3066\u3044\u307E\u3059`);
+    ids.add(s.id);
+    if (!s.summary.trim()) errors.push(`${where}: summary \u304C\u3042\u308A\u307E\u305B\u3093`);
+    if (!STATUSES.includes(s.status)) errors.push(`${where}: status \u306F ${STATUSES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${s.status}`);
+    for (const [key, value] of [
+      ["start", s.start],
+      ["end", s.end],
+      ["soft_deadline", s.softDeadline],
+      ["deadline", s.deadline]
+    ]) {
+      if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
+    }
+    for (const d of s.scheduled) if (!isDate(d)) errors.push(`${where}: scheduled \u306B\u65E5\u4ED8\u3067\u306A\u3044\u5024\u304C\u3042\u308A\u307E\u3059: ${d}`);
+    if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
+    if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
+    if (s.delegatedTo !== null) {
+      if (!memberIds.has(s.delegatedTo)) errors.push(`${where}: delegated_to \u306E ${s.delegatedTo} \u304C\u3042\u308A\u307E\u305B\u3093`);
+      if (s.status !== "delegated") errors.push(`${where}: delegated_to \u306F status \u304C delegated \u306E\u3068\u304D\u3060\u3051\u4ED8\u3051\u3089\u308C\u307E\u3059`);
+    }
+    for (const d of s.dependsOn) {
+      if (d === s.id) errors.push(`${where}: depends_on \u306B\u81EA\u5206\u81EA\u8EAB\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093`);
+      else if (!byId.has(d)) errors.push(`${where}: depends_on \u306E ${d} \u304C\u540C\u3058 issue \u306E\u4E2D\u306B\u3042\u308A\u307E\u305B\u3093`);
+    }
+    try {
+      formatSubIssue(s);
+    } catch (e) {
+      errors.push(`${where}: ${e.message}`);
+    }
+  }
+  for (const s of subs) {
+    const seen = /* @__PURE__ */ new Set();
+    const stack2 = s.dependsOn.filter((d) => d !== s.id);
+    let cycle = false;
+    while (stack2.length > 0 && !cycle) {
+      const id = stack2.pop();
+      if (id === s.id) cycle = true;
+      else if (!seen.has(id)) {
+        seen.add(id);
+        stack2.push(...byId.get(id)?.dependsOn ?? []);
+      }
+    }
+    if (cycle) errors.push(`\u30B5\u30D6 ${s.id}: depends_on \u304C\u5FAA\u74B0\u3057\u3066\u3044\u307E\u3059`);
+  }
+  return errors;
 }
 
 // src/core/worklog.ts
@@ -9558,8 +9654,6 @@ function closeBoardOnDisk(root, index, date, device, now) {
 function createIssueOnDisk(root, index, input, device, now) {
   const summary = typeof input.summary === "string" ? input.summary.trim() : "";
   if (!summary) throw new Error("summary \u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
-  const parent = input.parent ?? null;
-  if (parent !== null && !index.issues.has(parent)) throw new Error(`parent \u306E ${parent} \u304C\u3042\u308A\u307E\u305B\u3093`);
   const scheduled = input.scheduled ?? [];
   for (const d of scheduled) {
     if (!isLocalDate(d)) throw new Error(`scheduled \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(d)}`);
@@ -9587,7 +9681,7 @@ function createIssueOnDisk(root, index, input, device, now) {
   const [id] = nextIds("i", taken, 1);
   const relPath = pathForId(id);
   const allScheduled = input.add_to_board_date && !scheduled.includes(input.add_to_board_date) ? [...scheduled, input.add_to_board_date].sort() : [...scheduled].sort();
-  writeTextInVault(root, relPath, newIssueContent(id, summary, localDateTime(now), parent, allScheduled));
+  writeTextInVault(root, relPath, newIssueContent(id, summary, localDateTime(now), null, allScheduled));
   const extra = {};
   if (input.priority !== void 0) extra.priority = input.priority;
   if (input.labels !== void 0 && input.labels.length > 0) extra.labels = input.labels;
@@ -9599,7 +9693,6 @@ function createIssueOnDisk(root, index, input, device, now) {
     id,
     summary,
     status: "open",
-    parent,
     scheduled: allScheduled,
     created: localDateTime(now)
   }).value;
@@ -9654,12 +9747,6 @@ function updateIssueOnDisk(root, index, input, log) {
     }
     patch.labels = input.labels;
   }
-  if (input.parent !== void 0) {
-    if (input.parent !== null && !index.canSetParent(current.id, input.parent)) {
-      throw new Error(`\u89AA\u306B ${input.parent} \u306F\u9078\u3079\u307E\u305B\u3093\uFF08\u5B58\u5728\u3057\u306A\u3044\u304B\u3001\u89AA\u5B50\u95A2\u4FC2\u304C\u5FAA\u74B0\u3057\u307E\u3059\uFF09`);
-    }
-    patch.parent = input.parent;
-  }
   if (input.scheduled !== void 0) {
     for (const d of input.scheduled) {
       if (!isLocalDate(d)) throw new Error(`scheduled \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(d)}`);
@@ -9700,6 +9787,9 @@ function updateIssueOnDisk(root, index, input, log) {
 function updateSubIssueOnDisk(root, index, key, patch, log) {
   const current = index.sub(key);
   if (!current) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+  if (patch.status !== void 0 && patch.status !== "delegated" && patch.delegatedTo === void 0) patch = { ...patch, delegatedTo: null };
+  const siblings = index.subs(current.parent).map((s) => s.id === current.id ? { ...s, ...patch, id: s.id } : s);
+  assertSubIssues(index, siblings, [current.id]);
   const text = readTextOrEmpty(root, current.path);
   const r = updateSubIssueText(current.path, current.parent, text, current.id, patch, import_yaml2.parse);
   writeTextInVault(root, current.path, r.text);
@@ -9708,6 +9798,60 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
     if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
   }
   return r.after;
+}
+function assertSubIssues(index, subs, touched) {
+  const errors = checkSubIssues(subs, new Set(index.members.keys())).filter((e) => touched.some((id) => e.startsWith(`\u30B5\u30D6 ${id}: `)));
+  if (errors.length > 0) throw new Error(errors.join("\n"));
+}
+function newSubInput(item, id, created) {
+  return {
+    id,
+    summary: String(item.summary ?? "").trim(),
+    status: item.status ?? "open",
+    delegatedTo: item.delegatedTo ?? null,
+    start: item.start ?? null,
+    end: item.end ?? null,
+    scheduled: [...new Set(item.scheduled ?? [])].sort(),
+    softDeadline: item.softDeadline ?? null,
+    deadline: item.deadline ?? null,
+    estimated: item.estimated ?? null,
+    dependsOn: item.dependsOn ?? [],
+    created,
+    migratedFrom: null,
+    body: item.body ?? ""
+  };
+}
+function createSubIssuesOnDisk(root, index, parent, items, now, at) {
+  const issue = index.issues.get(parent);
+  if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parent}`);
+  if (!Array.isArray(items) || items.length === 0) throw new Error("items \u3092 1 \u4EF6\u4EE5\u4E0A\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+  const existing = index.subs(parent);
+  const taken = existing.map((s) => s.id);
+  const created = localDateTime(now);
+  const subs = items.map((item) => {
+    const id = newSubId(taken);
+    taken.push(id);
+    return newSubInput(item, id, created);
+  });
+  assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
+  const text = readTextOrEmpty(root, issue.path);
+  writeTextInVault(root, issue.path, insertSubIssuesText(issue.path, parent, text, subs, import_yaml2.parse, at));
+  return subs.map((s) => subKey(parent, s.id));
+}
+function moveSubIssueOnDisk(root, index, key, to) {
+  const sub = index.sub(key);
+  if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+  const text = readTextOrEmpty(root, sub.path);
+  writeTextInVault(root, sub.path, moveSubIssueText(sub.path, sub.parent, text, sub.id, to, import_yaml2.parse));
+}
+function deleteSubIssueOnDisk(root, index, key, now) {
+  const sub = index.sub(key);
+  if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+  const dependents = index.subs(sub.parent).filter((s) => s.dependsOn.includes(sub.id)).map((s) => s.id);
+  if (dependents.length > 0) throw new Error(`\u30B5\u30D6 ${sub.id} \u306F ${dependents.join(", ")} \u306E depends_on \u306B\u3042\u308A\u307E\u3059\u3002\u5148\u306B\u5916\u3057\u3066\u304F\u3060\u3055\u3044`);
+  stopTimerOnDisk(root, index, [key], now);
+  const text = readTextOrEmpty(root, sub.path);
+  writeTextInVault(root, sub.path, removeSubIssueText(sub.path, sub.parent, text, sub.id, import_yaml2.parse));
 }
 function startTimerOnDisk(root, index, taskIds, device, now) {
   const dev = sanitizeDeviceName(device);
@@ -9812,7 +9956,7 @@ var TOOLS = [
   },
   {
     name: "list_issues",
-    description: "\u6761\u4EF6\uFF08status\u3001priority\u3001label\u3001\u4E88\u5B9A\u306E\u6709\u7121\u3001\u89AA\u3001Inbox\u306E\u307F\u3001\u6587\u5B57\u5217\u691C\u7D22\u3001\u4E26\u3073\u9806\uFF09\u3067\u7D5E\u3063\u305F issue \u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+    description: "\u6761\u4EF6\uFF08status\u3001priority\u3001label\u3001\u4E88\u5B9A\u306E\u6709\u7121\u3001Inbox\u306E\u307F\u3001\u6587\u5B57\u5217\u691C\u7D22\u3001\u4E26\u3073\u9806\uFF09\u3067\u7D5E\u3063\u305F issue \u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
     inputSchema: {
       type: "object",
       properties: {
@@ -9821,7 +9965,6 @@ var TOOLS = [
         priorities: { type: "array", items: { type: "string" } },
         labels: { type: "array", items: { type: "string" } },
         scheduled: { type: "string", enum: ["any", "yes", "no"] },
-        parent: { type: "string" },
         inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox \u306E issue \u306E\u307F\u8FD4\u3059" },
         sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "next_scheduled"] },
         desc: { type: "boolean" },
@@ -9831,7 +9974,7 @@ var TOOLS = [
   },
   {
     name: "get_issue",
-    description: "issue \u306E\u8A73\u7D30\uFF08frontmatter\u3001Markdown\u672C\u6587\u3001\u89AA\u30FB\u5B50\u30BF\u30B9\u30AF\u3001\u6309\u5206\u5F8C\u306E\u5B9F\u7E3E\u5DE5\u6570\u3001\u6301\u3061\u8D8A\u3057\u56DE\u6570\uFF09\u3092\u53D6\u5F97\u3059\u308B",
+    description: "issue \u306E\u8A73\u7D30\uFF08frontmatter\u3001Markdown\u672C\u6587\u3001\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306E\u4E00\u89A7\u3001\u6309\u5206\u5F8C\u306E\u5B9F\u7E3E\u5DE5\u6570\u3001\u6301\u3061\u8D8A\u3057\u56DE\u6570\uFF09\u3092\u53D6\u5F97\u3059\u308B\u3002effortMinutes \u306F\u89AA\u306B\u76F4\u63A5\u4ED8\u3051\u305F\u5206\u3068\u30B5\u30D6\u306E\u5206\u306E\u5408\u8A08\u3001directEffortMinutes \u306F\u89AA\u306B\u76F4\u63A5\u4ED8\u3051\u305F\u5206\u3060\u3051",
     inputSchema: {
       type: "object",
       properties: {
@@ -9956,7 +10099,6 @@ var TOOLS = [
       type: "object",
       properties: {
         summary: { type: "string" },
-        parent: { type: ["string", "null"] },
         scheduled: { type: "array", items: { type: "string" } },
         priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
         labels: { type: "array", items: { type: "string" } },
@@ -9970,7 +10112,7 @@ var TOOLS = [
   },
   {
     name: "update_issue",
-    description: "issue \u306E frontmatter\uFF08status, priority, scheduled, deadline, estimated, parent \u306A\u3069\uFF09\u3092\u691C\u67FB\u4ED8\u304D\u3067\u66F4\u65B0\u3059\u308B",
+    description: "issue \u306E frontmatter\uFF08status, priority, scheduled, deadline, estimated \u306A\u3069\uFF09\u3092\u691C\u67FB\u4ED8\u304D\u3067\u66F4\u65B0\u3059\u308B\u3002\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306F update_sub_issue \u3067\u76F4\u3059",
     inputSchema: {
       type: "object",
       properties: {
@@ -9981,7 +10123,6 @@ var TOOLS = [
         delegated_to: { type: ["string", "null"] },
         priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
         labels: { type: "array", items: { type: "string" } },
-        parent: { type: ["string", "null"] },
         scheduled: { type: "array", items: { type: "string" } },
         soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
@@ -9993,8 +10134,85 @@ var TOOLS = [
     }
   },
   {
+    name: "create_sub_issues",
+    description: "issue \u306E md \u306E\u4E2D\u306B\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u3059\uFF08ADR-0135\u3002\u30B5\u30D6\u306E\u30B5\u30D6\u306F\u4F5C\u308C\u306A\u3044\uFF09\u3002items \u306E\u9806\u306B\u3001\u672B\u5C3E\u304B position \u306E\u4F4D\u7F6E\u306B\u7F6E\u304F\u3002\u4F5C\u3063\u305F\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-12#k3f9a2\uFF09\u3092\u8FD4\u3059\u3002\u5927\u304D\u3044 issue \u3092\u5206\u3051\u308B\u3068\u304D\u306B\u4F7F\u3046",
+    inputSchema: {
+      type: "object",
+      properties: {
+        parent: { type: "string", description: "\u89AA\u306E issue \u306E ID\uFF08i-N\uFF09" },
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
+              delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
+              start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
+              end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09" },
+              scheduled: { type: ["array", "null"], items: { type: "string" } },
+              soft_deadline: { type: ["string", "null"] },
+              deadline: { type: ["string", "null"] },
+              estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
+              depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },
+              body: { type: "string", description: "\u30B5\u30D6\u306E\u672C\u6587\uFF08Markdown\uFF09" }
+            },
+            required: ["summary"]
+          }
+        },
+        position: { type: "number", description: "\u5DEE\u3057\u8FBC\u3080\u4F4D\u7F6E\uFF080 \u304B\u3089\u3002\u7701\u304F\u3068\u672B\u5C3E\uFF09" }
+      },
+      required: ["parent", "items"]
+    }
+  },
+  {
+    name: "update_sub_issue",
+    description: "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306E\u9805\u76EE\u3068\u672C\u6587\u3092\u691C\u67FB\u4ED8\u304D\u3067\u76F4\u3059\u3002null \u3067\u9805\u76EE\u3092\u6D88\u3059\u3002status \u306E\u5909\u5316\u306F statuslog \u306B\u8A18\u9332\u3057\u3001closed / canceled \u306A\u3089\u305D\u306E\u30B5\u30D6\u306E\u30BF\u30A4\u30DE\u30FC\u3092\u6B62\u3081\u308B\u3002\u89AA\u306E status \u306F\u5909\u3048\u306A\u3044",
+    inputSchema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "\u5408\u6210\u30AD\u30FC\uFF08\u4F8B: i-12#k3f9a2\uFF09" },
+        summary: { type: "string" },
+        status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
+        delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
+        start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
+        end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09" },
+        scheduled: { type: ["array", "null"], items: { type: "string" } },
+        soft_deadline: { type: ["string", "null"] },
+        deadline: { type: ["string", "null"] },
+        estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
+        depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },
+        body: { type: "string", description: "\u30B5\u30D6\u306E\u672C\u6587\uFF08Markdown\uFF09" }
+      },
+      required: ["key"]
+    }
+  },
+  {
+    name: "move_sub_issue",
+    description: "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u3001\u540C\u3058\u89AA\u306E\u4E2D\u3067 position \u306E\u4F4D\u7F6E\uFF080 \u304B\u3089\uFF09\u3078\u79FB\u3059",
+    inputSchema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "\u5408\u6210\u30AD\u30FC\uFF08\u4F8B: i-12#k3f9a2\uFF09" },
+        position: { type: "number" }
+      },
+      required: ["key", "position"]
+    }
+  },
+  {
+    name: "delete_sub_issue",
+    description: "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u672C\u6587\u3054\u3068\u6D88\u3059\u3002\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u306F\u6B62\u3081\u308B\u3002worklog \u306E\u884C\u306F\u6B8B\u308A\u3001\u89AA\u306E\u5B9F\u7E3E\u306B\u542B\u307E\u308C\u308B\u3002\u307B\u304B\u306E\u30B5\u30D6\u306E depends_on \u306B\u3042\u308B\u3068\u304D\u306F\u6D88\u305B\u306A\u3044",
+    inputSchema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "\u5408\u6210\u30AD\u30FC\uFF08\u4F8B: i-12#k3f9a2\uFF09" }
+      },
+      required: ["key"]
+    }
+  },
+  {
     name: "start_timer",
-    description: "\u6307\u5B9A\u3057\u305F issue / routine \u306E\u4F5C\u696D\u8A18\u9332\u30BF\u30A4\u30DE\u30FC\u3092\u958B\u59CB\u3059\u308B",
+    description: "\u6307\u5B9A\u3057\u305F issue / routine / \u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u306E\u4F5C\u696D\u8A18\u9332\u30BF\u30A4\u30DE\u30FC\u3092\u958B\u59CB\u3059\u308B\u3002\u30B5\u30D6\u306F\u5408\u6210\u30AD\u30FC\uFF08i-12#k3f9a2\uFF09\u3067\u6307\u3059\u3002open \u306E\u3082\u306E\u306F in-progress \u306B\u3059\u308B\uFF08\u30B5\u30D6\u306E\u3068\u304D\u306F\u89AA\u306E status \u3092\u5909\u3048\u306A\u3044\uFF09",
     inputSchema: {
       type: "object",
       properties: {
@@ -10005,7 +10223,7 @@ var TOOLS = [
   },
   {
     name: "stop_timer",
-    description: "\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3092\u505C\u6B62\u3059\u308B\uFF08task_ids \u7701\u7565\u6642\u306F\u3059\u3079\u3066\u306E\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3092\u6B62\u3081\u308B\uFF09",
+    description: "\u8A18\u9332\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3092\u505C\u6B62\u3059\u308B\uFF08task_ids \u7701\u7565\u6642\u306F\u3059\u3079\u3066\u306E\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3092\u6B62\u3081\u308B\uFF09\u3002\u30B5\u30D6\u306F\u5408\u6210\u30AD\u30FC\u3067\u6307\u3059\u3002\u89AA\u306E ID \u3067\u306F\u89AA\u306B\u76F4\u63A5\u4ED8\u3051\u305F\u8A18\u9332\u3060\u3051\u3092\u6B62\u3081\u308B",
     inputSchema: {
       type: "object",
       properties: {
@@ -10038,10 +10256,43 @@ function loadIndex(root) {
     problems: [...problems, ...lintProblems]
   };
 }
+function subPatch(args) {
+  const out = {};
+  const str = (key) => {
+    const v = args[key];
+    if (v === null) return null;
+    if (typeof v !== "string") throw new Error(`${key} \u306F\u6587\u5B57\u5217\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return v.trim() || null;
+  };
+  const list = (key) => {
+    const v = args[key];
+    if (v === null) return [];
+    if (!Array.isArray(v)) throw new Error(`${key} \u306F\u914D\u5217\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    return v.map(String);
+  };
+  if (args.summary !== void 0) out.summary = String(args.summary);
+  if (args.status !== void 0) out.status = String(args.status);
+  if (args.delegated_to !== void 0) out.delegatedTo = str("delegated_to");
+  if (args.start !== void 0) out.start = str("start");
+  if (args.end !== void 0) out.end = str("end");
+  if (args.scheduled !== void 0) out.scheduled = [...new Set(list("scheduled"))].sort();
+  if (args.soft_deadline !== void 0) out.softDeadline = str("soft_deadline");
+  if (args.deadline !== void 0) out.deadline = str("deadline");
+  if (args.estimated !== void 0) {
+    if (args.estimated !== null && typeof args.estimated !== "number") throw new Error("estimated \u306F\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+    out.estimated = args.estimated;
+  }
+  if (args.depends_on !== void 0) out.dependsOn = [...new Set(list("depends_on"))];
+  if (args.body !== void 0) out.body = String(args.body ?? "");
+  return out;
+}
 function callMcpTool(ctx, name, args = {}) {
   const now = ctx.now ? ctx.now() : /* @__PURE__ */ new Date();
   const today = localToday(now);
   const { index, problems } = loadIndex(ctx.root);
+  if ((name === "create_issue" || name === "update_issue" || name === "list_issues") && args.parent !== void 0) {
+    throw new Error("parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u5206\u3051\u308B\u3068\u304D\u306F create_sub_issues \u3067\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u3057\u3066\u304F\u3060\u3055\u3044");
+  }
   switch (name) {
     case "get_overview": {
       const date = typeof args.date === "string" ? args.date : today;
@@ -10113,7 +10364,6 @@ function callMcpTool(ctx, name, args = {}) {
         ...Array.isArray(args.priorities) ? { priorities: args.priorities } : {},
         ...Array.isArray(args.labels) ? { labels: args.labels } : {},
         ...args.scheduled === "any" || args.scheduled === "yes" || args.scheduled === "no" ? { scheduled: args.scheduled } : {},
-        ...typeof args.parent === "string" ? { parent: args.parent } : {},
         ...typeof args.sort === "string" ? { sort: args.sort } : {},
         ...typeof args.desc === "boolean" ? { desc: args.desc } : {}
       };
@@ -10124,13 +10374,14 @@ function callMcpTool(ctx, name, args = {}) {
       const issue = index.issues.get(id);
       if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
       const efforts = index.effortMinutes(now.getTime());
+      const byKey = index.effortByKey(now.getTime());
       const counts = carryCounts(index.data.boards);
       return {
         ...issue,
-        body: readMarkdownBody(ctx.root, issue.path),
-        ancestors: index.ancestors(id).map((a) => ({ id: a.id, summary: a.summary, status: a.status })),
-        children: index.children(id).map((c) => ({ id: c.id, summary: c.summary, status: c.status })),
+        body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,
+        subIssues: index.subs(id).map(({ path: _path, parent: _parent, ...s }) => ({ ...s, effortMinutes: Math.round(byKey.get(s.key) ?? 0) })),
         effortMinutes: Math.round(efforts.get(id) ?? 0),
+        directEffortMinutes: Math.round(byKey.get(id) ?? 0),
         carryCount: counts.get(id) ?? 0
       };
     }
@@ -10235,7 +10486,6 @@ function callMcpTool(ctx, name, args = {}) {
         index,
         {
           summary: String(args.summary ?? ""),
-          parent: args.parent ?? null,
           scheduled: Array.isArray(args.scheduled) ? args.scheduled.map(String) : [],
           priority: args.priority,
           labels: Array.isArray(args.labels) ? args.labels.map(String) : void 0,
@@ -10257,7 +10507,6 @@ function callMcpTool(ctx, name, args = {}) {
         ...args.delegated_to !== void 0 ? { delegated_to: args.delegated_to } : {},
         ...args.priority !== void 0 ? { priority: args.priority } : {},
         ...Array.isArray(args.labels) ? { labels: args.labels.map(String) } : {},
-        ...args.parent !== void 0 ? { parent: args.parent } : {},
         ...Array.isArray(args.scheduled) ? { scheduled: args.scheduled.map(String) } : {},
         ...args.soft_deadline !== void 0 ? { soft_deadline: args.soft_deadline } : {},
         ...args.deadline !== void 0 ? { deadline: args.deadline } : {},
@@ -10265,6 +10514,27 @@ function callMcpTool(ctx, name, args = {}) {
         ...args.reviewed !== void 0 ? { reviewed: args.reviewed } : {},
         ...args.estimated !== void 0 ? { estimated: args.estimated } : {}
       }, { device: ctx.device, now });
+    }
+    case "create_sub_issues": {
+      const items = Array.isArray(args.items) ? args.items.map((it) => subPatch(it)) : [];
+      const position = args.position === void 0 ? void 0 : Number(args.position);
+      const created = createSubIssuesOnDisk(ctx.root, index, String(args.parent ?? ""), items, now, position);
+      return { ok: true, created };
+    }
+    case "update_sub_issue": {
+      const key = String(args.key ?? "");
+      const sub = updateSubIssueOnDisk(ctx.root, index, key, subPatch(args), { device: ctx.device, now, via: "mcp" });
+      return { ok: true, key, sub };
+    }
+    case "move_sub_issue": {
+      const key = String(args.key ?? "");
+      moveSubIssueOnDisk(ctx.root, index, key, Number(args.position));
+      return { ok: true, key, position: Number(args.position) };
+    }
+    case "delete_sub_issue": {
+      const key = String(args.key ?? "");
+      deleteSubIssueOnDisk(ctx.root, index, key, now);
+      return { ok: true, key, deleted: true };
     }
     case "start_timer": {
       const ids = Array.isArray(args.task_ids) ? args.task_ids.map(String) : [];

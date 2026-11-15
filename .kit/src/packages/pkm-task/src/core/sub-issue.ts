@@ -238,3 +238,105 @@ export function updateSubIssueText(
 	);
 	return { text: next, before, after };
 }
+
+/** md のサブを組み替える。読めなかったブロックは元の文字のまま、同じ並びに残す */
+function rebuild(path: string, parent: string, text: string, parseYaml: YamlParse, edit: (blocks: (SubIssueInput | string)[], ids: (string | null)[]) => void): string {
+	const { blocks } = parseSubIssues(path, parent, text, parseYaml);
+	const items: (SubIssueInput | string)[] = blocks.map((b) => b.sub ?? b.raw);
+	edit(
+		items,
+		blocks.map((b) => b.sub?.id ?? null),
+	);
+	return replaceSubIssues(text, items);
+}
+
+function indexOfSub(ids: (string | null)[], parent: string, id: string): number {
+	const at = ids.indexOf(id);
+	if (at < 0) throw new Error(`サブがありません: ${subKey(parent, id)}`);
+	return at;
+}
+
+/** サブを足す。at を省くと末尾。位置はブロックの並び（読めなかったブロックを含む）で数える */
+export function insertSubIssuesText(path: string, parent: string, text: string, subs: readonly SubIssueInput[], parseYaml: YamlParse, at?: number): string {
+	return rebuild(path, parent, text, parseYaml, (items) => {
+		const pos = at ?? items.length;
+		if (!Number.isInteger(pos) || pos < 0 || pos > items.length) throw new Error(`位置は 0 から ${items.length} までにしてください: ${pos}`);
+		items.splice(pos, 0, ...subs);
+	});
+}
+
+/** サブを to の位置へ移す（ブロックの並びで数える） */
+export function moveSubIssueText(path: string, parent: string, text: string, id: string, to: number, parseYaml: YamlParse): string {
+	return rebuild(path, parent, text, parseYaml, (items, ids) => {
+		const from = indexOfSub(ids, parent, id);
+		if (!Number.isInteger(to) || to < 0 || to >= items.length) throw new Error(`位置は 0 から ${items.length - 1} までにしてください: ${to}`);
+		const [moved] = items.splice(from, 1);
+		items.splice(to, 0, moved!);
+	});
+}
+
+/** サブを消す（本文ごと） */
+export function removeSubIssueText(path: string, parent: string, text: string, id: string, parseYaml: YamlParse): string {
+	return rebuild(path, parent, text, parseYaml, (items, ids) => {
+		items.splice(indexOfSub(ids, parent, id), 1);
+	});
+}
+
+/**
+ * 書く前の検査（ADR-0135）。同じ親のサブ全体（書いた後の姿）を渡す。問題の文（なければ空）。
+ * lint と同じ規則のうち、書く操作で止めるもの: 項目の値、delegated_to、depends_on、id の重なり、書けない値
+ */
+export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: ReadonlySet<string>): string[] {
+	const errors: string[] = [];
+	const ids = new Set<string>();
+	const byId = new Map(subs.map((s) => [s.id, s]));
+	const isDate = (v: unknown) => v === null || (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)));
+	for (const s of subs) {
+		const where = `サブ ${s.id}`;
+		if (ids.has(s.id)) errors.push(`${where}: id が重なっています`);
+		ids.add(s.id);
+		if (!s.summary.trim()) errors.push(`${where}: summary がありません`);
+		if (!(STATUSES as readonly string[]).includes(s.status)) errors.push(`${where}: status は ${STATUSES.join(" / ")} のどれかにしてください: ${s.status}`);
+		for (const [key, value] of [
+			["start", s.start],
+			["end", s.end],
+			["soft_deadline", s.softDeadline],
+			["deadline", s.deadline],
+		] as const) {
+			if (!isDate(value)) errors.push(`${where}: ${key} が YYYY-MM-DD の日付ではありません: ${String(value)}`);
+		}
+		for (const d of s.scheduled) if (!isDate(d)) errors.push(`${where}: scheduled に日付でない値があります: ${d}`);
+		if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end が start より前です`);
+		if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated は 0 以上の数（分）にしてください`);
+		if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated には delegated_to が要ります`);
+		if (s.delegatedTo !== null) {
+			if (!memberIds.has(s.delegatedTo)) errors.push(`${where}: delegated_to の ${s.delegatedTo} がありません`);
+			if (s.status !== "delegated") errors.push(`${where}: delegated_to は status が delegated のときだけ付けられます`);
+		}
+		for (const d of s.dependsOn) {
+			if (d === s.id) errors.push(`${where}: depends_on に自分自身は入れられません`);
+			else if (!byId.has(d)) errors.push(`${where}: depends_on の ${d} が同じ issue の中にありません`);
+		}
+		try {
+			formatSubIssue(s);
+		} catch (e) {
+			errors.push(`${where}: ${(e as Error).message}`);
+		}
+	}
+	// 循環: depends_on をたどって自分に戻るか
+	for (const s of subs) {
+		const seen = new Set<string>();
+		const stack = s.dependsOn.filter((d) => d !== s.id);
+		let cycle = false;
+		while (stack.length > 0 && !cycle) {
+			const id = stack.pop()!;
+			if (id === s.id) cycle = true;
+			else if (!seen.has(id)) {
+				seen.add(id);
+				stack.push(...(byId.get(id)?.dependsOn ?? []));
+			}
+		}
+		if (cycle) errors.push(`サブ ${s.id}: depends_on が循環しています`);
+	}
+	return errors;
+}
