@@ -2,7 +2,7 @@ import type { LocalDate } from "./dates";
 import { SCHEMA_VERSION } from "./schema";
 
 /** 新しい issue の本文の既定の見出し（ADR-0012） */
-export const ISSUE_BODY_TEMPLATE = "## ToDo\n\n- [ ] \n\n## Description\n\n## Note\n";
+export const ISSUE_BODY_TEMPLATE = "# Note\n\n";
 
 /** YAML の文字列。JSON の文字列は YAML の二重引用符スカラーとしてそのまま読める */
 function yamlString(s: string): string {
