@@ -3495,34 +3495,37 @@ body.is-mobile .vt-toast {
 	white-space: nowrap;
 }
 
-/* リーディング表示で、サブの領域の最初のセクション以外は隠す（そこにアコーディオンを描く。ADR-0158） */
+/* リーディング表示で、サブの項目の途中のセクションは隠す（そこにカードを描く。ADR-0161） */
 .vt-subissue-area-hidden {
 	display: none;
 }
 
-/* 本文のサブの領域（Live Preview と Reading のアコーディオン。ADR-0158） */
-.vt-sub-area {
-	margin: 16px 0 8px;
+/* リーディング表示で、閉じたサブの本文のセクションを隠す（ADR-0161） */
+.vt-sub-body-closed {
+	display: none;
+}
+
+/* サブごとの項目のカード（Live Preview と Reading。本文は issue 本体の描画。ADR-0161） */
+.vt-sub-card-host,
+.vt-sub-card {
 	user-select: text;
 	font-size: var(--vt-type-body-medium-size);
 }
 
-.vt-sub-body {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
+.vt-sub-card {
+	margin: 12px 0 4px;
 }
 
-.vt-sub-body .vt-subissue {
+.vt-sub-card .vt-subissue {
 	cursor: auto;
 }
 
-.vt-sub-body .vt-subissue-summary .vt-icon {
+.vt-sub-card .vt-subissue-summary .vt-icon {
 	flex: none;
 	color: var(--vt-on-surface-variant);
 }
 
-.vt-sub-body .vt-subissue-detail {
+.vt-sub-card .vt-subissue-detail {
 	padding-left: 12px;
 }
 

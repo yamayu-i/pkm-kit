@@ -8,13 +8,13 @@ import {
 	dropPosition,
 	parseSubIssues,
 	splitQuickAdd,
-	cursorInsideSubArea,
+	cursorInside,
 	isSubOpen,
 	sanitizeSubOpen,
 	stepPosition,
-	subAreaOffset,
-	subAreaRole,
-	subAreaStartLine,
+	layoutSubIssues,
+	subHeadChange,
+	subSectionRole,
 	toggleSubOpen,
 	subCounts,
 	subHint,
@@ -85,15 +85,6 @@ describe("素早い追加", () => {
 		expect(splitQuickAdd("  仕様を決める  ")).toEqual(["仕様を決める"]);
 		expect(splitQuickAdd("a\r\n\n  b\n- c\n")).toEqual(["a", "b", "- c"]);
 		expect(splitQuickAdd("  \n")).toEqual([]);
-	});
-});
-
-describe("リーディング表示で隠す行", () => {
-	it("frontmatter の後ろの、最初のマーカーの行（0 から）。なければ null", () => {
-		const text = `${HEAD}\n${block("aaaaaa")}`;
-		expect(subAreaStartLine(text)).toBe(text.split("\n").indexOf("<!-- sub-issue"));
-		expect(subAreaStartLine(HEAD)).toBeNull();
-		expect(subAreaStartLine("---\nx: \"<!-- sub-issue\"\n---\n")).toBeNull();
 	});
 });
 
@@ -182,48 +173,93 @@ describe("writer のサブの操作", () => {
 	});
 });
 
-describe("本文のサブの領域（ADR-0158）", () => {
-	const text = `${HEAD}\n${block("aaaaaa")}${block("bbbbbb")}`;
-	it("領域の始まりは最初のマーカーの行頭。サブがなければ null", () => {
-		const at = subAreaOffset(text)!;
-		expect(text.slice(at).startsWith("<!-- sub-issue")).toBe(true);
-		expect(text[at - 1]).toBe("\n");
-		expect(subAreaOffset(HEAD)).toBeNull();
+describe("サブごとの範囲（ADR-0161）", () => {
+	const text = `${HEAD}\n${block("aaaaaa")}本文 a1\n\n本文 a2\n\n${block("bbbbbb")}\n<!-- sub-issue\nid: cccccc\nsummary: [壊れ\n-->\nc の本文\n${block("dddddd")}`;
+	const layout = layoutSubIssues("issue/i-1.md", "i-1", text, parse);
+	it("項目は行頭から --> の行の終わりまで。本文は次の行から最後の空でない行の終わりまで", () => {
+		expect(layout.map((b) => b.id)).toEqual(["aaaaaa", "bbbbbb", null, "dddddd"]);
+		const [a, b, c, d] = layout;
+		expect(text.slice(a!.from, a!.cardTo!)).toBe(block("aaaaaa").trimEnd());
+		expect(text.slice(a!.bodyFrom!, a!.bodyTo!)).toBe("本文 a1\n\n本文 a2");
+		// 本文がなければ、隠す範囲は空
+		expect(b!.bodyTo).toBe(b!.bodyFrom);
+		// 読めなくても --> があれば項目の範囲は求まる（id は null）
+		expect(text.slice(c!.from, c!.cardTo!).endsWith("-->")).toBe(true);
+		expect(text.slice(c!.bodyFrom!, c!.bodyTo!)).toBe("c の本文");
+		expect(text.slice(d!.from, d!.cardTo!)).toBe(block("dddddd").trimEnd());
 	});
-	it("リーディング: マーカーの行を含むセクションに描き、後ろは隠し、前は触らない", () => {
-		expect(subAreaRole(10, 0, 8)).toBe("before");
-		expect(subAreaRole(10, 10, 14)).toBe("mount");
-		expect(subAreaRole(10, 8, 10)).toBe("mount");
-		expect(subAreaRole(10, 15, 20)).toBe("hide");
-		expect(subAreaRole(null, 15, 20)).toBe("before");
+	it("行の番号（0 から）も求める。--> がなければ項目の範囲は null", () => {
+		const lines = text.split("\n");
+		const a = layout[0]!;
+		expect(lines[a.startLine]).toBe("<!-- sub-issue");
+		expect(lines[a.endLine!]).toBe("-->");
+		expect(lines[a.bodyStartLine]).toBe("本文 a1");
+		expect(lines[a.bodyEndLine]).toBe("本文 a2");
+		const open = layoutSubIssues("issue/i-1.md", "i-1", `${HEAD}\n<!-- sub-issue\nid: aaaaaa\n`, parse);
+		expect(open[0]).toMatchObject({ id: null, cardTo: null, endLine: null });
+		expect(layoutSubIssues("issue/i-1.md", "i-1", HEAD, parse)).toEqual([]);
 	});
-});
-
-describe("展開の状態（ADR-0158）", () => {
-	it("ノートごとに開閉を入れ替え、消えたサブは取り除く。元の値は変えない", () => {
-		const base = { "issue/i-1.md": ["aaaaaa", "gone00"] };
-		const opened = toggleSubOpen(base, "issue/i-1.md", "bbbbbb", ["aaaaaa", "bbbbbb"]);
-		expect(opened).toEqual({ "issue/i-1.md": ["aaaaaa", "bbbbbb"] });
-		expect(base["issue/i-1.md"]).toEqual(["aaaaaa", "gone00"]);
-		expect(isSubOpen(opened, "issue/i-1.md", "bbbbbb")).toBe(true);
-		const closed = toggleSubOpen(opened, "issue/i-1.md", "aaaaaa", ["aaaaaa", "bbbbbb"]);
-		expect(closed).toEqual({ "issue/i-1.md": ["bbbbbb"] });
-		// 最後の 1 件を閉じるとノートの項目ごとなくす
-		expect(toggleSubOpen(closed, "issue/i-1.md", "bbbbbb", ["bbbbbb"])).toEqual({});
-	});
-	it("保存された値は、形の違うものを捨てて読む", () => {
-		expect(sanitizeSubOpen({ "issue/i-1.md": ["aaaaaa", "AAA", 3, "aaaaaa"], "issue/i-2.md": "x", "issue/i-3.md": [] })).toEqual({ "issue/i-1.md": ["aaaaaa"] });
-		expect(sanitizeSubOpen(null)).toEqual({});
-		expect(sanitizeSubOpen([])).toEqual({});
+	it("CRLF でも、範囲は行の終わり（\\r の前）までにする", () => {
+		const crlf = `${HEAD}\n${block("aaaaaa")}本文\n`.replace(/\n/g, "\r\n");
+		const [a] = layoutSubIssues("issue/i-1.md", "i-1", crlf, parse);
+		expect(crlf.slice(a!.from, a!.cardTo!).endsWith("-->")).toBe(true);
+		expect(crlf.slice(a!.bodyFrom!, a!.bodyTo!)).toBe("本文");
 	});
 });
 
-describe("Live Preview のカーソルとサブの領域（ADR-0158）", () => {
-	it("領域の先頭と終わりは中に数えず、中の位置と、領域にかかる選択は中に数える", () => {
-		expect(cursorInsideSubArea({ from: 10, to: 10 }, 10, 50)).toBe(false);
-		expect(cursorInsideSubArea({ from: 50, to: 50 }, 10, 50)).toBe(false);
-		expect(cursorInsideSubArea({ from: 11, to: 11 }, 10, 50)).toBe(true);
-		expect(cursorInsideSubArea({ from: 0, to: 20 }, 10, 50)).toBe(true);
-		expect(cursorInsideSubArea({ from: 0, to: 10 }, 10, 50)).toBe(false);
+describe("カードの書き換え（エディタの文書の範囲だけを置き換える。ADR-0161）", () => {
+	const text = `${HEAD}\n${block("aaaaaa")}\n本文 a\n\n${block("bbbbbb")}\n本文 b\n`;
+	const members = new Set<string>();
+	const apply = (t: string, c: { from: number; to: number; insert: string }) => t.slice(0, c.from) + c.insert + t.slice(c.to);
+	it("項目のブロックだけを置き換え、本文と親の部分は 1 文字も変えない", () => {
+		const r = subHeadChange("issue/i-1.md", "i-1", text, "aaaaaa", { summary: "新しい題", status: "in-progress" }, parse, members);
+		const next = apply(text, r.change);
+		expect(next).toBe(text.replace("summary: aaaaaa\nstatus: open", 'summary: "新しい題"\nstatus: in-progress'));
+		expect(subsOf(next)[0]).toMatchObject({ summary: "新しい題", status: "in-progress", body: "本文 a" });
+		expect(r.before.status).toBe("open");
+		expect(r.after.status).toBe("in-progress");
+	});
+	it("本文の末尾の改行や空行は、項目を書き換えても残る", () => {
+		const typed = `${HEAD}\n${block("aaaaaa")}一行目\n\n\n`;
+		const r = subHeadChange("issue/i-1.md", "i-1", typed, "aaaaaa", { estimated: 60 }, parse, members);
+		expect(apply(typed, r.change).endsWith("-->\n一行目\n\n\n")).toBe(true);
+	});
+	it("検査に通らなければ例外。delegated を外すと委任先も外す", () => {
+		expect(() => subHeadChange("issue/i-1.md", "i-1", text, "aaaaaa", { dependsOn: ["aaaaaa"] }, parse, members)).toThrow(/自分自身/);
+		expect(() => subHeadChange("issue/i-1.md", "i-1", text, "zzzzzz", { summary: "x" }, parse, members)).toThrow(/サブがありません/);
+		const delegated = text.replace("status: open", "status: delegated\ndelegated_to: m-1");
+		const r = subHeadChange("issue/i-1.md", "i-1", delegated, "aaaaaa", { status: "open" }, parse, new Set(["m-1"]));
+		expect(r.after.delegatedTo).toBeNull();
+	});
+});
+
+describe("リーディング表示のセクションの役割（ADR-0161）", () => {
+	const text = `${HEAD}\n${block("aaaaaa")}\n本文 a\n\n- リスト\n\n${block("bbbbbb")}\n本文 b\n`;
+	const layout = layoutSubIssues("issue/i-1.md", "i-1", text, parse);
+	const [a, b] = layout;
+	it("マーカーの行を含むセクションはカード、その後ろから次のマーカーまでは本文、前は何でもない", () => {
+		expect(subSectionRole(layout, 0, 8)).toEqual({ role: "none" });
+		expect(subSectionRole(layout, a!.startLine, a!.endLine!)).toEqual({ role: "card", index: 0, id: "aaaaaa" });
+		expect(subSectionRole(layout, a!.bodyStartLine, a!.bodyStartLine)).toEqual({ role: "body", id: "aaaaaa" });
+		expect(subSectionRole(layout, a!.bodyEndLine, a!.bodyEndLine)).toEqual({ role: "body", id: "aaaaaa" });
+		expect(subSectionRole(layout, b!.startLine, b!.endLine!)).toEqual({ role: "card", index: 1, id: "bbbbbb" });
+		expect(subSectionRole(layout, b!.bodyStartLine, b!.bodyEndLine)).toEqual({ role: "body", id: "bbbbbb" });
+	});
+	it("項目の途中のセクションは隠す。読めないブロックの本文は隠さない", () => {
+		expect(subSectionRole(layout, a!.startLine + 1, a!.startLine + 1)).toEqual({ role: "hide" });
+		const broken = layoutSubIssues("issue/i-1.md", "i-1", `${HEAD}\n<!-- sub-issue\nid: x\nsummary: [壊れ\n-->\n本文\n`, parse);
+		expect(subSectionRole(broken, broken[0]!.bodyStartLine, broken[0]!.bodyEndLine)).toEqual({ role: "none" });
+		expect(subSectionRole([], 3, 4)).toEqual({ role: "none" });
+	});
+});
+
+describe("カーソルが範囲の中か（ADR-0161）", () => {
+	it("先頭と終わりの位置は中に数えない。選択は重なれば中", () => {
+		expect(cursorInside({ from: 5, to: 5 }, 5, 10)).toBe(false);
+		expect(cursorInside({ from: 10, to: 10 }, 5, 10)).toBe(false);
+		expect(cursorInside({ from: 6, to: 6 }, 5, 10)).toBe(true);
+		expect(cursorInside({ from: 0, to: 5 }, 5, 10)).toBe(false);
+		expect(cursorInside({ from: 0, to: 6 }, 5, 10)).toBe(true);
+		expect(cursorInside({ from: 0, to: 99 }, 5, 10)).toBe(true);
 	});
 });

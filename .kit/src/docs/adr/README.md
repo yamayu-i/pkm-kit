@@ -93,6 +93,7 @@
 | [0152](0152-calendar-and-tickler.md) | 承認 | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認 | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
-| [0158](0158-sub-issues-in-body.md) | 承認 | 本文のサブ領域をアコーディオンに描き、その場で編集する |
+| [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
+| [0161](0161-sub-issue-cards-in-body.md) | 承認 | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
 | [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
 <!-- adr-index:end -->
