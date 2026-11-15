@@ -97,6 +97,19 @@ export function SubCard(props: SubCardProps) {
 				setError(e instanceof Error ? e.message : String(e));
 				return false;
 			});
+	return (
+		<div class="vt-sub-card vt-ui">
+			<div class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`}>
+				<SubRow ctx={ctx} sub={sub} open={open} onToggle={props.onToggle} save={save} />
+				{open && <SubFields {...props} save={save} error={error} />}
+			</div>
+		</div>
+	);
+}
+
+/** カードの題の行（status・題と開閉・Pick）。カードと、上端に浮かべる行（StickySubRow）で使う */
+function SubRow(props: { ctx: TaskContext; sub: SubIssue; open: boolean; onToggle: () => void; save: Save }) {
+	const { ctx, sub, open, save } = props;
 	const changeStatus = (next: Status) => {
 		if (next === "delegated") return pickMember(ctx, (id) => void save({ status: next, delegatedTo: id }));
 		if (next === sub.status) return;
@@ -110,20 +123,38 @@ export function SubCard(props: SubCardProps) {
 	};
 	const hint = subHint(sub, localToday());
 	return (
+		<div class="vt-subissue-row">
+			<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
+				<StatusIcon status={sub.status} />
+			</button>
+			<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
+				<Icon name={open ? "chevron-down" : "chevron-right"} />
+				<span class="vt-subissue-summary-text">{sub.summary}</span>
+				{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
+			</button>
+			<PickTimer ctx={ctx} keyOf={sub.key} />
+		</div>
+	);
+}
+
+/**
+ * 開いたサブの題の行を、スクロールの上端に浮かべる（ADR-0161 の追記）。カードと同じ行で、操作も同じ。
+ * 保存できなかったときはカードの欄がないので、通知で知らせる
+ */
+export function StickySubRow(props: { ctx: TaskContext; sub: SubIssue; onToggle: () => void; save: SaveSub }) {
+	const { ctx, sub } = props;
+	const save: Save = (patch) =>
+		props
+			.save(patch)
+			.then(() => true)
+			.catch((e: unknown) => {
+				ctx.report("サブを保存できませんでした", e);
+				return false;
+			});
+	return (
 		<div class="vt-sub-card vt-ui">
-			<div class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`}>
-				<div class="vt-subissue-row">
-					<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
-						<StatusIcon status={sub.status} />
-					</button>
-					<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
-						<Icon name={open ? "chevron-down" : "chevron-right"} />
-						<span class="vt-subissue-summary-text">{sub.summary}</span>
-						{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
-					</button>
-					<PickTimer ctx={ctx} keyOf={sub.key} />
-				</div>
-				{open && <SubFields {...props} save={save} error={error} />}
+			<div class={`vt-subissue is-open${isDoneStatus(sub.status) ? " is-done" : ""}`}>
+				<SubRow ctx={ctx} sub={sub} open onToggle={props.onToggle} save={save} />
 			</div>
 		</div>
 	);
@@ -257,11 +288,21 @@ export function UnreadableCard(props: { raw: string; onShowSource?: () => void }
  * Reading のカード。保存済みの md（索引のストア）からサブを読み、ストアの変更で描き直す。
  * 項目を直すとファイルを書き換える（Reading にはエディタがないので、食い違わない）
  */
-export function ReadingCard(props: { ctx: TaskContext; path: string; id: string | null; raw: string; open: () => boolean; onToggle: (ids: string[]) => void }) {
+export function ReadingCard(props: {
+	ctx: TaskContext;
+	path: string;
+	id: string | null;
+	raw: string;
+	open: () => boolean;
+	onToggle: (ids: string[]) => void;
+	/** 開閉がほかの場所（上端に浮かべた行）で変わったら知らせる */
+	subscribeOpen?: (fn: () => void) => () => void;
+}) {
 	const { ctx, path } = props;
 	const [, setTick] = useState(0);
 	const redraw = () => setTick((n) => n + 1);
 	useEffect(() => ctx.store.subscribe(redraw), [ctx]);
+	useEffect(() => props.subscribeOpen?.(redraw), [props.subscribeOpen]);
 	if (props.id === null) return <UnreadableCard raw={props.raw} />;
 	const subs = parseSubIssues(path, issueIdOf(path), ctx.store.text(path) ?? "", parseYaml).subs;
 	const sub = subs.find((s) => s.id === props.id);

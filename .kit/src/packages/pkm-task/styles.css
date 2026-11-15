@@ -3519,6 +3519,27 @@ body.is-mobile .vt-toast {
 	padding-left: 12px;
 }
 
+/* 開いたサブの題の行を、スクロール領域の上端に浮かべる（Live Preview と Reading。ADR-0161 の追記）。
+   位置は JS が入れる。行の高さで切り抜き、本文の終わりで中身を上へずらす */
+.vt-sub-sticky {
+	position: absolute;
+	z-index: 3;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.vt-sub-sticky[hidden] {
+	display: none;
+}
+
+.vt-sub-sticky-inner {
+	pointer-events: auto;
+}
+
+.vt-sub-sticky .vt-subissue {
+	box-shadow: var(--vt-elevation-2);
+}
+
 .vt-subissue.is-unreadable .vt-subissue-status {
 	color: var(--vt-red);
 	cursor: auto;
