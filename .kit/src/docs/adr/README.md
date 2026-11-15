@@ -91,4 +91,5 @@
 | [0148](0148-inbox-clarified.md) | 承認 | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認 | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
 | [0152](0152-calendar-and-tickler.md) | 承認 | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
+| [0154](0154-tasks-now-dialog.md) | 承認 | リボンの「Tasks Now」ダイアログ |
 <!-- adr-index:end -->

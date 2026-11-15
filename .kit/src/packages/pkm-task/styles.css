@@ -3396,3 +3396,128 @@ body.is-mobile .vt-toast {
 .vt-subissue-area-hidden {
 	display: none;
 }
+
+/* Tasks Now（ADR-0154）: リボンから開くダイアログ */
+.modal.vt-now-modal {
+	width: min(720px, 94vw);
+	max-width: 94vw;
+}
+
+.vt-now {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
+}
+
+.vt-now-clock {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-title-medium-size);
+}
+
+.vt-now-clock-text {
+	color: var(--vt-on-surface);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-now-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+.vt-now-heading {
+	margin: 0;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-now-heading-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 横並びのカード（狭い画面では折り返す） */
+.vt-now-states {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+	gap: 8px;
+}
+
+.vt-now-state {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 12px;
+	border: 1px solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface);
+}
+
+.vt-now-state-title {
+	font-size: var(--vt-type-label-medium-size);
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-now-state-value {
+	font-size: var(--vt-type-headline-small-size);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-now-state-label {
+	font-size: var(--vt-type-label-medium-size);
+}
+
+/* 状態の色（面と、その上の文字。色だけに頼らないよう、ラベルの文字も出す） */
+.vt-now-state.is-ok {
+	border-color: var(--vt-green);
+	background: var(--vt-green-container);
+	color: var(--vt-on-green-container);
+}
+
+.vt-now-state.is-caution {
+	border-color: var(--vt-amber);
+	background: var(--vt-amber-container);
+	color: var(--vt-on-amber-container);
+}
+
+.vt-now-state.is-alert {
+	border-color: var(--vt-red);
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+}
+
+.vt-now-state.is-ok .vt-now-state-title,
+.vt-now-state.is-caution .vt-now-state-title,
+.vt-now-state.is-alert .vt-now-state-title {
+	color: inherit;
+}
+
+.vt-now-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 40vh;
+	overflow-y: auto;
+}
+
+.vt-now-list .vt-task {
+	cursor: default;
+}
+
+.vt-task.is-paused {
+	border-style: dashed;
+}
+
+.vt-now-empty {
+	padding: 12px;
+	color: var(--vt-on-surface-variant);
+	text-align: center;
+}

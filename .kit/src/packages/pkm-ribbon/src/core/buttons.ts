@@ -12,6 +12,8 @@ export interface RibbonButton {
 export const BUTTONS: readonly RibbonButton[] = [
 	{ icon: "calendar", title: "Open today's daily note", command: "pkm-template:open-todays-daily" },
 	{ icon: "sun", title: "Open Today", command: "pkm-task:open-daily" },
+	// 今の状態・実行中のタスク群・タスクリストのダイアログ（ADR-0154）
+	{ icon: "timer", title: "Tasks Now", command: "pkm-task:open-tasks-now" },
 	{ icon: "bell", title: "Open PKM Updates", command: "pkm-updates:open-view" },
 	{ icon: "list-plus", title: "Capture issues", command: "pkm-task:capture-issues" },
 	// pull と push を 1 つの同期にした（ADR-0089 の 3）

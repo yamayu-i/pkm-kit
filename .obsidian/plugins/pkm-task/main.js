@@ -25,104 +25,6 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian25 = require("obsidian");
 
-// ../shared/src/legacy-data.ts
-function legacyDataPath(configDir, legacyId) {
-  return `${configDir}/plugins/${legacyId}/data.json`;
-}
-async function loadDataOrLegacy(deps, legacyPath) {
-  const own = await deps.loadData();
-  if (own !== null && own !== void 0) return own;
-  try {
-    if (!await deps.exists(legacyPath)) return null;
-    const data = JSON.parse(await deps.read(legacyPath));
-    if (typeof data !== "object" || data === null || Array.isArray(data)) return null;
-    await deps.saveData(data);
-    return data;
-  } catch {
-    return null;
-  }
-}
-function loadPluginDataOrLegacy(plugin, legacyId) {
-  const { adapter, configDir } = plugin.app.vault;
-  return loadDataOrLegacy(
-    {
-      loadData: () => plugin.loadData(),
-      saveData: (data) => plugin.saveData(data),
-      exists: (path) => adapter.exists(path),
-      read: (path) => adapter.read(path)
-    },
-    legacyDataPath(configDir, legacyId)
-  );
-}
-
-// ../shared/src/list-pane.ts
-var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
-var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar", "pkm-slide-notes"]);
-function isListViewType(type) {
-  return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
-}
-function leafType(leaf) {
-  return leaf.getViewState().type;
-}
-function rootLeaves(workspace) {
-  const leaves = [];
-  workspace.iterateRootLeaves((leaf) => {
-    leaves.push(leaf);
-  });
-  return leaves;
-}
-function findListLeaf(workspace, leaves) {
-  const lists = leaves.filter((l3) => isListViewType(leafType(l3)));
-  const recent = workspace.getMostRecentLeaf();
-  if (recent && lists.includes(recent)) return recent;
-  return lists[0] ?? null;
-}
-async function openListView(workspace, type, options) {
-  const existing = workspace.getLeavesOfType(type)[0];
-  if (existing) {
-    existing.setPinned(true);
-    await workspace.revealLeaf(existing);
-    return;
-  }
-  let leaf;
-  const listLeaf = options.phone ? null : findListLeaf(workspace, rootLeaves(workspace));
-  if (listLeaf) {
-    workspace.setActiveLeaf(listLeaf, { focus: false });
-    leaf = workspace.getLeaf("tab");
-  } else {
-    const base = options.phone ? null : workspace.getMostRecentLeaf();
-    leaf = base ? workspace.createLeafBySplit(base, "vertical", true) : workspace.getLeaf("tab");
-  }
-  await leaf.setViewState({ type, active: true });
-  leaf.setPinned(true);
-  await workspace.revealLeaf(leaf);
-}
-async function openInNotePane(workspace, file, options) {
-  const target = notePaneLeaf(workspace, options);
-  await target.openFile(file, { active: true });
-  return target;
-}
-function notePaneLeaf(workspace, options) {
-  const fallback = options.newTab ? "tab" : false;
-  const leaves = options.phone ? [] : rootLeaves(workspace);
-  const listLeaf = findListLeaf(workspace, leaves);
-  if (!listLeaf) return workspace.getLeaf(fallback);
-  const container = listLeaf.getContainer();
-  const notes = leaves.filter((l3) => l3.parent !== listLeaf.parent && !isListViewType(leafType(l3)) && l3.getContainer() === container);
-  const first = notes[0];
-  if (!first) return workspace.createLeafBySplit(listLeaf, "vertical", false);
-  const recent = workspace.getMostRecentLeaf();
-  const group = recent && notes.includes(recent) ? recent.parent : first.parent;
-  const inGroup = workspace.getMostRecentLeaf(group);
-  const target = inGroup && notes.includes(inGroup) ? inGroup : first;
-  if (!options.newTab) return target;
-  workspace.setActiveLeaf(target, { focus: false });
-  return workspace.getLeaf("tab");
-}
-
-// src/header/extension.ts
-var import_obsidian9 = require("obsidian");
-
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
 var l;
@@ -379,6 +281,104 @@ n = w.slice, l = { __e: function(n2, l3, u4, t3) {
 }, C.prototype.render = S, i = [], o = "function" == typeof Promise ? Promise.prototype.then.bind(Promise.resolve()) : setTimeout, e = function(n2, l3) {
   return n2.__v.__b - l3.__v.__b;
 }, H.__r = 0, f = Math.random().toString(8), c = "__d" + f, a = "__a" + f, s = /(PointerCapture)$|Capture$/i, h = 0, p = V(false), v = V(true), y = 0;
+
+// ../shared/src/legacy-data.ts
+function legacyDataPath(configDir, legacyId) {
+  return `${configDir}/plugins/${legacyId}/data.json`;
+}
+async function loadDataOrLegacy(deps, legacyPath) {
+  const own = await deps.loadData();
+  if (own !== null && own !== void 0) return own;
+  try {
+    if (!await deps.exists(legacyPath)) return null;
+    const data = JSON.parse(await deps.read(legacyPath));
+    if (typeof data !== "object" || data === null || Array.isArray(data)) return null;
+    await deps.saveData(data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+function loadPluginDataOrLegacy(plugin, legacyId) {
+  const { adapter, configDir } = plugin.app.vault;
+  return loadDataOrLegacy(
+    {
+      loadData: () => plugin.loadData(),
+      saveData: (data) => plugin.saveData(data),
+      exists: (path) => adapter.exists(path),
+      read: (path) => adapter.read(path)
+    },
+    legacyDataPath(configDir, legacyId)
+  );
+}
+
+// ../shared/src/list-pane.ts
+var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
+var NOT_LIST_VIEWS = /* @__PURE__ */ new Set(["pkm-task-sidebar", "pkm-slide-notes"]);
+function isListViewType(type) {
+  return !NOT_LIST_VIEWS.has(type) && LIST_VIEW_PREFIXES.some((p3) => type.startsWith(p3));
+}
+function leafType(leaf) {
+  return leaf.getViewState().type;
+}
+function rootLeaves(workspace) {
+  const leaves = [];
+  workspace.iterateRootLeaves((leaf) => {
+    leaves.push(leaf);
+  });
+  return leaves;
+}
+function findListLeaf(workspace, leaves) {
+  const lists = leaves.filter((l3) => isListViewType(leafType(l3)));
+  const recent = workspace.getMostRecentLeaf();
+  if (recent && lists.includes(recent)) return recent;
+  return lists[0] ?? null;
+}
+async function openListView(workspace, type, options) {
+  const existing = workspace.getLeavesOfType(type)[0];
+  if (existing) {
+    existing.setPinned(true);
+    await workspace.revealLeaf(existing);
+    return;
+  }
+  let leaf;
+  const listLeaf = options.phone ? null : findListLeaf(workspace, rootLeaves(workspace));
+  if (listLeaf) {
+    workspace.setActiveLeaf(listLeaf, { focus: false });
+    leaf = workspace.getLeaf("tab");
+  } else {
+    const base = options.phone ? null : workspace.getMostRecentLeaf();
+    leaf = base ? workspace.createLeafBySplit(base, "vertical", true) : workspace.getLeaf("tab");
+  }
+  await leaf.setViewState({ type, active: true });
+  leaf.setPinned(true);
+  await workspace.revealLeaf(leaf);
+}
+async function openInNotePane(workspace, file, options) {
+  const target = notePaneLeaf(workspace, options);
+  await target.openFile(file, { active: true });
+  return target;
+}
+function notePaneLeaf(workspace, options) {
+  const fallback = options.newTab ? "tab" : false;
+  const leaves = options.phone ? [] : rootLeaves(workspace);
+  const listLeaf = findListLeaf(workspace, leaves);
+  if (!listLeaf) return workspace.getLeaf(fallback);
+  const container = listLeaf.getContainer();
+  const notes = leaves.filter((l3) => l3.parent !== listLeaf.parent && !isListViewType(leafType(l3)) && l3.getContainer() === container);
+  const first = notes[0];
+  if (!first) return workspace.createLeafBySplit(listLeaf, "vertical", false);
+  const recent = workspace.getMostRecentLeaf();
+  const group = recent && notes.includes(recent) ? recent.parent : first.parent;
+  const inGroup = workspace.getMostRecentLeaf(group);
+  const target = inGroup && notes.includes(inGroup) ? inGroup : first;
+  if (!options.newTab) return target;
+  workspace.setActiveLeaf(target, { focus: false });
+  return workspace.getLeaf("tab");
+}
+
+// src/header/extension.ts
+var import_obsidian9 = require("obsidian");
 
 // ../shared/src/header-mount.ts
 var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
@@ -4762,7 +4762,7 @@ function openCaptureModal(ctx) {
 
 // src/obsidian/settings.ts
 var import_obsidian11 = require("obsidian");
-var DEFAULT_SETTINGS = { deviceName: "", presets: [] };
+var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [] };
 var TaskSettingTab = class extends import_obsidian11.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
@@ -7064,6 +7064,8 @@ function OrganizeView(props) {
     const prev = snapshot(issue, full);
     try {
       await ctx.writer.update(issue.path, full);
+      ctx.settings.lastOrganizedAt = (/* @__PURE__ */ new Date()).toISOString();
+      void ctx.saveSettings();
       setUndo({ path: issue.path, id: issue.id, prev, label });
       setHandled(/* @__PURE__ */ new Set([...handled, issue.id]));
       setCount(count + 1);
@@ -7518,7 +7520,213 @@ function SomedayView(props) {
   ] });
 }
 
+// src/core/tasks-now.ts
+var HOUR = 36e5;
+var DAY = 24 * HOUR;
+var ORGANIZED_ALERT_MS = DAY;
+var PAUSED_ALERT_MS = 12 * HOUR;
+var FOCUS_OK_MS = HOUR;
+var FOCUS_CAUTION_MS = 2 * HOUR;
+function localMidnightMs(date) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  return new Date(y3, m3 - 1, d3).getTime();
+}
+function lastOrganizedMs(index, lastOrganizedAt) {
+  let latest = null;
+  for (const issue of index.issues.values()) {
+    if (issue.reviewed === null) continue;
+    const ms = localMidnightMs(issue.reviewed);
+    if (!Number.isNaN(ms) && (latest === null || ms > latest)) latest = ms;
+  }
+  const own = lastOrganizedAt ? Date.parse(lastOrganizedAt) : Number.NaN;
+  if (!Number.isNaN(own) && (latest === null || own > latest)) latest = own;
+  return latest;
+}
+function organizedCard(lastMs, now) {
+  if (lastMs === null) return { elapsedMs: null, level: "alert", label: "Never" };
+  const elapsedMs = Math.max(0, now - lastMs);
+  return { elapsedMs, level: elapsedMs >= ORGANIZED_ALERT_MS ? "alert" : "ok", label: null };
+}
+function lastWorklogStopMs(worklogs) {
+  let latest = null;
+  for (const l3 of worklogs) if (l3.toMs !== null && (latest === null || l3.toMs > latest)) latest = l3.toMs;
+  return latest;
+}
+function pausedCard(worklogs, now) {
+  if (worklogs.some((l3) => l3.toMs === null)) return { elapsedMs: null, level: "ok", label: "Running" };
+  const last = lastWorklogStopMs(worklogs);
+  if (last === null) return { elapsedMs: null, level: "alert", label: "No worklog" };
+  const elapsedMs = Math.max(0, now - last);
+  return { elapsedMs, level: elapsedMs >= PAUSED_ALERT_MS ? "alert" : "ok", label: null };
+}
+function focusElapsedMs(worklogs, now) {
+  let first = null;
+  for (const l3 of worklogs) if (l3.toMs === null && (first === null || l3.fromMs < first)) first = l3.fromMs;
+  return first === null ? null : Math.max(0, now - first);
+}
+function restCard(worklogs, now) {
+  const elapsedMs = focusElapsedMs(worklogs, now);
+  if (elapsedMs === null) return { elapsedMs: null, level: "idle", label: "Resting" };
+  if (elapsedMs < FOCUS_OK_MS) return { elapsedMs, level: "ok", label: "Healthy" };
+  if (elapsedMs < FOCUS_CAUTION_MS) return { elapsedMs, level: "caution", label: "Caution" };
+  return { elapsedMs, level: "alert", label: "Over-focused" };
+}
+function describe(index, key) {
+  const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
+  return { id: key.includes("#") ? key.split("#")[0] : key, summary: task?.summary ?? "", path: task?.path ?? null };
+}
+function runningTasks(index, now) {
+  const elapsed = /* @__PURE__ */ new Map();
+  for (const l3 of index.running()) {
+    const key = workKey(l3);
+    elapsed.set(key, Math.max(elapsed.get(key) ?? 0, Math.max(0, now - l3.fromMs)));
+  }
+  return [...elapsed.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([key, ms]) => ({ key, ...describe(index, key), elapsedMs: ms }));
+}
+function pausedTasks(index, keys) {
+  const running = new Set(index.running().map(workKey));
+  return keys.filter((key) => !running.has(key)).filter((key) => {
+    const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
+    if (!task) return false;
+    return !("status" in task) || task.status !== "closed" && task.status !== "canceled";
+  }).map((key) => ({ key, ...describe(index, key), elapsedMs: null }));
+}
+function todoTasks(index, today, excluded) {
+  const stored = index.board(today)?.board ?? emptyBoard();
+  const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
+  const lanes = boardLanes(index, today, board);
+  return [...lanes.top, ...lanes.next, ...lanes.waiting].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
+}
+var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function formatNow(ms) {
+  const d3 = new Date(ms);
+  const p3 = (n2) => String(n2).padStart(2, "0");
+  return `${d3.getFullYear()}-${p3(d3.getMonth() + 1)}-${p3(d3.getDate())} ${WEEKDAYS[d3.getDay()].toUpperCase()} ${p3(d3.getHours())}:${p3(d3.getMinutes())}:${p3(d3.getSeconds())}`;
+}
+function formatElapsed(ms) {
+  const minutes = Math.floor(ms / 6e4);
+  if (minutes >= 24 * 60) return `${Math.floor(minutes / (24 * 60))}d ${Math.floor(minutes % (24 * 60) / 60)}h`;
+  return formatMinutes(minutes);
+}
+
+// src/views/TasksNowDialog.tsx
+function StateCardView(props) {
+  const { card } = props;
+  const value = card.elapsedMs === null ? "\u2013" : formatElapsed(card.elapsedMs);
+  return /* @__PURE__ */ u3("div", { class: `vt-now-state is-${card.level}`, role: "group", "aria-label": props.title, children: [
+    /* @__PURE__ */ u3("div", { class: "vt-now-state-title", children: props.title }),
+    /* @__PURE__ */ u3("div", { class: "vt-now-state-value vt-num", children: value }),
+    /* @__PURE__ */ u3("div", { class: "vt-now-state-label", children: card.label ?? props.hint })
+  ] });
+}
+function TaskRow(props) {
+  const { ctx, task, action } = props;
+  const open = task.path ? () => void ctx.openPath(task.path) : null;
+  return /* @__PURE__ */ u3("div", { class: `vt-task${task.elapsedMs !== null ? " is-running" : ""}${props.paused ? " is-paused" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-routine-id", children: task.id }),
+    open ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${task.id} ${task.summary}`, ...linkProps(open), children: task.summary || task.key }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: task.summary || task.key }),
+    /* @__PURE__ */ u3("button", { class: `vt-play${action.running ? " is-running" : ""}`, "aria-label": action.label, title: action.label, onClick: action.onClick, children: [
+      /* @__PURE__ */ u3(Icon, { name: action.icon }),
+      task.elapsedMs !== null && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(task.elapsedMs / 6e4) })
+    ] })
+  ] });
+}
+function TasksNowDialog(props) {
+  const { ctx } = props;
+  useStoreVersion(ctx.store);
+  const now = useNow(1e3);
+  const index = ctx.store.index;
+  const [pausedKeys, setPausedKeys] = d2(ctx.settings.pausedTasks);
+  const [busy, setBusy] = d2(false);
+  const running = runningTasks(index, now);
+  const paused = running.length === 0 ? pausedTasks(index, pausedKeys) : [];
+  const worklogs = index.data.worklogs;
+  const todo = todoTasks(index, localToday(new Date(now)), /* @__PURE__ */ new Set([...running.map((t3) => t3.key), ...paused.map((t3) => t3.key)]));
+  const remember = async (keys) => {
+    ctx.settings.pausedTasks = keys;
+    setPausedKeys(keys);
+    await ctx.saveSettings();
+  };
+  const guarded = async (label, run) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await run();
+    } catch (e3) {
+      ctx.report(label, e3);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const stopGroup = (keepGroup) => guarded(keepGroup ? "\u4E00\u6642\u505C\u6B62\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F" : "\u505C\u6B62\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", async () => {
+    const keys = running.map((t3) => t3.key);
+    const entries = index.running();
+    if (entries.length === 0) return;
+    await ctx.writer.stopTimer(entries);
+    await remember(keepGroup ? keys : []);
+  });
+  const resume = () => guarded("\u518D\u958B\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", async () => {
+    await ctx.writer.startTimer(paused.map((t3) => t3.key), ctx.settings.deviceName);
+    await remember([]);
+  });
+  const discardPaused = () => guarded("\u7834\u68C4\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", () => remember([]));
+  return /* @__PURE__ */ u3("div", { class: "vt-now", children: [
+    /* @__PURE__ */ u3("section", { class: "vt-now-clock", "aria-live": "off", children: [
+      /* @__PURE__ */ u3(Icon, { name: "clock" }),
+      /* @__PURE__ */ u3("span", { class: "vt-now-clock-text vt-num", children: formatNow(now) })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-now-section", "aria-label": "PKM State", children: [
+      /* @__PURE__ */ u3("h3", { class: "vt-now-heading", children: "PKM State" }),
+      /* @__PURE__ */ u3("div", { class: "vt-now-states", children: [
+        /* @__PURE__ */ u3(StateCardView, { title: "Organized", hint: "since last Organize", card: organizedCard(lastOrganizedMs(index, ctx.settings.lastOrganizedAt), now) }),
+        /* @__PURE__ */ u3(StateCardView, { title: "Worklog Paused", hint: "since last worklog", card: pausedCard(worklogs, now) }),
+        /* @__PURE__ */ u3(StateCardView, { title: "Focus Streak", hint: "timer running", card: restCard(worklogs, now) })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-now-section", "aria-label": "Running tasks", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-now-heading-row", children: [
+        /* @__PURE__ */ u3("h3", { class: "vt-now-heading", children: paused.length > 0 ? "Paused" : "Running" }),
+        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+        running.length > 0 && /* @__PURE__ */ u3(S, { children: [
+          /* @__PURE__ */ u3("button", { class: "vt-button", disabled: busy, onClick: () => void stopGroup(true), title: "Pause all: save the worklog and keep this group to resume later", children: [
+            /* @__PURE__ */ u3(Icon, { name: "pause" }),
+            " Pause"
+          ] }),
+          /* @__PURE__ */ u3("button", { class: "vt-button", disabled: busy, onClick: () => void stopGroup(false), title: "Stop all: save the worklog and drop this group", children: [
+            /* @__PURE__ */ u3(Icon, { name: "square" }),
+            " Stop"
+          ] })
+        ] }),
+        paused.length > 0 && /* @__PURE__ */ u3(S, { children: [
+          /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: busy, onClick: () => void resume(), title: "Start all paused tasks again", children: [
+            /* @__PURE__ */ u3(Icon, { name: "play" }),
+            " Resume"
+          ] }),
+          /* @__PURE__ */ u3("button", { class: "vt-button", disabled: busy, onClick: () => void discardPaused(), title: "Drop the paused group", children: [
+            /* @__PURE__ */ u3(Icon, { name: "x" }),
+            " Discard"
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
+        running.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t3.key]) } })),
+        paused.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, paused: true, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
+        running.length === 0 && paused.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "No running tasks" })
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("section", { class: "vt-now-section", "aria-label": "Task list", children: [
+      /* @__PURE__ */ u3("h3", { class: "vt-now-heading", children: "Tasks" }),
+      /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
+        todo.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
+        todo.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "Nothing left on today's board" })
+      ] })
+    ] })
+  ] });
+}
+
 // src/main.ts
+var TASKS_NOW_COMMAND = "pkm-task:open-tasks-now";
+var BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 var VIEWS = [
   { type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
   { type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
@@ -7582,12 +7790,37 @@ var PkmTaskPlugin = class extends import_obsidian25.Plugin {
     installTaskHeaders(ctx, this);
     installSubAreaHiding(this);
     this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
+    this.addCommand({
+      id: "open-tasks-now",
+      name: "Open Tasks Now",
+      icon: "timer",
+      callback: () => {
+        const modal = new PreactModal(this.app, "Tasks Now", () => k(TasksNowDialog, { ctx }));
+        modal.modalEl.addClass("vt-now-modal");
+        modal.open();
+      }
+    });
+    let lastBadge = null;
+    this.register(
+      store.subscribe(() => {
+        const count = this.getRibbonBadge(TASKS_NOW_COMMAND);
+        if (count === lastBadge) return;
+        lastBadge = count;
+        this.app.workspace.trigger(BADGE_CHANGED_EVENT, TASKS_NOW_COMMAND);
+      })
+    );
     registerRunningStatusBar(this, store, { path: (path) => void ctx.openPath(path), sidebar: () => void openSidebar(true) });
     this.addSettingTab(new TaskSettingTab(this.app, this, this.taskSettings, () => this.saveData(this.taskSettings)));
     this.app.workspace.onLayoutReady(() => {
       void store.load((ref) => this.registerEvent(ref)).catch((e3) => ctx.report("\u30BF\u30B9\u30AF\u306E\u7D22\u5F15\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
       void openSidebar(false).catch((e3) => ctx.report("\u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
     });
+  }
+  /** pkm-ribbon が尋ねるバッジの数（ADR-0070 の 6）。Tasks Now は、記録中のタスクの数（なければ null） */
+  getRibbonBadge(command) {
+    if (command !== TASKS_NOW_COMMAND || !this.store) return null;
+    const n2 = new Set(this.store.index.running().map(workKey)).size;
+    return n2 > 0 ? n2 : null;
   }
   onunload() {
     this.store?.unload();
