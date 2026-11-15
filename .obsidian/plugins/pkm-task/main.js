@@ -3606,7 +3606,10 @@ function SubTimeline(props) {
       /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
         cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
         /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
-          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 8 8", refX: "7", refY: "4", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M0 0 L8 4 L0 8 z", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })) }),
+          /* @__PURE__ */ u3("defs", { children: ["", "-late"].map((suffix) => (
+            // 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
+            /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix ? " is-late" : ""}` }) })
+          )) }),
           routed.map((r3) => /* @__PURE__ */ u3("path", { class: `vt-timeline-arrow${r3.late ? " is-late" : ""}`, d: r3.d, "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : ""})` }))
         ] }),
         /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),

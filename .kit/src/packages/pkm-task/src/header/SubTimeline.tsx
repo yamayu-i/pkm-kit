@@ -122,8 +122,9 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 						<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
 							<defs>
 								{(["", "-late"] as const).map((suffix) => (
-									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-										<path d="M0 0 L8 4 L0 8 z" class={`vt-timeline-arrowhead${suffix ? " is-late" : ""}`} />
+									// 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
+									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+										<path d="M1 0.5 L5 3 L1 5.5" class={`vt-timeline-arrowhead${suffix ? " is-late" : ""}`} />
 									</marker>
 								))}
 							</defs>
