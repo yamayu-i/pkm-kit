@@ -2,7 +2,7 @@ import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { statusPatch } from "../core/actions";
 import { unfinished, unfinishedCount, type BoardState } from "../core/board";
-import { boardLanes, canStar, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
+import { boardLanes, canStar, showRoutineLane, TOP_LIMIT, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
@@ -41,14 +41,15 @@ const ENTER_MS = 3_000;
 /** 欄の見出し（画面の文字は英語。ADR-0137） */
 const LANE_TITLE: Record<LaneId, string> = {
 	working: "Working",
-	top: "Top 3",
+	top: "Top 4",
+	routine: "Routines",
 	next: "Up next",
 	waiting: "Waiting",
 	done: "Done",
 };
 
 const LANE_EMPTY: Partial<Record<LaneId, string>> = {
-	top: "Pick up to 3 cards that matter most today. Drag them here, or use the card menu.",
+	top: "Pick up to 4 cards that matter most today. Drag them here, or use the card menu.",
 	next: "Nothing else to do today.",
 };
 
@@ -111,9 +112,9 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 	};
 	const moreMenu = (e: MouseEvent) => {
 		const m = new Menu();
-		if (!done) {
-			if (starred) m.addItem((mi) => mi.setTitle("Remove from Top 3").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
-			else if (canStar(lanes)) m.addItem((mi) => mi.setTitle("Add to Top 3").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
+		if (!done && card.kind !== "routine") {
+			if (starred) m.addItem((mi) => mi.setTitle("Remove from Top 4").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
+			else if (canStar(lanes)) m.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
 		}
 		const up = stepOps(lanes, board, key, -1, undefined);
 		const down = stepOps(lanes, board, key, 1, undefined);
@@ -152,9 +153,19 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 		>
 			<StatusBadge status={status} enter={enter} onClick={statusMenu} />
 			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
-				{starred && !done && <Icon name="star" class="vt-task-star" />}
 				{summary}
 			</span>
+			{!done && card.kind !== "routine" && (
+				<button
+					class={`vt-icon-button vt-star${starred ? " is-starred" : ""}`}
+					aria-label={starred ? "Remove from Top 4" : "Add to Top 4"}
+					aria-pressed={starred}
+					title={starred ? "Remove from Top 4" : "Add to Top 4"}
+					onClick={() => void setStar(ctx, date, key, !starred)}
+				>
+					<Icon name="star" />
+				</button>
+			)}
 			<button
 				class={`vt-play${running.length > 0 ? " is-running" : ""}`}
 				aria-label={running.length > 0 ? "Stop timer" : "Start timer"}
@@ -164,7 +175,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				<Icon name={running.length > 0 ? "square" : "play"} />
 				{running.length > 0 && <span class="vt-num">{formatMinutes(elapsed / 60_000)}</span>}
 			</button>
-			<button class="vt-icon-button" aria-label="Card menu" title="Top 3, move and more" onClick={moreMenu}>
+			<button class="vt-icon-button" aria-label="Card menu" title="Move and more" onClick={moreMenu}>
 				<Icon name="more-horizontal" />
 			</button>
 		</div>
@@ -193,10 +204,11 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 	const { ctx, date, board, lanes, lane, now } = props;
 	const cards = lanes[lane];
 	const [over, setOver] = useState(false);
-	const [open, setOpen] = useState(false);
-	const collapsible = lane === "done";
+	// routine は開いたまま、Done はたたんだまま始める
+	const [open, setOpen] = useState(lane === "routine");
+	const collapsible = lane === "done" || lane === "routine";
 	const shown = !collapsible || open;
-	// ★ が 3 件あるときは、★ の外からは落とせない
+	// ★ が上限（TOP_LIMIT 件）あるときは、★ の外からは落とせない
 	const accepts = isDragLane(lane) && (lane !== "top" || canStar(lanes));
 	return (
 		<section
@@ -232,7 +244,7 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 						{LANE_TITLE[lane]}
 					</span>
 				)}
-				<span class="vt-count">{lane === "top" ? `${cards.length}/3` : cards.length}</span>
+				<span class="vt-count">{lane === "top" ? `${cards.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards.filter((c) => cardStatus(board, c) === "open").length}/${cards.length}` : cards.length}</span>
 			</header>
 			{shown && (
 				<div class="vt-lane-cards">
@@ -281,7 +293,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 			else void createOnBoard(ctx, date, choice.summary);
 		}).open();
 	};
-	const visibleLanes: LaneId[] = ["working", "top", "next", "waiting", "done"].filter((l) => l === "top" || l === "next" || lanes[l as LaneId].length > 0) as LaneId[];
+	const visibleLanes: LaneId[] = (["working", "top", "routine", "next", "waiting", "done"] as LaneId[]).filter((l) => (l === "routine" ? showRoutineLane(board, lanes) : l === "top" || l === "next" || lanes[l].length > 0));
 	return (
 		<div class="vt-board">
 			<div class="vt-board-head">

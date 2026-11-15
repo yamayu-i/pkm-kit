@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { unfinished } from "../src/core/board";
 import { parseBoardLog, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
-import { boardLanes, canStar, cardRuns, moveOps, stepOps, type BoardLanes } from "../src/core/board-lanes";
+import { boardLanes, canStar, showRoutineLane, cardRuns, moveOps, stepOps, type BoardLanes } from "../src/core/board-lanes";
 import { closeBoardNote } from "../src/core/board-note";
 import { TaskIndex } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
@@ -94,6 +94,8 @@ describe("欄（ADR-0137）", () => {
 		issue("i-5", "closed"),
 		issue("i-6"),
 		issue("i-7", "someday"),
+		issue("i-8"),
+		issue("i-9"),
 		routine("r-1"),
 		routine("r-2"),
 	];
@@ -105,9 +107,10 @@ describe("欄（ADR-0137）", () => {
 		expect(keys(lanesOf(index))).toEqual({
 			working: ["i-6"],
 			top: [],
-			next: ["i-2", "r-1"],
+			routine: ["r-1", "r-2"],
+			next: ["i-2"],
 			waiting: ["i-3", "i-4"],
-			done: ["i-1", "i-5", "i-7", "r-2"],
+			done: ["i-1", "i-5", "i-7"],
 		});
 	});
 
@@ -119,8 +122,8 @@ describe("欄（ADR-0137）", () => {
 	});
 
 	it("並びは 1 つで、★・次にやる順・待ちのそれぞれの中の順になる。並びにないものは載せた順で末尾", () => {
-		const { index } = load(md, [...base, line(DATE, { op: "star", task: "i-6", on: true }), line(DATE, { op: "order", tasks: ["r-1", "i-4", "i-6", "i-3"] })]);
-		expect(keys(lanesOf(index))).toMatchObject({ top: ["i-6"], next: ["r-1", "i-1", "i-2", "r-2"], waiting: ["i-4", "i-3"] });
+		const { index } = load(md, [...base, line(DATE, { op: "star", task: "i-6", on: true }), line(DATE, { op: "order", tasks: ["i-2", "i-4", "i-6", "i-3"] })]);
+		expect(keys(lanesOf(index))).toMatchObject({ top: ["i-6"], next: ["i-2", "i-1"], waiting: ["i-4", "i-3"], routine: ["r-1", "r-2"] });
 	});
 
 	it("並びは翌日以降にも引き継ぐ", () => {
@@ -129,14 +132,28 @@ describe("欄（ADR-0137）", () => {
 		expect(index.order("2026-11-14")).toBeUndefined();
 	});
 
-	it("★ は 3 件まで。2 台が同時に付けて 4 件になったら全部出す", () => {
-		const stars = ["i-1", "i-2", "i-6", "r-1"].map((task) => line(DATE, { op: "star", task, on: true }));
-		const { index } = load(md, [...base, ...stars.slice(0, 2)]);
+	it("★ は 4 件まで。2 台が同時に付けて 5 件になったら全部出す", () => {
+		const stars = ["i-1", "i-2", "i-6", "i-8", "i-9"].map((task) => line(DATE, { op: "star", task, on: true }));
+		const more = ["i-8", "i-9"].map((task) => line(DATE, { op: "add", task }));
+		const { index } = load(md, [...base, ...more, ...stars.slice(0, 2)]);
 		expect(canStar(lanesOf(index))).toBe(true);
-		const three = load(md, [...base, ...stars.slice(0, 3)]).index;
-		expect(canStar(lanesOf(three))).toBe(false);
-		const four = load(md, [...base, ...stars]).index;
-		expect(keys(lanesOf(four)).top).toEqual(["i-1", "i-2", "i-6", "r-1"]);
+		const four = load(md, [...base, ...more, ...stars.slice(0, 4)]).index;
+		expect(canStar(lanesOf(four))).toBe(false);
+		const five = load(md, [...base, ...more, ...stars]).index;
+		expect(keys(lanesOf(five)).top).toEqual(["i-1", "i-2", "i-6", "i-8", "i-9"]);
+	});
+
+	it("routine は★・作業中でも routine の欄に入り、すべて結果が付いたら欄を隠す", () => {
+		const worklog = '{"id":"wl_1","task_id":"r-1","from":"2026-11-16T01:00:00Z","to":null,"description":""}\n';
+		const star = line(DATE, { op: "star", task: "r-1", on: true });
+		const one = load(md, [...base, star, line(DATE, { op: "routine", task: "r-2", result: "closed" })], worklog);
+		const lanes = lanesOf(one.index);
+		expect(keys(lanes).routine).toEqual(["r-1", "r-2"]);
+		expect(keys(lanes).working).toEqual([]);
+		const board = one.index.board(DATE)!.board;
+		expect(showRoutineLane(board, lanes)).toBe(true);
+		const all = load(md, [...base, line(DATE, { op: "routine", task: "r-1", result: "closed" }), line(DATE, { op: "routine", task: "r-2", result: "canceled" })]);
+		expect(showRoutineLane(all.index.board(DATE)!.board, lanesOf(all.index))).toBe(false);
 	});
 });
 

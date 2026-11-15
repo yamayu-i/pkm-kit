@@ -12,14 +12,14 @@ export type BoardCard =
 	| { kind: "sub"; key: string; sub: SubIssue; parent: Issue | undefined }
 	| { kind: "routine"; key: string; routine: Routine };
 
-/** 欄（上から）。作業中・★今日の最重要・次にやる順・待ち・委任・片付いた */
-export type LaneId = "working" | "top" | "next" | "waiting" | "done";
-export const LANES: readonly LaneId[] = ["working", "top", "next", "waiting", "done"];
+/** 欄（上から）。作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・待ち・委任・片付いた */
+export type LaneId = "working" | "top" | "routine" | "next" | "waiting" | "done";
+export const LANES: readonly LaneId[] = ["working", "top", "routine", "next", "waiting", "done"];
 /** 手で並べられる欄（1 つの並びを使う） */
 export type OrderedLane = "top" | "next" | "waiting";
 
 /** ★ の上限 */
-export const TOP_LIMIT = 3;
+export const TOP_LIMIT = 4;
 
 export type BoardLanes = Record<LaneId, BoardCard[]>;
 
@@ -60,8 +60,9 @@ function isSettled(board: BoardState, card: BoardCard): boolean {
 	return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
 
-/** カードの欄。作業中 → 片付いた → 待ち・委任 → ★ → 次にやる順 の順で、最初に当たったもの */
+/** カードの欄。routine は常に routine の欄（issue・サブと混ぜない。★ も作業中も片付いたも使わない）。ほかは作業中 → 片付いた → 待ち・委任 → ★ → 次にやる順 の順で、最初に当たったもの */
 export function laneOf(index: TaskIndex, board: BoardState, card: BoardCard): LaneId {
+	if (card.kind === "routine") return "routine";
 	if (index.running(card.key).length > 0) return "working";
 	if (isSettled(board, card)) return "done";
 	const status = cardStatus(board, card);
@@ -72,7 +73,7 @@ export function laneOf(index: TaskIndex, board: BoardState, card: BoardCard): La
 
 /** 欄ごとのカード。作業中はタイマーを始めた順、片付いたは載せた順、ほかは並び（ADR-0114）の順 */
 export function boardLanes(index: TaskIndex, date: LocalDate, board: BoardState): BoardLanes {
-	const lanes: BoardLanes = { working: [], top: [], next: [], waiting: [], done: [] };
+	const lanes: BoardLanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
 	const order = index.order(date);
 	for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) lanes[laneOf(index, board, card)].push(card);
 	const startedAt = (c: BoardCard) => Math.min(...index.running(c.key).map((l) => l.fromMs));
@@ -97,6 +98,11 @@ export function cardRuns(cards: readonly BoardCard[]): CardRun[] {
 		else runs.push({ parent, cards: [card] });
 	}
 	return runs;
+}
+
+/** routine の欄を出すか: 結果のない（まだ片付いていない）routine があるとき。すべて片付いたら欄ごと隠す */
+export function showRoutineLane(board: BoardState, lanes: BoardLanes): boolean {
+	return lanes.routine.some((c) => cardStatus(board, c) === "open");
 }
 
 /** ★ をもう 1 件付けられるか */
