@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "pkm-task": {
+      "command": "node",
+      "args": [".kit/bin/mcp.mjs", ".", "--device=ai"]
+    },
+    "other": {
+      "command": "other-server"
+    }
+  }
+}

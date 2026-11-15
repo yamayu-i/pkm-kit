@@ -54,6 +54,15 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - スライドの `deck.html` を変えたら `node .kit/bin/slide.mjs build <フォルダ>` でビルドし、`index.html` と一緒にコミットする（`node .claude/scripts/verify.mjs` が、古い・手で直した `index.html` を止める）。ノートからは `[題](slide/<フォルダ>/index.html)` でリンクしてよい
 - `tmp/` の外のノートから `tmp/` へリンクしない（ほかの端末にはないので、リンク切れになる）。残したいもの・ほかの端末でも見たいものは `tmp/` の外に置く
 
+## MCP
+
+Vault ルートの `.mcp.json` の MCP サーバー `pkm`（[ADR-0156](../../.kit/src/docs/adr/0156-pkm-mcp.md)）で、ノート・デイリーノート・wiki・タスク管理を読み、検査する。
+
+- ノートを探す・読むときは、ファイルを直接 Grep・Read する前に `note_search`・`note_get`・`note_links`・`daily_get`・`wiki_get_index` を使う。検索は単純一致なので、見つからなければ言い換えて検索し直す
+- タスク管理のデータは `task_` の群だけで読み書きする（[task-coach](../skills/task-coach/SKILL.md)）
+- 足りずにファイルを直接読み書きしたとき、結果が誤っていた・大きすぎた・遅かったとき、拒否が不当だったときは、`meta_feedback` で種類と 200 字以内の要約を記録する（ノートの中身や個人の情報を書かない）
+- 使われ方は `.claude/mcp-log/` に記録される（本文は残らない。コミットする）。MCP を通さないノートの読み書きもフックが区分だけを記録する。harness-review が集計を読む
+
 ## 共通 frontmatter
 
 決定と移行状態は [ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)。対象はPKMノートの Markdown。tmp/、template/、隠しパス、管理用 README.md（各階層）は除く。除外は入力資料としてLLMに読ませないという意味ではない。

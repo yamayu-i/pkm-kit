@@ -207,8 +207,10 @@ describe("MCP サーバーと検査付き操作", () => {
 
 		const listRes = handleMcpRequest(ctx, { jsonrpc: "2.0", id: 2, method: "tools/list" });
 		const tools = (listRes?.result as { tools: { name: string }[] }).tools;
-		expect(tools.some((t) => t.name === "get_overview")).toBe(true);
-		expect(tools.some((t) => t.name === "get_board")).toBe(true);
+		// ADR-0156: task_ の接頭辞を付けて公開する（旧名は呼べるが、一覧には出さない）
+		expect(tools.some((t) => t.name === "task_get_overview")).toBe(true);
+		expect(tools.some((t) => t.name === "task_get_board")).toBe(true);
+		expect(tools.some((t) => t.name === "get_board")).toBe(false);
 
 		const callRes = handleMcpRequest(ctx, {
 			jsonrpc: "2.0",

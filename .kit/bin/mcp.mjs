@@ -983,13 +983,13 @@ var require_Collection = __commonJS({
 var require_stringifyComment = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
-    var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
+    var stringifyComment = (str2) => str2.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
       if (/^\n+$/.test(comment))
         return comment.substring(1);
       return indent ? comment.replace(/^(?! *$)/gm, indent) : comment;
     }
-    var lineComment = (str, indent, comment) => str.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str.endsWith(" ") ? "" : " ") + comment;
+    var lineComment = (str2, indent, comment) => str2.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str2.endsWith(" ") ? "" : " ") + comment;
     exports.indentComment = indentComment;
     exports.lineComment = lineComment;
     exports.stringifyComment = stringifyComment;
@@ -1143,16 +1143,16 @@ var require_stringifyString = __commonJS({
       lineWidth: ctx.options.lineWidth,
       minContentWidth: ctx.options.minContentWidth
     });
-    var containsDocumentMarker = (str) => /^(%|---|\.\.\.)/m.test(str);
-    function lineLengthOverLimit(str, lineWidth, indentLength) {
+    var containsDocumentMarker = (str2) => /^(%|---|\.\.\.)/m.test(str2);
+    function lineLengthOverLimit(str2, lineWidth, indentLength) {
       if (!lineWidth || lineWidth < 0)
         return false;
       const limit = lineWidth - indentLength;
-      const strLen = str.length;
+      const strLen = str2.length;
       if (strLen <= limit)
         return false;
       for (let i = 0, start = 0; i < strLen; ++i) {
-        if (str[i] === "\n") {
+        if (str2[i] === "\n") {
           if (i - start > limit)
             return true;
           start = i + 1;
@@ -1169,11 +1169,11 @@ var require_stringifyString = __commonJS({
       const { implicitKey } = ctx;
       const minMultiLineLength = ctx.options.doubleQuotedMinMultiLineLength;
       const indent = ctx.indent || (containsDocumentMarker(value) ? "  " : "");
-      let str = "";
+      let str2 = "";
       let start = 0;
       for (let i = 0, ch = json[i]; ch; ch = json[++i]) {
         if (ch === " " && json[i + 1] === "\\" && json[i + 2] === "n") {
-          str += json.slice(start, i) + "\\ ";
+          str2 += json.slice(start, i) + "\\ ";
           i += 1;
           start = i;
           ch = "\\";
@@ -1182,38 +1182,38 @@ var require_stringifyString = __commonJS({
           switch (json[i + 1]) {
             case "u":
               {
-                str += json.slice(start, i);
+                str2 += json.slice(start, i);
                 const code = json.substr(i + 2, 4);
                 switch (code) {
                   case "0000":
-                    str += "\\0";
+                    str2 += "\\0";
                     break;
                   case "0007":
-                    str += "\\a";
+                    str2 += "\\a";
                     break;
                   case "000b":
-                    str += "\\v";
+                    str2 += "\\v";
                     break;
                   case "001b":
-                    str += "\\e";
+                    str2 += "\\e";
                     break;
                   case "0085":
-                    str += "\\N";
+                    str2 += "\\N";
                     break;
                   case "00a0":
-                    str += "\\_";
+                    str2 += "\\_";
                     break;
                   case "2028":
-                    str += "\\L";
+                    str2 += "\\L";
                     break;
                   case "2029":
-                    str += "\\P";
+                    str2 += "\\P";
                     break;
                   default:
                     if (code.substr(0, 2) === "00")
-                      str += "\\x" + code.substr(2);
+                      str2 += "\\x" + code.substr(2);
                     else
-                      str += json.substr(i, 6);
+                      str2 += json.substr(i, 6);
                 }
                 i += 5;
                 start = i + 1;
@@ -1223,14 +1223,14 @@ var require_stringifyString = __commonJS({
               if (implicitKey || json[i + 2] === '"' || json.length < minMultiLineLength) {
                 i += 1;
               } else {
-                str += json.slice(start, i) + "\n\n";
+                str2 += json.slice(start, i) + "\n\n";
                 while (json[i + 2] === "\\" && json[i + 3] === "n" && json[i + 4] !== '"') {
-                  str += "\n";
+                  str2 += "\n";
                   i += 2;
                 }
-                str += indent;
+                str2 += indent;
                 if (json[i + 2] === " ")
-                  str += "\\";
+                  str2 += "\\";
                 i += 1;
                 start = i + 1;
               }
@@ -1239,8 +1239,8 @@ var require_stringifyString = __commonJS({
               i += 1;
           }
       }
-      str = start ? str + json.slice(start) : json;
-      return implicitKey ? str : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
+      str2 = start ? str2 + json.slice(start) : json;
+      return implicitKey ? str2 : foldFlowLines.foldFlowLines(str2, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
     }
     function singleQuotedString(value, ctx) {
       if (ctx.options.singleQuote === false || ctx.implicitKey && value.includes("\n") || /[ \t]\n|\n[ \t]/.test(value))
@@ -1368,15 +1368,15 @@ ${indent}${start}${value}${end}`;
           return quotedString(value, ctx);
         }
       }
-      const str = value.replace(/\n+/g, `$&
+      const str2 = value.replace(/\n+/g, `$&
 ${indent}`);
       if (actualString) {
-        const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str);
+        const test = (tag) => tag.default && tag.tag !== "tag:yaml.org,2002:str" && tag.test?.test(str2);
         const { compat, tags } = ctx.doc.schema;
         if (tags.some(test) || compat?.some(test))
           return quotedString(value, ctx);
       }
-      return implicitKey ? str : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
+      return implicitKey ? str2 : foldFlowLines.foldFlowLines(str2, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
     }
     function stringifyString(item, ctx, onComment, onChompKeep) {
       const { implicitKey, inFlow } = ctx;
@@ -1528,11 +1528,11 @@ var require_stringify = __commonJS({
       const props = stringifyProps(node, tagObj, ctx);
       if (props.length > 0)
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
-      const str = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
+      const str2 = typeof tagObj.stringify === "function" ? tagObj.stringify(node, ctx, onComment, onChompKeep) : identity.isScalar(node) ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep) : node.toString(ctx, onComment, onChompKeep);
       if (!props)
-        return str;
-      return identity.isScalar(node) || str[0] === "{" || str[0] === "[" ? `${props} ${str}` : `${props}
-${ctx.indent}${str}`;
+        return str2;
+      return identity.isScalar(node) || str2[0] === "{" || str2[0] === "[" ? `${props} ${str2}` : `${props}
+${ctx.indent}${str2}`;
     }
     exports.createStringifyContext = createStringifyContext;
     exports.stringify = stringify2;
@@ -1567,8 +1567,8 @@ var require_stringifyPair = __commonJS({
       });
       let keyCommentDone = false;
       let chompKeep = false;
-      let str = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
-      if (!explicitKey && !ctx.inFlow && str.length > 1024) {
+      let str2 = stringify2.stringify(key, ctx, () => keyCommentDone = true, () => chompKeep = true);
+      if (!explicitKey && !ctx.inFlow && str2.length > 1024) {
         if (simpleKeys)
           throw new Error("With simple keys, single line scalar must not span more than 1024 characters");
         explicitKey = true;
@@ -1577,27 +1577,27 @@ var require_stringifyPair = __commonJS({
         if (allNullValues || value == null) {
           if (keyCommentDone && onComment)
             onComment();
-          return str === "" ? "?" : explicitKey ? `? ${str}` : str;
+          return str2 === "" ? "?" : explicitKey ? `? ${str2}` : str2;
         }
       } else if (allNullValues && !simpleKeys || value == null && explicitKey) {
-        str = `? ${str}`;
+        str2 = `? ${str2}`;
         if (keyComment && !keyCommentDone) {
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
         } else if (chompKeep && onChompKeep)
           onChompKeep();
-        return str;
+        return str2;
       }
       if (keyCommentDone)
         keyComment = null;
       if (explicitKey) {
         if (keyComment)
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
-        str = `? ${str}
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
+        str2 = `? ${str2}
 ${indent}:`;
       } else {
-        str = `${str}:`;
+        str2 = `${str2}:`;
         if (keyComment)
-          str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
+          str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(keyComment));
       }
       let vsb, vcb, valueComment;
       if (identity.isNode(value)) {
@@ -1613,7 +1613,7 @@ ${indent}:`;
       }
       ctx.implicitKey = false;
       if (!explicitKey && !keyComment && identity.isScalar(value))
-        ctx.indentAtStart = str.length + 1;
+        ctx.indentAtStart = str2.length + 1;
       chompKeep = false;
       if (!indentSeq && indentStep.length >= 2 && !ctx.inFlow && !explicitKey && identity.isSeq(value) && !value.flow && !value.tag && !value.anchor) {
         ctx.indent = ctx.indent.substring(2);
@@ -1657,16 +1657,16 @@ ${ctx.indent}`;
       } else if (valueStr === "" || valueStr[0] === "\n") {
         ws = "";
       }
-      str += ws + valueStr;
+      str2 += ws + valueStr;
       if (ctx.inFlow) {
         if (valueCommentDone && onComment)
           onComment();
       } else if (valueComment && !valueCommentDone) {
-        str += stringifyComment.lineComment(str, ctx.indent, commentString(valueComment));
+        str2 += stringifyComment.lineComment(str2, ctx.indent, commentString(valueComment));
       } else if (chompKeep && onChompKeep) {
         onChompKeep();
       }
-      return str;
+      return str2;
     }
     exports.stringifyPair = stringifyPair;
   }
@@ -1893,31 +1893,31 @@ var require_stringifyCollection = __commonJS({
           }
         }
         chompKeep = false;
-        let str2 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
+        let str3 = stringify2.stringify(item, itemCtx, () => comment2 = null, () => chompKeep = true);
         if (comment2)
-          str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment2));
+          str3 += stringifyComment.lineComment(str3, itemIndent, commentString(comment2));
         if (chompKeep && comment2)
           chompKeep = false;
-        lines.push(blockItemPrefix + str2);
+        lines.push(blockItemPrefix + str3);
       }
-      let str;
+      let str2;
       if (lines.length === 0) {
-        str = flowChars.start + flowChars.end;
+        str2 = flowChars.start + flowChars.end;
       } else {
-        str = lines[0];
+        str2 = lines[0];
         for (let i = 1; i < lines.length; ++i) {
           const line = lines[i];
-          str += line ? `
+          str2 += line ? `
 ${indent}${line}` : "\n";
         }
       }
       if (comment) {
-        str += "\n" + stringifyComment.indentComment(commentString(comment), indent);
+        str2 += "\n" + stringifyComment.indentComment(commentString(comment), indent);
         if (onComment)
           onComment();
       } else if (chompKeep && onChompKeep)
         onChompKeep();
-      return str;
+      return str2;
     }
     function stringifyFlowCollection({ items }, ctx, { flowChars, itemIndent }) {
       const { indent, indentStep, flowCollectionPadding: fcPadding, options: { commentString } } = ctx;
@@ -1960,21 +1960,21 @@ ${indent}${line}` : "\n";
         }
         if (comment)
           reqNewline = true;
-        let str = stringify2.stringify(item, itemCtx, () => comment = null);
-        reqNewline || (reqNewline = lines.length > linesAtValue || str.includes("\n"));
+        let str2 = stringify2.stringify(item, itemCtx, () => comment = null);
+        reqNewline || (reqNewline = lines.length > linesAtValue || str2.includes("\n"));
         if (i < items.length - 1) {
-          str += ",";
+          str2 += ",";
         } else if (ctx.options.trailingComma) {
           if (ctx.options.lineWidth > 0) {
-            reqNewline || (reqNewline = lines.reduce((sum, line) => sum + line.length + 2, 2) + (str.length + 2) > ctx.options.lineWidth);
+            reqNewline || (reqNewline = lines.reduce((sum, line) => sum + line.length + 2, 2) + (str2.length + 2) > ctx.options.lineWidth);
           }
           if (reqNewline) {
-            str += ",";
+            str2 += ",";
           }
         }
         if (comment)
-          str += stringifyComment.lineComment(str, itemIndent, commentString(comment));
-        lines.push(str);
+          str2 += stringifyComment.lineComment(str2, itemIndent, commentString(comment));
+        lines.push(str2);
         linesAtValue = lines.length;
       }
       const { start, end } = flowChars;
@@ -1986,11 +1986,11 @@ ${indent}${line}` : "\n";
           reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
-          let str = start;
+          let str2 = start;
           for (const line of lines)
-            str += line ? `
+            str2 += line ? `
 ${indentStep}${indent}${line}` : "\n";
-          return `${str}
+          return `${str2}
 ${indent}${end}`;
         } else {
           return `${start}${fcPadding}${lines.join(" ")}${fcPadding}${end}`;
@@ -2322,7 +2322,7 @@ var require_string = __commonJS({
       identify: (value) => typeof value === "string",
       default: true,
       tag: "tag:yaml.org,2002:str",
-      resolve: (str) => str,
+      resolve: (str2) => str2,
       stringify(item, ctx, onComment, onChompKeep) {
         ctx = Object.assign({ actualString: true }, ctx);
         return stringifyString.stringifyString(item, ctx, onComment, onChompKeep);
@@ -2360,7 +2360,7 @@ var require_bool = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:bool",
       test: /^(?:[Tt]rue|TRUE|[Ff]alse|FALSE)$/,
-      resolve: (str) => new Scalar.Scalar(str[0] === "t" || str[0] === "T"),
+      resolve: (str2) => new Scalar.Scalar(str2[0] === "t" || str2[0] === "T"),
       stringify({ source, value }, ctx) {
         if (source && boolTag.test.test(source)) {
           const sv = source[0] === "t" || source[0] === "T";
@@ -2412,7 +2412,7 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str) => str.slice(-3).toLowerCase() === "nan" ? NaN : str[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str2) => str2.slice(-3).toLowerCase() === "nan" ? NaN : str2[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -2421,7 +2421,7 @@ var require_float = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)[eE][-+]?[0-9]+$/,
-      resolve: (str) => parseFloat(str),
+      resolve: (str2) => parseFloat(str2),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -2432,11 +2432,11 @@ var require_float = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:\.[0-9]+|[0-9]+\.[0-9]*)$/,
-      resolve(str) {
-        const node = new Scalar.Scalar(parseFloat(str));
-        const dot = str.indexOf(".");
-        if (dot !== -1 && str[str.length - 1] === "0")
-          node.minFractionDigits = str.length - dot - 1;
+      resolve(str2) {
+        const node = new Scalar.Scalar(parseFloat(str2));
+        const dot = str2.indexOf(".");
+        if (dot !== -1 && str2[str2.length - 1] === "0")
+          node.minFractionDigits = str2.length - dot - 1;
         return node;
       },
       stringify: stringifyNumber.stringifyNumber
@@ -2453,7 +2453,7 @@ var require_int = __commonJS({
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    var intResolve = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
+    var intResolve = (str2, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str2) : parseInt(str2.substring(offset), radix);
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value) && value >= 0)
@@ -2466,7 +2466,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^0o[0-7]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 8, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 8, opt),
       stringify: (node) => intStringify(node, 8, "0o")
     };
     var int = {
@@ -2474,7 +2474,7 @@ var require_int = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 0, 10, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -2483,7 +2483,7 @@ var require_int = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^0x[0-9a-fA-F]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 16, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -2536,7 +2536,7 @@ var require_schema2 = __commonJS({
         identify: (value) => typeof value === "string",
         default: true,
         tag: "tag:yaml.org,2002:str",
-        resolve: (str) => str,
+        resolve: (str2) => str2,
         stringify: stringifyJSON
       },
       {
@@ -2553,7 +2553,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:bool",
         test: /^true$|^false$/,
-        resolve: (str) => str === "true",
+        resolve: (str2) => str2 === "true",
         stringify: stringifyJSON
       },
       {
@@ -2561,7 +2561,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:int",
         test: /^-?(?:0|[1-9][0-9]*)$/,
-        resolve: (str, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str, 10),
+        resolve: (str2, _onError, { intAsBigInt }) => intAsBigInt ? BigInt(str2) : parseInt(str2, 10),
         stringify: ({ value }) => intIdentify(value) ? value.toString() : JSON.stringify(value)
       },
       {
@@ -2569,7 +2569,7 @@ var require_schema2 = __commonJS({
         default: true,
         tag: "tag:yaml.org,2002:float",
         test: /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$/,
-        resolve: (str) => parseFloat(str),
+        resolve: (str2) => parseFloat(str2),
         stringify: stringifyJSON
       }
     ];
@@ -2577,9 +2577,9 @@ var require_schema2 = __commonJS({
       default: true,
       tag: "",
       test: /^/,
-      resolve(str, onError) {
-        onError(`Unresolved plain scalar ${JSON.stringify(str)}`);
-        return str;
+      resolve(str2, onError) {
+        onError(`Unresolved plain scalar ${JSON.stringify(str2)}`);
+        return str2;
       }
     };
     var schema = [map.map, seq.seq].concat(jsonScalars, jsonError);
@@ -2611,10 +2611,10 @@ var require_binary = __commonJS({
         if (typeof node_buffer.Buffer === "function") {
           return node_buffer.Buffer.from(src, "base64");
         } else if (typeof atob === "function") {
-          const str = atob(src.replace(/[\n\r]/g, ""));
-          const buffer = new Uint8Array(str.length);
-          for (let i = 0; i < str.length; ++i)
-            buffer[i] = str.charCodeAt(i);
+          const str2 = atob(src.replace(/[\n\r]/g, ""));
+          const buffer = new Uint8Array(str2.length);
+          for (let i = 0; i < str2.length; ++i)
+            buffer[i] = str2.charCodeAt(i);
           return buffer;
         } else {
           onError("This environment does not support reading binary tags; either Buffer or atob is required");
@@ -2625,28 +2625,28 @@ var require_binary = __commonJS({
         if (!value)
           return "";
         const buf = value;
-        let str;
+        let str2;
         if (typeof node_buffer.Buffer === "function") {
-          str = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
+          str2 = buf instanceof node_buffer.Buffer ? buf.toString("base64") : node_buffer.Buffer.from(buf.buffer).toString("base64");
         } else if (typeof btoa === "function") {
           let s = "";
           for (let i = 0; i < buf.length; ++i)
             s += String.fromCharCode(buf[i]);
-          str = btoa(s);
+          str2 = btoa(s);
         } else {
           throw new Error("This environment does not support writing binary tags; either Buffer or btoa is required");
         }
         type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
           const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
-          const n = Math.ceil(str.length / lineWidth);
+          const n = Math.ceil(str2.length / lineWidth);
           const lines = new Array(n);
           for (let i = 0, o = 0; i < n; ++i, o += lineWidth) {
-            lines[i] = str.substr(o, lineWidth);
+            lines[i] = str2.substr(o, lineWidth);
           }
-          str = lines.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
+          str2 = lines.join(type === Scalar.Scalar.BLOCK_LITERAL ? "\n" : " ");
         }
-        return stringifyString.stringifyString({ comment, type, value: str }, ctx, onComment, onChompKeep);
+        return stringifyString.stringifyString({ comment, type, value: str2 }, ctx, onComment, onChompKeep);
       }
     };
     exports.binary = binary;
@@ -2852,7 +2852,7 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
-      resolve: (str) => str.slice(-3).toLowerCase() === "nan" ? NaN : str[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
+      resolve: (str2) => str2.slice(-3).toLowerCase() === "nan" ? NaN : str2[0] === "-" ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY,
       stringify: stringifyNumber.stringifyNumber
     };
     var floatExp = {
@@ -2861,7 +2861,7 @@ var require_float2 = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "EXP",
       test: /^[-+]?(?:[0-9][0-9_]*)?(?:\.[0-9_]*)?[eE][-+]?[0-9]+$/,
-      resolve: (str) => parseFloat(str.replace(/_/g, "")),
+      resolve: (str2) => parseFloat(str2.replace(/_/g, "")),
       stringify(node) {
         const num = Number(node.value);
         return isFinite(num) ? num.toExponential() : stringifyNumber.stringifyNumber(node);
@@ -2872,11 +2872,11 @@ var require_float2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:float",
       test: /^[-+]?(?:[0-9][0-9_]*)?\.[0-9_]*$/,
-      resolve(str) {
-        const node = new Scalar.Scalar(parseFloat(str.replace(/_/g, "")));
-        const dot = str.indexOf(".");
+      resolve(str2) {
+        const node = new Scalar.Scalar(parseFloat(str2.replace(/_/g, "")));
+        const dot = str2.indexOf(".");
         if (dot !== -1) {
-          const f = str.substring(dot + 1).replace(/_/g, "");
+          const f = str2.substring(dot + 1).replace(/_/g, "");
           if (f[f.length - 1] === "0")
             node.minFractionDigits = f.length;
         }
@@ -2896,34 +2896,34 @@ var require_int2 = __commonJS({
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
-    function intResolve(str, offset, radix, { intAsBigInt }) {
-      const sign = str[0];
+    function intResolve(str2, offset, radix, { intAsBigInt }) {
+      const sign = str2[0];
       if (sign === "-" || sign === "+")
         offset += 1;
-      str = str.substring(offset).replace(/_/g, "");
+      str2 = str2.substring(offset).replace(/_/g, "");
       if (intAsBigInt) {
         switch (radix) {
           case 2:
-            str = `0b${str}`;
+            str2 = `0b${str2}`;
             break;
           case 8:
-            str = `0o${str}`;
+            str2 = `0o${str2}`;
             break;
           case 16:
-            str = `0x${str}`;
+            str2 = `0x${str2}`;
             break;
         }
-        const n2 = BigInt(str);
+        const n2 = BigInt(str2);
         return sign === "-" ? BigInt(-1) * n2 : n2;
       }
-      const n = parseInt(str, radix);
+      const n = parseInt(str2, radix);
       return sign === "-" ? -1 * n : n;
     }
     function intStringify(node, radix, prefix) {
       const { value } = node;
       if (intIdentify(value)) {
-        const str = value.toString(radix);
-        return value < 0 ? "-" + prefix + str.substr(1) : prefix + str;
+        const str2 = value.toString(radix);
+        return value < 0 ? "-" + prefix + str2.substr(1) : prefix + str2;
       }
       return stringifyNumber.stringifyNumber(node);
     }
@@ -2933,7 +2933,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "BIN",
       test: /^[-+]?0b[0-1_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 2, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 2, opt),
       stringify: (node) => intStringify(node, 2, "0b")
     };
     var intOct = {
@@ -2942,7 +2942,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "OCT",
       test: /^[-+]?0[0-7_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 1, 8, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 1, 8, opt),
       stringify: (node) => intStringify(node, 8, "0")
     };
     var int = {
@@ -2950,7 +2950,7 @@ var require_int2 = __commonJS({
       default: true,
       tag: "tag:yaml.org,2002:int",
       test: /^[-+]?[0-9][0-9_]*$/,
-      resolve: (str, _onError, opt) => intResolve(str, 0, 10, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 0, 10, opt),
       stringify: stringifyNumber.stringifyNumber
     };
     var intHex = {
@@ -2959,7 +2959,7 @@ var require_int2 = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "HEX",
       test: /^[-+]?0x[0-9a-fA-F_]+$/,
-      resolve: (str, _onError, opt) => intResolve(str, 2, 16, opt),
+      resolve: (str2, _onError, opt) => intResolve(str2, 2, 16, opt),
       stringify: (node) => intStringify(node, 16, "0x")
     };
     exports.int = int;
@@ -3063,9 +3063,9 @@ var require_timestamp = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
-    function parseSexagesimal(str, asBigInt) {
-      const sign = str[0];
-      const parts = sign === "-" || sign === "+" ? str.substring(1) : str;
+    function parseSexagesimal(str2, asBigInt) {
+      const sign = str2[0];
+      const parts = sign === "-" || sign === "+" ? str2.substring(1) : str2;
       const num = (n) => asBigInt ? BigInt(n) : Number(n);
       const res = parts.replace(/_/g, "").split(":").reduce((res2, p) => res2 * num(60) + num(p), num(0));
       return sign === "-" ? num(-1) * res : res;
@@ -3102,7 +3102,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:int",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+$/,
-      resolve: (str, _onError, { intAsBigInt }) => parseSexagesimal(str, intAsBigInt),
+      resolve: (str2, _onError, { intAsBigInt }) => parseSexagesimal(str2, intAsBigInt),
       stringify: stringifySexagesimal
     };
     var floatTime = {
@@ -3111,7 +3111,7 @@ var require_timestamp = __commonJS({
       tag: "tag:yaml.org,2002:float",
       format: "TIME",
       test: /^[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*$/,
-      resolve: (str) => parseSexagesimal(str, false),
+      resolve: (str2) => parseSexagesimal(str2, false),
       stringify: stringifySexagesimal
     };
     var timestamp = {
@@ -3122,8 +3122,8 @@ var require_timestamp = __commonJS({
       // may be omitted altogether, resulting in a date format. In such a case, the time part is
       // assumed to be 00:00:00Z (start of day, UTC).
       test: RegExp("^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})(?:(?:t|T|[ \\t]+)([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2}(\\.[0-9]+)?)(?:[ \\t]*(Z|[-+][012]?[0-9](?::[0-9]{2})?))?)?$"),
-      resolve(str) {
-        const match = str.match(timestamp.test);
+      resolve(str2) {
+        const match = str2.match(timestamp.test);
         if (!match)
           throw new Error("!!timestamp expects a date, starting with yyyy-mm-dd");
         const [, year, month, day, hour, minute, second] = match.map(Number);
@@ -3999,10 +3999,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep3, value } = collItem;
+        const { start, key, sep: sep4, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep3?.[0],
+          next: key ?? sep4?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4016,7 +4016,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep3) {
+          if (!keyProps.anchor && !keyProps.tag && !sep4) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4040,7 +4040,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4056,7 +4056,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep3, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4147,7 +4147,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep3 = "";
+        let sep4 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4161,13 +4161,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep3 + cb;
-              sep3 = "";
+                comment += sep4 + cb;
+              sep4 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep3 += source;
+                sep4 += source;
               hasSpace = true;
               break;
             default:
@@ -4210,18 +4210,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep3, value } = collItem;
+        const { start, key, sep: sep4, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep3?.[0],
+          next: key ?? sep4?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep3 && !value) {
+          if (!props.anchor && !props.tag && !sep4 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4275,8 +4275,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap && !sep3 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep3, null, props, onError);
+        if (!isMap && !sep4 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4288,7 +4288,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep3 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4299,8 +4299,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap && !props.found && ctx.options.strict) {
-              if (sep3)
-                for (const st of sep3) {
+              if (sep4)
+                for (const st of sep4) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4317,7 +4317,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep3, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4497,7 +4497,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep3 = "";
+      let sep4 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4514,24 +4514,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep3 === " ")
-            sep3 = "\n";
-          else if (!prevMoreIndented && sep3 === "\n")
-            sep3 = "\n\n";
-          value += sep3 + indent.slice(trimIndent) + content;
-          sep3 = "\n";
+          if (sep4 === " ")
+            sep4 = "\n";
+          else if (!prevMoreIndented && sep4 === "\n")
+            sep4 = "\n\n";
+          value += sep4 + indent.slice(trimIndent) + content;
+          sep4 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep3 === "\n")
+          if (sep4 === "\n")
             value += "\n";
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          value += sep3 + content;
-          sep3 = " ";
+          value += sep4 + content;
+          sep4 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4714,25 +4714,25 @@ var require_resolve_flow_scalar = __commonJS({
         trimBoth = /^[ \t]+|[ \t]+$/g;
       }
       let res = match[1].replace(trimEnd, "");
-      let sep3 = " ";
+      let sep4 = " ";
       let pos = line.lastIndex;
       while (match = line.exec(source)) {
         const lm = match[1].replace(trimBoth, "");
         if (lm === "") {
-          if (sep3 === "\n")
-            res += sep3;
+          if (sep4 === "\n")
+            res += sep4;
           else
-            sep3 = "\n";
+            sep4 = "\n";
         } else {
-          res += sep3 + lm;
-          sep3 = " ";
+          res += sep4 + lm;
+          sep4 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep3 + (match?.[1] ?? "");
+      return res + sep4 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5542,14 +5542,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep3, value }) {
+    function stringifyItem({ start, key, sep: sep4, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep3)
-        for (const st of sep3)
+      if (sep4)
+        for (const st of sep4)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6716,18 +6716,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep3;
+          let sep4;
           if (scalar.end) {
-            sep3 = scalar.end;
-            sep3.push(this.sourceToken);
+            sep4 = scalar.end;
+            sep4.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep3 = [this.sourceToken];
+            sep4 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep3 }]
+            items: [{ start, key: scalar, sep: sep4 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6880,15 +6880,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep3 = it.sep;
-                  sep3.push(this.sourceToken);
+                  const sep4 = it.sep;
+                  sep4.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep3 }]
+                    items: [{ start: start2, key, sep: sep4 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -7082,13 +7082,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep3 = fc.end.splice(1, fc.end.length);
-            sep3.push(this.sourceToken);
+            const sep4 = fc.end.splice(1, fc.end.length);
+            sep4.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep3 }]
+              items: [{ start, key: fc, sep: sep4 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -7266,7 +7266,7 @@ var require_public_api = __commonJS({
       }
       return doc;
     }
-    function parse3(src, reviver, options) {
+    function parse4(src, reviver, options) {
       let _reviver = void 0;
       if (typeof reviver === "function") {
         _reviver = reviver;
@@ -7307,7 +7307,7 @@ var require_public_api = __commonJS({
         return value.toString(options);
       return new Document.Document(value, _replacer, options).toString(options);
     }
-    exports.parse = parse3;
+    exports.parse = parse4;
     exports.parseAllDocuments = parseAllDocuments;
     exports.parseDocument = parseDocument;
     exports.stringify = stringify2;
@@ -7422,10 +7422,10 @@ function normalizeDate(value) {
   return null;
 }
 function localDateTime(now = /* @__PURE__ */ new Date()) {
-  const pad = (n) => String(Math.trunc(Math.abs(n))).padStart(2, "0");
+  const pad2 = (n) => String(Math.trunc(Math.abs(n))).padStart(2, "0");
   const offset = -now.getTimezoneOffset();
   const sign = offset >= 0 ? "+" : "-";
-  return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+  return `${localToday(now)}T${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}${sign}${pad2(offset / 60)}:${pad2(offset % 60)}`;
 }
 
 // src/core/ids.ts
@@ -9535,8 +9535,8 @@ function upsertSummary(text, summary) {
   const body = text.slice(head.length);
   const start = body.split("\n").findIndex((l) => l.trim() === SECTION);
   if (start < 0) {
-    const sep3 = body.length === 0 || body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
-    return head + body + sep3 + summary;
+    const sep4 = body.length === 0 || body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
+    return head + body + sep4 + summary;
   }
   const lines = body.split("\n");
   let end = lines.findIndex((l, i) => i > start && /^## /.test(l));
@@ -10020,7 +10020,805 @@ ${cleanContent}
   return { path: relPath };
 }
 
+// cli/mcp-log.ts
+import { randomBytes } from "node:crypto";
+import { appendFileSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readdirSync as readdirSync2, readFileSync as readFileSync3, statSync as statSync2 } from "node:fs";
+import { isAbsolute, join as join2, relative as relative2, sep as sep3 } from "node:path";
+var ERROR_KINDS = ["ownership", "validation", "not_found", "conflict", "unknown_tool", "internal"];
+var FEEDBACK_KINDS = ["missing", "wrong", "large", "slow", "unclear", "rejected", "bypass"];
+function logDir(root) {
+  return existsSync2(join2(root, ".kit-local")) ? join2(root, ".claude/mcp-log") : join2(root, ".kit/harness/mcp-log");
+}
+function logEnabled(env = process.env) {
+  return (env.PKM_MCP_LOG ?? "").toLowerCase() !== "off";
+}
+var pad = (n) => String(n).padStart(2, "0");
+function monthDir(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+function stamp(d) {
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+var McpLogger = class _McpLogger {
+  constructor(root, fileName, start, now = () => /* @__PURE__ */ new Date()) {
+    this.root = root;
+    this.now = now;
+    this.path = join2(logDir(root), monthDir(start), fileName);
+  }
+  root;
+  now;
+  path;
+  /** サーバーの起動 1 回ぶんのロガー */
+  static forServer(root, now = () => /* @__PURE__ */ new Date()) {
+    const start = now();
+    return new _McpLogger(root, `${stamp(start)}-${randomBytes(3).toString("hex")}.jsonl`, start, now);
+  }
+  write(kind, fields) {
+    const line = { ts: this.now().toISOString(), kind, ...fields };
+    try {
+      mkdirSync2(join2(this.path, ".."), { recursive: true });
+      appendFileSync(this.path, `${JSON.stringify(line)}
+`);
+    } catch {
+    }
+  }
+};
+var KEEP_KEYS = /* @__PURE__ */ new Set([
+  "id",
+  "ids",
+  "key",
+  "issue_id",
+  "issue_ids",
+  "task_ids",
+  "routine_id",
+  "parent",
+  "before",
+  "date",
+  "from",
+  "to",
+  "today",
+  "status",
+  "statuses",
+  "priority",
+  "priorities",
+  "sort",
+  "desc",
+  "mode",
+  "type",
+  "scope",
+  "kind",
+  "tool",
+  "scheduled",
+  "result",
+  "on",
+  "full",
+  "limit",
+  "cursor",
+  "inbox_only",
+  "available_minutes",
+  "stale_days",
+  "caution_days",
+  "days",
+  "position",
+  "estimated"
+]);
+var QUERY_KEYS = /* @__PURE__ */ new Set(["query", "text"]);
+var PATH_KEYS = /* @__PURE__ */ new Set(["path", "path_prefix"]);
+function summarizeArgs(args) {
+  const out = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (v === void 0) continue;
+    if (QUERY_KEYS.has(k) && typeof v === "string") out[k] = v.slice(0, 100);
+    else if (PATH_KEYS.has(k) && typeof v === "string") out[k] = { area: pathArea(v) };
+    else if (KEEP_KEYS.has(k) && isSmall(v)) out[k] = v;
+    else if (typeof v === "string") out[k] = { len: v.length };
+    else if (Array.isArray(v)) out[k] = { n: v.length };
+    else if (v !== null && typeof v === "object") out[k] = { keys: Object.keys(v) };
+    else out[k] = typeof v;
+  }
+  return out;
+}
+function isSmall(v) {
+  if (v === null || typeof v === "number" || typeof v === "boolean") return true;
+  if (typeof v === "string") return v.length <= 40;
+  if (Array.isArray(v)) return v.length <= 20 && v.every((x) => typeof x === "string" && x.length <= 40);
+  return false;
+}
+function errorKind(message) {
+  const m = /^\[([a-z_]+)\]/.exec(message);
+  if (m && ERROR_KINDS.includes(m[1])) return m[1];
+  if (/^未知のツール/.test(message)) return "unknown_tool";
+  if (/がありません|見つかりません|ありません:/.test(message)) return "not_found";
+  return "validation";
+}
+function withErrorKind(message, kind = errorKind(message)) {
+  return /^\[[a-z_]+\]/.test(message) ? message : `[${kind}] ${message}`;
+}
+var TASK_DIRS = /* @__PURE__ */ new Set(["issue", "routine", "member", "worklog", "board", "statuslog", "updates"]);
+function pathArea(rel) {
+  const p = rel.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  if (p === "" || p === ".") return "vault";
+  const segs = p.split("/");
+  if (segs.some((s) => s.startsWith(".") || s === "node_modules")) return "hidden";
+  const top = segs[0];
+  if (top === "daily") return "daily";
+  if (top === "wiki") return "wiki";
+  if (top === "sources") return "sources";
+  if (top === "asset") return "asset";
+  if (top === "tmp") return "tmp";
+  if (top === "template") return "template";
+  if (top === "slide") return "slide";
+  if (TASK_DIRS.has(top)) return "task";
+  return "note";
+}
+function localDateOf(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function percentile(values, p) {
+  if (values.length === 0) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.ceil(p / 100 * s.length) - 1)];
+}
+function readLogLines(root) {
+  const dir = logDir(root);
+  if (!existsSync2(dir)) return [];
+  const out = [];
+  for (const month of readdirSync2(dir).sort()) {
+    const mdir = join2(dir, month);
+    if (!statSync2(mdir).isDirectory()) continue;
+    for (const name of readdirSync2(mdir).sort()) {
+      if (!name.endsWith(".jsonl")) continue;
+      for (const line of readFileSync3(join2(mdir, name), "utf8").split("\n")) {
+        if (!line.trim()) continue;
+        try {
+          const v = JSON.parse(line);
+          if (typeof v.ts === "string" && typeof v.kind === "string") out.push(v);
+        } catch {
+        }
+      }
+    }
+  }
+  return out;
+}
+function buildReport(lines, since, until) {
+  const inRange = lines.filter((l) => {
+    const d = localDateOf(l.ts);
+    return d >= since && d <= until;
+  });
+  const clients = {};
+  const byTool = /* @__PURE__ */ new Map();
+  const bypass = {};
+  const bypassByOp = {};
+  const feedback = [];
+  const zeroHitQueries = [];
+  let starts = 0;
+  for (const l of inRange) {
+    if (l.kind === "start") {
+      starts++;
+      const c = l.client;
+      const name = c?.name ?? "unknown";
+      clients[name] = (clients[name] ?? 0) + 1;
+    } else if (l.kind === "call") {
+      const tool = String(l.tool ?? "?");
+      let e = byTool.get(tool);
+      if (!e) {
+        e = { ms: [], bytes: [], s: { tool, calls: 0, alias: 0, errors: {}, p50Ms: 0, p95Ms: 0, p95Bytes: 0, truncated: 0, zeroHits: 0 } };
+        byTool.set(tool, e);
+      }
+      e.s.calls++;
+      if (l.alias) e.s.alias++;
+      if (typeof l.error === "string") e.s.errors[l.error] = (e.s.errors[l.error] ?? 0) + 1;
+      if (typeof l.ms === "number") e.ms.push(l.ms);
+      if (typeof l.bytes === "number") e.bytes.push(l.bytes);
+      if (l.truncated) e.s.truncated++;
+      if (l.hits === 0) {
+        e.s.zeroHits++;
+        const q = l.args?.query ?? l.args?.text;
+        if (typeof q === "string") zeroHitQueries.push({ tool, query: q });
+      }
+    } else if (l.kind === "bypass") {
+      const area = String(l.area ?? "?");
+      const op = String(l.op ?? "?");
+      bypass[area] = (bypass[area] ?? 0) + 1;
+      bypassByOp[op] = (bypassByOp[op] ?? 0) + 1;
+    } else if (l.kind === "feedback") {
+      feedback.push({ ts: l.ts, tool: typeof l.tool === "string" ? l.tool : null, kind: String(l.type ?? "?"), summary: String(l.summary ?? "") });
+    }
+  }
+  const tools = [...byTool.values()].map(({ ms, bytes, s }) => ({ ...s, p50Ms: percentile(ms, 50), p95Ms: percentile(ms, 95), p95Bytes: percentile(bytes, 95) })).sort((a, b) => b.calls - a.calls || a.tool.localeCompare(b.tool));
+  return { since, until, starts, clients, tools, bypass, bypassByOp, feedback, zeroHitQueries };
+}
+function formatReport(r) {
+  const out = [];
+  const totalCalls = r.tools.reduce((n, t) => n + t.calls, 0);
+  const totalBypass = Object.values(r.bypass).reduce((n, v) => n + v, 0);
+  out.push(`- \u8D77\u52D5 ${r.starts} \u56DE\u3001\u30C4\u30FC\u30EB\u306E\u547C\u3073\u51FA\u3057 ${totalCalls} \u56DE\u3001MCP \u3092\u901A\u3055\u306A\u3044\u8AAD\u307F\u66F8\u304D\uFF08bypass\uFF09${totalBypass} \u56DE\u3001\u30D5\u30A3\u30FC\u30C9\u30D0\u30C3\u30AF ${r.feedback.length} \u4EF6`);
+  if (Object.keys(r.clients).length) {
+    out.push(`- \u30AF\u30E9\u30A4\u30A2\u30F3\u30C8: ${Object.entries(r.clients).map(([k, v]) => `${k} ${v}`).join("\u3001")}`);
+  }
+  if (r.tools.length) {
+    out.push("", "| \u30C4\u30FC\u30EB | \u56DE\u6570 | \u30A8\u30E9\u30FC | p50 ms | p95 ms | p95 bytes | \u5207\u308A\u8A70\u3081 | 0 \u4EF6 | \u65E7\u540D |", "|---|---|---|---|---|---|---|---|---|");
+    for (const t of r.tools) {
+      const errs = Object.entries(t.errors).map(([k, v]) => `${k} ${v}`).join("\u3001") || "0";
+      out.push(`| ${t.tool} | ${t.calls} | ${errs} | ${t.p50Ms} | ${t.p95Ms} | ${t.p95Bytes} | ${t.truncated} | ${t.zeroHits} | ${t.alias} |`);
+    }
+  }
+  if (totalBypass) {
+    out.push("", `- bypass \u306E\u533A\u5206: ${Object.entries(r.bypass).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join("\u3001")}`);
+    out.push(`- bypass \u306E\u64CD\u4F5C: ${Object.entries(r.bypassByOp).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join("\u3001")}`);
+  }
+  if (r.feedback.length) {
+    out.push("", "\u30D5\u30A3\u30FC\u30C9\u30D0\u30C3\u30AF\uFF08\u8981\u7D04\u306F\u500B\u4EBA\u306E\u5185\u5BB9\u3092\u542B\u307F\u3046\u308B\u3002\u4E0A\u6D41\u306B\u306F\u7A2E\u985E\u3068\u4EF6\u6570\u3060\u3051\u3092\u4F1D\u3048\u308B\uFF09:");
+    for (const f of r.feedback) out.push(`- ${f.ts.slice(0, 10)} ${f.kind}${f.tool ? `\uFF08${f.tool}\uFF09` : ""}: ${f.summary}`);
+  }
+  if (r.zeroHitQueries.length) {
+    out.push("", "\u7D50\u679C\u304C 0 \u4EF6\u3060\u3063\u305F\u691C\u7D22\uFF08\u4E0A\u6D41\u306B\u306F\u4EF6\u6570\u3060\u3051\u3092\u4F1D\u3048\u308B\uFF09:");
+    for (const q of r.zeroHitQueries.slice(-20)) out.push(`- ${q.tool}: ${q.query}`);
+  }
+  return out.join("\n");
+}
+
+// cli/mcp-pkm.ts
+import { spawnSync } from "node:child_process";
+import { existsSync as existsSync3 } from "node:fs";
+import { join as join4 } from "node:path";
+import { pathToFileURL } from "node:url";
+
+// cli/notes.ts
+var import_yaml3 = __toESM(require_dist(), 1);
+import { readdirSync as readdirSync3, readFileSync as readFileSync4, statSync as statSync3 } from "node:fs";
+import { join as join3 } from "node:path";
+var DAILY_RE = /^daily\/(\d{4})\/(\d{2})\/(\d{4}-\d{2}-\d{2})\.md$/;
+var SKIP_AREAS = /* @__PURE__ */ new Set(["hidden", "tmp", "template", "slide"]);
+function normalize(s) {
+  return s.normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 96));
+}
+var FRONTMATTER_RE3 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+function strList(v) {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" || typeof x === "number").map(String);
+  if (typeof v === "string" && v.trim()) return [v];
+  return [];
+}
+function str(v) {
+  return typeof v === "string" && v.trim() ? v : typeof v === "number" ? String(v) : null;
+}
+function extractLinkTargets(body) {
+  const out = /* @__PURE__ */ new Set();
+  let fence = null;
+  for (const raw of body.split("\n")) {
+    const f = /^\s*(`{3,}|~{3,})/.exec(raw);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = null;
+      continue;
+    }
+    if (f) {
+      fence = f[1];
+      continue;
+    }
+    const line = raw.replace(/`+[^`]*`+/g, "");
+    for (const m of line.matchAll(/!?\[(?:[^\]\\]|\\.)*\]\(\s*(<[^>]*>|[^\s)]+)(?:\s+"[^"]*")?\s*\)/g)) {
+      let target = m[1];
+      if (target.startsWith("<")) target = target.slice(1, -1);
+      if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) continue;
+      const hash = target.indexOf("#");
+      let path = hash === -1 ? target : target.slice(0, hash);
+      try {
+        path = decodeURIComponent(path);
+      } catch {
+      }
+      path = path.replace(/^\.?\//, "");
+      if (path) out.add(path);
+    }
+  }
+  return [...out];
+}
+function parseNote(path, text) {
+  const m = FRONTMATTER_RE3.exec(text);
+  let fm = {};
+  if (m) {
+    try {
+      const v = (0, import_yaml3.parse)(m[1]);
+      if (v && typeof v === "object" && !Array.isArray(v)) fm = v;
+    } catch {
+    }
+  }
+  const body = m ? text.slice(m[0].length) : text;
+  const bodyLine = m ? m[0].split("\n").length : 1;
+  const daily = DAILY_RE.exec(path);
+  const base = path.split("/").pop().replace(/\.md$/, "");
+  const title = str(fm.title) ?? str(fm.name) ?? (daily ? daily[3] : base);
+  const created = str(fm.created);
+  const updated = str(fm.updated);
+  const tags = strList(fm.tags);
+  const aliases = [...strList(fm.aliases), ...strList(fm.alias)];
+  return {
+    path,
+    title,
+    type: str(fm.type),
+    tags,
+    aliases,
+    created,
+    updated,
+    date: daily ? daily[3] : (updated ?? created)?.slice(0, 10) ?? null,
+    frontmatter: fm,
+    body,
+    bodyLine,
+    links: extractLinkTargets(body),
+    norm: { title: normalize(title), aliases: aliases.map(normalize), tags: tags.map(normalize), body: normalize(body) }
+  };
+}
+function walkStats(root, dir = "", out = /* @__PURE__ */ new Map()) {
+  let names;
+  try {
+    names = readdirSync3(join3(root, dir));
+  } catch {
+    return out;
+  }
+  for (const name of names) {
+    if (name.startsWith(".") || name === "node_modules") continue;
+    const rel = dir ? `${dir}/${name}` : name;
+    let st;
+    try {
+      st = statSync3(join3(root, rel));
+    } catch {
+      continue;
+    }
+    if (st.isDirectory()) walkStats(root, rel, out);
+    else out.set(rel, { mtimeMs: st.mtimeMs, size: st.size });
+  }
+  return out;
+}
+function isNotePath(path) {
+  return path.endsWith(".md") && !SKIP_AREAS.has(pathArea(path));
+}
+var NoteStore = class {
+  constructor(root) {
+    this.root = root;
+  }
+  root;
+  files = /* @__PURE__ */ new Map();
+  notes = /* @__PURE__ */ new Map();
+  stats = /* @__PURE__ */ new Map();
+  /** ファイルの一覧を取り直す（呼び出しごとに 1 回）。読み直したノートの数を返す */
+  refresh(files = walkStats(this.root)) {
+    this.files = files;
+    let changed = 0;
+    for (const path of [...this.notes.keys()]) {
+      if (!files.has(path)) {
+        this.notes.delete(path);
+        this.stats.delete(path);
+      }
+    }
+    for (const [path, st] of files) {
+      if (!isNotePath(path)) continue;
+      const prev = this.stats.get(path);
+      if (prev && prev.mtimeMs === st.mtimeMs && prev.size === st.size) continue;
+      try {
+        this.notes.set(path, parseNote(path, readFileSync4(join3(this.root, path), "utf8")));
+        this.stats.set(path, st);
+        changed++;
+      } catch {
+        this.notes.delete(path);
+      }
+    }
+    return changed;
+  }
+  get(path) {
+    return this.notes.get(path);
+  }
+  exists(path) {
+    return this.files.has(path);
+  }
+};
+function matchesFilter(n, f) {
+  if (f.type !== void 0 && n.type !== f.type) return false;
+  if (f.pathPrefix !== void 0 && !n.path.startsWith(f.pathPrefix)) return false;
+  if (f.tags?.length) {
+    const set = new Set(n.norm.tags);
+    if (!f.tags.every((t) => set.has(normalize(t)))) return false;
+  }
+  if (f.from !== void 0 && (n.date === null || n.date < f.from)) return false;
+  if (f.to !== void 0 && (n.date === null || n.date > f.to)) return false;
+  return true;
+}
+var DEFAULT_LIMIT = 20;
+var MAX_LIMIT = 100;
+function pageOf(all, limit, cursor) {
+  const n = typeof limit === "number" && limit > 0 ? Math.min(Math.trunc(limit), MAX_LIMIT) : DEFAULT_LIMIT;
+  const start = typeof cursor === "string" && /^\d+$/.test(cursor) ? Number(cursor) : 0;
+  const items = all.slice(start, start + n);
+  const more = start + n < all.length;
+  return { total: all.length, items, truncated: more, cursor: more ? String(start + n) : null };
+}
+function summaryOf(n) {
+  return { path: n.path, title: n.title, type: n.type, tags: n.tags, date: n.date };
+}
+var FIELD_SCORE = { title: 8, aliases: 4, tags: 2, body: 1 };
+var SNIPPET_RADIUS = 80;
+function searchNotes(notes, query, filter = {}) {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  const scored = [];
+  for (const n of notes) {
+    if (!matchesFilter(n, filter)) continue;
+    let score = 0;
+    const matched = /* @__PURE__ */ new Set();
+    let ok = true;
+    for (const t of terms) {
+      let best = 0;
+      if (n.norm.title.includes(t)) {
+        best = Math.max(best, FIELD_SCORE.title);
+        matched.add("title");
+      }
+      if (n.norm.aliases.some((a) => a.includes(t))) {
+        best = Math.max(best, FIELD_SCORE.aliases);
+        matched.add("aliases");
+      }
+      if (n.norm.tags.some((a) => a.includes(t))) {
+        best = Math.max(best, FIELD_SCORE.tags);
+        matched.add("tags");
+      }
+      if (n.norm.body.includes(t)) {
+        best = Math.max(best, FIELD_SCORE.body);
+        matched.add("body");
+      }
+      if (best === 0) {
+        ok = false;
+        break;
+      }
+      score += best;
+    }
+    if (!ok) continue;
+    const snip = matched.has("body") ? snippetOf(n, terms) : null;
+    scored.push({
+      score,
+      hit: {
+        path: n.path,
+        title: n.title,
+        type: n.type,
+        date: n.date,
+        matched: ["title", "aliases", "tags", "body"].filter((f) => matched.has(f)),
+        line: snip?.line ?? null,
+        snippet: snip?.text ?? null
+      }
+    });
+  }
+  scored.sort((a, b) => b.score - a.score || (b.hit.date ?? "").localeCompare(a.hit.date ?? "") || a.hit.path.localeCompare(b.hit.path));
+  return scored.map((s) => s.hit);
+}
+function snippetOf(n, terms) {
+  const lines = n.body.split("\n");
+  for (const t of terms) {
+    for (let i = 0; i < lines.length; i++) {
+      const norm = normalize(lines[i]);
+      const pos = norm.indexOf(t);
+      if (pos === -1) continue;
+      const line = lines[i];
+      const start = Math.max(0, pos - SNIPPET_RADIUS);
+      const end = Math.min(line.length, pos + t.length + SNIPPET_RADIUS);
+      const text = `${start > 0 ? "\u2026" : ""}${line.slice(start, end).trim()}${end < line.length ? "\u2026" : ""}`;
+      return { line: n.bodyLine + i, text };
+    }
+  }
+  return null;
+}
+function backlinksOf(notes, path) {
+  const out = [];
+  for (const n of notes) if (n.path !== path && n.links.includes(path)) out.push(n);
+  return out;
+}
+function unprocessedSources(notes) {
+  const all = [...notes];
+  const referenced = /* @__PURE__ */ new Set();
+  for (const n of all) {
+    if (!n.path.startsWith("wiki/")) continue;
+    for (const s of strList(n.frontmatter.sources)) referenced.add(s.replace(/^\.?\//, ""));
+    for (const l of n.links) referenced.add(l);
+  }
+  return all.filter((n) => /^sources\/[^/]+\.md$/.test(n.path) && !referenced.has(n.path));
+}
+var BODY_LIMIT = 8e3;
+function bodyOf(n, full) {
+  if (full === true || n.body.length <= BODY_LIMIT) return { body: n.body, length: n.body.length, truncated: false };
+  return { body: n.body.slice(0, BODY_LIMIT), length: n.body.length, truncated: true };
+}
+function recentLogEntries(body, limit) {
+  const entries = [];
+  let cur = null;
+  for (const line of body.split("\n")) {
+    if (line.startsWith("## ")) {
+      if (cur) entries.push({ heading: cur.heading, text: cur.lines.join("\n").trim() });
+      cur = { heading: line.slice(3).trim(), lines: [] };
+    } else if (cur) cur.lines.push(line);
+  }
+  if (cur) entries.push({ heading: cur.heading, text: cur.lines.join("\n").trim() });
+  return entries.slice(-limit).reverse().map((e) => ({ heading: e.heading, text: e.text.length > 1e3 ? `${e.text.slice(0, 1e3)}\u2026` : e.text }));
+}
+
+// cli/mcp-pkm.ts
+var TOOLSETS = ["task", "note", "daily", "wiki", "check", "meta"];
+var LIMIT = { type: "number", description: "\u4EF6\u6570\uFF08\u65E2\u5B9A 20\u3001\u4E0A\u9650 100\uFF09" };
+var CURSOR = { type: "string", description: "\u7D9A\u304D\u3092\u53D6\u308B\u3068\u304D\u306B\u3001\u524D\u306E\u5FDC\u7B54\u306E cursor \u3092\u6E21\u3059" };
+var FILTERS = {
+  type: { type: "string", description: "frontmatter \u306E type\uFF08note / daily / concept \u306A\u3069\uFF09" },
+  tags: { type: "array", items: { type: "string" }, description: "\u3059\u3079\u3066\u3092\u6301\u3064\u3082\u306E\u3060\u3051" },
+  path_prefix: { type: "string", description: "\u30D1\u30B9\u306E\u5148\u982D\uFF08\u4F8B: wiki/\uFF09" },
+  from: { type: "string", description: "YYYY-MM-DD \u4EE5\u964D\uFF08daily \u306F\u30D5\u30A1\u30A4\u30EB\u540D\u306E\u65E5\u4ED8\u3001\u307B\u304B\u306F updated \u304B created\uFF09" },
+  to: { type: "string", description: "YYYY-MM-DD \u4EE5\u524D" }
+};
+var FULL = { type: "boolean", description: "true \u306A\u3089\u672C\u6587\u3092\u5207\u3089\u305A\u306B\u8FD4\u3059\uFF08\u65E2\u5B9A\u306F 8,000 \u5B57\u3067\u5207\u308B\uFF09" };
+var PKM_TOOLS = {
+  note: [
+    {
+      name: "note_search",
+      description: "\u30CE\u30FC\u30C8\u3092\u5358\u7D14\u4E00\u81F4\u3067\u691C\u7D22\u3059\u308B\u3002\u7A7A\u767D\u3067\u533A\u5207\u3063\u305F\u8A9E\u306E AND\u3002\u5168\u89D2\u30FB\u534A\u89D2\u3001\u5927\u6587\u5B57\u30FB\u5C0F\u6587\u5B57\u3001\u30AB\u30BF\u30AB\u30CA\u30FB\u3072\u3089\u304C\u306A\u306E\u9055\u3044\u306F\u7121\u8996\u3059\u308B\u3002title \u2192 aliases \u2192 tags \u2192 \u672C\u6587\u306E\u9806\u306B\u5F53\u305F\u3063\u305F\u3082\u306E\u3092\u4E0A\u306B\u3057\u3001\u540C\u3058\u306A\u3089\u65B0\u3057\u3044\u9806\u3002\u610F\u5473\u306E\u8FD1\u3044\u8A9E\u306F\u5F53\u305F\u3089\u306A\u3044\u306E\u3067\u3001\u898B\u3064\u304B\u3089\u306A\u3051\u308C\u3070\u8A00\u3044\u63DB\u3048\u3066\u691C\u7D22\u3057\u76F4\u3059\u3002tmp/\u30FBtemplate/\u30FBslide/\u30FB\u96A0\u3057\u30D1\u30B9\u306F\u5BFE\u8C61\u5916",
+      inputSchema: { type: "object", properties: { query: { type: "string", description: "\u691C\u7D22\u8A9E" }, ...FILTERS, limit: LIMIT, cursor: CURSOR }, required: ["query"] }
+    },
+    {
+      name: "note_get",
+      description: "\u30CE\u30FC\u30C8 1 \u4EF6\u306E frontmatter\u30FB\u672C\u6587\u30FB\u51FA\u308B\u30EA\u30F3\u30AF\u3068\u88AB\u30EA\u30F3\u30AF\u306E\u4EF6\u6570\u3092\u53D6\u5F97\u3059\u308B",
+      inputSchema: { type: "object", properties: { path: { type: "string", description: "Vault \u30EB\u30FC\u30C8\u304B\u3089\u306E\u30D1\u30B9\uFF08.md \u307E\u3067\uFF09" }, full: FULL }, required: ["path"] }
+    },
+    {
+      name: "note_list",
+      description: "\u30CE\u30FC\u30C8\u3092\u6761\u4EF6\u3067\u7D5E\u3063\u3066\u4E00\u89A7\u306B\u3059\u308B\uFF08\u672C\u6587\u306F\u8FD4\u3055\u306A\u3044\uFF09",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ...FILTERS,
+          sort: { type: "string", enum: ["date", "title", "path"], description: "\u65E2\u5B9A\u306F date\uFF08\u65B0\u3057\u3044\u9806\uFF09" },
+          desc: { type: "boolean", description: "\u964D\u9806\uFF08date \u306E\u65E2\u5B9A\u306F true\u3001\u307B\u304B\u306F false\uFF09" },
+          limit: LIMIT,
+          cursor: CURSOR
+        }
+      }
+    },
+    {
+      name: "note_links",
+      description: "\u30CE\u30FC\u30C8\u306E\u51FA\u308B\u30EA\u30F3\u30AF\uFF08\u30EA\u30F3\u30AF\u5148\u304C\u3042\u308B\u304B\uFF09\u3068\u88AB\u30EA\u30F3\u30AF\u3092\u53D6\u5F97\u3059\u308B",
+      inputSchema: { type: "object", properties: { path: { type: "string" }, limit: LIMIT }, required: ["path"] }
+    }
+  ],
+  daily: [
+    {
+      name: "daily_get",
+      description: "\u305D\u306E\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E frontmatter \u3068\u672C\u6587\u3092\u53D6\u5F97\u3059\u308B",
+      inputSchema: { type: "object", properties: { date: { type: "string", description: "YYYY-MM-DD\uFF08\u7701\u7565\u6642\u306F\u4ECA\u65E5\uFF09" }, full: FULL } }
+    },
+    {
+      name: "daily_list_pending",
+      description: "wiki-daily \u3067\u6B21\u306B\u51E6\u7406\u3059\u308B\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\uFF08\u524D\u56DE\u306E daily \u306E\u8A18\u9332\u306E\u5F8C\u306B\u8FFD\u52A0\u30FB\u5909\u66F4\u3055\u308C\u305F\u3082\u306E\u3002\u4ECA\u65E5\u3088\u308A\u524D\uFF09\u3092\u4E00\u89A7\u306B\u3059\u308B",
+      inputSchema: { type: "object", properties: { today: { type: "string", description: "YYYY-MM-DD\uFF08\u7701\u7565\u6642\u306F\u4ECA\u65E5\uFF09" }, limit: LIMIT, cursor: CURSOR } }
+    }
+  ],
+  wiki: [
+    {
+      name: "wiki_get_index",
+      description: "wiki \u306E\u76EE\u6B21\uFF08wiki/index.md\uFF09\u3092\u53D6\u5F97\u3059\u308B\u3002wiki \u304B\u3089\u7B54\u3048\u308B\u3068\u304D\u306F\u3001\u307E\u305A\u3053\u3053\u304B\u3089\u8FBF\u308B",
+      inputSchema: { type: "object", properties: { full: FULL } }
+    },
+    {
+      name: "wiki_recent_log",
+      description: "wiki \u306E\u64CD\u4F5C\u306E\u8A18\u9332\uFF08wiki/log.md\uFF09\u3092\u65B0\u3057\u3044\u3082\u306E\u304B\u3089\u53D6\u5F97\u3059\u308B",
+      inputSchema: { type: "object", properties: { limit: { type: "number", description: "\u4EF6\u6570\uFF08\u65E2\u5B9A 10\u3001\u4E0A\u9650 100\uFF09" } } }
+    },
+    {
+      name: "wiki_list_unprocessed_sources",
+      description: "wiki \u306E\u30DA\u30FC\u30B8\uFF08frontmatter \u306E sources \u304B\u672C\u6587\u306E\u30EA\u30F3\u30AF\uFF09\u304B\u3089\u53C2\u7167\u3055\u308C\u3066\u3044\u306A\u3044\u5143\u8CC7\u6599\uFF08sources/\uFF09\u3092\u4E00\u89A7\u306B\u3059\u308B",
+      inputSchema: { type: "object", properties: { limit: LIMIT, cursor: CURSOR } }
+    }
+  ],
+  check: [
+    {
+      name: "check_vault",
+      description: "Vault \u3092\u691C\u67FB\u3059\u308B\u3002notes \u306F\u30CE\u30FC\u30C8\u306E\u66F8\u5F0F\u30FB\u30EA\u30F3\u30AF\u5207\u308C\u30FBwiki \u306E index \u3078\u306E\u63B2\u8F09\u306A\u3069\uFF08wiki-lint \u3068\u540C\u3058\u5224\u5B9A\u3002errors \u306F\u76F4\u3059\u3001warnings \u306F\u4EBA\u306E\u30CE\u30FC\u30C8\u306A\u306E\u3067\u30E6\u30FC\u30B6\u30FC\u306B\u4F1D\u3048\u308B\uFF09\u3001tasks \u306F\u30BF\u30B9\u30AF\u7BA1\u7406\u306E\u30C7\u30FC\u30BF\u306E\u6574\u5408\u6027\uFF08lint \u3068\u540C\u3058\u5224\u5B9A\uFF09",
+      inputSchema: { type: "object", properties: { scope: { type: "string", enum: ["all", "notes", "tasks"], description: "\u65E2\u5B9A\u306F all" }, limit: LIMIT } }
+    },
+    {
+      name: "check_rename_candidates",
+      description: "\u30D5\u30A1\u30A4\u30EB\u540D\u304C\u82F1\u8A9E\u306E\u30B1\u30D0\u30D6\u30B1\u30FC\u30B9\u306B\u306A\u3063\u3066\u3044\u306A\u3044\u30CE\u30FC\u30C8\uFF08note-rename \u306E\u5019\u88DC\uFF09\u3092\u4E00\u89A7\u306B\u3059\u308B",
+      inputSchema: { type: "object", properties: { limit: LIMIT, cursor: CURSOR } }
+    }
+  ],
+  meta: [
+    {
+      name: "meta_feedback",
+      description: "MCP \u306E\u30C4\u30FC\u30EB\u3067\u8DB3\u308A\u306A\u304B\u3063\u305F\u3053\u3068\u30FB\u56F0\u3063\u305F\u3053\u3068\u3092\u8A18\u9332\u3059\u308B\uFF08\u4E0A\u6D41\u306E\u6539\u5584\u306B\u4F7F\u3046\uFF09\u3002\u6B21\u306E\u3068\u304D\u306B\u547C\u3076: \u5FC5\u8981\u306A\u30C4\u30FC\u30EB\u304C\u306A\u3044\uFF08missing\uFF09\u3001\u7D50\u679C\u304C\u8AA4\u3063\u3066\u3044\u308B\uFF08wrong\uFF09\u3001\u5FDC\u7B54\u304C\u5927\u304D\u3059\u304E\u308B\uFF08large\uFF09\u3001\u9045\u3044\uFF08slow\uFF09\u3001\u4F7F\u3044\u65B9\u304C\u5206\u304B\u3089\u306A\u3044\uFF08unclear\uFF09\u3001\u62D2\u5426\u304C\u4E0D\u5F53\uFF08rejected\uFF09\u3001MCP \u3092\u4F7F\u308F\u305A\u306B\u30D5\u30A1\u30A4\u30EB\u3092\u76F4\u63A5\u8AAD\u307F\u66F8\u304D\u3057\u305F\uFF08bypass\uFF09\u3002summary \u306B\u30CE\u30FC\u30C8\u306E\u4E2D\u8EAB\u3084\u500B\u4EBA\u306E\u60C5\u5831\u3092\u66F8\u304B\u306A\u3044",
+      inputSchema: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: [...FEEDBACK_KINDS] },
+          tool: { type: "string", description: "\u5BFE\u8C61\u306E\u30C4\u30FC\u30EB\u540D\uFF08\u3042\u308C\u3070\uFF09" },
+          summary: { type: "string", description: "200 \u5B57\u4EE5\u5185\u3002\u4F55\u3092\u3057\u3088\u3046\u3068\u3057\u3066\u3001\u4F55\u304C\u8DB3\u308A\u306A\u304B\u3063\u305F\u304B" }
+        },
+        required: ["kind", "summary"]
+      }
+    }
+  ]
+};
+function isPkmTool(name) {
+  return Object.values(PKM_TOOLS).some((defs) => defs.some((d) => d.name === name));
+}
+function filterOf(args) {
+  const f = {};
+  if (typeof args.type === "string") f.type = args.type;
+  if (Array.isArray(args.tags)) f.tags = args.tags.map(String);
+  if (typeof args.path_prefix === "string") f.pathPrefix = args.path_prefix;
+  for (const k of ["from", "to"]) {
+    const v = args[k];
+    if (v === void 0) continue;
+    if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`[validation] ${k} \u306F YYYY-MM-DD \u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+    f[k] = v;
+  }
+  return f;
+}
+function requireNote(ctx, path) {
+  if (typeof path !== "string" || !path) throw new Error("[validation] path \u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+  const p = path.replace(/^\.?\//, "");
+  const n = ctx.notes.get(p);
+  if (n) return n;
+  const area = pathArea(p);
+  if (["hidden", "tmp", "template", "slide"].includes(area)) throw new Error(`[ownership] ${area} \u306E\u5834\u6240\u306F MCP \u3067\u306F\u8AAD\u307F\u307E\u305B\u3093: ${p}`);
+  if (!p.endsWith(".md")) throw new Error(`[validation] \u30CE\u30FC\u30C8\u306E\u30D1\u30B9\u306F .md \u307E\u3067\u66F8\u3044\u3066\u304F\u3060\u3055\u3044: ${p}`);
+  throw new Error(`[not_found] \u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093: ${p}`);
+}
+function noteDetail(ctx, n, full) {
+  const { body, length, truncated } = bodyOf(n, full);
+  return {
+    path: n.path,
+    title: n.title,
+    type: n.type,
+    frontmatter: n.frontmatter,
+    body,
+    bodyLength: length,
+    truncated,
+    linkCount: n.links.length,
+    backlinkCount: backlinksOf(ctx.notes.notes.values(), n.path).length
+  };
+}
+function runHarness(root, script, expr) {
+  const file = join4(root, ".claude/scripts", script);
+  if (!existsSync3(file)) throw new Error(`[not_found] \u30CF\u30FC\u30CD\u30B9\u306E\u30B9\u30AF\u30EA\u30D7\u30C8\u304C\u3042\u308A\u307E\u305B\u3093: .claude/scripts/${script}`);
+  const code = `import * as m from ${JSON.stringify(pathToFileURL(file).href)};
+const root = process.argv[1];
+const out = await (${expr});
+process.stdout.write(JSON.stringify(out));`;
+  const r = spawnSync(process.execPath, ["--input-type=module", "-e", code, root], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (r.status !== 0) throw new Error(`[internal] .claude/scripts/${script} \u304C\u5931\u6557\u3057\u307E\u3057\u305F: ${(r.stderr || "").trim().split("\n").slice(-3).join(" / ")}`);
+  return JSON.parse(r.stdout);
+}
+function callPkmTool(ctx, name, args) {
+  switch (name) {
+    case "note_search": {
+      if (typeof args.query !== "string" || !args.query.trim()) throw new Error("[validation] query \u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+      return pageOf(searchNotes(ctx.notes.notes.values(), args.query, filterOf(args)), args.limit, args.cursor);
+    }
+    case "note_get":
+      return noteDetail(ctx, requireNote(ctx, args.path), args.full);
+    case "note_list": {
+      const f = filterOf(args);
+      const sort = args.sort === "title" || args.sort === "path" ? args.sort : "date";
+      const desc = typeof args.desc === "boolean" ? args.desc : sort === "date";
+      const all = [...ctx.notes.notes.values()].filter((n) => matchesFilter(n, f));
+      const key = (n) => sort === "title" ? n.title : sort === "path" ? n.path : n.date ?? "";
+      all.sort((a, b) => key(a).localeCompare(key(b)) * (desc ? -1 : 1) || a.path.localeCompare(b.path));
+      return pageOf(all.map(summaryOf), args.limit, args.cursor);
+    }
+    case "note_links": {
+      const n = requireNote(ctx, args.path);
+      const outgoing = n.links.map((target) => ({ target, exists: ctx.notes.exists(target), title: ctx.notes.get(target)?.title ?? null }));
+      const back = backlinksOf(ctx.notes.notes.values(), n.path).map((b2) => ({ path: b2.path, title: b2.title }));
+      const o = pageOf(outgoing, args.limit, void 0);
+      const b = pageOf(back, args.limit, void 0);
+      return { path: n.path, outgoing: o.items, outgoingTotal: o.total, backlinks: b.items, backlinkTotal: b.total, truncated: o.truncated || b.truncated };
+    }
+    case "daily_get": {
+      const date = typeof args.date === "string" ? args.date : ctx.today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("[validation] date \u306F YYYY-MM-DD \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+      const path = `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+      const n = ctx.notes.get(path);
+      if (!n || !DAILY_RE.test(path)) throw new Error(`[not_found] \u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093: ${path}`);
+      return noteDetail(ctx, n, args.full);
+    }
+    case "daily_list_pending": {
+      const today = typeof args.today === "string" ? args.today : ctx.today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) throw new Error("[validation] today \u306F YYYY-MM-DD \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+      const r = runHarness(ctx.root, "daily-pending.mjs", `m.pendingDaily(root, ${JSON.stringify(today)})`);
+      return { last: r.last, head: r.head, ...pageOf(r.pending, args.limit, args.cursor) };
+    }
+    case "wiki_get_index": {
+      const n = ctx.notes.get("wiki/index.md");
+      if (!n) throw new Error("[not_found] wiki/index.md \u304C\u3042\u308A\u307E\u305B\u3093");
+      return noteDetail(ctx, n, args.full);
+    }
+    case "wiki_recent_log": {
+      const n = ctx.notes.get("wiki/log.md");
+      if (!n) throw new Error("[not_found] wiki/log.md \u304C\u3042\u308A\u307E\u305B\u3093");
+      const limit = typeof args.limit === "number" && args.limit > 0 ? Math.min(Math.trunc(args.limit), 100) : 10;
+      const entries = recentLogEntries(n.body, limit);
+      return { total: entries.length, items: entries };
+    }
+    case "wiki_list_unprocessed_sources":
+      return pageOf(
+        unprocessedSources(ctx.notes.notes.values()).map((n) => ({ path: n.path, title: n.title, created: n.created })),
+        args.limit,
+        args.cursor
+      );
+    case "check_vault": {
+      const scope = args.scope === "notes" || args.scope === "tasks" ? args.scope : "all";
+      const out = { scope };
+      let truncated = false;
+      if (scope !== "tasks") {
+        const r = runHarness(ctx.root, "wiki-lint.mjs", "m.lintVault(root)");
+        const e = pageOf(r.errors, args.limit, void 0);
+        const w = pageOf(r.warnings, args.limit, void 0);
+        truncated ||= e.truncated || w.truncated;
+        out.notes = { errorCount: e.total, errors: e.items, warningCount: w.total, warnings: w.items };
+      }
+      if (scope !== "notes") {
+        const p = pageOf(ctx.taskProblems(), args.limit, void 0);
+        truncated ||= p.truncated;
+        out.tasks = { problemCount: p.total, problems: p.items };
+      }
+      out.truncated = truncated;
+      return out;
+    }
+    case "check_rename_candidates": {
+      const paths = runHarness(ctx.root, "note-rename.mjs", "m.listCandidates(root)");
+      return pageOf(paths, args.limit, args.cursor);
+    }
+    case "meta_feedback": {
+      const kind = String(args.kind ?? "");
+      if (!FEEDBACK_KINDS.includes(kind)) throw new Error(`[validation] kind \u306F ${FEEDBACK_KINDS.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
+      const summary = String(args.summary ?? "").trim();
+      if (!summary) throw new Error("[validation] summary \u3092\u66F8\u3044\u3066\u304F\u3060\u3055\u3044");
+      if (summary.length > 200) throw new Error("[validation] summary \u306F 200 \u5B57\u4EE5\u5185\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+      const tool = typeof args.tool === "string" && args.tool ? args.tool.slice(0, 64) : null;
+      const recorded = !!ctx.log && logEnabled();
+      ctx.log?.write("feedback", { tool, type: kind, summary });
+      return { ok: true, recorded };
+    }
+    default:
+      throw new Error(`[unknown_tool] \u672A\u77E5\u306E\u30C4\u30FC\u30EB\u3067\u3059: ${name}`);
+  }
+}
+
 // cli/mcp.ts
+var TASK_READ_TOOLS = /* @__PURE__ */ new Set(["get_overview", "get_board", "list_pending_boards", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
+var TASK_PREFIX = "task_";
+var OVERVIEW_TOP = 5;
+var VaultCache = class {
+  constructor(root) {
+    this.root = root;
+    this.notes = new NoteStore(root);
+  }
+  root;
+  notes;
+  taskSig = "";
+  task = null;
+  fileCount = 0;
+  refresh() {
+    const files = walkStats(this.root);
+    this.fileCount = files.size;
+    this.notes.refresh(files);
+    const parts = [];
+    for (const [p, st] of files) if (fileKind(p) !== null) parts.push(`${p}	${st.mtimeMs}	${st.size}`);
+    const sig = parts.join("\n");
+    if (sig !== this.taskSig) {
+      this.taskSig = sig;
+      this.task = null;
+    }
+  }
+  taskIndex() {
+    this.task ??= loadIndex(this.root);
+    return this.task;
+  }
+  invalidate() {
+    this.taskSig = "";
+    this.task = null;
+  }
+};
 var TOOLS = [
   {
     name: "get_overview",
@@ -10363,8 +11161,19 @@ var TOOLS = [
     }
   }
 ];
-function listMcpTools() {
-  return TOOLS;
+var TASK_NAMES = new Set(TOOLS.map((t) => t.name));
+function listMcpTools(toolsets) {
+  const on = (g) => g === "meta" || !toolsets || toolsets.includes(g);
+  const out = [];
+  if (on("task")) out.push(...TOOLS.map((t) => ({ ...t, name: `${TASK_PREFIX}${t.name}` })));
+  for (const g of TOOLSETS) if (g !== "task" && on(g)) out.push(...PKM_TOOLS[g]);
+  return out;
+}
+function resolveTool(name) {
+  if (name.startsWith(TASK_PREFIX) && TASK_NAMES.has(name.slice(TASK_PREFIX.length))) return { group: "task", base: name.slice(TASK_PREFIX.length), alias: false };
+  if (TASK_NAMES.has(name)) return { group: "task", base: name, alias: true };
+  if (isPkmTool(name)) return { group: name.split("_")[0], base: name, alias: false };
+  return null;
 }
 function loadIndex(root) {
   const { data, problems, paths } = readVault(root);
@@ -10386,7 +11195,7 @@ function calendarArg(v) {
 }
 function subPatch(args) {
   const out = {};
-  const str = (key) => {
+  const str2 = (key) => {
     const v = args[key];
     if (v === null) return null;
     if (typeof v !== "string") throw new Error(`${key} \u306F\u6587\u5B57\u5217\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
@@ -10400,12 +11209,12 @@ function subPatch(args) {
   };
   if (args.summary !== void 0) out.summary = String(args.summary);
   if (args.status !== void 0) out.status = String(args.status);
-  if (args.delegated_to !== void 0) out.delegatedTo = str("delegated_to");
-  if (args.start !== void 0) out.start = str("start");
-  if (args.end !== void 0) out.end = str("end");
+  if (args.delegated_to !== void 0) out.delegatedTo = str2("delegated_to");
+  if (args.start !== void 0) out.start = str2("start");
+  if (args.end !== void 0) out.end = str2("end");
   if (args.scheduled !== void 0) out.scheduled = calendarArg(args.scheduled) ?? null;
-  if (args.soft_deadline !== void 0) out.softDeadline = str("soft_deadline");
-  if (args.deadline !== void 0) out.deadline = str("deadline");
+  if (args.soft_deadline !== void 0) out.softDeadline = str2("soft_deadline");
+  if (args.deadline !== void 0) out.deadline = str2("deadline");
   if (args.estimated !== void 0) {
     if (args.estimated !== null && typeof args.estimated !== "number") throw new Error("estimated \u306F\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
     out.estimated = args.estimated;
@@ -10415,9 +11224,25 @@ function subPatch(args) {
   return out;
 }
 function callMcpTool(ctx, name, args = {}) {
+  const resolved = resolveTool(name);
+  if (!resolved) throw new Error(`[unknown_tool] \u672A\u77E5\u306E\u30C4\u30FC\u30EB\u3067\u3059: ${name}`);
+  if (resolved.group !== "meta" && ctx.toolsets && !ctx.toolsets.includes(resolved.group)) {
+    throw new Error(`[unknown_tool] ${resolved.group} \u306E\u7FA4\u306F\u516C\u958B\u3057\u3066\u3044\u307E\u305B\u3093\uFF08--toolset\uFF09: ${name}`);
+  }
   const now = ctx.now ? ctx.now() : /* @__PURE__ */ new Date();
   const today = localToday(now);
-  const { index, problems } = loadIndex(ctx.root);
+  const cache = ctx.cache ?? new VaultCache(ctx.root);
+  cache.refresh();
+  if (resolved.group !== "task") {
+    return callPkmTool({ root: ctx.root, today, notes: cache.notes, taskProblems: () => cache.taskIndex().problems, log: ctx.log }, name, args);
+  }
+  try {
+    return callTaskTool(ctx, resolved.base, args, now, today, cache.taskIndex());
+  } finally {
+    if (!TASK_READ_TOOLS.has(resolved.base)) cache.invalidate();
+  }
+}
+function callTaskTool(ctx, name, args, now, today, { index, problems }) {
   if ((name === "create_issue" || name === "update_issue" || name === "list_issues") && args.parent !== void 0) {
     throw new Error("parent \u306F\u5EC3\u6B62\u3057\u307E\u3057\u305F\uFF08ADR-0135\uFF09\u3002\u5206\u3051\u308B\u3068\u304D\u306F create_sub_issues \u3067\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u3057\u3066\u304F\u3060\u3055\u3044");
   }
@@ -10430,7 +11255,19 @@ function callMcpTool(ctx, name, args = {}) {
         staleDays: typeof args.stale_days === "number" ? args.stale_days : void 0,
         cautionDays: typeof args.caution_days === "number" ? args.caution_days : void 0
       });
-      return { ...overview, problems };
+      const top = (xs) => xs.slice(0, OVERVIEW_TOP);
+      const { stalled } = overview;
+      return {
+        ...overview,
+        stalled: { inProgressStale: top(stalled.inProgressStale), revisitDue: top(stalled.revisitDue), waitingOrDelegated: top(stalled.waitingOrDelegated) },
+        stalledCounts: {
+          inProgressStale: stalled.inProgressStale.length,
+          revisitDue: stalled.revisitDue.length,
+          waitingOrDelegated: stalled.waitingOrDelegated.length
+        },
+        problems: top(problems),
+        problemCount: problems.length
+      };
     }
     case "get_board": {
       const date = typeof args.date === "string" ? args.date : today;
@@ -10681,8 +11518,47 @@ function callMcpTool(ctx, name, args = {}) {
       return appendDailyNoteOnDisk(ctx.root, date, heading, content, now);
     }
     default:
-      throw new Error(`\u672A\u77E5\u306E\u30C4\u30FC\u30EB\u3067\u3059: ${name}`);
+      throw new Error(`[unknown_tool] \u672A\u77E5\u306E\u30C4\u30FC\u30EB\u3067\u3059: ${name}`);
   }
+}
+function resultMeta(name, out) {
+  const meta = {};
+  if (Array.isArray(out)) meta.count = out.length;
+  else if (out && typeof out === "object") {
+    const o = out;
+    if (typeof o.total === "number") meta.count = o.total;
+    if (o.truncated === true) meta.truncated = true;
+  }
+  if (name === "note_search" && typeof meta.count === "number") meta.hits = meta.count;
+  return meta;
+}
+function toolsCall(ctx, id, params) {
+  const name = String(params.name ?? "");
+  const args = typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments) ? params.arguments : {};
+  const resolved = resolveTool(name);
+  const started = performance.now();
+  let result;
+  let logFields;
+  try {
+    const out = callMcpTool(ctx, name, args);
+    const text = JSON.stringify(out) ?? "null";
+    result = { content: [{ type: "text", text }] };
+    logFields = { bytes: Buffer.byteLength(text), ...resultMeta(resolved?.base ?? name, out) };
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    const kind = /^\[[a-z_]+\]/.test(raw) || !(e instanceof TypeError || e instanceof RangeError) ? errorKind(raw) : "internal";
+    const message = withErrorKind(raw, kind);
+    result = { isError: true, content: [{ type: "text", text: message }] };
+    logFields = { bytes: Buffer.byteLength(message), error: kind };
+  }
+  ctx.log?.write("call", {
+    tool: resolved ? resolved.group === "task" ? `${TASK_PREFIX}${resolved.base}` : resolved.base : name,
+    ...resolved?.alias ? { alias: true } : {},
+    args: summarizeArgs(args),
+    ms: Math.round(performance.now() - started),
+    ...logFields
+  });
+  return { jsonrpc: "2.0", id, result };
 }
 function handleMcpRequest(ctx, req) {
   const id = req.id ?? null;
@@ -10690,13 +11566,15 @@ function handleMcpRequest(ctx, req) {
     return null;
   }
   if (req.method === "initialize") {
+    const info = req.params?.clientInfo;
+    ctx.client = info && typeof info === "object" ? info : null;
     return {
       jsonrpc: "2.0",
       id,
       result: {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "pkm-task-mcp", version: "1.0.0" }
+        serverInfo: { name: "pkm", version: SERVER_VERSION }
       }
     };
   }
@@ -10704,32 +11582,10 @@ function handleMcpRequest(ctx, req) {
     return { jsonrpc: "2.0", id, result: {} };
   }
   if (req.method === "tools/list") {
-    return { jsonrpc: "2.0", id, result: { tools: TOOLS } };
+    return { jsonrpc: "2.0", id, result: { tools: listMcpTools(ctx.toolsets) } };
   }
   if (req.method === "tools/call") {
-    const params = req.params ?? {};
-    const name = String(params.name ?? "");
-    const args = typeof params.arguments === "object" && params.arguments !== null && !Array.isArray(params.arguments) ? params.arguments : {};
-    try {
-      const out = callMcpTool(ctx, name, args);
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: {
-          content: [{ type: "text", text: JSON.stringify(out, null, 2) }]
-        }
-      };
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: {
-          isError: true,
-          content: [{ type: "text", text: message }]
-        }
-      };
-    }
+    return toolsCall(ctx, id, req.params ?? {});
   }
   return {
     jsonrpc: "2.0",
@@ -10737,21 +11593,60 @@ function handleMcpRequest(ctx, req) {
     error: { code: -32601, message: `Method not found: ${req.method}` }
   };
 }
+var SERVER_VERSION = "2.0.0";
+function logStart(ctx) {
+  const started = performance.now();
+  ctx.cache?.refresh();
+  ctx.cache?.taskIndex();
+  ctx.log?.write("start", {
+    version: SERVER_VERSION,
+    client: ctx.client ?? null,
+    toolsets: ctx.toolsets ?? "all",
+    device: ctx.device,
+    fileCount: ctx.cache?.fileCount ?? null,
+    noteCount: ctx.cache?.notes.notes.size ?? null,
+    indexMs: Math.round(performance.now() - started)
+  });
+}
 function parseMcpArgs(argv) {
   let device = process.env.PKM_TASK_DEVICE ?? process.env.VAULT_TASK_DEVICE ?? "ai";
   let root = process.cwd();
+  let toolsets;
+  const flags = {};
   for (const a of argv) {
     if (a.startsWith("--device=")) {
       device = a.slice("--device=".length);
-    } else if (!a.startsWith("--")) {
+    } else if (a.startsWith("--toolset=")) {
+      const names = a.slice("--toolset=".length).split(",").map((s) => s.trim()).filter(Boolean);
+      const bad = names.filter((n) => !TOOLSETS.includes(n));
+      if (bad.length) throw new Error(`\u672A\u77E5\u306E\u7FA4\u3067\u3059: ${bad.join(", ")}\uFF08${TOOLSETS.join(", ")}\uFF09`);
+      toolsets = names;
+    } else if (a.startsWith("--")) {
+      const eq = a.indexOf("=");
+      if (eq === -1) flags[a.slice(2)] = true;
+      else flags[a.slice(2, eq)] = a.slice(eq + 1);
+    } else {
       root = a;
     }
   }
-  return { root, device };
+  return { root, device, toolsets, flags };
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const { root, device } = parseMcpArgs(process.argv.slice(2));
-  const ctx = { root, device };
+function daysAgo(n, now = /* @__PURE__ */ new Date()) {
+  return localToday(new Date(now.getTime() - n * 864e5));
+}
+function runReport(argv) {
+  const { root, flags } = parseMcpArgs(argv);
+  const since = typeof flags.since === "string" ? flags.since : daysAgo(30);
+  const until = typeof flags.until === "string" ? flags.until : localToday(/* @__PURE__ */ new Date());
+  const report = buildReport(readLogLines(root), since, until);
+  process.stdout.write(flags.json ? `${JSON.stringify(report)}
+` : `${formatReport(report)}
+`);
+}
+function runServer(argv) {
+  const { root, device, toolsets } = parseMcpArgs(argv);
+  const ctx = { root, device, toolsets, cache: new VaultCache(root), log: logEnabled() ? McpLogger.forServer(root) : null };
+  let started = false;
   const rl = createInterface({ input: process.stdin, terminal: false });
   rl.on("line", (line) => {
     const trimmed = line.trim();
@@ -10761,6 +11656,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const res = handleMcpRequest(ctx, req);
       if (res !== null) process.stdout.write(`${JSON.stringify(res)}
 `);
+      if (req.method === "initialize" && !started) {
+        started = true;
+        setImmediate(() => logStart(ctx));
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message } })}
@@ -10768,8 +11667,18 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     }
   });
 }
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const argv = process.argv.slice(2);
+  if (argv[0] === "report") runReport(argv.slice(1));
+  else runServer(argv);
+}
 export {
+  SERVER_VERSION,
+  VaultCache,
   callMcpTool,
   handleMcpRequest,
-  listMcpTools
+  listMcpTools,
+  logStart,
+  parseMcpArgs,
+  resolveTool
 };

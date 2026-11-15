@@ -10,7 +10,7 @@
 
 ## 操作
 
-Organize の「Tickler」（↑。既定は明日）、Today の Pick と前のボードの「Tickler」、Inbox・Someday・Issues の一覧の「Tickler」、issue 画面の「tickler」、MCP の `tickler` と `carry_issues` の `tickler`。
+Organize の「Tickler」（↑。既定は明日）、Today の Pick と前のボードの「Tickler」、Inbox・Someday・Issues の一覧の「Tickler」、issue 画面の「tickler」、MCP の `tickler` と `task_carry_issues` の `tickler`。
 
 ## 使い方の筋道
 

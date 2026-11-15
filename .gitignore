@@ -29,3 +29,6 @@ node_modules/
 
 # 一時ファイルの置き場（外部共有用の書き出し、同期しなくてよい自分用のファイル。ADR-0038）
 tmp/
+
+# 上流での MCP の利用ログ（ADR-0156。公開リポジトリに入れない。子の .claude/mcp-log/ はコミットする）
+.kit/harness/mcp-log/

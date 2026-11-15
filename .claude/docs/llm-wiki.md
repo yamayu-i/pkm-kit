@@ -11,6 +11,8 @@
 | 保守 | [wiki-lint](../skills/wiki-lint/SKILL.md) | リンク切れ、孤立したページ、矛盾、古い記述、重複を直す |
 | デイリーノートの整理 | [wiki-daily](../skills/wiki-daily/SKILL.md) | 前日までのデイリーノートを wiki に反映する |
 
+読むときは MCP の `wiki_get_index`・`wiki_recent_log`・`wiki_list_unprocessed_sources`・`note_search`・`note_get`・`daily_list_pending`・`check_vault` を先に使う（[MCP](vault-conventions.md#mcp)）。書き込みはまだファイルを直接編集する。
+
 どの操作も、最後に `wiki/log.md` に記録し、`wiki(<操作>): <要約>` の件名で main にコミットする（[進め方](workflow.md)）。
 
 ## 所有の区分
