@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import type { SubIssue } from "../core/sub-issue";
-import { barOf, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
+import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { StatusIcon } from "../ui/StatusIcon";
@@ -19,6 +19,14 @@ interface Drag {
 	delta: number;
 }
 
+/** 依存を引いている最中（ADR-0163）。x / y は日の列の左上からの px、target は離すと依存になる棒 */
+interface Link {
+	from: string;
+	x: number;
+	y: number;
+	target: string | null;
+}
+
 /** サブイシューのガントチャート（ADR-0143）。期間はドラッグで直し、指を離したときに 1 回だけ保存する */
 export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale }) {
 	const { ctx, subs, scale } = props;
@@ -32,6 +40,10 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	// ホバー・フォーカス（クリック）した棒。その棒に入る矢印と依存先の棒を強調し、ほかを薄くする
 	const [hovered, setHovered] = useState<string | null>(null);
 	const [focused, setFocused] = useState<string | null>(null);
+	const body = useRef<HTMLDivElement>(null);
+	const [link, setLink] = useState<Link | null>(null);
+	// 選んだ矢印（ADR-0163）。選ぶと × ボタンにフォーカスが移り、× か Delete で消す
+	const [selected, setSelected] = useState<{ from: string; to: string } | null>(null);
 
 	// 開いたときと目盛りを変えたときは、今日が左寄りに見えるようにする
 	useEffect(() => {
@@ -59,9 +71,42 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	const routed = arrows.map((a, i) => ({ late: a.late, related: related?.arrows.includes(i) ?? false, d: roundedPath(routes[i]!, 4) }));
 	const relatedFrom = new Set(related?.from ?? []);
 
+	const saveDeps = (sub: SubIssue, dependsOn: string[]) => ctx.writer.updateSub(sub.key, { dependsOn }).catch((e) => ctx.report("依存を保存できませんでした", e));
+	const removeDep = (a: { from: string; to: string }) => {
+		const to = subs.find((s) => s.id === a.to);
+		setSelected(null);
+		if (to) void saveDeps(to, to.dependsOn.filter((d) => d !== a.from));
+	};
+	// コネクタからのドラッグ。離した棒が、始めた棒に依存する（ADR-0163）
+	const pointInBody = (e: PointerEvent) => {
+		const rect = body.current?.getBoundingClientRect();
+		return { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
+	};
+	const startLink = (e: PointerEvent, sub: SubIssue) => {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		e.stopPropagation();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		setSelected(null);
+		setLink({ from: sub.id, ...pointInBody(e), target: null });
+	};
+	const moveLink = (e: PointerEvent) => {
+		if (!link) return;
+		const id = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-sub-id]")?.dataset.subId ?? null;
+		setLink({ ...link, ...pointInBody(e), target: id !== null && canConnect(subs, link.from, id) ? id : null });
+	};
+	const endLink = () => {
+		if (!link) return;
+		const l = link;
+		setLink(null);
+		const to = l.target === null ? undefined : subs.find((s) => s.id === l.target);
+		if (to) void saveDeps(to, [...to.dependsOn, l.from]);
+	};
+
 	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
 		const bar = barOf(sub);
 		if (!bar || e.button !== 0) return;
+		setSelected(null);
 		e.preventDefault();
 		e.stopPropagation();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -97,7 +142,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	};
 
 	return (
-		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}`}>
+		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
 			<div class="vt-timeline-labels">
 				<div class="vt-timeline-corner" />
 				{subs.map((sub) => (
@@ -120,7 +165,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 							</div>
 						))}
 					</div>
-					<div class="vt-timeline-body" style={{ height: `${subs.length * ROW}px` }}>
+					<div class="vt-timeline-body" ref={body} style={{ height: `${subs.length * ROW}px` }} onPointerDown={() => setSelected(null)}>
 						{cols.map((c) => (
 							<div class={`vt-timeline-stripe${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} />
 						))}
@@ -141,7 +186,52 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 									marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : r.related ? "-related" : ""})`}
 								/>
 							))}
+							{link && (() => {
+								const row = rowOf.get(link.from)!;
+								const span = spans[row];
+								return span && <path class="vt-timeline-link" d={`M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}`} />;
+							})()}
 						</svg>
+						{/* 矢印を押して選ぶための、広い当たり判定（矢印の線は細いので）。棒（z-index 2）の下、行の上 */}
+						<svg class="vt-timeline-arrow-hits" aria-hidden="true" width={width} height={subs.length * ROW}>
+							{arrows.map((a, i) => {
+								const isSel = selected?.from === a.from && selected?.to === a.to;
+								return (
+									<path
+										class={`vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`}
+										d={routed[i]!.d}
+										onPointerDown={(e) => e.stopPropagation()}
+										onClick={() => setSelected({ from: a.from, to: a.to })}
+									/>
+								);
+							})}
+						</svg>
+						{selected &&
+							(() => {
+								const i = arrows.findIndex((a) => a.from === selected.from && a.to === selected.to);
+								if (i < 0) return null;
+								const [x, y] = arrowMidpoint(routes[i]!);
+								return (
+									<button
+										type="button"
+										class="vt-timeline-arrow-remove"
+										style={{ left: `${x}px`, top: `${y}px` }}
+										title="Remove dependency"
+										aria-label="Remove dependency"
+										ref={(el) => el?.focus()}
+										onPointerDown={(e) => e.stopPropagation()}
+										onKeyDown={(e) => {
+											if (e.key === "Delete" || e.key === "Backspace") {
+												e.preventDefault();
+												removeDep(selected);
+											}
+										}}
+										onClick={() => removeDep(selected)}
+									>
+										×
+									</button>
+								);
+							})()}
 						<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
 						{subs.map((sub, i) => {
 							const bar = shown(sub);
@@ -166,7 +256,8 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 									))}
 									{bar && (
 										<div
-											class={`vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
+											data-sub-id={sub.id}
+											class={`vt-timeline-bar vt-status-${sub.status}${link && link.from !== sub.id ? (link.target === sub.id ? " is-link-target" : canConnect(subs, link.from, sub.id) ? "" : " is-link-no") : ""}${selected?.to === sub.id || selected?.from === sub.id ? " is-selected-end" : ""}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
 											style={{ left: `${left}px`, width: `${barWidth}px` }}
 											tabIndex={0}
 											role="button"
@@ -183,6 +274,15 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 											onKeyDown={(e) => keyDown(e, sub)}
 											onClick={(e) => e.stopPropagation()}
 										>
+											<span
+												class="vt-timeline-connector"
+												title="Connect: drag to a bar that depends on this"
+												aria-hidden="true"
+												onPointerDown={(e) => startLink(e, sub)}
+												onPointerMove={moveLink}
+												onPointerUp={endLink}
+												onPointerCancel={() => setLink(null)}
+											/>
 											{handles && (
 												<>
 													<span class="vt-timeline-handle is-start" aria-hidden="true" onPointerDown={(e) => startDrag(e, sub, "start")} onPointerMove={moveDrag} onPointerUp={() => endDrag(sub)} />

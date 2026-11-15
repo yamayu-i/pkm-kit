@@ -286,3 +286,35 @@ export function incomingOf(arrows: readonly { from: string; to: string }[], id: 
 	if (idx.length === 0) return null;
 	return { arrows: idx, from: [...new Set(idx.map((i) => arrows[i]!.from))] };
 }
+
+/**
+ * 棒の上でドラッグして、from の棒から to の棒へ依存を引けるか（ADR-0163）。
+ * 棒が両方にあり、別のサブで、まだつないでおらず、循環にならないとき。書く前の検査（checkSubIssues）と同じ規則
+ */
+export function canConnect(subs: readonly TimelineSub[], from: string, to: string): boolean {
+	if (from === to) return false;
+	const byId = new Map(subs.map((s) => [s.id, s]));
+	const a = byId.get(from);
+	const b = byId.get(to);
+	if (!a || !b || !barOf(a) || !barOf(b)) return false;
+	if (b.dependsOn.includes(from)) return false;
+	// to が from に依存しているなら、from → to を足すと循環する（間にサブをはさんでも）
+	const seen = new Set<string>();
+	const stack = [...a.dependsOn];
+	while (stack.length > 0) {
+		const id = stack.pop()!;
+		if (id === to) return false;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		stack.push(...(byId.get(id)?.dependsOn ?? []));
+	}
+	return true;
+}
+
+/** 矢印の折れ線の中ほどの点。× ボタンを置く場所（区間の数 n のうち、前から数えて n/2 番目（0 始まり、切り捨て）の区間の中点） */
+export function arrowMidpoint(points: readonly [number, number][]): [number, number] {
+	const i = Math.floor((points.length - 1) / 2) + 1;
+	const [x0, y0] = points[i - 1] ?? [0, 0];
+	const [x1, y1] = points[i] ?? [x0, y0];
+	return [(x0 + x1) / 2, (y0 + y1) / 2];
+}

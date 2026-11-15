@@ -3692,6 +3692,30 @@ function incomingOf(arrows, id) {
   if (idx.length === 0) return null;
   return { arrows: idx, from: [...new Set(idx.map((i3) => arrows[i3].from))] };
 }
+function canConnect(subs, from, to) {
+  if (from === to) return false;
+  const byId = new Map(subs.map((s3) => [s3.id, s3]));
+  const a3 = byId.get(from);
+  const b2 = byId.get(to);
+  if (!a3 || !b2 || !barOf(a3) || !barOf(b2)) return false;
+  if (b2.dependsOn.includes(from)) return false;
+  const seen = /* @__PURE__ */ new Set();
+  const stack2 = [...a3.dependsOn];
+  while (stack2.length > 0) {
+    const id = stack2.pop();
+    if (id === to) return false;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    stack2.push(...byId.get(id)?.dependsOn ?? []);
+  }
+  return true;
+}
+function arrowMidpoint(points) {
+  const i3 = Math.floor((points.length - 1) / 2) + 1;
+  const [x0, y0] = points[i3 - 1] ?? [0, 0];
+  const [x1, y1] = points[i3] ?? [x0, y0];
+  return [(x0 + x1) / 2, (y0 + y1) / 2];
+}
 
 // src/header/SubTimeline.tsx
 var ROW = 36;
@@ -3707,6 +3731,9 @@ function SubTimeline(props) {
   const [drag, setDrag] = d2(null);
   const [hovered, setHovered] = d2(null);
   const [focused, setFocused] = d2(null);
+  const body = A2(null);
+  const [link, setLink] = d2(null);
+  const [selected, setSelected] = d2(null);
   h2(() => {
     const el = scroller.current;
     if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
@@ -3728,9 +3755,40 @@ function SubTimeline(props) {
   const related = incomingOf(arrows, active);
   const routed = arrows.map((a3, i3) => ({ late: a3.late, related: related?.arrows.includes(i3) ?? false, d: roundedPath(routes[i3], 4) }));
   const relatedFrom = new Set(related?.from ?? []);
+  const saveDeps = (sub, dependsOn) => ctx.writer.updateSub(sub.key, { dependsOn }).catch((e3) => ctx.report("\u4F9D\u5B58\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const removeDep = (a3) => {
+    const to = subs.find((s3) => s3.id === a3.to);
+    setSelected(null);
+    if (to) void saveDeps(to, to.dependsOn.filter((d3) => d3 !== a3.from));
+  };
+  const pointInBody = (e3) => {
+    const rect = body.current?.getBoundingClientRect();
+    return { x: e3.clientX - (rect?.left ?? 0), y: e3.clientY - (rect?.top ?? 0) };
+  };
+  const startLink = (e3, sub) => {
+    if (e3.button !== 0) return;
+    e3.preventDefault();
+    e3.stopPropagation();
+    e3.currentTarget.setPointerCapture(e3.pointerId);
+    setSelected(null);
+    setLink({ from: sub.id, ...pointInBody(e3), target: null });
+  };
+  const moveLink = (e3) => {
+    if (!link) return;
+    const id = document.elementFromPoint(e3.clientX, e3.clientY)?.closest("[data-sub-id]")?.dataset.subId ?? null;
+    setLink({ ...link, ...pointInBody(e3), target: id !== null && canConnect(subs, link.from, id) ? id : null });
+  };
+  const endLink = () => {
+    if (!link) return;
+    const l3 = link;
+    setLink(null);
+    const to = l3.target === null ? void 0 : subs.find((s3) => s3.id === l3.target);
+    if (to) void saveDeps(to, [...to.dependsOn, l3.from]);
+  };
   const startDrag = (e3, sub, mode) => {
     const bar = barOf(sub);
     if (!bar || e3.button !== 0) return;
+    setSelected(null);
     e3.preventDefault();
     e3.stopPropagation();
     e3.currentTarget.setPointerCapture(e3.pointerId);
@@ -3763,7 +3821,7 @@ function SubTimeline(props) {
     const date = dateAtX(range, e3.clientX - rect.left, scale);
     void save(sub, { start: date, end: date });
   };
-  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}`, children: [
+  return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`, onKeyDown: (e3) => e3.key === "Escape" && setSelected(null), children: [
     /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
       /* @__PURE__ */ u3("div", { class: "vt-timeline-corner" }),
       subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Edit: ${sub.summary}`, onClick: () => openSubEditor(ctx, sub), children: [
@@ -3783,7 +3841,7 @@ function SubTimeline(props) {
           ]
         }
       )) }),
-      /* @__PURE__ */ u3("div", { class: "vt-timeline-body", style: { height: `${subs.length * ROW}px` }, children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-body", ref: body, style: { height: `${subs.length * ROW}px` }, onPointerDown: () => setSelected(null), children: [
         cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
         /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height: subs.length * ROW, "aria-hidden": "true", children: [
           /* @__PURE__ */ u3("defs", { children: ["", "-late", "-related"].map((suffix) => (
@@ -3797,8 +3855,50 @@ function SubTimeline(props) {
               d: r3.d,
               "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : r3.related ? "-related" : ""})`
             }
-          ))
+          )),
+          link && (() => {
+            const row = rowOf.get(link.from);
+            const span = spans[row];
+            return span && /* @__PURE__ */ u3("path", { class: "vt-timeline-link", d: `M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}` });
+          })()
         ] }),
+        /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrow-hits", "aria-hidden": "true", width, height: subs.length * ROW, children: arrows.map((a3, i3) => {
+          const isSel = selected?.from === a3.from && selected?.to === a3.to;
+          return /* @__PURE__ */ u3(
+            "path",
+            {
+              class: `vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`,
+              d: routed[i3].d,
+              onPointerDown: (e3) => e3.stopPropagation(),
+              onClick: () => setSelected({ from: a3.from, to: a3.to })
+            }
+          );
+        }) }),
+        selected && (() => {
+          const i3 = arrows.findIndex((a3) => a3.from === selected.from && a3.to === selected.to);
+          if (i3 < 0) return null;
+          const [x2, y3] = arrowMidpoint(routes[i3]);
+          return /* @__PURE__ */ u3(
+            "button",
+            {
+              type: "button",
+              class: "vt-timeline-arrow-remove",
+              style: { left: `${x2}px`, top: `${y3}px` },
+              title: "Remove dependency",
+              "aria-label": "Remove dependency",
+              ref: (el) => el?.focus(),
+              onPointerDown: (e3) => e3.stopPropagation(),
+              onKeyDown: (e3) => {
+                if (e3.key === "Delete" || e3.key === "Backspace") {
+                  e3.preventDefault();
+                  removeDep(selected);
+                }
+              },
+              onClick: () => removeDep(selected),
+              children: "\xD7"
+            }
+          );
+        })(),
         /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
         subs.map((sub, i3) => {
           const bar = shown(sub);
@@ -3818,7 +3918,8 @@ function SubTimeline(props) {
             bar && /* @__PURE__ */ u3(
               "div",
               {
-                class: `vt-timeline-bar vt-status-${sub.status}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`,
+                "data-sub-id": sub.id,
+                class: `vt-timeline-bar vt-status-${sub.status}${link && link.from !== sub.id ? link.target === sub.id ? " is-link-target" : canConnect(subs, link.from, sub.id) ? "" : " is-link-no" : ""}${selected?.to === sub.id || selected?.from === sub.id ? " is-selected-end" : ""}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`,
                 style: { left: `${left}px`, width: `${barWidth}px` },
                 tabIndex: 0,
                 role: "button",
@@ -3835,10 +3936,24 @@ ${period}`,
                 onPointerCancel: () => setDrag(null),
                 onKeyDown: (e3) => keyDown(e3, sub),
                 onClick: (e3) => e3.stopPropagation(),
-                children: handles && /* @__PURE__ */ u3(S, { children: [
-                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
-                  /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
-                ] })
+                children: [
+                  /* @__PURE__ */ u3(
+                    "span",
+                    {
+                      class: "vt-timeline-connector",
+                      title: "Connect: drag to a bar that depends on this",
+                      "aria-hidden": "true",
+                      onPointerDown: (e3) => startLink(e3, sub),
+                      onPointerMove: moveLink,
+                      onPointerUp: endLink,
+                      onPointerCancel: () => setLink(null)
+                    }
+                  ),
+                  handles && /* @__PURE__ */ u3(S, { children: [
+                    /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
+                    /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
+                  ] })
+                ]
               }
             )
           ] });
