@@ -28,7 +28,8 @@ DailyTaskView（Today。[ADR-0009](0009-views.md)）は、Overdue → Previous b
 | Pick（新設） | Next を一覧にし、選んで今日のボードに載せる | Next Actions から選ぶ |
 | Board | 今日のボード（[ADR-0137](0137-board-lanes-and-sub-issue-cards.md) のまま） | 実行 |
 
-- どの段階の表にも、issue とサブの両方を出す。サブは `i-12 › サブの題` の形で親が分かるようにする（ADR-0137 のボードと同じ）。今は期限切れ・期限が近い表にサブが出ない（サブの期限を警告していない）ので、これも直す
+- Calendar・Previous boards・Pick の表には、issue とサブの両方を出す。今は期限切れ・期限が近い表にサブが出ない（サブの期限を警告していない）ので、これも直す。サブの整理そのものは親の画面で行う（ADR-0148）。Daily で横断して扱うのは、期限・Calendar の通知と、今日やる行動を選ぶことだけ
+- サブの行は、サブの題を主にし、親は識別できるだけの小さい表示（`i-12` と短く切った親の題）にする。縦の幅を増やさない
 - 件数のある段階を順に通る。「Next」ボタンで飛ばせる。段階表示から、いつでも移れる
 - 「Later (skip)」を削除し、「Next」だけにする（同じ動作）
 - 段階の状態は `passed`（飛ばした段階）と `manual`（手で選んだ段階）の 2 つにし、「片付けなくても進める」特例をなくす（どの段階も「Next」で飛ばせるので、特例は要らない）
@@ -52,9 +53,10 @@ ADR-0152 で、Do Today は Add to today's board に、Move Do Date は Move dat
 
 - 対象: 今日のボードにない、次の 2 つ
   - Next の issue（ADR-0148。`open` で、`clarified` で、`scheduled` も `tickler` もない）
-  - `open` のサブのうち、`scheduled` がなく、`start` がないか今日以前のもの。親が active なものだけ。親の題を `i-12 › 題` の形で添える
-- 並び順: priority の高い順 → deadline が近い順 → 最後に見直してから（`reviewed`）古い順。サブは親の priority・deadline を使い、同じ親のサブは隣り合わせる
-- 列: priority、summary、estimated、label、deadline、最後に見直してからの日数（古い Next に気づくため）
+  - `open` のサブのうち、`scheduled` がなく、`start` がないか今日以前のもの。親が active なものだけ
+- サブを持つ親（Project）は、単独の行として出さない。そのサブの見出しとして出す。見出しは `i-12` と短く切った親の題だけの小さい 1 行で、縦の幅をとらない。主はサブの題。親そのものに直接やる作業があるときは「Add issue」から載せる
+- 並び順: priority の高い順 → deadline が近い順 → 最後に見直してから（`reviewed`）古い順。サブは親の priority を使い、同じ親のサブは見出しの下にまとめる（親の中の並び順で）
+- 列: priority、summary、estimated、label、deadline、最後に見直してからの日数（古い Next に気づくため。サブには出さない）
 - 絞り込みは、一覧の既存の仕組み（label・テキスト）を使う。新しい項目は足さない。体力・文脈の専用項目は持たない
 - Pick を見ただけでは `reviewed` を更新しない。操作したときだけ、既存の操作が `reviewed` を書く
 - 「Add issue」（候補の一覧）は残す。新規作成と、Next 以外（Inbox のもの、Tickler で隠れているものなど）をあえて載せるために使う
@@ -76,6 +78,7 @@ ADR-0152 で、Do Today は Add to today's board に、Move Do Date は Move dat
 - **文脈・体力の専用項目を足す**: 今の利用実態を確かめていない。label・estimated・priority で足りるか、使ってから判断する
 - **Weekly Review を Daily に統合する**: Daily は今日の選択の場。選ばれなかったものの健全性は、全体を一度に見る場（#151）でないと確かめられない
 - **サブを Pick に出さず、親の issue だけを出す**: 親（Project）は行動ではないので、選んでも何をするか決まらない
+- **サブの行ごとに親の題を同じ大きさで添える**: 親の題が長いと、主であるサブの題が読みにくくなり、行も高くなる
 
 ## 影響
 

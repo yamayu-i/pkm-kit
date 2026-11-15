@@ -53,17 +53,17 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 ### 範囲
 
-- サブイシュー（[ADR-0135](0135-sub-issues-in-issue-file.md)）も対象にする。サブも `clarified` と `reviewed` を持ち、Inbox・Organize・Someday の判定は issue と同じ規則で行う（実行中に曖昧になるのはサブでも同じで、#134 の主な場面）
-- 親の画面でサブを作るとき（1 行の入力を含む）は `clarified: true` を書く。プロジェクトを次の行動に分けることが整理だから。曖昧になったら「Inbox に戻す」で Inbox に出す
-- サブは `revisit` を持たない。someday のサブは、Organize で `reviewed` の古い順に出る
-- サブを出す一覧（Inbox、Organize、Someday、MCP の Inbox の一覧）では、親が分かるように `i-12 › サブの題` の形で出す（ADR-0137 のボードと同じ）。親の題は短く切ってよい。開くと親の画面を開き、そのサブの編集を開く
-- サイドバーと PKM Updates の Inbox・Organize の件数にサブを含める。PKM Updates は親のファイルを指す
+- サブイシュー（[ADR-0135](0135-sub-issues-in-issue-file.md)）は対象にしない。`clarified` を持たず、Inbox・Organize・Someday 画面に出さない
+  - Organize の責務は issue の整理。サブは issue（GTD の Project）を解決するために分けた行動で、Project を計画するときに作るものなので、Inbox を通らない
+  - サブの整理（分ける・直す・Someday・取りやめ）は、親の issue 画面で行う。文脈（親の本文・ほかのサブ・依存）がそこにあるから
+  - 実行中にサブが曖昧になり、その場で直せないときは、親を「Inbox に戻す」。Project ごと Organize に出る
+- サブを横断して扱うのは、期限と Calendar の通知（ADR-0150 の Calendar の段階）と、今日やる行動を選ぶこと（ADR-0150 の Pick）だけにする。どちらも整理ではない
+- 次の行動のない Project（開いているサブがない親）や、滞ったサブの見直しは、Weekly Review（#151）で親ごとに行う
 - routine は対象外（これまでどおり）
 
 ### 移行
 
 - 既存の `open` の issue のうち、`scheduled`・`soft_deadline`・`deadline` のどれかがあるものに `clarified: true` を書く。日付がないものは書かない（今も Inbox なので、そのまま Inbox に残る）。ADR-0152 の移行（`scheduled` を消す）より前に適用する
-- 既存のサブには、status に関係なく `clarified: true` を書く（今は Inbox に出ないので、見た目を変えない）
 - 見た目は移行の前後で変わらない。変わるのは、移行のあとに起きる操作から
 - 番号は Issue に合わせて `0148-inbox-clarified`。冪等にする
 
@@ -99,9 +99,9 @@ Inbox は「`open` で、`scheduled`・`soft_deadline`・`deadline` がどれも
 
 ## 影響
 
-- 変更するもの: `core/schema.ts`・`core/sub-issue.ts`（`clarified`・サブの `reviewed` の読み書き）、`views/InboxView.tsx`・`SomedayView.tsx`（サブの行）、`core/index.ts`（`isInbox`、Next の算出）、`core/actions.ts`（`inboxPatch`、Next の patch）、`views/OrganizeView.tsx`（Next の追加、Later の削除、`requireEstimate`）、`cli/mcp.ts`・`cli/vault-ops.ts`、`core/lint.ts`、issue 画面・一覧の切り替え、プロダクトの文書、`task-coach` スキル
+- 変更するもの: `core/schema.ts`（`clarified` の読み書き）、`core/index.ts`（`isInbox`、Next の算出）、`core/actions.ts`（`inboxPatch`、Next の patch）、`views/OrganizeView.tsx`（Next の追加、Later の削除、`requireEstimate`）、`cli/mcp.ts`・`cli/vault-ops.ts`、`core/lint.ts`、issue 画面・一覧の切り替え、プロダクトの文書、`task-coach` スキル
 - 移行 `.kit/migrations/0148-inbox-clarified/`。子の Vault の issue の frontmatter を書き換えるので、`.kit/changes/` に変更のノートを書く
 - Organize の操作が Later の廃止と Next の追加で入れ替わる。キーとスワイプの割り当て（今は 4 方向で埋まっている）は、→ を Next、↑ を Tickler（ADR-0152）に当てる。Calendar はボタンにする
 - この ADR だけを先に実装する間は、Do Date（日付のリストの `scheduled`）が残る。その間は Organize の Do Date が `clarified: true` を書き、↑ はボタンのない空きにしておく（ADR-0152 の実装で Calendar と Tickler に置き換わる）
 - `clarified` は通常のメタデータ。`updated` の自動付与（ADR-0028）の対象になる
-- ADR-0006 と ADR-0030 の状態に「一部置換: 0148」を足す。ADR-0135 の状態に「一部置換: 0148」を足す（サブの項目）
+- ADR-0006 と ADR-0030 の状態に「一部置換: 0148」を足す
