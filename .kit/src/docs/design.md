@@ -220,6 +220,9 @@ packages/design/tokens.json（正本）
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
 | カード（ボード） | `.vt-task` | 押せるカード。1 行に status のバッジ（メニュー）・題・星ボタン（`.vt-star`。付いているときは primary で塗る）・再生 / 停止・`⋯` のメニューだけを置き、大きくしない。ID は出さず表題を優先する。記録中は緑の枠。Top 4 と Up next ではドラッグでき、別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。ADR-0114, 0137） |
 | 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン。未 Pick は同じ 36px の `.vt-play.vt-pick`。issue の Worklog 見出しと上下のサブで共通の表示条件を使い、closed・canceled は非表示、記録中は状態に関係なく停止を表示する |
+| 記録の時刻を直すボタン | `.vt-time-edit`（`.vt-icon-button`） | 再生 / 停止の左の 24px の色のない丸（`history`）。再生 / 停止より目立たせない。ボードのカードと Tasks Now の行に出し、幅 480px 以下のボードでは隠して `⋯` のメニューから開く（ADR-0193） |
+| 記録の時刻のダイアログ | `.vt-wt`（`.vt-wt-row`・`.vt-wt-actions`） | From / To の入力欄（右に 40px のカレンダーと時計のアイコンボタン、下に解釈した日時）と、右下の再生 / 停止（`.vt-play`）。押せない方は disabled（ADR-0193） |
+| 時刻のピッカー | `.vt-clock`（`.vt-clock-part`・`.vt-clock-dial`） | M3 の時刻ピッカー。上に時と分の欄（64px、headline-small。選んでいる方は secondary-container）、下に surface-container-high の丸いダイヤル（24 時間。外の輪 0〜11、内の輪 12〜23、分は 5 分おきの数字）。針と選んだ数字の丸は primary。押す・なぞる・矢印キーで変える（ADR-0193） |
 | ボードの欄 | `.vt-lane`（`.vt-lanes`） | ボードの枠。上から Working（緑の枠）・Top 4・Routines（routine だけ。開閉でき、既定は開く。すべて片付いたら隠す）・Up next・Watch（waiting / delegated のすべて。secondary-container の面で枠なし。カードは status のバッジ・題・委任先・Resume・`⋯` で、狭いときは委任先を隠し Resume をアイコンだけにする。ADR-0184）・Done（面を沈め、たたむ）を 1 列に積む。Top 4 と Up next は空でも出し、ほかはカードがあるときだけ出す。カードを落とせるときは primary の枠 + secondary-container の面（ADR-0137） |
 | 親の見出し | `.vt-lane-run`（`.vt-lane-parent`） | 同じ欄で隣り合った、同じ親のサブのまとまり。左に outline-variant の太い線、上に親の ID のバッジと弱い文字の親の題（押すと親を開く）（ADR-0137） |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |

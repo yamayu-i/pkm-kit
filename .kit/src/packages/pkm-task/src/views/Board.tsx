@@ -35,6 +35,7 @@ import { StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow } from "../ui/hooks";
+import { openWorklogTimes } from "../obsidian/worklog-times";
 import { linkProps } from "../ui/a11y";
 
 /** 閉じた直後の動きを付ける時間 */
@@ -109,6 +110,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 		if (up) m.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void stepCard(ctx, date, key, -1)));
 		if (down) m.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void stepCard(ctx, date, key, 1)));
 		m.addSeparator();
+		m.addItem((mi) => mi.setTitle("Edit times").setIcon("history").onClick(() => openWorklogTimes(ctx, key, summary)));
 		m.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
 		if (card.kind !== "routine") m.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, key)));
 		m.showAtMouseEvent(e);
@@ -155,6 +157,9 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 					<Icon name="star" />
 				</button>
 			)}
+			<button class="vt-icon-button vt-time-edit" aria-label="Edit times" title="Edit start / end times (forgot to press play?)" onClick={() => openWorklogTimes(ctx, key, summary)}>
+				<Icon name="history" />
+			</button>
 			<button
 				class={`vt-play${running.length > 0 ? " is-running" : ""}`}
 				aria-label={running.length > 0 ? "Stop timer" : "Start timer"}

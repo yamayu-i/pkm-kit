@@ -17,6 +17,7 @@ import {
 } from "../core/tasks-now";
 import { startTimer, stopTimer } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
+import { openWorklogTimes } from "../obsidian/worklog-times";
 import { Icon } from "../ui/Icon";
 import { linkProps } from "../ui/a11y";
 import { useNow, useStoreVersion } from "../ui/hooks";
@@ -33,7 +34,7 @@ function StateCardView(props: { title: string; hint: string; card: StateCard }) 
 	);
 }
 
-function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: string; label: string; onClick: () => void; running?: boolean }; paused?: boolean }) {
+function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: string; label: string; onClick: () => void; running?: boolean }; paused?: boolean; editTimes?: boolean }) {
 	const { ctx, task, action } = props;
 	const open = task.path ? () => void ctx.openPath(task.path!) : null;
 	return (
@@ -45,6 +46,11 @@ function TaskRow(props: { ctx: TaskContext; task: NowTask; action: { icon: strin
 				</span>
 			) : (
 				<span class="vt-task-summary">{task.summary || task.key}</span>
+			)}
+			{props.editTimes && (
+				<button class="vt-icon-button vt-time-edit" aria-label="Edit times" title="Edit start / end times (forgot to press play?)" onClick={() => openWorklogTimes(ctx, task.key, task.summary || task.key)}>
+					<Icon name="history" />
+				</button>
 			)}
 			<button class={`vt-play${action.running ? " is-running" : ""}`} aria-label={action.label} title={action.label} onClick={action.onClick}>
 				<Icon name={action.icon} />
@@ -163,7 +169,7 @@ export function TasksNowDialog(props: { ctx: TaskContext; scope?: Scope }) {
 				</div>
 				<div class="vt-now-list">
 					{running.map((t) => (
-						<TaskRow ctx={ctx} task={t} action={{ icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t.key]) }} />
+						<TaskRow ctx={ctx} task={t} editTimes action={{ icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t.key]) }} />
 					))}
 					{paused.map((t) => (
 						<TaskRow ctx={ctx} task={t} paused action={{ icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t.key]) }} />
@@ -176,7 +182,7 @@ export function TasksNowDialog(props: { ctx: TaskContext; scope?: Scope }) {
 				<h3 class="vt-now-heading">Tasks</h3>
 				<div class="vt-now-list">
 					{todo.map((t) => (
-						<TaskRow ctx={ctx} task={t} action={{ icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t.key]) }} />
+						<TaskRow ctx={ctx} task={t} editTimes action={{ icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t.key]) }} />
 					))}
 					{todo.length === 0 && <div class="vt-now-empty">Nothing left on today's board</div>}
 				</div>

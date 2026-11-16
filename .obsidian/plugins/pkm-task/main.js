@@ -7941,14 +7941,15 @@ var TaskWriter = class {
   /**
    * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
    * taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。
-   * open の issue とサブは in-progress にする（ADR-0031）
+   * open の issue とサブは in-progress にする（ADR-0031）。
+   * fromMs を渡すと、その時刻から始めたことにする（押し忘れを直す。ADR-0193）
    */
-  async startTimer(taskIds, device) {
+  async startTimer(taskIds, device, fromMs) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     const running = new Set(this.store.index.running().map(workKey));
     const targets = taskIds.filter((id) => !running.has(id));
     if (targets.length === 0) return;
-    const now = /* @__PURE__ */ new Date();
+    const now = fromMs === void 0 ? /* @__PURE__ */ new Date() : new Date(fromMs);
     const from = localDateTime(now);
     const path = (0, import_obsidian21.normalizePath)(worklogPath(device, now));
     const file = await this.getOrCreate(path, "");
@@ -7980,11 +7981,11 @@ var TaskWriter = class {
     }
     this.store.refreshSoon();
   }
-  /** worklog を手で足す。保存先は開始日の月のファイル */
-  async addWorklog(taskId, device, entry, fromDate) {
+  /** worklog を手で足す。保存先は開始日の月のファイル。key は記録の鍵（サブは合成キー。ADR-0135） */
+  async addWorklog(key, device, entry, fromDate) {
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08worklog \u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     const file = await this.getOrCreate((0, import_obsidian21.normalizePath)(worklogPath(device, fromDate)), "");
-    await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
+    await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), ...entry })));
     this.store.refreshSoon();
   }
   /** その日のボードの操作を、この端末のログに追記する（ADR-0020） */
@@ -8109,6 +8110,332 @@ function ActionBar(props) {
 
 // src/views/Board.tsx
 var import_obsidian23 = require("obsidian");
+
+// src/core/worklog-times.ts
+var pad22 = (n2) => String(n2).padStart(2, "0");
+function localMs(year, month, day, hour, minute) {
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59) return null;
+  const d3 = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (d3.getFullYear() !== year || d3.getMonth() !== month - 1 || d3.getDate() !== day || d3.getHours() !== hour) return null;
+  return d3.getTime();
+}
+function parseTimeInputAt(input, now) {
+  const s3 = input.trim().toLowerCase();
+  const ms = parseShape(s3, now);
+  return ms !== null && ms <= now ? ms : null;
+}
+function parseShape(s3, now) {
+  const base = new Date(now);
+  const relative = /^-(?:(\d+)h)?(?:(\d+)m)?$/.exec(s3);
+  if (relative && (relative[1] !== void 0 || relative[2] !== void 0)) {
+    const minutes = Number(relative[1] ?? 0) * 60 + Number(relative[2] ?? 0);
+    const floored = new Date(now);
+    floored.setSeconds(0, 0);
+    return floored.getTime() - minutes * 6e4;
+  }
+  const stored = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(s3);
+  if (stored) return localMs(Number(stored[1]), Number(stored[2]), Number(stored[3]), Number(stored[4]), Number(stored[5]));
+  const daysAgo = /^(\d{4})-(\d+)d$/.exec(s3);
+  if (daysAgo) {
+    const day = new Date(base.getFullYear(), base.getMonth(), base.getDate() - Number(daysAgo[2]));
+    return localMs(day.getFullYear(), day.getMonth() + 1, day.getDate(), Number(daysAgo[1].slice(0, 2)), Number(daysAgo[1].slice(2)));
+  }
+  if (!/^\d+$/.test(s3)) return null;
+  const hm2 = (t3) => [Number(t3.slice(-4, -2)), Number(t3.slice(-2))];
+  const [hour, minute] = hm2(s3);
+  const year = base.getFullYear();
+  const month = base.getMonth() + 1;
+  if (s3.length === 4) return localMs(year, month, base.getDate(), hour, minute);
+  if (s3.length === 6) return localMs(year, month, Number(s3.slice(0, 2)), hour, minute);
+  if (s3.length === 8) return localMs(year, Number(s3.slice(0, 2)), Number(s3.slice(2, 4)), hour, minute);
+  if (s3.length === 10) return localMs(2e3 + Number(s3.slice(0, 2)), Number(s3.slice(2, 4)), Number(s3.slice(4, 6)), hour, minute);
+  return null;
+}
+function formatTimeInput(ms) {
+  const d3 = new Date(ms);
+  return `${d3.getFullYear()}-${pad22(d3.getMonth() + 1)}-${pad22(d3.getDate())} ${pad22(d3.getHours())}:${pad22(d3.getMinutes())}`;
+}
+function planWorklogTimes(input) {
+  const { running, fromMs, toMs: toMs2, now } = input;
+  if (fromMs === null) return { kind: "error", error: "From \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" };
+  if (fromMs > now || toMs2 !== null && toMs2 > now) return { kind: "error", error: "\u4ECA\u3088\u308A\u5F8C\u306E\u65E5\u6642\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093" };
+  if (toMs2 !== null && toMs2 <= fromMs) return { kind: "error", error: "To \u306F From \u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" };
+  if (toMs2 === null) return running ? { kind: "continue", fromMs } : { kind: "start", fromMs };
+  return running ? { kind: "stop", fromMs, toMs: toMs2 } : { kind: "add", fromMs, toMs: toMs2 };
+}
+var INNER_LIMIT = 0.78;
+var INNER_RADIUS = 0.62;
+function clockValueAt(mode, x2, y3) {
+  const turn = (Math.atan2(x2, -y3) / (2 * Math.PI) + 1) % 1;
+  if (mode === "minute") return Math.round(turn * 60) % 60;
+  const hour = Math.round(turn * 12) % 12;
+  return Math.hypot(x2, y3) < INNER_LIMIT ? hour + 12 : hour;
+}
+function dialPositions(mode) {
+  const at = (value, step, radius, inner) => {
+    const angle = step / 12 * 2 * Math.PI;
+    return { value, x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius, inner };
+  };
+  if (mode === "minute") return Array.from({ length: 12 }, (_2, i3) => at(i3 * 5, i3, 1, false));
+  return [...Array.from({ length: 12 }, (_2, i3) => at(i3, i3, 1, false)), ...Array.from({ length: 12 }, (_2, i3) => at(i3 + 12, i3, INNER_RADIUS, true))];
+}
+function handPosition(mode, value) {
+  const turn = mode === "minute" ? value / 60 : value % 12 / 12;
+  const radius = mode === "hour" && value >= 12 ? INNER_RADIUS : 1;
+  const angle = turn * 2 * Math.PI;
+  return { x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius };
+}
+
+// src/ui/WorklogTimesForm.tsx
+var pad23 = (n2) => String(n2).padStart(2, "0");
+function describe(ms) {
+  const text = formatTimeInput(ms);
+  const date = text.slice(0, 10);
+  return `${text.slice(5, 7)}/${text.slice(8, 10)} ${WEEKDAY_NAMES[weekdayOf(date)].toUpperCase()} ${text.slice(11)}`;
+}
+function compose(date, hour, minute) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  return new Date(y3, m3 - 1, d3, hour, minute, 0, 0).getTime();
+}
+var VIEW = 1.3;
+function ClockPicker(props) {
+  const [mode, setMode] = d2("hour");
+  const dragging = A2(false);
+  const dialRef = A2(null);
+  const value = mode === "hour" ? props.hour : props.minute;
+  const set = (v3) => mode === "hour" ? props.onChange(v3, props.minute) : props.onChange(props.hour, v3);
+  const pick = (e3) => {
+    const rect = e3.currentTarget.getBoundingClientRect();
+    const x2 = ((e3.clientX - rect.left) / rect.width - 0.5) * 2 * VIEW;
+    const y3 = ((e3.clientY - rect.top) / rect.height - 0.5) * 2 * VIEW;
+    set(clockValueAt(mode, x2, y3));
+  };
+  const choose = (next) => {
+    setMode(next);
+    dialRef.current?.focus();
+  };
+  const hand = handPosition(mode, value);
+  const numbers = dialPositions(mode);
+  const max = mode === "hour" ? 24 : 60;
+  return /* @__PURE__ */ u3("div", { class: "vt-clock", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-clock-display", children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "hour" ? " is-selected" : ""}`, "aria-pressed": mode === "hour", "aria-label": "Hour", onClick: () => choose("hour"), children: pad23(props.hour) }),
+      /* @__PURE__ */ u3("span", { class: "vt-clock-colon", "aria-hidden": "true", children: ":" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "minute" ? " is-selected" : ""}`, "aria-pressed": mode === "minute", "aria-label": "Minute", onClick: () => choose("minute"), children: pad23(props.minute) })
+    ] }),
+    /* @__PURE__ */ u3(
+      "div",
+      {
+        ref: dialRef,
+        class: "vt-clock-dial",
+        role: "slider",
+        tabIndex: 0,
+        "aria-label": mode === "hour" ? "Hour" : "Minute",
+        "aria-valuemin": 0,
+        "aria-valuemax": max - 1,
+        "aria-valuenow": value,
+        onPointerDown: (e3) => {
+          dragging.current = true;
+          e3.currentTarget.setPointerCapture?.(e3.pointerId);
+          pick(e3);
+        },
+        onPointerMove: (e3) => dragging.current && pick(e3),
+        onPointerUp: () => {
+          if (!dragging.current) return;
+          dragging.current = false;
+          if (mode === "hour") setMode("minute");
+        },
+        onKeyDown: (e3) => {
+          const step = e3.key === "ArrowUp" || e3.key === "ArrowRight" ? 1 : e3.key === "ArrowDown" || e3.key === "ArrowLeft" ? -1 : 0;
+          if (step !== 0) {
+            e3.preventDefault();
+            set((value + step + max) % max);
+          } else if (e3.key === "Enter") {
+            e3.preventDefault();
+            e3.stopPropagation();
+            if (mode === "hour") setMode("minute");
+            else props.onDone();
+          }
+        },
+        children: [
+          /* @__PURE__ */ u3("svg", { viewBox: `${-VIEW} ${-VIEW} ${VIEW * 2} ${VIEW * 2}`, "aria-hidden": "true", children: [
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-face", r: VIEW }),
+            /* @__PURE__ */ u3("line", { class: "vt-clock-hand", x1: 0, y1: 0, x2: hand.x, y2: hand.y }),
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-center", r: 0.04 }),
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-knob", cx: hand.x, cy: hand.y, r: 0.17 })
+          ] }),
+          numbers.map((n2) => /* @__PURE__ */ u3(
+            "span",
+            {
+              class: `vt-clock-number${n2.inner ? " is-inner" : ""}${n2.value === value ? " is-selected" : ""}`,
+              style: { left: `${50 + n2.x / VIEW * 50}%`, top: `${50 + n2.y / VIEW * 50}%` },
+              "aria-hidden": "true",
+              children: pad23(n2.value)
+            }
+          ))
+        ]
+      }
+    ),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: props.onDone, children: "OK" })
+    ] })
+  ] });
+}
+function TimeField(props) {
+  const [panel, setPanel] = d2(null);
+  const parsed = parseTimeInputAt(props.text, props.now());
+  const empty = props.text.trim() === "";
+  const commit = () => {
+    if (parsed !== null) props.onText(formatTimeInput(parsed));
+  };
+  const base = new Date(parsed ?? props.now());
+  const baseDate = formatTimeInput(base.getTime()).slice(0, 10);
+  const [month, setMonth] = d2(baseDate.slice(0, 7));
+  const toggle2 = (next) => {
+    if (next === "calendar") setMonth(baseDate.slice(0, 7));
+    setPanel(panel === next ? null : next);
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-text-field vt-wt-field", children: [
+    /* @__PURE__ */ u3("span", { children: props.label }),
+    /* @__PURE__ */ u3("div", { class: "vt-wt-row", children: [
+      /* @__PURE__ */ u3(
+        "input",
+        {
+          ref: props.inputRef,
+          type: "text",
+          "aria-label": props.label,
+          placeholder: props.label === "From" ? "-22m / 2200 / 2200-1d" : "Empty to keep running",
+          value: props.text,
+          onInput: (e3) => props.onText(e3.currentTarget.value),
+          onBlur: commit,
+          onKeyDown: (e3) => {
+            if (e3.key !== "Enter" || e3.isComposing) return;
+            e3.preventDefault();
+            commit();
+            props.onEnter();
+          }
+        }
+      ),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} calendar`, "aria-expanded": panel === "calendar", title: "Pick a date", onClick: () => toggle2("calendar"), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} clock`, "aria-expanded": panel === "clock", title: "Pick a time", onClick: () => toggle2("clock"), children: /* @__PURE__ */ u3(Icon, { name: "clock" }) })
+    ] }),
+    empty ? null : parsed === null ? /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u6642\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093\uFF08\u4ECA\u3088\u308A\u5F8C\u3082\u5165\u308C\u3089\u308C\u307E\u305B\u3093\uFF09" }) : /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: describe(parsed) }),
+    panel === "calendar" && /* @__PURE__ */ u3(
+      MonthCalendar,
+      {
+        month,
+        onMonth: setMonth,
+        today: localToday(new Date(props.now())),
+        isSelected: (d3) => parsed !== null && d3 === baseDate,
+        onPick: (d3) => {
+          props.onText(formatTimeInput(compose(d3, base.getHours(), base.getMinutes())));
+          setPanel(null);
+        }
+      }
+    ),
+    panel === "clock" && /* @__PURE__ */ u3(
+      ClockPicker,
+      {
+        hour: base.getHours(),
+        minute: base.getMinutes(),
+        onChange: (h3, m3) => props.onText(formatTimeInput(compose(baseDate, h3, m3))),
+        onDone: () => setPanel(null)
+      }
+    )
+  ] });
+}
+function WorklogTimesForm(props) {
+  const now = props.now ?? Date.now;
+  const [fromText, setFromText] = d2(props.initialFromMs === null ? "" : formatTimeInput(props.initialFromMs));
+  const [toText, setToText] = d2("");
+  const fromRef = A2(null);
+  const toRef = A2(null);
+  const playRef = A2(null);
+  const stopRef = A2(null);
+  h2(() => fromRef.current?.select(), []);
+  const toEmpty = toText.trim() === "";
+  const fromMs = parseTimeInputAt(fromText, now());
+  const toMs2 = toEmpty ? null : parseTimeInputAt(toText, now());
+  const unreadable = fromText.trim() !== "" && fromMs === null || !toEmpty && toMs2 === null;
+  const plan = unreadable ? null : planWorklogTimes({ running: props.running, fromMs, toMs: toMs2, now: now() });
+  const error = plan?.kind === "error" && fromText.trim() !== "" ? plan.error : null;
+  const ready = plan !== null && plan.kind !== "error";
+  const canPlay = ready && toEmpty;
+  const canStop = ready && !toEmpty;
+  const submit = () => {
+    if (ready) props.onSubmit(plan);
+  };
+  const focusAction = (to) => setTimeout(() => (to === "play" ? playRef : stopRef).current?.focus(), 0);
+  return /* @__PURE__ */ u3("div", { class: "vt-wt", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-wt-summary", children: props.summary }),
+    /* @__PURE__ */ u3(TimeField, { label: "From", text: fromText, onText: setFromText, inputRef: fromRef, now, onEnter: () => toRef.current?.focus() }),
+    /* @__PURE__ */ u3(TimeField, { label: "To", text: toText, onText: setToText, inputRef: toRef, now, onEnter: () => focusAction(toEmpty ? "play" : "stop") }),
+    error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+    /* @__PURE__ */ u3("div", { class: "vt-wt-actions", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-wt-note", children: props.running ? "Running: \u25B6 keeps it running, \u25A0 stops it" : "\u25B6 starts from From, \u25A0 adds a finished record" }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          ref: playRef,
+          type: "button",
+          class: "vt-play",
+          disabled: !canPlay,
+          "aria-label": props.running ? "Keep running with this start" : "Start from this time",
+          title: props.running ? "Keep running with this start" : "Start from this time",
+          onClick: submit,
+          children: /* @__PURE__ */ u3(Icon, { name: "play" })
+        }
+      ),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          ref: stopRef,
+          type: "button",
+          class: "vt-play is-running",
+          disabled: !canStop,
+          "aria-label": props.running ? "Stop with these times" : "Add this record",
+          title: props.running ? "Stop with these times" : "Add this record",
+          onClick: submit,
+          children: /* @__PURE__ */ u3(Icon, { name: "square" })
+        }
+      )
+    ] })
+  ] });
+}
+
+// src/obsidian/worklog-times.ts
+function runningOf(ctx, key) {
+  return ctx.store.index.running().filter((l3) => workKey(l3) === key).sort((a3, b2) => b2.fromMs - a3.fromMs);
+}
+async function applyWorklogTimes(ctx, key, plan) {
+  const iso = (ms) => localDateTime(new Date(ms));
+  if (plan.kind === "start") return ctx.writer.startTimer([key], ctx.settings.deviceName, plan.fromMs);
+  if (plan.kind === "add") return ctx.writer.addWorklog(key, ctx.settings.deviceName, { from: iso(plan.fromMs), to: iso(plan.toMs), description: "" }, new Date(plan.fromMs));
+  const [entry, ...others] = runningOf(ctx, key);
+  if (!entry) throw new Error("\u8A18\u9332\u4E2D\u306E worklog \u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u958B\u304D\u76F4\u3057\u3066\u304F\u3060\u3055\u3044");
+  await ctx.writer.updateWorklog(entry, { from: iso(plan.fromMs), to: plan.kind === "stop" ? iso(plan.toMs) : null, description: entry.description });
+  if (plan.kind === "stop" && others.length > 0) await ctx.writer.stopTimer(others);
+}
+function openWorklogTimes(ctx, key, summary) {
+  const entry = runningOf(ctx, key)[0] ?? null;
+  new PreactModal(
+    ctx.app,
+    "Edit worklog times",
+    (close) => k(WorklogTimesForm, {
+      summary,
+      running: entry !== null,
+      initialFromMs: entry?.fromMs ?? null,
+      onSubmit: (plan) => {
+        close();
+        applyWorklogTimes(ctx, key, plan).catch((e3) => ctx.report("worklog \u3092\u76F4\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    })
+  ).open();
+}
+
+// src/views/Board.tsx
 var ENTER_MS = 3e3;
 var LANE_TITLE = {
   working: "Working",
@@ -8162,6 +8489,7 @@ function TaskCard(props) {
     if (up) m3.addItem((mi) => mi.setTitle("Move up").setIcon("arrow-up").onClick(() => void stepCard(ctx, date, key, -1)));
     if (down) m3.addItem((mi) => mi.setTitle("Move down").setIcon("arrow-down").onClick(() => void stepCard(ctx, date, key, 1)));
     m3.addSeparator();
+    m3.addItem((mi) => mi.setTitle("Edit times").setIcon("history").onClick(() => openWorklogTimes(ctx, key, summary)));
     m3.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
     if (card.kind !== "routine") m3.addItem((mi) => mi.setTitle("Remove from board").setIcon("x").onClick(() => void removeFromBoard(ctx, date, key)));
     m3.showAtMouseEvent(e3);
@@ -8205,6 +8533,7 @@ function TaskCard(props) {
             children: /* @__PURE__ */ u3(Icon, { name: "star" })
           }
         ),
+        /* @__PURE__ */ u3("button", { class: "vt-icon-button vt-time-edit", "aria-label": "Edit times", title: "Edit start / end times (forgot to press play?)", onClick: () => openWorklogTimes(ctx, key, summary), children: /* @__PURE__ */ u3(Icon, { name: "history" }) }),
         /* @__PURE__ */ u3(
           "button",
           {
@@ -9784,7 +10113,7 @@ function restCard(worklogs, now) {
   if (elapsedMs < FOCUS_CAUTION_MS) return { elapsedMs, level: "caution", label: "Caution" };
   return { elapsedMs, level: "alert", label: "Over-focused" };
 }
-function describe(index, key) {
+function describe2(index, key) {
   const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
   return { id: key.includes("#") ? key.split("#")[0] : key, summary: task?.summary ?? "", path: task?.path ?? null };
 }
@@ -9794,7 +10123,7 @@ function runningTasks(index, now) {
     const key = workKey(l3);
     elapsed.set(key, Math.max(elapsed.get(key) ?? 0, Math.max(0, now - l3.fromMs)));
   }
-  return [...elapsed.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([key, ms]) => ({ key, ...describe(index, key), elapsedMs: ms }));
+  return [...elapsed.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([key, ms]) => ({ key, ...describe2(index, key), elapsedMs: ms }));
 }
 function pausedTasks(index, keys) {
   const running = new Set(index.running().map(workKey));
@@ -9802,13 +10131,13 @@ function pausedTasks(index, keys) {
     const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
     if (!task) return false;
     return !("status" in task) || task.status !== "closed" && task.status !== "canceled";
-  }).map((key) => ({ key, ...describe(index, key), elapsedMs: null }));
+  }).map((key) => ({ key, ...describe2(index, key), elapsedMs: null }));
 }
 function todoTasks(index, today, excluded) {
   const stored = index.board(today)?.board ?? emptyBoard();
   const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
   const lanes = boardLanes(index, today, board);
-  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
+  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe2(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
 }
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function formatNow(ms) {
@@ -9838,6 +10167,7 @@ function TaskRow(props) {
   return /* @__PURE__ */ u3("div", { class: `vt-task${task.elapsedMs !== null ? " is-running" : ""}${props.paused ? " is-paused" : ""}`, children: [
     /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: task.id }),
     open ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${task.id} ${task.summary}`, ...linkProps(open), children: task.summary || task.key }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: task.summary || task.key }),
+    props.editTimes && /* @__PURE__ */ u3("button", { class: "vt-icon-button vt-time-edit", "aria-label": "Edit times", title: "Edit start / end times (forgot to press play?)", onClick: () => openWorklogTimes(ctx, task.key, task.summary || task.key), children: /* @__PURE__ */ u3(Icon, { name: "history" }) }),
     /* @__PURE__ */ u3("button", { class: `vt-play${action.running ? " is-running" : ""}`, "aria-label": action.label, title: action.label, onClick: action.onClick, children: [
       /* @__PURE__ */ u3(Icon, { name: action.icon }),
       task.elapsedMs !== null && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(task.elapsedMs / 6e4) })
@@ -9938,7 +10268,7 @@ function TasksNowDialog(props) {
         ] })
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
-        running.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t3.key]) } })),
+        running.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, editTimes: true, action: { icon: "square", label: "Stop timer", running: true, onClick: () => void stopTimer(ctx, [t3.key]) } })),
         paused.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, paused: true, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
         running.length === 0 && paused.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "No running tasks" })
       ] })
@@ -9946,7 +10276,7 @@ function TasksNowDialog(props) {
     /* @__PURE__ */ u3("section", { class: "vt-now-section", "aria-label": "Task list", children: [
       /* @__PURE__ */ u3("h3", { class: "vt-now-heading", children: "Tasks" }),
       /* @__PURE__ */ u3("div", { class: "vt-now-list", children: [
-        todo.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
+        todo.map((t3) => /* @__PURE__ */ u3(TaskRow, { ctx, task: t3, editTimes: true, action: { icon: "play", label: "Start timer", onClick: () => void startTimer(ctx, [t3.key]) } })),
         todo.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-now-empty", children: "Nothing left on today's board" })
       ] })
     ] })

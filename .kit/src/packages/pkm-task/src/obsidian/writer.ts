@@ -396,14 +396,15 @@ export class TaskWriter {
 	/**
 	 * 記録を始める（ADR-0004: worklog/<端末名>/YYYY-MM.jsonl に追記）。すでに記録中のものは除く。
 	 * taskIds は記録の鍵（issue / routine の ID か、サブの合成キー。ADR-0135）。
-	 * open の issue とサブは in-progress にする（ADR-0031）
+	 * open の issue とサブは in-progress にする（ADR-0031）。
+	 * fromMs を渡すと、その時刻から始めたことにする（押し忘れを直す。ADR-0193）
 	 */
-	async startTimer(taskIds: string[], device: string): Promise<void> {
+	async startTimer(taskIds: string[], device: string, fromMs?: number): Promise<void> {
 		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
 		const running = new Set(this.store.index.running().map(workKey));
 		const targets = taskIds.filter((id) => !running.has(id));
 		if (targets.length === 0) return;
-		const now = new Date();
+		const now = fromMs === undefined ? new Date() : new Date(fromMs);
 		const from = localDateTime(now);
 		const path = normalizePath(worklogPath(device, now));
 		const file = await this.getOrCreate(path, "");
@@ -436,11 +437,11 @@ export class TaskWriter {
 		this.store.refreshSoon();
 	}
 
-	/** worklog を手で足す。保存先は開始日の月のファイル */
-	async addWorklog(taskId: string, device: string, entry: Pick<WorklogEntry, "from" | "to" | "description">, fromDate: Date): Promise<void> {
+	/** worklog を手で足す。保存先は開始日の月のファイル。key は記録の鍵（サブは合成キー。ADR-0135） */
+	async addWorklog(key: string, device: string, entry: Pick<WorklogEntry, "from" | "to" | "description">, fromDate: Date): Promise<void> {
 		if (!device) throw new Error("設定で端末名を入れてください（worklog の保存先に使います）");
 		const file = await this.getOrCreate(normalizePath(worklogPath(device, fromDate)), "");
-		await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), taskId, ...entry })));
+		await this.app.vault.process(file, (text) => appendWorklogLine(text, serializeWorklogEntry({ id: newWorklogId(), ...workTarget(key), ...entry })));
 		this.store.refreshSoon();
 	}
 
