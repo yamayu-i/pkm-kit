@@ -3237,10 +3237,12 @@ body.is-mobile .vt-toast {
 	background: var(--vt-state-hover);
 }
 
+/* Obsidian の button は中身を中央に寄せる（justify-content: center）ので、左に寄せ直す */
 .vt-subissue-summary {
 	display: flex;
 	flex: 1;
 	align-items: center;
+	justify-content: flex-start;
 	gap: 8px;
 	min-width: 0;
 	height: auto;
@@ -3418,6 +3420,7 @@ body.is-mobile .vt-toast {
 .vt-timeline-label {
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
 	gap: 4px;
 	height: 36px;
 	min-width: 0;
