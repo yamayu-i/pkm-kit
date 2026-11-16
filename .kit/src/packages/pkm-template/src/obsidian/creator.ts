@@ -171,23 +171,35 @@ export class TemplateManager {
 	 * 生成先は `.kit/templates/config.json` の daily.md の設定に従う（有効・無効は問わない）。
 	 */
 	async openTodaysDaily(now: Date = new Date()): Promise<TFile> {
-		const { entries } = await this.loadConfig();
-		const entry = entries.find((e) => e.file === "daily.md");
-		const resolved = resolveDailyPath(entry, now);
-		if (resolved.error) throw new Error(resolved.error);
-
-		const path = normalizePath(resolved.path);
-		const existing = this.app.vault.getFileByPath(path);
+		const { path, existing } = await this.todaysDaily(now);
 		if (existing) {
 			await openInNotePane(this.app.workspace, existing, { newTab: false, phone: Platform.isPhone });
 			return existing;
 		}
+		return this.createTodaysDaily(now, true, path);
+	}
 
+	/** 今日の daily のパスと、あればそのファイル */
+	async todaysDaily(now: Date = new Date()): Promise<{ path: string; existing: TFile | null }> {
+		const { entries } = await this.loadConfig();
+		const resolved = resolveDailyPath(entries.find((e) => e.file === "daily.md"), now);
+		if (resolved.error) throw new Error(resolved.error);
+		const path = normalizePath(resolved.path);
+		return { path, existing: this.app.vault.getFileByPath(path) };
+	}
+
+	/** 今日の daily をテンプレートから作る。open が false なら開かない（@daily でリンクを入れるとき。ADR-0194） */
+	async createTodaysDaily(now: Date = new Date(), open = false, path?: string): Promise<TFile> {
+		const { entries } = await this.loadConfig();
+		const entry = entries.find((e) => e.file === "daily.md");
+		const target = path ?? (await this.todaysDaily(now)).path;
+		const existing = this.app.vault.getFileByPath(target);
+		if (existing) return existing;
 		const template = await this.loadTemplate(
 			entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" },
 		);
 		if (!template) throw new Error(`daily.md のテンプレートがありません（${TEMPLATE_DIR}/ にも ${UPSTREAM_TEMPLATE_DIR}/ にもない）`);
-		return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
+		return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now, open });
 	}
 
 	fileExists(path: string): boolean {
@@ -205,6 +217,8 @@ export class TemplateManager {
 		newTab?: boolean;
 		/** 指定すると、作ったノートを開かず、このエディタのカーソル位置にそのノートへのリンクを入れる */
 		linkInto?: Editor;
+		/** false なら作ったノートを開かない（既定は開く） */
+		open?: boolean;
 	}): Promise<TFile> {
 		const now = params.now ?? new Date();
 		const takenNames = this.takenNames();
@@ -242,6 +256,7 @@ export class TemplateManager {
 			params.linkInto.focus();
 			return created;
 		}
+		if (params.open === false) return created;
 
 		const leaf = await openInNotePane(this.app.workspace, created, { newTab: params.newTab === true, phone: Platform.isPhone });
 

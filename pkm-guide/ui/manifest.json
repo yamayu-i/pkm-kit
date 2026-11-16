@@ -1,5 +1,5 @@
 {
-  "fingerprint": "fe36b1bce323567428d2c94cebbd2e0ab544e7bec589b71aad512583c8de20da",
+  "fingerprint": "fac3688d93f62c8bb927d29f9e65b99a30216687d4f9d181c717e005bc937e6b",
   "platform": "linux",
   "browser": "153.0.8010.12",
   "images": [
@@ -240,7 +240,7 @@
       "file": "pkm-guide/ui/task--header--unpicked-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "be1e8e0ab002865f342bfb28b834a86353ba9465d06f0960d8326c3eedcc6513",
+      "sha256": "c473e6a9467165aa7dd154e24fa95468bbf166c05395eb637bbc073fa6003b26",
       "text": "d121f950ead0cfee4c7e9c8ebaa811ffe838cd7f79285b1ff792c167c59f1a4c"
     },
     {
@@ -280,7 +280,7 @@
       "file": "pkm-guide/ui/task--header--closed-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "a7de1806388b8ef672fddb0aa73d9c7539b6a6eb4e30af3cb2d581a60c6fcce6",
+      "sha256": "7a148544179aa2947c33ebfc50797d1a0582247c773b71bcb06dc2b89a9b14df",
       "text": "ade1e2430fb8467f5ca7aed716fb41aa2ef83598dbb1e127ad2e00ae29265bf7"
     },
     {
