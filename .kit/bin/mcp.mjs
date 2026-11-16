@@ -7771,11 +7771,112 @@ updated: ${created}
 `;
 }
 
+// src/core/actions.ts
+function cancelPatch() {
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
+}
+function closePatch() {
+  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
+}
+function backToNextPatch() {
+  return { scheduled: null, tickler: null, clarified: true };
+}
+function ticklerPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function somedayPatch(revisit = null) {
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
+}
+function reopenPatch() {
+  return { status: "open", revisit: null };
+}
+
+// src/core/transition.ts
+var STATUS_TRANSITIONS = {
+  open: ["in-progress", "waiting", "delegated", "someday", "closed", "canceled"],
+  "in-progress": ["waiting", "delegated", "someday", "closed", "canceled"],
+  waiting: ["in-progress", "someday", "closed", "canceled"],
+  delegated: ["in-progress", "someday", "closed", "canceled"],
+  someday: ["open", "closed", "canceled"],
+  closed: ["canceled"],
+  canceled: ["closed"]
+};
+var isDone = (s) => s === "closed" || s === "canceled";
+function transitionTargets(from) {
+  return STATUSES.filter((s) => STATUS_TRANSITIONS[from].includes(s));
+}
+function canTransition(from, to, reopenTo = null) {
+  if (from === to) return false;
+  if (STATUS_TRANSITIONS[from].includes(to)) return true;
+  return isDone(from) && reopenTo !== null && !isDone(reopenTo) && to === reopenTo;
+}
+function transitionError(from, to, reopenTo = null) {
+  const targets = [...transitionTargets(from), ...isDone(from) && reopenTo !== null && !isDone(reopenTo) ? [`${reopenTo}\uFF08Reopen\uFF09`] : []];
+  return `status \u306F ${from} \u304B\u3089 ${to} \u306B\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3002\u79FB\u308C\u308B\u5148: ${targets.join(", ")}\uFF08ADR-0183\uFF09`;
+}
+function reopenStatus(logs, task, sub = null) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task || (e.sub ?? null) !== sub) continue;
+    if (isDone(e.to) && !isDone(e.from)) return e.from;
+  }
+  return "open";
+}
+function stopsTimer(to) {
+  return to !== "open" && to !== "in-progress";
+}
+function unstarsOn(to) {
+  return to === "waiting" || to === "delegated" || to === "someday";
+}
+function timerStartStatus(from) {
+  return from === "open" || from === "waiting" || from === "delegated" ? "in-progress" : null;
+}
+function issueStatusPatch(to, opts = {}) {
+  if (to === "closed") return closePatch();
+  if (to === "canceled") return cancelPatch();
+  if (to === "someday") return somedayPatch(opts.revisit ?? null);
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
+  }
+  if (to === "open") return { status: to, delegated_to: null, revisit: null };
+  return { status: to, delegated_to: null, revisit: null, tickler: null };
+}
+function subStatusPatch(to, opts = {}) {
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegatedTo: opts.delegatedTo };
+  }
+  if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, start: null, end: null };
+  return { status: to, delegatedTo: null };
+}
+function reopenSubOnPeriod(current, patch) {
+  if (current !== "someday" || patch.status !== void 0) return patch;
+  const sets = patch.start !== void 0 && patch.start !== null || patch.end !== void 0 && patch.end !== null;
+  return sets ? { ...patch, status: "open" } : patch;
+}
+function completeIssuePatch(to, fields, from = null) {
+  const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
+  if (from === "someday" && to === "open") base.clarified = null;
+  return { ...base, ...fields };
+}
+function completeSubPatch(to, patch) {
+  const base = to === "delegated" ? {} : subStatusPatch(to);
+  return { ...base, ...patch };
+}
+function canSetTickler(status) {
+  return status === "open" || status === "someday";
+}
+function ticklerError(status) {
+  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
+}
+
 // src/core/sub-issue.ts
 var SUB_ISSUE_MARKER = "<!-- sub-issue";
 var BLOCK_END = "-->";
 var SubIssueFormatError = class extends Error {
 };
+var REMOVED_SUB_KEYS = ["soft_deadline", "deadline"];
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
 var SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 function isSubId(value) {
@@ -7843,6 +7944,8 @@ function parseBlock(path, parent, raw, order, parseYaml) {
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
   const migratedFrom = r.ref("migrated_from", "i");
+  const removed = REMOVED_SUB_KEYS.filter((k) => r.has(k));
+  if (removed.length > 0) extra.push({ severity: "warning", path, code: "sub-deadline-removed", message: `${removed.join(" \u3068 ")} \u306F\u30B5\u30D6\u3067\u306F\u4F7F\u308F\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002end \u306B\u307E\u3068\u3081\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0190\u3001\u79FB\u884C 0190\uFF09` });
   const sub = {
     parent,
     path,
@@ -7855,8 +7958,6 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     start: r.date("start"),
     end: r.date("end"),
     scheduled: r.calendarDate("scheduled"),
-    softDeadline: r.date("soft_deadline"),
-    deadline: r.date("deadline"),
     estimated: r.minutes("estimated"),
     dependsOn: r.strings("depends_on"),
     created: r.datetime("created"),
@@ -7890,8 +7991,6 @@ function formatSubHead(sub) {
   put("start", sub.start);
   put("end", sub.end);
   put("scheduled", sub.scheduled);
-  put("soft_deadline", sub.softDeadline);
-  put("deadline", sub.deadline);
   put("estimated", sub.estimated === null ? null : String(sub.estimated));
   if (sub.dependsOn.length > 0) put("depends_on", JSON.stringify(sub.dependsOn));
   put("created", sub.created);
@@ -7981,9 +8080,7 @@ function checkSubIssues(subs, memberIds) {
     for (const [key, value] of [
       ["start", s.start],
       ["end", s.end],
-      ["scheduled", s.scheduled],
-      ["soft_deadline", s.softDeadline],
-      ["deadline", s.deadline]
+      ["scheduled", s.scheduled]
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
@@ -8029,8 +8126,6 @@ function newSubIssueInput(item, id, created) {
     start: item.start ?? null,
     end: item.end ?? null,
     scheduled: item.scheduled ?? null,
-    softDeadline: item.softDeadline ?? null,
-    deadline: item.deadline ?? null,
     estimated: item.estimated ?? null,
     dependsOn: item.dependsOn ?? [],
     created,
@@ -8041,9 +8136,9 @@ function newSubIssueInput(item, id, created) {
 function dependentsOf(subs, id) {
   return subs.filter((s) => s.dependsOn.includes(id)).map((s) => s.id);
 }
-var isDone = (s) => s.status === "closed" || s.status === "canceled";
+var isDone2 = (s) => s.status === "closed" || s.status === "canceled";
 function becomesDone(from, to) {
-  return !isDone({ status: from }) && isDone({ status: to });
+  return !isDone2({ status: from }) && isDone2({ status: to });
 }
 function touchedSubErrors(subs, touched, memberIds) {
   return checkSubIssues(subs, memberIds).filter((e) => touched.some((id) => e.startsWith(`\u30B5\u30D6 ${id}: `)));
@@ -8440,102 +8535,6 @@ function closedAtMap(logs, closedIds) {
 }
 function isDoneStatus(status) {
   return status === "closed" || status === "canceled";
-}
-
-// src/core/actions.ts
-function cancelPatch() {
-  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
-}
-function closePatch() {
-  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
-}
-function backToNextPatch() {
-  return { scheduled: null, tickler: null, clarified: true };
-}
-function ticklerPatch(issue, date) {
-  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
-}
-function reopenPatch() {
-  return { status: "open", revisit: null };
-}
-
-// src/core/transition.ts
-var STATUS_TRANSITIONS = {
-  open: ["in-progress", "waiting", "delegated", "someday", "closed", "canceled"],
-  "in-progress": ["waiting", "delegated", "someday", "closed", "canceled"],
-  waiting: ["in-progress", "someday", "closed", "canceled"],
-  delegated: ["in-progress", "someday", "closed", "canceled"],
-  someday: ["open", "closed", "canceled"],
-  closed: ["canceled"],
-  canceled: ["closed"]
-};
-var isDone2 = (s) => s === "closed" || s === "canceled";
-function transitionTargets(from) {
-  return STATUSES.filter((s) => STATUS_TRANSITIONS[from].includes(s));
-}
-function canTransition(from, to, reopenTo = null) {
-  if (from === to) return false;
-  if (STATUS_TRANSITIONS[from].includes(to)) return true;
-  return isDone2(from) && reopenTo !== null && !isDone2(reopenTo) && to === reopenTo;
-}
-function transitionError(from, to, reopenTo = null) {
-  const targets = [...transitionTargets(from), ...isDone2(from) && reopenTo !== null && !isDone2(reopenTo) ? [`${reopenTo}\uFF08Reopen\uFF09`] : []];
-  return `status \u306F ${from} \u304B\u3089 ${to} \u306B\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3002\u79FB\u308C\u308B\u5148: ${targets.join(", ")}\uFF08ADR-0183\uFF09`;
-}
-function reopenStatus(logs, task, sub = null) {
-  for (let i = logs.length - 1; i >= 0; i--) {
-    const e = logs[i];
-    if (e.task !== task || (e.sub ?? null) !== sub) continue;
-    if (isDone2(e.to) && !isDone2(e.from)) return e.from;
-  }
-  return "open";
-}
-function stopsTimer(to) {
-  return to !== "open" && to !== "in-progress";
-}
-function unstarsOn(to) {
-  return to === "waiting" || to === "delegated" || to === "someday";
-}
-function timerStartStatus(from) {
-  return from === "open" || from === "waiting" || from === "delegated" ? "in-progress" : null;
-}
-function issueStatusPatch(to, opts = {}) {
-  if (to === "closed") return closePatch();
-  if (to === "canceled") return cancelPatch();
-  if (to === "someday") return somedayPatch(opts.revisit ?? null);
-  if (to === "delegated") {
-    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
-    return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
-  }
-  if (to === "open") return { status: to, delegated_to: null, revisit: null };
-  return { status: to, delegated_to: null, revisit: null, tickler: null };
-}
-function subStatusPatch(to, opts = {}) {
-  if (to === "delegated") {
-    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
-    return { status: to, delegatedTo: opts.delegatedTo };
-  }
-  if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, softDeadline: null, deadline: null };
-  if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
-  return { status: to, delegatedTo: null };
-}
-function completeIssuePatch(to, fields, from = null) {
-  const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
-  if (from === "someday" && to === "open") base.clarified = null;
-  return { ...base, ...fields };
-}
-function completeSubPatch(to, patch) {
-  const base = to === "delegated" ? {} : subStatusPatch(to);
-  return { ...base, ...patch };
-}
-function canSetTickler(status) {
-  return status === "open" || status === "someday";
-}
-function ticklerError(status) {
-  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
 }
 
 // src/core/index.ts
@@ -10068,7 +10067,7 @@ function unstarOnDisk(root, index, key, to, log) {
 function updateSubIssueOnDisk(root, index, key, patch, log) {
   const current = index.sub(key);
   if (!current) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
-  patch = normalizeSubPatch(patch);
+  patch = normalizeSubPatch(reopenSubOnPeriod(current.status, patch));
   if (patch.status !== void 0 && patch.status !== current.status && log?.via !== "undo") {
     const reopenTo = index.reopenStatus(key);
     if (!canTransition(current.status, patch.status, reopenTo)) throw new Error(transitionError(current.status, patch.status, reopenTo));
@@ -11225,10 +11224,8 @@ var TOOLS = [
               status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
               delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
               start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
-              end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09" },
+              end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
               scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
-              soft_deadline: { type: ["string", "null"] },
-              deadline: { type: ["string", "null"] },
               estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
               depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },
               body: { type: "string", description: "\u30B5\u30D6\u306E\u672C\u6587\uFF08Markdown\uFF09" }
@@ -11252,10 +11249,8 @@ var TOOLS = [
         status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
         delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
         start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
-        end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09" },
+        end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
         scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
-        soft_deadline: { type: ["string", "null"] },
-        deadline: { type: ["string", "null"] },
         estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
         depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },
         body: { type: "string", description: "\u30B5\u30D6\u306E\u672C\u6587\uFF08Markdown\uFF09" }
@@ -11373,8 +11368,9 @@ function subPatch(args) {
   if (args.start !== void 0) out.start = str2("start");
   if (args.end !== void 0) out.end = str2("end");
   if (args.scheduled !== void 0) out.scheduled = calendarArg(args.scheduled) ?? null;
-  if (args.soft_deadline !== void 0) out.softDeadline = str2("soft_deadline");
-  if (args.deadline !== void 0) out.deadline = str2("deadline");
+  for (const key of ["soft_deadline", "deadline"]) {
+    if (args[key] !== void 0) throw new Error(`\u30B5\u30D6\u306B\u306F ${key} \u304C\u3042\u308A\u307E\u305B\u3093\u3002\u671F\u9650\u306F end \u306B\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0190\uFF09`);
+  }
   if (args.estimated !== void 0) {
     if (args.estimated !== null && typeof args.estimated !== "number") throw new Error("estimated \u306F\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
     out.estimated = args.estimated;

@@ -9,7 +9,7 @@ import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent }
 import { fileKind } from "../core/load";
 import { STATUSES, type Status } from "../core/schema";
 import { statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
-import { canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../core/transition";
+import { canTransition, completeIssuePatch, completeSubPatch, reopenSubOnPeriod, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../core/transition";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
 import { newPresetContent, type IssuePreset } from "../core/presets";
@@ -141,7 +141,8 @@ export class TaskWriter {
 	async updateSub(key: string, patch: SubIssuePatch, via: StatusVia = "ui"): Promise<void> {
 		const sub = this.store.index.sub(key);
 		if (!sub) throw new Error(`サブがありません: ${key}`);
-		let fixed = normalizeSubPatch(patch);
+		// someday に期間を入れたら open に戻す（ADR-0190）
+		let fixed = normalizeSubPatch(reopenSubOnPeriod(sub.status, patch));
 		const next = fixed.status;
 		if (via !== "undo" && next !== undefined && next !== sub.status) {
 			const reopenTo = this.store.index.reopenStatus(sub.key);

@@ -120,9 +120,19 @@ export function subStatusPatch(to: Status, opts: TransitionOptions = {}): SubIss
 		if (!opts.delegatedTo) throw new Error("delegated にするときは委任先を選んでください");
 		return { status: to, delegatedTo: opts.delegatedTo };
 	}
-	if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, softDeadline: null, deadline: null };
-	if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
+	// someday は今はやらないので、Calendar の日も期間（期限を兼ねる end）も持たない（ADR-0190）
+	if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, start: null, end: null };
 	return { status: to, delegatedTo: null };
+}
+
+/**
+ * someday のサブに期間（start / end）を入れたら open に戻す（ADR-0190。issue で期限を入れたら戻すのと同じ）。
+ * 同じ変更で status を変えているなら、その status を優先する
+ */
+export function reopenSubOnPeriod(current: Status, patch: SubIssuePatch): SubIssuePatch {
+	if (current !== "someday" || patch.status !== undefined) return patch;
+	const sets = (patch.start !== undefined && patch.start !== null) || (patch.end !== undefined && patch.end !== null);
+	return sets ? { ...patch, status: "open" } : patch;
 }
 
 /**

@@ -7759,9 +7759,21 @@ function parseMember(path, fm) {
   return { value: { path, id, name, nickname, alias: alias || id, labels: r.strings("label"), created: r.datetime("created") }, problems: r.problems };
 }
 
+// src/core/transition.ts
+var isDone = (s) => s === "closed" || s === "canceled";
+function reopenStatus(logs, task, sub = null) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task || (e.sub ?? null) !== sub) continue;
+    if (isDone(e.to) && !isDone(e.from)) return e.from;
+  }
+  return "open";
+}
+
 // src/core/sub-issue.ts
 var SUB_ISSUE_MARKER = "<!-- sub-issue";
 var BLOCK_END = "-->";
+var REMOVED_SUB_KEYS = ["soft_deadline", "deadline"];
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
 function isSubId(value) {
   return typeof value === "string" && SUB_ID_RE.test(value);
@@ -7820,6 +7832,8 @@ function parseBlock(path, parent, raw, order, parseYaml) {
   const status = r.oneOf("status", STATUSES);
   if (status === null && !r.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
   const migratedFrom = r.ref("migrated_from", "i");
+  const removed = REMOVED_SUB_KEYS.filter((k) => r.has(k));
+  if (removed.length > 0) extra.push({ severity: "warning", path, code: "sub-deadline-removed", message: `${removed.join(" \u3068 ")} \u306F\u30B5\u30D6\u3067\u306F\u4F7F\u308F\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002end \u306B\u307E\u3068\u3081\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0190\u3001\u79FB\u884C 0190\uFF09` });
   const sub = {
     parent,
     path,
@@ -7832,8 +7846,6 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     start: r.date("start"),
     end: r.date("end"),
     scheduled: r.calendarDate("scheduled"),
-    softDeadline: r.date("soft_deadline"),
-    deadline: r.date("deadline"),
     estimated: r.minutes("estimated"),
     dependsOn: r.strings("depends_on"),
     created: r.datetime("created"),
@@ -8139,17 +8151,6 @@ function closedAtMap(logs, closedIds) {
   const out = /* @__PURE__ */ new Map();
   for (const e of logs) if (ids.has(e.task) && isIssueStatusLog(e) && e.to === "closed") out.set(e.task, e.atMs);
   return out;
-}
-
-// src/core/transition.ts
-var isDone = (s) => s === "closed" || s === "canceled";
-function reopenStatus(logs, task, sub = null) {
-  for (let i = logs.length - 1; i >= 0; i--) {
-    const e = logs[i];
-    if (e.task !== task || (e.sub ?? null) !== sub) continue;
-    if (isDone(e.to) && !isDone(e.from)) return e.from;
-  }
-  return "open";
 }
 
 // src/core/index.ts
