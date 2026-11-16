@@ -65,6 +65,9 @@ describe(".kit/templates/file/*.md", () => {
 		expect(member).toMatchObject({ schema: "1", id: "m-10", name: "題名" });
 		// name と nickname は登録名、alias は ID（ADR-0035）
 		expect(member).toMatchObject({ nickname: "題名", alias: "m-10" });
+		// preset は pkm-task が読む項目を持つ（ADR-0186）
+		const preset = frontmatter(render("preset.md"));
+		expect(preset).toMatchObject({ schema: "1", type: "preset", id: "p-1", name: "題名" });
 	});
 });
 
@@ -81,6 +84,7 @@ describe(".kit/templates/config.json", () => {
 		expect(byFile["issue.md"]).toMatchObject({ folder: "issue", fileNamePattern: "{{id:i}}" });
 		expect(byFile["routine.md"]).toMatchObject({ folder: "routine", fileNamePattern: "{{id:r}}" });
 		expect(byFile["member.md"]).toMatchObject({ folder: "member", fileNamePattern: "{{id:m}}" });
+		expect(byFile["preset.md"]).toMatchObject({ folder: "preset", fileNamePattern: "{{id:p}}" });
 	});
 });
 

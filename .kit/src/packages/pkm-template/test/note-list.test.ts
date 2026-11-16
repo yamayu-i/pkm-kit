@@ -84,6 +84,9 @@ describe("hasNoteHeader", () => {
 		expect(hasNoteHeader("issue/i-2.md", undefined)).toBe(false);
 		expect(hasNoteHeader("x/y.md", { type: "issue" })).toBe(false);
 		expect(hasNoteHeader("member/m-1.md", { type: "member" })).toBe(false);
+		// preset も pkm-task がヘッダーを出す（ADR-0186）
+		expect(hasNoteHeader("preset/p-1.md", { type: "preset" })).toBe(false);
+		expect(hasNoteHeader("preset/p-2.md", undefined)).toBe(false);
 		expect(hasNoteHeader("member/m-2.md", undefined)).toBe(false);
 	});
 

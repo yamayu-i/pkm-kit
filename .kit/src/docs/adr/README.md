@@ -102,4 +102,6 @@
 | [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 | [0183](0183-status-transition-rules.md) | 承認 | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
+| [0184](0184-pick-in-progress-and-watch-lane.md) | 承認 | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
+| [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 <!-- adr-index:end -->

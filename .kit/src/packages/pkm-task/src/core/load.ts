@@ -2,17 +2,19 @@ import { BOARD_KEY, DAILY_PATH_RE, dailyNotePath, emptyBoard, parseBoard, type B
 import { BOARD_LOG_PATH_RE, orderHistory, parseBoardLog, removedTasks, renameBoardOp, replayBoard, type BoardLogEntry } from "./board-log";
 import type { VaultData } from "./index";
 import { LABELS_PATH, parseLabels } from "./labels";
+import { PRESET_PATH_RE, parsePreset } from "./presets";
 import type { Problem } from "./problem";
 import { parseIssue, parseMember, parseRoutine } from "./schema";
 import { parseSubIssues, subKey, type YamlParse } from "./sub-issue";
 import { STATUS_LOG_PATH_RE, compareStatusLog, parseStatusLog } from "./status-log";
 import { WORKLOG_PATH_RE, parseWorklog } from "./worklog";
 
-export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "daily" | "board" | "statuslog";
+export type FileKind = "issue" | "routine" | "member" | "worklog" | "labels" | "preset" | "daily" | "board" | "statuslog";
 
 /** パスからどのデータのファイルかを決める（ADR-0002, 0004, 0007, 0010, 0020, 0031） */
 export function fileKind(path: string): FileKind | null {
 	if (path === LABELS_PATH) return "labels";
+	if (PRESET_PATH_RE.test(path)) return "preset";
 	if (DAILY_PATH_RE.test(path)) return "daily";
 	if (WORKLOG_PATH_RE.test(path)) return "worklog";
 	if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -22,7 +24,7 @@ export function fileKind(path: string): FileKind | null {
 }
 
 export interface VaultInput {
-	/** issue / routine / member / デイリーノートの md。frontmatter が読めなかったら null */
+	/** issue / routine / member / preset / デイリーノートの md。frontmatter が読めなかったら null。text は issue と preset の全文 */
 	markdown: { path: string; frontmatter: Record<string, unknown> | null; text?: string }[];
 	/** issue の md の全文（text）からサブを読むための YAML の関数（ADR-0135）。ないならサブは読まない */
 	parseYaml?: YamlParse;
@@ -63,7 +65,7 @@ function resolveMigrated(data: VaultData, byOld: Map<string, { parent: string; i
 
 /** ファイルの中身から VaultData を作る。プラグイン（metadataCache）と CLI（yaml）の両方から使う */
 export function collectVault(input: VaultInput): { data: VaultData; problems: Problem[] } {
-	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
+	const data: VaultData = { issues: [], subIssues: [], routines: [], members: [], labels: [], presets: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 	const problems: Problem[] = [];
 	const initialBoards = new Map<string, BoardState>();
 	for (const { path, frontmatter, text } of [...input.markdown].sort((a, b) => a.path.localeCompare(b.path, "en", { numeric: true }))) {
@@ -75,7 +77,7 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 			}
 			continue;
 		}
-		if (kind !== "issue" && kind !== "routine" && kind !== "member") continue;
+		if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "preset") continue;
 		if (frontmatter === null) {
 			problems.push({ severity: "error", path, code: "missing-frontmatter", message: "frontmatter がないか、YAML として読めません" });
 			continue;
@@ -91,6 +93,11 @@ export function collectVault(input: VaultInput): { data: VaultData; problems: Pr
 					data.subIssues.push(...s.subs);
 				}
 			}
+		} else if (kind === "preset") {
+			// プリセット（ADR-0186）。本文は issue に追記するので全文から読む
+			const r = parsePreset(path, frontmatter, text);
+			problems.push(...r.problems);
+			if (r.value) data.presets.push(r.value);
 		} else if (kind === "routine") {
 			const r = parseRoutine(path, frontmatter);
 			problems.push(...r.problems);

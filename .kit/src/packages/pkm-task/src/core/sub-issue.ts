@@ -219,6 +219,21 @@ export function replaceSubIssues(text: string, blocks: readonly (SubIssueInput |
 	return `${head.trimEnd()}\n\n${parts.join("\n")}`;
 }
 
+/**
+ * 親の本文（サブの領域の前）の末尾に、空行を 1 つ挟んで body を追記する（プリセットの呼び出し。ADR-0186）。
+ * 既存の本文とサブのブロックは変えない。body が空なら元のまま
+ */
+export function appendParentBodyText(text: string, body: string): string {
+	const add = body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+	if (!add) return text;
+	if (add.split(/\r?\n/).some((l) => l.startsWith(SUB_ISSUE_MARKER))) throw new SubIssueFormatError(`追記する本文の行頭に ${SUB_ISSUE_MARKER} は書けません`);
+	const { head, blocks } = splitSubIssueText(text);
+	const base = head.trimEnd();
+	// frontmatter だけ（本文が空）なら、frontmatter の直後に 1 行空けて書く
+	const nextHead = `${base}${base ? "\n\n" : ""}${add}\n`;
+	return blocks.length === 0 ? nextHead : `${nextHead}\n${blocks.join("")}`;
+}
+
 /** サブの項目のうち、書き換えられるもの（id と、索引で作る値は変えない） */
 export type SubIssuePatch = Partial<Omit<SubIssueInput, "id">>;
 

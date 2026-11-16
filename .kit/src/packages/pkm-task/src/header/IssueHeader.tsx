@@ -76,13 +76,14 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 
 type Save = (fields: Record<string, FieldValue>, target?: string) => void;
 
-/** ID と summary。summary はクリックで編集する（issue と routine で共通） */
-export function SummaryField(props: { badge: ComponentChild; summary: string; save: Save }) {
+/** ID と summary。summary はクリックで編集する（issue と routine で共通。preset は field に name を渡す） */
+export function SummaryField(props: { badge: ComponentChild; summary: string; save: Save; field?: string }) {
 	const { summary, save } = props;
+	const field = props.field ?? "summary";
 	const [editing, setEditing] = useState(false);
 	const commit = (value: string) => {
 		setEditing(false);
-		if (value.trim() && value.trim() !== summary) save({ summary: value.trim() });
+		if (value.trim() && value.trim() !== summary) save({ [field]: value.trim() });
 	};
 	return (
 		<div class="vt-title">

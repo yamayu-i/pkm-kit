@@ -67,6 +67,12 @@
       "fileNamePattern": "{{id:r}}"
     },
     {
+      "file": "preset.md",
+      "enabled": false,
+      "folder": "preset",
+      "fileNamePattern": "{{id:p}}"
+    },
+    {
       "file": "index.md",
       "enabled": false,
       "folder": "wiki",

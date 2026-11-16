@@ -1,10 +1,10 @@
 /**
- * issue / routine / member の ID（`i-N` / `r-N` / `m-N`）。
+ * issue / routine / member / preset の ID（`i-N` / `r-N` / `m-N` / `p-N`。preset は ADR-0186）。
  * 連番の規則は pkm-task の `core/ids.ts` と同じ（既存の最大値 + 1）。両者は独立に持つ（ADR-0023）。
  */
-export type IdPrefix = "i" | "r" | "m";
+export type IdPrefix = "i" | "r" | "m" | "p";
 
-export const ID_PREFIXES: readonly IdPrefix[] = ["i", "r", "m"];
+export const ID_PREFIXES: readonly IdPrefix[] = ["i", "r", "m", "p"];
 
 export function isIdPrefix(value: string): value is IdPrefix {
 	return (ID_PREFIXES as readonly string[]).includes(value);

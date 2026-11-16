@@ -11,11 +11,13 @@ import { visibleSubs } from "../src/core/sub-issue";
 import { StatusUndo } from "../src/obsidian/status-undo";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
+import { PresetHeader } from "../src/header/PresetHeader";
 import { CalendarForm, DateForm, WorklogForm } from "../src/ui/forms";
 import { DailyView } from "../src/views/DailyView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
 import { LabelManagerView } from "../src/views/LabelManagerView";
+import { PresetListView } from "../src/views/PresetListView";
 import { MemberListView } from "../src/views/MemberListView";
 import { OrganizeView } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
@@ -105,6 +107,12 @@ const { data } = collectVault({
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
 		{ path: "member/m-2.md", frontmatter: { type: "member", id: "m-2", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", label: ["仕事"] } },
 		{ path: "member/m-3.md", frontmatter: { type: "member", id: "m-3", name: "鈴木" } },
+		{
+			path: "preset/p-1.md",
+			frontmatter: { type: "preset", id: "p-1", name: "リリース", sub_issues: ["変更点をまとめる", "タグを付ける", "告知する"], created: "2026-11-01T10:00:00+09:00" },
+			text: "---\n---\n\n## 確認\n\n- [ ] テストが通っている\n",
+		},
+		{ path: "preset/p-2.md", frontmatter: { type: "preset", id: "p-2", name: "引っ越し", sub_issues: ["退去の連絡", "荷造り"] }, text: "---\n---\n" },
 	],
 	worklogs: [{ path: "worklog/pc/2026-10.jsonl", text: logs.join("\n") }],
 	parseYaml: parse,
@@ -137,6 +145,7 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	someday: SomedayView,
 	routines: RoutineListView,
 	labels: LabelManagerView,
+	presets: PresetListView,
 	members: MemberListView,
 	sidebar: SidebarView,
 	forms: () => (
@@ -158,7 +167,7 @@ const headerPaths: Record<string, string> = {
 	"header-someday": "issue/i-9.md",
 	"header-closed": "issue/i-12.md",
 };
-if (name in headerPaths || name === "routine" || name === "member" || name === "timeline") {
+if (name in headerPaths || name === "routine" || name === "member" || name === "preset" || name === "timeline") {
 	for (const [id, width] of [
 		["wide", 760],
 		["narrow", 360],
@@ -182,7 +191,9 @@ if (name in headerPaths || name === "routine" || name === "member" || name === "
 				? h(RoutineHeader, { ctx: ctx as never, path: "routine/r-1.md" })
 				: name === "member"
 					? h(MemberHeader, { ctx: ctx as never, path: "member/m-1.md" })
-					: h(IssueHeader, { ctx: ctx as never, path: headerPaths[name]! });
+					: name === "preset"
+						? h(PresetHeader, { ctx: ctx as never, path: "preset/p-1.md" })
+						: h(IssueHeader, { ctx: ctx as never, path: headerPaths[name]! });
 		render(header, el);
 	}
 } else {

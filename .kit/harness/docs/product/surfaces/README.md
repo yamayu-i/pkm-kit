@@ -49,6 +49,7 @@ ADR へのリンク。
 | [Scheduled](task-scheduled.md) | View |
 | [Routines](task-routines.md) | View |
 | [Labels](task-labels.md) | View |
+| [Presets とプリセット画面](task-presets.md) | View・画面 |
 | [Capture issues](task-capture.md) | コマンド |
 | [Tasks サイドバー](task-sidebar.md) | View（左サイドバー） |
 | [記録中のステータスバー](task-status-bar.md) | ステータスバー（PC） |
