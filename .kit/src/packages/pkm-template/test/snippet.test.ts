@@ -8,7 +8,6 @@ import {
 	nextSlashSession,
 	nextTriggerSession,
 	parseSnippet,
-	withoutCommands,
 	type SessionDoc,
 	type Snippet,
 } from "../src/core/snippet";
@@ -57,13 +56,6 @@ describe("parseSnippet", () => {
 			expect(r.snippet).toBeNull();
 			expect(r.problem).toMatch(/command/);
 		}
-	});
-});
-
-describe("withoutCommands（インラインテンプレートでは command を使わない。ADR-0094）", () => {
-	it("command のあるものを除く", () => {
-		const list = [sn("a.md", "a", "a"), { ...sn("b.md", "b", "b"), command: "x:y" }];
-		expect(withoutCommands(list).map((s) => s.name)).toEqual(["a"]);
 	});
 });
 

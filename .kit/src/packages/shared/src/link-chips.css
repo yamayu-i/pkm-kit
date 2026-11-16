@@ -1,0 +1,130 @@
+/* ---------- リンクのインラインビューと検索ダイアログ（ADR-0194。packages/shared/src/link-chips.ts・link-picker.ts。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */
+
+/* 本文のリンクを置き換えたチップ。文の行の高さを変えないよう、中のバッジは 20px にする */
+.vt-link-chip.is-replace {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	max-width: 100%;
+	color: var(--vt-on-surface);
+	text-decoration: none;
+	cursor: pointer;
+	vertical-align: baseline;
+}
+
+.vt-link-chip.is-replace:hover .vt-link-chip-title {
+	text-decoration: underline;
+}
+
+.vt-link-chip .vt-badge {
+	align-self: center;
+	height: 20px;
+	padding: 0 8px;
+	font-size: var(--vt-type-label-small-size);
+	letter-spacing: var(--vt-type-label-small-tracking);
+}
+
+.vt-link-chip-title {
+	color: var(--vt-primary);
+}
+
+.vt-link-chip-title.is-done {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-link-chip-context {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+}
+
+/* 頭文字の丸（member） */
+.vt-link-avatar {
+	display: inline-flex;
+	align-self: center;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
+	line-height: 1;
+}
+
+/* ノートへのリンクの前に足す印。リンクの文字は変えない */
+.vt-link-chip.is-before {
+	display: inline-flex;
+	margin-right: 2px;
+	color: var(--vt-on-surface-variant);
+	vertical-align: -2px;
+}
+
+.vt-link-chip.is-before svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-link-chip:focus-visible {
+	outline: 2px solid var(--vt-focus-ring);
+}
+
+/* ---------- 検索ダイアログ ---------- */
+
+.vt-link-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.vt-link-row-lead {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 4px;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-link-row-lead:empty {
+	display: none;
+}
+
+.vt-link-row-title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	color: var(--vt-on-surface);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-link-row-title.is-done {
+	color: var(--vt-on-surface-variant);
+	text-decoration: line-through;
+}
+
+.vt-link-row-note {
+	flex: none;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+}
+
+.vt-link-more {
+	color: var(--vt-primary);
+	font-weight: var(--vt-weight-medium);
+	text-align: center;
+}
+
+.vt-link-row-lead svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* 行は押せる大きさを保つ（モバイルでも選びやすく） */
+.vt-link-picker .vt-link-row,
+.vt-link-picker .vt-link-more {
+	min-height: 44px;
+}

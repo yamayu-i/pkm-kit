@@ -55,6 +55,8 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 
 	const vault = {
 		adapter,
+		on: (name: string) => name,
+		offref: () => {},
 		getFiles: () => indexed().map(toTFile),
 		getMarkdownFiles: () => indexed().filter((p) => p.endsWith(".md")).map(toTFile),
 		getFileByPath: (path: string) => (files.has(path) && !hidden(path) ? toTFile(path) : null),
@@ -101,7 +103,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 				iterateRootLeaves: () => {},
 				getMostRecentLeaf: () => null,
 			},
-			metadataCache: { on: (name: string) => name, getFileCache: () => null, resolvedLinks: {} },
+			metadataCache: { on: (name: string) => name, offref: () => {}, getFileCache: () => null, resolvedLinks: {} },
 		};
 		registerView(type: string) {
 			views.push(type);
@@ -112,6 +114,7 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 		register() {}
 		registerEditorExtension() {}
 		registerEditorSuggest() {}
+		registerMarkdownPostProcessor() {}
 		addCommand(c: { id: string; name: string; callback?: () => void }) {
 			commands.push(c);
 		}
@@ -139,6 +142,11 @@ function createObsidianMock(initialFiles: Record<string, string> = {}) {
 				close() {}
 			},
 			PluginSettingTab: class {},
+			SuggestModal: class {},
+			MarkdownRenderChild: class {},
+			Keymap: { isModEvent: () => false },
+			editorInfoField: {},
+			editorLivePreviewField: {},
 			Setting: class {},
 			MarkdownView: class {},
 			ItemView: class {},
@@ -187,8 +195,8 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const req = (name: string) => {
 			required.add(name);
 			if (name === "obsidian") return mock.obsidian;
-			// CodeMirror は Obsidian が持つものを使う（ADR-0060。pkm-task と同じ）
-			if (name === "@codemirror/state") return require(name);
+			// CodeMirror は Obsidian が持つものを使う（ADR-0060。pkm-task と同じ。@codemirror/view は ADR-0194 のリンクの印）
+			if (name === "@codemirror/state" || name === "@codemirror/view") return require(name);
 			throw new Error(`unexpected require: ${name}`);
 		};
 
@@ -214,8 +222,20 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const plugin = new module.exports.default();
 		await plugin.onload();
 
-		expect([...required].sort()).toEqual(["@codemirror/state", "obsidian"]);
-		expect(mock.commands.map((c) => c.id)).toEqual(["create-from-template", "open-todays-daily", "open-daily-list", "open-note-list", "open-source-list", "open-tmp-list"]);
+		expect([...required].sort()).toEqual(["@codemirror/state", "@codemirror/view", "obsidian"]);
+		expect(mock.commands.map((c) => c.id)).toEqual([
+			"create-from-template",
+			"open-todays-daily",
+			"open-daily-list",
+			"open-note-list",
+			"open-source-list",
+			"open-tmp-list",
+			// @note などのリンクの挿入（ADR-0194）
+			"insert-note-link",
+			"insert-heading-link",
+			"insert-daily-link",
+			"insert-slide-link",
+		]);
 		expect(mock.views).toEqual(["pkm-template-daily-list", "pkm-template-note-list", "pkm-template-source-list", "pkm-template-tmp-list"]);
 		// 設定タブはない(ADR-0061)
 		expect(mock.settingTabs).toEqual([]);
@@ -283,7 +303,7 @@ async function loadBundle(mock: ReturnType<typeof createObsidianMock>): Promise<
 	const module = { exports: {} as { default: new () => BundlePlugin } };
 	const req = (name: string) => {
 		if (name === "obsidian") return mock.obsidian;
-		if (name === "@codemirror/state") return require(name);
+		if (name === "@codemirror/state" || name === "@codemirror/view") return require(name);
 		throw new Error(`unexpected require: ${name}`);
 	};
 	new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
