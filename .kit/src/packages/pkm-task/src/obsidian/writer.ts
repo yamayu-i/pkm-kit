@@ -2,7 +2,8 @@ import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
-import { localDateTime, type LocalDate } from "../core/dates";
+import { unstarOps } from "../core/board-lanes";
+import { localDateTime, localToday, type LocalDate } from "../core/dates";
 import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { fileKind } from "../core/load";
@@ -111,6 +112,7 @@ export class TaskWriter {
 		const to = fields.status;
 		if (fileKind(path) !== "issue" || !isStatus(from) || !isStatus(to) || from === to || typeof id !== "string") return;
 		await this.recordStatus(id, from, to, via);
+		await this.unstar(id, to);
 		if (isDoneStatus(to)) {
 			const running = this.store.index.running(id);
 			if (running.length > 0) await this.stopTimer(running);
@@ -147,6 +149,7 @@ export class TaskWriter {
 	 */
 	async afterSubStatusChange(sub: Pick<SubIssue, "parent" | "id" | "key">, from: Status, to: Status, via: StatusVia = "ui"): Promise<void> {
 		await this.recordStatus(sub.parent, from, to, via, sub.id);
+		await this.unstar(sub.key, to);
 		if (isDoneStatus(to)) {
 			const running = this.store.index.running(sub.key);
 			if (running.length > 0) await this.stopTimer(running);
@@ -222,6 +225,19 @@ export class TaskWriter {
 	}
 
 	/** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
+	/** waiting / delegated にしたら、今日のボードの ★ を外す（ADR-0184）。失敗しても status の変更は止めない */
+	private async unstar(key: string, to: Status): Promise<void> {
+		const device = this.deviceName();
+		const today = localToday();
+		const ops = unstarOps(this.store.index, today, key, to);
+		if (!device || ops.length === 0) return;
+		try {
+			await this.appendBoardOps(today, device, ops);
+		} catch (e) {
+			console.error("pkm-task: ★ を外せませんでした", e);
+		}
+	}
+
 	private async recordStatus(task: string, from: Status, to: Status, via: StatusVia, sub: string | null = null): Promise<void> {
 		const device = this.deviceName();
 		if (!device) return;

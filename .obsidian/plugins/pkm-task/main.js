@@ -819,9 +819,10 @@ function boardItems(index, date, board) {
 }
 function unfinished(index, date, board) {
   const items = boardItems(index, date, board);
+  const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
-    issues: items.issues.filter((i3) => isActive(i3) && !board.carried.includes(i3.id)),
-    subs: items.subs.filter((s3) => isActive(s3) && !board.carried.includes(s3.key)),
+    issues: items.issues.filter((i3) => left(i3.status, i3.id)),
+    subs: items.subs.filter((s3) => left(s3.status, s3.key)),
     routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
   };
 }
@@ -1997,7 +1998,7 @@ function pickCandidates(index, today, board) {
   const groups = /* @__PURE__ */ new Map();
   for (const s3 of index.data.subIssues) {
     if (on.has(s3.key) || index.sub(s3.key) !== s3) continue;
-    if (s3.status !== "open" || s3.scheduled !== null || s3.start !== null && s3.start > today) continue;
+    if (!isNextSub(s3, today)) continue;
     const parent = index.issues.get(s3.parent);
     if (!parent || !isActive(parent)) continue;
     groups.set(s3.parent, [...groups.get(s3.parent) ?? [], s3]);
@@ -2138,7 +2139,14 @@ function isInbox(issue, today) {
   return !issue.clarified;
 }
 function isNext(issue, _today) {
-  return issue.status === "open" && issue.clarified && issue.scheduled === null && issue.tickler === null;
+  const ready = issue.status === "in-progress" || issue.status === "open" && issue.clarified;
+  return ready && issue.scheduled === null && issue.tickler === null;
+}
+function isNextSub(sub, today) {
+  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && (sub.start === null || sub.start <= today);
+}
+function isWatchStatus(status) {
+  return status === "waiting" || status === "delegated";
 }
 function isScheduledAhead(issue, today) {
   return isActive(issue) && issue.scheduled !== null && issue.scheduled >= today;
@@ -3050,12 +3058,13 @@ function pickTimerControl(status, picked, running) {
   return picked ? "start" : "pick";
 }
 function pickIssuePatch(issue) {
-  return isNext(issue) ? null : { status: "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
+  if (isNext(issue)) return null;
+  return { status: issue.status === "in-progress" ? "in-progress" : "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
 }
 function pickSubPatch(sub, today) {
+  if (isNextSub(sub, today)) return null;
   const future = sub.start !== null && sub.start > today;
-  if (sub.status === "open" && sub.scheduled === null && !future) return null;
-  return { status: "open", delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
+  return { status: sub.status === "in-progress" ? "in-progress" : "open", delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
 }
 
 // src/ui/hooks.ts
@@ -3113,19 +3122,39 @@ function laneOf(index, board, card) {
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
-  if (status === "waiting" || status === "delegated") return "waiting";
+  if (isWatchStatus(status)) return "watch";
   if (board.stars.includes(card.key)) return "top";
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
+  const lanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
   const order = index.order(date);
-  for (const card of sortByOrder(boardCards(index, date, board), (c3) => c3.key, order)) lanes[laneOf(index, board, card)].push(card);
+  for (const card of sortByOrder(boardCards(index, date, board), (c3) => c3.key, order)) {
+    const lane = laneOf(index, board, card);
+    if (lane !== "watch") lanes[lane].push(card);
+  }
+  lanes.watch = watchCards(index, new Set(lanes.working.map((c3) => c3.key)));
   const startedAt = (c3) => Math.min(...index.running(c3.key).map((l3) => l3.fromMs));
   lanes.working.sort((a3, b2) => startedAt(a3) - startedAt(b2));
   const added = boardCards(index, date, board).map((c3) => c3.key);
   lanes.done.sort((a3, b2) => added.indexOf(a3.key) - added.indexOf(b2.key));
   return lanes;
+}
+function watchCards(index, exclude = /* @__PURE__ */ new Set()) {
+  const cards2 = [];
+  for (const issue of index.issues.values()) if (isWatchStatus(issue.status)) cards2.push({ kind: "issue", key: issue.id, issue });
+  for (const sub of index.data.subIssues) {
+    if (!isWatchStatus(sub.status) || index.sub(sub.key) !== sub) continue;
+    const parent = index.issues.get(sub.parent);
+    if (parent && isActive(parent)) cards2.push({ kind: "sub", key: sub.key, sub, parent });
+  }
+  const owner = (c3) => c3.kind === "issue" ? c3.issue : c3.parent;
+  const rank = (c3) => c3.kind === "sub" ? c3.sub.order : -1;
+  return cards2.filter((c3) => !exclude.has(c3.key)).sort((a3, b2) => byPick(owner(a3), owner(b2)) || rank(a3) - rank(b2));
+}
+function unstarOps(index, date, key, to) {
+  if (!isWatchStatus(to)) return [];
+  return index.board(date)?.board.stars.includes(key) ? [{ op: "star", task: key, on: false }] : [];
 }
 function cardRuns(cards2) {
   const runs = [];
@@ -3144,10 +3173,10 @@ function canStar(lanes) {
   return lanes.top.length < TOP_LIMIT;
 }
 function orderedKeys(lanes) {
-  return [...lanes.top, ...lanes.next, ...lanes.waiting].map((c3) => c3.key);
+  return [...lanes.top, ...lanes.next].map((c3) => c3.key);
 }
 function endOf(lanes, lane, key) {
-  const after = lane === "top" ? ["next", "waiting"] : lane === "next" ? ["waiting"] : [];
+  const after = lane === "top" ? ["next"] : [];
   for (const l3 of after) {
     const first = lanes[l3].find((c3) => c3.key !== key);
     if (first) return first.key;
@@ -3165,7 +3194,7 @@ function moveOps(lanes, board, key, lane, before, previous) {
   return ops;
 }
 function stepOps(lanes, board, key, direction, previous) {
-  const lane = ["top", "next", "waiting"].find((l3) => lanes[l3].some((c3) => c3.key === key));
+  const lane = ["top", "next"].find((l3) => lanes[l3].some((c3) => c3.key === key));
   if (!lane) return null;
   const keys = lanes[lane].map((c3) => c3.key);
   const at = keys.indexOf(key);
@@ -3260,6 +3289,16 @@ async function addSubToBoard(ctx, date, sub) {
     await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: sub.key }]);
   } catch (e3) {
     ctx.report("\u30B5\u30D6\u3092\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+  }
+}
+async function resumeCard(ctx, date, card) {
+  if (card.kind === "routine") return;
+  try {
+    if (card.kind === "issue") await ctx.writer.update(card.issue.path, statusPatch("in-progress"));
+    else await ctx.writer.updateSub(card.key, { status: "in-progress", delegatedTo: null });
+    if (!isOnBoard(ctx.store.index, date, card.key)) await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: card.key }]);
+  } catch (e3) {
+    ctx.report("Resume \u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
   }
 }
 function lanesOn(ctx, date) {
@@ -6632,6 +6671,7 @@ var TaskWriter = class {
     const to = fields.status;
     if (fileKind(path) !== "issue" || !isStatus2(from) || !isStatus2(to) || from === to || typeof id !== "string") return;
     await this.recordStatus(id, from, to, via);
+    await this.unstar(id, to);
     if (isDoneStatus(to)) {
       const running = this.store.index.running(id);
       if (running.length > 0) await this.stopTimer(running);
@@ -6665,6 +6705,7 @@ var TaskWriter = class {
    */
   async afterSubStatusChange(sub, from, to, via = "ui") {
     await this.recordStatus(sub.parent, from, to, via, sub.id);
+    await this.unstar(sub.key, to);
     if (isDoneStatus(to)) {
       const running = this.store.index.running(sub.key);
       if (running.length > 0) await this.stopTimer(running);
@@ -6732,6 +6773,18 @@ var TaskWriter = class {
     this.store.refreshSoon();
   }
   /** statuslog に 1 行追記する。端末名がなければ書かない。書けなくても status の変更は止めない */
+  /** waiting / delegated にしたら、今日のボードの ★ を外す（ADR-0184）。失敗しても status の変更は止めない */
+  async unstar(key, to) {
+    const device = this.deviceName();
+    const today = localToday();
+    const ops = unstarOps(this.store.index, today, key, to);
+    if (!device || ops.length === 0) return;
+    try {
+      await this.appendBoardOps(today, device, ops);
+    } catch (e3) {
+      console.error("pkm-task: \u2605 \u3092\u5916\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    }
+  }
   async recordStatus(task, from, to, via, sub = null) {
     const device = this.deviceName();
     if (!device) return;
@@ -6995,7 +7048,7 @@ var LANE_TITLE = {
   top: "Top 4",
   routine: "Routines",
   next: "Up next",
-  waiting: "Waiting",
+  watch: "Watch",
   done: "Done"
 };
 var LANE_EMPTY = {
@@ -7016,6 +7069,20 @@ function changeSubStatus(ctx, sub, to) {
 var DRAG_TYPE2 = "text/plain";
 var readDrag2 = (e3) => e3.dataTransfer?.getData(DRAG_TYPE2) || null;
 var isDragLane = (lane) => lane === "top" || lane === "next";
+function showStatusMenu(ctx, date, card, status, e3) {
+  const m3 = new import_obsidian20.Menu();
+  for (const s3 of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
+    m3.addItem(
+      (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
+        if (card.kind === "routine") return void setRoutineResult(ctx, date, card.key, s3 === "open" ? null : s3);
+        if (s3 === status && s3 !== "delegated") return;
+        if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s3);
+        else changeSubStatus(ctx, card.sub, s3);
+      })
+    );
+  }
+  m3.showAtMouseEvent(e3);
+}
 function TaskCard(props) {
   const { ctx, date, board, lanes, lane, card, now } = props;
   const index = ctx.store.index;
@@ -7030,20 +7097,7 @@ function TaskCard(props) {
   const last = card.kind === "issue" ? index.lastStatusLog(card.issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const starred = board.stars.includes(key);
-  const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian20.Menu();
-    for (const s3 of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
-      m3.addItem(
-        (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
-          if (card.kind === "routine") return void setRoutineResult(ctx, date, key, s3 === "open" ? null : s3);
-          if (s3 === status && s3 !== "delegated") return;
-          if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s3);
-          else changeSubStatus(ctx, card.sub, s3);
-        })
-      );
-    }
-    m3.showAtMouseEvent(e3);
-  };
+  const statusMenu2 = (e3) => showStatusMenu(ctx, date, card, status, e3);
   const moreMenu = (e3) => {
     const m3 = new import_obsidian20.Menu();
     if (!done && card.kind !== "routine") {
@@ -7115,6 +7169,33 @@ function TaskCard(props) {
     }
   );
 }
+function WatchCard(props) {
+  const { ctx, date, card } = props;
+  if (card.kind === "routine") return null;
+  const status = card.kind === "issue" ? card.issue.status : card.sub.status;
+  const summary = cardSummary(card);
+  const path = cardPath(card);
+  const delegatedTo = card.kind === "issue" ? card.issue.delegatedTo : card.sub.delegatedTo;
+  const member = delegatedTo ? ctx.store.index.members.get(delegatedTo) : void 0;
+  const moreMenu = (e3) => {
+    const m3 = new import_obsidian20.Menu();
+    m3.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
+    m3.showAtMouseEvent(e3);
+  };
+  return /* @__PURE__ */ u3("div", { class: `vt-task vt-watch-task${card.kind === "sub" ? " is-sub" : ""}`, "data-key": card.key, children: [
+    /* @__PURE__ */ u3(StatusBadge, { status, onClick: (e3) => showStatusMenu(ctx, date, card, status, e3) }),
+    /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${card.key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: summary }),
+    delegatedTo && /* @__PURE__ */ u3("span", { class: "vt-chip-mini vt-watch-member", title: member ? memberLabel(member) : delegatedTo, children: [
+      "@",
+      member?.alias ?? delegatedTo
+    ] }),
+    /* @__PURE__ */ u3("button", { class: "vt-button is-text", "aria-label": "Resume", title: "Back to in-progress and add to today's board", onClick: () => void resumeCard(ctx, date, card), children: [
+      /* @__PURE__ */ u3(Icon, { name: "undo-2" }),
+      /* @__PURE__ */ u3("span", { class: "vt-watch-label", children: "Resume" })
+    ] }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": "Card menu", title: "More", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
+  ] });
+}
 function ParentHead(props) {
   const parent = props.ctx.store.index.issues.get(props.parentId);
   return /* @__PURE__ */ u3("div", { class: "vt-lane-parent", children: [
@@ -7125,6 +7206,7 @@ function ParentHead(props) {
 function Lane(props) {
   const { ctx, date, board, lanes, lane, now } = props;
   const cards2 = lanes[lane];
+  const watch = lane === "watch";
   const [over2, setOver] = d2(false);
   const [open, setOpen] = d2(lane === "routine");
   const collapsible = lane === "done" || lane === "routine";
@@ -7162,9 +7244,11 @@ function Lane(props) {
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
           cardRuns(cards2).map(
-            (run) => run.parent === null ? run.cards.map((card) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)) : /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
+            (run) => run.parent === null ? run.cards.map((card) => watch ? /* @__PURE__ */ u3(WatchCard, { ctx, date, card }, card.key) : /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)) : /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
               /* @__PURE__ */ u3(ParentHead, { ctx, parentId: run.parent }),
-              run.cards.map((card) => /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key))
+              run.cards.map(
+                (card) => watch ? /* @__PURE__ */ u3(WatchCard, { ctx, date, card }, card.key) : /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)
+              )
             ] }, `${run.parent}/${run.cards[0].key}`)
           ),
           cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] })
@@ -7184,7 +7268,7 @@ function Board(props) {
   const now = useNow(3e4);
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
   const lanes = boardLanes(index, date, board);
-  const total = Object.values(lanes).reduce((n2, l3) => n2 + l3.length, 0);
+  const total = Object.values(lanes).reduce((n2, l3) => n2 + l3.length, 0) - lanes.watch.length;
   const left = unfinished(index, date, board);
   const leftIssues = left.issues;
   const leftCount = unfinishedCount(left);
@@ -7196,7 +7280,7 @@ function Board(props) {
       else void createOnBoard(ctx, date, choice.summary);
     }).open();
   };
-  const visibleLanes = ["working", "top", "routine", "next", "waiting", "done"].filter((l3) => l3 === "routine" ? showRoutineLane(board, lanes) : l3 === "top" || l3 === "next" || lanes[l3].length > 0);
+  const visibleLanes = ["working", "top", "routine", "next", "watch", "done"].filter((l3) => l3 === "routine" ? showRoutineLane(board, lanes) : l3 === "top" || l3 === "next" || lanes[l3].length > 0);
   return /* @__PURE__ */ u3("div", { class: "vt-board", children: [
     /* @__PURE__ */ u3("div", { class: "vt-board-head", children: [
       /* @__PURE__ */ u3("h3", { class: "vt-h", children: [
@@ -7209,7 +7293,10 @@ function Board(props) {
         " Add issue"
       ] })
     ] }),
-    total === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above." }) : /* @__PURE__ */ u3("div", { class: "vt-lanes", children: visibleLanes.map((lane) => /* @__PURE__ */ u3(Lane, { ctx, date, board, lanes, lane, now }, lane)) }),
+    total === 0 ? /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("div", { class: "vt-empty", children: "The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above." }),
+      lanes.watch.length > 0 && /* @__PURE__ */ u3("div", { class: "vt-lanes", children: /* @__PURE__ */ u3(Lane, { ctx, date, board, lanes, lane: "watch", now }) })
+    ] }) : /* @__PURE__ */ u3("div", { class: "vt-lanes", children: visibleLanes.map((lane) => /* @__PURE__ */ u3(Lane, { ctx, date, board, lanes, lane, now }, lane)) }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-unfinished", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Not done" }),
@@ -8649,7 +8736,7 @@ function todoTasks(index, today, excluded) {
   const stored = index.board(today)?.board ?? emptyBoard();
   const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
   const lanes = boardLanes(index, today, board);
-  return [...lanes.top, ...lanes.next, ...lanes.waiting].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
+  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
 }
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function formatNow(ms) {

@@ -1,6 +1,6 @@
 import { addDays, type LocalDate } from "./dates";
-import { isActive, routineOccursOn, type TaskIndex } from "./index";
-import type { Issue, Routine } from "./schema";
+import { isActive, isWatchStatus, routineOccursOn, type TaskIndex } from "./index";
+import type { Issue, Routine, Status } from "./schema";
 import type { SubIssue } from "./sub-issue";
 
 /** routine のその日の結果（ADR-0010: その日のうちに closed か canceled にする） */
@@ -76,12 +76,16 @@ export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState)
 	return { issues, subs, routines: index.routinesOn(date) };
 }
 
-/** 未完了: closed / canceled / someday になっておらず、片付けて（carried）もいない issue とサブと、結果のない routine */
+/**
+ * 未完了: closed / canceled / someday になっておらず、片付けて（carried）もいない issue とサブと、結果のない routine。
+ * waiting / delegated は数えない（今日の自分の作業は終わり、続きは Watch の欄で見張る。ADR-0184）
+ */
 export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const items = boardItems(index, date, board);
+	const left = (status: Status, key: string) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
 	return {
-		issues: items.issues.filter((i) => isActive(i) && !board.carried.includes(i.id)),
-		subs: items.subs.filter((s) => isActive(s) && !board.carried.includes(s.key)),
+		issues: items.issues.filter((i) => left(i.status, i.id)),
+		subs: items.subs.filter((s) => left(s.status, s.key)),
 		routines: items.routines.filter((r) => board.routines[r.id] === undefined),
 	};
 }

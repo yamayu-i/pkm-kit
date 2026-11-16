@@ -101,7 +101,7 @@ describe("欄（ADR-0137）", () => {
 	];
 	const base = ["i-1", "i-2", "i-3", "i-4", "i-5", "i-6", "i-7"].map((task) => line(DATE, { op: "add", task }));
 
-	it("作業中はタイマーだけで決まり、in-progress は次にやる順に入る。待ち・片付いたも status で決まる", () => {
+	it("作業中はタイマーだけで決まり、in-progress は次にやる順に入る。Watch（ADR-0184）・片付いたも status で決まる", () => {
 		const worklog = '{"id":"wl_1","task_id":"i-6","from":"2026-11-16T01:00:00Z","to":null,"description":""}\n';
 		const { index } = load(md, [...base, line(DATE, { op: "carry", task: "i-1" }), line(DATE, { op: "routine", task: "r-2", result: "closed" })], worklog);
 		expect(keys(lanesOf(index))).toEqual({
@@ -109,21 +109,21 @@ describe("欄（ADR-0137）", () => {
 			top: [],
 			routine: ["r-1", "r-2"],
 			next: ["i-2"],
-			waiting: ["i-3", "i-4"],
+			watch: ["i-3", "i-4"],
 			done: ["i-1", "i-5", "i-7"],
 		});
 	});
 
-	it("★ を付けたまま waiting なら待ち・委任に出る。open なら ★ の欄", () => {
+	it("★ を付けたまま waiting なら Watch に出る（ADR-0184）。open なら ★ の欄", () => {
 		const { index } = load(md, [...base, line(DATE, { op: "star", task: "i-3", on: true }), line(DATE, { op: "star", task: "i-1", on: true })]);
 		const lanes = lanesOf(index);
 		expect(keys(lanes).top).toEqual(["i-1"]);
-		expect(keys(lanes).waiting).toEqual(["i-3", "i-4"]);
+		expect(keys(lanes).watch).toEqual(["i-3", "i-4"]);
 	});
 
-	it("並びは 1 つで、★・次にやる順・待ちのそれぞれの中の順になる。並びにないものは載せた順で末尾", () => {
+	it("並びは 1 つで、★・次にやる順のそれぞれの中の順になる。並びにないものは載せた順で末尾。Watch は並びによらない（ADR-0184）", () => {
 		const { index } = load(md, [...base, line(DATE, { op: "star", task: "i-6", on: true }), line(DATE, { op: "order", tasks: ["i-2", "i-4", "i-6", "i-3"] })]);
-		expect(keys(lanesOf(index))).toMatchObject({ top: ["i-6"], next: ["i-2", "i-1"], waiting: ["i-4", "i-3"], routine: ["r-1", "r-2"] });
+		expect(keys(lanesOf(index))).toMatchObject({ top: ["i-6"], next: ["i-2", "i-1"], watch: ["i-3", "i-4"], routine: ["r-1", "r-2"] });
 	});
 
 	it("並びは翌日以降にも引き継ぐ", () => {
@@ -157,7 +157,7 @@ describe("欄（ADR-0137）", () => {
 	});
 });
 
-describe("並べ替えと ★ の操作（ADR-0137）", () => {
+describe("並べ替えと ★ の操作（ADR-0137）。waiting の i-4 は Watch に出て、手の並びに入らない（ADR-0184）", () => {
 	const md = [issue("i-1"), issue("i-2"), issue("i-3"), issue("i-4", "waiting")];
 	const base = ["i-1", "i-2", "i-3", "i-4"].map((task) => line(DATE, { op: "add", task }));
 
@@ -166,7 +166,7 @@ describe("並べ替えと ★ の操作（ADR-0137）", () => {
 		const lanes = lanesOf(index);
 		expect(moveOps(lanes, index.board(DATE)!.board, "i-3", "top", null, index.order(DATE))).toEqual([
 			{ op: "star", task: "i-3", on: true },
-			{ op: "order", tasks: ["i-1", "i-3", "i-2", "i-4"] },
+			{ op: "order", tasks: ["i-1", "i-3", "i-2"] },
 		]);
 	});
 
@@ -174,22 +174,22 @@ describe("並べ替えと ★ の操作（ADR-0137）", () => {
 		const { index } = load(md, [...base, line(DATE, { op: "star", task: "i-1", on: true })]);
 		expect(moveOps(lanesOf(index), index.board(DATE)!.board, "i-1", "next", "i-3", index.order(DATE))).toEqual([
 			{ op: "star", task: "i-1", on: false },
-			{ op: "order", tasks: ["i-2", "i-1", "i-3", "i-4"] },
+			{ op: "order", tasks: ["i-2", "i-1", "i-3"] },
 		]);
 	});
 
 	it("今日は出ていないものの位置を並びに残す（ADR-0114）", () => {
 		const { index } = load(md, [...base, line("2026-11-15", { op: "order", tasks: ["i-9", "i-3", "i-1", "i-2"] })]);
 		const ops = moveOps(lanesOf(index), index.board(DATE)!.board, "i-2", "next", "i-3", index.order(DATE));
-		expect(ops).toEqual([{ op: "order", tasks: ["i-9", "i-2", "i-3", "i-1", "i-4"] }]);
+		expect(ops).toEqual([{ op: "order", tasks: ["i-9", "i-2", "i-3", "i-1"] }]);
 	});
 
 	it("Move up / Move down は同じ欄の中だけ。端では動かせない", () => {
 		const { index } = load(md, base);
 		const lanes = lanesOf(index);
 		const board = index.board(DATE)!.board;
-		expect(stepOps(lanes, board, "i-2", -1, undefined)).toEqual([{ op: "order", tasks: ["i-2", "i-1", "i-3", "i-4"] }]);
-		expect(stepOps(lanes, board, "i-2", 1, undefined)).toEqual([{ op: "order", tasks: ["i-1", "i-3", "i-2", "i-4"] }]);
+		expect(stepOps(lanes, board, "i-2", -1, undefined)).toEqual([{ op: "order", tasks: ["i-2", "i-1", "i-3"] }]);
+		expect(stepOps(lanes, board, "i-2", 1, undefined)).toEqual([{ op: "order", tasks: ["i-1", "i-3", "i-2"] }]);
 		expect(stepOps(lanes, board, "i-1", -1, undefined)).toBeNull();
 		expect(stepOps(lanes, board, "i-3", 1, undefined)).toBeNull();
 		expect(stepOps(lanes, board, "i-4", 1, undefined)).toBeNull();

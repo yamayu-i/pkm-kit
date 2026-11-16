@@ -86,7 +86,7 @@ ADR へのリンク。
 | worklog | worklog、再生 / 停止 | `worklog/<端末名>/YYYY-MM.jsonl` | worklog、作業の記録 |
 | task board | Today の段階「Board」、Close board、Not done | `board/<端末名>/YYYY-MM.jsonl`、デイリーノートの `## Task board` 節 | task board、ボード |
 | Today | Today（View の名前。2026-11-08 まで Daily）、段階「Calendar」「Previous boards」「Pick」「Board」 | — | DailyTaskView、Daily、Today |
-| ボードの欄と ★ | Working、Top 3、Up next、Waiting、Done、Add to Top 3 | 保存しない（status・タイマーから）。★ と並びは board の jsonl の `star`・`order` | 欄、★、今日の最重要 |
+| ボードの欄と ★ | Working、Top 3、Up next、Watch、Done、Add to Top 3 | 保存しない（status・タイマーから）。★ と並びは board の jsonl の `star`・`order` | 欄、★、今日の最重要 |
 | label | Labels、label | `issue/labels.json`、`label` | label |
 | デイリーノート | Daily notes、Open today's daily note | `daily/YYYY/MM/YYYY-MM-DD.md`（`type: daily`） | デイリーノート、DailyNote |
 | テンプレート | テンプレートから新規ファイルを作成 | `.kit/templates/`、`template/` | テンプレート |

@@ -1,6 +1,6 @@
 import { diffDays, type LocalDate } from "./dates";
 import type { BoardState } from "./board";
-import { isActive, isNext, type TaskIndex } from "./index";
+import { isActive, isNext, isNextSub, type TaskIndex } from "./index";
 import { PRIORITIES, type Issue } from "./schema";
 import type { SubIssue } from "./sub-issue";
 
@@ -98,13 +98,14 @@ export interface PickCandidates {
 
 const priorityRank = (p: Issue["priority"]) => (p === null ? PRIORITIES.length : PRIORITIES.indexOf(p));
 const nullsLast = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b));
-const byPick = (a: Issue, b: Issue) =>
+/** Pick と Watch の並び（ADR-0150, 0184）: priority → deadline → 見直しが古い順 → ID */
+export const byPick = (a: Issue, b: Issue) =>
 	priorityRank(a.priority) - priorityRank(b.priority) || nullsLast(a.deadline, b.deadline) || nullsLast(a.reviewed ?? "", b.reviewed ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
 
 /**
  * Pick の候補（ADR-0150）。今日のボードにないものだけ。
- * - issue: Next（open・clarified・Calendar も Tickler もない）。active なサブを持つ親（Project）は行にしない
- * - サブ: open で、Calendar の日がなく、start がないか今日以前。親が active なもの。親ごとにまとめ、親の中の順に並べる
+ * - issue: Next（isNext。open で clarified か in-progress で、Calendar も Tickler もない。ADR-0184）。active なサブを持つ親（Project）は行にしない
+ * - サブ: Next（isNextSub。open か in-progress で、Calendar の日がなく、start がないか今日以前）。親が active なもの。親ごとにまとめ、親の中の順に並べる
  * 並びは priority → deadline → 見直しが古い順（サブは親の値）
  */
 export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardState): PickCandidates {
@@ -112,7 +113,7 @@ export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardS
 	const groups = new Map<string, SubIssue[]>();
 	for (const s of index.data.subIssues) {
 		if (on.has(s.key) || index.sub(s.key) !== s) continue;
-		if (s.status !== "open" || s.scheduled !== null || (s.start !== null && s.start > today)) continue;
+		if (!isNextSub(s, today)) continue;
 		const parent = index.issues.get(s.parent);
 		if (!parent || !isActive(parent)) continue;
 		groups.set(s.parent, [...(groups.get(s.parent) ?? []), s]);

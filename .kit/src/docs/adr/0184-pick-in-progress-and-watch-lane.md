@@ -16,10 +16,10 @@ status の移り変わりと付随の変更を全体として決め直すこと�
 
 ### Next に in-progress を含める
 
-- `isNext`（Next Actions）を「`open` または `in-progress` で、`clarified` で、`scheduled` も `tickler` もない」にする。`isNext` を使うのは Pick だけ（候補と、Pick したときの書き換え）なので、ほかの画面は変わらない
+- `isNext`（Next Actions）を「`open` で `clarified` のもの、または `in-progress` のもので、`scheduled` も `tickler` もない」にする。in-progress は着手したので整理済みとみなし、`clarified` を問わない（status のメニューで Inbox から直接 in-progress にしたものも漏らさない。ADR-0148 のとおり in-progress は Inbox にも出ない）。`isNext` を使うのは Pick だけ（候補と、Pick したときの書き換え）なので、ほかの画面は変わらない
 - サブの Next も同じ場所（`core/index.ts`）に `isNextSub` として置く: 「`open` または `in-progress` で、`scheduled` がなく、`start` がないか今日以前」。Pick の候補（`pickCandidates`）はこれを使う。条件を Pick の中に書かない
 - waiting / delegated / someday は、これまでどおり Pick に出さない
-- Pick したときの書き換えは、in-progress をそのまま残す。issue は `isNext` が真なら書き換えない（これまでどおり）。サブ（`pickSubPatch`）は、`isNextSub` が真なら書き換えず、偽なら今の status が in-progress なら in-progress のまま、ほかは open にして、`scheduled`・委任先・未来の `start` を消す
+- Pick したときの書き換えは、in-progress をそのまま残す。issue は `isNext` が真なら書き換えず、偽なら in-progress は in-progress のまま、ほかは open にする（`clarified` を付け、`scheduled`・`tickler`・委任先・`revisit` を消すのはこれまでどおり）。サブ（`pickSubPatch`）は、`isNextSub` が真なら書き換えず、偽なら今の status が in-progress なら in-progress のまま、ほかは open にして、`scheduled`・委任先・未来の `start` を消す
 
 ### Watch の欄
 
@@ -36,7 +36,8 @@ status の移り変わりと付随の変更を全体として決め直すこと�
 
 - 欄の判定は、ボードのカードについて これまでどおり 作業中 → 片付いた → ★ → 次にやる順 の順で行い、waiting / delegated のカードはボードの欄に入れない（Watch に出す）
 - 戻す先は in-progress。カードの「次の status」（`nextStatuses`。waiting → in-progress、delegated → in-progress / closed）と同じ
-- Watch は今日のボード（DailyTaskView の Board）にだけ出す。status は今のものなので、過去の日付のボードには出さない
+- Watch は今の status で決まるので、どの日付のボードについても同じものになる（画面で開くボードは今日のものだけ。MCP の `get_board` は日付によらず今の Watch を返す）
+- Watch のカードには ★ を付けられない（画面に ★ のボタンを出さない。MCP の `star_card` は止める）
 
 ### ★ を外す
 

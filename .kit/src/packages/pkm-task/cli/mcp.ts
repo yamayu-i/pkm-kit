@@ -147,7 +147,7 @@ const TOOLS: McpToolDef[] = [
 	{
 		name: "get_board",
 		description:
-			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（4 件まで）、routine: routine すべて（issue と混ぜない。★ は付けられない）、next: 次にやる順、waiting: waiting / delegated、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
+			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（4 件まで）、routine: routine すべて（issue と混ぜない。★ は付けられない）、next: 次にやる順、watch: waiting / delegated の issue とサブすべて（ボードに載っているかによらない。並びは Pick と同じ。ADR-0184）、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -244,7 +244,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "order_card",
-		description: "ボードのカードを、同じ欄（top / next / waiting）の before の前に動かす（before が null なら欄の末尾）。並びは翌日以降にも引き継ぐ",
+		description: "ボードのカードを、同じ欄（top / next）の before の前に動かす（before が null なら欄の末尾）。並びは翌日以降にも引き継ぐ",
 		inputSchema: {
 			type: "object",
 			properties: {

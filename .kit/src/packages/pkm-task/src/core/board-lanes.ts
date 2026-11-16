@@ -1,7 +1,8 @@
 import { nextOrder, reorder, sortByOrder, type BoardState } from "./board";
 import type { BoardOp } from "./board-log";
 import type { LocalDate } from "./dates";
-import { isActive, type TaskIndex } from "./index";
+import { byPick } from "./daily";
+import { isActive, isWatchStatus, type TaskIndex } from "./index";
 import type { Issue, Routine, Status } from "./schema";
 import { isDoneStatus } from "./status-log";
 import type { SubIssue } from "./sub-issue";
@@ -12,11 +13,14 @@ export type BoardCard =
 	| { kind: "sub"; key: string; sub: SubIssue; parent: Issue | undefined }
 	| { kind: "routine"; key: string; routine: Routine };
 
-/** 欄（上から）。作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・待ち・委任・片付いた */
-export type LaneId = "working" | "top" | "routine" | "next" | "waiting" | "done";
-export const LANES: readonly LaneId[] = ["working", "top", "routine", "next", "waiting", "done"];
+/**
+ * 欄（上から）。作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・Watch・片付いた。
+ * Watch（ADR-0184）だけはボードに載っているかによらず、waiting / delegated のすべての issue とサブを出す
+ */
+export type LaneId = "working" | "top" | "routine" | "next" | "watch" | "done";
+export const LANES: readonly LaneId[] = ["working", "top", "routine", "next", "watch", "done"];
 /** 手で並べられる欄（1 つの並びを使う） */
-export type OrderedLane = "top" | "next" | "waiting";
+export type OrderedLane = "top" | "next";
 
 /** ★ の上限 */
 export const TOP_LIMIT = 4;
@@ -60,27 +64,58 @@ function isSettled(board: BoardState, card: BoardCard): boolean {
 	return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
 
-/** カードの欄。routine は常に routine の欄（issue・サブと混ぜない。★ も作業中も片付いたも使わない）。ほかは作業中 → 片付いた → 待ち・委任 → ★ → 次にやる順 の順で、最初に当たったもの */
+/**
+ * ボードのカードの欄。routine は常に routine の欄（issue・サブと混ぜない。★ も作業中も片付いたも使わない）。
+ * ほかは作業中 → 片付いた → Watch（waiting / delegated。ADR-0184）→ ★ → 次にやる順 の順で、最初に当たったもの
+ */
 export function laneOf(index: TaskIndex, board: BoardState, card: BoardCard): LaneId {
 	if (card.kind === "routine") return "routine";
 	if (index.running(card.key).length > 0) return "working";
 	if (isSettled(board, card)) return "done";
 	const status = cardStatus(board, card);
-	if (status === "waiting" || status === "delegated") return "waiting";
+	if (isWatchStatus(status)) return "watch";
 	if (board.stars.includes(card.key)) return "top";
 	return "next";
 }
 
-/** 欄ごとのカード。作業中はタイマーを始めた順、片付いたは載せた順、ほかは並び（ADR-0114）の順 */
+/** 欄ごとのカード。作業中はタイマーを始めた順、片付いたは載せた順、Watch は watchCards の順、ほかは並び（ADR-0114）の順 */
 export function boardLanes(index: TaskIndex, date: LocalDate, board: BoardState): BoardLanes {
-	const lanes: BoardLanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
+	const lanes: BoardLanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
 	const order = index.order(date);
-	for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) lanes[laneOf(index, board, card)].push(card);
+	for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) {
+		const lane = laneOf(index, board, card);
+		// Watch はボードの外のものも含めて下で作る
+		if (lane !== "watch") lanes[lane].push(card);
+	}
+	lanes.watch = watchCards(index, new Set(lanes.working.map((c) => c.key)));
 	const startedAt = (c: BoardCard) => Math.min(...index.running(c.key).map((l) => l.fromMs));
 	lanes.working.sort((a, b) => startedAt(a) - startedAt(b));
 	const added = boardCards(index, date, board).map((c) => c.key);
 	lanes.done.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
 	return lanes;
+}
+
+/**
+ * Watch の欄（ADR-0184）: status が waiting / delegated の issue と、親が active なサブのすべて。ボードに載っているかによらない。
+ * 記録中で作業中の欄に出ているもの（exclude）は除く。並びは Pick と同じ（サブは親の値）で、親の後ろに、同じ親のサブを親の中の順に続ける
+ */
+export function watchCards(index: TaskIndex, exclude: ReadonlySet<string> = new Set()): BoardCard[] {
+	const cards: BoardCard[] = [];
+	for (const issue of index.issues.values()) if (isWatchStatus(issue.status)) cards.push({ kind: "issue", key: issue.id, issue });
+	for (const sub of index.data.subIssues) {
+		if (!isWatchStatus(sub.status) || index.sub(sub.key) !== sub) continue;
+		const parent = index.issues.get(sub.parent);
+		if (parent && isActive(parent)) cards.push({ kind: "sub", key: sub.key, sub, parent });
+	}
+	const owner = (c: BoardCard) => (c.kind === "issue" ? c.issue : (c as Extract<BoardCard, { kind: "sub" }>).parent!);
+	const rank = (c: BoardCard) => (c.kind === "sub" ? c.sub.order : -1);
+	return cards.filter((c) => !exclude.has(c.key)).sort((a, b) => byPick(owner(a), owner(b)) || rank(a) - rank(b));
+}
+
+/** status を to にしたときに書くボードの操作（ADR-0184）: waiting / delegated にしたら、その日のボードの ★ を外す */
+export function unstarOps(index: TaskIndex, date: LocalDate, key: string, to: Status): BoardOp[] {
+	if (!isWatchStatus(to)) return [];
+	return index.board(date)?.board.stars.includes(key) ? [{ op: "star", task: key, on: false }] : [];
 }
 
 /** 隣り合った同じ親のサブのまとまり（ADR-0137）。parent はサブのまとまりなら親の ID、ほかは null */
@@ -110,14 +145,14 @@ export function canStar(lanes: BoardLanes): boolean {
 	return lanes.top.length < TOP_LIMIT;
 }
 
-/** 手で並べる欄の、画面の並び（★ → 次にやる順 → 待ち・委任） */
+/** 手で並べる欄の、画面の並び（★ → 次にやる順） */
 function orderedKeys(lanes: BoardLanes): string[] {
-	return [...lanes.top, ...lanes.next, ...lanes.waiting].map((c) => c.key);
+	return [...lanes.top, ...lanes.next].map((c) => c.key);
 }
 
 /** 欄の末尾に入れるときの、前に来る鍵（次の欄の先頭。なければ null） */
 function endOf(lanes: BoardLanes, lane: OrderedLane, key: string): string | null {
-	const after: OrderedLane[] = lane === "top" ? ["next", "waiting"] : lane === "next" ? ["waiting"] : [];
+	const after: OrderedLane[] = lane === "top" ? ["next"] : [];
 	for (const l of after) {
 		const first = lanes[l].find((c) => c.key !== key);
 		if (first) return first.key;
@@ -142,7 +177,7 @@ export function moveOps(lanes: BoardLanes, board: BoardState, key: string, lane:
 
 /** 同じ欄の中で 1 つ上 / 下に動かす操作。動かせなければ null */
 export function stepOps(lanes: BoardLanes, board: BoardState, key: string, direction: -1 | 1, previous: readonly string[] | undefined): BoardOp[] | null {
-	const lane = (["top", "next", "waiting"] as const).find((l) => lanes[l].some((c) => c.key === key));
+	const lane = (["top", "next"] as const).find((l) => lanes[l].some((c) => c.key === key));
 	if (!lane) return null;
 	const keys = lanes[lane].map((c) => c.key);
 	const at = keys.indexOf(key);
