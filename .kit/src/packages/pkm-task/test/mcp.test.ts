@@ -52,25 +52,31 @@ describe("MCP サーバーと検査付き操作", () => {
 		callMcpTool(ctx, "star_card", { date, key: "i-2", on: true });
 		expect(() => callMcpTool(ctx, "order_card", { date, key: "r-1", before: "i-1" })).toThrow(/並べ替えられない/);
 		expect(() => callMcpTool(ctx, "star_card", { date, key: "r-1", on: true })).toThrow(/routine/);
+		callMcpTool(ctx, "star_card", { date, key: "i-1", on: true });
+		// waiting にすると ★ が外れ、ボードの欄ではなく Watch に出る（ADR-0184）
 		callMcpTool(ctx, "update_issue", { id: "i-1", status: "waiting" });
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-1", on: true })).toThrow(/待っている/);
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-1", before: null })).toThrow(/並べ替えられない/);
 
 		type Card = { key: string; kind: string; status: string; starred: boolean };
 		const read = () =>
 			callMcpTool(ctx, "get_board", { date }) as {
 				closed: boolean;
-				lanes: Record<"working" | "top" | "routine" | "next" | "waiting" | "done", Card[]>;
+				lanes: Record<"working" | "top" | "routine" | "next" | "watch" | "done", Card[]>;
 				unfinished: { issues: { id: string }[]; routines: { id: string }[] };
 			};
 		let board = read();
 		expect(board.closed).toBe(false);
-		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], routine: ["r-1"], next: [], waiting: ["i-1"], done: [] });
+		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], routine: ["r-1"], next: [], watch: ["i-1"], done: [] });
+		expect(board.lanes.watch[0]).toMatchObject({ key: "i-1", status: "waiting", starred: false });
 		expect(board.lanes.top[0]).toMatchObject({ key: "i-2", kind: "issue", status: "open", starred: true });
 
 		callMcpTool(ctx, "set_routine_result", { date, routine_id: "r-1", result: "closed" });
 		board = read();
 		expect(board.lanes.routine.map((c) => c.key)).toEqual(["r-1"]);
 		expect(board.lanes.routine[0]).toMatchObject({ status: "closed" });
-		expect(board.unfinished.issues.map((i) => i.id)).toEqual(["i-1", "i-2"]);
+		// waiting は未完了に数えない（ADR-0184）
+		expect(board.unfinished.issues.map((i) => i.id)).toEqual(["i-2"]);
 		expect(board.unfinished.routines).toEqual([]);
 
 		// Obsidian 側の索引構築・lint でエラーが出ないことを確かめる

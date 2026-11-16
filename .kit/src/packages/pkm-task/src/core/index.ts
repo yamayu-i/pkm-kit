@@ -47,9 +47,23 @@ export function isInbox(issue: Issue, today: LocalDate): boolean {
 	return !issue.clarified;
 }
 
-/** Next Actions: open で、clarified で、Calendar（scheduled）も Tickler もない（ADR-0148, 0152）。日付は保存しない */
+/**
+ * Next Actions: open で clarified のもの、または in-progress（着手したので整理済み）で、Calendar（scheduled）も Tickler もない
+ * （ADR-0148, 0152, 0184）。日付は保存しない。waiting / delegated は Watch の欄で見張る
+ */
 export function isNext(issue: Issue, _today?: LocalDate): boolean {
-	return issue.status === "open" && issue.clarified && issue.scheduled === null && issue.tickler === null;
+	const ready = issue.status === "in-progress" || (issue.status === "open" && issue.clarified);
+	return ready && issue.scheduled === null && issue.tickler === null;
+}
+
+/** サブの Next（ADR-0150, 0184）: open か in-progress で、Calendar の日がなく、start がないか today 以前 */
+export function isNextSub(sub: Pick<SubIssue, "status" | "scheduled" | "start">, today: LocalDate): boolean {
+	return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && (sub.start === null || sub.start <= today);
+}
+
+/** Watch の欄（ADR-0184）に出す status。待っているもの（GTD の Waiting For） */
+export function isWatchStatus(status: Status): boolean {
+	return status === "waiting" || status === "delegated";
 }
 
 /** Scheduled に出す issue: 有効で、今日以降に Calendar の日がある（ADR-0009, 0152）。PKM Updates も同じ規則を使う（ADR-0070） */

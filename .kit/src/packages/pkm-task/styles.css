@@ -1561,6 +1561,29 @@ button.vt-badge:disabled::after {
 	border-color: var(--vt-green);
 }
 
+/* Watch（ADR-0184）: 待っているもの。primary から作る薄い面で、ボードの欄と分ける */
+.vt-lane.is-watch {
+	background: var(--vt-secondary-container);
+	border-color: transparent;
+}
+
+.vt-lane.is-watch .vt-lane-name {
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-watch-task .vt-button {
+	flex: none;
+	white-space: nowrap;
+}
+
+/* 狭いときは、題を残すために委任先を隠し、Resume をアイコンだけにする */
+@container (max-width: 480px) {
+	.vt-watch-task .vt-watch-member,
+	.vt-watch-task .vt-watch-label {
+		display: none;
+	}
+}
+
 /* 片付いた: 面を沈める */
 .vt-lane.is-done {
 	background: var(--vt-surface);

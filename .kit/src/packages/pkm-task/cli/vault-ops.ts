@@ -6,7 +6,7 @@ import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
 import { isLocalDate, localDateTime, localToday, type LocalDate } from "../src/core/dates";
-import { boardLanes, canStar, moveOps, TOP_LIMIT, type OrderedLane } from "../src/core/board-lanes";
+import { boardLanes, canStar, moveOps, TOP_LIMIT, unstarOps, type OrderedLane } from "../src/core/board-lanes";
 import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
 import { frontmatterRange, newDailyContent, newIssueContent } from "../src/core/issue-file";
@@ -191,10 +191,10 @@ function laneOfKey(index: TaskIndex, date: LocalDate, key: string) {
 	return { board, lanes, lane };
 }
 
-/** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 4・Up next・Waiting の欄だけ */
+/** カードを同じ欄の before の前（null なら欄の末尾）へ動かす。動かせるのは Top 4・Up next の欄だけ（Watch は決まった並び。ADR-0184） */
 export function orderCardOnDisk(root: string, index: TaskIndex, date: LocalDate, key: string, before: string | null, device: string, now: Date): void {
 	const { board, lanes, lane } = laneOfKey(index, date, key);
-	if (lane === "working" || lane === "done" || lane === "routine") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
+	if (lane === "working" || lane === "done" || lane === "routine" || lane === "watch") throw new Error(`${key} は並べ替えられない欄（${lane}）にあります`);
 	if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before（${before}）は ${key} と同じ欄にありません`);
 	appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane as OrderedLane, before, index.order(date)), now);
 }
@@ -204,6 +204,7 @@ export function starCardOnDisk(root: string, index: TaskIndex, date: LocalDate, 
 	if (typeof on !== "boolean") throw new Error("on は true か false にしてください");
 	const { board, lanes, lane } = laneOfKey(index, date, key);
 	if (on && lane === "routine") throw new Error(`${key} は routine なので ★ を付けられません`);
+	if (on && lane === "watch") throw new Error(`${key} は待っている（waiting / delegated）ので ★ を付けられません`);
 	if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`★ は ${TOP_LIMIT} 件までです。ほかの ★ を外してから付けてください`);
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
@@ -505,8 +506,16 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	}
 
 	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
+	if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
 	if (isDoneStatus(updated.status) && !isDoneStatus(current.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? new Date());
 	return updated;
+}
+
+/** waiting / delegated にしたら、今日のボードの ★ を外す（ADR-0184）。端末名がなければ書かない */
+function unstarOnDisk(root: string, index: TaskIndex, key: string, to: Status, log: Pick<StatusLogContext, "device" | "now"> | undefined): void {
+	if (!log || !sanitizeDeviceName(log.device)) return;
+	const today = localToday(log.now);
+	appendBoardOpsOnDisk(root, index, today, log.device, unstarOps(index, today, key, to), log.now);
 }
 
 /**
@@ -524,6 +533,7 @@ export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string
 	writeTextInVault(root, current.path, r.text);
 	if (log && r.before.status !== r.after.status) {
 		appendStatusLogOnDisk(root, current.parent, r.before.status, r.after.status, log, current.id);
+		unstarOnDisk(root, index, key, r.after.status, log);
 		if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
 	}
 	return r.after;

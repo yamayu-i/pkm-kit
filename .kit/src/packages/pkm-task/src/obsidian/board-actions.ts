@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
-import { backToNextPatch, inboxPatch, ticklerPatch } from "../core/actions";
+import { backToNextPatch, inboxPatch, statusPatch, ticklerPatch } from "../core/actions";
 import { emptyBoard, isOnBoard, type RoutineResult } from "../core/board";
-import { boardLanes, canStar, moveOps, stepOps, TOP_LIMIT, type OrderedLane } from "../core/board-lanes";
+import { boardLanes, canStar, moveOps, stepOps, TOP_LIMIT, type BoardCard, type OrderedLane } from "../core/board-lanes";
 import type { BoardOp } from "../core/board-log";
 import { addDays, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
@@ -50,6 +50,21 @@ export async function addSubToBoard(ctx: TaskContext, date: LocalDate, sub: SubI
 		await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: sub.key }]);
 	} catch (e) {
 		ctx.report("サブをボードに載せられませんでした", e);
+	}
+}
+
+/**
+ * Watch の Resume（ADR-0184）: in-progress に戻し、今日のボードになければ載せる。日付は書かない（ADR-0152）。
+ * 委任先は外す（in-progress は自分の作業）
+ */
+export async function resumeCard(ctx: TaskContext, date: LocalDate, card: BoardCard): Promise<void> {
+	if (card.kind === "routine") return;
+	try {
+		if (card.kind === "issue") await ctx.writer.update(card.issue.path, statusPatch("in-progress"));
+		else await ctx.writer.updateSub(card.key, { status: "in-progress", delegatedTo: null });
+		if (!isOnBoard(ctx.store.index, date, card.key)) await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: card.key }]);
+	} catch (e) {
+		ctx.report("Resume できませんでした", e);
 	}
 }
 

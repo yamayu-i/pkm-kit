@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { App } from "obsidian";
+import { boardLogPath, parseBoardLog, serializeBoardLogEntry } from "../src/core/board-log";
+import { localToday } from "../src/core/dates";
 import { emptyVaultData, TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { parseStatusLog } from "../src/core/status-log";
@@ -19,7 +21,8 @@ function fixture(fm: Record<string, unknown>, device = "pc", worklog = "") {
 			const markdown = [...frontmatters].map(([path, frontmatter]) => ({ path, frontmatter }));
 			const worklogs = [...texts].filter(([p]) => p.startsWith("worklog/")).map(([path, text]) => ({ path, text }));
 			const statusLogs = [...texts].filter(([p]) => p.startsWith("statuslog/")).map(([path, text]) => ({ path, text }));
-			return new TaskIndex({ ...emptyVaultData(), ...collectVault({ markdown, worklogs, labels: null, statusLogs }).data });
+			const boardLogs = [...texts].filter(([p]) => p.startsWith("board/")).map(([path, text]) => ({ path, text }));
+			return new TaskIndex({ ...emptyVaultData(), ...collectVault({ markdown, worklogs, labels: null, statusLogs, boardLogs }).data });
 		},
 		refreshSoon: vi.fn(),
 	} as unknown as TaskStore;
@@ -43,6 +46,28 @@ function fixture(fm: Record<string, unknown>, device = "pc", worklog = "") {
 	const logs = () => [...texts].filter(([p]) => p.startsWith("statuslog/")).flatMap(([p, t]) => parseStatusLog(p, t).entries);
 	return { writer, frontmatters, texts, changes, logs, fm: () => frontmatters.get(issuePath)! };
 }
+
+describe("waiting / delegated にしたら ★ を外す（ADR-0184）", () => {
+	const today = localToday();
+	const boardPath = boardLogPath("pc", today);
+	const star = (on: boolean, n: number) => serializeBoardLogEntry({ id: `bo_${n}`, at: `${today}T00:00:0${n}.000Z`, date: today, op: "star", task: "i-1", on });
+	const stars = (texts: Map<string, string>) => parseBoardLog(boardPath, texts.get(boardPath) ?? "").entries.filter((e) => e.op.op === "star").map((e) => (e.op as { on: boolean }).on);
+
+	it("今日のボードで ★ が付いていれば、外す op を書く。in-progress に戻しても付け直さない", async () => {
+		const f = fixture({ status: "in-progress" });
+		f.texts.set(boardPath, [serializeBoardLogEntry({ id: "bo_0", at: `${today}T00:00:00.000Z`, date: today, op: "add", task: "i-1" }), star(true, 1)].join("\n"));
+		await f.writer.update(issuePath, { status: "waiting" });
+		expect(stars(f.texts)).toEqual([true, false]);
+		await f.writer.update(issuePath, { status: "in-progress" });
+		expect(stars(f.texts)).toEqual([true, false]);
+	});
+
+	it("★ がなければ、ボードに何も書かない", async () => {
+		const f = fixture({ status: "open" });
+		await f.writer.update(issuePath, { status: "delegated", delegated_to: "m-1" });
+		expect(f.texts.has(boardPath)).toBe(false);
+	});
+});
 
 describe("status の変更の書き込み（ADR-0031）", () => {
 	it("status が変わったら statuslog に追記し、変える前の値を渡す", async () => {

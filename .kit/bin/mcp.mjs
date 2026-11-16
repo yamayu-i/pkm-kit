@@ -8327,6 +8327,9 @@ function cautionIssues(issues, today, days = 3) {
 function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
   return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
 }
+var priorityRank = (p) => p === null ? PRIORITIES.length : PRIORITIES.indexOf(p);
+var nullsLast = (a, b) => a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b);
+var byPick = (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || nullsLast(a.deadline, b.deadline) || nullsLast(a.reviewed ?? "", b.reviewed ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
 
 // src/core/effort.ts
 function prorateEffort(intervals, now) {
@@ -8448,6 +8451,9 @@ function isInbox(issue, today) {
   if (issue.status !== "open") return false;
   if (issue.tickler !== null) return issue.tickler <= today;
   return !issue.clarified;
+}
+function isWatchStatus(status) {
+  return status === "waiting" || status === "delegated";
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -8593,9 +8599,10 @@ function boardItems(index, date, board) {
 }
 function unfinished(index, date, board) {
   const items = boardItems(index, date, board);
+  const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
-    issues: items.issues.filter((i) => isActive(i) && !board.carried.includes(i.id)),
-    subs: items.subs.filter((s) => isActive(s) && !board.carried.includes(s.key)),
+    issues: items.issues.filter((i) => left(i.status, i.id)),
+    subs: items.subs.filter((s) => left(s.status, s.key)),
     routines: items.routines.filter((r) => board.routines[r.id] === void 0)
   };
 }
@@ -8646,7 +8653,7 @@ function nextOrder(visible, previous) {
 }
 
 // src/core/board-lanes.ts
-var LANES = ["working", "top", "routine", "next", "waiting", "done"];
+var LANES = ["working", "top", "routine", "next", "watch", "done"];
 var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
   const cards = [];
@@ -8680,28 +8687,48 @@ function laneOf(index, board, card) {
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
-  if (status === "waiting" || status === "delegated") return "waiting";
+  if (isWatchStatus(status)) return "watch";
   if (board.stars.includes(card.key)) return "top";
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], routine: [], next: [], waiting: [], done: [] };
+  const lanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
   const order = index.order(date);
-  for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) lanes[laneOf(index, board, card)].push(card);
+  for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) {
+    const lane = laneOf(index, board, card);
+    if (lane !== "watch") lanes[lane].push(card);
+  }
+  lanes.watch = watchCards(index, new Set(lanes.working.map((c) => c.key)));
   const startedAt = (c) => Math.min(...index.running(c.key).map((l) => l.fromMs));
   lanes.working.sort((a, b) => startedAt(a) - startedAt(b));
   const added = boardCards(index, date, board).map((c) => c.key);
   lanes.done.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
   return lanes;
 }
+function watchCards(index, exclude = /* @__PURE__ */ new Set()) {
+  const cards = [];
+  for (const issue of index.issues.values()) if (isWatchStatus(issue.status)) cards.push({ kind: "issue", key: issue.id, issue });
+  for (const sub of index.data.subIssues) {
+    if (!isWatchStatus(sub.status) || index.sub(sub.key) !== sub) continue;
+    const parent = index.issues.get(sub.parent);
+    if (parent && isActive(parent)) cards.push({ kind: "sub", key: sub.key, sub, parent });
+  }
+  const owner = (c) => c.kind === "issue" ? c.issue : c.parent;
+  const rank = (c) => c.kind === "sub" ? c.sub.order : -1;
+  return cards.filter((c) => !exclude.has(c.key)).sort((a, b) => byPick(owner(a), owner(b)) || rank(a) - rank(b));
+}
+function unstarOps(index, date, key, to) {
+  if (!isWatchStatus(to)) return [];
+  return index.board(date)?.board.stars.includes(key) ? [{ op: "star", task: key, on: false }] : [];
+}
 function canStar(lanes) {
   return lanes.top.length < TOP_LIMIT;
 }
 function orderedKeys(lanes) {
-  return [...lanes.top, ...lanes.next, ...lanes.waiting].map((c) => c.key);
+  return [...lanes.top, ...lanes.next].map((c) => c.key);
 }
 function endOf(lanes, lane, key) {
-  const after = lane === "top" ? ["next", "waiting"] : lane === "next" ? ["waiting"] : [];
+  const after = lane === "top" ? ["next"] : [];
   for (const l of after) {
     const first = lanes[l].find((c) => c.key !== key);
     if (first) return first.key;
@@ -9704,7 +9731,7 @@ function laneOfKey(index, date, key) {
 }
 function orderCardOnDisk(root, index, date, key, before, device, now) {
   const { board, lanes, lane } = laneOfKey(index, date, key);
-  if (lane === "working" || lane === "done" || lane === "routine") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
+  if (lane === "working" || lane === "done" || lane === "routine" || lane === "watch") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
   if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before\uFF08${before}\uFF09\u306F ${key} \u3068\u540C\u3058\u6B04\u306B\u3042\u308A\u307E\u305B\u3093`);
   appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane, before, index.order(date)), now);
 }
@@ -9712,6 +9739,7 @@ function starCardOnDisk(root, index, date, key, on, device, now) {
   if (typeof on !== "boolean") throw new Error("on \u306F true \u304B false \u306B\u3057\u3066\u304F\u3060\u3055\u3044");
   const { board, lanes, lane } = laneOfKey(index, date, key);
   if (on && lane === "routine") throw new Error(`${key} \u306F routine \u306A\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
+  if (on && lane === "watch") throw new Error(`${key} \u306F\u5F85\u3063\u3066\u3044\u308B\uFF08waiting / delegated\uFF09\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
   if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
@@ -9908,8 +9936,14 @@ function updateIssueOnDisk(root, index, input, log) {
     patch.revisit = null;
   }
   const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : void 0);
+  if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
   if (isDoneStatus(updated.status) && !isDoneStatus(current.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? /* @__PURE__ */ new Date());
   return updated;
+}
+function unstarOnDisk(root, index, key, to, log) {
+  if (!log || !sanitizeDeviceName(log.device)) return;
+  const today = localToday(log.now);
+  appendBoardOpsOnDisk(root, index, today, log.device, unstarOps(index, today, key, to), log.now);
 }
 function updateSubIssueOnDisk(root, index, key, patch, log) {
   const current = index.sub(key);
@@ -9922,6 +9956,7 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
   writeTextInVault(root, current.path, r.text);
   if (log && r.before.status !== r.after.status) {
     appendStatusLogOnDisk(root, current.parent, r.before.status, r.after.status, log, current.id);
+    unstarOnDisk(root, index, key, r.after.status, log);
     if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
   }
   return r.after;
@@ -10843,7 +10878,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001routine: routine \u3059\u3079\u3066\uFF08issue \u3068\u6DF7\u305C\u306A\u3044\u3002\u2605 \u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001waiting: waiting / delegated\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001routine: routine \u3059\u3079\u3066\uFF08issue \u3068\u6DF7\u305C\u306A\u3044\u3002\u2605 \u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001watch: waiting / delegated \u306E issue \u3068\u30B5\u30D6\u3059\u3079\u3066\uFF08\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B\u304B\u306B\u3088\u3089\u306A\u3044\u3002\u4E26\u3073\u306F Pick \u3068\u540C\u3058\u3002ADR-0184\uFF09\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
     inputSchema: {
       type: "object",
       properties: {
@@ -10939,7 +10974,7 @@ var TOOLS = [
   },
   {
     name: "order_card",
-    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u3092\u3001\u540C\u3058\u6B04\uFF08top / next / waiting\uFF09\u306E before \u306E\u524D\u306B\u52D5\u304B\u3059\uFF08before \u304C null \u306A\u3089\u6B04\u306E\u672B\u5C3E\uFF09\u3002\u4E26\u3073\u306F\u7FCC\u65E5\u4EE5\u964D\u306B\u3082\u5F15\u304D\u7D99\u3050",
+    description: "\u30DC\u30FC\u30C9\u306E\u30AB\u30FC\u30C9\u3092\u3001\u540C\u3058\u6B04\uFF08top / next\uFF09\u306E before \u306E\u524D\u306B\u52D5\u304B\u3059\uFF08before \u304C null \u306A\u3089\u6B04\u306E\u672B\u5C3E\uFF09\u3002\u4E26\u3073\u306F\u7FCC\u65E5\u4EE5\u964D\u306B\u3082\u5F15\u304D\u7D99\u3050",
     inputSchema: {
       type: "object",
       properties: {

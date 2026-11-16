@@ -7,11 +7,13 @@ import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
+import { memberLabel } from "../core/member";
 import { boardMenuStatuses, isDoneStatus } from "../core/status-log";
 import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
 import {
 	addSubToBoard,
 	addToBoard,
+	resumeCard,
 	carryIssues,
 	carrySubs,
 	closeBoard,
@@ -44,7 +46,7 @@ const LANE_TITLE: Record<LaneId, string> = {
 	top: "Top 4",
 	routine: "Routines",
 	next: "Up next",
-	waiting: "Waiting",
+	watch: "Watch",
 	done: "Done",
 };
 
@@ -75,6 +77,26 @@ const readDrag = (e: DragEvent): string | null => e.dataTransfer?.getData(DRAG_T
 /** ドラッグで並べられる欄（ADR-0137: ★ と次にやる順の間と中だけ） */
 const isDragLane = (lane: LaneId): lane is "top" | "next" => lane === "top" || lane === "next";
 
+/** カードの status のメニュー（ボードのカードと Watch で共通）。routine はその日の結果 */
+function showStatusMenu(ctx: TaskContext, date: LocalDate, card: BoardCard, status: Status, e: MouseEvent): void {
+	const m = new Menu();
+	for (const s of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
+		m.addItem((mi) =>
+			mi
+				.setTitle(s === "delegated" ? "delegated…" : s)
+				.setChecked(s === status)
+				.onClick(() => {
+					if (card.kind === "routine") return void setRoutineResult(ctx, date, card.key, s === "open" ? null : (s as "closed" | "canceled"));
+					// delegated をもう一度選んだときは、委任先を選び直す
+					if (s === status && s !== "delegated") return;
+					if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s);
+					else changeSubStatus(ctx, card.sub, s);
+				}),
+		);
+	}
+	m.showAtMouseEvent(e);
+}
+
 /** カード 1 枚（ADR-0137）。status のバッジ・題・再生・メニューだけ */
 function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lanes: BoardLanes; lane: LaneId; card: BoardCard; now: number }) {
 	const { ctx, date, board, lanes, lane, card, now } = props;
@@ -92,24 +114,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 	const enter = last !== undefined && last.to === status && Date.now() - last.atMs < ENTER_MS;
 	const starred = board.stars.includes(key);
 
-	const statusMenu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const s of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
-			m.addItem((mi) =>
-				mi
-					.setTitle(s === "delegated" ? "delegated…" : s)
-					.setChecked(s === status)
-					.onClick(() => {
-						if (card.kind === "routine") return void setRoutineResult(ctx, date, key, s === "open" ? null : (s as "closed" | "canceled"));
-						// delegated をもう一度選んだときは、委任先を選び直す
-						if (s === status && s !== "delegated") return;
-						if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s);
-						else changeSubStatus(ctx, card.sub, s);
-					}),
-			);
-		}
-		m.showAtMouseEvent(e);
-	};
+	const statusMenu = (e: MouseEvent) => showStatusMenu(ctx, date, card, status, e);
 	const moreMenu = (e: MouseEvent) => {
 		const m = new Menu();
 		if (!done && card.kind !== "routine") {
@@ -182,6 +187,45 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 	);
 }
 
+/**
+ * Watch のカード（ADR-0184）。status のバッジ・題・委任先・Resume・メニュー。★・再生・並べ替えはない。
+ * Resume は in-progress に戻し、今日のボードになければ載せる
+ */
+function WatchCard(props: { ctx: TaskContext; date: LocalDate; card: BoardCard }) {
+	const { ctx, date, card } = props;
+	if (card.kind === "routine") return null;
+	const status = card.kind === "issue" ? card.issue.status : card.sub.status;
+	const summary = cardSummary(card);
+	const path = cardPath(card);
+	const delegatedTo = card.kind === "issue" ? card.issue.delegatedTo : card.sub.delegatedTo;
+	const member = delegatedTo ? ctx.store.index.members.get(delegatedTo) : undefined;
+	const moreMenu = (e: MouseEvent) => {
+		const m = new Menu();
+		m.addItem((mi) => mi.setTitle("Open").setIcon("file-text").onClick(() => void ctx.openPath(path)));
+		m.showAtMouseEvent(e);
+	};
+	return (
+		<div class={`vt-task vt-watch-task${card.kind === "sub" ? " is-sub" : ""}`} data-key={card.key}>
+			<StatusBadge status={status} onClick={(e) => showStatusMenu(ctx, date, card, status, e)} />
+			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${card.key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
+				{summary}
+			</span>
+			{delegatedTo && (
+				<span class="vt-chip-mini vt-watch-member" title={member ? memberLabel(member) : delegatedTo}>
+					@{member?.alias ?? delegatedTo}
+				</span>
+			)}
+			<button class="vt-button is-text" aria-label="Resume" title="Back to in-progress and add to today's board" onClick={() => void resumeCard(ctx, date, card)}>
+				<Icon name="undo-2" />
+				<span class="vt-watch-label">Resume</span>
+			</button>
+			<button class="vt-icon-button" aria-label="Card menu" title="More" onClick={moreMenu}>
+				<Icon name="more-horizontal" />
+			</button>
+		</div>
+	);
+}
+
 /** 隣り合った同じ親のサブの見出し（ADR-0137）。押すと親を開く */
 export function ParentHead(props: { ctx: TaskContext; parentId: string }) {
 	const parent = props.ctx.store.index.issues.get(props.parentId);
@@ -203,6 +247,7 @@ export function ParentHead(props: { ctx: TaskContext; parentId: string }) {
 function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lanes: BoardLanes; lane: LaneId; now: number }) {
 	const { ctx, date, board, lanes, lane, now } = props;
 	const cards = lanes[lane];
+	const watch = lane === "watch";
 	const [over, setOver] = useState(false);
 	// routine は開いたまま、Done はたたんだまま始める
 	const [open, setOpen] = useState(lane === "routine");
@@ -250,13 +295,13 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 				<div class="vt-lane-cards">
 					{cardRuns(cards).map((run) =>
 						run.parent === null ? (
-							run.cards.map((card) => <TaskCard ctx={ctx} date={date} board={board} lanes={lanes} lane={lane} card={card} now={now} key={card.key} />)
+							run.cards.map((card) => (watch ? <WatchCard ctx={ctx} date={date} card={card} key={card.key} /> : <TaskCard ctx={ctx} date={date} board={board} lanes={lanes} lane={lane} card={card} now={now} key={card.key} />))
 						) : (
 							<div class="vt-lane-run" key={`${run.parent}/${run.cards[0]!.key}`}>
 								<ParentHead ctx={ctx} parentId={run.parent} />
-								{run.cards.map((card) => (
-									<TaskCard ctx={ctx} date={date} board={board} lanes={lanes} lane={lane} card={card} now={now} key={card.key} />
-								))}
+								{run.cards.map((card) =>
+									watch ? <WatchCard ctx={ctx} date={date} card={card} key={card.key} /> : <TaskCard ctx={ctx} date={date} board={board} lanes={lanes} lane={lane} card={card} now={now} key={card.key} />,
+								)}
 							</div>
 						),
 					)}
@@ -281,7 +326,8 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 	const now = useNow(30_000);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const lanes = boardLanes(index, date, board);
-	const total = Object.values(lanes).reduce((n, l) => n + l.length, 0);
+	// Watch はボードの外のものも出すので、ボードが空かどうかには数えない（ADR-0184）
+	const total = Object.values(lanes).reduce((n, l) => n + l.length, 0) - lanes.watch.length;
 	const left = unfinished(index, date, board);
 	const leftIssues = left.issues;
 	const leftCount = unfinishedCount(left);
@@ -293,7 +339,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 			else void createOnBoard(ctx, date, choice.summary);
 		}).open();
 	};
-	const visibleLanes: LaneId[] = (["working", "top", "routine", "next", "waiting", "done"] as LaneId[]).filter((l) => (l === "routine" ? showRoutineLane(board, lanes) : l === "top" || l === "next" || lanes[l].length > 0));
+	const visibleLanes: LaneId[] = (["working", "top", "routine", "next", "watch", "done"] as LaneId[]).filter((l) => (l === "routine" ? showRoutineLane(board, lanes) : l === "top" || l === "next" || lanes[l].length > 0));
 	return (
 		<div class="vt-board">
 			<div class="vt-board-head">
@@ -304,7 +350,14 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				</button>
 			</div>
 			{total === 0 ? (
-				<div class="vt-empty">The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above.</div>
+				<>
+					<div class="vt-empty">The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above.</div>
+					{lanes.watch.length > 0 && (
+						<div class="vt-lanes">
+							<Lane ctx={ctx} date={date} board={board} lanes={lanes} lane="watch" now={now} />
+						</div>
+					)}
+				</>
 			) : (
 				<div class="vt-lanes">
 					{visibleLanes.map((lane) => (

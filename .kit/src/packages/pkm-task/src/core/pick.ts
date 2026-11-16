@@ -1,4 +1,4 @@
-import { isNext } from "./index";
+import { isNext, isNextSub } from "./index";
 import type { Issue, Status } from "./schema";
 import { isDoneStatus } from "./status-log";
 import type { Patch } from "./actions";
@@ -12,12 +12,13 @@ export function pickTimerControl(status: Status, picked: boolean, running: boole
 	return picked ? "start" : "pick";
 }
 
-/** Pick の前に Next にする。null なら確認も更新も不要。期限は残す。 */
+/** Pick の前に Next にする。null なら確認も更新も不要。期限は残す。in-progress は in-progress のまま（ADR-0184） */
 export function pickIssuePatch(issue: Issue): Patch | null {
-	return isNext(issue) ? null : { status: "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
+	if (isNext(issue)) return null;
+	return { status: issue.status === "in-progress" ? "in-progress" : "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
 }
 export function pickSubPatch(sub: SubIssue, today: LocalDate): SubIssuePatch | null {
+	if (isNextSub(sub, today)) return null;
 	const future = sub.start !== null && sub.start > today;
-	if (sub.status === "open" && sub.scheduled === null && !future) return null;
-	return { status: "open", delegatedTo: null, scheduled: null, ...(future ? { start: null } : {}) };
+	return { status: sub.status === "in-progress" ? "in-progress" : "open", delegatedTo: null, scheduled: null, ...(future ? { start: null } : {}) };
 }
