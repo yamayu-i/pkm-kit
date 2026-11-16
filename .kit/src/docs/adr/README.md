@@ -87,6 +87,8 @@
 | [0135](0135-sub-issues-in-issue-file.md) | 承認（一部置換: 0152） | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179） | 親の issue 画面でサブイシューを見る・作る・並べる |
+| [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
+| [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179, ADR-0181） | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 承認 | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
@@ -100,4 +102,5 @@
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認 | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
+| [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 <!-- adr-index:end -->

@@ -3706,3 +3706,12 @@ body.is-mobile .vt-toast {
 .vt-subissues div.vt-subissue-summary:hover .vt-subissue-summary-text { color: inherit; }
 .markdown-preview-view .vt-sub-card-section { margin-block: 0; }
 
+
+/* 本文の「Show N closed」（終わったサブを出す・隠す。ADR-0181） */
+.vt-sub-closed-host {
+	margin: var(--vt-space-8) 0;
+}
+
+.vt-sub-closed-toggle {
+	color: var(--vt-on-surface-variant);
+}

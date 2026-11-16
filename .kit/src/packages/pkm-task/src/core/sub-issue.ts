@@ -239,11 +239,10 @@ export function updateSubIssueText(
 	if (at < 0) throw new Error(`サブがありません: ${subKey(parent, id)}`);
 	const before = blocks[at]!.sub!;
 	const after: SubIssue = { ...before, ...patch, id: before.id };
-	const next = replaceSubIssues(
-		text,
-		blocks.map((b, i) => (i === at ? after : (b.sub ?? b.raw))),
-	);
-	return { text: next, before, after };
+	const items = blocks.map((b, i) => (i === at ? after : (b.sub ?? b.raw)));
+	// 終わったサブは md の末尾へ送る（ADR-0181）
+	if (becomesDone(before.status, after.status)) items.push(...items.splice(at, 1));
+	return { text: replaceSubIssues(text, items), before, after };
 }
 
 /** md のサブを組み替える。読めなかったブロックは元の文字のまま、同じ並びに残す */
@@ -376,7 +375,13 @@ export function dependentsOf(subs: readonly SubIssue[], id: string): string[] {
 	return subs.filter((s) => s.dependsOn.includes(id)).map((s) => s.id);
 }
 
-const isDone = (s: Pick<SubIssue, "status">) => s.status === "closed" || s.status === "canceled";
+/** 終わったサブ（closed / canceled。ADR-0181） */
+export const isDone = (s: Pick<SubIssue, "status">) => s.status === "closed" || s.status === "canceled";
+
+/** status の変化が「終わっていない → 終わった」か。このときだけ、サブのブロックを md の末尾へ送る（ADR-0181） */
+export function becomesDone(from: Status, to: Status): boolean {
+	return !isDone({ status: from }) && isDone({ status: to });
+}
 
 /** 一覧に出すサブ（ADR-0142）: closed と canceled は showClosed のときだけ。並びは md の順 */
 export function visibleSubs<T extends Pick<SubIssue, "status">>(subs: readonly T[], showClosed: boolean): T[] {
@@ -505,9 +510,17 @@ export function layoutSubIssues(path: string, parent: string, text: string, pars
 	return out;
 }
 
+/** エディタの文書への変更 1 つ（変更前の文書の位置） */
+export interface TextChange {
+	from: number;
+	to: number;
+	insert: string;
+}
+
 /**
  * md の中のサブ 1 件の項目だけを書き換える変更（ADR-0161）。エディタの文書の、項目のブロックの範囲だけを置き換えるのに使う。
- * 本文、ほかのサブ、親の部分には触れない。検査に通らなければ・サブがなければ・書けない値なら例外
+ * 本文、ほかのサブ、親の部分には触れない。検査に通らなければ・サブがなければ・書けない値なら例外。
+ * `change` は項目の書き換え。status が終わりに変わるときは、ブロックごと末尾へ送る変更（`changes`。ADR-0181）で、`change` は使わない
  */
 export function subHeadChange(
 	path: string,
@@ -517,9 +530,10 @@ export function subHeadChange(
 	patch: SubIssuePatch,
 	parseYaml: YamlParse,
 	memberIds: ReadonlySet<string>,
-): { change: { from: number; to: number; insert: string }; before: SubIssue; after: SubIssue } {
+): { change: TextChange; changes: TextChange[]; before: SubIssue; after: SubIssue } {
 	const fixed = normalizeSubPatch(patch);
-	const layout = layoutSubIssues(path, parent, text, parseYaml).find((b) => b.id === id);
+	const all = layoutSubIssues(path, parent, text, parseYaml);
+	const layout = all.find((b) => b.id === id);
 	const { subs } = parseSubIssues(path, parent, text, parseYaml);
 	const before = subs.find((s) => s.id === id);
 	if (!layout || !before || layout.cardTo === null) throw new Error(`サブがありません: ${subKey(parent, id)}`);
@@ -530,7 +544,22 @@ export function subHeadChange(
 		memberIds,
 	);
 	if (errors.length > 0) throw new Error(errors.join("\n"));
-	return { change: { from: layout.from, to: layout.cardTo, insert: formatSubHead(after) }, before, after };
+	const head = formatSubHead(after);
+	const change = { from: layout.from, to: layout.cardTo, insert: head };
+	const next = all[layout.index + 1];
+	if (!becomesDone(before.status, after.status) || next === undefined) return { change, changes: [change], before, after };
+	// 末尾へ送る: 元の場所のブロックを消し、書き換えた項目と本文を文書の末尾に足す
+	const sep = text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
+	const moved = `${sep}${head}${text.slice(layout.cardTo, next.from)}`;
+	return {
+		change,
+		changes: [
+			{ from: layout.from, to: next.from, insert: "" },
+			{ from: text.length, to: text.length, insert: moved.endsWith("\n") ? moved : `${moved}\n` },
+		],
+		before,
+		after,
+	};
 }
 
 /** リーディング表示の 1 つのセクション（行 lineStart〜lineEnd。終わりを含む）の、サブとの関係（ADR-0161） */
