@@ -8,7 +8,8 @@ import { nextIds, pathForId } from "../core/ids";
 import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent } from "../core/issue-file";
 import { fileKind } from "../core/load";
 import { STATUSES, type Status } from "../core/schema";
-import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
+import { statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
+import { canTransition, completeIssuePatch, completeSubPatch, stopsTimer, timerStartStatus, transitionError } from "../core/transition";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
 import {
@@ -92,8 +93,8 @@ export class TaskWriter {
 	}
 
 	/**
-	 * frontmatter の欄をまとめて更新する。issue の status が変わったら、statuslog に書き、
-	 * closed / canceled なら記録中のタイマーを止め、onStatusChange を呼ぶ（ADR-0031）
+	 * frontmatter の欄をまとめて更新する。issue の status は遷移表（ADR-0183）にある遷移だけを書き、ほかは例外にする（取り消しの undo は除く）。
+	 * status が変わったら、statuslog に書き、★ を外し、今の作業でなくなればタイマーを止め、onStatusChange を呼ぶ（ADR-0031, 0184, 0183）
 	 */
 	async update(path: string, fields: Record<string, FieldValue>, via: StatusVia = "ui"): Promise<void> {
 		const before: Record<string, FieldValue> = {};
@@ -102,6 +103,12 @@ export class TaskWriter {
 		await this.app.fileManager.processFrontMatter(this.file(path), (fm: Record<string, unknown>) => {
 			from = fm.status;
 			id = fm.id;
+			const next = fields.status;
+			if (via !== "undo" && fileKind(path) === "issue" && isStatus(from) && isStatus(next) && from !== next) {
+				const reopenTo = typeof fm.id === "string" ? this.store.index.reopenStatus(fm.id) : null;
+				if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
+				fields = completeIssuePatch(next, fields);
+			}
 			for (const [key, value] of Object.entries(fields)) {
 				before[key] = structuredClone(fm[key]) as FieldValue;
 				if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === "") delete fm[key];
@@ -113,7 +120,7 @@ export class TaskWriter {
 		if (fileKind(path) !== "issue" || !isStatus(from) || !isStatus(to) || from === to || typeof id !== "string") return;
 		await this.recordStatus(id, from, to, via);
 		await this.unstar(id, to);
-		if (isDoneStatus(to)) {
+		if (stopsTimer(to)) {
 			const running = this.store.index.running(id);
 			if (running.length > 0) await this.stopTimer(running);
 		}
@@ -122,12 +129,18 @@ export class TaskWriter {
 
 	/**
 	 * サブの項目を書き換える（ADR-0135）。key は合成キー。status が変わったら statuslog に task と sub で書き、
-	 * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+	 * 今の作業でなくなればそのサブの記録中のタイマーを止める。遷移表にない遷移は例外（ADR-0183）。親の status は変えない
 	 */
 	async updateSub(key: string, patch: SubIssuePatch, via: StatusVia = "ui"): Promise<void> {
 		const sub = this.store.index.sub(key);
 		if (!sub) throw new Error(`サブがありません: ${key}`);
-		const fixed = normalizeSubPatch(patch);
+		let fixed = normalizeSubPatch(patch);
+		const next = fixed.status;
+		if (via !== "undo" && next !== undefined && next !== sub.status) {
+			const reopenTo = this.store.index.reopenStatus(sub.key);
+			if (!canTransition(sub.status, next, reopenTo)) throw new Error(transitionError(sub.status, next, reopenTo));
+			fixed = completeSubPatch(next, fixed);
+		}
 		let change: { from: Status; to: Status } | null = null;
 		await this.app.vault.process(this.file(sub.path), (text) => {
 			// 書く前に、今の md の姿で検査する（ADR-0135）。通らなければ書かない
@@ -150,7 +163,7 @@ export class TaskWriter {
 	async afterSubStatusChange(sub: Pick<SubIssue, "parent" | "id" | "key">, from: Status, to: Status, via: StatusVia = "ui"): Promise<void> {
 		await this.recordStatus(sub.parent, from, to, via, sub.id);
 		await this.unstar(sub.key, to);
-		if (isDoneStatus(to)) {
+		if (stopsTimer(to)) {
 			const running = this.store.index.running(sub.key);
 			if (running.length > 0) await this.stopTimer(running);
 		}
@@ -357,11 +370,13 @@ export class TaskWriter {
 		for (const id of targets) {
 			const sub = this.store.index.sub(id);
 			if (sub) {
-				if (sub.status === "open") await this.updateSub(id, { status: "in-progress" }, "timer");
+				const to = timerStartStatus(sub.status);
+				if (to) await this.updateSub(id, { status: to }, "timer");
 				continue;
 			}
 			const issue = this.store.index.issues.get(id);
-			if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
+			const to = issue ? timerStartStatus(issue.status) : null;
+			if (issue && to) await this.update(issue.path, { status: to, delegated_to: null }, "timer");
 		}
 	}
 

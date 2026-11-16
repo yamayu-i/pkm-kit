@@ -192,6 +192,7 @@ packages/design/tokens.json（正本）
 |---|---|---|
 | カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
 | status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に status のアイコン、末尾に ▾ |
+| status のボタン | `.vt-status-step`（`.vt-icon-button`） | status のバッジの隣の 24px の丸。いちばんよく使う遷移 1 つ（ADR-0183）。アイコンは押した後の status の形と色（白抜きは `--vt-surface`）、closed / canceled は ↩（`undo-2`）。issue 画面・サブはいつも出し、ボードのカード（`.vt-task`）ではホバー・フォーカスのときだけ見せる（場所は `visibility` で取っておく）。`hover: none` の端末と、幅 480px 以下のボードでは出さない |
 | status のアイコン | `.vt-status-icon` | ○ を土台にした自作の SVG（ADR-0031）。色は status の印の色（`--vt-dot`）、白抜きは下の面（`--vt-knock`）。in-progress は `--vt-duration-spin` でゆっくり回り、closed は閉じた直後（`.is-enter`）だけチェックを描く |
 | 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |

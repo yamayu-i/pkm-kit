@@ -283,7 +283,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す）。サブは tickler と inbox にできない",
+		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す。open の issue だけ）。サブは tickler と inbox にできない",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -339,7 +339,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "update_issue",
-		description: "issue の frontmatter（status, priority, scheduled, deadline, estimated など）を検査付きで更新する。サブイシューは update_sub_issue で直す",
+		description: "issue の frontmatter（status, priority, scheduled, deadline, estimated など）を検査付きで更新する。status は遷移表（open→in-progress/waiting/delegated/someday/closed/canceled、in-progress→waiting/delegated/someday/closed/canceled、waiting・delegated→in-progress/someday/closed/canceled、someday→open/closed/canceled、closed⇄canceled、closed/canceled→閉じる前の status）にある遷移だけ。ほかはエラーで、移れる先を返す。サブイシューは update_sub_issue で直す",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -397,7 +397,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "update_sub_issue",
-		description: "サブイシューの項目と本文を検査付きで直す。null で項目を消す。status の変化は statuslog に記録し、closed / canceled ならそのサブのタイマーを止める。親の status は変えない",
+		description: "サブイシューの項目と本文を検査付きで直す。null で項目を消す。status は update_issue と同じ遷移表にある遷移だけ。status の変化は statuslog に記録し、open / in-progress 以外にしたらそのサブのタイマーを止める。親の status は変えない",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -442,7 +442,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "start_timer",
-		description: "指定した issue / routine / サブイシューの作業記録タイマーを開始する。サブは合成キー（i-12#k3f9a2）で指す。open のものは in-progress にする（サブのときは親の status を変えない）",
+		description: "指定した issue / routine / サブイシューの作業記録タイマーを開始する。サブは合成キー（i-12#k3f9a2）で指す。open・waiting・delegated のものは in-progress にする（サブのときは親の status を変えない）",
 		inputSchema: {
 			type: "object",
 			properties: {

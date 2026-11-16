@@ -1,9 +1,8 @@
-import { Menu, parseYaml } from "obsidian";
+import { parseYaml } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday } from "../core/dates";
 import { adoptValue } from "../core/draft";
 import { formatMinutes, parseDurationInput } from "../core/format";
-import { STATUSES, type Status } from "../core/schema";
 import { isDoneStatus } from "../core/status-log";
 import { parseSubIssues, subHint, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
 import { Icon } from "../ui/Icon";
@@ -12,6 +11,7 @@ import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PickTimer } from "./pick-toggle";
 import { SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
+import { showStatusMenu, StatusStepButton } from "./status-change";
 
 /** issue の md のパスから、親の issue の ID（`issue/i-12.md` → `i-12`） */
 export function issueIdOf(path: string): string {
@@ -110,23 +110,15 @@ export function SubCard(props: SubCardProps) {
 /** カードの題の行（status・題と開閉・Pick）。カードと、上端に浮かべる行（StickySubRow）で使う */
 function SubRow(props: { ctx: TaskContext; sub: SubIssue; open: boolean; onToggle: () => void; save: Save }) {
 	const { ctx, sub, open, save } = props;
-	const changeStatus = (next: Status) => {
-		if (next === "delegated") return pickMember(ctx, (id) => void save({ status: next, delegatedTo: id }));
-		if (next === sub.status) return;
-		// someday にするときは予定と期限を外す（issue と同じ。ADR-0006）
-		void save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
-	};
-	const statusMenu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const s of STATUSES) m.addItem((mi) => mi.setTitle(s === "delegated" ? "delegated…" : s).setChecked(s === sub.status).onClick(() => changeStatus(s)));
-		m.showAtMouseEvent(e);
-	};
+	// メニューは遷移表の先だけ。付随の変更も表で決まる（ADR-0183）
+	const statusMenu = (e: MouseEvent) => showStatusMenu(ctx, e, sub.key, (patch) => save(patch));
 	const hint = subHint(sub, localToday());
 	return (
 		<div class="vt-subissue-row">
 			<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
 				<StatusIcon status={sub.status} />
 			</button>
+			<StatusStepButton ctx={ctx} keyOf={sub.key} save={(patch) => save(patch)} />
 			<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
 				<Icon name={open ? "chevron-down" : "chevron-right"} />
 				<span class="vt-subissue-summary-text">{sub.summary}</span>

@@ -7769,6 +7769,13 @@ function isSubId(value) {
 function subKey(parent, id) {
   return `${parent}#${id}`;
 }
+function parseSubKey(key) {
+  const at = key.indexOf("#");
+  if (at < 0) return null;
+  const parent = key.slice(0, at);
+  const id = key.slice(at + 1);
+  return isId(parent, "i") && isSubId(id) ? { parent, id } : null;
+}
 var FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
 function splitSubIssueText(text) {
   const fm = FRONTMATTER_RE.exec(text);
@@ -8134,6 +8141,17 @@ function closedAtMap(logs, closedIds) {
   return out;
 }
 
+// src/core/transition.ts
+var isDone = (s) => s === "closed" || s === "canceled";
+function reopenStatus(logs, task, sub = null) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task || (e.sub ?? null) !== sub) continue;
+    if (isDone(e.to) && !isDone(e.from)) return e.from;
+  }
+  return "open";
+}
+
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -8234,6 +8252,11 @@ var TaskIndex = class {
   statusBefore(id) {
     const issue = this.issues.get(id);
     return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+  }
+  /** closed / canceled からの ↩ の戻る先（ADR-0183）。key は issue の ID かサブの合成キー。分からなければ open */
+  reopenStatus(key) {
+    const sub = parseSubKey(key);
+    return sub ? reopenStatus(this.data.statusLogs, sub.parent, sub.id) : reopenStatus(this.data.statusLogs, key);
   }
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {

@@ -113,7 +113,7 @@ describe("status の変更の書き込み（ADR-0031）", () => {
 		expect(JSON.parse(f.texts.get("worklog/pc/2026-11.jsonl")!.trim()).to).not.toBeNull();
 	});
 
-	it("open の issue のタイマーを始めたら in-progress にする。open 以外は変えない", async () => {
+	it("open・waiting の issue のタイマーを始めたら in-progress にする。someday・closed は変えない（ADR-0183）", async () => {
 		const f = fixture({ status: "open" });
 		await f.writer.startTimer(["i-1"], "pc");
 		expect(f.fm().status).toBe("in-progress");
@@ -121,7 +121,47 @@ describe("status の変更の書き込み（ADR-0031）", () => {
 
 		const g = fixture({ status: "waiting" });
 		await g.writer.startTimer(["i-1"], "pc");
-		expect(g.fm().status).toBe("waiting");
-		expect(g.logs()).toEqual([]);
+		expect(g.fm().status).toBe("in-progress");
+		expect(g.logs().map((e) => [e.from, e.to, e.via])).toEqual([["waiting", "in-progress", "timer"]]);
+
+		for (const status of ["someday", "closed"]) {
+			const h = fixture({ status });
+			await h.writer.startTimer(["i-1"], "pc");
+			expect(h.fm().status).toBe(status);
+			expect(h.logs()).toEqual([]);
+		}
+	});
+});
+
+describe("遷移表を通して書く（ADR-0183）", () => {
+	it("表にない遷移は書かずに例外にする。取り消し（undo）は表の対象外", async () => {
+		const f = fixture({ status: "waiting" });
+		await expect(f.writer.update(issuePath, { status: "open" })).rejects.toThrow(/移れる先: in-progress, someday, closed, canceled/);
+		expect(f.fm().status).toBe("waiting");
+		expect(f.logs()).toEqual([]);
+		await f.writer.update(issuePath, { status: "open" }, "undo");
+		expect(f.fm().status).toBe("open");
+	});
+
+	it("status だけを書いても、付随の変更を表で補う（canceled は期限と Tickler も消す）", async () => {
+		const f = fixture({ status: "in-progress", deadline: "2026-11-30", soft_deadline: "2026-11-20", tickler: "2026-11-18", scheduled: "2026-11-19" });
+		await f.writer.update(issuePath, { status: "canceled" });
+		expect(f.fm()).toMatchObject({ status: "canceled", scheduled: "2026-11-19" });
+		for (const k of ["deadline", "soft_deadline", "tickler", "delegated_to", "revisit"]) expect(f.fm()).not.toHaveProperty(k);
+	});
+
+	it("closed からは、閉じる前の status にだけ戻せる（↩）", async () => {
+		const f = fixture({ status: "waiting" });
+		await f.writer.update(issuePath, { status: "closed" });
+		await expect(f.writer.update(issuePath, { status: "open" })).rejects.toThrow(/waiting（Reopen）/);
+		await f.writer.update(issuePath, { status: "waiting" });
+		expect(f.fm().status).toBe("waiting");
+	});
+
+	it.each(["waiting", "someday"])("%s にしたら、記録中のタイマーを止める", async (to) => {
+		const running = JSON.stringify({ id: "wl_1", task_id: "i-1", from: "2026-11-03T09:00:00+09:00", to: null, description: "" });
+		const f = fixture({ status: "in-progress" }, "pc", `${running}\n`);
+		await f.writer.update(issuePath, { status: to });
+		expect(JSON.parse(f.texts.get("worklog/pc/2026-11.jsonl")!.trim()).to).not.toBeNull();
 	});
 });

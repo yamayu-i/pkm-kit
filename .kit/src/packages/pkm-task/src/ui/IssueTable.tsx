@@ -5,7 +5,8 @@ import { dueLevel } from "../core/due";
 import type { Issue } from "../core/schema";
 import { formatMinutes } from "../core/format";
 import type { TaskContext } from "../obsidian/context";
-import { editDue, editLabels, editScheduled, editStatusDetail, estimateMenu, issueRowMenu, priorityMenu, saveIssue, statusMenu } from "../obsidian/issue-editors";
+import { editDue, editLabels, editScheduled, editStatusDetail, estimateMenu, issueRowMenu, priorityMenu, saveIssue } from "../obsidian/issue-editors";
+import { showStatusMenu } from "../obsidian/status-change";
 import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
 import { Icon } from "./Icon";
 import { linkProps } from "./a11y";
@@ -97,7 +98,7 @@ export function IssueTable(props: {
 						<PriorityBadge priority={issue.priority} onClick={(e) => priorityMenu(e, issue.priority, saveIssue(ctx, issue))} />
 					</span>
 					<span class="vt-col-status">
-						<StatusBadge status={issue.status} onClick={(e) => statusMenu(ctx, e, issue)} />
+						<StatusBadge status={issue.status} onClick={(e) => showStatusMenu(ctx, e, issue.id)} />
 					</span>
 					{columns.map((c) => (
 						<span class={`vt-col-${c}`}>{cell(issue, c)}</span>
@@ -118,6 +119,8 @@ export interface Action {
 	icon: string;
 	run: () => void;
 	tone?: "primary" | "danger";
+	/** 選んだものに、この操作で移れないものがあるとき（ADR-0183）。一部だけを変えず、押せなくする */
+	disabled?: boolean;
 }
 
 /** 選択した行への操作 */
@@ -127,7 +130,7 @@ export function ActionBar(props: { count: number; actions: Action[] }) {
 			<span class="vt-actionbar-count">{props.count > 0 ? `${props.count} selected` : "Select rows to act on them"}</span>
 			<span class="vt-spacer" />
 			{props.actions.map((a) => (
-				<button class={`vt-button${a.tone ? ` is-${a.tone}` : ""}`} disabled={props.count === 0} onClick={a.run}>
+				<button class={`vt-button${a.tone ? ` is-${a.tone}` : ""}`} disabled={props.count === 0 || a.disabled === true} onClick={a.run}>
 					{a.label}
 				</button>
 			))}

@@ -6,6 +6,7 @@ import { askDate, cancelIssues, ticklerIssues } from "../obsidian/issue-actions"
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
+import { canApplyAll } from "../core/transition";
 
 type Order = "reviewed" | "revisit" | "created";
 
@@ -73,7 +74,7 @@ export function SomedayView(props: { ctx: TaskContext }) {
 					{ label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
 					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e) => ctx.report("revisit を設定できませんでした", e)) },
-					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
+					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 				]}
 			/>
 		</div>

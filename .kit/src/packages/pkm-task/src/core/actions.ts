@@ -49,14 +49,6 @@ export function reopenPatch(): Patch {
 	return { status: "open", revisit: null };
 }
 
-/** リストからの status の変更（ADR-0018）。委任先は delegated のときだけ使う */
-export function statusPatch(status: Status, delegatedTo: string | null = null): Patch {
-	if (status === "closed") return closePatch();
-	if (status === "canceled") return cancelPatch();
-	if (status === "someday") return somedayPatch();
-	return { status, delegated_to: status === "delegated" ? delegatedTo : null, revisit: null };
-}
-
 /** 期限を変える。someday は期限を持たないので、入れるときは open に戻す（ADR-0018） */
 export function duePatch(issue: Issue, key: "soft_deadline" | "deadline", date: LocalDate | null): Patch {
 	return { [key]: date, ...(issue.status === "someday" && date !== null ? reopenPatch() : {}) };

@@ -5,8 +5,6 @@ import { reviewWorklogs } from "../src/core/review";
 import {
 	closedAtMap,
 	isDoneStatus,
-	nextStatuses,
-	boardMenuStatuses,
 	parseStatusLog,
 	statusBefore,
 	statusLogLine,
@@ -91,19 +89,6 @@ describe("status の記録（ADR-0031）", () => {
 	});
 });
 
-describe("次の status（ADR-0031）", () => {
-	it("open と waiting は in-progress、in-progress は closed、delegated は両方、someday と完了は出さない", () => {
-		expect(nextStatuses("open")).toEqual(["in-progress"]);
-		expect(nextStatuses("waiting")).toEqual(["in-progress"]);
-		expect(nextStatuses("in-progress")).toEqual(["closed"]);
-		expect(nextStatuses("delegated")).toEqual(["in-progress", "closed"]);
-		expect(nextStatuses("someday")).toEqual([]);
-		expect(nextStatuses("closed")).toEqual([]);
-		expect(nextStatuses("canceled")).toEqual([]);
-		expect(isDoneStatus("closed") && isDoneStatus("canceled") && !isDoneStatus("someday")).toBe(true);
-	});
-});
-
 describe("取り消しのトースト（ADR-0031）", () => {
 	it("同じものは 1 件に数え、最初の値を残し、新しい順に取り出す", () => {
 		const batch = new UndoBatch<string>();
@@ -116,11 +101,3 @@ describe("取り消しのトースト（ADR-0031）", () => {
 	});
 });
 
-describe("ボードの status メニュー（ADR-0032）", () => {
-	it("issue は delegated も選べる。someday は出さない", () => {
-		expect(boardMenuStatuses("issue")).toEqual(["open", "in-progress", "waiting", "delegated", "closed", "canceled"]);
-	});
-	it("routine はその日の結果だけ（open / closed / canceled）", () => {
-		expect(boardMenuStatuses("routine")).toEqual(["open", "closed", "canceled"]);
-	});
-});

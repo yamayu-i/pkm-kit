@@ -12,6 +12,7 @@ import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { Pager } from "../ui/Pager";
 import { useStoreVersion } from "../ui/hooks";
+import { canApplyAll } from "../core/transition";
 
 const PAGE = 50;
 const SORTS: { key: SortKey; label: string }[] = [
@@ -149,10 +150,10 @@ export function IssueListView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-					{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
-					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
+					{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+					{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+					{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i) => i.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },
+					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 				]}
 			/>
 			{pages > 1 && <Pager current={current} pages={pages} onChange={setPage} />}

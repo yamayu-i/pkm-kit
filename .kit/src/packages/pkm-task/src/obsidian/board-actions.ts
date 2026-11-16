@@ -1,5 +1,6 @@
 import { Notice } from "obsidian";
-import { backToNextPatch, inboxPatch, statusPatch, ticklerPatch } from "../core/actions";
+import { backToNextPatch, inboxPatch, ticklerPatch } from "../core/actions";
+import { issueStatusPatch, subStatusPatch } from "../core/transition";
 import { emptyBoard, isOnBoard, type RoutineResult } from "../core/board";
 import { boardLanes, canStar, moveOps, stepOps, TOP_LIMIT, type BoardCard, type OrderedLane } from "../core/board-lanes";
 import type { BoardOp } from "../core/board-log";
@@ -60,8 +61,9 @@ export async function addSubToBoard(ctx: TaskContext, date: LocalDate, sub: SubI
 export async function resumeCard(ctx: TaskContext, date: LocalDate, card: BoardCard): Promise<void> {
 	if (card.kind === "routine") return;
 	try {
-		if (card.kind === "issue") await ctx.writer.update(card.issue.path, statusPatch("in-progress"));
-		else await ctx.writer.updateSub(card.key, { status: "in-progress", delegatedTo: null });
+		// status のボタンの Resume と同じ表で書く（ADR-0183）
+		if (card.kind === "issue") await ctx.writer.update(card.issue.path, issueStatusPatch("in-progress"));
+		else await ctx.writer.updateSub(card.key, subStatusPatch("in-progress"));
 		if (!isOnBoard(ctx.store.index, date, card.key)) await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: card.key }]);
 	} catch (e) {
 		ctx.report("Resume できませんでした", e);

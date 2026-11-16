@@ -6,6 +6,7 @@ import { isActive, isWatchStatus, type TaskIndex } from "./index";
 import type { Issue, Routine, Status } from "./schema";
 import { isDoneStatus } from "./status-log";
 import type { SubIssue } from "./sub-issue";
+import { unstarsOn } from "./transition";
 
 /** ボードのカード 1 枚（ADR-0137）。key は issue の ID・サブの合成キー・routine の ID */
 export type BoardCard =
@@ -112,9 +113,9 @@ export function watchCards(index: TaskIndex, exclude: ReadonlySet<string> = new 
 	return cards.filter((c) => !exclude.has(c.key)).sort((a, b) => byPick(owner(a), owner(b)) || rank(a) - rank(b));
 }
 
-/** status を to にしたときに書くボードの操作（ADR-0184）: waiting / delegated にしたら、その日のボードの ★ を外す */
+/** status を to にしたときに書くボードの操作（ADR-0184, 0183）: waiting / delegated / someday にしたら、その日のボードの ★ を外す */
 export function unstarOps(index: TaskIndex, date: LocalDate, key: string, to: Status): BoardOp[] {
-	if (!isWatchStatus(to)) return [];
+	if (!unstarsOn(to)) return [];
 	return index.board(date)?.board.stars.includes(key) ? [{ op: "star", task: key, on: false }] : [];
 }
 

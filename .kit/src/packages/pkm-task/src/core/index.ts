@@ -7,7 +7,8 @@ import type { LabelDef } from "./labels";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
 import { closedAtMap, isIssueStatusLog, statusBefore, type StatusLogEntry } from "./status-log";
-import type { SubIssue } from "./sub-issue";
+import { parseSubKey, type SubIssue } from "./sub-issue";
+import { reopenStatus } from "./transition";
 import { workKey, type WorklogEntry } from "./worklog";
 
 export interface VaultData {
@@ -208,6 +209,12 @@ export class TaskIndex {
 	statusBefore(id: string): Status | null {
 		const issue = this.issues.get(id);
 		return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+	}
+
+	/** closed / canceled からの ↩ の戻る先（ADR-0183）。key は issue の ID かサブの合成キー。分からなければ open */
+	reopenStatus(key: string): Status {
+		const sub = parseSubKey(key);
+		return sub ? reopenStatus(this.data.statusLogs, sub.parent, sub.id) : reopenStatus(this.data.statusLogs, key);
 	}
 
 	/** その issue の最後の status の記録 */

@@ -123,3 +123,44 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 		expect(() => callMcpTool(ctx, "list_issues", { parent: "i-1" })).toThrow(/parent/);
 	});
 });
+
+describe("MCP も遷移表を通す（ADR-0183）", () => {
+	let root: string;
+	let ctx: McpContext;
+	const index = () => new TaskIndex(readVault(root).data);
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "vault-transition-mcp-"));
+		mkdirSync(join(root, "issue"));
+		mkdirSync(join(root, "member"));
+		writeFileSync(join(root, "issue/i-1.md"), "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: waiting\ndeadline: 2026-11-30\ntickler: 2026-11-20\n---\n");
+		writeFileSync(join(root, "member/m-1.md"), "---\ntype: member\nid: m-1\nname: 田中\n---\n");
+		ctx = { root, device: "ai", now: () => now };
+	});
+
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("update_issue は表にない遷移をエラーにし、移れる先を返す", () => {
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", status: "open" })).toThrow(/移れる先: in-progress, someday, closed, canceled/);
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", status: "delegated", delegated_to: "m-1" })).toThrow(/移れる先/);
+		expect(index().issues.get("i-1")!.status).toBe("waiting");
+	});
+
+	it("update_issue の付随の変更は画面と同じ表（canceled は期限と Tickler を消す）", () => {
+		callMcpTool(ctx, "update_issue", { id: "i-1", status: "canceled" });
+		expect(index().issues.get("i-1")).toMatchObject({ status: "canceled", deadline: null, tickler: null });
+		// closed / canceled からは閉じる前（waiting）にだけ戻せる
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", status: "in-progress" })).toThrow(/waiting（Reopen）/);
+		callMcpTool(ctx, "update_issue", { id: "i-1", status: "waiting" });
+		expect(index().issues.get("i-1")!.status).toBe("waiting");
+	});
+
+	it("update_sub_issue も表にない遷移をエラーにする", () => {
+		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "a" }] }) as { created: string[] };
+		const key = created[0]!;
+		callMcpTool(ctx, "update_sub_issue", { key, status: "in-progress" });
+		expect(() => callMcpTool(ctx, "update_sub_issue", { key, status: "open" })).toThrow(/in-progress から open/);
+		callMcpTool(ctx, "update_sub_issue", { key, status: "someday" });
+		expect(index().sub(key)!.status).toBe("someday");
+	});
+});

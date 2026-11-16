@@ -3,11 +3,10 @@ import { useState } from "preact/hooks";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
-import { STATUSES, type Issue, type Status } from "../core/schema";
+import type { Issue } from "../core/schema";
 import { isDoneStatus } from "../core/status-log";
 import { splitQuickAdd, subCounts, subHint, visibleSubs, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
-import { pickMember } from "../obsidian/issue-editors";
 import { PickTimer } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import { revealSub } from "./sub-reveal";
@@ -16,6 +15,7 @@ import { FilterChip } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
 import { SubTimeline } from "./SubTimeline";
 import { StatusIcon } from "../ui/StatusIcon";
+import { showStatusMenu, StatusStepButton } from "../obsidian/status-change";
 
 /** ドラッグで運ぶ値の種類（同じ親のサブの合成キー） */
 const DRAG_TYPE = "application/x-pkm-sub-issue";
@@ -100,17 +100,8 @@ function SubRow(props: {
 	const running = index.running(sub.key);
 	const hint = subHint(sub, localToday());
 	const save = (patch: SubIssuePatch) => void ctx.writer.updateSub(sub.key, patch).catch((e) => ctx.report("サブを保存できませんでした", e));
-	const changeStatus = (next: Status) => {
-		if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
-		if (next === sub.status) return;
-		// someday にするときは予定と期限を外す（issue と同じ。ADR-0006）
-		save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
-	};
-	const statusMenu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const s of STATUSES) m.addItem((mi) => mi.setTitle(s === "delegated" ? "delegated…" : s).setChecked(s === sub.status).onClick(() => changeStatus(s)));
-		m.showAtMouseEvent(e);
-	};
+	// メニューは遷移表の先だけ。付随の変更も表で決まる（ADR-0183）
+	const statusMenu = (e: MouseEvent) => showStatusMenu(ctx, e, sub.key);
 	const moreMenu = (e: MouseEvent) => {
 		const m = new Menu();
 		const at = props.visible.indexOf(sub.key);
@@ -144,6 +135,7 @@ function SubRow(props: {
 				<button type="button" class="vt-subissue-status" aria-label={`Status: ${sub.status}`} title={`Status: ${sub.status}`} onClick={statusMenu}>
 					<StatusIcon status={sub.status} />
 				</button>
+				<StatusStepButton ctx={ctx} keyOf={sub.key} />
 				<button type="button" class="vt-subissue-summary" title={sub.summary} onClick={() => openSubEditor(ctx, sub)}>
 					<span class="vt-subissue-summary-text">{sub.summary}</span>
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}

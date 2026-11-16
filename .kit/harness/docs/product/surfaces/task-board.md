@@ -7,7 +7,7 @@
 ## 今の振る舞い
 
 - 1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（routine だけ。issue・サブと混ぜない。開いたまま始め、見出しで開閉。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない
-- カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。`delegated…` も選べる）・題・再生 / 停止・`···` のメニューだけを出す。ID はマウスを乗せると出る
+- カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。`delegated…` も選べる）・題・再生 / 停止・`···` のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ）が出る。ID はマウスを乗せると出る
 - 同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る
 - 星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる
 - `···` のメニュー: Add to Top 4 / Remove from Top 4、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
@@ -22,7 +22,7 @@
 
 ## 根拠
 
-[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)
+[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)
 
 ## 入力と制約
 

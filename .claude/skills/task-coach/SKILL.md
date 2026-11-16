@@ -75,6 +75,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 - ボード操作・issue 更新・デイリーノートへの追記は、必ず MCP ツール（または `vault-ops.ts`）を通して検査付きで行う。手で `board/`・`worklog/`・`statuslog/` の jsonl、issue の frontmatter を直接書き換えない
 - デイリーノート本文の既存の行は変更・削除しない（`task_close_board` による `## Task board` 節の更新と、`task_append_daily_note` による末尾追記のみ）
 - 複数の issue をリスケ・ステータス変更するときやボードを締めるときは、対象をユーザーに示して確認してから実行する
+- status は遷移表にある遷移でしか変えられない（in-progress から open に戻す、waiting と delegated を直接行き来する、などはできない。`task_update_issue` がエラーで移れる先を返す）。待ちから戻す先は in-progress（ADR-0183）
 
 ## 出力の段階
 
