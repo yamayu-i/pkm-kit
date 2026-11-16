@@ -105,6 +105,6 @@
 | [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 | [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
 | [0190](0190-sub-end-as-due.md) | 承認 | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
-| [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
+| [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 <!-- adr-index:end -->
