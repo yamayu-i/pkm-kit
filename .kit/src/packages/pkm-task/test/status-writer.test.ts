@@ -182,3 +182,19 @@ describe("Tickler は open だけが持つ（ADR-0183）", () => {
 		expect(f.fm()).not.toHaveProperty("tickler");
 	});
 });
+
+describe("Someday から戻したら整理し直す（ADR-0189）", () => {
+	it("someday から open にすると clarified を外して Inbox に入れる", async () => {
+		const f = fixture({ status: "someday", clarified: true, revisit: "2026-12-01" });
+		await f.writer.update(issuePath, { status: "open" });
+		expect(f.fm()).toMatchObject({ status: "open" });
+		expect(f.fm()).not.toHaveProperty("clarified");
+		expect(f.fm()).not.toHaveProperty("revisit");
+	});
+
+	it("Organize の Next（clarified を書く）で戻すときは整理済みのまま", async () => {
+		const f = fixture({ status: "someday" });
+		await f.writer.update(issuePath, { clarified: true, tickler: null, status: "open", revisit: null });
+		expect(f.fm()).toMatchObject({ status: "open", clarified: true });
+	});
+});

@@ -109,7 +109,7 @@ export class TaskWriter {
 			if (via !== "undo" && fileKind(path) === "issue" && isStatus(from) && isStatus(next) && from !== next) {
 				const reopenTo = typeof fm.id === "string" ? this.store.index.reopenStatus(fm.id) : null;
 				if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
-				fields = completeIssuePatch(next, fields);
+				fields = completeIssuePatch(next, fields, from);
 			}
 			// Tickler は open だけが持つ（ADR-0183）。書いた後の status が open でなければ付けない
 			const after = isStatus(next) ? next : from;

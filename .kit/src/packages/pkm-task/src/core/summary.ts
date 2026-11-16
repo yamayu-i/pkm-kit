@@ -39,7 +39,9 @@ export function boardSummary(index: TaskIndex, date: LocalDate, board: BoardStat
 	if (others.length > 0 || routines.some(([, r]) => r === "canceled")) {
 		lines.push("", "### 持ち越し・中止", "");
 		for (const id of others) {
-			const note = board.carried.includes(id) ? "持ち越し" : (statusOf(id) ?? "?");
+			// 片付けずに締めた未完了（open / in-progress）も持ち越しと書く（締めは記録だけ。ADR-0189）
+			const status = statusOf(id);
+			const note = board.carried.includes(id) || status === "open" || status === "in-progress" ? "持ち越し" : (status ?? "?");
 			lines.push(`- ${link(id)}（${note}）`);
 		}
 		for (const [id, r] of routines) if (r === "canceled") lines.push(`- ${link(id)}（canceled）`);

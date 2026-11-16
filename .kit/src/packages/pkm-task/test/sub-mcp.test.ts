@@ -183,3 +183,30 @@ describe("MCP の Tickler は open だけ（ADR-0183）", () => {
 		expect(new TaskIndex(readVault(root).data).issues.get("i-2")!.tickler).toBe("2026-11-20");
 	});
 });
+
+describe("MCP の Inbox に戻す（ADR-0189）", () => {
+	let root: string;
+	let ctx: McpContext;
+	const issueOf = (id: string) => new TaskIndex(readVault(root).data).issues.get(id)!;
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "vault-inbox-mcp-"));
+		mkdirSync(join(root, "issue"));
+		writeFileSync(join(root, "issue/i-1.md"), "---\ntype: issue\nid: i-1\nsummary: 作業中\nstatus: in-progress\n---\n");
+		writeFileSync(join(root, "issue/i-2.md"), "---\ntype: issue\nid: i-2\nsummary: 未着手\nstatus: open\nclarified: true\n---\n");
+		writeFileSync(join(root, "issue/i-3.md"), "---\ntype: issue\nid: i-3\nsummary: いつか\nstatus: someday\nclarified: true\n---\n");
+		ctx = { root, device: "ai", now: () => now };
+	});
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("clarified を外せるのは open だけ。carry_issues に inbox はない", () => {
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", clarified: false })).toThrow(/open の issue だけ/);
+		callMcpTool(ctx, "update_issue", { id: "i-2", clarified: false });
+		expect(issueOf("i-2").clarified).toBe(false);
+		expect(() => callMcpTool(ctx, "carry_issues", { date: "2026-11-15", issue_ids: ["i-2"], mode: "inbox" })).toThrow(/inbox はありません/);
+	});
+
+	it("someday に期限を入れて戻すと、clarified を外して Inbox に入れる", () => {
+		callMcpTool(ctx, "update_issue", { id: "i-3", deadline: "2026-11-30" });
+		expect(issueOf("i-3")).toMatchObject({ status: "open", clarified: false, deadline: "2026-11-30" });
+	});
+});

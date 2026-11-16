@@ -14,7 +14,7 @@ Organize の「Someday へ」、status のメニュー。Someday の一覧で見
 
 ## 使い方の筋道
 
-someday にすると、Calendar の日・期限・Tickler が消え、Today・Scheduled・Issues の既定の表示から消える。revisit を過ぎると Organize に出てくる。Calendar の日や期限を入れると open に戻る。
+someday にすると、Calendar の日・期限・Tickler が消え、Today・Scheduled・Issues の既定の表示から消える。revisit を過ぎると Organize に出てくる。Calendar の日や期限を入れると open に戻る。Someday から open に戻したもの（status のメニュー・Someday の一覧の Back to Inbox・日付を入れたとき）は Inbox に入り、整理し直す（Organize で Next・Calendar を選んだときは整理済みのまま。[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)）。
 
 ## 根拠
 

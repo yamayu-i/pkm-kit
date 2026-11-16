@@ -126,11 +126,13 @@ export function subStatusPatch(to: Status, opts: TransitionOptions = {}): SubIss
 }
 
 /**
- * status を to に変える変更に、付随の変更を補う（どの経路から書いても同じ結果にする。ADR-0183）。
- * 呼び出し側が書いた値が優先する（delegated の委任先、someday の revisit など）
+ * status を from から to に変える変更に、付随の変更を補う（どの経路から書いても同じ結果にする。ADR-0183）。
+ * someday から open に戻すときは clarified を外して Inbox に入れる（整理し直す。ADR-0189）。
+ * 呼び出し側が書いた値が優先する（delegated の委任先、someday の revisit、Organize の Next・Calendar の clarified など）
  */
-export function completeIssuePatch<T extends Record<string, unknown>>(to: Status, fields: T): T {
+export function completeIssuePatch<T extends Record<string, unknown>>(to: Status, fields: T, from: Status | null = null): T {
 	const base: Patch = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: (fields.revisit as LocalDate | null | undefined) ?? null });
+	if (from === "someday" && to === "open") base.clarified = null;
 	return { ...base, ...fields };
 }
 
@@ -152,12 +154,11 @@ export function ticklerError(status: Status): string {
 	return `Tickler は open（と someday）の issue だけに付けられます。今は ${status} です（ADR-0183）`;
 }
 
-/** 一括の操作（ADR-0183）。inbox は open のものだけ（status は変えず clarified を外す）。tickler は canSetTickler */
-export type BulkStatusOp = "closed" | "canceled" | "someday" | "inbox" | "tickler";
+/** 一括の操作（ADR-0183）。tickler は canSetTickler。Inbox に戻す一括の操作はない（ADR-0189） */
+export type BulkStatusOp = "closed" | "canceled" | "someday" | "tickler";
 
 /** 選んだものすべてに、その一括の操作ができるか。1 つでもできなければ、ボタンを押せなくする */
 export function canApplyAll(froms: readonly Status[], op: BulkStatusOp): boolean {
-	if (op === "inbox") return froms.length > 0 && froms.every((s) => s === "open");
 	if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
 	return canTransitionAll(froms, op);
 }

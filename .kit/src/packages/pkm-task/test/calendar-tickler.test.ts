@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { backToNextPatch, calendarPatch, inboxPatch, nextPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
+import { backToNextPatch, calendarPatch, nextPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
 import { missedIssues, missedSubs } from "../src/core/daily";
 import { TaskIndex, emptyVaultData, isInbox, isNext, organizeQueue } from "../src/core/index";
 import { collectVault } from "../src/core/load";
@@ -113,9 +113,8 @@ describe("操作の patch", () => {
 		expect(calendarPatch(issue("i-1", { status: "someday", revisit: "2026-12-01" }), "2026-11-20")).toEqual({ scheduled: "2026-11-20", clarified: true, tickler: null, status: "open", revisit: null });
 	});
 
-	it("Next・Inbox に戻す・Someday は tickler を消す", () => {
+	it("Next・Someday は tickler を消す（Inbox に戻す操作は ADR-0189 でなくした）", () => {
 		expect(nextPatch(issue("i-1", { tickler: today }))).toEqual({ clarified: true, tickler: null });
-		expect(inboxPatch()).toMatchObject({ clarified: null, tickler: null });
 		expect(somedayPatch()).toMatchObject({ scheduled: null, tickler: null });
 	});
 

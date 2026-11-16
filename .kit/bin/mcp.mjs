@@ -8449,9 +8449,6 @@ function cancelPatch() {
 function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null, tickler: null };
 }
-function inboxPatch() {
-  return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
-}
 function backToNextPatch() {
   return { scheduled: null, tickler: null, clarified: true };
 }
@@ -8525,8 +8522,9 @@ function subStatusPatch(to, opts = {}) {
   if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
   return { status: to, delegatedTo: null };
 }
-function completeIssuePatch(to, fields) {
+function completeIssuePatch(to, fields, from = null) {
   const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
+  if (from === "someday" && to === "open") base.clarified = null;
   return { ...base, ...fields };
 }
 function completeSubPatch(to, patch) {
@@ -8709,9 +8707,6 @@ function unfinished(index, date, board) {
     routines: items.routines.filter((r) => board.routines[r.id] === void 0)
   };
 }
-function unfinishedCount(u) {
-  return u.issues.length + u.subs.length + u.routines.length;
-}
 function markCarried(board, ids) {
   for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
 }
@@ -8721,12 +8716,6 @@ function routineResults(index, routine, today, days) {
     const result = index.board(date)?.board.routines[routine.id];
     return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
   });
-}
-function pendingBoards(index, boards, today) {
-  return boards.filter((b) => b.date < today && !b.board.closed).filter((b) => {
-    const u = unfinished(index, b.date, b.board);
-    return unfinishedCount(u) > 0;
-  }).sort((a, b) => a.date.localeCompare(b.date));
 }
 function sortByOrder(items, idOf, order) {
   if (!order || order.length === 0) return [...items];
@@ -9265,10 +9254,17 @@ function boardWorkload(index, date, availableMinutes = DEFAULT_AVAILABLE_MINUTES
     loadRatio
   };
 }
-function carryCounts(boards) {
+function carryCounts(index, today) {
+  const settled = /* @__PURE__ */ new Set();
+  for (const e of index.data.statusLogs) {
+    if (e.to === "open" || e.to === "in-progress") continue;
+    settled.add(`${localToday(new Date(e.atMs))} ${e.sub ? `${e.task}#${e.sub}` : e.task}`);
+  }
   const counts = /* @__PURE__ */ new Map();
-  for (const b of boards) {
-    for (const id of b.board.carried) {
+  for (const b of index.data.boards) {
+    if (b.date >= today) continue;
+    for (const id of b.board.issues) {
+      if (!b.board.carried.includes(id) && settled.has(`${b.date} ${id}`)) continue;
       counts.set(id, (counts.get(id) ?? 0) + 1);
     }
   }
@@ -9343,15 +9339,6 @@ function buildOverview(index, date, now, options = {}) {
   const dead = deadIssues(index.data.issues, date);
   const caution = cautionIssues(index.data.issues, date, cautionDays);
   const inbox = index.data.issues.filter((i) => isInbox(i, date));
-  const pending = pendingBoards(index, index.data.boards, date).map((b) => {
-    const u = unfinished(index, b.date, b.board);
-    return {
-      date: b.date,
-      unfinishedIssues: u.issues.map((i) => i.id),
-      unfinishedSubs: u.subs.map((x) => x.key),
-      unfinishedRoutines: u.routines.map((r) => r.id)
-    };
-  });
   const runningTimers = index.running().map((l) => ({
     id: l.id,
     taskId: l.taskId,
@@ -9360,7 +9347,7 @@ function buildOverview(index, date, now, options = {}) {
     from: l.from,
     elapsedMinutes: Math.max(0, Math.round((now - l.fromMs) / 6e4))
   }));
-  const counts = carryCounts(index.data.boards);
+  const counts = carryCounts(index, date);
   const frequentlyCarried = [...counts.entries()].filter(([, c]) => c >= minCarryCount).map(([id, count]) => ({ issue: index.issues.get(id), count })).filter((x) => x.issue !== void 0 && isActive(x.issue)).sort((a, b) => b.count - a.count);
   const stalled = stalledIssues(index, date, staleDays);
   const estimation = estimationStats(index, now);
@@ -9382,7 +9369,6 @@ function buildOverview(index, date, now, options = {}) {
     caution,
     inboxCount: inbox.length,
     inboxSample: inbox.slice(0, 10),
-    pendingBoards: pending,
     runningTimers,
     frequentlyCarried,
     stalled,
@@ -9698,7 +9684,8 @@ function boardSummary(index, date, board) {
   if (others.length > 0 || routines.some(([, r]) => r === "canceled")) {
     lines.push("", "### \u6301\u3061\u8D8A\u3057\u30FB\u4E2D\u6B62", "");
     for (const id of others) {
-      const note = board.carried.includes(id) ? "\u6301\u3061\u8D8A\u3057" : statusOf(id) ?? "?";
+      const status = statusOf(id);
+      const note = board.carried.includes(id) || status === "open" || status === "in-progress" ? "\u6301\u3061\u8D8A\u3057" : status ?? "?";
       lines.push(`- ${link(id)}\uFF08${note}\uFF09`);
     }
     for (const [id, r] of routines) if (r === "canceled") lines.push(`- ${link(id)}\uFF08canceled\uFF09`);
@@ -9734,8 +9721,6 @@ function upsertSummary(text, summary) {
 function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  const remaining = unfinished(index, date, board);
-  if (unfinishedCount(remaining) > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
@@ -9880,7 +9865,7 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
   if (!isLocalDate(date)) throw new Error(`\u65E5\u4ED8\u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(date)}`);
   if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids \u3092 1 \u4EF6\u4EE5\u4E0A\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
   const kind = mode === "reschedule" ? "move" : mode;
-  if (!["today", "next", "move", "tickler", "inbox"].includes(kind)) throw new Error("mode \u306F today / next / move / tickler / inbox \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+  if (!["today", "next", "move", "tickler"].includes(kind)) throw new Error("mode \u306F today / next / move / tickler \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08inbox \u306F\u3042\u308A\u307E\u305B\u3093\u3002ADR-0189\uFF09");
   if ((kind === "move" || kind === "tickler") && (to === null || !isLocalDate(to))) {
     throw new Error(`reschedule_to \u306B YYYY-MM-DD \u306E\u65E5\u4ED8\u3092\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044: ${String(to)}`);
   }
@@ -9888,15 +9873,14 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
   for (const id of issueIds) {
     assertBoardKey(index, id);
     if (!board.issues.includes(id)) throw new Error(`${id} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
-    if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`\u30B5\u30D6\u306F ${kind} \u306B\u3067\u304D\u307E\u305B\u3093: ${id}`);
+    if (kind === "tickler" && index.sub(id)) throw new Error(`\u30B5\u30D6\u306F ${kind} \u306B\u3067\u304D\u307E\u305B\u3093: ${id}`);
     const status = index.issues.get(id)?.status;
     if (kind === "tickler" && status !== void 0 && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
-    if (kind === "inbox" && index.issues.get(id)?.status !== "open") throw new Error(`open \u3067\u306A\u3044\u3082\u306E\u306F Inbox \u306B\u623B\u305B\u307E\u305B\u3093: ${id}`);
   }
   for (const id of issueIds) {
     const issue = index.issues.get(id);
     if (issue) {
-      const patch = kind === "inbox" ? inboxPatch() : kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to) : null;
+      const patch = kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to) : null;
       if (patch) updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
       continue;
     }
@@ -9993,7 +9977,7 @@ function updateIssueOnDisk(root, index, input, log) {
     if (input.status !== current.status) {
       const reopenTo = index.reopenStatus(current.id);
       if (!canTransition(current.status, input.status, reopenTo)) throw new Error(transitionError(current.status, input.status, reopenTo));
-      Object.assign(patch, completeIssuePatch(input.status, input.status === "someday" ? { revisit: input.revisit ?? current.revisit } : {}));
+      Object.assign(patch, completeIssuePatch(input.status, input.status === "someday" ? { revisit: input.revisit ?? current.revisit } : {}, current.status));
     }
   }
   if (input.status_detail !== void 0) {
@@ -10064,9 +10048,13 @@ function updateIssueOnDisk(root, index, input, log) {
   if (current.status === "someday" && input.status === void 0 && hasDatesAdded) {
     patch.status = "open";
     patch.revisit = null;
+    if (input.clarified === void 0) patch.clarified = null;
   }
   const afterStatus = patch.status ?? current.status;
   if (typeof patch.tickler === "string" && afterStatus !== "open") throw new Error(ticklerError(afterStatus));
+  if ((input.clarified === false || input.clarified === null) && afterStatus !== "open") {
+    throw new Error(`clarified \u3092\u5916\u305B\u308B\u306E\u306F open \u306E issue \u3060\u3051\u3067\u3059\u3002\u4ECA\u306F ${afterStatus} \u3067\u3059\uFF08ADR-0189\uFF09`);
+  }
   const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : void 0);
   if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
   if (updated.status !== current.status && stopsTimer(updated.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? /* @__PURE__ */ new Date());
@@ -10967,7 +10955,7 @@ function callPkmTool(ctx, name, args) {
 }
 
 // cli/mcp.ts
-var TASK_READ_TOOLS = /* @__PURE__ */ new Set(["get_overview", "get_board", "list_pending_boards", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
+var TASK_READ_TOOLS = /* @__PURE__ */ new Set(["get_overview", "get_board", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
 var TASK_PREFIX = "task_";
 var OVERVIEW_TOP = 5;
 var VaultCache = class {
@@ -11022,16 +11010,6 @@ var TOOLS = [
       type: "object",
       properties: {
         date: { type: "string", description: "YYYY-MM-DD\uFF08\u7701\u7565\u6642\u306F\u4ECA\u65E5\uFF09" }
-      }
-    }
-  },
-  {
-    name: "list_pending_boards",
-    description: "\u4ECA\u65E5\u3088\u308A\u524D\u3067\u3001\u672A\u5B8C\u4E86\u304C\u6B8B\u3063\u3066\u3044\u3066\u7DE0\u3081\u3066\u3044\u306A\u3044\u904E\u53BB\u306E\u30DC\u30FC\u30C9\u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
-    inputSchema: {
-      type: "object",
-      properties: {
-        today: { type: "string", description: "\u57FA\u6E96\u65E5 YYYY-MM-DD\uFF08\u7701\u7565\u6642\u306F\u4ECA\u65E5\uFF09" }
       }
     }
   },
@@ -11152,13 +11130,13 @@ var TOOLS = [
   },
   {
     name: "carry_issues",
-    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\uFF08ADR-0152\uFF09\u3002today: \u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B\uFF08\u65E5\u4ED8\u3092\u66F8\u304B\u306A\u3044\uFF09\u3001next: Calendar \u3068 Tickler \u3092\u6D88\u3057\u3066 Next \u306B\u623B\u3059\u3001move: Calendar \u306E\u65E5\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\uFF09\u3092 reschedule_to \u306B\u3001tickler: Tickler\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3092 reschedule_to \u306B\u3001inbox: clarified \u3092\u5916\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u3059\u3002open \u306E issue \u3060\u3051\uFF09\u3002tickler \u306F open\u30FBsomeday \u306E issue \u3060\u3051\u3002\u30B5\u30D6\u306F tickler \u3068 inbox \u306B\u3067\u304D\u306A\u3044",
+    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\uFF08ADR-0152\uFF09\u3002today: \u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B\uFF08\u65E5\u4ED8\u3092\u66F8\u304B\u306A\u3044\uFF09\u3001next: Calendar \u3068 Tickler \u3092\u6D88\u3057\u3066 Next \u306B\u623B\u3059\u3001move: Calendar \u306E\u65E5\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\uFF09\u3092 reschedule_to \u306B\u3001tickler: Tickler\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3092 reschedule_to \u306B\u3002tickler \u306F open\u30FBsomeday \u306E issue \u3060\u3051\u3002\u30B5\u30D6\u306F tickler \u306B\u3067\u304D\u306A\u3044\u3002Inbox \u306B\u623B\u3059 mode \u306F\u306A\u3044\uFF08\u3084\u3089\u306A\u304B\u3063\u305F\u3082\u306E\u306F next\u3001\u8003\u3048\u76F4\u3059\u306A\u3089 tickler\u3002ADR-0189\uFF09",
     inputSchema: {
       type: "object",
       properties: {
         date: { type: "string", description: "\u30DC\u30FC\u30C9\u306E\u65E5\u4ED8 YYYY-MM-DD" },
         issue_ids: { type: "array", items: { type: "string" }, description: "issue \u306E ID \u304B\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC" },
-        mode: { type: "string", enum: ["today", "next", "move", "tickler", "inbox", "reschedule"], description: "reschedule \u306F\u4EE5\u524D\u306E\u540D\u524D\uFF08move \u3068\u540C\u3058\uFF09" },
+        mode: { type: "string", enum: ["today", "next", "move", "tickler", "reschedule"], description: "reschedule \u306F\u4EE5\u524D\u306E\u540D\u524D\uFF08move \u3068\u540C\u3058\uFF09" },
         reschedule_to: { type: "string", description: "mode \u304C move / tickler \u306E\u3068\u304D\u306E\u65E5\u4ED8 YYYY-MM-DD" }
       },
       required: ["date", "issue_ids", "mode"]
@@ -11166,7 +11144,7 @@ var TOOLS = [
   },
   {
     name: "close_board",
-    description: "\u672A\u5B8C\u4E86\u304C 0 \u4EF6\u306A\u3089\u305D\u306E\u65E5\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3001\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u672C\u6587\u306E ## Task board \u306B\u8981\u7D04\u3092\u66F8\u304F",
+    description: "\u305D\u306E\u65E5\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3001\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u672C\u6587\u306E ## Task board \u306B\u8A18\u9332\uFF08\u5B8C\u4E86\u30FB\u6301\u3061\u8D8A\u3057\u30FB\u4E2D\u6B62\u30FBworklog\uFF09\u3092\u66F8\u304F\u3002\u672A\u5B8C\u4E86\u304C\u6B8B\u3063\u3066\u3044\u3066\u3082\u7DE0\u3081\u3089\u308C\u3001\u672A\u5B8C\u4E86\u306F\u6301\u3061\u8D8A\u3057\u3068\u66F8\u304F\uFF08ADR-0189\uFF09",
     inputSchema: {
       type: "object",
       properties: {
@@ -11226,7 +11204,7 @@ var TOOLS = [
         revisit: { type: ["string", "null"] },
         reviewed: { type: ["string", "null"] },
         estimated: { type: ["number", "null"] },
-        clarified: { type: ["boolean", "null"], description: "\u6574\u7406\u6E08\u307F\u304B\uFF08ADR-0148\uFF09\u3002true \u3067 Inbox \u304B\u3089\u51FA\u308B\u3002false / null \u3067 Inbox \u306B\u623B\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u308B\uFF09" }
+        clarified: { type: ["boolean", "null"], description: "\u6574\u7406\u6E08\u307F\u304B\uFF08ADR-0148\uFF09\u3002true \u3067 Inbox \u304B\u3089\u51FA\u308B\u3002false / null \u3067 Inbox \u306B\u623B\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u308B\u3002open \u306E issue \u3060\u3051\u3002ADR-0189\uFF09" }
       },
       required: ["id"]
     }
@@ -11476,19 +11454,6 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         runningTimers: index.running()
       };
     }
-    case "list_pending_boards": {
-      const refDate = typeof args.today === "string" ? args.today : today;
-      if (!isLocalDate(refDate)) throw new Error(`today \u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(args.today)}`);
-      return pendingBoards(index, index.data.boards, refDate).map((b) => {
-        const u = unfinished(index, b.date, b.board);
-        return {
-          date: b.date,
-          unfinishedIssues: u.issues,
-          unfinishedSubs: u.subs,
-          unfinishedRoutines: u.routines
-        };
-      });
-    }
     case "list_issues": {
       const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 100;
       if (args.inbox_only === true) {
@@ -11512,7 +11477,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
       if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${id}`);
       const efforts = index.effortMinutes(now.getTime());
       const byKey = index.effortByKey(now.getTime());
-      const counts = carryCounts(index.data.boards);
+      const counts = carryCounts(index, today);
       return {
         ...issue,
         body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,

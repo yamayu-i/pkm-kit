@@ -75,7 +75,7 @@ ADR へのリンク。
 | 委任先 | delegated、委任先 | `member/m-N.md`、issue の `delegated_to` | member、委任先 |
 | status | open / in-progress / waiting / delegated / someday / closed / canceled | `status`、補足は `status-detail` | status |
 | status の取り消し | 「N件のステータスが変更されました。 元に戻す ›」 | `statuslog/` の `via: undo` | 取り消し |
-| Inbox | Inbox、Inbox に戻す、Next（整理済みにする） | `clarified`（真偽値。open で clarified でないものが Inbox） | Inbox |
+| Inbox | Inbox、Inbox に戻す（issue 画面の訂正だけ）、Next（整理済みにする） | `clarified`（真偽値。open で clarified でないものが Inbox） | Inbox |
 | Someday | Someday、Someday へ | `status: someday`、`revisit`、`reviewed` | Someday |
 | Calendar | Calendar、Move date、Back to Next、Add to today's board。一覧の View は Scheduled | `scheduled`（日付 1 つ） | Calendar、Do Date、scheduled |
 | Tickler | Tickler | `tickler`（日付 1 つ） | Tickler |
@@ -85,7 +85,7 @@ ADR へのリンク。
 | 実績 | issue 画面の実績、routine 画面の total / average | 保存しない（worklog から按分） | 実績工数 |
 | worklog | worklog、再生 / 停止 | `worklog/<端末名>/YYYY-MM.jsonl` | worklog、作業の記録 |
 | task board | Today の段階「Board」、Close board、Not done | `board/<端末名>/YYYY-MM.jsonl`、デイリーノートの `## Task board` 節 | task board、ボード |
-| Today | Today（View の名前。2026-11-08 まで Daily）、段階「Calendar」「Previous boards」「Pick」「Board」 | — | DailyTaskView、Daily、Today |
+| Today | Today（View の名前。2026-11-08 まで Daily）、段階「Calendar」「Pick」「Board」（2026-11-16 まで「Previous boards」もあった） | — | DailyTaskView、Daily、Today |
 | ボードの欄と ★ | Working、Top 3、Up next、Watch、Done、Add to Top 3 | 保存しない（status・タイマーから）。★ と並びは board の jsonl の `star`・`order` | 欄、★、今日の最重要 |
 | label | Labels、label | `issue/labels.json`、`label` | label |
 | デイリーノート | Daily notes、Open today's daily note | `daily/YYYY/MM/YYYY-MM-DD.md`（`type: daily`） | デイリーノート、DailyNote |

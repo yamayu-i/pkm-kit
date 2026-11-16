@@ -1,5 +1,5 @@
 import { diffDays, localToday, type LocalDate } from "./dates";
-import { emptyBoard, pendingBoards, unfinished, unfinishedCount, type DailyBoard } from "./board";
+import { emptyBoard, unfinished, unfinishedCount, type DailyBoard } from "./board";
 import { lastOrder, type OrderRecord } from "./board-log";
 import { deadIssues, deadSubs, missedIssues, missedSubs, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
@@ -254,17 +254,12 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 	const dead = deadIssues(issues, today);
 	const deadSub = deadSubs(index, today);
 	const missed = missedIssues(issues, today).length + missedSubs(index, today).length;
-	const pending = pendingBoards(index, index.data.boards, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
 	const scheduledToday = index.toAutoAdd(today);
 	const todayLeft = unfinished(index, today, todayBoard);
-	const previousCount = pending.reduce((n, b) => {
-		const u = unfinished(index, b.date, b.board);
-		return n + unfinishedCount(u);
-	}, 0);
 	return {
-		// 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・前のボード・今日の Calendar・今日の未完了
-		daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
+		// 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
+		daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
 		inbox: issues.filter((i) => isInbox(i, today)).length,
 		organize: organizeQueue(issues, today).length,
 		scheduled: issues.filter((i) => isScheduledAhead(i, today)).length,

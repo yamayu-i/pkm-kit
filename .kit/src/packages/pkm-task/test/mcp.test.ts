@@ -104,11 +104,11 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(board.stars).toEqual(["i-2", "i-3", "i-5", "i-4"]);
 	});
 
-	it("不正な操作（存在しない issue、廃止した move_card、未完了がある状態での close、廃止した parent）を拒否して書き込まない", () => {
+	it("不正な操作（存在しない issue、廃止した move_card、廃止した parent）を拒否して書き込まない。未完了があっても close できる（ADR-0189）", () => {
 		expect(() => callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-999"] })).toThrow(/i-999/);
 		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1"] });
 		expect(() => callMcpTool(ctx, "move_card", { date, id: "i-1", group: "午前" })).toThrow();
-		expect(() => callMcpTool(ctx, "close_board", { date })).toThrow(/未完了/);
+		callMcpTool(ctx, "close_board", { date });
 
 		// 親子関係は廃止した（ADR-0135）。parent は受け付けない
 		expect(() => callMcpTool(ctx, "update_issue", { id: "i-2", parent: "i-1" })).toThrow(/parent/);

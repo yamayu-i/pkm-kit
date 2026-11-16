@@ -115,19 +115,6 @@ export function routineResults(index: TaskIndex, routine: Routine, today: LocalD
 	});
 }
 
-/**
- * 今日より前で、締めていないボード（古い順）。何日も開かなかったときは溜まった分をまとめて扱う（ADR-0009）
- */
-export function pendingBoards(index: TaskIndex, boards: DailyBoard[], today: LocalDate): DailyBoard[] {
-	return boards
-		.filter((b) => b.date < today && !b.board.closed)
-		.filter((b) => {
-			const u = unfinished(index, b.date, b.board);
-			return unfinishedCount(u) > 0;
-		})
-		.sort((a, b) => a.date.localeCompare(b.date));
-}
-
 /** 並び（ADR-0114）にあるものはその順に、ないものは元の順で末尾に出す */
 export function sortByOrder<T>(items: readonly T[], idOf: (item: T) => string, order: readonly string[] | undefined): T[] {
 	if (!order || order.length === 0) return [...items];

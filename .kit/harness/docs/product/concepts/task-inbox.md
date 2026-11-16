@@ -10,7 +10,7 @@
 
 ## 操作
 
-Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決める（Next・Calendar で整理済みになる。Tickler は整理の先送りで、その日に Inbox に戻る）。issue 画面の `Inbox` / `Clarified` で切り替えられる。どの画面の「Inbox に戻す」も、`clarified` を外すだけで予定と期限は残す。
+Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決める（Next・Calendar で整理済みになる。Tickler は整理の先送りで、その日に Inbox に戻る）。issue 画面の `Inbox` / `Clarified` で切り替えられる（戻す向きは、誤って整理済みにしたときの訂正。open のときだけ）。ほかの画面に「Inbox に戻す」はない（GTD では in に戻さない。やらなかったものは Next に残し、考え直すなら Tickler にする。[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)）。Someday から open に戻したものは Inbox に入る（Organize で Next・Calendar を選んだときを除く）。
 
 ## 使い方の筋道
 
@@ -18,4 +18,4 @@ Capture issues か Inbox の入力欄で入れる。Organize で 1 件ずつ決�
 
 ## 根拠
 
-[ADR-0006](../../../../src/docs/adr/0006-status-inbox-someday.md)、[ADR-0148](../../../../src/docs/adr/0148-inbox-clarified.md)、[ADR-0011](../../../../src/docs/adr/0011-quick-capture.md)
+[ADR-0006](../../../../src/docs/adr/0006-status-inbox-someday.md)、[ADR-0148](../../../../src/docs/adr/0148-inbox-clarified.md)、[ADR-0011](../../../../src/docs/adr/0011-quick-capture.md)、[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)

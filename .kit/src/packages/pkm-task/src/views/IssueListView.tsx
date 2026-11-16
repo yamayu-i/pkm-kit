@@ -4,7 +4,7 @@ import { localToday } from "../core/dates";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../core/list";
 import { PRIORITIES, STATUSES } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues, inboxIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
+import { cancelIssues, closeIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { PreactModal } from "../obsidian/modals";
 import { TextForm } from "../ui/forms";
 import { FilterChip, toggle } from "../ui/FilterChip";
@@ -152,7 +152,6 @@ export function IssueListView(props: { ctx: TaskContext }) {
 					{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
-					{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i) => i.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },
 					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 				]}
 			/>

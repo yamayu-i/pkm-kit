@@ -367,8 +367,8 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					) : (
 						<button
 							class="vt-button is-primary"
-							disabled={leftCount > 0 || total === 0}
-							title="You can close the board when nothing is left"
+							disabled={total === 0}
+							title="Write today's record to the daily note. Unfinished cards are recorded as carried over"
 							onClick={() => void closeBoard(ctx, date)}
 						>
 							<Icon name="check" /> Close board
@@ -413,8 +413,6 @@ export function carryActions(ctx: TaskContext, date: LocalDate, sel: Issue[], pr
 		...(sel.length > 0 && sel.every((i) => i.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : []),
 		{ label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
 		{ label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },
-		// Inbox に戻すのは open のものだけ（ADR-0183）
-		{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(statuses, "inbox"), run: () => run(carryIssues(ctx, date, sel, "inbox")) },
 	];
 }
 

@@ -10,7 +10,7 @@
 
 ## 操作
 
-Organize の「Calendar」（日付を 1 つ選ぶ。整理済みにもする）、issue 画面の 7 日のセル（押すとその日、もう一度押すと消す）と「calendar >」、サブの編集の Calendar、Scheduled の表のセル、Today の Missed と前のボードの「Move date」（選び直す）と「Back to Next」（消して Next に戻す）、MCP の `scheduled`。
+Organize の「Calendar」（日付を 1 つ選ぶ。整理済みにもする）、issue 画面の 7 日のセル（押すとその日、もう一度押すと消す）と「calendar >」、サブの編集の Calendar、Scheduled の表のセル、Today の Missed とボードの持ち越しの「Move date」（選び直す）と「Back to Next」（消して Next に戻す）、MCP の `scheduled`。
 
 ## 使い方の筋道
 

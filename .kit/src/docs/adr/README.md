@@ -28,7 +28,7 @@
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認（一部置換: 0034, 0077, 0135） | issue 画面の構成と、親子関係の編集 |
 | [0013](0013-design-system.md) | 一部置換（ADR-0016） | UI のデザインは Material 3 を参考にし、ルールを docs/design.md に残す |
-| [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換。一部置換: 0137） | DailyTaskView と task board の保存形式・細部 |
+| [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換。一部置換: 0137, 0189） | DailyTaskView と task board の保存形式・細部 |
 | [0015](0015-board-layout-simplified.md) | 承認（一部置換: 0137） | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
 | [0017](0017-date-input.md) | 承認（一部置換: 0078） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
@@ -39,7 +39,7 @@
 | [0022](0022-template-plugin.md) | 承認（一部補足: 0023、一部置換: 0061） | テンプレートからのノート作成を自作プラグイン vault-template として作る |
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
-| [0025](0025-mcp-and-task-coach.md) | 承認 | MCP サーバーによるタスク参照・編集とタスクコーチ |
+| [0025](0025-mcp-and-task-coach.md) | 承認（一部置換: 0189） | MCP サーバーによるタスク参照・編集とタスクコーチ |
 | [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035, 0077） | 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す |
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
@@ -88,9 +88,9 @@
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179, ADR-0181） | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認 | サブイシューのガントチャート（Timeline） |
-| [0148](0148-inbox-clarified.md) | 承認 | Inbox は日付ではなく clarified（整理済み）で決める |
-| [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
-| [0152](0152-calendar-and-tickler.md) | 承認 | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
+| [0148](0148-inbox-clarified.md) | 承認（一部置換: 0189） | Inbox は日付ではなく clarified（整理済み）で決める |
+| [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184, 0189） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
+| [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認（一部置換: 0184） | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
 | [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
@@ -100,7 +100,8 @@
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
 | [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
-| [0183](0183-status-transition-rules.md) | 承認 | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
+| [0183](0183-status-transition-rules.md) | 承認（一部置換: 0189） | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
 | [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
+| [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
 <!-- adr-index:end -->

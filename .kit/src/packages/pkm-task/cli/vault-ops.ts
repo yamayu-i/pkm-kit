@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
-import { backToNextPatch, inboxPatch, ticklerPatch } from "../src/core/actions";
+import { backToNextPatch, ticklerPatch } from "../src/core/actions";
 import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../src/core/transition";
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
@@ -227,12 +227,12 @@ export function setRoutineResultOnDisk(
 }
 
 /** 持ち越しの片付け方（ADR-0152）。reschedule は以前の名前で move と同じ */
-export type CarryMode = "today" | "next" | "move" | "tickler" | "inbox" | "reschedule";
+export type CarryMode = "today" | "next" | "move" | "tickler" | "reschedule";
 
 /**
  * ボードの未完了を片付けて carried にする（ADR-0137, 0152）。today: 今日のボードに載せる（日付を書かない）、
  * next: Calendar・Tickler を消して Next に戻す、move: Calendar の日を to にする、tickler: Tickler の日を to にする、
- * inbox: clarified を外す。サブは tickler と inbox を持たない
+ * サブは tickler を持たない（Inbox に戻す mode はない。ADR-0189）
  */
 export function carryIssuesOnDisk(
 	root: string,
@@ -247,7 +247,8 @@ export function carryIssuesOnDisk(
 	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
 	if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids を 1 件以上指定してください");
 	const kind = mode === "reschedule" ? "move" : mode;
-	if (!["today", "next", "move", "tickler", "inbox"].includes(kind)) throw new Error("mode は today / next / move / tickler / inbox のどれかにしてください");
+	// Inbox に戻す（inbox）はない。やらなかったものは Next に戻すか、その日に考え直すなら Tickler にする（ADR-0189）
+	if (!["today", "next", "move", "tickler"].includes(kind)) throw new Error("mode は today / next / move / tickler のどれかにしてください（inbox はありません。ADR-0189）");
 	if ((kind === "move" || kind === "tickler") && (to === null || !isLocalDate(to))) {
 		throw new Error(`reschedule_to に YYYY-MM-DD の日付を指定してください: ${String(to)}`);
 	}
@@ -257,18 +258,17 @@ export function carryIssuesOnDisk(
 		assertBoardKey(index, id);
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
 		// サブは整理の対象ではないので、Tickler も Inbox も持たない（ADR-0148, 0152）
-		if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
-		// Tickler は open（と someday）だけ。Inbox に戻すのは open のものだけ（ADR-0183）
+		if (kind === "tickler" && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
+		// Tickler は open（と someday）だけ（ADR-0183）
 		const status = index.issues.get(id)?.status;
 		if (kind === "tickler" && status !== undefined && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
-		if (kind === "inbox" && index.issues.get(id)?.status !== "open") throw new Error(`open でないものは Inbox に戻せません: ${id}`);
 	}
 
 	for (const id of issueIds) {
 		const issue = index.issues.get(id);
 		if (issue) {
 			const patch =
-				kind === "inbox" ? inboxPatch() : kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to!) : null;
+				kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to!) : null;
 			if (patch) updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
 			continue;
 		}
@@ -432,7 +432,7 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		if (input.status !== current.status) {
 			const reopenTo = index.reopenStatus(current.id);
 			if (!canTransition(current.status, input.status, reopenTo)) throw new Error(transitionError(current.status, input.status, reopenTo));
-			Object.assign(patch, completeIssuePatch(input.status, input.status === "someday" ? { revisit: input.revisit ?? current.revisit } : {}));
+			Object.assign(patch, completeIssuePatch(input.status, input.status === "someday" ? { revisit: input.revisit ?? current.revisit } : {}, current.status));
 		}
 	}
 	if (input.status_detail !== undefined) {
@@ -510,11 +510,17 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	if (current.status === "someday" && input.status === undefined && hasDatesAdded) {
 		patch.status = "open";
 		patch.revisit = null;
+		// Someday から戻したものは整理し直す（ADR-0189）
+		if (input.clarified === undefined) patch.clarified = null;
 	}
 
 	// Tickler は open だけが持つ（ADR-0183）
 	const afterStatus = (patch.status as Status | undefined) ?? current.status;
 	if (typeof patch.tickler === "string" && afterStatus !== "open") throw new Error(ticklerError(afterStatus));
+	// Inbox に戻す（clarified を外す）のは open の issue だけ。issue 画面の切り替えと同じ（ADR-0189）
+	if ((input.clarified === false || input.clarified === null) && afterStatus !== "open") {
+		throw new Error(`clarified を外せるのは open の issue だけです。今は ${afterStatus} です（ADR-0189）`);
+	}
 
 	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
 	if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);

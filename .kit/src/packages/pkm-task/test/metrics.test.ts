@@ -1,3 +1,4 @@
+import { parseStatusLog } from "../src/core/status-log";
 import { describe, expect, it } from "vitest";
 import { emptyBoard } from "../src/core/board";
 import { emptyVaultData, TaskIndex } from "../src/core/index";
@@ -73,14 +74,33 @@ describe("carryCounts と stalledIssues", () => {
 		];
 		const index = new TaskIndex({ ...emptyVaultData(), issues: [i1, i2, i3], worklogs, boards });
 
-		const counts = carryCounts(index.data.boards);
+		// 手で持ち越した i-1 は 2 回。i-2 は持ち越していないが、その日に片付けた記録がないので持ち越しに数える（ADR-0189）
+		const counts = carryCounts(index, today);
 		expect(counts.get("i-1")).toBe(2);
-		expect(counts.get("i-2")).toBeUndefined();
+		expect(counts.get("i-2")).toBe(1);
 
 		const stalled = stalledIssues(index, today, 3);
 		expect(stalled.inProgressStale.map((x) => x.issue.id)).toEqual(["i-1"]);
 		expect(stalled.inProgressStale[0]!.lastWorkDate).toBe("2026-10-25");
 		expect(stalled.revisitDue.map((i) => i.id)).toEqual(["i-3"]);
+	});
+});
+
+describe("持ち越しを自動で数える（ADR-0189）", () => {
+	it("その日のうちに片付けたものは数えず、今日のボードは数えない", () => {
+		const log = (task: string, to: string, at: string, sub?: string) => JSON.stringify({ id: `st_${task}${at}`, at, task, ...(sub ? { sub } : {}), from: "in-progress", to, via: "ui" });
+		const statusLogs = parseStatusLog(
+			"statuslog/pc/2026-10.jsonl",
+			[log("i-1", "closed", "2026-10-29T03:00:00.000Z"), log("i-2", "waiting", "2026-10-30T03:00:00.000Z"), log("i-3", "in-progress", "2026-10-29T03:00:00.000Z"), log("i-4", "closed", "2026-10-29T03:00:00.000Z", "aaaaaa")].join("\n"),
+		).entries;
+		const boards = [
+			{ date: "2026-10-29", path: "a", board: { ...emptyBoard(), issues: ["i-1", "i-2", "i-3", "i-4#aaaaaa"] } },
+			{ date: today, path: "b", board: { ...emptyBoard(), issues: ["i-3"] } },
+		];
+		const index = new TaskIndex({ ...emptyVaultData(), boards, statusLogs });
+		const counts = carryCounts(index, today);
+		// i-1 はその日に閉じた。i-4 のサブもその日に閉じた。i-2 は翌日に待ちにしたので、その日は持ち越し。i-3 は in-progress のまま
+		expect([...counts.entries()].sort()).toEqual([["i-2", 1], ["i-3", 1]]);
 	});
 });
 

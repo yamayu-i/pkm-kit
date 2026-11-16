@@ -10,7 +10,7 @@
 ## 今の流れ
 
 1. リボンの「Open Today」（[リボン](../surfaces/ribbon.md)）か、左サイドバーの Today（[Tasks サイドバー](../surfaces/task-sidebar.md)）を押す。Today は一覧ペインに開く（[一覧ペインとノートペイン](../surfaces/layout-panes.md)）
-2. [Today](../surfaces/task-today.md) の段階を順に片付ける: Calendar → Previous boards → Pick → Board。今日が Calendar の日の issue と今日の routine は、自動でボードに載っている。Pick で Next から今日やるものを選ぶ
+2. [Today](../surfaces/task-today.md) の段階を順に片付ける: Calendar → Pick → Board。今日が Calendar の日の issue と今日の routine は、自動でボードに載っている。Pick で Next から今日やるものを選ぶ
 3. [task board](../surfaces/task-board.md) で、今日の最重要を 4 件まで Top 4 に入れ、Up next を並べる。並びは前の日から引き継ぐ。今日が Calendar の日のサブイシューもカードとして載る
 4. AI と相談するときは、task-coach が MCP で状況を読み、負荷（見積もりの合計と使える時間）を見て、載せすぎを減らす（[MCP と task-coach](../surfaces/task-mcp.md)）
 

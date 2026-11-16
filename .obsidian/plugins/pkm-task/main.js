@@ -836,12 +836,6 @@ function routineResults(index, routine, today, days) {
     return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
   });
 }
-function pendingBoards(index, boards, today) {
-  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return unfinishedCount(u4) > 0;
-  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
-}
 function sortByOrder(items, idOf, order) {
   if (!order || order.length === 0) return [...items];
   const rank = new Map(order.map((id, i3) => [id, i3]));
@@ -2154,9 +2148,6 @@ function cancelPatch() {
 function closePatch() {
   return { status: "closed", delegated_to: null, revisit: null, tickler: null };
 }
-function inboxPatch() {
-  return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
-}
 function nextPatch(issue) {
   return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
 }
@@ -2266,8 +2257,9 @@ function subStatusPatch(to, opts = {}) {
   if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
   return { status: to, delegatedTo: null };
 }
-function completeIssuePatch(to, fields) {
+function completeIssuePatch(to, fields, from = null) {
   const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
+  if (from === "someday" && to === "open") base.clarified = null;
   return { ...base, ...fields };
 }
 function completeSubPatch(to, patch) {
@@ -2281,7 +2273,6 @@ function ticklerError(status) {
   return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
 }
 function canApplyAll(froms, op) {
-  if (op === "inbox") return froms.length > 0 && froms.every((s3) => s3 === "open");
   if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
   return canTransitionAll(froms, op);
 }
@@ -2455,17 +2446,12 @@ function sidebarCounts(index, today) {
   const dead = deadIssues(issues, today);
   const deadSub = deadSubs(index, today);
   const missed = missedIssues(issues, today).length + missedSubs(index, today).length;
-  const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
   const scheduledToday = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
-  const previousCount = pending.reduce((n2, b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return n2 + unfinishedCount(u4);
-  }, 0);
   return {
-    // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・前のボード・今日の Calendar・今日の未完了
-    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
+    // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
+    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
     inbox: issues.filter((i3) => isInbox(i3, today)).length,
     organize: organizeQueue(issues, today).length,
     scheduled: issues.filter((i3) => isScheduledAhead(i3, today)).length,
@@ -3450,7 +3436,6 @@ async function patchAll(ctx, issues, patch, label) {
 }
 var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
 var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
 var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
 async function ticklerIssues(ctx, issues) {
   const date = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
@@ -3568,8 +3553,7 @@ async function carryIssues(ctx, date, issues, kind) {
   if ((kind === "move" || kind === "tickler") && to === null) return;
   try {
     for (const issue of issues) {
-      if (kind === "inbox") await ctx.writer.update(issue.path, inboxPatch());
-      else if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
+      if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
       else if (kind === "move") await ctx.writer.update(issue.path, { scheduled: to });
       else if (kind === "tickler") await ctx.writer.update(issue.path, ticklerPatch(issue, to));
     }
@@ -6837,7 +6821,8 @@ function boardSummary(index, date, board) {
   if (others.length > 0 || routines.some(([, r3]) => r3 === "canceled")) {
     lines.push("", "### \u6301\u3061\u8D8A\u3057\u30FB\u4E2D\u6B62", "");
     for (const id of others) {
-      const note = board.carried.includes(id) ? "\u6301\u3061\u8D8A\u3057" : statusOf2(id) ?? "?";
+      const status = statusOf2(id);
+      const note = board.carried.includes(id) || status === "open" || status === "in-progress" ? "\u6301\u3061\u8D8A\u3057" : status ?? "?";
       lines.push(`- ${link(id)}\uFF08${note}\uFF09`);
     }
     for (const [id, r3] of routines) if (r3 === "canceled") lines.push(`- ${link(id)}\uFF08canceled\uFF09`);
@@ -6873,8 +6858,6 @@ function upsertSummary(text, summary) {
 function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  const remaining = unfinished(index, date, board);
-  if (unfinishedCount(remaining) > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
@@ -7157,7 +7140,7 @@ var TaskWriter = class {
       if (via !== "undo" && fileKind(path) === "issue" && isStatus2(from) && isStatus2(next) && from !== next) {
         const reopenTo = typeof fm.id === "string" ? this.store.index.reopenStatus(fm.id) : null;
         if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
-        fields = completeIssuePatch(next, fields);
+        fields = completeIssuePatch(next, fields, from);
       }
       const after = isStatus2(next) ? next : from;
       if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus2(after) && after !== "open") {
@@ -7843,8 +7826,8 @@ function Board(props) {
           "button",
           {
             class: "vt-button is-primary",
-            disabled: leftCount > 0 || total === 0,
-            title: "You can close the board when nothing is left",
+            disabled: total === 0,
+            title: "Write today's record to the daily note. Unfinished cards are recorded as carried over",
             onClick: () => void closeBoard(ctx, date),
             children: [
               /* @__PURE__ */ u3(Icon, { name: "check" }),
@@ -7881,9 +7864,7 @@ function carryActions(ctx, date, sel, primary, done) {
     { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
     ...sel.length > 0 && sel.every((i3) => i3.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : [],
     { label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
-    { label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },
-    // Inbox に戻すのは open のものだけ（ADR-0183）
-    { label: "Inbox", icon: "inbox", disabled: !canApplyAll(statuses, "inbox"), run: () => run(carryIssues(ctx, date, sel, "inbox")) }
+    { label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) }
   ];
 }
 function SubRows(props) {
@@ -7916,7 +7897,6 @@ function RoutineRows(props) {
 // src/views/DailyView.tsx
 var STEPS = [
   { key: "calendar", label: "Calendar", icon: "calendar" },
-  { key: "previous", label: "Previous boards", icon: "history" },
   { key: "pick", label: "Pick", icon: "list-todo" },
   { key: "board", label: "Board", icon: "layout-dashboard" }
 ];
@@ -7962,8 +7942,9 @@ function DueSection(props) {
           { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
           { label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
           { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
-          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) }
+          // 守れない期限は結び直す: 日を変える・保留する（Someday）・やめる（Cancel。ADR-0189）
+          { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
     ),
@@ -8024,8 +8005,7 @@ function MissedSection(props) {
             { label: "Move date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled").then(done) },
             { label: "Back to Next", icon: "list-todo", run: () => void backToNextIssues(ctx, sel).then(done) },
             { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
-            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
-            { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) }
+            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
           ]
         }
       ),
@@ -8050,36 +8030,6 @@ function MissedSection(props) {
     ] })
   ] });
 }
-function PreviousStep(props) {
-  const { ctx } = props;
-  const index = ctx.store.index;
-  return /* @__PURE__ */ u3(S, { children: props.boards.map((b2) => {
-    const left = unfinished(index, b2.date, b2.board);
-    if (unfinishedCount(left) === 0) return null;
-    return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-          "Board of ",
-          formatShortDate(b2.date)
-        ] }),
-        /* @__PURE__ */ u3("span", { class: "vt-count", children: unfinishedCount(left) })
-      ] }),
-      /* @__PURE__ */ u3(PreviousIssues, { ctx, date: b2.date, issues: left.issues }),
-      /* @__PURE__ */ u3(SubRows, { ctx, date: b2.date, subs: left.subs, primary: "today" }),
-      /* @__PURE__ */ u3(RoutineRows, { ctx, date: b2.date, routines: left.routines })
-    ] }, b2.date);
-  }) });
-}
-function PreviousIssues(props) {
-  const { ctx, date, issues } = props;
-  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
-  const sel = issues.filter((i3) => selected.has(i3.id));
-  if (issues.length === 0) return null;
-  return /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "calendar", "deadline", "estimated"] }),
-    /* @__PURE__ */ u3(ActionBar, { count: sel.length, actions: carryActions(ctx, date, sel, "today", () => setSelected(/* @__PURE__ */ new Set())) })
-  ] });
-}
 function PickStep(props) {
   const { ctx, issues } = props;
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
@@ -8102,8 +8052,7 @@ function PickStep(props) {
             { label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
             { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
             { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
-            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
-            { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) }
+            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
           ]
         }
       )
@@ -8130,7 +8079,6 @@ function DailyView(props) {
   const cautionSub = cautionSubs(index, today);
   const missed = missedIssues(issues, today);
   const missedSub = missedSubs(index, today);
-  const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
   const pick = pickCandidates(index, today, todayBoard);
   const toAdd = index.toAutoAdd(today);
@@ -8138,7 +8086,6 @@ function DailyView(props) {
   const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
   const counts = {
     calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
-    previous: pending.reduce((n2, b2) => n2 + unfinishedCount(unfinished(index, b2.date, b2.board)), 0),
     pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0),
     board: unfinishedCount(todayLeft)
   };
@@ -8196,7 +8143,6 @@ function DailyView(props) {
       )
     ] }, s3.key)) }),
     step === "calendar" && /* @__PURE__ */ u3(CalendarStep, { ctx, dead, deadSub, caution, cautionSub, missed, missedSub }),
-    step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No boards left open" })),
     step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
@@ -8714,7 +8660,6 @@ function IssueListView(props) {
           { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }

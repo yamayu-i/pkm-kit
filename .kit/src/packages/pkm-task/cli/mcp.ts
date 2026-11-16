@@ -9,7 +9,7 @@
  */
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { emptyBoard, pendingBoards, routineResults, unfinished, type RoutineResult } from "../src/core/board";
+import { emptyBoard, routineResults, unfinished, type RoutineResult } from "../src/core/board";
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
 import { prorateEffort } from "../src/core/effort";
 import { LANES, boardLanes, cardStatus, cardSummary, type BoardCard } from "../src/core/board-lanes";
@@ -63,7 +63,7 @@ export interface McpContext {
 }
 
 /** task_ の群で、Vault を変えないツール。これ以外を呼んだら索引を作り直す */
-const TASK_READ_TOOLS = new Set(["get_overview", "get_board", "list_pending_boards", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
+const TASK_READ_TOOLS = new Set(["get_overview", "get_board", "list_issues", "get_issue", "get_worklog_summary", "get_routine_stats"]);
 const TASK_PREFIX = "task_";
 /** get_overview の一覧を切る件数（ADR-0156 の 3） */
 const OVERVIEW_TOP = 5;
@@ -152,16 +152,6 @@ const TOOLS: McpToolDef[] = [
 			type: "object",
 			properties: {
 				date: { type: "string", description: "YYYY-MM-DD（省略時は今日）" },
-			},
-		},
-	},
-	{
-		name: "list_pending_boards",
-		description: "今日より前で、未完了が残っていて締めていない過去のボード一覧を取得する",
-		inputSchema: {
-			type: "object",
-			properties: {
-				today: { type: "string", description: "基準日 YYYY-MM-DD（省略時は今日）" },
 			},
 		},
 	},
@@ -283,13 +273,13 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す。open の issue だけ）。tickler は open・someday の issue だけ。サブは tickler と inbox にできない",
+		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に。tickler は open・someday の issue だけ。サブは tickler にできない。Inbox に戻す mode はない（やらなかったものは next、考え直すなら tickler。ADR-0189）",
 		inputSchema: {
 			type: "object",
 			properties: {
 				date: { type: "string", description: "ボードの日付 YYYY-MM-DD" },
 				issue_ids: { type: "array", items: { type: "string" }, description: "issue の ID かサブの合成キー" },
-				mode: { type: "string", enum: ["today", "next", "move", "tickler", "inbox", "reschedule"], description: "reschedule は以前の名前（move と同じ）" },
+				mode: { type: "string", enum: ["today", "next", "move", "tickler", "reschedule"], description: "reschedule は以前の名前（move と同じ）" },
 				reschedule_to: { type: "string", description: "mode が move / tickler のときの日付 YYYY-MM-DD" },
 			},
 			required: ["date", "issue_ids", "mode"],
@@ -297,7 +287,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "close_board",
-		description: "未完了が 0 件ならその日のボードを締め、デイリーノート本文の ## Task board に要約を書く",
+		description: "その日のボードを締め、デイリーノート本文の ## Task board に記録（完了・持ち越し・中止・worklog）を書く。未完了が残っていても締められ、未完了は持ち越しと書く（ADR-0189）",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -357,7 +347,7 @@ const TOOLS: McpToolDef[] = [
 				revisit: { type: ["string", "null"] },
 				reviewed: { type: ["string", "null"] },
 				estimated: { type: ["number", "null"] },
-				clarified: { type: ["boolean", "null"], description: "整理済みか（ADR-0148）。true で Inbox から出る。false / null で Inbox に戻す（日付は残る）" },
+				clarified: { type: ["boolean", "null"], description: "整理済みか（ADR-0148）。true で Inbox から出る。false / null で Inbox に戻す（日付は残る。open の issue だけ。ADR-0189）" },
 			},
 			required: ["id"],
 		},
@@ -630,19 +620,6 @@ function callTaskTool(
 				runningTimers: index.running(),
 			};
 		}
-		case "list_pending_boards": {
-			const refDate = typeof args.today === "string" ? args.today : today;
-			if (!isLocalDate(refDate)) throw new Error(`today が YYYY-MM-DD ではありません: ${String(args.today)}`);
-			return pendingBoards(index, index.data.boards, refDate).map((b) => {
-				const u = unfinished(index, b.date, b.board);
-				return {
-					date: b.date,
-					unfinishedIssues: u.issues,
-					unfinishedSubs: u.subs,
-					unfinishedRoutines: u.routines,
-				};
-			});
-		}
 		case "list_issues": {
 			const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 100;
 			if (args.inbox_only === true) {
@@ -666,7 +643,7 @@ function callTaskTool(
 			if (!issue) throw new Error(`issue がありません: ${id}`);
 			const efforts = index.effortMinutes(now.getTime());
 			const byKey = index.effortByKey(now.getTime());
-			const counts = carryCounts(index.data.boards);
+			const counts = carryCounts(index, today);
 			return {
 				...issue,
 				body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,

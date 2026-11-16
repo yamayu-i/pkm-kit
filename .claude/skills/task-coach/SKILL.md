@@ -32,7 +32,6 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
 - `scheduledNotOnBoard`: 今日が Calendar の日（`scheduled`。その日にやらなければならない日。ADR-0152）だがまだボードに載っていない issue の ID とサブイシューの合成キー（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）
-- `pendingBoards`: 今日より前で締めていないボード
 - `frequentlyCarried`: 2 回以上持ち越されている issue（分割・見直し候補）
 - `stalled`: `in-progress` なのに直近 3 日以上 worklog がない issue、`revisit` が来た someday、`waiting` / `delegated`（それぞれ上位 5 件。件数は `stalledCounts`。全件は `task_list_issues` で取る）
 - `problems`: タスク管理のデータの問題（上位 5 件。件数は `problemCount`。全件は `check_vault` の `tasks`）
@@ -42,7 +41,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 ### 朝（1 日の計画・ボード編成）
 
-1. `pendingBoards` があれば、昨日の未完了を片付けて、過去のボードを `task_close_board` で締めることを先に提案する。片付け方は `task_carry_issues` の `mode`: 今日もやる（`today`。日付を書かない）、Next に戻す（`next`）、その日に考え直す（`tickler` と `reschedule_to`）、その日にやらなければならない日を選び直す（`move` と `reschedule_to`。Calendar の日を持つものだけ）、Inbox に戻す（`inbox`）
+1. 締めていない過去のボードは催促しない（締めは記録だけ。ADR-0189）。昨日の未完了は Next に残っているので、2 の候補に含めて選ぶ
 2. `dead`（期限切れ）、`caution`（期限間近）、`scheduledNotOnBoard`（今日の Calendar）を提示し、今日やるべき候補を挙げる。Next（`task_list_issues` で open・`clarified`・Calendar の日も Tickler もないもの）から、文脈・時間・優先度で選ぶ（GTD の Engage。ADR-0150）
 3. 今日やると決めたものは `task_add_to_board` で載せる。`scheduled` は書かない（Calendar はその日にやらなければならない日だけに使う。ADR-0152）。今日の最重要を 4 件まで選んで `task_star_card` で ★ を付け、やる順を `task_order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱う
 4. `workload.overloadedByMinutes > 0`（詰め込みすぎ）または `unestimatedCount > 0`（見積もりなし）なら指摘し、優先度の低いものを別日にリスケするか、見積もりを設定する（`task_update_issue`）よう提案する
@@ -57,13 +56,13 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 1. `task_get_board` と `task_get_worklog_summary`（今日の日付）で、今日完了したもの・未完了のもの・実績工数を確認する
 2. 記録中のままのタイマーがあれば `task_stop_timer` で止めるか確認する
 3. 未完了の routine があれば結果を聞き、`task_set_routine_result`（`closed` / `canceled`）で記録する
-4. 未完了の issue があれば、Next に戻す・Tickler にする・Calendar の日を選び直す・Inbox に戻す、のどれにするかを聞き、`task_carry_issues` で片付ける
-5. 未完了が 0 になったら `task_close_board` でボードを締め、デイリーノートの `## Task board` に要約を書き出す
+4. 未完了の issue は、片付けたいものだけ `task_carry_issues` で片付ける（Next に戻す `next`・Tickler にする `tickler`（open だけ）・Calendar の日を選び直す `move`）。やらなかったものは Next に残るので、全部を片付けなくてよい。Inbox に戻す mode はない（GTD では in に戻さない。ADR-0189）
+5. `task_close_board` でボードを締め、デイリーノートの `## Task board` に要約を書き出す。未完了が残っていても締められ、未完了は持ち越しと書かれる
 6. 1 日の振り返りや翌日への申し送りをまとめ、`task_append_daily_note`（見出し例: `AI 振り返り`）でデイリーノート本文の末尾に追記する
 
 ### 週次（Inbox 仕分け・停滞タスクと持ち越し常連の見直し）
 
-1. `task_get_overview` と `task_list_issues(inbox_only: true)` を呼ぶ。Inbox は「open で `clarified` でない issue」で、日付は見ない（締切だけある未整理の issue も入る）。整理できたら `task_update_issue` で `clarified: true` にする（日付を決めない次の行動なら日付は入れない）。曖昧に戻ったものは `clarified: false` で Inbox に戻す（日付は残る）
+1. `task_get_overview` と `task_list_issues(inbox_only: true)` を呼ぶ。Inbox は「open で `clarified` でない issue」で、日付は見ない（締切だけある未整理の issue も入る）。整理できたら `task_update_issue` で `clarified: true` にする（日付を決めない次の行動なら日付は入れない）。Inbox に戻す（`clarified: false`）のは、誤って整理済みにした open の issue の訂正だけ。行動が曖昧になったものは、その場で次の行動を決め直す（題を直す・サブに分ける）か、考え直す日を Tickler にする（ADR-0189）
 2. **持ち越し常連（`frequentlyCarried`）**: なぜ進まないのか（粒度が大きすぎる、前提条件が揃っていない、実はやらなくてよい）を一緒に確認し、サブイシューへの分割（`task_create_sub_issues` で親の md の中に足す。サブのサブは作れない）や `someday` / `canceled` への変更を提案する
 3. **停滞タスク（`stalled.inProgressStale` / `revisitDue` / `waitingOrDelegated`）**: 状況を確認し、`status_detail` の更新や次アクションの設定を行う
 4. **見積もり精度（`estimation`）**: 見積もりに対して実績が恒常的に膨らんでいないかを確認し、今後の見積もりの目安を調整する
