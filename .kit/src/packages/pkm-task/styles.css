@@ -3804,3 +3804,151 @@ body.is-mobile .vt-toast {
 .vt-sub-closed-toggle {
 	color: var(--vt-on-surface-variant);
 }
+
+/* 記録の開始・終了を直すボタン（ADR-0193）。再生 / 停止の左の、色のない小さい丸。再生 / 停止より目立たせない */
+.vt-task .vt-time-edit {
+	flex: none;
+}
+
+/* 狭いボードでは題を残すために隠す（カードの ⋯ のメニューの Edit times から開く） */
+@container (max-width: 480px) {
+	.vt-lane .vt-task .vt-time-edit {
+		display: none;
+	}
+}
+
+/* 記録の開始・終了を直すダイアログ（ADR-0193） */
+.vt-wt {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: min(360px, 100%);
+}
+
+.vt-wt-summary {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+	font-weight: var(--vt-weight-medium);
+}
+
+.vt-wt-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.vt-wt-row input {
+	flex: 1;
+	min-width: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-wt-tool.vt-wt-tool {
+	width: 40px;
+	height: 40px;
+}
+
+.vt-wt-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.vt-wt-note {
+	min-width: 0;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+}
+
+/* 時刻のピッカー（ADR-0193）。Material 3 の時刻ピッカーのダイヤルにならう */
+.vt-clock {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container);
+	color: var(--vt-on-surface);
+}
+
+.vt-clock-display {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.vt-clock-part.vt-clock-part {
+	width: 80px;
+	height: 64px;
+	padding: 0;
+	border-radius: var(--vt-radius-s);
+	background: var(--vt-surface-container-high);
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-headline-small-size);
+	font-weight: var(--vt-type-headline-small-weight);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-clock-part.vt-clock-part.is-selected {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-clock-colon {
+	font-size: var(--vt-type-headline-small-size);
+	font-weight: var(--vt-type-headline-small-weight);
+}
+
+.vt-clock-dial {
+	position: relative;
+	width: 256px;
+	max-width: 100%;
+	aspect-ratio: 1;
+	border-radius: var(--vt-radius-full);
+	touch-action: none;
+	cursor: pointer;
+	user-select: none;
+}
+
+.vt-clock-dial svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.vt-clock-face {
+	fill: var(--vt-surface-container-high);
+}
+
+.vt-clock-hand {
+	stroke: var(--vt-primary);
+	stroke-width: 0.02;
+}
+
+.vt-clock-center,
+.vt-clock-knob {
+	fill: var(--vt-primary);
+}
+
+.vt-clock-number {
+	position: absolute;
+	transform: translate(-50%, -50%);
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-body-medium-size);
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
+}
+
+.vt-clock-number.is-inner {
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-medium-size);
+}
+
+.vt-clock-number.is-selected {
+	color: var(--vt-on-primary);
+}

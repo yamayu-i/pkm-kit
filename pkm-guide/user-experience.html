@@ -790,9 +790,10 @@ ADR へのリンク。
 <h3 id="surfaces-task-board-md--今の振る舞い">今の振る舞い</h3>
 <ul>
 <li>1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（routine だけ。issue・サブと混ぜない。開いたまま始め、見出しで開閉。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない</li>
-<li>カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。<code>delegated…</code> も選べる）・題・再生 / 停止・<code>···</code> のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ）が出る。ID はマウスを乗せると出る</li>
+<li>カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。<code>delegated…</code> も選べる）・題・記録の時刻を直すボタン・再生 / 停止・<code>···</code> のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ）が出る。ID はマウスを乗せると出る</li>
 <li>同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る</li>
 <li>星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる</li>
+<li>記録の時刻を直すボタン（<code>history</code> のアイコン。色なしの小さい丸）: 再生 / 停止の左。押すと From / To の 2 欄のダイアログを開き、再生の押し忘れ・止め忘れを短い書き方（<code>-22m</code>、<code>2200</code>、<code>2200-1d</code> など）かカレンダーと時計で直す。記録中なら To が空の再生で開始だけを直して続け、To を入れた停止で止める。記録していないなら再生で From から始め、停止で From〜To の記録を足す（<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0193-worklog-quick-edit.md">ADR-0193</a>）。幅 480px 以下では隠し、<code>···</code> のメニューの Edit times から開く</li>
 <li><code>···</code> のメニュー: Add to Top 4 / Remove from Top 4、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ</li>
 <li>Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも <code>i-12 › 題</code> の形で候補に出る。載せても日付は書かない（ADR-0152）</li>
 <li>status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる</li>
@@ -1020,6 +1021,7 @@ ADR へのリンク。
 <li>Running の Pause は群を再開するために保持し、Stop は群を破棄します。</li>
 <li>Paused の Resume は保持した群を再開し、Discard は保持だけを捨てます。</li>
 <li>各行の再生／停止はそのタスクだけに作用します。</li>
+<li>Running と Tasks の各行の再生／停止の左に、記録の時刻を直すボタンがあります（ボードと同じダイアログ。<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0193-worklog-quick-edit.md">ADR-0193</a>）。Paused の行にはありません。</li>
 <li>Space は一時停止／再開、Shift+Space は停止／保持した群の破棄です。入力欄では発動しません。</li>
 <li>操作中は群の操作を無効にし、失敗は通知で知らせます。</li>
 </ul>
