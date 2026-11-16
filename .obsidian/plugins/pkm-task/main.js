@@ -5697,6 +5697,8 @@ function toggleOpen(ctx, path, id, ids) {
 }
 var CLOSED_CLASS = "vt-sub-body-closed";
 var AREA_HIDDEN = "vt-subissue-area-hidden";
+var BODY_SECTION = "vt-sub-body-section";
+var BODY_END = import_view.Decoration.line({ class: "vt-sub-body-end" });
 var bodies = /* @__PURE__ */ new Map();
 var cards = /* @__PURE__ */ new Map();
 var openListeners = /* @__PURE__ */ new Set();
@@ -5948,6 +5950,7 @@ function installReadingCards(ctx, plugin) {
       mctx.addChild(child);
     } else if (r3.role === "body") {
       const done = isDoneId(r3.id);
+      el.addClass(BODY_SECTION);
       addEntry(bodies, path, { id: r3.id, el, line: info.lineStart, done }, mctx);
       el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id) || done && !closedShown.has(path));
     }
@@ -6124,6 +6127,9 @@ function build(ctx, state) {
     }
     if (collapsed && sectionTo > b2.cardTo) {
       folds.push(import_view.Decoration.replace({ block: true }).range(b2.cardTo, sectionTo));
+    }
+    if (!collapsed && layout[b2.index + 1] && b2.bodyTo > b2.bodyFrom) {
+      all.push(BODY_END.range(state.doc.lineAt(b2.bodyTo).from));
     }
   }
   return { all: import_view.Decoration.set(all, true), folds: import_view.Decoration.set(folds, true) };
