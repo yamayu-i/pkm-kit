@@ -1627,13 +1627,13 @@ ADR へのリンク。
 <h3 id="concepts-task-tickler-md--目的">目的</h3>
 <p>今は決めず、その日に思い出して整理し直したいもの（例: 返金が届いたか確かめる、更新するか考える）を、その日まで目から外しておく（GTD の Tickler）。その日にやらなければならない行動は <a href="#concepts-task-do-date-md">Calendar</a> で表す。</p>
 <h3 id="concepts-task-tickler-md--状態">状態</h3>
-<p><code>tickler</code>: 日付 1 つ。issue だけが持つ（サブイシューは整理の対象ではないので持たない）。整理の先送りなので、<code>clarified</code> は変えない。</p>
+<p><code>tickler</code>: 日付 1 つ。open の issue だけが持つ（サブイシューは整理の対象ではないので持たない。in-progress・待ちに付けると Inbox にも Next にも出なくなるので付けない。open 以外にすると消える）。someday に付けると open に戻る。整理の先送りなので、<code>clarified</code> は変えない。</p>
 <h3 id="concepts-task-tickler-md--操作">操作</h3>
 <p>Organize の「Tickler」（↑。既定は明日）、Today の Pick と前のボードの「Tickler」、Inbox・Someday・Issues の一覧の「Tickler」、issue 画面の「tickler」、MCP の <code>tickler</code> と <code>task_carry_issues</code> の <code>tickler</code>。</p>
 <h3 id="concepts-task-tickler-md--使い方の筋道">使い方の筋道</h3>
 <p>日付の前は、Inbox・Next・Today の Pick・Organize のどこにも出ない（期限は Tickler があっても Today に出る）。日付が来ると Inbox に戻り、Organize で整理し直す。整理の操作（Next・Calendar・Someday・Cancel・Already done・Inbox に戻す）は <code>tickler</code> を消す。</p>
 <h3 id="concepts-task-tickler-md--根拠">根拠</h3>
-<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0152-calendar-and-tickler.md">ADR-0152</a></p>
+<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0152-calendar-and-tickler.md">ADR-0152</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0183-status-transition-rules.md">ADR-0183</a></p>
 <footer><a href="#contents">目次へ</a> 前: <a href="#concepts-task-sub-issue-md">サブイシュー</a> 次: <a href="#concepts-task-worklog-md">worklog とタイマー</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/concepts/task-tickler.md">原本</a></footer></article>
 <article id="concepts-task-worklog-md" aria-label="worklog とタイマー"><p class="eyebrow">concepts/task-worklog.md</p><details class="chapter-nav"><summary>この章の目次</summary><ul><li><a href="#concepts-task-worklog-md--目的">目的</a></li><li><a href="#concepts-task-worklog-md--状態">状態</a></li><li><a href="#concepts-task-worklog-md--操作">操作</a></li><li><a href="#concepts-task-worklog-md--使い方の筋道">使い方の筋道</a></li><li><a href="#concepts-task-worklog-md--根拠">根拠</a></li><li><a href="#concepts-task-worklog-md--記録と再開">記録と再開</a></li></ul></details><h2 id="concepts-task-worklog-md--worklog-とタイマー">worklog とタイマー</h2>
 <h3 id="concepts-task-worklog-md--目的">目的</h3>

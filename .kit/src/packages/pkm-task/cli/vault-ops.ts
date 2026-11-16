@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
 import { backToNextPatch, inboxPatch, ticklerPatch } from "../src/core/actions";
-import { canTransition, completeIssuePatch, completeSubPatch, stopsTimer, timerStartStatus, transitionError } from "../src/core/transition";
+import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../src/core/transition";
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
@@ -258,7 +258,9 @@ export function carryIssuesOnDisk(
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
 		// サブは整理の対象ではないので、Tickler も Inbox も持たない（ADR-0148, 0152）
 		if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
-		// Inbox に戻すのは open のものだけ（ADR-0183）
+		// Tickler は open（と someday）だけ。Inbox に戻すのは open のものだけ（ADR-0183）
+		const status = index.issues.get(id)?.status;
+		if (kind === "tickler" && status !== undefined && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
 		if (kind === "inbox" && index.issues.get(id)?.status !== "open") throw new Error(`open でないものは Inbox に戻せません: ${id}`);
 	}
 
@@ -509,6 +511,10 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		patch.status = "open";
 		patch.revisit = null;
 	}
+
+	// Tickler は open だけが持つ（ADR-0183）
+	const afterStatus = (patch.status as Status | undefined) ?? current.status;
+	if (typeof patch.tickler === "string" && afterStatus !== "open") throw new Error(ticklerError(afterStatus));
 
 	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
 	if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);

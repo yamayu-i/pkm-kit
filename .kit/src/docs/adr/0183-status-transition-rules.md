@@ -66,7 +66,8 @@ status のバッジの隣に、いちばんよく使う遷移のボタンを 1 �
 
 | 移る先 | `delegated_to` | `revisit` | `tickler` | 期限 | `scheduled` | ★ | タイマー |
 |---|---|---|---|---|---|---|---|
-| open / in-progress | 消す | 消す | 残す | 残す | 残す | 残す | 残す |
+| open | 消す | 消す | 残す | 残す | 残す | 残す | 残す |
+| in-progress | 消す | 消す | 消す | 残す | 残す | 残す | 残す |
 | waiting | 消す | 消す | 消す | 残す | 残す | 外す | 止める |
 | delegated | 必須（その場で選ぶ） | 消す | 消す | 残す | 残す | 外す | 止める |
 | someday | 消す | 任意 | 消す | 消す | 消す | 外す | 止める |
@@ -74,6 +75,7 @@ status のバッジの隣に、いちばんよく使う遷移のボタンを 1 �
 | canceled | 消す | 消す | 消す | 消す | 残す | 残す | 止める |
 
 - サブには `tickler`・`revisit` がない。ほかの列は issue と同じ（サブを canceled にすると期限も消す）
+- `tickler` は open だけが持つ。Tickler は整理の先送りで、日付が来たら Inbox（open で判定する）に戻すので、in-progress・待ちに付けると Inbox にも Next にも出なくなる（Next は Tickler のあるものを外す）。open 以外にしたら消し、open 以外には付けない（someday に付けると open に戻る。ADR-0152）。画面の Tickler の操作は open・someday にだけ出し、MCP は付けようとするとエラーにする。open 以外に残っている `tickler` は lint が `stale-tickler` で知らせ、issue 画面では消すだけの欄にする
 - ★ は in-progress に戻しても戻らない（ADR-0184）
 - タイマーを始めたら、open・waiting・delegated のものを in-progress にする（サブは親を変えない。MCP の `start_timer` も同じ）
 - issue 画面の Pick・再生のボタン（ADR-0165）は、open・in-progress・someday に出す（someday は Pick で open になる）。waiting / delegated と closed / canceled には出さない（記録中なら停止だけ出す）。待ちから戻すのは status のボタン（Resume）
@@ -88,12 +90,13 @@ status を変える操作は、遷移表の上の操作として定義する。
 | Pick（ADR-0165, 0184） | open・in-progress・someday | someday は open、ほかは変えない | Calendar・Tickler・未来の開始日を消し、今日のボードに載せる |
 | Resume（Watch） | waiting・delegated | in-progress | 今日のボードになければ載せる |
 | Inbox に戻す | open だけ | open のまま | `clarified` を外す |
-| Next・Back to Next・Tickler・Calendar | 終わっていないもの | someday は open、ほかは変えない | ADR-0148, 0152 のとおり |
+| Tickler | open・someday | someday は open、open は変えない | ADR-0152 のとおり |
+| Next・Back to Next・Calendar | 終わっていないもの | someday は open、ほかは変えない | ADR-0148, 0152 のとおり |
 | Someday へ | open・in-progress・waiting・delegated | someday | 上の表 |
 | Close | closed 以外の、終わっていないもの と canceled | closed | 上の表 |
 | Cancel | canceled 以外 | canceled | 上の表 |
 
-- 一括の操作（Inbox・一覧・Daily・ボードの操作の欄）は、選んだものに 1 つでも移れないものがあれば、ボタンを押せなくする。一部だけを変えることはしない
+- 一括の操作（Inbox・一覧・Daily・ボードの操作の欄。Tickler を含む）は、選んだものに 1 つでも移れないものがあれば、ボタンを押せなくする。一部だけを変えることはしない
 - ボードの持ち越しの Inbox も、open のものにだけ出す。MCP の `carry_over` の `inbox` は、open でなければエラーにする
 
 ### 消すもの

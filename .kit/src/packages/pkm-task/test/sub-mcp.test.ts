@@ -164,3 +164,22 @@ describe("MCP も遷移表を通す（ADR-0183）", () => {
 		expect(index().sub(key)!.status).toBe("someday");
 	});
 });
+
+describe("MCP の Tickler は open だけ（ADR-0183）", () => {
+	let root: string;
+	let ctx: McpContext;
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "vault-tickler-mcp-"));
+		mkdirSync(join(root, "issue"));
+		writeFileSync(join(root, "issue/i-1.md"), "---\ntype: issue\nid: i-1\nsummary: 作業中\nstatus: in-progress\n---\n");
+		writeFileSync(join(root, "issue/i-2.md"), "---\ntype: issue\nid: i-2\nsummary: 未着手\nstatus: open\nclarified: true\n---\n");
+		ctx = { root, device: "ai", now: () => now };
+	});
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("update_issue で open でないものに付けるとエラー。open には付けられる", () => {
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", tickler: "2026-11-20" })).toThrow(/Tickler は open/);
+		callMcpTool(ctx, "update_issue", { id: "i-2", tickler: "2026-11-20" });
+		expect(new TaskIndex(readVault(root).data).issues.get("i-2")!.tickler).toBe("2026-11-20");
+	});
+});

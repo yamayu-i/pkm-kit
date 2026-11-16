@@ -8513,8 +8513,8 @@ function issueStatusPatch(to, opts = {}) {
     if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
     return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
   }
-  if (to === "waiting") return { status: to, delegated_to: null, revisit: null, tickler: null };
-  return { status: to, delegated_to: null, revisit: null };
+  if (to === "open") return { status: to, delegated_to: null, revisit: null };
+  return { status: to, delegated_to: null, revisit: null, tickler: null };
 }
 function subStatusPatch(to, opts = {}) {
   if (to === "delegated") {
@@ -8532,6 +8532,12 @@ function completeIssuePatch(to, fields) {
 function completeSubPatch(to, patch) {
   const base = to === "delegated" ? {} : subStatusPatch(to);
   return { ...base, ...patch };
+}
+function canSetTickler(status) {
+  return status === "open" || status === "someday";
+}
+function ticklerError(status) {
+  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
 }
 
 // src/core/index.ts
@@ -9147,6 +9153,9 @@ function lintVault(data, options = {}) {
     }
     if (issue.status === "someday" && (issue.scheduled !== null || issue.softDeadline !== null || issue.deadline !== null)) {
       add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
+    }
+    if (issue.tickler !== null && issue.status !== "open") {
+      add("warning", path, "stale-tickler", "open \u3067\u306F\u306A\u3044\u306E\u306B tickler \u304C\u3042\u308A\u307E\u3059\uFF08Inbox \u306B\u3082 Next \u306B\u3082\u51FA\u307E\u305B\u3093\u3002ADR-0183\uFF09");
     }
     if (issue.revisit !== null && issue.status !== "someday") {
       add("warning", path, "stale-revisit", "someday \u3067\u306F\u306A\u3044\u306E\u306B revisit \u304C\u3042\u308A\u307E\u3059");
@@ -9837,6 +9846,8 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
     assertBoardKey(index, id);
     if (!board.issues.includes(id)) throw new Error(`${id} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
     if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`\u30B5\u30D6\u306F ${kind} \u306B\u3067\u304D\u307E\u305B\u3093: ${id}`);
+    const status = index.issues.get(id)?.status;
+    if (kind === "tickler" && status !== void 0 && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
     if (kind === "inbox" && index.issues.get(id)?.status !== "open") throw new Error(`open \u3067\u306A\u3044\u3082\u306E\u306F Inbox \u306B\u623B\u305B\u307E\u305B\u3093: ${id}`);
   }
   for (const id of issueIds) {
@@ -10011,6 +10022,8 @@ function updateIssueOnDisk(root, index, input, log) {
     patch.status = "open";
     patch.revisit = null;
   }
+  const afterStatus = patch.status ?? current.status;
+  if (typeof patch.tickler === "string" && afterStatus !== "open") throw new Error(ticklerError(afterStatus));
   const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : void 0);
   if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
   if (updated.status !== current.status && stopsTimer(updated.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? /* @__PURE__ */ new Date());
@@ -11096,7 +11109,7 @@ var TOOLS = [
   },
   {
     name: "carry_issues",
-    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\uFF08ADR-0152\uFF09\u3002today: \u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B\uFF08\u65E5\u4ED8\u3092\u66F8\u304B\u306A\u3044\uFF09\u3001next: Calendar \u3068 Tickler \u3092\u6D88\u3057\u3066 Next \u306B\u623B\u3059\u3001move: Calendar \u306E\u65E5\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\uFF09\u3092 reschedule_to \u306B\u3001tickler: Tickler\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3092 reschedule_to \u306B\u3001inbox: clarified \u3092\u5916\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u3059\u3002open \u306E issue \u3060\u3051\uFF09\u3002\u30B5\u30D6\u306F tickler \u3068 inbox \u306B\u3067\u304D\u306A\u3044",
+    description: "\u30DC\u30FC\u30C9\u4E0A\u306E\u672A\u5B8C\u4E86 issue\u30FB\u30B5\u30D6\u3092\u7247\u4ED8\u3051\u3001carried \u306B\u3059\u308B\uFF08ADR-0152\uFF09\u3002today: \u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u308B\uFF08\u65E5\u4ED8\u3092\u66F8\u304B\u306A\u3044\uFF09\u3001next: Calendar \u3068 Tickler \u3092\u6D88\u3057\u3066 Next \u306B\u623B\u3059\u3001move: Calendar \u306E\u65E5\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\uFF09\u3092 reschedule_to \u306B\u3001tickler: Tickler\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3092 reschedule_to \u306B\u3001inbox: clarified \u3092\u5916\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u3059\u3002open \u306E issue \u3060\u3051\uFF09\u3002tickler \u306F open\u30FBsomeday \u306E issue \u3060\u3051\u3002\u30B5\u30D6\u306F tickler \u3068 inbox \u306B\u3067\u304D\u306A\u3044",
     inputSchema: {
       type: "object",
       properties: {

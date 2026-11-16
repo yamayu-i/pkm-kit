@@ -2243,8 +2243,8 @@ function issueStatusPatch(to, opts = {}) {
     if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
     return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
   }
-  if (to === "waiting") return { status: to, delegated_to: null, revisit: null, tickler: null };
-  return { status: to, delegated_to: null, revisit: null };
+  if (to === "open") return { status: to, delegated_to: null, revisit: null };
+  return { status: to, delegated_to: null, revisit: null, tickler: null };
 }
 function subStatusPatch(to, opts = {}) {
   if (to === "delegated") {
@@ -2263,8 +2263,15 @@ function completeSubPatch(to, patch) {
   const base = to === "delegated" ? {} : subStatusPatch(to);
   return { ...base, ...patch };
 }
+function canSetTickler(status) {
+  return status === "open" || status === "someday";
+}
+function ticklerError(status) {
+  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
+}
 function canApplyAll(froms, op) {
   if (op === "inbox") return froms.length > 0 && froms.every((s3) => s3 === "open");
+  if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
   return canTransitionAll(froms, op);
 }
 
@@ -3241,7 +3248,8 @@ function issueRowMenu(ctx, e3, issue) {
   m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
   m3.addSeparator();
   m3.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-  m3.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+  if (canSetTickler(issue.status)) m3.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+  else if (issue.tickler !== null) m3.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
   m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
   m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
@@ -4641,7 +4649,7 @@ function ScheduleStrip(props) {
         "calendar >",
         issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""
       ] }),
-      /* @__PURE__ */ u3(
+      canSetTickler(issue.status) ? /* @__PURE__ */ u3(
         "button",
         {
           class: `vt-field-chip${issue.tickler ? "" : " is-placeholder"}`,
@@ -4653,7 +4661,12 @@ function ScheduleStrip(props) {
             issue.tickler ? formatShortDate(issue.tickler) : "\u2014"
           ]
         }
-      )
+      ) : issue.tickler && /* @__PURE__ */ u3("button", { class: "vt-field-chip", title: "Only open issues can have a Tickler. Click to clear it", onClick: () => save({ tickler: null }), children: [
+        /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
+        "tickler ",
+        formatShortDate(issue.tickler),
+        " \xD7"
+      ] })
     ] })
   ] });
 }
@@ -6887,6 +6900,10 @@ var TaskWriter = class {
         if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
         fields = completeIssuePatch(next, fields);
       }
+      const after = isStatus2(next) ? next : from;
+      if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus2(after) && after !== "open") {
+        throw new Error(ticklerError(after));
+      }
       for (const [key, value] of Object.entries(fields)) {
         before[key] = structuredClone(fm[key]);
         if (value === null || value === void 0 || Array.isArray(value) && value.length === 0 || value === "") delete fm[key];
@@ -7568,7 +7585,7 @@ function carryActions(ctx, date, sel, primary, done) {
   return [
     ...primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => run(carryIssues(ctx, date, sel, "today")) }] : [],
     { label: "Back to Next", icon: "list-todo", ...primary === "next" ? { tone: "primary" } : {}, run: () => run(carryIssues(ctx, date, sel, "next")) },
-    { label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+    { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
     ...sel.length > 0 && sel.every((i3) => i3.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : [],
     { label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
     { label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },
@@ -7651,7 +7668,7 @@ function DueSection(props) {
         actions: [
           { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
           { label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) }
         ]
@@ -7790,7 +7807,7 @@ function PickStep(props) {
           count: sel.length,
           actions: [
             { label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
-            { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+            { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
             { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
             { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
             { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) }
@@ -7938,7 +7955,7 @@ function InboxView(props) {
         count: sel.length,
         actions: [
           { label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
@@ -8357,7 +8374,7 @@ function IssueListView(props) {
       {
         count: sel.length,
         actions: [
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
           { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
           { label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i3) => i3.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },
@@ -8875,7 +8892,7 @@ function SomedayView(props) {
         count: sel.length,
         actions: [
           { label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]

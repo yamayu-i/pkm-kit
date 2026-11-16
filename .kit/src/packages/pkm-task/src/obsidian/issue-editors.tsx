@@ -8,6 +8,7 @@ import type { TaskContext } from "./context";
 import { MemberSuggestModal, PreactModal } from "./modals";
 import type { FieldValue } from "./writer";
 import { showStatusMenu } from "./status-change";
+import { canSetTickler } from "../core/transition";
 
 const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 
@@ -150,7 +151,8 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	m.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
 	m.addSeparator();
 	m.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-	m.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+	if (canSetTickler(issue.status)) m.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+	else if (issue.tickler !== null) m.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
 	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
 	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));

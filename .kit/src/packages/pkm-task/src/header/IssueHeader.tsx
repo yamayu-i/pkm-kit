@@ -19,6 +19,7 @@ import { useNow, useStoreVersion } from "../ui/hooks";
 import { SubIssues } from "./SubIssues";
 import { Pager } from "../ui/Pager";
 import { showStatusMenu, StatusStepButton } from "../obsidian/status-change";
+import { canSetTickler } from "../core/transition";
 
 const WORKLOG_PAGE = 5;
 
@@ -211,14 +212,24 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 				<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
 					calendar &gt;{issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""}
 				</button>
-				<button
-					class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
-					title="Tickler: hidden until this date, then back to Inbox"
-					onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
-				>
-					<Icon name="alarm-clock" />
-					tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}
-				</button>
+				{/* Tickler は open（と someday）だけが持つ。ほかの status では、残っている日を消すだけ（ADR-0183） */}
+				{canSetTickler(issue.status) ? (
+					<button
+						class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
+						title="Tickler: hidden until this date, then back to Inbox"
+						onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
+					>
+						<Icon name="alarm-clock" />
+						tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}
+					</button>
+				) : (
+					issue.tickler && (
+						<button class="vt-field-chip" title="Only open issues can have a Tickler. Click to clear it" onClick={() => save({ tickler: null })}>
+							<Icon name="alarm-clock" />
+							tickler {formatShortDate(issue.tickler)} ×
+						</button>
+					)
+				)}
 			</div>
 		</div>
 	);

@@ -165,3 +165,20 @@ describe("遷移表を通して書く（ADR-0183）", () => {
 		expect(JSON.parse(f.texts.get("worklog/pc/2026-11.jsonl")!.trim()).to).not.toBeNull();
 	});
 });
+
+describe("Tickler は open だけが持つ（ADR-0183）", () => {
+	it("in-progress には付けられない。open にはつけられ、someday は open に戻して付ける", async () => {
+		const f = fixture({ status: "in-progress" });
+		await expect(f.writer.update(issuePath, { tickler: "2026-11-20" })).rejects.toThrow(/Tickler は open/);
+		expect(f.fm()).not.toHaveProperty("tickler");
+		const g = fixture({ status: "someday" });
+		await g.writer.update(issuePath, { tickler: "2026-11-20", status: "open", revisit: null });
+		expect(g.fm()).toMatchObject({ status: "open", tickler: "2026-11-20" });
+	});
+
+	it("open から in-progress にすると Tickler を消す", async () => {
+		const f = fixture({ status: "open", tickler: "2026-11-20" });
+		await f.writer.update(issuePath, { status: "in-progress" });
+		expect(f.fm()).not.toHaveProperty("tickler");
+	});
+});

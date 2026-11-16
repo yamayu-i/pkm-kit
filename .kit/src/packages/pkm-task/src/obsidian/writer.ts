@@ -9,7 +9,7 @@ import { newDailyContent, newIssueContent, newMemberContent, newRoutineContent }
 import { fileKind } from "../core/load";
 import { STATUSES, type Status } from "../core/schema";
 import { statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
-import { canTransition, completeIssuePatch, completeSubPatch, stopsTimer, timerStartStatus, transitionError } from "../core/transition";
+import { canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../core/transition";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
 import {
@@ -108,6 +108,11 @@ export class TaskWriter {
 				const reopenTo = typeof fm.id === "string" ? this.store.index.reopenStatus(fm.id) : null;
 				if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
 				fields = completeIssuePatch(next, fields);
+			}
+			// Tickler は open だけが持つ（ADR-0183）。書いた後の status が open でなければ付けない
+			const after = isStatus(next) ? next : from;
+			if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus(after) && after !== "open") {
+				throw new Error(ticklerError(after));
 			}
 			for (const [key, value] of Object.entries(fields)) {
 				before[key] = structuredClone(fm[key]) as FieldValue;

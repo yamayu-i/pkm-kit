@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { STATUSES, type Status } from "../src/core/schema";
 import type { StatusLogEntry } from "../src/core/status-log";
 import {
+	canApplyAll,
+	canSetTickler,
 	canTransition,
 	canTransitionAll,
 	issueStatusPatch,
@@ -122,8 +124,8 @@ describe("付随の変更", () => {
 		expect(p.delegated_to).toBe(to === "delegated" ? "m-1" : null);
 		// revisit は someday のときだけ（任意）
 		expect(p.revisit).toBeNull();
-		// tickler は open / in-progress では残す
-		if (to === "open" || to === "in-progress") expect("tickler" in p).toBe(false);
+		// tickler は open だけが持つ（open では残し、ほかでは消す）
+		if (to === "open") expect("tickler" in p).toBe(false);
 		else expect(p.tickler).toBeNull();
 		// 期限は someday と canceled で消す
 		for (const k of DATE_KEYS) {
@@ -164,5 +166,16 @@ describe("付随の変更", () => {
 			const to = timerStartStatus(s);
 			if (to) expect(canTransition(s, to)).toBe(true);
 		}
+	});
+});
+
+describe("Tickler は open だけ（ADR-0183）", () => {
+	it("付けられるのは open と someday（someday は open に戻る）", () => {
+		expect(STATUSES.filter(canSetTickler)).toEqual(["open", "someday"]);
+	});
+	it("一括の Tickler は、1 つでも付けられないものがあれば押せない", () => {
+		expect(canApplyAll(["open", "someday"], "tickler")).toBe(true);
+		expect(canApplyAll(["open", "in-progress"], "tickler")).toBe(false);
+		expect(canApplyAll([], "tickler")).toBe(false);
 	});
 });

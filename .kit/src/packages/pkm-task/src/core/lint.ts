@@ -142,6 +142,9 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		if (issue.status === "someday" && (issue.scheduled !== null || issue.softDeadline !== null || issue.deadline !== null)) {
 			add("warning", path, "someday-with-dates", "someday なのに scheduled / soft_deadline / deadline が残っています");
 		}
+		if (issue.tickler !== null && issue.status !== "open") {
+			add("warning", path, "stale-tickler", "open ではないのに tickler があります（Inbox にも Next にも出ません。ADR-0183）");
+		}
 		if (issue.revisit !== null && issue.status !== "someday") {
 			add("warning", path, "stale-revisit", "someday ではないのに revisit があります");
 		}

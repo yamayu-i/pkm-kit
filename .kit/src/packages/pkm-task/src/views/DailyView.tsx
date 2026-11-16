@@ -83,7 +83,7 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 					actions={[
 						{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
 						{ label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
-						{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+						{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 						{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 						{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i) => i.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },
 					]}
@@ -239,7 +239,7 @@ function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: 
 						count={sel.length}
 						actions={[
 							{ label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
-							{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+							{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 							{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
 							{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 							{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i) => i.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },

@@ -283,7 +283,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "carry_issues",
-		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す。open の issue だけ）。サブは tickler と inbox にできない",
+		description: "ボード上の未完了 issue・サブを片付け、carried にする（ADR-0152）。today: 今日のボードに載せる（日付を書かない）、next: Calendar と Tickler を消して Next に戻す、move: Calendar の日（その日にやらなければならない日）を reschedule_to に、tickler: Tickler（その日に Inbox に戻す）を reschedule_to に、inbox: clarified を外す（日付は残す。open の issue だけ）。tickler は open・someday の issue だけ。サブは tickler と inbox にできない",
 		inputSchema: {
 			type: "object",
 			properties: {

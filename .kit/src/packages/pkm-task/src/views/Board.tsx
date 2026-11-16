@@ -409,7 +409,7 @@ export function carryActions(ctx: TaskContext, date: LocalDate, sel: Issue[], pr
 	return [
 		...(primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary" as const, run: () => run(carryIssues(ctx, date, sel, "today")) }] : []),
 		{ label: "Back to Next", icon: "list-todo", ...(primary === "next" ? { tone: "primary" as const } : {}), run: () => run(carryIssues(ctx, date, sel, "next")) },
-		{ label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+		{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
 		...(sel.length > 0 && sel.every((i) => i.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : []),
 		{ label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
 		{ label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },

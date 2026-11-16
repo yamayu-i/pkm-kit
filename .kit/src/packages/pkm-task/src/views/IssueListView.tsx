@@ -149,7 +149,7 @@ export function IssueListView(props: { ctx: TaskContext }) {
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Inbox", icon: "inbox", disabled: !canApplyAll(sel.map((i) => i.status), "inbox"), run: () => void inboxIssues(ctx, sel).then(done) },

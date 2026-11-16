@@ -8567,6 +8567,9 @@ function lintVault(data2, options = {}) {
     if (issue.status === "someday" && (issue.scheduled !== null || issue.softDeadline !== null || issue.deadline !== null)) {
       add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
     }
+    if (issue.tickler !== null && issue.status !== "open") {
+      add("warning", path, "stale-tickler", "open \u3067\u306F\u306A\u3044\u306E\u306B tickler \u304C\u3042\u308A\u307E\u3059\uFF08Inbox \u306B\u3082 Next \u306B\u3082\u51FA\u307E\u305B\u3093\u3002ADR-0183\uFF09");
+    }
     if (issue.revisit !== null && issue.status !== "someday") {
       add("warning", path, "stale-revisit", "someday \u3067\u306F\u306A\u3044\u306E\u306B revisit \u304C\u3042\u308A\u307E\u3059");
     }

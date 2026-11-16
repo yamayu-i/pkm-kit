@@ -48,7 +48,7 @@ export function InboxView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
-					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
 					{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
 					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },

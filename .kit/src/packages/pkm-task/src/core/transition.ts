@@ -109,8 +109,9 @@ export function issueStatusPatch(to: Status, opts: TransitionOptions = {}): Patc
 		if (!opts.delegatedTo) throw new Error("delegated にするときは委任先を選んでください");
 		return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
 	}
-	if (to === "waiting") return { status: to, delegated_to: null, revisit: null, tickler: null };
-	return { status: to, delegated_to: null, revisit: null };
+	// Tickler は open だけが持つ（整理の先送り。ADR-0183）。open 以外にしたら消す
+	if (to === "open") return { status: to, delegated_to: null, revisit: null };
+	return { status: to, delegated_to: null, revisit: null, tickler: null };
 }
 
 /** サブの status を to にする変更。サブには tickler / revisit がない。ほかは issue と同じ */
@@ -138,11 +139,25 @@ export function completeSubPatch(to: Status, patch: SubIssuePatch): SubIssuePatc
 	return { ...base, ...patch };
 }
 
-/** 一括の操作（ADR-0183）。inbox は open のものだけ（status は変えず clarified を外す） */
-export type BulkStatusOp = "closed" | "canceled" | "someday" | "inbox";
+/**
+ * Tickler（ADR-0152）を付けられるか。Tickler は整理の先送りで、日付が来たら Inbox に戻すので、open だけが持つ（ADR-0183）。
+ * someday は付けると open に戻る（ticklerPatch）。in-progress・待ち・終わったものには付けない（Inbox にも Next にも出なくなる）
+ */
+export function canSetTickler(status: Status): boolean {
+	return status === "open" || status === "someday";
+}
+
+/** Tickler を付けられないときの文 */
+export function ticklerError(status: Status): string {
+	return `Tickler は open（と someday）の issue だけに付けられます。今は ${status} です（ADR-0183）`;
+}
+
+/** 一括の操作（ADR-0183）。inbox は open のものだけ（status は変えず clarified を外す）。tickler は canSetTickler */
+export type BulkStatusOp = "closed" | "canceled" | "someday" | "inbox" | "tickler";
 
 /** 選んだものすべてに、その一括の操作ができるか。1 つでもできなければ、ボタンを押せなくする */
 export function canApplyAll(froms: readonly Status[], op: BulkStatusOp): boolean {
 	if (op === "inbox") return froms.length > 0 && froms.every((s) => s === "open");
+	if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
 	return canTransitionAll(froms, op);
 }

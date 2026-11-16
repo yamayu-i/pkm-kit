@@ -6,7 +6,7 @@
 
 ## 状態
 
-`tickler`: 日付 1 つ。issue だけが持つ（サブイシューは整理の対象ではないので持たない）。整理の先送りなので、`clarified` は変えない。
+`tickler`: 日付 1 つ。open の issue だけが持つ（サブイシューは整理の対象ではないので持たない。in-progress・待ちに付けると Inbox にも Next にも出なくなるので付けない。open 以外にすると消える）。someday に付けると open に戻る。整理の先送りなので、`clarified` は変えない。
 
 ## 操作
 
@@ -18,4 +18,4 @@ Organize の「Tickler」（↑。既定は明日）、Today の Pick と前の�
 
 ## 根拠
 
-[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)
+[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)
