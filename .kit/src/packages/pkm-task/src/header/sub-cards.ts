@@ -369,16 +369,24 @@ function editorTop(view: EditorView, pos: number): number {
 	return view.lineBlockAt(pos).top + view.documentTop;
 }
 
-/** 開閉で描き直した後に、題の行の位置を戻す（ADR-0179）。画面外の高さは見積もりなので、描いた後にもう一度確かめる */
-function keepEditorScroll(view: EditorView, pos: number, before: number, floating: boolean, tries = 2): void {
+/** 題の行の位置を測って、ずれた分だけスクロールを戻す（1 回） */
+function correctEditorScroll(view: EditorView, pos: number, before: number, floating: boolean): void {
 	view.requestMeasure({
 		read: () => toggleScrollDelta(before, editorTop(view, pos), view.scrollDOM.getBoundingClientRect().top, floating),
 		write: (d) => {
-			if (d === 0) return;
-			view.scrollDOM.scrollTop += d;
-			if (tries > 1) keepEditorScroll(view, pos, before, floating, tries - 1);
+			if (d !== 0) view.scrollDOM.scrollTop += d;
 		},
 	});
+}
+
+/**
+ * 開閉で描き直した後に、題の行の位置を戻す（ADR-0179）。
+ * CodeMirror は計測の最後に、上端の行の位置を保つように自分でもスクロールを直す。同じ計測の中で直すと二重にかかることがあるので、
+ * 次の描画で、CodeMirror の補正が済んだ位置からもう一度確かめる。画面外の高さの見積もりのずれもここで直る
+ */
+function keepEditorScroll(view: EditorView, pos: number, before: number, floating: boolean): void {
+	if (!floating) correctEditorScroll(view, pos, before, floating);
+	window.requestAnimationFrame(() => correctEditorScroll(view, pos, before, floating));
 }
 
 /**
@@ -398,7 +406,9 @@ function editorToggle(ctx: TaskContext, view: EditorView, path: string, id: stri
 	const b = layout.find((x) => x.id === id);
 	const before = b ? editorTop(view, b.from) : 0;
 	const inBody = wasOpen && b && b.cardTo !== null && b.bodyFrom !== null && b.bodyTo !== null && view.state.selection.ranges.some((r) => r.from <= b.bodyTo! && r.to >= b.bodyFrom!);
-	view.dispatch({ effects: refresh.of(null), ...(inBody ? { selection: { anchor: b!.cardTo! } } : {}) });
+	// 浮かんだ行から閉じたときは、題を上端に出すのを CodeMirror に任せる（上端の行を保つ補正と重ならない）
+	const effects = floating && b ? [refresh.of(null), EditorView.scrollIntoView(b.from, { y: "start", yMargin: 0 })] : refresh.of(null);
+	view.dispatch({ effects, ...(inBody ? { selection: { anchor: b!.cardTo! } } : {}) });
 	syncReading(ctx, path);
 	if (b) keepEditorScroll(view, b.from, before, floating);
 }
