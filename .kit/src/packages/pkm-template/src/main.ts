@@ -3,6 +3,7 @@ import { openListView } from "../../shared/src/list-pane.ts";
 import { CreateNoteModal } from "./obsidian/CreateNoteModal";
 import { TemplateManager } from "./obsidian/creator";
 import { installNoteHeaders } from "./obsidian/header-mount";
+import { installLinkInsert } from "./obsidian/link-insert";
 import { atSessionField, slashSessionField } from "./obsidian/snippet-session";
 import { INLINE_KIND, SnippetSuggest } from "./obsidian/SnippetSuggest";
 import { preactViewCreator, type ViewSpec } from "./obsidian/view";
@@ -69,6 +70,8 @@ export default class PkmTemplatePlugin extends Plugin {
 		// 行頭か半角空白の後の @ でインラインテンプレートを挿入する（ADR-0067）
 		this.registerEditorExtension(atSessionField);
 		this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager, INLINE_KIND));
+		// @note などで探してリンクを入れ、本文のノートへのリンクの前に印を足す（ADR-0194）
+		installLinkInsert(this, this.manager, (msg, err) => this.report(msg, err));
 	}
 
 	/** 一覧 View は左の固定ペインに開く（ADR-0033） */

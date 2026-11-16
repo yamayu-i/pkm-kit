@@ -237,6 +237,9 @@ packages/design/tokens.json（正本）
 | プリセット | `.vt-preset-subs`（`.vt-preset-sub`・`.vt-preset-hint`） | `preset/*.md` に差し込むヘッダー（ADR-0186）。issue と同じ題の部品（ID と名前）、「Sub-issues」のカードに題の入力欄の行（番号のラベル + 並べ替え・削除。Enter か欄を離れたときに保存）と素早い追加（`.vt-quick-add`）、呼び出し方の帯（`.vt-banner`）、本文の見出し「Body」。本文はふつうのエディタ。一覧（Presets）は Members と同じ行（ID・名前・本文の 1 行目・サブの件数）。呼び出しは issue 画面の「Sub-issues」の見出しの右の「Apply preset」（`copy-plus` のアイコンボタン）のメニュー |
 | ガントチャート | `.vt-timeline`（`.vt-timeline-bar`・`.vt-timeline-arrow`・`.vt-timeline-today`） | カード「Sub-issues」の Timeline（ADR-0143）。左に題の列、右に日の列（カードの中で横にスクロール）。行は 36px。棒は status の印の色（`--vt-dot`）で、ドラッグでずらし、両端のつまみで伸ばす。予定日は点、期限は amber / red の短い縦線、今日は primary の縦線、土日は surface-container の面、週の区切り（日曜）は細い線。依存は矢印で、遅れは error の色。棒の右端のコネクタ（`.vt-timeline-connector`）から別の棒へドラッグして依存を引き、矢印は押して選び（`.vt-timeline-arrow-hit`）× ボタン（`.vt-timeline-arrow-remove`）か Delete で消す（ADR-0163）。目盛りは Day（1 日 28px）と Week（日曜始まり、1 日 8px）。切り替え（List / Timeline、Day / Week）は絞り込みチップ |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
+| リンクのチップ | `.vt-link-chip.is-replace`（`.vt-link-chip-title`・`.vt-link-chip-context`・`.vt-link-avatar`） | 本文の issue・サブ・routine・member へのリンクを置き換えて描く（ADR-0194。共有の部品 `packages/shared/src/link-chips.ts`）。文の中に収まるよう、20px の ID のバッジ（status の色。routine は blue、一時停止は gray）か頭文字の丸（secondary-container）と、primary の文字の今の題。済みは弱い文字の打ち消し線。サブは前に弱い文字で親の題 + ›。押すと開き、ホバーで題に下線 |
+| リンクの印 | `.vt-link-chip.is-before` | それ以外の Vault の中のノートへのリンクの前に足す 16px のアイコン（弱い文字の色）。リンクの文字は変えない（ADR-0194） |
+| リンクの検索ダイアログ | `.vt-link-picker`（`.vt-link-row`・`.vt-link-more`） | Obsidian の SuggestModal。行は先頭の印（ID のバッジ・頭文字・アイコン）、題（1 行で省略）、右に弱い文字の補足（status・フォルダ）。50 件ずつ出し、末尾の「Load more (N)」（primary の文字、中央）で足す。絞り込みの書き方は下の説明に出す（ADR-0194） |
 
 アイコンは Obsidian の `setIcon`（Lucide）を `Icon` 部品（`src/ui/Icon.tsx`）で使う。文字の記号（✎ ＋ ×）でアイコンを代用しない（priority の記号は例外。意味は文字でも書いている）。status のアイコンは例外で、Lucide にない形なので自作の SVG（`StatusIcon` 部品、`src/ui/StatusIcon.tsx`）を使う（ADR-0031）。
 

@@ -135,15 +135,20 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"open-labels",
 			"open-presets",
 			"open-sidebar",
-				"capture-issues",
+			// @issue などのリンクの挿入（ADR-0194）
+			"insert-issue-link",
+			"insert-sub-issue-link",
+			"insert-member-link",
+			"insert-routine-link",
+			"capture-issues",
 			"open-tasks-now",
 		]);
 		// Board groups の View は廃止した（ADR-0137）
 		expect(mock.views).toHaveLength(11);
-		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む。Live Preview のサブの領域の描き替えだけが拡張（ADR-0158）
-		expect(mock.extensions).toHaveLength(1);
-		// リーディング表示で、issue の md のサブの領域をアコーディオンに描く（ADR-0158）
-		expect(mock.postProcessors).toHaveLength(1);
+		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む。拡張は Live Preview のサブの領域の描き替え（ADR-0158）と、リンクのチップ（ADR-0194）
+		expect(mock.extensions).toHaveLength(2);
+		// リーディング表示で、issue の md のサブの領域をアコーディオンに描く（ADR-0158）。本文のリンクをチップに描く（ADR-0194）
+		expect(mock.postProcessors).toHaveLength(2);
 		expect(mock.events).toEqual(expect.arrayContaining(["workspace:file-open", "workspace:active-leaf-change", "workspace:layout-change"]));
 		// 記録中がなければ、ステータスバーの項目は隠れている（ADR-0075）
 		expect(mock.statusItems).toEqual([{ text: "", shown: false, classes: ["mod-clickable", "pkm-task-running-status"] }]);
