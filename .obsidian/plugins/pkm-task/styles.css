@@ -2927,6 +2927,52 @@ body.is-mobile .vt-toast {
 	gap: 8px;
 }
 
+/* ---------- issue のプリセット（ADR-0186） ---------- */
+
+.vt-preset-sub-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin: 0;
+	padding: 8px 0 0;
+	list-style: none;
+}
+
+.vt-preset-sub {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-preset-sub > .vt-name-field {
+	min-width: 160px;
+}
+
+.vt-preset-subs > .vt-name-error {
+	margin-top: -8px;
+}
+
+.vt-preset-hint {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.vt-preset-hint .vt-icon {
+	flex: none;
+}
+
+.vt-preset-body-label {
+	padding-top: 4px;
+}
+
+.vt-preset-item-preview {
+	overflow: hidden;
+	color: var(--vt-on-surface-variant);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 @container (max-width: 480px) {
 	.vt-organize-actions {
 		gap: 8px;

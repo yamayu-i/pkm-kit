@@ -1,4 +1,4 @@
-import { Menu } from "obsidian";
+import { Menu, Notice } from "obsidian";
 import { useState } from "preact/hooks";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
@@ -56,6 +56,7 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 						<FilterChip label="Timeline" on={mode === "timeline"} onClick={() => setMode("timeline")} />
 					</div>
 				)}
+				<PresetButton ctx={ctx} issue={issue} index={index} />
 			</div>
 			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} />}
 			{mode === "list" && shown.length > 0 && (
@@ -80,6 +81,35 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 			)}
 			<QuickAdd ctx={ctx} issue={issue} onDropEnd={(dragged) => move(dragged, null)} />
 		</section>
+	);
+}
+
+/** 見出しの「Apply preset」（ADR-0186）: プリセットを選ぶと、サブを末尾へ足し、本文を親の本文の末尾に追記する */
+function PresetButton(props: { ctx: TaskContext; issue: Issue; index: TaskIndex }) {
+	const { ctx, issue, index } = props;
+	const open = (e: MouseEvent) => {
+		const m = new Menu();
+		for (const preset of index.data.presets) {
+			m.addItem((mi) =>
+				mi
+					.setTitle(preset.name)
+					.setIcon("copy-plus")
+					.onClick(() =>
+						void ctx.writer.applyPreset(issue.id, preset).then(
+							(keys) => new Notice(`プリセット「${preset.name}」を追加しました（サブ ${keys.length} 件）`),
+							(err) => ctx.report("プリセットを追加できませんでした", err),
+						),
+					),
+			);
+		}
+		if (index.data.presets.length > 0) m.addSeparator();
+		m.addItem((mi) => mi.setTitle("Manage presets…").setIcon("settings").onClick(() => void ctx.openView("pkm-task-presets")));
+		m.showAtMouseEvent(e);
+	};
+	return (
+		<button type="button" class="vt-icon-button" aria-label="Apply preset" title="Apply preset" onClick={open}>
+			<Icon name="copy-plus" />
+		</button>
 	);
 }
 

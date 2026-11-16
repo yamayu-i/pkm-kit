@@ -9,6 +9,7 @@ import {collectVault} from "../../pkm-task/src/core/load.ts";
 import {IssueHeader} from "../../pkm-task/src/header/IssueHeader.tsx";
 import {RoutineHeader} from "../../pkm-task/src/header/RoutineHeader.tsx";
 import {MemberHeader} from "../../pkm-task/src/header/MemberHeader.tsx";
+import {PresetHeader} from "../../pkm-task/src/header/PresetHeader.tsx";
 import {SubTimeline} from "../../pkm-task/src/header/SubTimeline.tsx";
 import {TasksNowDialog} from "../../pkm-task/src/views/TasksNowDialog.tsx";
 import {openCaptureModal} from "../../pkm-task/src/obsidian/capture.tsx";
@@ -58,8 +59,8 @@ if(provider==="task"){
   store.index=new TaskIndex({...data,boards:[...data.boards.filter(b=>b.date!=="2026-11-15"),{date:"2026-11-15",path:"daily/2026/11/2026-11-15.md",board:{...emptyBoard(),issues:["i-4"]}}]});
  }
  if(empty) (store as any).index=new TaskIndex(collectVault({markdown:[],worklogs:[],boardLogs:[],labels:"[]",parseYaml:()=>({})}).data);
- const headers:any={header:IssueHeader,routine:RoutineHeader,member:MemberHeader};
- if(headers[screen!]){root.className="vt-header vt-ui";draw(headers[screen!],{ctx,path:screen==="routine"?"routine/r-1.md":screen==="member"?"member/m-1.md":variant==="unpicked"?"issue/i-14.md":variant==="closed"?"issue/i-12.md":"issue/i-2.md"})}
+ const headers:any={header:IssueHeader,routine:RoutineHeader,member:MemberHeader,preset:PresetHeader};
+ if(headers[screen!]){root.className="vt-header vt-ui";draw(headers[screen!],{ctx,path:screen==="routine"?"routine/r-1.md":screen==="member"?"member/m-1.md":screen==="preset"?"preset/p-1.md":variant==="unpicked"?"issue/i-14.md":variant==="closed"?"issue/i-12.md":"issue/i-2.md"})}
  else if(screen==="timeline") draw(SubTimeline,{ctx,subs:store.index.subs("i-2"),scale:"day"});
  else if(screen==="now")draw(TasksNowDialog,{ctx});
  else if(screen==="capture")openCaptureModal(ctx as never);

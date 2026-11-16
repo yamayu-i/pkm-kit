@@ -804,6 +804,70 @@
       "text": "83f8e6e0472bb69ce189daae523d386c8e1962932a1bbdacdfd8e9af6edf9187"
     },
     {
+      "screen": "task--presets",
+      "file": "pkm-guide/ui/task--presets-light-wide.png",
+      "theme": "light",
+      "width": "wide",
+      "sha256": "39b29e12c45855a288524488275479a4050d024c8bfd11c9300a19e8ba9567c6",
+      "text": "a04fac4aed48f7df70f5d8623b7092126e13e8f978ee9a998b1cd3f5758bb7a3"
+    },
+    {
+      "screen": "task--presets",
+      "file": "pkm-guide/ui/task--presets-light-narrow.png",
+      "theme": "light",
+      "width": "narrow",
+      "sha256": "575e816b8e794241cc990395db4e85097086d159f115c6d56cdffe990014d1ad",
+      "text": "a04fac4aed48f7df70f5d8623b7092126e13e8f978ee9a998b1cd3f5758bb7a3"
+    },
+    {
+      "screen": "task--presets",
+      "file": "pkm-guide/ui/task--presets-dark-wide.png",
+      "theme": "dark",
+      "width": "wide",
+      "sha256": "ba6bb02664a1b78230fc3a09e1582132ab6fd05412b313b20fda5ecd8f501a54",
+      "text": "a04fac4aed48f7df70f5d8623b7092126e13e8f978ee9a998b1cd3f5758bb7a3"
+    },
+    {
+      "screen": "task--presets",
+      "file": "pkm-guide/ui/task--presets-dark-narrow.png",
+      "theme": "dark",
+      "width": "narrow",
+      "sha256": "e3e1f154f301276b30ff0bb9e458693bd3353af566f5cd7bbe6dca0866a83385",
+      "text": "a04fac4aed48f7df70f5d8623b7092126e13e8f978ee9a998b1cd3f5758bb7a3"
+    },
+    {
+      "screen": "task--preset",
+      "file": "pkm-guide/ui/task--preset-light-wide.png",
+      "theme": "light",
+      "width": "wide",
+      "sha256": "497f9a7e30e8f9292ba7aa9e9fe9ad48a9a7d3fbecfd107b20d2193d2b175a01",
+      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+    },
+    {
+      "screen": "task--preset",
+      "file": "pkm-guide/ui/task--preset-light-narrow.png",
+      "theme": "light",
+      "width": "narrow",
+      "sha256": "6af68b3d95e0718aa52c8923b15cb4bcafda13e0a48eb9c258fef5dde924d120",
+      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+    },
+    {
+      "screen": "task--preset",
+      "file": "pkm-guide/ui/task--preset-dark-wide.png",
+      "theme": "dark",
+      "width": "wide",
+      "sha256": "13abc7a628356f631d971cc2825715d46d0bac892069b6b53748b8cf4ec899fc",
+      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+    },
+    {
+      "screen": "task--preset",
+      "file": "pkm-guide/ui/task--preset-dark-narrow.png",
+      "theme": "dark",
+      "width": "narrow",
+      "sha256": "6d051b515479875bb63f2adb8e6c7dc2afa5476d0a722b7503a547d89b16fca9",
+      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+    },
+    {
       "screen": "task--capture",
       "file": "pkm-guide/ui/task--capture-light-wide.png",
       "theme": "light",

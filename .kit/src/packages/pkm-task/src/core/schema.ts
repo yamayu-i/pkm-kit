@@ -193,7 +193,7 @@ export class Reader {
 		return null;
 	}
 
-	common(type: string, prefix: "i" | "r" | "m"): string | null {
+	common(type: string, prefix: "i" | "r" | "m" | "p"): string | null {
 		if (this.fm.type !== type) this.problem("invalid-type", `type が ${type} ではありません`);
 		if (this.has("schema") && this.fm.schema !== SCHEMA_VERSION) {
 			this.problem("unknown-schema", `schema ${String(this.fm.schema)} は扱えません（${SCHEMA_VERSION} のみ）`);

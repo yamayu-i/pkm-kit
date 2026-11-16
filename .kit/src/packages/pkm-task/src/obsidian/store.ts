@@ -69,7 +69,7 @@ export class TaskStore {
 
 	private async readText(file: TFile): Promise<void> {
 		const kind = fileKind(file.path);
-		if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+		if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "preset") this.texts.set(file.path, await this.app.vault.cachedRead(file));
 	}
 
 	private touch(file: TFile): void {
@@ -88,14 +88,14 @@ export class TaskStore {
 		const input: VaultInput = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml };
 		for (const file of this.app.vault.getMarkdownFiles()) {
 			const kind = fileKind(file.path);
-			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
+			if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "preset" && kind !== "daily") continue;
 			const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-			const text = kind === "issue" ? this.texts.get(file.path) : undefined;
+			const text = kind === "issue" || kind === "preset" ? this.texts.get(file.path) : undefined;
 			input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null, ...(text !== undefined ? { text } : {}) });
 		}
 		for (const [path, text] of this.texts) {
 			const kind = fileKind(path);
-			if (kind === "issue") continue;
+			if (kind === "issue" || kind === "preset") continue;
 			if (kind === "worklog") input.worklogs.push({ path, text });
 			else if (kind === "board") input.boardLogs!.push({ path, text });
 			else if (kind === "statuslog") input.statusLogs!.push({ path, text });

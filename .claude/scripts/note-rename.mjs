@@ -20,7 +20,7 @@ import { isExternal, splitTarget, stripCode } from "./lib/markdown.mjs";
 import { classify, KEBAB_MD_RE, vaultFiles } from "./lib/vault.mjs";
 
 /** 名前が決まっていて、改名しない場所 */
-const FIXED_DIRS = ["daily/", "issue/", "routine/", "member/", "asset/", "tmp/", "template/", "sources/"];
+const FIXED_DIRS = ["daily/", "issue/", "routine/", "member/", "preset/", "asset/", "tmp/", "template/", "sources/"];
 
 export function isRenameCandidate(path) {
 	if (!path.endsWith(".md")) return false;

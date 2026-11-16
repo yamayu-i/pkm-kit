@@ -42,7 +42,7 @@ export function readVault(root: string): { data: VaultData; problems: Problem[];
 		else if (kind === "board") input.boardLogs!.push({ path, text });
 		else if (kind === "statuslog") input.statusLogs!.push({ path, text });
 		else if (kind === "labels") input.labels = text;
-		else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...(kind === "issue" ? { text } : {}) });
+		else input.markdown.push({ path, frontmatter: readFrontmatter(text), ...(kind === "issue" || kind === "preset" ? { text } : {}) });
 	}
 	const { data, problems } = collectVault(input);
 	return { data, problems, paths };
