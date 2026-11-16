@@ -101,4 +101,5 @@
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
 | [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認 | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
+| [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 <!-- adr-index:end -->
