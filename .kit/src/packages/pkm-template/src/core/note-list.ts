@@ -17,7 +17,7 @@ export type SortOrder = "asc" | "desc";
 export const WIKI_TYPES: readonly string[] = ["concept", "entity", "topic", "answer"];
 
 /** pkm-task が自分のヘッダーを出す type */
-const TASK_TYPES: readonly string[] = ["issue", "routine", "member"];
+const TASK_TYPES: readonly string[] = ["issue", "routine", "member", "preset"];
 
 /** tmp/ の下のノートを除く。tmp/ はノートの規約の対象外なので、type があっても一覧に出さない（ADR-0045） */
 export function withoutTmp(notes: readonly NoteInfo[]): NoteInfo[] {
@@ -71,9 +71,9 @@ export function importedSourcePaths(notes: readonly NoteInfo[]): Set<string> {
 	return out;
 }
 
-/** pkm-template のヘッダーを出すか。issue・routine・member は pkm-task のヘッダーがあるので出さない（ADR-0035） */
+/** pkm-template のヘッダーを出すか。issue・routine・member・preset は pkm-task のヘッダーがあるので出さない（ADR-0035, 0186） */
 export function hasNoteHeader(path: string, frontmatter: Frontmatter | undefined): boolean {
 	const type = frontmatter?.type;
 	if (typeof type === "string" && TASK_TYPES.includes(type)) return false;
-	return !/^(issue|routine|member)\/[^/]+\.md$/.test(path);
+	return !/^(issue|routine|member|preset)\/[^/]+\.md$/.test(path);
 }

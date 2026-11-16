@@ -133,12 +133,13 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"open-routines",
 			"open-members",
 			"open-labels",
+			"open-presets",
 			"open-sidebar",
 				"capture-issues",
 			"open-tasks-now",
 		]);
 		// Board groups の View は廃止した（ADR-0137）
-		expect(mock.views).toHaveLength(10);
+		expect(mock.views).toHaveLength(11);
 		// ヘッダーは CodeMirror の widget ではなく、ノートを開いたときに差し込む。Live Preview のサブの領域の描き替えだけが拡張（ADR-0158）
 		expect(mock.extensions).toHaveLength(1);
 		// リーディング表示で、issue の md のサブの領域をアコーディオンに描く（ADR-0158）
@@ -154,7 +155,7 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 		const module = { exports: {} as { default: new () => { onload(): Promise<void> } } };
 		new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
 		await new module.exports.default().onload();
-		expect(mock.creators.size).toBe(10);
+		expect(mock.creators.size).toBe(11);
 		for (const [type, create] of mock.creators) {
 			const view = create({});
 			expect(view.getViewType()).toBe(type);

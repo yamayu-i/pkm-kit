@@ -6,7 +6,7 @@
 
 ## 状態
 
-frontmatter の `type`。今の type: note、daily、source、concept、entity、topic、answer、issue、routine、member、index、log、feedback。共通の項目は `created`、`updated`（作成とコミットのときに自動で入る）。
+frontmatter の `type`。今の type: note、daily、source、concept、entity、topic、answer、issue、routine、member、preset、index、log、feedback。共通の項目は `created`、`updated`（作成とコミットのときに自動で入る）。
 
 ## 操作
 

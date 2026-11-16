@@ -44,6 +44,7 @@ export function SidebarView(props: { ctx: TaskContext }) {
 		{ type: "pkm-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
 		{ type: "pkm-task-members", title: "Members", icon: "users" },
 		{ type: "pkm-task-labels", title: "Labels", icon: "tag" },
+		{ type: "pkm-task-presets", title: "Presets", icon: "copy-plus" },
 	];
 
 	return (

@@ -13,7 +13,7 @@
 3. status（メニュー）と status-detail。delegated なら委任先。
 4. priority と label
 5. 今日からの 7 日のストリップ（押すとその日を Calendar の日にする。もう一度押すと消す。「calendar >」で先の日も選べる）、tickler（その日に Inbox に戻す）、soft deadline・deadline
-6. サブイシューの一覧（同じ Markdown に作る。題・状態・期間と依存を持ち、閉じたものは既定では隠す）。今日のボードに載せる Pick と、載った後の再生・停止を表示する。Timeline で期間と依存を見て直せる
+6. サブイシューの一覧（同じ Markdown に作る。題・状態・期間と依存を持ち、閉じたものは既定では隠す）。今日のボードに載せる Pick と、載った後の再生・停止を表示する。Timeline で期間と依存を見て直せる。見出しの Apply preset から[プリセット](task-presets.md)を選ぶと、そのサブを末尾に足し、本文を issue の本文の末尾に追記する
 7. estimated（プリセットか単位付きの入力）、実績、残り
 8. worklog（見出しに Pick、ボードに載った後は再生・停止。新しい順に 5 件ずつ。押して編集）
 9. 本文（ふつうのエディタ。新しい issue は ToDo / Description / Note の見出し）

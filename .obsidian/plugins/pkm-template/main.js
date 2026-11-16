@@ -543,7 +543,7 @@ function formatDateTime(date, format = "YYYY-MM-DD") {
 }
 
 // src/core/ids.ts
-var ID_PREFIXES = ["i", "r", "m"];
+var ID_PREFIXES = ["i", "r", "m", "p"];
 function isIdPrefix(value) {
   return ID_PREFIXES.includes(value);
 }
@@ -1849,7 +1849,7 @@ function openableInObsidian(ext) {
 
 // src/core/note-list.ts
 var WIKI_TYPES = ["concept", "entity", "topic", "answer"];
-var TASK_TYPES = ["issue", "routine", "member"];
+var TASK_TYPES = ["issue", "routine", "member", "preset"];
 function withoutTmp(notes) {
   return notes.filter((n2) => !isTmpPath(n2.path));
 }
@@ -1895,7 +1895,7 @@ function importedSourcePaths(notes) {
 function hasNoteHeader(path, frontmatter) {
   const type = frontmatter?.type;
   if (typeof type === "string" && TASK_TYPES.includes(type)) return false;
-  return !/^(issue|routine|member)\/[^/]+\.md$/.test(path);
+  return !/^(issue|routine|member|preset)\/[^/]+\.md$/.test(path);
 }
 
 // src/core/note-header.ts

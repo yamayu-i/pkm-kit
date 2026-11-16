@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTaskPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/dist/preact.module.js
 var n;
@@ -889,7 +889,7 @@ function nextIds(prefix, existing, count = 1) {
   return Array.from({ length: count }, (_2, i3) => `${prefix}-${max + 1 + i3}`);
 }
 function pathForId(id) {
-  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+  const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : id.startsWith("p-") ? "preset" : "member";
   return `${folder}/${id}.md`;
 }
 
@@ -1428,6 +1428,17 @@ function replaceSubIssues(text, blocks) {
   return `${head.trimEnd()}
 
 ${parts.join("\n")}`;
+}
+function appendParentBodyText(text, body) {
+  const add = body.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+  if (!add) return text;
+  if (add.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) throw new SubIssueFormatError(`\u8FFD\u8A18\u3059\u308B\u672C\u6587\u306E\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`);
+  const { head, blocks } = splitSubIssueText(text);
+  const base = head.trimEnd();
+  const nextHead = `${base}${base ? "\n\n" : ""}${add}
+`;
+  return blocks.length === 0 ? nextHead : `${nextHead}
+${blocks.join("")}`;
 }
 function updateSubIssueText(path, parent, text, id, patch, parseYaml5) {
   const { blocks } = parseSubIssues(path, parent, text, parseYaml5);
@@ -2144,7 +2155,7 @@ function isDoneStatus(status) {
 
 // src/core/index.ts
 function emptyVaultData() {
-  return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
+  return { issues: [], subIssues: [], routines: [], members: [], labels: [], presets: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 }
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -4187,7 +4198,8 @@ function SubIssues(props) {
         ] }),
         /* @__PURE__ */ u3(FilterChip, { label: "List", on: mode === "list", onClick: () => setMode("list") }),
         /* @__PURE__ */ u3(FilterChip, { label: "Timeline", on: mode === "timeline", onClick: () => setMode("timeline") })
-      ] })
+      ] }),
+      /* @__PURE__ */ u3(PresetButton, { ctx, issue, index })
     ] }),
     mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale }),
     mode === "list" && shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
@@ -4205,6 +4217,26 @@ function SubIssues(props) {
     counts.closed > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button vt-subissues-closed", onClick: () => setShowClosed((v3) => !v3), children: showClosed ? "Hide closed" : `Show ${counts.closed} closed` }),
     /* @__PURE__ */ u3(QuickAdd, { ctx, issue, onDropEnd: (dragged) => move2(dragged, null) })
   ] });
+}
+function PresetButton(props) {
+  const { ctx, issue, index } = props;
+  const open = (e3) => {
+    const m3 = new import_obsidian5.Menu();
+    for (const preset of index.data.presets) {
+      m3.addItem(
+        (mi) => mi.setTitle(preset.name).setIcon("copy-plus").onClick(
+          () => void ctx.writer.applyPreset(issue.id, preset).then(
+            (keys) => new import_obsidian5.Notice(`\u30D7\u30EA\u30BB\u30C3\u30C8\u300C${preset.name}\u300D\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\uFF08\u30B5\u30D6 ${keys.length} \u4EF6\uFF09`),
+            (err) => ctx.report("\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err)
+          )
+        )
+      );
+    }
+    if (index.data.presets.length > 0) m3.addSeparator();
+    m3.addItem((mi) => mi.setTitle("Manage presets\u2026").setIcon("settings").onClick(() => void ctx.openView("pkm-task-presets")));
+    m3.showAtMouseEvent(e3);
+  };
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Apply preset", title: "Apply preset", onClick: open, children: /* @__PURE__ */ u3(Icon, { name: "copy-plus" }) });
 }
 function readDrag(e3) {
   return e3.dataTransfer?.getData(DRAG_TYPE) || null;
@@ -4398,10 +4430,11 @@ function IssueHeader(props) {
 }
 function SummaryField(props) {
   const { summary, save } = props;
+  const field = props.field ?? "summary";
   const [editing, setEditing] = d2(false);
   const commit = (value) => {
     setEditing(false);
-    if (value.trim() && value.trim() !== summary) save({ summary: value.trim() });
+    if (value.trim() && value.trim() !== summary) save({ [field]: value.trim() });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-title", children: [
     props.badge,
@@ -4783,6 +4816,225 @@ function MemberHeader(props) {
   ] });
 }
 
+// src/core/presets.ts
+var PRESET_PATH_RE = /^preset\/[^/]+\.md$/;
+var FRONTMATTER_RE2 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/;
+function presetBodyOf(text) {
+  const fm = FRONTMATTER_RE2.exec(text);
+  return text.slice(fm ? fm[0].length : 0).replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+}
+function parsePreset(path, fm, text) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("preset", "p");
+  const name = r3.string("name") ?? "";
+  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const subIssues = [];
+  for (const v3 of r3.list("sub_issues")) {
+    const error = typeof v3 === "string" ? presetSubError(v3) : "\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093";
+    if (error !== null) r3.problem("invalid-preset-sub", `sub_issues: ${error}: ${JSON.stringify(v3)}`);
+    else subIssues.push(v3.trim());
+  }
+  let body = text === void 0 ? "" : presetBodyOf(text);
+  const bodyError = presetBodyError(body);
+  if (bodyError !== null) {
+    r3.problem("invalid-preset-body", `\u672C\u6587: ${bodyError}`);
+    body = "";
+  }
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name: name || id, subIssues, body, created: r3.datetime("created") }, problems: r3.problems };
+}
+function presetSubError(summary) {
+  if (!summary.trim()) return "\u984C\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (/[\r\n]/.test(summary)) return "\u984C\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093";
+  if (summary.includes("-->")) return "\u984C\u306B --> \u306F\u66F8\u3051\u307E\u305B\u3093";
+  return null;
+}
+function presetBodyError(body) {
+  if (body.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) return `\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`;
+  return null;
+}
+function newPresetContent(id, name, created) {
+  return ["---", `schema: ${SCHEMA_VERSION}`, "type: preset", `id: ${id}`, `name: ${JSON.stringify(name)}`, "sub_issues: []", `created: ${created}`, `updated: ${created}`, "---", "", ""].join("\n");
+}
+function presetBodyPreview(body) {
+  const line = body.split(/\r?\n/).find((l3) => l3.trim() !== "") ?? "";
+  return line.replace(/^#+\s*/, "").trim();
+}
+function matchPreset(p3, text) {
+  const q2 = text.trim().toLowerCase();
+  if (!q2) return true;
+  return [p3.id, p3.name, ...p3.subIssues, p3.body].some((s3) => s3.toLowerCase().includes(q2));
+}
+
+// src/ui/EditRow.tsx
+function move(list, i3, d3) {
+  const j3 = i3 + d3;
+  if (j3 < 0 || j3 >= list.length) return list;
+  const next = [...list];
+  [next[i3], next[j3]] = [next[j3], next[i3]];
+  return next;
+}
+function NameField(props) {
+  const ref = A2(null);
+  h2(() => {
+    if (props.autoFocus) ref.current?.focus();
+  }, []);
+  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
+    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "Name", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
+    props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
+  ] });
+}
+function RowTools(props) {
+  const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
+  return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move up", "aria-label": "Move up", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move down", "aria-label": "Move down", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
+    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
+  ] });
+}
+
+// src/header/PresetHeader.tsx
+function PresetHeader(props) {
+  const { ctx, path } = props;
+  useStoreVersion(ctx.store);
+  const preset = ctx.store.index.data.presets.find((p3) => p3.path === path);
+  if (!preset) {
+    return /* @__PURE__ */ u3("div", { class: "vt-header-missing", children: "preset \u306E frontmatter \u3092\u8AAD\u3081\u307E\u305B\u3093\uFF08type / id \u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\uFF09" });
+  }
+  const save = (fields) => void ctx.writer.update(path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  return /* @__PURE__ */ u3("div", { class: "vt-issue vt-preset", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
+      /* @__PURE__ */ u3("span", { children: [
+        "created ",
+        formatDateTime(preset.created)
+      ] }),
+      /* @__PURE__ */ u3("span", { children: [
+        "updated ",
+        formatDateTime(ctx.store.mtime(path))
+      ] })
+    ] }),
+    /* @__PURE__ */ u3(SummaryField, { badge: /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: preset.id }), summary: preset.name, field: "name", save }),
+    /* @__PURE__ */ u3(PresetSubs, { preset, save }),
+    /* @__PURE__ */ u3("div", { class: "vt-banner vt-preset-hint", children: [
+      /* @__PURE__ */ u3(Icon, { name: "copy-plus" }),
+      " Apply this preset from the Sub-issues card of an issue. The sub-issues are added at the end, and the body below is appended to the end of the issue's body."
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-field-label vt-preset-body-label", children: "Body" })
+  ] });
+}
+function PresetSubs(props) {
+  const { preset, save } = props;
+  const subs = preset.subIssues;
+  const write = (next) => save({ sub_issues: next });
+  return /* @__PURE__ */ u3("section", { class: "vt-card vt-preset-subs", "aria-label": "Sub-issues", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
+      subs.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", children: subs.length })
+    ] }),
+    subs.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No sub-issues yet" }),
+    subs.length > 0 && /* @__PURE__ */ u3("ol", { class: "vt-preset-sub-list", children: subs.map((summary, i3) => /* @__PURE__ */ u3(
+      PresetSubRow,
+      {
+        index: i3,
+        count: subs.length,
+        summary,
+        onCommit: (v3) => write(subs.map((s3, j3) => j3 === i3 ? v3 : s3)),
+        onMove: (d3) => write(move(subs, i3, d3)),
+        onDelete: () => write(subs.filter((_2, j3) => j3 !== i3))
+      },
+      `${i3}:${summary}`
+    )) }),
+    /* @__PURE__ */ u3(SubQuickAdd, { onAdd: (added) => write([...subs, ...added]) })
+  ] });
+}
+function PresetSubRow(props) {
+  const { summary } = props;
+  const [draft, setDraft] = d2(summary);
+  h2(() => setDraft(summary), [summary]);
+  const error = presetSubError(draft);
+  const commit = () => {
+    const next = draft.trim();
+    if (error === null && next !== summary) props.onCommit(next);
+  };
+  return /* @__PURE__ */ u3("li", { class: "vt-preset-sub", children: [
+    /* @__PURE__ */ u3("label", { class: `vt-name-field${error ? " is-error" : ""}`, children: [
+      /* @__PURE__ */ u3("span", { class: "vt-name-label", children: [
+        "#",
+        props.index + 1
+      ] }),
+      /* @__PURE__ */ u3(
+        "input",
+        {
+          type: "text",
+          value: draft,
+          placeholder: "Sub-issue title",
+          "aria-invalid": error !== null,
+          onInput: (e3) => setDraft(e3.currentTarget.value),
+          onBlur: commit,
+          onKeyDown: (e3) => {
+            if (e3.key === "Enter" && !e3.isComposing) commit();
+            if (e3.key === "Escape") setDraft(summary);
+          }
+        }
+      ),
+      error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: error })
+    ] }),
+    /* @__PURE__ */ u3(RowTools, { what: "sub-issue", index: props.index, count: props.count, onMove: props.onMove, onDelete: props.onDelete })
+  ] });
+}
+function SubQuickAdd(props) {
+  const [draft, setDraft] = d2("");
+  const [error, setError] = d2(null);
+  const add = (summaries) => {
+    if (summaries.length === 0) return false;
+    const bad = summaries.map(presetSubError).find((e3) => e3 !== null) ?? null;
+    setError(bad);
+    if (bad !== null) return false;
+    props.onAdd(summaries);
+    return true;
+  };
+  return /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3(
+      "form",
+      {
+        class: "vt-quick-add vt-subissue-add",
+        onSubmit: (e3) => {
+          e3.preventDefault();
+          if (add(splitQuickAdd(draft))) setDraft("");
+        },
+        children: [
+          /* @__PURE__ */ u3(Icon, { name: "plus" }),
+          /* @__PURE__ */ u3(
+            "input",
+            {
+              type: "text",
+              "aria-label": "Add a sub-issue",
+              placeholder: "Add a sub-issue",
+              value: draft,
+              "aria-invalid": error !== null,
+              onInput: (e3) => {
+                setDraft(e3.currentTarget.value);
+                setError(null);
+              },
+              onPaste: (e3) => {
+                const text = e3.clipboardData?.getData("text/plain") ?? "";
+                if (!/\r?\n/.test(text.trim())) return;
+                e3.preventDefault();
+                add(splitQuickAdd(text));
+              },
+              onKeyDown: (e3) => {
+                if (e3.key === "Escape") e3.currentTarget.blur();
+              }
+            }
+          )
+        ]
+      }
+    ),
+    error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: error })
+  ] });
+}
+
 // src/header/RoutineHeader.tsx
 var import_obsidian8 = require("obsidian");
 
@@ -4997,13 +5249,15 @@ function RoutineHeader(props) {
 var ISSUE_PATH_RE = /^issue\/[^/]+\.md$/;
 var ROUTINE_PATH_RE = /^routine\/[^/]+\.md$/;
 var MEMBER_PATH_RE = /^member\/[^/]+\.md$/;
+var PRESET_PATH_RE2 = /^preset\/[^/]+\.md$/;
 var HEADER_CLASS = "vt-header vt-ui";
 function isTaskNotePath(path) {
-  return ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path);
+  return ISSUE_PATH_RE.test(path) || ROUTINE_PATH_RE.test(path) || MEMBER_PATH_RE.test(path) || PRESET_PATH_RE2.test(path);
 }
 function headerFor(path) {
   if (ROUTINE_PATH_RE.test(path)) return RoutineHeader;
   if (MEMBER_PATH_RE.test(path)) return MemberHeader;
+  if (PRESET_PATH_RE2.test(path)) return PresetHeader;
   return IssueHeader;
 }
 function installTaskHeaders(ctx, plugin) {
@@ -6192,6 +6446,7 @@ function serializeLabels(labels) {
 // src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
+  if (PRESET_PATH_RE.test(path)) return "preset";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -6219,7 +6474,7 @@ function resolveMigrated(data, byOld) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], presets: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -6230,7 +6485,7 @@ function collectVault(input) {
       }
       continue;
     }
-    if (kind !== "issue" && kind !== "routine" && kind !== "member") continue;
+    if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "preset") continue;
     if (frontmatter === null) {
       problems.push({ severity: "error", path, code: "missing-frontmatter", message: "frontmatter \u304C\u306A\u3044\u304B\u3001YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
       continue;
@@ -6246,6 +6501,10 @@ function collectVault(input) {
           data.subIssues.push(...s3.subs);
         }
       }
+    } else if (kind === "preset") {
+      const r3 = parsePreset(path, frontmatter, text);
+      problems.push(...r3.problems);
+      if (r3.value) data.presets.push(r3.value);
     } else if (kind === "routine") {
       const r3 = parseRoutine(path, frontmatter);
       problems.push(...r3.problems);
@@ -6359,7 +6618,7 @@ var TaskStore = class {
   }
   async readText(file) {
     const kind = fileKind(file.path);
-    if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels") this.texts.set(file.path, await this.app.vault.cachedRead(file));
+    if (kind === "issue" || kind === "worklog" || kind === "board" || kind === "statuslog" || kind === "labels" || kind === "preset") this.texts.set(file.path, await this.app.vault.cachedRead(file));
   }
   touch(file) {
     if (fileKind(file.path) !== null) this.schedule();
@@ -6375,14 +6634,14 @@ var TaskStore = class {
     const input = { markdown: [], worklogs: [], labels: null, boardLogs: [], statusLogs: [], parseYaml: import_obsidian16.parseYaml };
     for (const file of this.app.vault.getMarkdownFiles()) {
       const kind = fileKind(file.path);
-      if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "daily") continue;
+      if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "preset" && kind !== "daily") continue;
       const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-      const text = kind === "issue" ? this.texts.get(file.path) : void 0;
+      const text = kind === "issue" || kind === "preset" ? this.texts.get(file.path) : void 0;
       input.markdown.push({ path: file.path, frontmatter: fm ? { ...fm } : null, ...text !== void 0 ? { text } : {} });
     }
     for (const [path, text] of this.texts) {
       const kind = fileKind(path);
-      if (kind === "issue") continue;
+      if (kind === "issue" || kind === "preset") continue;
       if (kind === "worklog") input.worklogs.push({ path, text });
       else if (kind === "board") input.boardLogs.push({ path, text });
       else if (kind === "statuslog") input.statusLogs.push({ path, text });
@@ -6910,7 +7169,7 @@ var TaskWriter = class {
   }
   takenIds() {
     const { index } = this.store;
-    const ids = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys()];
+    const ids = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys(), ...index.data.presets.map((p3) => p3.id)];
     for (const f4 of this.app.vault.getMarkdownFiles()) ids.push(f4.basename);
     return ids;
   }
@@ -6977,6 +7236,40 @@ var TaskWriter = class {
       await this.app.vault.create(LABELS_PATH, text);
     }
     this.store.refreshSoon();
+  }
+  /** プリセットの md を作る（ADR-0186）。作った ID を返す */
+  async createPreset(name) {
+    const [id] = nextIds("p", this.takenIds());
+    const path = (0, import_obsidian18.normalizePath)(pathForId(id));
+    await this.ensureFolder(path);
+    await this.app.vault.create(path, newPresetContent(id, name, localDateTime()));
+    this.store.refreshSoon();
+    return id;
+  }
+  /**
+   * プリセットを issue に当てる（ADR-0186）。1 回の書き込みで、サブを末尾へ足し（素早い追加と同じ既定値）、
+   * 本文を親の本文の末尾に追記する。作ったサブの合成キーを返す
+   */
+  async applyPreset(parentId, preset) {
+    const issue = this.store.index.issues.get(parentId);
+    if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parentId}`);
+    const created = localDateTime();
+    let keys = [];
+    await this.app.vault.process(this.file(issue.path), (text) => {
+      const existing = parseSubIssues(issue.path, issue.id, text, import_obsidian18.parseYaml).subs;
+      const taken = existing.map((s3) => s3.id);
+      const subs = preset.subIssues.map((summary) => {
+        const id = newSubId(taken);
+        taken.push(id);
+        return newSubIssueInput({ summary }, id, created);
+      });
+      this.assertSubs([...existing, ...subs], subs.map((s3) => s3.id));
+      keys = subs.map((s3) => subKey(issue.id, s3.id));
+      const withBody = appendParentBodyText(text, preset.body);
+      return subs.length > 0 ? insertSubIssuesText(issue.path, issue.id, withBody, subs, import_obsidian18.parseYaml) : withBody;
+    });
+    this.store.refreshSoon();
+    return keys;
   }
   /** worklog の 1 行を書き換える。next が null なら行を消す（ADR-0012） */
   async updateWorklog(entry, next) {
@@ -7835,34 +8128,6 @@ function InboxView(props) {
   ] });
 }
 
-// src/ui/EditRow.tsx
-function move(list, i3, d3) {
-  const j3 = i3 + d3;
-  if (j3 < 0 || j3 >= list.length) return list;
-  const next = [...list];
-  [next[i3], next[j3]] = [next[j3], next[i3]];
-  return next;
-}
-function NameField(props) {
-  const ref = A2(null);
-  h2(() => {
-    if (props.autoFocus) ref.current?.focus();
-  }, []);
-  return /* @__PURE__ */ u3("label", { class: `vt-name-field${props.error ? " is-error" : ""}${props.class ? ` ${props.class}` : ""}`, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-name-label", children: props.label }),
-    /* @__PURE__ */ u3("input", { ref, type: "text", value: props.value, placeholder: props.placeholder ?? "Name", onInput: (e3) => props.onInput(e3.currentTarget.value) }),
-    props.error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: props.error })
-  ] });
-}
-function RowTools(props) {
-  const deleteTitle = props.deleteDisabled ?? `Delete ${props.what}`;
-  return /* @__PURE__ */ u3("span", { class: "vt-row-tools", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move up", "aria-label": "Move up", disabled: props.index === 0, onClick: () => props.onMove(-1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-up" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: "Move down", "aria-label": "Move down", disabled: props.index === props.count - 1, onClick: () => props.onMove(1), children: /* @__PURE__ */ u3(Icon, { name: "arrow-down" }) }),
-    /* @__PURE__ */ u3("button", { class: "vt-icon-button", title: deleteTitle, "aria-label": deleteTitle, disabled: props.deleteDisabled !== void 0, onClick: props.onDelete, children: /* @__PURE__ */ u3(Icon, { name: "trash-2" }) })
-  ] });
-}
-
 // src/views/LabelManagerView.tsx
 var nextKey = 1;
 var toDraft = (l3) => ({ key: nextKey++, from: l3.name, name: l3.name, color: l3.color });
@@ -8083,8 +8348,80 @@ function MemberListView(props) {
   ] });
 }
 
-// src/views/IssueListView.tsx
+// src/views/PresetListView.tsx
 var import_obsidian22 = require("obsidian");
+function PresetForm(props) {
+  const [name, setName] = d2("");
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-worklog-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (name.trim()) props.onSubmit(name.trim());
+      },
+      children: [
+        /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+          /* @__PURE__ */ u3("span", { children: "name" }),
+          /* @__PURE__ */ u3("input", { type: "text", value: name, placeholder: "e.g. Release", ref: (el) => el?.focus(), onInput: (e3) => setName(e3.currentTarget.value) })
+        ] }),
+        /* @__PURE__ */ u3("div", { class: "vt-muted", children: "Add the sub-issues and the body on the preset screen that opens next." }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: !name.trim(), children: "Create" }) })
+      ]
+    }
+  );
+}
+function PresetListView(props) {
+  const { ctx } = props;
+  useStoreVersion(ctx.store);
+  const all = ctx.store.index.data.presets;
+  const [text, setText] = d2("");
+  const presets = all.filter((p3) => matchPreset(p3, text));
+  const create = () => new PreactModal(ctx.app, "Create preset", (close) => /* @__PURE__ */ u3(
+    PresetForm,
+    {
+      onSubmit: (name) => {
+        close();
+        void ctx.writer.createPreset(name).then((id) => ctx.openPath(pathForId(id))).catch((e3) => ctx.report("\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+      }
+    }
+  )).open();
+  return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
+    /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
+      /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Presets" }),
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: all.length }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: create, children: [
+        /* @__PURE__ */ u3(Icon, { name: "plus" }),
+        " Create preset"
+      ] })
+    ] }),
+    all.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card vt-filters", children: /* @__PURE__ */ u3("label", { class: "vt-search", children: [
+      /* @__PURE__ */ u3(Icon, { name: "search" }),
+      /* @__PURE__ */ u3("input", { type: "search", placeholder: "Search by name, sub-issue or body", value: text, onInput: (e3) => setText(e3.currentTarget.value) })
+    ] }) }),
+    all.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No presets yet. A preset is a set of sub-issues and a body that you can add to an issue at once." }),
+    all.length > 0 && presets.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No presets match" }),
+    /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: presets.map((p3) => {
+      const preview = presetBodyPreview(p3.body);
+      return /* @__PURE__ */ u3("div", { class: "vt-routine-item vt-preset-item", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-badge vt-id", children: p3.id }),
+        /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(p3.path, import_obsidian22.Keymap.isModEvent(e3) !== false)), children: [
+          /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: p3.name }),
+          preview && /* @__PURE__ */ u3("span", { class: "vt-preset-item-preview", children: preview })
+        ] }),
+        /* @__PURE__ */ u3("span", { class: "vt-muted", title: "Number of sub-issues", children: [
+          "Sub-issues ",
+          p3.subIssues.length
+        ] })
+      ] }, p3.id);
+    }) }),
+    /* @__PURE__ */ u3("p", { class: "vt-muted", children: "Apply a preset from the Sub-issues card of an issue. Its sub-issues are added at the end, and its body is appended to the end of the issue's body." })
+  ] });
+}
+
+// src/views/IssueListView.tsx
+var import_obsidian23 = require("obsidian");
 
 // src/core/list.ts
 function defaultQuery() {
@@ -8166,7 +8503,7 @@ function IssueListView(props) {
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const labels = index.data.labels.map((l3) => l3.name);
   const presetMenu = (e3) => {
-    const m3 = new import_obsidian22.Menu();
+    const m3 = new import_obsidian23.Menu();
     for (const p3 of ctx.settings.presets) {
       m3.addItem((mi) => mi.setTitle(p3.name).onClick(() => set({ ...defaultQuery(), ...p3.query })));
     }
@@ -8257,7 +8594,7 @@ function IssueListView(props) {
 }
 
 // src/views/OrganizeView.tsx
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 var CHUNK = 5;
 var SWIPE = 90;
 var FIELD_OF = {
@@ -8385,7 +8722,7 @@ function OrganizeView(props) {
   };
   const priorityMenu2 = (e3) => {
     if (!issue) return;
-    const m3 = new import_obsidian23.Menu();
+    const m3 = new import_obsidian24.Menu();
     for (const p3 of PRIORITIES) m3.addItem((mi) => mi.setTitle(p3).setChecked(issue.priority === p3).onClick(() => void ctx.writer.update(issue.path, { priority: p3 })));
     m3.addItem((mi) => mi.setTitle("None").onClick(() => void ctx.writer.update(issue.path, { priority: null })));
     m3.showAtMouseEvent(e3);
@@ -8533,7 +8870,7 @@ function OrganizeView(props) {
 }
 
 // src/views/RoutineListView.tsx
-var import_obsidian24 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 function RoutineForm(props) {
   const [summary, setSummary] = d2("");
   const [draft, setDraft] = d2(defaultRepeatDraft());
@@ -8594,7 +8931,7 @@ function RoutineListView(props) {
     routines.length === 0 && /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No routines yet. Add tasks that repeat daily or weekly (they appear only on the task board)." }),
     /* @__PURE__ */ u3("div", { class: "vt-routine-list", children: routines.map((r3) => /* @__PURE__ */ u3("div", { class: `vt-routine-item${r3.active ? "" : " is-paused"}`, children: [
       /* @__PURE__ */ u3("span", { class: "vt-badge vt-id vt-routine-id", children: r3.id }),
-      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-routine-main", ...linkProps((e3) => void ctx.openPath(r3.path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: [
         /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
         /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
           r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
@@ -8608,7 +8945,7 @@ function RoutineListView(props) {
 }
 
 // src/views/ScheduledView.tsx
-var import_obsidian25 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 var DAYS = 14;
 function ScheduledView(props) {
   const { ctx } = props;
@@ -8633,7 +8970,7 @@ function ScheduledView(props) {
         ] }))
       ] }) }),
       /* @__PURE__ */ u3("tbody", { children: issues.map((i3) => /* @__PURE__ */ u3("tr", { children: [
-        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: [
+        /* @__PURE__ */ u3("th", { class: "vt-sched-sticky", children: /* @__PURE__ */ u3("span", { class: "vt-sched-issue", ...linkProps((e3) => void ctx.openPath(i3.path, import_obsidian26.Keymap.isModEvent(e3) !== false)), children: [
           /* @__PURE__ */ u3(IdBadge, { issue: i3 }),
           /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: i3.summary, children: i3.summary })
         ] }) }),
@@ -8644,7 +8981,7 @@ function ScheduledView(props) {
 }
 
 // src/views/SidebarView.tsx
-var import_obsidian26 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 function SidebarView(props) {
   const { ctx } = props;
   useStoreVersion(ctx.store);
@@ -8667,7 +9004,8 @@ function SidebarView(props) {
     { type: "pkm-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
     { type: "pkm-task-routines", title: "Routines", icon: "repeat", count: counts.routines },
     { type: "pkm-task-members", title: "Members", icon: "users" },
-    { type: "pkm-task-labels", title: "Labels", icon: "tag" }
+    { type: "pkm-task-labels", title: "Labels", icon: "tag" },
+    { type: "pkm-task-presets", title: "Presets", icon: "copy-plus" }
   ];
   return /* @__PURE__ */ u3("div", { class: "vt-sidebar", children: [
     /* @__PURE__ */ u3("button", { class: "vt-button is-primary vt-sidebar-capture", onClick: () => openCaptureModal(ctx), children: [
@@ -8681,7 +9019,7 @@ function SidebarView(props) {
         const summary = task?.summary || taskId;
         const path = task?.path ?? null;
         return /* @__PURE__ */ u3("div", { class: "vt-task is-running", children: /* @__PURE__ */ u3("div", { class: "vt-task-top", children: [
-          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian26.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
+          path ? /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: `${taskId} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian27.Keymap.isModEvent(e3) !== false)), children: summary }) : /* @__PURE__ */ u3("span", { class: "vt-task-summary", children: summary }),
           /* @__PURE__ */ u3(
             "button",
             {
@@ -9003,10 +9341,11 @@ var VIEWS = [
   { type: "pkm-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
   { type: "pkm-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
   { type: "pkm-task-members", title: "Members", icon: "users", component: MemberListView },
-  { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView }
+  { type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView },
+  { type: "pkm-task-presets", title: "Presets", icon: "copy-plus", component: PresetListView }
 ];
 var SIDEBAR_VIEW = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };
-var PkmTaskPlugin = class extends import_obsidian27.Plugin {
+var PkmTaskPlugin = class extends import_obsidian28.Plugin {
   store = null;
   undo = null;
   taskSettings = { ...DEFAULT_SETTINGS };
@@ -9017,7 +9356,7 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
     const report = (message, error) => {
       if (error !== void 0) console.error(`pkm-task: ${message}`, error);
       const detail = error instanceof Error ? `: ${error.message}` : "";
-      new import_obsidian27.Notice(`${message}${detail}`);
+      new import_obsidian28.Notice(`${message}${detail}`);
     };
     const writer = new TaskWriter(this.app, store, () => this.taskSettings.deviceName);
     const undo = new StatusUndo(report);
@@ -9035,9 +9374,9 @@ var PkmTaskPlugin = class extends import_obsidian27.Plugin {
       // 一覧の View は左の固定ペインに、そこから開くノートは右のノートペインに出す（ADR-0033）
       openPath: async (path, newTab = false) => {
         const file = this.app.vault.getFileByPath(path);
-        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian27.Platform.isPhone });
+        if (file) await openInNotePane(this.app.workspace, file, { newTab, phone: import_obsidian28.Platform.isPhone });
       },
-      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian27.Platform.isPhone }),
+      openView: (type) => openListView(this.app.workspace, type, { phone: import_obsidian28.Platform.isPhone }),
       report
     };
     const openSidebar = async (reveal2 = true) => {

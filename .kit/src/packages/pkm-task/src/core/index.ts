@@ -4,6 +4,7 @@ import { lastOrder, type OrderRecord } from "./board-log";
 import { deadIssues, deadSubs, missedIssues, missedSubs, scheduledOn } from "./daily";
 import { prorateEffort } from "./effort";
 import type { LabelDef } from "./labels";
+import type { IssuePreset } from "./presets";
 import { occursOn } from "./repeat";
 import type { Issue, Member, Routine, Status } from "./schema";
 import { closedAtMap, isIssueStatusLog, statusBefore, type StatusLogEntry } from "./status-log";
@@ -17,6 +18,8 @@ export interface VaultData {
 	routines: Routine[];
 	members: Member[];
 	labels: LabelDef[];
+	/** issue のプリセット（preset/ の md。ID の順。ADR-0186） */
+	presets: IssuePreset[];
 	worklogs: WorklogEntry[];
 	/** ボードの状態（操作ログの再生結果。ADR-0020） */
 	boards: DailyBoard[];
@@ -27,7 +30,7 @@ export interface VaultData {
 }
 
 export function emptyVaultData(): VaultData {
-	return { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
+	return { issues: [], subIssues: [], routines: [], members: [], labels: [], presets: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
 }
 
 /** 終わっている、または意識の外に置いている status（各 View の既定の表示から外す。ADR-0006） */

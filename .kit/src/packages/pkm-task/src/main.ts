@@ -19,6 +19,7 @@ import { DailyView } from "./views/DailyView";
 import { InboxView } from "./views/InboxView";
 import { LabelManagerView } from "./views/LabelManagerView";
 import { MemberListView } from "./views/MemberListView";
+import { PresetListView } from "./views/PresetListView";
 import { IssueListView } from "./views/IssueListView";
 import { OrganizeView } from "./views/OrganizeView";
 import { RoutineListView } from "./views/RoutineListView";
@@ -31,7 +32,7 @@ import { TasksNowDialog } from "./views/TasksNowDialog";
 const TASKS_NOW_COMMAND = "pkm-task:open-tasks-now";
 const BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 
-/** View の一覧（ADR-0009, 0010, 0021, 0035） */
+/** View の一覧（ADR-0009, 0010, 0021, 0035, 0186） */
 const VIEWS: ViewSpec[] = [
 	{ type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
 	{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
@@ -42,6 +43,7 @@ const VIEWS: ViewSpec[] = [
 	{ type: "pkm-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
 	{ type: "pkm-task-members", title: "Members", icon: "users", component: MemberListView },
 	{ type: "pkm-task-labels", title: "Labels", icon: "tag", component: LabelManagerView },
+	{ type: "pkm-task-presets", title: "Presets", icon: "copy-plus", component: PresetListView },
 ];
 
 const SIDEBAR_VIEW: ViewSpec = { type: "pkm-task-sidebar", title: "Tasks", icon: "check-square", component: SidebarView };

@@ -29,6 +29,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 | `issue/i-N.md` | タスク管理の issue（frontmatter が正本。`.kit/src/docs/adr/` 参照）。pkm-task でも pkm-template でも作れる |
 | `routine/r-N.md` | くり返しのタスク（同上） |
 | `member/m-N.md` | 委任先の人（同上）。`name`（本名）、`nickname`（呼び名）、`alias`（検索と候補に出す短い呼び方。単数の文字列）を持つ（`.kit/src/docs/adr/0035-member-view-and-fields.md`）。`label` は issue / routine と共用で任意（`.kit/src/docs/adr/0036-member-labels-and-list-sort.md`） |
+| `preset/p-N.md` | issue のプリセット（同上）。`name` と、サブイシューの題の一覧 `sub_issues`（文字列のリスト）を持ち、本文は issue に呼び出したときにその本文の末尾へ追記する。pkm-task の Presets から作る（`.kit/src/docs/adr/0186-issue-presets.md`） |
 | `worklog/<端末名>/YYYY-MM.jsonl` | 作業の記録（1 行 1 件） |
 | `board/<端末名>/YYYY-MM.jsonl` | ボードの操作ログ（1 行 1 操作。追記だけ） |
 | `statuslog/<端末名>/YYYY-MM.jsonl` | issue の status の変化の記録（1 行 1 件。追記だけ。分析用で、status の正本は frontmatter） |
@@ -48,7 +49,7 @@ Obsidian 側の設定は `.obsidian/app.json` / `core-plugins.json` にある（
 - DailyNote（`daily/`）の本文にすでに書かれた内容は、許可なく変更・削除しない。追記は許可する。frontmatter はこの保護の対象外（[ADR-0007](../../.kit/harness/docs/adr/0007-note-format.md)）。ノートの改名にともなうリンク先のパスの書き換えは例外として許す（ADR-0015）
 - 書式の検査: `node .claude/scripts/wiki-lint.mjs`
 - ノートを移動・改名したら、それを指すリンクもすべて書き換える（Obsidian では自動更新が有効だが、Claude Code で編集したときは自分で直す）
-- ファイル名: ノートは日本語のタイトルを入力するだけで作ってよい（入力した文字がファイル名と `title` になる）。あとで頼まれたときに、[note-rename](../skills/note-rename/SKILL.md) でファイル名だけを英語のケバブケース（英小文字・数字・ハイフン）に改名する。`title` は日本語のまま残す。`daily/`・`issue/`・`routine/`・`member/`・`asset/`・`tmp/`・`template/`・`sources/`・`slide/` は、決まった名前のまま改名しない（[ADR-0015](../../.kit/harness/docs/adr/0015-english-file-names.md)）
+- ファイル名: ノートは日本語のタイトルを入力するだけで作ってよい（入力した文字がファイル名と `title` になる）。あとで頼まれたときに、[note-rename](../skills/note-rename/SKILL.md) でファイル名だけを英語のケバブケース（英小文字・数字・ハイフン）に改名する。`title` は日本語のまま残す。`daily/`・`issue/`・`routine/`・`member/`・`preset/`・`asset/`・`tmp/`・`template/`・`sources/`・`slide/` は、決まった名前のまま改名しない（[ADR-0015](../../.kit/harness/docs/adr/0015-english-file-names.md)）
 - リンク切れを作らない。存在しないノートへのリンクを書くなら、そのノートも作る
 - 外部に共有する md を `tmp/` に作るときは、最後に `node .kit/bin/diagram.mjs export <元のファイル>` を通す（`asset/` の図を SVG の data URI にして埋め込み、`tmp/` に書く。以前の Draw.io の図は編集用 XML を除く）。html は `node .kit/bin/html.mjs export <元のファイル>` を通す（図に加えて、Vault の中の画像とデザイントークンの値を埋め込み、スクリプトと外部の読み込みを除く。[ADR-0044](../../.kit/src/docs/adr/0044-html-standalone-export.md)）。既に `tmp/` にあるものは `node .kit/bin/diagram.mjs check tmp/` で、図への参照が残っていないかを確かめる
 - スライドの `deck.html` を変えたら `node .kit/bin/slide.mjs build <フォルダ>` でビルドし、`index.html` と一緒にコミットする（`node .claude/scripts/verify.mjs` が、古い・手で直した `index.html` を止める）。ノートからは `[題](slide/<フォルダ>/index.html)` でリンクしてよい
@@ -77,7 +78,7 @@ Vault ルートの `.mcp.json` の MCP サーバー `pkm`（[ADR-0156](../../.ki
 
 新しいtypeを使う前にテンプレートを作る（上流で全 Vault に足すなら `.kit/templates/file/<type>.md`、その Vault だけなら `template/file/<type>.md`）。テンプレートは初期構造の実例であり、本文の空見出しをすべて埋める義務はない。通常のメモは note とする。追加は独自の項目・構造・処理が必要な場合に限る。
 
-現在のtype: note、daily、source、concept、entity、topic、answer、issue、routine、member、index、log、feedback。
+現在のtype: note、daily、source、concept、entity、topic、answer、issue、routine、member、preset、index、log、feedback。
 
 同じ項目名は同じ型にする。tags、aliases、sources はリスト。任意項目は必要時だけ追加する。通常のメタデータはフラットに保つ（既存のデイリーノートに残る board 等、プラグイン管理の項目は例外）。wikiは冒頭に短い要約を書き、主張ごとに出典を付ける。
 

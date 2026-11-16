@@ -1,5 +1,5 @@
-/** issue / routine / member の ID の接頭辞（ADR-0003, 0007, 0010） */
-export type IdPrefix = "i" | "r" | "m";
+/** issue / routine / member / preset の ID の接頭辞（ADR-0003, 0007, 0010, 0186） */
+export type IdPrefix = "i" | "r" | "m" | "p";
 
 export function idNumber(id: string, prefix: IdPrefix): number | null {
 	const m = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
@@ -22,6 +22,6 @@ export function nextIds(prefix: IdPrefix, existing: Iterable<string>, count = 1)
 
 /** ID からファイルのパスを作る */
 export function pathForId(id: string): string {
-	const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : "member";
+	const folder = id.startsWith("i-") ? "issue" : id.startsWith("r-") ? "routine" : id.startsWith("p-") ? "preset" : "member";
 	return `${folder}/${id}.md`;
 }

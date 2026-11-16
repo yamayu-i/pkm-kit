@@ -23,7 +23,7 @@ git switch main && git pull --rebase origin main
 node .claude/scripts/note-rename.mjs --list
 ```
 
-`daily/`、`issue/`、`routine/`、`member/`、`asset/`、`tmp/`、`template/`、`sources/`、隠しパス、`README.md` は対象にならない。件数が多いときは、ユーザーと相談して一度に扱う数を決める（目安は 20 件まで）。
+`daily/`、`issue/`、`routine/`、`member/`、`preset/`、`asset/`、`tmp/`、`template/`、`sources/`、隠しパス、`README.md` は対象にならない。件数が多いときは、ユーザーと相談して一度に扱う数を決める（目安は 20 件まで）。
 
 ## 3. 英語の名前の案を作り、確かめる
 

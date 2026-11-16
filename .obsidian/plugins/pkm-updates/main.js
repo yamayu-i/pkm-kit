@@ -813,9 +813,48 @@ function parseLabels(text2) {
   return { labels, problems };
 }
 
+// ../pkm-task/src/core/presets.ts
+var PRESET_PATH_RE = /^preset\/[^/]+\.md$/;
+var FRONTMATTER_RE2 = /^---[ \t]*\r?\n(?:[\s\S]*?\r?\n)?---[ \t]*(?:\r?\n|$)/;
+function presetBodyOf(text2) {
+  const fm = FRONTMATTER_RE2.exec(text2);
+  return text2.slice(fm ? fm[0].length : 0).replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
+}
+function parsePreset(path, fm, text2) {
+  const r3 = new Reader(path, fm);
+  const id = r3.common("preset", "p");
+  const name = r3.string("name") ?? "";
+  if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
+  const subIssues = [];
+  for (const v3 of r3.list("sub_issues")) {
+    const error = typeof v3 === "string" ? presetSubError(v3) : "\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093";
+    if (error !== null) r3.problem("invalid-preset-sub", `sub_issues: ${error}: ${JSON.stringify(v3)}`);
+    else subIssues.push(v3.trim());
+  }
+  let body = text2 === void 0 ? "" : presetBodyOf(text2);
+  const bodyError = presetBodyError(body);
+  if (bodyError !== null) {
+    r3.problem("invalid-preset-body", `\u672C\u6587: ${bodyError}`);
+    body = "";
+  }
+  if (id === null) return { value: null, problems: r3.problems };
+  return { value: { path, id, name: name || id, subIssues, body, created: r3.datetime("created") }, problems: r3.problems };
+}
+function presetSubError(summary) {
+  if (!summary.trim()) return "\u984C\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";
+  if (/[\r\n]/.test(summary)) return "\u984C\u306B\u6539\u884C\u306F\u66F8\u3051\u307E\u305B\u3093";
+  if (summary.includes("-->")) return "\u984C\u306B --> \u306F\u66F8\u3051\u307E\u305B\u3093";
+  return null;
+}
+function presetBodyError(body) {
+  if (body.split(/\r?\n/).some((l3) => l3.startsWith(SUB_ISSUE_MARKER))) return `\u884C\u982D\u306B ${SUB_ISSUE_MARKER} \u306F\u66F8\u3051\u307E\u305B\u3093`;
+  return null;
+}
+
 // ../pkm-task/src/core/load.ts
 function fileKind(path) {
   if (path === LABELS_PATH) return "labels";
+  if (PRESET_PATH_RE.test(path)) return "preset";
   if (DAILY_PATH_RE.test(path)) return "daily";
   if (WORKLOG_PATH_RE.test(path)) return "worklog";
   if (BOARD_LOG_PATH_RE.test(path)) return "board";
@@ -843,7 +882,7 @@ function resolveMigrated(data, byOld) {
   });
 }
 function collectVault(input) {
-  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
+  const data = { issues: [], subIssues: [], routines: [], members: [], labels: [], presets: [], worklogs: [], boards: [], statusLogs: [], orders: [] };
   const problems = [];
   const initialBoards = /* @__PURE__ */ new Map();
   for (const { path, frontmatter, text: text2 } of [...input.markdown].sort((a3, b2) => a3.path.localeCompare(b2.path, "en", { numeric: true }))) {
@@ -854,7 +893,7 @@ function collectVault(input) {
       }
       continue;
     }
-    if (kind !== "issue" && kind !== "routine" && kind !== "member") continue;
+    if (kind !== "issue" && kind !== "routine" && kind !== "member" && kind !== "preset") continue;
     if (frontmatter === null) {
       problems.push({ severity: "error", path, code: "missing-frontmatter", message: "frontmatter \u304C\u306A\u3044\u304B\u3001YAML \u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
       continue;
@@ -870,6 +909,10 @@ function collectVault(input) {
           data.subIssues.push(...s3.subs);
         }
       }
+    } else if (kind === "preset") {
+      const r3 = parsePreset(path, frontmatter, text2);
+      problems.push(...r3.problems);
+      if (r3.value) data.presets.push(r3.value);
     } else if (kind === "routine") {
       const r3 = parseRoutine(path, frontmatter);
       problems.push(...r3.problems);

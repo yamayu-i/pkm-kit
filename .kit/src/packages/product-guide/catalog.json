@@ -261,6 +261,29 @@
       "pkm-task-labels"
     ]
   },
+  "surfaces/task-presets.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "presets",
+        "label": "プリセットの一覧",
+        "detail": "名前・本文の 1 行目・サブの件数を並べ、ここから作ります。"
+      },
+      {
+        "provider": "task",
+        "screen": "preset",
+        "label": "プリセットの画面",
+        "detail": "名前とサブの題をヘッダーで直し、本文はその下に書きます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-presets"
+    ]
+  },
   "surfaces/task-capture.md": {
     "kind": "visual",
     "screens": [

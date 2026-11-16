@@ -11,7 +11,9 @@ import { STATUSES, type Status } from "../core/schema";
 import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../core/status-log";
 import { assertUnused, labelUsage, renameLabelField, type LabelSavePlan } from "../core/label-edit";
 import { DEFAULT_LABEL_COLOR, LABELS_PATH, serializeLabels, type LabelDef } from "../core/labels";
+import { newPresetContent, type IssuePreset } from "../core/presets";
 import {
+	appendParentBodyText,
 	dependentsOf,
 	dropPosition,
 	insertSubIssuesText,
@@ -254,7 +256,7 @@ export class TaskWriter {
 
 	private takenIds(): string[] {
 		const { index } = this.store;
-		const ids = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys()];
+		const ids = [...index.issues.keys(), ...index.routines.keys(), ...index.members.keys(), ...index.data.presets.map((p) => p.id)];
 		// 索引にまだ載っていないファイルも見る（作った直後など）
 		for (const f of this.app.vault.getMarkdownFiles()) ids.push(f.basename);
 		return ids;
@@ -328,6 +330,42 @@ export class TaskWriter {
 			await this.app.vault.create(LABELS_PATH, text);
 		}
 		this.store.refreshSoon();
+	}
+
+	/** プリセットの md を作る（ADR-0186）。作った ID を返す */
+	async createPreset(name: string): Promise<string> {
+		const [id] = nextIds("p", this.takenIds());
+		const path = normalizePath(pathForId(id!));
+		await this.ensureFolder(path);
+		await this.app.vault.create(path, newPresetContent(id!, name, localDateTime()));
+		this.store.refreshSoon();
+		return id!;
+	}
+
+	/**
+	 * プリセットを issue に当てる（ADR-0186）。1 回の書き込みで、サブを末尾へ足し（素早い追加と同じ既定値）、
+	 * 本文を親の本文の末尾に追記する。作ったサブの合成キーを返す
+	 */
+	async applyPreset(parentId: string, preset: Pick<IssuePreset, "subIssues" | "body">): Promise<string[]> {
+		const issue = this.store.index.issues.get(parentId);
+		if (!issue) throw new Error(`issue がありません: ${parentId}`);
+		const created = localDateTime();
+		let keys: string[] = [];
+		await this.app.vault.process(this.file(issue.path), (text) => {
+			const existing = parseSubIssues(issue.path, issue.id, text, parseYaml).subs;
+			const taken = existing.map((s) => s.id);
+			const subs = preset.subIssues.map((summary) => {
+				const id = newSubId(taken);
+				taken.push(id);
+				return newSubIssueInput({ summary }, id, created);
+			});
+			this.assertSubs([...existing, ...subs], subs.map((s) => s.id));
+			keys = subs.map((s) => subKey(issue.id, s.id));
+			const withBody = appendParentBodyText(text, preset.body);
+			return subs.length > 0 ? insertSubIssuesText(issue.path, issue.id, withBody, subs, parseYaml) : withBody;
+		});
+		this.store.refreshSoon();
+		return keys;
 	}
 
 	/** worklog の 1 行を書き換える。next が null なら行を消す（ADR-0012） */
