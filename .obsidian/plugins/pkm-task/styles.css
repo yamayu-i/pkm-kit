@@ -3865,6 +3865,15 @@ body.is-mobile .vt-toast {
 .markdown-preview-view .vt-sub-card-section { margin-block: 0; }
 
 
+/* 本文の「Show N closed」（終わったサブを出す・隠す。ADR-0181） */
+.vt-sub-closed-host {
+	margin: var(--vt-space-8) 0;
+}
+
+.vt-sub-closed-toggle {
+	color: var(--vt-on-surface-variant);
+}
+
 /* ---------- 月のカレンダー（ADR-0078。packages/shared/src/month-calendar.tsx。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */
 
 .vt-cal {

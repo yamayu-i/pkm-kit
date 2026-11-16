@@ -161,6 +161,16 @@ describe("writer のサブの操作", () => {
 		expect(f.subs().map((s) => s.id)).toEqual(["dddddd", "cccccc", "aaaaaa", "bbbbbb"]);
 	});
 
+	it("closed / canceled にすると md の末尾へ移る。open に戻しても動かない（ADR-0181）", async () => {
+		const f = fixture(`${HEAD}\n${block("aaaaaa")}\n${block("bbbbbb")}\n${block("cccccc")}`);
+		await f.writer.updateSub("i-1#aaaaaa", { status: "closed" });
+		expect(f.subs().map((s) => s.id)).toEqual(["bbbbbb", "cccccc", "aaaaaa"]);
+		await f.writer.updateSub("i-1#bbbbbb", { status: "canceled" });
+		expect(f.subs().map((s) => s.id)).toEqual(["cccccc", "aaaaaa", "bbbbbb"]);
+		await f.writer.updateSub("i-1#aaaaaa", { status: "open" });
+		expect(f.subs().map((s) => s.id)).toEqual(["cccccc", "aaaaaa", "bbbbbb"]);
+	});
+
 	it("直すときは検査を通し、通らなければ書かない。status の変化は statuslog に書く", async () => {
 		const f = fixture(`${HEAD}\n${block("aaaaaa")}\n${block("bbbbbb")}`);
 		const before = f.text();

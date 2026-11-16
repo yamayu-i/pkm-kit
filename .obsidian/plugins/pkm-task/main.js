@@ -1434,11 +1434,9 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml5) {
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   const before = blocks[at].sub;
   const after = { ...before, ...patch, id: before.id };
-  const next = replaceSubIssues(
-    text,
-    blocks.map((b2, i3) => i3 === at ? after : b2.sub ?? b2.raw)
-  );
-  return { text: next, before, after };
+  const items = blocks.map((b2, i3) => i3 === at ? after : b2.sub ?? b2.raw);
+  if (becomesDone(before.status, after.status)) items.push(...items.splice(at, 1));
+  return { text: replaceSubIssues(text, items), before, after };
 }
 function rebuild(path, parent, text, parseYaml5, edit) {
   const { blocks } = parseSubIssues(path, parent, text, parseYaml5);
@@ -1549,6 +1547,9 @@ function dependentsOf(subs, id) {
   return subs.filter((s3) => s3.dependsOn.includes(id)).map((s3) => s3.id);
 }
 var isDone = (s3) => s3.status === "closed" || s3.status === "canceled";
+function becomesDone(from, to) {
+  return !isDone({ status: from }) && isDone({ status: to });
+}
 function visibleSubs(subs, showClosed) {
   return showClosed ? [...subs] : subs.filter((s3) => !isDone(s3));
 }
@@ -1636,7 +1637,8 @@ function layoutSubIssues(path, parent, text, parseYaml5) {
 }
 function subHeadChange(path, parent, text, id, patch, parseYaml5, memberIds) {
   const fixed = normalizeSubPatch(patch);
-  const layout = layoutSubIssues(path, parent, text, parseYaml5).find((b2) => b2.id === id);
+  const all = layoutSubIssues(path, parent, text, parseYaml5);
+  const layout = all.find((b2) => b2.id === id);
   const { subs } = parseSubIssues(path, parent, text, parseYaml5);
   const before = subs.find((s3) => s3.id === id);
   if (!layout || !before || layout.cardTo === null) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
@@ -1647,7 +1649,22 @@ function subHeadChange(path, parent, text, id, patch, parseYaml5, memberIds) {
     memberIds
   );
   if (errors.length > 0) throw new Error(errors.join("\n"));
-  return { change: { from: layout.from, to: layout.cardTo, insert: formatSubHead(after) }, before, after };
+  const head = formatSubHead(after);
+  const change = { from: layout.from, to: layout.cardTo, insert: head };
+  const next = all[layout.index + 1];
+  if (!becomesDone(before.status, after.status) || next === void 0) return { change, changes: [change], before, after };
+  const sep = text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
+  const moved = `${sep}${head}${text.slice(layout.cardTo, next.from)}`;
+  return {
+    change,
+    changes: [
+      { from: layout.from, to: next.from, insert: "" },
+      { from: text.length, to: text.length, insert: moved.endsWith("\n") ? moved : `${moved}
+` }
+    ],
+    before,
+    after
+  };
 }
 function subSectionRole(layout, lineStart, lineEnd) {
   for (const b2 of layout) {
@@ -5215,6 +5232,16 @@ function ReadingCard(props) {
   );
 }
 
+// src/header/ClosedToggle.tsx
+function ClosedToggle(props) {
+  const [, tick] = d2(0);
+  h2(() => props.subscribe(() => tick((n2) => n2 + 1)), []);
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button vt-sub-closed-toggle", onClick: props.onToggle, children: closedLabel(props.count, props.shown()) });
+}
+function closedLabel(count, shown) {
+  return shown ? "Hide closed" : `Show ${count} closed`;
+}
+
 // src/header/sub-sticky-overlay.ts
 var ROW_HEIGHT_GUESS = 46;
 var SHADOW_ROOM = 4;
@@ -5270,11 +5297,19 @@ var StickyOverlay = class {
 var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
 var LIVE_PREVIEW_SAVE_MS = 600;
 var refresh = import_state.StateEffect.define();
+var closedShown = /* @__PURE__ */ new Set();
+var closedListeners = /* @__PURE__ */ new Set();
+function toggleClosed(ctx, path, view) {
+  if (!closedShown.delete(path)) closedShown.add(path);
+  view?.dispatch({ effects: refresh.of(null) });
+  syncReading(ctx, path);
+}
 function toggleOpen(ctx, path, id, ids) {
   ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
   void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
 }
 var CLOSED_CLASS = "vt-sub-body-closed";
+var AREA_HIDDEN = "vt-subissue-area-hidden";
 var bodies = /* @__PURE__ */ new Map();
 var cards = /* @__PURE__ */ new Map();
 var openListeners = /* @__PURE__ */ new Set();
@@ -5290,8 +5325,11 @@ function addEntry(map, path, entry, mctx) {
   mctx.addChild(child);
 }
 function syncReading(ctx, path) {
-  for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b2.id));
+  const shown = closedShown.has(path);
+  for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b2.id) || b2.done === true && !shown);
+  for (const c3 of cards.get(path) ?? []) if (c3.done) (c3.target ?? c3.el).toggleClass(AREA_HIDDEN, !shown);
   for (const fn of openListeners) fn();
+  for (const fn of closedListeners) fn();
   readingSticky?.scheduleAll();
 }
 function keepReadingScroll(scroller, el, before, floating, tries = 2) {
@@ -5369,6 +5407,7 @@ var ReadingSticky = class {
       const ownBodies = [...bodies.get(path) ?? []].filter(tag).sort((a3, b2) => a3.line - b2.line);
       for (const card of mine) {
         if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+        if (card.done && !closedShown.has(path)) continue;
         const bs = ownBodies.filter((b2) => b2.id === card.id);
         const shown = bs.filter((b2) => b2.el.isConnected);
         const last = bs[bs.length - 1];
@@ -5452,6 +5491,11 @@ function installReadingCards(ctx, plugin) {
     if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, import_obsidian11.parseYaml) };
     return memo.layout;
   };
+  let subsMemo = null;
+  const subsOf = (path, text) => {
+    if (subsMemo?.path !== path || subsMemo.text !== text) subsMemo = { path, text, subs: parseSubIssues(path, issueIdOf(path), text, import_obsidian11.parseYaml).subs };
+    return subsMemo.subs;
+  };
   plugin.registerMarkdownPostProcessor((el, mctx) => {
     const path = mctx.sourcePath;
     if (!ISSUE_PATH_RE2.test(path)) return;
@@ -5459,14 +5503,37 @@ function installReadingCards(ctx, plugin) {
     if (!info) return;
     const layout = layoutOf(path, info.text);
     const r3 = subSectionRole(layout, info.lineStart, info.lineEnd);
+    const subs = r3.role === "card" || r3.role === "body" ? subsOf(path, info.text) : [];
+    const doneIds = subs.filter(isDone).map((s3) => s3.id);
+    const isDoneId = (id) => id !== null && doneIds.includes(id);
     if (r3.role === "hide") {
-      el.addClass("vt-subissue-area-hidden");
+      el.addClass(AREA_HIDDEN);
     } else if (r3.role === "card") {
       el.addClass("vt-sub-card-section");
       const b2 = layout[r3.index];
       const raw = info.text.slice(b2.from, b2.cardTo ?? layout[r3.index + 1]?.from ?? info.text.length).trimEnd();
-      if (r3.id !== null) addEntry(cards, path, { id: r3.id, el, line: info.lineStart }, mctx);
+      const done = isDoneId(r3.id);
+      const toggleHost = done && r3.id === doneIds[0] ? el.createDiv() : null;
       const host = el.createDiv();
+      if (r3.id !== null) addEntry(cards, path, { id: r3.id, el, line: info.lineStart, done, target: toggleHost ? host : el }, mctx);
+      if (done) (toggleHost ? host : el).toggleClass(AREA_HIDDEN, !closedShown.has(path));
+      if (toggleHost) {
+        R(
+          k(ClosedToggle, {
+            count: doneIds.length,
+            shown: () => closedShown.has(path),
+            subscribe: (fn) => {
+              closedListeners.add(fn);
+              return () => closedListeners.delete(fn);
+            },
+            onToggle: () => toggleClosed(ctx, path)
+          }),
+          toggleHost
+        );
+        const toggleChild = new import_obsidian11.MarkdownRenderChild(toggleHost);
+        toggleChild.onunload = () => R(null, toggleHost);
+        mctx.addChild(toggleChild);
+      }
       R(
         k(ReadingCard, {
           ctx,
@@ -5493,8 +5560,9 @@ function installReadingCards(ctx, plugin) {
       child.onunload = () => R(null, host);
       mctx.addChild(child);
     } else if (r3.role === "body") {
-      addEntry(bodies, path, { id: r3.id, el, line: info.lineStart }, mctx);
-      el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id));
+      const done = isDoneId(r3.id);
+      addEntry(bodies, path, { id: r3.id, el, line: info.lineStart, done }, mctx);
+      el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id) || done && !closedShown.has(path));
     }
   });
 }
@@ -5502,7 +5570,7 @@ function editorSave(ctx, view, path, id) {
   return async (patch) => {
     const text = view.state.doc.toString();
     const r3 = subHeadChange(path, issueIdOf(path), text, id, patch, import_obsidian11.parseYaml, new Set(ctx.store.index.members.keys()));
-    if (r3.change.insert !== text.slice(r3.change.from, r3.change.to)) view.dispatch({ changes: r3.change, userEvent: "input.sub-card" });
+    if (r3.changes.length > 1 || r3.change.insert !== text.slice(r3.change.from, r3.change.to)) view.dispatch({ changes: r3.changes, userEvent: "input.sub-card" });
     if (r3.before.status !== r3.after.status) await ctx.writer.afterSubStatusChange(r3.after, r3.before.status, r3.after.status);
   };
 }
@@ -5604,6 +5672,33 @@ var SubCardWidget = class extends import_view.WidgetType {
     return true;
   }
 };
+var ClosedToggleWidget = class extends import_view.WidgetType {
+  constructor(ctx, path, count, shown) {
+    super();
+    this.ctx = ctx;
+    this.path = path;
+    this.count = count;
+    this.shown = shown;
+  }
+  ctx;
+  path;
+  count;
+  shown;
+  eq(other) {
+    return other.path === this.path && other.count === this.count && other.shown === this.shown;
+  }
+  toDOM(view) {
+    const dom = document.createElement("div");
+    dom.className = "vt-sub-closed-host";
+    const button = dom.createEl("button", { cls: "vt-text-button vt-sub-closed-toggle", text: closedLabel(this.count, this.shown) });
+    button.type = "button";
+    button.addEventListener("click", () => toggleClosed(this.ctx, this.path, view));
+    return dom;
+  }
+  ignoreEvent() {
+    return true;
+  }
+};
 var NONE = { all: import_view.Decoration.none, folds: import_view.Decoration.none };
 function build(ctx, state) {
   const path = state.field(import_obsidian11.editorInfoField, false)?.file?.path;
@@ -5616,11 +5711,25 @@ function build(ctx, state) {
   const touches = (from, to) => state.selection.ranges.some((r3) => cursorInside(r3, from, to));
   const all = [];
   const folds = [];
+  const shownClosed = closedShown.has(path);
+  const doneCount = subs.filter(isDone).length;
+  let toggled = false;
   for (const b2 of layout) {
     if (b2.cardTo === null || b2.bodyFrom === null || b2.bodyTo === null) continue;
     const sub = b2.id === null ? null : subs.find((s3) => s3.id === b2.id) ?? null;
     const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
     const sectionTo = layout[b2.index + 1] ? layout[b2.index + 1].from - 1 : text.length;
+    if (sub !== null && isDone(sub)) {
+      if (!toggled) {
+        toggled = true;
+        all.push(import_view.Decoration.widget({ widget: new ClosedToggleWidget(ctx, path, doneCount, shownClosed), block: true, side: -1 }).range(b2.from));
+      }
+      if (!shownClosed && !touches(b2.from, sectionTo)) {
+        all.push(import_view.Decoration.replace({ block: true }).range(b2.from, sectionTo));
+        folds.push(import_view.Decoration.replace({ block: true }).range(b2.from, sectionTo));
+        continue;
+      }
+    }
     const collapsed = sub !== null && !open && !touches(b2.cardTo, sectionTo);
     const cardTo = collapsed ? sectionTo : b2.cardTo;
     if (!touches(b2.from, cardTo)) {
@@ -5668,7 +5777,7 @@ function editorSticky(ctx) {
         for (const b2 of layout) {
           if (b2.cardTo === null || b2.id === null || !isSubOpen(ctx.settings.subOpen, path, b2.id)) continue;
           const sub = subs.find((s3) => s3.id === b2.id);
-          if (!sub) continue;
+          if (!sub || isDone(sub) && !closedShown.has(path)) continue;
           const end = b2.bodyFrom !== null && b2.bodyTo !== null && b2.bodyTo > b2.bodyFrom ? b2.bodyTo : b2.cardTo;
           open.push({ b: b2, sub, region: { top: view.lineBlockAt(b2.from).top, bottom: view.lineBlockAt(end).bottom } });
         }
@@ -5732,6 +5841,7 @@ function installSubCards(ctx, plugin) {
 }
 function revealSubIn(ctx, sub) {
   const { path, id } = sub;
+  if (isDone(sub)) closedShown.add(path);
   if (!isSubOpen(ctx.settings.subOpen, path, id)) {
     toggleOpen(
       ctx,

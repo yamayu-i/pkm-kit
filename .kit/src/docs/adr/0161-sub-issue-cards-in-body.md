@@ -79,3 +79,7 @@ ADR-0158 は、本文のサブ領域（最初の `<!-- sub-issue` から後ろ�
 - `sub-issue.ts` の `subAreaStartLine` / `subAreaOffset` / `subAreaRole` を、項目の範囲と本文の範囲を返す関数に置き換える
 - 設定の `data.json` は変わらない。子の Vault に手を入れないので移行は要らない。`.kit/changes/` に変更を 1 件書く
 - Live Preview の描き替えは Obsidian の内部の描き方に依存するので、実機で確かめる（PR のあとの本番での確認）
+
+## 追記（ADR-0181）
+
+終わったサブ（closed / canceled）は md の末尾へ送られる。本文（Live Preview と Reading）では、終わったサブのカードと本文を隠し、「Show N closed」を押すまで出さない（状態は保存しない）。

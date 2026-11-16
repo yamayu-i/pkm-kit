@@ -483,8 +483,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp", "0167-markdown-line-breaks"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを、0181 は issue/ だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp", "0167-markdown-line-breaks", "0181-sub-done-to-bottom"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -703,10 +703,10 @@ test("0135: 子と孫を、いちばん上の祖先のサブにして子のフ�
 	assert.ok(parent.startsWith(head.trimEnd()), "親の本文は変えない");
 	const blocks = parent.split("<!-- sub-issue").slice(1);
 	assert.equal(blocks.length, 2);
-	// 子の scheduled（過去の日付）は、後の 0152 が消す
-	assert.match(blocks[0], /\nsummary: "子: 仕様を決める"\nstatus: closed\nestimated: 120\ncreated: 2026-01-03T09:00:00\+09:00\nmigrated_from: i-11\n-->\n（移行で残した項目）priority: high \/ label: \[仕事, 調査\] \/ related: \[i-2\]\n\n## ToDo\n\n- \[x\] 下調べ\n/);
-	assert.match(blocks[1], /\nsummary: "孫の issue"\nstatus: open\ndeadline: 2026-01-20\ncreated: 2026-01-04T09:00:00\+09:00\nmigrated_from: i-12\n-->\n$/);
-	const subId = /^\nid: ([a-z0-9]{6})\n/.exec(blocks[0])[1];
+	// 子の scheduled（過去の日付）は、後の 0152 が消す。closed の子は、後の 0181 が末尾へ移す
+	assert.match(blocks[1], /\nsummary: "子: 仕様を決める"\nstatus: closed\nestimated: 120\ncreated: 2026-01-03T09:00:00\+09:00\nmigrated_from: i-11\n-->\n（移行で残した項目）priority: high \/ label: \[仕事, 調査\] \/ related: \[i-2\]\n\n## ToDo\n\n- \[x\] 下調べ\n/);
+	assert.match(blocks[0], /\nsummary: "孫の issue"\nstatus: open\ndeadline: 2026-01-20\ncreated: 2026-01-04T09:00:00\+09:00\nmigrated_from: i-12\n-->\n$/);
+	const subId = /^\nid: ([a-z0-9]{6})\n/.exec(blocks[1])[1];
 	assert.match(readFileSync(join(root, "issue/i-13.md"), "utf8"), new RegExp(`^related: \\["i-10#${subId}","daily/2026/01/2026-01-01.md"\\]$`, "m"));
 	// pkm-task で読むと、サブになり、旧 ID の worklog はそのサブの記録になる（lint の問題がない）
 	assert.deepEqual(taskLint(root).filter((p) => p.startsWith("issue/") || p.startsWith("worklog/")), []);
@@ -877,6 +877,29 @@ test("0152: 日付でない値のあるリストは変えずに、check が失�
 	assert.equal(failed?.name, "0152-calendar-tickler");
 	assert.match(failed.problems.join("\n"), /issue\/i-30\.md: scheduled のリストに日付でない値があり/);
 	assert.equal(readFileSync(join(root, "issue/i-30.md"), "utf8"), files["issue/i-30.md"]);
+});
+
+test("0181: 終わったサブのブロックを、元の順のまま末尾へ集める。本文と CRLF は変えない。2 回目は何も変えない", async () => {
+	const root = childFrom("legacy");
+	const sub = (id, status, body) => `<!-- sub-issue\nid: ${id}\nsummary: "${id}"\nstatus: ${status}\n-->\n${body}\n\n`;
+	write(root, {
+		"issue/i-30.md": `---\ntype: issue\nid: i-30\nsummary: 親\nstatus: open\n---\n\n親の本文\n\n${sub("aaaaaa", "closed", "A")}${sub("bbbbbb", "open", "B")}${sub("cccccc", "canceled", "C")}${sub("dddddd", "in-progress", "D").trimEnd()}`,
+		"issue/i-31.md": `---\ntype: issue\nid: i-31\nsummary: すでに末尾\nstatus: open\n---\n\n${sub("aaaaaa", "open", "A")}${sub("bbbbbb", "closed", "B")}`,
+		"issue/i-32.md": `---\r\ntype: issue\r\nid: i-32\r\nsummary: crlf\r\nstatus: open\r\n---\r\n\r\n${sub("aaaaaa", "closed", "A").replace(/\n/g, "\r\n")}${sub("bbbbbb", "open", "B").replace(/\n/g, "\r\n")}`,
+	});
+	const i31 = readFileSync(join(root, "issue/i-31.md"), "utf8");
+	const { failed } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	const i30 = readFileSync(join(root, "issue/i-30.md"), "utf8");
+	assert.deepEqual([...i30.matchAll(/^id: ([a-z]{6})$/gm)].map((m) => m[1]).filter((id) => id !== "i-30"), ["bbbbbb", "dddddd", "aaaaaa", "cccccc"]);
+	assert.ok(i30.startsWith("---\ntype: issue\nid: i-30\nsummary: 親\nstatus: open\n---\n\n親の本文\n\n"));
+	assert.ok(i30.includes("-->\nA\n") && i30.includes("-->\nC\n"));
+	// すでに末尾なら変えない
+	assert.equal(readFileSync(join(root, "issue/i-31.md"), "utf8"), i31);
+	assert.deepEqual([...readFileSync(join(root, "issue/i-32.md"), "utf8").matchAll(/^id: ([a-z]{6})\r$/gm)].map((m) => m[1]), ["bbbbbb", "aaaaaa"]);
+	assert.ok(!/[^\r]\n/.test(readFileSync(join(root, "issue/i-32.md"), "utf8")));
+	const again = await runMigrations(root);
+	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
 });
 
 test("0156: .mcp.json で .kit/bin/mcp.mjs を登録している名前を pkm にする。ほかのサーバーと引数は残す", async () => {
