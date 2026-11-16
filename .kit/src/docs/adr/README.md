@@ -69,7 +69,7 @@
 | [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
 | [0085](0085-drawio-cli-build-render.md) | 置換（ADR-0111） | Claude Code が図を作る・直せるように、CLI に build / render / inspect を足し、描画を XML から自前で作る |
 | [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
-| [0094](0094-snippet-command.md) | 承認（一部置換: 0111） | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
+| [0094](0094-snippet-command.md) | 承認（一部置換: 0111, 0194） | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
 | [0102](0102-diagram-three-methods.md) | 承認（一部置換: 0111） | AI が描く図を Mermaid / D2 / SVG の 3 方式にし、デザイン規約・PNG のコピーと保存・大きい図の拡大を共通にする |
 | [0103](0103-git-conflict-records.md) | 承認 | PKM Git は、中身から分からない衝突を記録に残し、共通祖先が複数あっても変更を黙って戻さない |
 | [0106](0106-git-shallow-clone.md) | 承認 | PKM Git の clone は最新の版だけを取る（shallow clone） |
@@ -105,4 +105,5 @@
 | [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 | [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
 | [0190](0190-sub-end-as-due.md) | 承認 | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
+| [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 <!-- adr-index:end -->
