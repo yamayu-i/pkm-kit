@@ -192,7 +192,7 @@ packages/design/tokens.json（正本）
 |---|---|---|
 | カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
 | status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に status のアイコン、末尾に ▾ |
-| status のボタン | `.vt-status-step`（`.vt-icon-button`） | status のバッジの隣の 24px の丸。いちばんよく使う遷移 1 つ（ADR-0183）。アイコンは押した後の status の形と色（白抜きは `--vt-surface`）、closed / canceled は ↩（`undo-2`）。issue 画面・サブはいつも出し、ボードのカード（`.vt-task`）ではホバー・フォーカスのときだけ見せる（場所は `visibility` で取っておく）。`hover: none` の端末と、幅 480px 以下のボードでは出さない |
+| status のボタン | `.vt-status-step`（`.vt-icon-button`） | status のバッジの隣の 24px の丸。いちばんよく使う遷移 1 つ（ADR-0183）。アイコンは押した後の status の形をモノクロ（弱い文字の色。白抜きは `--vt-surface`）で出し、色付きの今の status と見分ける、closed / canceled は ↩（`undo-2`）。issue 画面・サブはいつも出し、ボードのカード（`.vt-task`）ではホバー・フォーカスのときだけ見せる（場所は `visibility` で取っておく）。`hover: none` の端末と、幅 480px 以下のボードでは出さない |
 | status のアイコン | `.vt-status-icon` | ○ を土台にした自作の SVG（ADR-0031）。色は status の印の色（`--vt-dot`）、白抜きは下の面（`--vt-knock`）。in-progress は `--vt-duration-spin` でゆっくり回り、closed は閉じた直後（`.is-enter`）だけチェックを描く |
 | 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
@@ -231,7 +231,7 @@ packages/design/tokens.json（正本）
 | 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
 | 色の見本 | `.vt-color-swatch` | 44px の角丸の四角のカラーピッカー（`input[type=color]`）。`--vt-outline` の枠。隣に `#rrggbb` の `.vt-name-field` を置く |
 | 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
-| サブイシューの行 | `.vt-subissue`（`.vt-subissue-row`） | issue 画面のカード「Sub-issues」（`.vt-subissues`）の 1 行（44px 以上）。左に status のアイコンのボタン（36px の丸）、題と弱い文字の補足（期間 / 次の予定日 / 期限。狭いときは補足から縮む）、実績、Pick（選んだ後は再生 / 停止）、`⋯` のメニュー。ドラッグで並べ、落とす位置は primary の線（`.is-drop-before`）。済みは打ち消し線。記録中は緑の枠（ADR-0142） |
+| サブイシューの行 | `.vt-subissue`（`.vt-subissue-row`） | issue 画面のカード「Sub-issues」（`.vt-subissues`）の 1 行（44px 以上）。左に status のアイコンのボタン（36px の丸。アイコンは status の印の色）と status のボタン（モノクロ。ADR-0183）、題と弱い文字の補足（期間 / 次の予定日 / 期限。狭いときは補足から縮む）、実績、Pick（選んだ後は再生 / 停止）、`⋯` のメニュー。ドラッグで並べ、落とす位置は primary の線（`.is-drop-before`）。済みは打ち消し線。記録中は緑の枠（ADR-0142） |
 | 上部のサブ一覧 | `.vt-subissues` | 題はラベルで、本文は展開しない。本文の表示は下部のサブのカードが担う。行の「Open note」（`file-text`）と Edit ダイアログの「Open note」は、そのサブを開いて下部のカードの題を上端に出す。Edit ダイアログは項目だけを直し、本文の欄を持たない（ADR-0179） |
 | サブの項目のカード | `.vt-sub-card`（Live Preview は `.vt-sub-card-host` の中） | issue の本文の、サブごとの項目のブロック（`<!-- sub-issue` から `-->`）を置き換えて描く。本文は置き換えず、issue 本体の描画のまま。行は同じ `.vt-subissue` で、左に開閉の矢印。開くと `.vt-subissue-form` の欄（題・日付と見積もりのチップ・依存先）をその場で直し、「Show source」で生の md を見せる。閉じたサブの本文は隠す（Reading は `.vt-sub-body-closed`）。読めないブロックは警告の行（`.is-unreadable`）。開閉はこの端末に保存する（ADR-0161）。題の行から開閉しても押した行の画面上の位置を保ち、上端に浮かんだ行から閉じたときはカードの題を上端に出す（ADR-0179） |
 | ガントチャート | `.vt-timeline`（`.vt-timeline-bar`・`.vt-timeline-arrow`・`.vt-timeline-today`） | カード「Sub-issues」の Timeline（ADR-0143）。左に題の列、右に日の列（カードの中で横にスクロール）。行は 36px。棒は status の印の色（`--vt-dot`）で、ドラッグでずらし、両端のつまみで伸ばす。予定日は点、期限は amber / red の短い縦線、今日は primary の縦線、土日は surface-container の面、週の区切り（日曜）は細い線。依存は矢印で、遅れは error の色。棒の右端のコネクタ（`.vt-timeline-connector`）から別の棒へドラッグして依存を引き、矢印は押して選び（`.vt-timeline-arrow-hit`）× ボタン（`.vt-timeline-arrow-remove`）か Delete で消す（ADR-0163）。目盛りは Day（1 日 28px）と Week（日曜始まり、1 日 8px）。切り替え（List / Timeline、Day / Week）は絞り込みチップ |
