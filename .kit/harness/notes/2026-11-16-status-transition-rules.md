@@ -19,3 +19,8 @@
 
 - 起きたこと: 概念の文書（task-tickler）は「日付が来ると Inbox に戻る」としていたが、`isInbox` は open だけを見るので、in-progress・待ちに付けた Tickler は日付が来ても戻らず、`isNext` も Tickler のあるものを外すため、どこにも出なくなっていた。#184 で Pick に in-progress が入り、Pick の一括の Tickler から起きやすくなっていた。ユーザーとの見直しで見つけた
 - 改善案: 日付や状態で一覧の出し入れを決める述語（`isInbox`・`isNext` など）を変えたら、すべての status と日付の項目の組み合わせで「どこかの一覧に出るか」を確かめるテストを持つ（ADR-0183 で Tickler は open だけにし、lint で残りを知らせるようにした）
+
+## つまずき（2）
+
+- 起きたこと: Today の段階（Previous boards）をなくしたときに、体験定義書の画面例を撮る product-guide（`catalog.json`・`preview/fixture.tsx`・`preview/capture.mjs`）にその段階が残っていて、CI の preview-ui が落ちた。手元の検査（`pnpm check`・`verify.mjs`・pkm-task の `preview:ui`）は通っていた。また、撮り直した直後の `capture --check` で、同じ環境でも `task--header--unpicked` の見積もりの欄の枠線の数ピクセルが撮るたびに揺れ、固定環境の画像の比較が落ちることがあった（今回の変更とは関係しない。CI はブラウザの版が違うので画像を比べない）
+- 改善案: dev-implement の検査に「画面・段階・View を足す・消すときは `pnpm --filter product-guide capture --check` も通す」と書く。枠線の揺れは、画像の比較に小さな許容差を持たせるか、その欄の撮り方を固定する

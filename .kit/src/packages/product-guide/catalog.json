@@ -6,13 +6,7 @@
         "provider": "task",
         "screen": "daily",
         "label": "一日の計画を始める",
-        "detail": "過去の未完了と今日の予定を確認し、段階を進めます。"
-      },
-      {
-        "provider": "task",
-        "screen": "previous",
-        "label": "過去のボードを片付ける",
-        "detail": "未完了の行き先を決め、今日の作業に入ります。"
+        "detail": "期限と今日の予定を確認し、Calendar → Pick → Board の段階を進めます。"
       },
       {
         "provider": "task",
