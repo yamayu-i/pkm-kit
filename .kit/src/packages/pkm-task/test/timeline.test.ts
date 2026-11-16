@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type TimelineSub } from "../src/core/timeline";
 
 function s(id: string, extra: Partial<TimelineSub> = {}): TimelineSub {
-	return { id, start: null, end: null, scheduled: null, softDeadline: null, deadline: null, dependsOn: [], ...extra };
+	return { id, start: null, end: null, scheduled: null, dependsOn: [], ...extra };
 }
 
 // 2026-11-15 は日曜
@@ -11,7 +11,7 @@ const today = "2026-11-15";
 describe("範囲（ADR-0143）", () => {
 	it("Day: 日付と今日を含み、前後 2 日。最低 14 日", () => {
 		expect(timelineRange([s("a", { start: "2026-11-16", end: "2026-11-20" })], today, "day")).toEqual({ from: "2026-11-13", days: 14 });
-		expect(timelineRange([s("a", { start: "2026-11-10", end: "2026-12-10" }), s("b", { deadline: "2026-12-20" })], today, "day")).toEqual({ from: "2026-11-08", days: 45 });
+		expect(timelineRange([s("a", { start: "2026-11-10", end: "2026-12-10" }), s("b", { scheduled: "2026-12-20" })], today, "day")).toEqual({ from: "2026-11-08", days: 45 });
 		expect(timelineRange([], today, "day")).toEqual({ from: "2026-11-13", days: 14 });
 	});
 

@@ -57,26 +57,20 @@ export function missedSubs(index: TaskIndex, today: LocalDate): SubIssue[] {
 		.sort((a, b) => a.scheduled!.localeCompare(b.scheduled!) || a.key.localeCompare(b.key, "en", { numeric: true }));
 }
 
-/** サブの期限の一覧（ADR-0150）。deadline と soft_deadline は別 */
-export interface SubDueLists {
-	deadline: SubIssue[];
-	softDeadline: SubIssue[];
+/** 期限（end。ADR-0190）が hit に当たるサブ。active で親が読めているもの。end の早い順 */
+function subDue(index: TaskIndex, hit: (d: LocalDate) => boolean): SubIssue[] {
+	return index.data.subIssues
+		.filter((s) => isActive(s) && index.sub(s.key) === s && s.end !== null && hit(s.end))
+		.sort((a, b) => a.end!.localeCompare(b.end!) || a.key.localeCompare(b.key, "en", { numeric: true }));
 }
 
-function subDue(index: TaskIndex, hit: (d: LocalDate) => boolean): SubDueLists {
-	const live = index.data.subIssues.filter((s) => isActive(s) && index.sub(s.key) === s);
-	const by = (key: "deadline" | "softDeadline") =>
-		live.filter((s) => s[key] !== null && hit(s[key]!)).sort((a, b) => a[key]!.localeCompare(b[key]!) || a.key.localeCompare(b.key, "en", { numeric: true }));
-	return { deadline: by("deadline"), softDeadline: by("softDeadline") };
-}
-
-/** 期限を過ぎたサブ（ADR-0150。issue の deadIssues と同じ規則） */
-export function deadSubs(index: TaskIndex, today: LocalDate): SubDueLists {
+/** 期限（end）を過ぎたサブ（ADR-0150, 0190。issue の deadIssues と同じ規則） */
+export function deadSubs(index: TaskIndex, today: LocalDate): SubIssue[] {
 	return subDue(index, (d) => d < today);
 }
 
-/** 期限まで days 日以内（今日を含む）のサブ（ADR-0150。issue の cautionIssues と同じ規則） */
-export function cautionSubs(index: TaskIndex, today: LocalDate, days = 3): SubDueLists {
+/** 期限（end）まで days 日以内（今日を含む）のサブ（ADR-0150, 0190。issue の cautionIssues と同じ規則） */
+export function cautionSubs(index: TaskIndex, today: LocalDate, days = 3): SubIssue[] {
 	return subDue(index, (d) => diffDays(d, today) >= 0 && diffDays(d, today) <= days);
 }
 

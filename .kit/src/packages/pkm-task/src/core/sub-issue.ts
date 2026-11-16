@@ -1,4 +1,5 @@
 import { ISSUE_BODY_TEMPLATE } from "./issue-file";
+import { reopenSubOnPeriod } from "./transition";
 import type { LocalDate } from "./dates";
 import { isId } from "./ids";
 import type { Problem } from "./problem";
@@ -27,11 +28,10 @@ export interface SubIssue {
 	status: Status;
 	delegatedTo: string | null;
 	start: LocalDate | null;
+	/** 期間の終わり。サブの期限を兼ねる（ADR-0190） */
 	end: LocalDate | null;
 	/** Calendar: その日にやらなければならない日（ADR-0152）。日付 1 つ */
 	scheduled: LocalDate | null;
-	softDeadline: LocalDate | null;
-	deadline: LocalDate | null;
 	/** 分 */
 	estimated: number | null;
 	/** 同じ親のサブの id */
@@ -51,6 +51,9 @@ export interface SubIssueBlock {
 
 /** 書き出せない値（ADR-0135「書式」） */
 export class SubIssueFormatError extends Error {}
+
+/** サブではなくした項目（ADR-0190） */
+export const REMOVED_SUB_KEYS = ["soft_deadline", "deadline"] as const;
 
 const SUB_ID_RE = /^[a-z0-9]{6}$/;
 const SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -129,6 +132,9 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 	const status = r.oneOf("status", STATUSES);
 	if (status === null && !r.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status がありません" });
 	const migratedFrom = r.ref("migrated_from", "i");
+	// サブの期限は end にまとめた（ADR-0190）。古い項目は読まず、書き換えたときに消える
+	const removed = REMOVED_SUB_KEYS.filter((k) => r.has(k));
+	if (removed.length > 0) extra.push({ severity: "warning", path, code: "sub-deadline-removed", message: `${removed.join(" と ")} はサブでは使わなくなりました。end にまとめてください（ADR-0190、移行 0190）` });
 	const sub: SubIssue = {
 		parent,
 		path,
@@ -141,8 +147,6 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 		start: r.date("start"),
 		end: r.date("end"),
 		scheduled: r.calendarDate("scheduled"),
-		softDeadline: r.date("soft_deadline"),
-		deadline: r.date("deadline"),
 		estimated: r.minutes("estimated"),
 		dependsOn: r.strings("depends_on"),
 		created: r.datetime("created"),
@@ -184,8 +188,6 @@ export function formatSubHead(sub: SubIssueInput): string {
 	put("start", sub.start);
 	put("end", sub.end);
 	put("scheduled", sub.scheduled);
-	put("soft_deadline", sub.softDeadline);
-	put("deadline", sub.deadline);
 	put("estimated", sub.estimated === null ? null : String(sub.estimated));
 	if (sub.dependsOn.length > 0) put("depends_on", JSON.stringify(sub.dependsOn));
 	put("created", sub.created);
@@ -322,8 +324,6 @@ export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: Readon
 			["start", s.start],
 			["end", s.end],
 			["scheduled", s.scheduled],
-			["soft_deadline", s.softDeadline],
-			["deadline", s.deadline],
 		] as const) {
 			if (!isDate(value)) errors.push(`${where}: ${key} が YYYY-MM-DD の日付ではありません: ${String(value)}`);
 		}
@@ -375,8 +375,6 @@ export function newSubIssueInput(item: NewSubIssue, id: string, created: string)
 		start: item.start ?? null,
 		end: item.end ?? null,
 		scheduled: item.scheduled ?? null,
-		softDeadline: item.softDeadline ?? null,
-		deadline: item.deadline ?? null,
 		estimated: item.estimated ?? null,
 		dependsOn: item.dependsOn ?? [],
 		created,
@@ -420,19 +418,16 @@ export function subItemPatch(draft: SubIssue, estimated: number | null): SubIssu
 		start: draft.start,
 		end: draft.end,
 		scheduled: draft.scheduled,
-		softDeadline: draft.softDeadline,
-		deadline: draft.deadline,
 		estimated,
 		dependsOn: draft.dependsOn,
 	};
 }
 
-/** 行の補足（ADR-0142）: 期間 → 今日以降の Calendar の日（ADR-0152）→ 期限（deadline、なければ soft_deadline）。なければ null */
-export function subHint(sub: Pick<SubIssue, "start" | "end" | "scheduled" | "deadline" | "softDeadline">, today: LocalDate): string | null {
+/** 行の補足（ADR-0142, 0190）: 期間 → 今日以降の Calendar の日（ADR-0152）。なければ null */
+export function subHint(sub: Pick<SubIssue, "start" | "end" | "scheduled">, today: LocalDate): string | null {
 	if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}–${sub.end ? shortDate(sub.end) : ""}`;
 	if (sub.scheduled !== null && sub.scheduled >= today) return shortDate(sub.scheduled);
-	const due = sub.deadline ?? sub.softDeadline;
-	return due ? `Due ${shortDate(due)}` : null;
+	return null;
 }
 
 /**
@@ -546,12 +541,13 @@ export function subHeadChange(
 	parseYaml: YamlParse,
 	memberIds: ReadonlySet<string>,
 ): { change: TextChange; changes: TextChange[]; before: SubIssue; after: SubIssue } {
-	const fixed = normalizeSubPatch(patch);
 	const all = layoutSubIssues(path, parent, text, parseYaml);
 	const layout = all.find((b) => b.id === id);
 	const { subs } = parseSubIssues(path, parent, text, parseYaml);
 	const before = subs.find((s) => s.id === id);
 	if (!layout || !before || layout.cardTo === null) throw new Error(`サブがありません: ${subKey(parent, id)}`);
+	// someday に期間を入れたら open に戻す（ADR-0190）
+	const fixed = normalizeSubPatch(reopenSubOnPeriod(before.status, patch));
 	const after: SubIssue = { ...before, ...fixed, id };
 	const errors = touchedSubErrors(
 		subs.map((s) => (s.id === id ? after : s)),

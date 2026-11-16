@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
 import { emptyBoard, unfinished, unfinishedCount } from "../core/board";
-import { cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists, type SubDueLists } from "../core/daily";
+import { cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists } from "../core/daily";
 import { formatShortDate, localToday } from "../core/dates";
 import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
@@ -62,8 +62,8 @@ function SubLines(props: { ctx: TaskContext; subs: SubIssue[]; note?: (s: SubIss
 	);
 }
 
-/** 期限の表 1 つ（deadline か soft_deadline）。issue とサブ */
-function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: string; issues: Issue[]; subs: SubIssue[]; empty: string }) {
+/** issue の期限の表 1 つ（deadline か soft_deadline） */
+function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: string; issues: Issue[]; empty: string }) {
 	const { ctx, target, issues } = props;
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const sel = issues.filter((i) => selected.has(i.id));
@@ -73,9 +73,9 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 		<section class="vt-card">
 			<div class="vt-section-head">
 				<span class="vt-field-label">{props.title}</span>
-				<span class="vt-count">{issues.length + props.subs.length}</span>
+				<span class="vt-count">{issues.length}</span>
 			</div>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "soft_deadline", "deadline"]} empty={props.subs.length > 0 ? "" : props.empty} />
+			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "soft_deadline", "deadline"]} empty={props.empty} />
 			{issues.length > 0 && (
 				<ActionBar
 					count={sel.length}
@@ -89,13 +89,24 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 					]}
 				/>
 			)}
+		</section>
+	);
+}
+
+/** サブの期限の表（ADR-0190）。サブの期限は end。end を直すのは親の画面で */
+function SubDueSection(props: { ctx: TaskContext; subs: SubIssue[] }) {
+	const { ctx } = props;
+	const today = localToday();
+	return (
+		<section class="vt-card">
+			<div class="vt-section-head">
+				<span class="vt-field-label">end</span>
+				<span class="vt-count">{props.subs.length}</span>
+			</div>
 			<SubLines
 				ctx={ctx}
 				subs={props.subs}
-				note={(s) => {
-					const d = target === "deadline" ? s.deadline : s.softDeadline;
-					return d ? formatShortDate(d) : null;
-				}}
+				note={(s) => (s.end ? formatShortDate(s.end) : null)}
 				actions={(s) => [{ label: "Add to today's board", primary: true, run: () => void addSubToBoard(ctx, today, s) }]}
 			/>
 		</section>
@@ -103,26 +114,29 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 }
 
 /** Calendar の段階（ADR-0150）: 期限切れ・期限が近い・Missed（過ぎた Calendar の日）。issue とサブ */
-function CalendarStep(props: { ctx: TaskContext; dead: DueLists; deadSub: SubDueLists; caution: DueLists; cautionSub: SubDueLists; missed: Issue[]; missedSub: SubIssue[] }) {
+function CalendarStep(props: { ctx: TaskContext; dead: DueLists; deadSub: SubIssue[]; caution: DueLists; cautionSub: SubIssue[]; missed: Issue[]; missedSub: SubIssue[] }) {
 	const { ctx } = props;
-	const total = (l: DueLists, s: SubDueLists) => l.deadline.length + l.softDeadline.length + s.deadline.length + s.softDeadline.length;
+	const total = (l: DueLists, s: SubIssue[]) => l.deadline.length + l.softDeadline.length + s.length;
 	if (total(props.dead, props.deadSub) + total(props.caution, props.cautionSub) + props.missed.length + props.missedSub.length === 0) {
 		return <div class="vt-empty">Nothing overdue, due soon, or missed</div>;
 	}
+	// issue の表は件数がなくても出す（今までどおり）。サブの end の表は件数があるときだけ
 	return (
 		<>
 			{total(props.dead, props.deadSub) > 0 && (
 				<>
 					<h3 class="vt-h">Overdue</h3>
-					<DueSection ctx={ctx} target="deadline" title="deadline" issues={props.dead.deadline} subs={props.deadSub.deadline} empty="Nothing is overdue" />
-					<DueSection ctx={ctx} target="soft_deadline" title="soft_deadline" issues={props.dead.softDeadline} subs={props.deadSub.softDeadline} empty="Nothing is overdue" />
+					<DueSection ctx={ctx} target="deadline" title="deadline" issues={props.dead.deadline} empty="Nothing is overdue" />
+					<DueSection ctx={ctx} target="soft_deadline" title="soft_deadline" issues={props.dead.softDeadline} empty="Nothing is overdue" />
+					{props.deadSub.length > 0 && <SubDueSection ctx={ctx} subs={props.deadSub} />}
 				</>
 			)}
 			{total(props.caution, props.cautionSub) > 0 && (
 				<>
 					<h3 class="vt-h">Due soon</h3>
-					<DueSection ctx={ctx} target="deadline" title="deadline" issues={props.caution.deadline} subs={props.cautionSub.deadline} empty="No deadlines in the next 3 days" />
-					<DueSection ctx={ctx} target="soft_deadline" title="soft_deadline" issues={props.caution.softDeadline} subs={props.cautionSub.softDeadline} empty="No deadlines in the next 3 days" />
+					<DueSection ctx={ctx} target="deadline" title="deadline" issues={props.caution.deadline} empty="No deadlines in the next 3 days" />
+					<DueSection ctx={ctx} target="soft_deadline" title="soft_deadline" issues={props.caution.softDeadline} empty="No deadlines in the next 3 days" />
+					{props.cautionSub.length > 0 && <SubDueSection ctx={ctx} subs={props.cautionSub} />}
 				</>
 			)}
 			{props.missed.length + props.missedSub.length > 0 && <MissedSection ctx={ctx} issues={props.missed} subs={props.missedSub} />}
@@ -242,7 +256,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const pick = pickCandidates(index, today, todayBoard);
 	const toAdd = index.toAutoAdd(today);
 	const todayLeft = unfinished(index, today, todayBoard);
-	const lists = (l: DueLists, s: SubDueLists) => l.deadline.length + l.softDeadline.length + s.deadline.length + s.softDeadline.length;
+	const lists = (l: DueLists, s: SubIssue[]) => l.deadline.length + l.softDeadline.length + s.length;
 
 	const counts: Record<Step, number> = {
 		calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,

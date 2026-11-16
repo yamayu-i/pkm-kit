@@ -9,7 +9,7 @@ import { collectVault } from "../src/core/load";
 /** ADR-0150: DailyTaskView を GTD の Engage に合わせる（Calendar・Previous boards・Pick・Board） */
 
 const today = "2026-11-16";
-const sub = (id: string, summary: string, extra = "") => `<!-- sub-issue\nid: ${id}\nsummary: ${summary}\nstatus: open\n${extra}-->\n\n`;
+const sub = (id: string, summary: string, extra = "", status = "open") => `<!-- sub-issue\nid: ${id}\nsummary: ${summary}\nstatus: ${status}\n${extra}-->\n\n`;
 function issue(id: string, fm: Record<string, unknown>, subs = "") {
 	const frontmatter = { type: "issue", id, summary: `題${id}`, status: "open", ...fm };
 	return { path: `issue/${id}.md`, frontmatter, text: `---\n---\n${subs}` };
@@ -33,14 +33,21 @@ describe("段階の選び方", () => {
 });
 
 describe("サブの期限（Calendar の段階）", () => {
-	it("期限切れ・期限が近いサブを、deadline と soft_deadline に分けて返す", () => {
+	it("期限切れ・期限が近いサブを、end で返す（ADR-0190）。someday・closed のサブは出さない", () => {
 		const index = indexOf([
-			issue("i-1", {}, sub("aaaaaa", "過ぎた", "deadline: 2026-11-10\n") + sub("bbbbbb", "近い", "soft_deadline: 2026-11-18\n") + sub("cccccc", "先", "deadline: 2026-12-01\n")),
-			issue("i-2", { status: "closed" }, sub("dddddd", "閉じた親", "deadline: 2026-11-10\n")),
+			issue(
+				"i-1",
+				{},
+				sub("aaaaaa", "過ぎた", "start: 2026-11-01\nend: 2026-11-10\n") +
+					sub("bbbbbb", "近い", "end: 2026-11-18\n") +
+					sub("cccccc", "先", "end: 2026-12-01\n") +
+					sub("eeeeee", "終わった", "end: 2026-11-10\n", "closed") +
+					sub("ffffff", "期限だけ", "deadline: 2026-11-10\n"),
+			),
+			issue("i-2", { status: "closed" }, sub("dddddd", "閉じた親", "end: 2026-11-09\n")),
 		]);
-		expect(deadSubs(index, today).deadline.map((s) => s.key)).toEqual(["i-1#aaaaaa", "i-2#dddddd"]);
-		expect(cautionSubs(index, today).softDeadline.map((s) => s.key)).toEqual(["i-1#bbbbbb"]);
-		expect(cautionSubs(index, today).deadline).toEqual([]);
+		expect(deadSubs(index, today).map((s) => s.key)).toEqual(["i-2#dddddd", "i-1#aaaaaa"]);
+		expect(cautionSubs(index, today).map((s) => s.key)).toEqual(["i-1#bbbbbb"]);
 	});
 });
 

@@ -369,10 +369,8 @@ const TOOLS: McpToolDef[] = [
 							status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
 							delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
 							start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
-							end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
+							end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）。サブの期限を兼ね、Daily の期限の表に出る（ADR-0190）" },
 							scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
-							soft_deadline: { type: ["string", "null"] },
-							deadline: { type: ["string", "null"] },
 							estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
 							depends_on: { type: ["array", "null"], items: { type: "string" }, description: "同じ親のサブの id（6 文字）" },
 							body: { type: "string", description: "サブの本文（Markdown）" },
@@ -396,10 +394,8 @@ const TOOLS: McpToolDef[] = [
 				status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
 				delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
 				start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
-				end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）" },
+				end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）。サブの期限を兼ね、Daily の期限の表に出る（ADR-0190）" },
 				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
-				soft_deadline: { type: ["string", "null"] },
-				deadline: { type: ["string", "null"] },
 				estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
 				depends_on: { type: ["array", "null"], items: { type: "string" }, description: "同じ親のサブの id（6 文字）" },
 				body: { type: "string", description: "サブの本文（Markdown）" },
@@ -527,8 +523,10 @@ function subPatch(args: Record<string, unknown>): SubIssuePatch {
 	if (args.start !== undefined) out.start = str("start");
 	if (args.end !== undefined) out.end = str("end");
 	if (args.scheduled !== undefined) out.scheduled = calendarArg(args.scheduled) ?? null;
-	if (args.soft_deadline !== undefined) out.softDeadline = str("soft_deadline");
-	if (args.deadline !== undefined) out.deadline = str("deadline");
+	// サブの期限は end にまとめた（ADR-0190）
+	for (const key of ["soft_deadline", "deadline"]) {
+		if (args[key] !== undefined) throw new Error(`サブには ${key} がありません。期限は end に入れてください（ADR-0190）`);
+	}
 	if (args.estimated !== undefined) {
 		if (args.estimated !== null && typeof args.estimated !== "number") throw new Error("estimated は数（分）にしてください");
 		out.estimated = args.estimated as number | null;

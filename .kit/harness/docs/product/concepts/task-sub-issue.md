@@ -13,14 +13,13 @@
 | 識別子 | id | 親内で一意の短い ID |
 | 題 | summary | 文字列 |
 | 状態 | status | issue と同じ 7 状態 |
-| 期間 | start / end | YYYY-MM-DD。開始・終了は任意 |
+| 期間 | start / end | YYYY-MM-DD。開始・終了は任意。end はサブの期限を兼ね、過ぎる・3 日以内になると Today に出る |
 | Calendar | scheduled | YYYY-MM-DD、1 日 |
-| 期限 | soft_deadline / deadline | YYYY-MM-DD |
 | 見積もり | estimated | 0 以上の分数 |
 | 依存する先 | depends_on | 同じ親内のサブ ID の配列。循環不可 |
 | 委任先 | delegated_to | member の ID |
 
-label・priority は親の文脈を使う。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。
+label・priority は親の文脈を使う。サブに soft_deadline / deadline はない（外の都合で決まる締切は親の deadline に書く）。someday にすると Calendar の日と期間を外し、someday のサブに期間を入れると open に戻る。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。
 
 ## 操作
 
@@ -32,4 +31,4 @@ label・priority は親の文脈を使う。サブに Tickler と Inbox はな�
 
 ## 根拠
 
-[ADR-0135](../../../../src/docs/adr/0135-sub-issues-in-issue-file.md)
+[ADR-0135](../../../../src/docs/adr/0135-sub-issues-in-issue-file.md)、[ADR-0190](../../../../src/docs/adr/0190-sub-end-as-due.md)
