@@ -5964,15 +5964,17 @@ function editorSave(ctx, view, path, id) {
 function editorTop(view, pos) {
   return view.lineBlockAt(pos).top + view.documentTop;
 }
-function keepEditorScroll(view, pos, before, floating, tries = 2) {
+function correctEditorScroll(view, pos, before, floating) {
   view.requestMeasure({
     read: () => toggleScrollDelta(before, editorTop(view, pos), view.scrollDOM.getBoundingClientRect().top, floating),
     write: (d3) => {
-      if (d3 === 0) return;
-      view.scrollDOM.scrollTop += d3;
-      if (tries > 1) keepEditorScroll(view, pos, before, floating, tries - 1);
+      if (d3 !== 0) view.scrollDOM.scrollTop += d3;
     }
   });
+}
+function keepEditorScroll(view, pos, before, floating) {
+  if (!floating) correctEditorScroll(view, pos, before, floating);
+  window.requestAnimationFrame(() => correctEditorScroll(view, pos, before, floating));
 }
 function editorToggle(ctx, view, path, id, floating = false) {
   const parent = issueIdOf(path);
@@ -5987,7 +5989,8 @@ function editorToggle(ctx, view, path, id, floating = false) {
   const b2 = layout.find((x2) => x2.id === id);
   const before = b2 ? editorTop(view, b2.from) : 0;
   const inBody = wasOpen && b2 && b2.cardTo !== null && b2.bodyFrom !== null && b2.bodyTo !== null && view.state.selection.ranges.some((r3) => r3.from <= b2.bodyTo && r3.to >= b2.bodyFrom);
-  view.dispatch({ effects: refresh.of(null), ...inBody ? { selection: { anchor: b2.cardTo } } : {} });
+  const effects = floating && b2 ? [refresh.of(null), import_view.EditorView.scrollIntoView(b2.from, { y: "start", yMargin: 0 })] : refresh.of(null);
+  view.dispatch({ effects, ...inBody ? { selection: { anchor: b2.cardTo } } : {} });
   syncReading(ctx, path);
   if (b2) keepEditorScroll(view, b2.from, before, floating);
 }

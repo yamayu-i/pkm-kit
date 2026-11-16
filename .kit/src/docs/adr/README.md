@@ -107,4 +107,5 @@
 | [0190](0190-sub-end-as-due.md) | 承認 | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
 | [0193](0193-worklog-quick-edit.md) | 承認 | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
+| [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 <!-- adr-index:end -->
