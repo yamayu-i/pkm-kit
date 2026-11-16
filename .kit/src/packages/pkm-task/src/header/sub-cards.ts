@@ -5,6 +5,7 @@ import { h, render } from "preact";
 import { pickSticky, toggleScrollDelta, type StickyRegion } from "../core/sub-sticky";
 import {
 	cursorInside,
+	isDone,
 	isSubOpen,
 	layoutSubIssues,
 	parseSubIssues,
@@ -16,6 +17,7 @@ import {
 } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
 import { ReadingCard, StickySubRow, SubCard, UnreadableCard, issueIdOf, type SaveSub } from "../obsidian/sub-card";
+import { ClosedToggle, closedLabel } from "./ClosedToggle";
 import { setSubRevealer } from "./sub-reveal";
 import { StickyOverlay, stickyBox } from "./sub-sticky-overlay";
 
@@ -27,6 +29,21 @@ const LIVE_PREVIEW_SAVE_MS = 600;
 /** カードの描き直しだけを頼む（開閉を変えたとき） */
 const refresh = StateEffect.define<null>();
 
+/**
+ * 終わったサブ（closed / canceled）を出しているノートのパス（ADR-0181）。保存しない（開き直すと隠れる。ヘッダーと同じ）。
+ * 終わったサブは md の末尾に集まるので、本文では隠して「Show N closed」で出す
+ */
+const closedShown = new Set<string>();
+/** 出す・隠すを変えたことを、Reading のボタンに知らせる */
+const closedListeners = new Set<() => void>();
+
+/** 終わったサブの表示を切り替える。Live Preview のエディタは描き直しを頼む */
+function toggleClosed(ctx: TaskContext, path: string, view?: EditorView): void {
+	if (!closedShown.delete(path)) closedShown.add(path);
+	view?.dispatch({ effects: refresh.of(null) });
+	syncReading(ctx, path);
+}
+
 /** 開いているサブを切り替えて、この端末に保存する（ADR-0158）。ids は今ある読めるサブの id */
 function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): void {
 	ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
@@ -36,6 +53,7 @@ function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): 
 // ---------- Reading ----------
 
 const CLOSED_CLASS = "vt-sub-body-closed";
+const AREA_HIDDEN = "vt-subissue-area-hidden";
 
 /** Reading で描いたセクション。scroller は、DOM にあるのを見たときのスクロール領域（画面外では DOM から外れるため覚えておく） */
 interface SectionEntry {
@@ -43,6 +61,10 @@ interface SectionEntry {
 	el: HTMLElement;
 	line: number;
 	scroller?: HTMLElement;
+	/** 終わったサブのもの。出す・隠すの切り替えで class を付け外しする（ADR-0181） */
+	done?: boolean;
+	/** カードのセクションのうち、終わったときに隠す要素（ボタンは隠さない） */
+	target?: HTMLElement;
 }
 const bodies = new Map<string, Set<SectionEntry>>();
 const cards = new Map<string, Set<SectionEntry>>();
@@ -63,8 +85,11 @@ function addEntry(map: Map<string, Set<SectionEntry>>, path: string, entry: Sect
 
 /** Reading で、開閉を本文のセクションに反映する（描き直さずに class を付け外しする） */
 function syncReading(ctx: TaskContext, path: string): void {
-	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b.id));
+	const shown = closedShown.has(path);
+	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b.id) || (b.done === true && !shown));
+	for (const c of cards.get(path) ?? []) if (c.done) (c.target ?? c.el).toggleClass(AREA_HIDDEN, !shown);
 	for (const fn of openListeners) fn();
+	for (const fn of closedListeners) fn();
 	readingSticky?.scheduleAll();
 }
 
@@ -158,6 +183,7 @@ class ReadingSticky {
 			const ownBodies = [...(bodies.get(path) ?? [])].filter(tag).sort((a, b) => a.line - b.line);
 			for (const card of mine) {
 				if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+				if (card.done && !closedShown.has(path)) continue;
 				const bs = ownBodies.filter((b) => b.id === card.id);
 				const shown = bs.filter((b) => b.el.isConnected);
 				const last = bs[bs.length - 1];
@@ -247,6 +273,11 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 		if (memo?.path !== path || memo.text !== text) memo = { path, text, layout: layoutSubIssues(path, issueIdOf(path), text, parseYaml) };
 		return memo.layout;
 	};
+	let subsMemo: { path: string; text: string; subs: SubIssue[] } | null = null;
+	const subsOf = (path: string, text: string): SubIssue[] => {
+		if (subsMemo?.path !== path || subsMemo.text !== text) subsMemo = { path, text, subs: parseSubIssues(path, issueIdOf(path), text, parseYaml).subs };
+		return subsMemo.subs;
+	};
 	plugin.registerMarkdownPostProcessor((el, mctx) => {
 		const path = mctx.sourcePath;
 		if (!ISSUE_PATH_RE.test(path)) return;
@@ -254,14 +285,38 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 		if (!info) return;
 		const layout = layoutOf(path, info.text);
 		const r = subSectionRole(layout, info.lineStart, info.lineEnd);
+		const subs = r.role === "card" || r.role === "body" ? subsOf(path, info.text) : [];
+		const doneIds = subs.filter(isDone).map((s) => s.id);
+		const isDoneId = (id: string | null) => id !== null && doneIds.includes(id);
 		if (r.role === "hide") {
-			el.addClass("vt-subissue-area-hidden");
+			el.addClass(AREA_HIDDEN);
 		} else if (r.role === "card") {
 			el.addClass("vt-sub-card-section");
 			const b = layout[r.index]!;
 			const raw = info.text.slice(b.from, b.cardTo ?? layout[r.index + 1]?.from ?? info.text.length).trimEnd();
-			if (r.id !== null) addEntry(cards, path, { id: r.id, el, line: info.lineStart }, mctx);
+			const done = isDoneId(r.id);
+			// 終わったサブの最初の 1 つに「Show N closed」を置く（終わったサブは末尾に集まる。ADR-0181）
+			const toggleHost = done && r.id === doneIds[0] ? el.createDiv() : null;
 			const host = el.createDiv();
+			if (r.id !== null) addEntry(cards, path, { id: r.id, el, line: info.lineStart, done, target: toggleHost ? host : el }, mctx);
+			if (done) (toggleHost ? host : el).toggleClass(AREA_HIDDEN, !closedShown.has(path));
+			if (toggleHost) {
+				render(
+					h(ClosedToggle, {
+						count: doneIds.length,
+						shown: () => closedShown.has(path),
+						subscribe: (fn: () => void) => {
+							closedListeners.add(fn);
+							return () => closedListeners.delete(fn);
+						},
+						onToggle: () => toggleClosed(ctx, path),
+					}),
+					toggleHost,
+				);
+				const toggleChild = new MarkdownRenderChild(toggleHost);
+				toggleChild.onunload = () => render(null, toggleHost);
+				mctx.addChild(toggleChild);
+			}
 			render(
 				h(ReadingCard, {
 					ctx,
@@ -289,8 +344,9 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 			child.onunload = () => render(null, host);
 			mctx.addChild(child);
 		} else if (r.role === "body") {
-			addEntry(bodies, path, { id: r.id, el, line: info.lineStart }, mctx);
-			el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r.id));
+			const done = isDoneId(r.id);
+			addEntry(bodies, path, { id: r.id, el, line: info.lineStart, done }, mctx);
+			el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r.id) || (done && !closedShown.has(path)));
 		}
 	});
 }
@@ -302,7 +358,8 @@ function editorSave(ctx: TaskContext, view: EditorView, path: string, id: string
 	return async (patch) => {
 		const text = view.state.doc.toString();
 		const r = subHeadChange(path, issueIdOf(path), text, id, patch, parseYaml, new Set(ctx.store.index.members.keys()));
-		if (r.change.insert !== text.slice(r.change.from, r.change.to)) view.dispatch({ changes: r.change, userEvent: "input.sub-card" });
+		// status が終わりに変わるときは、項目の書き換えとブロックの末尾への移動を 1 回で行う（ADR-0181）
+		if (r.changes.length > 1 || r.change.insert !== text.slice(r.change.from, r.change.to)) view.dispatch({ changes: r.changes, userEvent: "input.sub-card" });
 		if (r.before.status !== r.after.status) await ctx.writer.afterSubStatusChange(r.after, r.before.status, r.after.status);
 	};
 }
@@ -419,6 +476,35 @@ class SubCardWidget extends WidgetType {
 	}
 }
 
+/** Live Preview の「Show N closed / Hide closed」（ADR-0181） */
+class ClosedToggleWidget extends WidgetType {
+	constructor(
+		private readonly ctx: TaskContext,
+		private readonly path: string,
+		private readonly count: number,
+		private readonly shown: boolean,
+	) {
+		super();
+	}
+
+	override eq(other: ClosedToggleWidget): boolean {
+		return other.path === this.path && other.count === this.count && other.shown === this.shown;
+	}
+
+	override toDOM(view: EditorView): HTMLElement {
+		const dom = document.createElement("div");
+		dom.className = "vt-sub-closed-host";
+		const button = dom.createEl("button", { cls: "vt-text-button vt-sub-closed-toggle", text: closedLabel(this.count, this.shown) });
+		button.type = "button";
+		button.addEventListener("click", () => toggleClosed(this.ctx, this.path, view));
+		return dom;
+	}
+
+	override ignoreEvent(): boolean {
+		return true;
+	}
+}
+
 interface Built {
 	/** 項目のカードと、閉じたサブの本文を隠す置き換え */
 	all: DecorationSet;
@@ -439,12 +525,27 @@ function build(ctx: TaskContext, state: EditorState): Built {
 	const touches = (from: number, to: number) => state.selection.ranges.some((r) => cursorInside(r, from, to));
 	const all: Range<Decoration>[] = [];
 	const folds: Range<Decoration>[] = [];
+	const shownClosed = closedShown.has(path);
+	const doneCount = subs.filter(isDone).length;
+	let toggled = false;
 	for (const b of layout) {
 		if (b.cardTo === null || b.bodyFrom === null || b.bodyTo === null) continue;
 		const sub = b.id === null ? null : (subs.find((s) => s.id === b.id) ?? null);
 		const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
 		// 閉じたサブは末尾の空行までカードに含める。項目と本文を別々に隠すと空行だけが残る。
 		const sectionTo = layout[b.index + 1] ? layout[b.index + 1]!.from - 1 : text.length;
+		if (sub !== null && isDone(sub)) {
+			// 終わったサブ（ADR-0181）: 最初の 1 つの前に「Show N closed」を置き、押すまでカードと本文を隠す。カーソルがある間は生の md を見せる
+			if (!toggled) {
+				toggled = true;
+				all.push(Decoration.widget({ widget: new ClosedToggleWidget(ctx, path, doneCount, shownClosed), block: true, side: -1 }).range(b.from));
+			}
+			if (!shownClosed && !touches(b.from, sectionTo)) {
+				all.push(Decoration.replace({ block: true }).range(b.from, sectionTo));
+				folds.push(Decoration.replace({ block: true }).range(b.from, sectionTo));
+				continue;
+			}
+		}
 		const collapsed = sub !== null && !open && !touches(b.cardTo, sectionTo);
 		const cardTo = collapsed ? sectionTo : b.cardTo;
 		// カーソルが項目や閉じた本文にある間は、生の md を見せる
@@ -507,7 +608,7 @@ function editorSticky(ctx: TaskContext) {
 				for (const b of layout) {
 					if (b.cardTo === null || b.id === null || !isSubOpen(ctx.settings.subOpen, path, b.id)) continue;
 					const sub = subs.find((s) => s.id === b.id);
-					if (!sub) continue;
+					if (!sub || (isDone(sub) && !closedShown.has(path))) continue;
 					const end = b.bodyFrom !== null && b.bodyTo !== null && b.bodyTo > b.bodyFrom ? b.bodyTo : b.cardTo;
 					open.push({ b, sub, region: { top: view.lineBlockAt(b.from).top, bottom: view.lineBlockAt(end).bottom } });
 				}
@@ -586,6 +687,8 @@ export function installSubCards(ctx: TaskContext, plugin: Plugin): void {
  */
 function revealSubIn(ctx: TaskContext, sub: SubIssue): void {
 	const { path, id } = sub;
+	// 終わったサブは隠れているので、出す（ADR-0181）
+	if (isDone(sub)) closedShown.add(path);
 	if (!isSubOpen(ctx.settings.subOpen, path, id)) {
 		toggleOpen(
 			ctx,

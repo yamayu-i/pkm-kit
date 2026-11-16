@@ -7929,11 +7929,9 @@ function updateSubIssueText(path, parent, text, id, patch, parseYaml) {
   if (at < 0) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
   const before = blocks[at].sub;
   const after = { ...before, ...patch, id: before.id };
-  const next = replaceSubIssues(
-    text,
-    blocks.map((b, i) => i === at ? after : b.sub ?? b.raw)
-  );
-  return { text: next, before, after };
+  const items = blocks.map((b, i) => i === at ? after : b.sub ?? b.raw);
+  if (becomesDone(before.status, after.status)) items.push(...items.splice(at, 1));
+  return { text: replaceSubIssues(text, items), before, after };
 }
 function rebuild(path, parent, text, parseYaml, edit) {
   const { blocks } = parseSubIssues(path, parent, text, parseYaml);
@@ -8042,6 +8040,10 @@ function newSubIssueInput(item, id, created) {
 }
 function dependentsOf(subs, id) {
   return subs.filter((s) => s.dependsOn.includes(id)).map((s) => s.id);
+}
+var isDone = (s) => s.status === "closed" || s.status === "canceled";
+function becomesDone(from, to) {
+  return !isDone({ status: from }) && isDone({ status: to });
 }
 function touchedSubErrors(subs, touched, memberIds) {
   return checkSubIssues(subs, memberIds).filter((e) => touched.some((id) => e.startsWith(`\u30B5\u30D6 ${id}: `)));
