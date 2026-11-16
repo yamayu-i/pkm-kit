@@ -3413,21 +3413,6 @@ body.is-mobile .vt-toast {
 	background: var(--vt-on-surface-variant);
 }
 
-.vt-timeline-mark {
-	position: absolute;
-	top: 4px;
-	bottom: 4px;
-	border-left: 2px solid;
-}
-
-.vt-timeline-mark.is-soft {
-	border-color: var(--vt-amber);
-}
-
-.vt-timeline-mark.is-hard {
-	border-color: var(--vt-red);
-}
-
 /* 依存の矢印。遅れ（依存先の end より前に始まる）は error の色 */
 .vt-timeline-arrows {
 	position: absolute;

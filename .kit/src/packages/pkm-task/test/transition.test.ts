@@ -10,6 +10,7 @@ import {
 	primaryStep,
 	reopenStatus,
 	stopsTimer,
+	reopenSubOnPeriod,
 	subStatusPatch,
 	timerStartStatus,
 	transitionError,
@@ -143,16 +144,23 @@ describe("付随の変更", () => {
 		expect(() => subStatusPatch("delegated")).toThrow();
 	});
 
-	it.each(STATUSES)("サブを %s にすると、issue と同じ列を消す", (to) => {
+	it.each(STATUSES)("サブを %s にすると、someday だけ Calendar の日と期間を消す（ADR-0190）", (to) => {
 		const p = subStatusPatch(to, { delegatedTo: "m-1" });
 		expect(p.status).toBe(to);
 		expect(p.delegatedTo).toBe(to === "delegated" ? "m-1" : null);
-		for (const k of ["softDeadline", "deadline"] as const) {
-			if (to === "someday" || to === "canceled") expect(p[k]).toBeNull();
+		for (const k of ["scheduled", "start", "end"] as const) {
+			if (to === "someday") expect(p[k]).toBeNull();
 			else expect(k in p).toBe(false);
 		}
-		if (to === "someday") expect(p.scheduled).toBeNull();
-		else expect("scheduled" in p).toBe(false);
+	});
+
+	it("someday のサブに期間を入れると open に戻す。status を同時に変えるなら、その status を使う（ADR-0190）", () => {
+		expect(reopenSubOnPeriod("someday", { end: "2026-12-01" })).toEqual({ end: "2026-12-01", status: "open" });
+		expect(reopenSubOnPeriod("someday", { start: "2026-12-01", end: "2026-12-03" }).status).toBe("open");
+		expect(reopenSubOnPeriod("someday", { start: null, end: null })).toEqual({ start: null, end: null });
+		expect(reopenSubOnPeriod("someday", { end: "2026-12-01", status: "canceled" }).status).toBe("canceled");
+		expect(reopenSubOnPeriod("open", { end: "2026-12-01" })).toEqual({ end: "2026-12-01" });
+		expect(reopenSubOnPeriod("someday", { summary: "x" })).toEqual({ summary: "x" });
 	});
 
 	it("タイマーは open / in-progress 以外で止め、★ は待ち・someday で外す", () => {

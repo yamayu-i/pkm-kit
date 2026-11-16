@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
 import { backToNextPatch, ticklerPatch } from "../src/core/actions";
-import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../src/core/transition";
+import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, reopenSubOnPeriod, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../src/core/transition";
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
@@ -542,7 +542,8 @@ function unstarOnDisk(root: string, index: TaskIndex, key: string, to: Status, l
 export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string, patch: SubIssuePatch, log?: StatusLogContext): SubIssue {
 	const current = index.sub(key);
 	if (!current) throw new Error(`サブがありません: ${key}`);
-	patch = normalizeSubPatch(patch);
+	// someday に期間を入れたら open に戻す（ADR-0190）
+	patch = normalizeSubPatch(reopenSubOnPeriod(current.status, patch));
 	// 遷移表にない遷移はエラー。付随の変更は画面と同じ表で補う（ADR-0183）
 	if (patch.status !== undefined && patch.status !== current.status && log?.via !== "undo") {
 		const reopenTo = index.reopenStatus(key);

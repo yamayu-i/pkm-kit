@@ -259,7 +259,7 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 	const todayLeft = unfinished(index, today, todayBoard);
 	return {
 		// 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
-		daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
+		daily: dead.deadline.length + dead.softDeadline.length + deadSub.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
 		inbox: issues.filter((i) => isInbox(i, today)).length,
 		organize: organizeQueue(issues, today).length,
 		scheduled: issues.filter((i) => isScheduledAhead(i, today)).length,

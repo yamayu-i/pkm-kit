@@ -1268,11 +1268,152 @@ updated: ${created}
 `;
 }
 
+// src/core/actions.ts
+function cancelPatch() {
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
+}
+function closePatch() {
+  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
+}
+function nextPatch(issue) {
+  return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function backToNextPatch() {
+  return { scheduled: null, tickler: null, clarified: true };
+}
+function ticklerPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function calendarPatch(issue, date) {
+  return { scheduled: date, clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function somedayPatch(revisit = null) {
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
+}
+function reopenPatch() {
+  return { status: "open", revisit: null };
+}
+function duePatch(issue, key, date) {
+  return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function scheduledPatch(issue, date) {
+  return { scheduled: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function ticklerFieldPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function reschedulePatch(target, to) {
+  return { [target]: to };
+}
+
+// src/core/transition.ts
+var STATUS_TRANSITIONS = {
+  open: ["in-progress", "waiting", "delegated", "someday", "closed", "canceled"],
+  "in-progress": ["waiting", "delegated", "someday", "closed", "canceled"],
+  waiting: ["in-progress", "someday", "closed", "canceled"],
+  delegated: ["in-progress", "someday", "closed", "canceled"],
+  someday: ["open", "closed", "canceled"],
+  closed: ["canceled"],
+  canceled: ["closed"]
+};
+var isDone = (s3) => s3 === "closed" || s3 === "canceled";
+function transitionTargets(from) {
+  return STATUSES.filter((s3) => STATUS_TRANSITIONS[from].includes(s3));
+}
+function canTransition(from, to, reopenTo = null) {
+  if (from === to) return false;
+  if (STATUS_TRANSITIONS[from].includes(to)) return true;
+  return isDone(from) && reopenTo !== null && !isDone(reopenTo) && to === reopenTo;
+}
+function transitionError(from, to, reopenTo = null) {
+  const targets = [...transitionTargets(from), ...isDone(from) && reopenTo !== null && !isDone(reopenTo) ? [`${reopenTo}\uFF08Reopen\uFF09`] : []];
+  return `status \u306F ${from} \u304B\u3089 ${to} \u306B\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3002\u79FB\u308C\u308B\u5148: ${targets.join(", ")}\uFF08ADR-0183\uFF09`;
+}
+function canTransitionAll(froms, to) {
+  return froms.length > 0 && froms.every((from) => canTransition(from, to));
+}
+function primaryStep(status) {
+  switch (status) {
+    case "open":
+      return { kind: "status", to: "in-progress", label: "Start" };
+    case "in-progress":
+      return { kind: "status", to: "closed", label: "Close" };
+    case "waiting":
+    case "delegated":
+      return { kind: "status", to: "in-progress", label: "Resume" };
+    case "someday":
+      return { kind: "status", to: "open", label: "Reopen" };
+    default:
+      return { kind: "reopen", label: "Reopen" };
+  }
+}
+function reopenStatus(logs, task, sub = null) {
+  for (let i3 = logs.length - 1; i3 >= 0; i3--) {
+    const e3 = logs[i3];
+    if (e3.task !== task || (e3.sub ?? null) !== sub) continue;
+    if (isDone(e3.to) && !isDone(e3.from)) return e3.from;
+  }
+  return "open";
+}
+function stopsTimer(to) {
+  return to !== "open" && to !== "in-progress";
+}
+function unstarsOn(to) {
+  return to === "waiting" || to === "delegated" || to === "someday";
+}
+function timerStartStatus(from) {
+  return from === "open" || from === "waiting" || from === "delegated" ? "in-progress" : null;
+}
+function issueStatusPatch(to, opts = {}) {
+  if (to === "closed") return closePatch();
+  if (to === "canceled") return cancelPatch();
+  if (to === "someday") return somedayPatch(opts.revisit ?? null);
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
+  }
+  if (to === "open") return { status: to, delegated_to: null, revisit: null };
+  return { status: to, delegated_to: null, revisit: null, tickler: null };
+}
+function subStatusPatch(to, opts = {}) {
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegatedTo: opts.delegatedTo };
+  }
+  if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, start: null, end: null };
+  return { status: to, delegatedTo: null };
+}
+function reopenSubOnPeriod(current, patch) {
+  if (current !== "someday" || patch.status !== void 0) return patch;
+  const sets = patch.start !== void 0 && patch.start !== null || patch.end !== void 0 && patch.end !== null;
+  return sets ? { ...patch, status: "open" } : patch;
+}
+function completeIssuePatch(to, fields, from = null) {
+  const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
+  if (from === "someday" && to === "open") base.clarified = null;
+  return { ...base, ...fields };
+}
+function completeSubPatch(to, patch) {
+  const base = to === "delegated" ? {} : subStatusPatch(to);
+  return { ...base, ...patch };
+}
+function canSetTickler(status) {
+  return status === "open" || status === "someday";
+}
+function ticklerError(status) {
+  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
+}
+function canApplyAll(froms, op) {
+  if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
+  return canTransitionAll(froms, op);
+}
+
 // src/core/sub-issue.ts
 var SUB_ISSUE_MARKER = "<!-- sub-issue";
 var BLOCK_END = "-->";
 var SubIssueFormatError = class extends Error {
 };
+var REMOVED_SUB_KEYS = ["soft_deadline", "deadline"];
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
 var SUB_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 function isSubId(value) {
@@ -1340,6 +1481,8 @@ function parseBlock(path, parent, raw, order, parseYaml5) {
   const status = r3.oneOf("status", STATUSES);
   if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
   const migratedFrom = r3.ref("migrated_from", "i");
+  const removed = REMOVED_SUB_KEYS.filter((k3) => r3.has(k3));
+  if (removed.length > 0) extra.push({ severity: "warning", path, code: "sub-deadline-removed", message: `${removed.join(" \u3068 ")} \u306F\u30B5\u30D6\u3067\u306F\u4F7F\u308F\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002end \u306B\u307E\u3068\u3081\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0190\u3001\u79FB\u884C 0190\uFF09` });
   const sub = {
     parent,
     path,
@@ -1352,8 +1495,6 @@ function parseBlock(path, parent, raw, order, parseYaml5) {
     start: r3.date("start"),
     end: r3.date("end"),
     scheduled: r3.calendarDate("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
     estimated: r3.minutes("estimated"),
     dependsOn: r3.strings("depends_on"),
     created: r3.datetime("created"),
@@ -1387,8 +1528,6 @@ function formatSubHead(sub) {
   put("start", sub.start);
   put("end", sub.end);
   put("scheduled", sub.scheduled);
-  put("soft_deadline", sub.softDeadline);
-  put("deadline", sub.deadline);
   put("estimated", sub.estimated === null ? null : String(sub.estimated));
   if (sub.dependsOn.length > 0) put("depends_on", JSON.stringify(sub.dependsOn));
   put("created", sub.created);
@@ -1489,9 +1628,7 @@ function checkSubIssues(subs, memberIds) {
     for (const [key, value] of [
       ["start", s3.start],
       ["end", s3.end],
-      ["scheduled", s3.scheduled],
-      ["soft_deadline", s3.softDeadline],
-      ["deadline", s3.deadline]
+      ["scheduled", s3.scheduled]
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
@@ -1537,8 +1674,6 @@ function newSubIssueInput(item, id, created) {
     start: item.start ?? null,
     end: item.end ?? null,
     scheduled: item.scheduled ?? null,
-    softDeadline: item.softDeadline ?? null,
-    deadline: item.deadline ?? null,
     estimated: item.estimated ?? null,
     dependsOn: item.dependsOn ?? [],
     created,
@@ -1549,15 +1684,15 @@ function newSubIssueInput(item, id, created) {
 function dependentsOf(subs, id) {
   return subs.filter((s3) => s3.dependsOn.includes(id)).map((s3) => s3.id);
 }
-var isDone = (s3) => s3.status === "closed" || s3.status === "canceled";
+var isDone2 = (s3) => s3.status === "closed" || s3.status === "canceled";
 function becomesDone(from, to) {
-  return !isDone({ status: from }) && isDone({ status: to });
+  return !isDone2({ status: from }) && isDone2({ status: to });
 }
 function visibleSubs(subs, showClosed) {
-  return showClosed ? [...subs] : subs.filter((s3) => !isDone(s3));
+  return showClosed ? [...subs] : subs.filter((s3) => !isDone2(s3));
 }
 function subCounts(subs) {
-  const closed = subs.filter(isDone).length;
+  const closed = subs.filter(isDone2).length;
   return { open: subs.length - closed, total: subs.length, closed };
 }
 var shortDate = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
@@ -1569,8 +1704,6 @@ function subItemPatch(draft, estimated) {
     start: draft.start,
     end: draft.end,
     scheduled: draft.scheduled,
-    softDeadline: draft.softDeadline,
-    deadline: draft.deadline,
     estimated,
     dependsOn: draft.dependsOn
   };
@@ -1578,8 +1711,7 @@ function subItemPatch(draft, estimated) {
 function subHint(sub, today) {
   if (sub.start !== null || sub.end !== null) return `${sub.start ? shortDate(sub.start) : ""}\u2013${sub.end ? shortDate(sub.end) : ""}`;
   if (sub.scheduled !== null && sub.scheduled >= today) return shortDate(sub.scheduled);
-  const due = sub.deadline ?? sub.softDeadline;
-  return due ? `Due ${shortDate(due)}` : null;
+  return null;
 }
 function dropPosition(ids, dragged, before) {
   const from = ids.indexOf(dragged);
@@ -1639,12 +1771,12 @@ function layoutSubIssues(path, parent, text, parseYaml5) {
   return out;
 }
 function subHeadChange(path, parent, text, id, patch, parseYaml5, memberIds) {
-  const fixed = normalizeSubPatch(patch);
   const all = layoutSubIssues(path, parent, text, parseYaml5);
   const layout = all.find((b2) => b2.id === id);
   const { subs } = parseSubIssues(path, parent, text, parseYaml5);
   const before = subs.find((s3) => s3.id === id);
   if (!layout || !before || layout.cardTo === null) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${subKey(parent, id)}`);
+  const fixed = normalizeSubPatch(reopenSubOnPeriod(before.status, patch));
   const after = { ...before, ...fixed, id };
   const errors = touchedSubErrors(
     subs.map((s3) => s3.id === id ? after : s3),
@@ -1994,9 +2126,7 @@ function missedSubs(index, today) {
   return index.data.subIssues.filter((s3) => isActive(s3) && s3.scheduled !== null && s3.scheduled < today && index.sub(s3.key) === s3).sort((a3, b2) => a3.scheduled.localeCompare(b2.scheduled) || a3.key.localeCompare(b2.key, "en", { numeric: true }));
 }
 function subDue(index, hit) {
-  const live = index.data.subIssues.filter((s3) => isActive(s3) && index.sub(s3.key) === s3);
-  const by = (key) => live.filter((s3) => s3[key] !== null && hit(s3[key])).sort((a3, b2) => a3[key].localeCompare(b2[key]) || a3.key.localeCompare(b2.key, "en", { numeric: true }));
-  return { deadline: by("deadline"), softDeadline: by("softDeadline") };
+  return index.data.subIssues.filter((s3) => isActive(s3) && index.sub(s3.key) === s3 && s3.end !== null && hit(s3.end)).sort((a3, b2) => a3.end.localeCompare(b2.end) || a3.key.localeCompare(b2.key, "en", { numeric: true }));
 }
 function deadSubs(index, today) {
   return subDue(index, (d3) => d3 < today);
@@ -2139,142 +2269,6 @@ function closedAtMap(logs, closedIds) {
 }
 function isDoneStatus(status) {
   return status === "closed" || status === "canceled";
-}
-
-// src/core/actions.ts
-function cancelPatch() {
-  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
-}
-function closePatch() {
-  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
-}
-function nextPatch(issue) {
-  return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function backToNextPatch() {
-  return { scheduled: null, tickler: null, clarified: true };
-}
-function ticklerPatch(issue, date) {
-  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function calendarPatch(issue, date) {
-  return { scheduled: date, clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
-}
-function reopenPatch() {
-  return { status: "open", revisit: null };
-}
-function duePatch(issue, key, date) {
-  return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function scheduledPatch(issue, date) {
-  return { scheduled: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function ticklerFieldPatch(issue, date) {
-  return { tickler: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function reschedulePatch(target, to) {
-  return { [target]: to };
-}
-
-// src/core/transition.ts
-var STATUS_TRANSITIONS = {
-  open: ["in-progress", "waiting", "delegated", "someday", "closed", "canceled"],
-  "in-progress": ["waiting", "delegated", "someday", "closed", "canceled"],
-  waiting: ["in-progress", "someday", "closed", "canceled"],
-  delegated: ["in-progress", "someday", "closed", "canceled"],
-  someday: ["open", "closed", "canceled"],
-  closed: ["canceled"],
-  canceled: ["closed"]
-};
-var isDone2 = (s3) => s3 === "closed" || s3 === "canceled";
-function transitionTargets(from) {
-  return STATUSES.filter((s3) => STATUS_TRANSITIONS[from].includes(s3));
-}
-function canTransition(from, to, reopenTo = null) {
-  if (from === to) return false;
-  if (STATUS_TRANSITIONS[from].includes(to)) return true;
-  return isDone2(from) && reopenTo !== null && !isDone2(reopenTo) && to === reopenTo;
-}
-function transitionError(from, to, reopenTo = null) {
-  const targets = [...transitionTargets(from), ...isDone2(from) && reopenTo !== null && !isDone2(reopenTo) ? [`${reopenTo}\uFF08Reopen\uFF09`] : []];
-  return `status \u306F ${from} \u304B\u3089 ${to} \u306B\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3002\u79FB\u308C\u308B\u5148: ${targets.join(", ")}\uFF08ADR-0183\uFF09`;
-}
-function canTransitionAll(froms, to) {
-  return froms.length > 0 && froms.every((from) => canTransition(from, to));
-}
-function primaryStep(status) {
-  switch (status) {
-    case "open":
-      return { kind: "status", to: "in-progress", label: "Start" };
-    case "in-progress":
-      return { kind: "status", to: "closed", label: "Close" };
-    case "waiting":
-    case "delegated":
-      return { kind: "status", to: "in-progress", label: "Resume" };
-    case "someday":
-      return { kind: "status", to: "open", label: "Reopen" };
-    default:
-      return { kind: "reopen", label: "Reopen" };
-  }
-}
-function reopenStatus(logs, task, sub = null) {
-  for (let i3 = logs.length - 1; i3 >= 0; i3--) {
-    const e3 = logs[i3];
-    if (e3.task !== task || (e3.sub ?? null) !== sub) continue;
-    if (isDone2(e3.to) && !isDone2(e3.from)) return e3.from;
-  }
-  return "open";
-}
-function stopsTimer(to) {
-  return to !== "open" && to !== "in-progress";
-}
-function unstarsOn(to) {
-  return to === "waiting" || to === "delegated" || to === "someday";
-}
-function timerStartStatus(from) {
-  return from === "open" || from === "waiting" || from === "delegated" ? "in-progress" : null;
-}
-function issueStatusPatch(to, opts = {}) {
-  if (to === "closed") return closePatch();
-  if (to === "canceled") return cancelPatch();
-  if (to === "someday") return somedayPatch(opts.revisit ?? null);
-  if (to === "delegated") {
-    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
-    return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
-  }
-  if (to === "open") return { status: to, delegated_to: null, revisit: null };
-  return { status: to, delegated_to: null, revisit: null, tickler: null };
-}
-function subStatusPatch(to, opts = {}) {
-  if (to === "delegated") {
-    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
-    return { status: to, delegatedTo: opts.delegatedTo };
-  }
-  if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, softDeadline: null, deadline: null };
-  if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
-  return { status: to, delegatedTo: null };
-}
-function completeIssuePatch(to, fields, from = null) {
-  const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
-  if (from === "someday" && to === "open") base.clarified = null;
-  return { ...base, ...fields };
-}
-function completeSubPatch(to, patch) {
-  const base = to === "delegated" ? {} : subStatusPatch(to);
-  return { ...base, ...patch };
-}
-function canSetTickler(status) {
-  return status === "open" || status === "someday";
-}
-function ticklerError(status) {
-  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
-}
-function canApplyAll(froms, op) {
-  if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
-  return canTransitionAll(froms, op);
 }
 
 // src/core/index.ts
@@ -2451,7 +2445,7 @@ function sidebarCounts(index, today) {
   const todayLeft = unfinished(index, today, todayBoard);
   return {
     // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
-    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
+    daily: dead.deadline.length + dead.softDeadline.length + deadSub.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
     inbox: issues.filter((i3) => isInbox(i3, today)).length,
     organize: organizeQueue(issues, today).length,
     scheduled: issues.filter((i3) => isScheduledAhead(i3, today)).length,
@@ -3593,8 +3587,6 @@ function revealSub(sub) {
 var DATE_FIELDS = [
   ["start", "Start"],
   ["end", "End"],
-  ["softDeadline", "Soft deadline"],
-  ["deadline", "Deadline"],
   ["scheduled", "Calendar"]
 ];
 function confirmModal(ctx, title, message, action, run) {
@@ -3648,10 +3640,10 @@ function SubIssueForm(props) {
   const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
   const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
   const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
-  const editDate = (key, label) => pickSubDate(ctx, label, draft[key], (v3) => set({ [key]: v3 }));
+  const editDate = (key, label) => pickSubDate(ctx, label, draft[key], (v3) => setDraft((d3) => ({ ...d3, [key]: v3, ...d3.status === "someday" && key !== "scheduled" && v3 !== null ? { status: "open" } : {} })));
   const changeStatus = (status) => {
     if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
-    else set({ status, ...status === "delegated" ? {} : { delegatedTo: null } });
+    else set({ status, ...status === "delegated" ? {} : { delegatedTo: null }, ...status === "someday" ? { scheduled: null, start: null, end: null } : {} });
   };
   const save = () => {
     const minutes = estimated.trim() === "" ? null : parseDurationInput(estimated);
@@ -3842,7 +3834,7 @@ var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
 function timelineRange(subs, today, scale) {
   const dates = [today];
   for (const s3 of subs) {
-    for (const d3 of [s3.start, s3.end, s3.softDeadline, s3.deadline, s3.scheduled]) if (d3) dates.push(d3);
+    for (const d3 of [s3.start, s3.end, s3.scheduled]) if (d3) dates.push(d3);
   }
   let from = addDays(minDate(dates), -PAD_DAYS);
   let to = addDays(maxDate(dates), PAD_DAYS);
@@ -4243,15 +4235,10 @@ function SubTimeline(props) {
           const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
           const handles = barWidth >= HANDLE * 3;
           const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
-          const marks = [
-            ...sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : [],
-            ...sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []
-          ];
-          const nothing = !bar && sub.scheduled === null && marks.length === 0;
+          const nothing = !bar && sub.scheduled === null;
           return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
             nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
             !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
-            marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-mark ${m3.cls}`, style: { left: `${xOf(m3.date) + px - 1}px` }, title: m3.label })),
             bar && /* @__PURE__ */ u3(
               "div",
               {
@@ -5904,7 +5891,7 @@ function installReadingCards(ctx, plugin) {
     const layout = layoutOf(path, info.text);
     const r3 = subSectionRole(layout, info.lineStart, info.lineEnd);
     const subs = r3.role === "card" || r3.role === "body" ? subsOf(path, info.text) : [];
-    const doneIds = subs.filter(isDone).map((s3) => s3.id);
+    const doneIds = subs.filter(isDone2).map((s3) => s3.id);
     const isDoneId = (id) => id !== null && doneIds.includes(id);
     if (r3.role === "hide") {
       el.addClass(AREA_HIDDEN);
@@ -6112,14 +6099,14 @@ function build(ctx, state) {
   const all = [];
   const folds = [];
   const shownClosed = closedShown.has(path);
-  const doneCount = subs.filter(isDone).length;
+  const doneCount = subs.filter(isDone2).length;
   let toggled = false;
   for (const b2 of layout) {
     if (b2.cardTo === null || b2.bodyFrom === null || b2.bodyTo === null) continue;
     const sub = b2.id === null ? null : subs.find((s3) => s3.id === b2.id) ?? null;
     const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
     const sectionTo = layout[b2.index + 1] ? layout[b2.index + 1].from - 1 : text.length;
-    if (sub !== null && isDone(sub)) {
+    if (sub !== null && isDone2(sub)) {
       if (!toggled) {
         toggled = true;
         all.push(import_view.Decoration.widget({ widget: new ClosedToggleWidget(ctx, path, doneCount, shownClosed), block: true, side: -1 }).range(b2.from));
@@ -6177,7 +6164,7 @@ function editorSticky(ctx) {
         for (const b2 of layout) {
           if (b2.cardTo === null || b2.id === null || !isSubOpen(ctx.settings.subOpen, path, b2.id)) continue;
           const sub = subs.find((s3) => s3.id === b2.id);
-          if (!sub || isDone(sub) && !closedShown.has(path)) continue;
+          if (!sub || isDone2(sub) && !closedShown.has(path)) continue;
           const end = b2.bodyFrom !== null && b2.bodyTo !== null && b2.bodyTo > b2.bodyFrom ? b2.bodyTo : b2.cardTo;
           open.push({ b: b2, sub, region: { top: view.lineBlockAt(b2.from).top, bottom: view.lineBlockAt(end).bottom } });
         }
@@ -6241,7 +6228,7 @@ function installSubCards(ctx, plugin) {
 }
 function revealSubIn(ctx, sub) {
   const { path, id } = sub;
-  if (isDone(sub)) closedShown.add(path);
+  if (isDone2(sub)) closedShown.add(path);
   if (!isSubOpen(ctx.settings.subOpen, path, id)) {
     toggleOpen(
       ctx,
@@ -7170,7 +7157,7 @@ var TaskWriter = class {
   async updateSub(key, patch, via = "ui") {
     const sub = this.store.index.sub(key);
     if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
-    let fixed = normalizeSubPatch(patch);
+    let fixed = normalizeSubPatch(reopenSubOnPeriod(sub.status, patch));
     const next = fixed.status;
     if (via !== "undo" && next !== void 0 && next !== sub.status) {
       const reopenTo = this.store.index.reopenStatus(sub.key);
@@ -7931,9 +7918,9 @@ function DueSection(props) {
   return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: props.title }),
-      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length + props.subs.length })
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length })
     ] }),
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "soft_deadline", "deadline"], empty: props.subs.length > 0 ? "" : props.empty }),
+    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "soft_deadline", "deadline"], empty: props.empty }),
     issues.length > 0 && /* @__PURE__ */ u3(
       ActionBar,
       {
@@ -7947,16 +7934,23 @@ function DueSection(props) {
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
-    ),
+    )
+  ] });
+}
+function SubDueSection(props) {
+  const { ctx } = props;
+  const today = localToday();
+  return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "end" }),
+      /* @__PURE__ */ u3("span", { class: "vt-count", children: props.subs.length })
+    ] }),
     /* @__PURE__ */ u3(
       SubLines,
       {
         ctx,
         subs: props.subs,
-        note: (s3) => {
-          const d3 = target === "deadline" ? s3.deadline : s3.softDeadline;
-          return d3 ? formatShortDate(d3) : null;
-        },
+        note: (s3) => s3.end ? formatShortDate(s3.end) : null,
         actions: (s3) => [{ label: "Add to today's board", primary: true, run: () => void addSubToBoard(ctx, today, s3) }]
       }
     )
@@ -7964,20 +7958,22 @@ function DueSection(props) {
 }
 function CalendarStep(props) {
   const { ctx } = props;
-  const total = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
+  const total = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.length;
   if (total(props.dead, props.deadSub) + total(props.caution, props.cautionSub) + props.missed.length + props.missedSub.length === 0) {
     return /* @__PURE__ */ u3("div", { class: "vt-empty", children: "Nothing overdue, due soon, or missed" });
   }
   return /* @__PURE__ */ u3(S, { children: [
     total(props.dead, props.deadSub) > 0 && /* @__PURE__ */ u3(S, { children: [
       /* @__PURE__ */ u3("h3", { class: "vt-h", children: "Overdue" }),
-      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.dead.deadline, subs: props.deadSub.deadline, empty: "Nothing is overdue" }),
-      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.dead.softDeadline, subs: props.deadSub.softDeadline, empty: "Nothing is overdue" })
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.dead.deadline, empty: "Nothing is overdue" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.dead.softDeadline, empty: "Nothing is overdue" }),
+      props.deadSub.length > 0 && /* @__PURE__ */ u3(SubDueSection, { ctx, subs: props.deadSub })
     ] }),
     total(props.caution, props.cautionSub) > 0 && /* @__PURE__ */ u3(S, { children: [
       /* @__PURE__ */ u3("h3", { class: "vt-h", children: "Due soon" }),
-      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.caution.deadline, subs: props.cautionSub.deadline, empty: "No deadlines in the next 3 days" }),
-      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.caution.softDeadline, subs: props.cautionSub.softDeadline, empty: "No deadlines in the next 3 days" })
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "deadline", title: "deadline", issues: props.caution.deadline, empty: "No deadlines in the next 3 days" }),
+      /* @__PURE__ */ u3(DueSection, { ctx, target: "soft_deadline", title: "soft_deadline", issues: props.caution.softDeadline, empty: "No deadlines in the next 3 days" }),
+      props.cautionSub.length > 0 && /* @__PURE__ */ u3(SubDueSection, { ctx, subs: props.cautionSub })
     ] }),
     props.missed.length + props.missedSub.length > 0 && /* @__PURE__ */ u3(MissedSection, { ctx, issues: props.missed, subs: props.missedSub })
   ] });
@@ -8083,7 +8079,7 @@ function DailyView(props) {
   const pick = pickCandidates(index, today, todayBoard);
   const toAdd = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
-  const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
+  const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.length;
   const counts = {
     calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
     pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0),

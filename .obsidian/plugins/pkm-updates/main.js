@@ -432,6 +432,7 @@ function parseMember(path, fm) {
 // ../pkm-task/src/core/sub-issue.ts
 var SUB_ISSUE_MARKER = "<!-- sub-issue";
 var BLOCK_END = "-->";
+var REMOVED_SUB_KEYS = ["soft_deadline", "deadline"];
 var SUB_ID_RE = /^[a-z0-9]{6}$/;
 function isSubId(value) {
   return typeof value === "string" && SUB_ID_RE.test(value);
@@ -483,6 +484,8 @@ function parseBlock(path, parent, raw, order, parseYaml) {
   const status = r3.oneOf("status", STATUSES);
   if (status === null && !r3.has("status")) extra.push({ severity: "error", path, code: "invalid-sub-issue", message: "status \u304C\u3042\u308A\u307E\u305B\u3093" });
   const migratedFrom = r3.ref("migrated_from", "i");
+  const removed = REMOVED_SUB_KEYS.filter((k3) => r3.has(k3));
+  if (removed.length > 0) extra.push({ severity: "warning", path, code: "sub-deadline-removed", message: `${removed.join(" \u3068 ")} \u306F\u30B5\u30D6\u3067\u306F\u4F7F\u308F\u306A\u304F\u306A\u308A\u307E\u3057\u305F\u3002end \u306B\u307E\u3068\u3081\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0190\u3001\u79FB\u884C 0190\uFF09` });
   const sub = {
     parent,
     path,
@@ -495,8 +498,6 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     start: r3.date("start"),
     end: r3.date("end"),
     scheduled: r3.calendarDate("scheduled"),
-    softDeadline: r3.date("soft_deadline"),
-    deadline: r3.date("deadline"),
     estimated: r3.minutes("estimated"),
     dependsOn: r3.strings("depends_on"),
     created: r3.datetime("created"),
