@@ -27,7 +27,7 @@ const plugin = {
 await mkdir(outdir, { recursive: true });
 await copyFile("manifest.json", `${outdir}manifest.json`);
 // トークン（packages/design の生成物）の後ろにプラグインの CSS を続ける（docs/design.md）。共有の部品の CSS（月のカレンダー。ADR-0078）も続ける
-const sharedCss = await readFile("../shared/src/month-calendar.css", "utf8");
+const sharedCss = (await Promise.all(["month-calendar.css", "link-chips.css"].map((f) => readFile(`../shared/src/${f}`, "utf8")))).join("\n");
 await writeFile(`${outdir}styles.css`, `${await readFile("tokens.css", "utf8")}\n${await readFile("styles.css", "utf8")}\n${sharedCss}`);
 if (watch) {
 	await (await esbuild.context(plugin)).watch();

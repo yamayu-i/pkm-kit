@@ -4,6 +4,7 @@ import { loadPluginDataOrLegacy } from "../../shared/src/legacy-data.ts";
 import { openInNotePane, openListView } from "../../shared/src/list-pane.ts";
 import { installTaskHeaders } from "./header/extension";
 import { installSubCards } from "./header/sub-cards";
+import { installLinkInsert } from "./obsidian/link-insert";
 import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
@@ -102,6 +103,8 @@ export default class PkmTaskPlugin extends Plugin {
 		this.addCommand({ id: "open-sidebar", name: "Open Tasks sidebar", icon: SIDEBAR_VIEW.icon, callback: () => void openSidebar(true) });
 		installTaskHeaders(ctx, this);
 		installSubCards(ctx, this);
+		// @issue などで探してリンクを入れ、本文のリンクをチップに描く（ADR-0194）
+		installLinkInsert(ctx, this);
 		this.addCommand({ id: "capture-issues", name: "Capture issues", callback: () => openCaptureModal(ctx) });
 		// リボンの「Tasks Now」（pkm-ribbon がこのコマンドを呼ぶ。ADR-0154）
 		this.addCommand({

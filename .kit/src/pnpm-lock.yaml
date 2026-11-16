@@ -463,6 +463,12 @@ importers:
         specifier: 10.29.8
         version: 10.29.8
     devDependencies:
+      '@codemirror/state':
+        specifier: 6.7.6
+        version: 6.7.6
+      '@codemirror/view':
+        specifier: 6.43.13
+        version: 6.43.13
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6

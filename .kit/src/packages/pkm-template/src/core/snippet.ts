@@ -69,11 +69,6 @@ export function parseSnippet(file: string, text: string): { snippet: Snippet | n
 	return { snippet, problem: null };
 }
 
-/** command のあるものを除く。インラインテンプレートでは command を使わない（ADR-0094） */
-export function withoutCommands(snippets: readonly Snippet[]): Snippet[] {
-	return snippets.filter((s) => s.command === undefined);
-}
-
 /** 上流の既定に、その Vault のものを重ねる。同じファイル名ならその Vault のものを使う */
 export function layerSnippets(upstream: readonly Snippet[], local: readonly Snippet[]): Snippet[] {
 	const byFile = new Map<string, Snippet>();

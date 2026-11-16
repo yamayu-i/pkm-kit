@@ -10,7 +10,7 @@ import {
 	type TFile,
 } from "obsidian";
 import type { StateField } from "@codemirror/state";
-import { filterSnippets, inlineBody, withoutCommands, type SlashSession, type Snippet } from "../core/snippet";
+import { filterSnippets, inlineBody, type SlashSession, type Snippet } from "../core/snippet";
 import { extractDatePrompts, renderTemplate } from "../core/template";
 import type { TemplateManager } from "./creator";
 import { askDates } from "./DatePromptModal";
@@ -35,11 +35,14 @@ export const SNIPPET_KIND: SnippetSuggestKind = {
 	bodyOf: (s) => s.body,
 };
 
-/** 行頭か半角空白の後の `@` でインラインテンプレート（ADR-0067）。ファイルの終わりの改行は入れない */
+/**
+ * 行頭か半角空白の後の `@` でインラインテンプレート（ADR-0067）。ファイルの終わりの改行は入れない。
+ * command のあるもの（`@issue` など）は、打った `@…` を消してコマンドを実行する（ADR-0194）
+ */
 export const INLINE_KIND: SnippetSuggestKind = {
 	label: "Inline template",
 	field: atSessionField,
-	load: (m) => m.loadInlineTemplates().then(({ snippets, problems }) => ({ snippets: withoutCommands(snippets), problems })),
+	load: (m) => m.loadInlineTemplates(),
 	bodyOf: (s) => inlineBody(s.body),
 };
 
@@ -138,7 +141,7 @@ export class SnippetSuggest extends EditorSuggest<Snippet> {
 	}
 
 	/**
-	 * command のあるスニペット（ADR-0094）。打った `/…` を消してカーソルをそこに置き、コマンドを実行する。
+	 * command のあるスニペット（ADR-0094）とインラインテンプレート（ADR-0194）。打った `/…` や `@…` を消してカーソルをそこに置き、コマンドを実行する。
 	 * 実行できなければ打った文字を戻して知らせる
 	 */
 	private runCommand(command: string, editor: Editor, start: EditorPosition, end: EditorPosition): void {

@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian11 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
@@ -1345,9 +1345,6 @@ function parseSnippet(file, text2) {
   if (command !== void 0) snippet.command = command;
   return { snippet, problem: null };
 }
-function withoutCommands(snippets) {
-  return snippets.filter((s3) => s3.command === void 0);
-}
 function layerSnippets(upstream, local) {
   const byFile = /* @__PURE__ */ new Map();
   for (const s3 of upstream) byFile.set(s3.file, s3);
@@ -1505,21 +1502,33 @@ var TemplateManager = class {
    * 生成先は `.kit/templates/config.json` の daily.md の設定に従う（有効・無効は問わない）。
    */
   async openTodaysDaily(now = /* @__PURE__ */ new Date()) {
-    const { entries } = await this.loadConfig();
-    const entry = entries.find((e3) => e3.file === "daily.md");
-    const resolved = resolveDailyPath(entry, now);
-    if (resolved.error) throw new Error(resolved.error);
-    const path = (0, import_obsidian3.normalizePath)(resolved.path);
-    const existing = this.app.vault.getFileByPath(path);
+    const { path, existing } = await this.todaysDaily(now);
     if (existing) {
       await openInNotePane(this.app.workspace, existing, { newTab: false, phone: import_obsidian3.Platform.isPhone });
       return existing;
     }
+    return this.createTodaysDaily(now, true, path);
+  }
+  /** 今日の daily のパスと、あればそのファイル */
+  async todaysDaily(now = /* @__PURE__ */ new Date()) {
+    const { entries } = await this.loadConfig();
+    const resolved = resolveDailyPath(entries.find((e3) => e3.file === "daily.md"), now);
+    if (resolved.error) throw new Error(resolved.error);
+    const path = (0, import_obsidian3.normalizePath)(resolved.path);
+    return { path, existing: this.app.vault.getFileByPath(path) };
+  }
+  /** 今日の daily をテンプレートから作る。open が false なら開かない（@daily でリンクを入れるとき。ADR-0194） */
+  async createTodaysDaily(now = /* @__PURE__ */ new Date(), open = false, path) {
+    const { entries } = await this.loadConfig();
+    const entry = entries.find((e3) => e3.file === "daily.md");
+    const target = path ?? (await this.todaysDaily(now)).path;
+    const existing = this.app.vault.getFileByPath(target);
+    if (existing) return existing;
     const template = await this.loadTemplate(
       entry ?? { file: "daily.md", enabled: false, folder: "", fileNamePattern: "" }
     );
     if (!template) throw new Error(`daily.md \u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u304C\u3042\u308A\u307E\u305B\u3093\uFF08${TEMPLATE_DIR}/ \u306B\u3082 ${UPSTREAM_TEMPLATE_DIR}/ \u306B\u3082\u306A\u3044\uFF09`);
-    return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now });
+    return this.createNoteFromTemplate({ template, titleInput: "", prompts: {}, now, open });
   }
   fileExists(path) {
     return Boolean(this.app.vault.getFileByPath((0, import_obsidian3.normalizePath)(path)));
@@ -1559,6 +1568,7 @@ var TemplateManager = class {
       params.linkInto.focus();
       return created2;
     }
+    if (params.open === false) return created2;
     const leaf = await openInNotePane(this.app.workspace, created2, { newTab: params.newTab === true, phone: import_obsidian3.Platform.isPhone });
     const view = this.app.workspace.getActiveViewOfType(import_obsidian3.MarkdownView) ?? leaf.view;
     const editor = view?.editor;
@@ -2042,8 +2052,567 @@ function installNoteHeaders(plugin) {
   });
 }
 
-// src/obsidian/snippet-session.ts
+// src/obsidian/link-insert.ts
+var import_obsidian8 = require("obsidian");
+
+// ../shared/src/link-chips.ts
 var import_state = require("@codemirror/state");
+var import_view = require("@codemirror/view");
+var import_obsidian6 = require("obsidian");
+
+// ../shared/src/link-query.ts
+var PAGE_SIZE = 50;
+function parseLinkQuery(input, keys = [], idPrefix = "") {
+  const words = [];
+  const filters = {};
+  for (const token of input.trim().split(/\s+/)) {
+    if (token === "") continue;
+    const m3 = /^([a-z]+):(.*)$/.exec(token);
+    if (m3 && keys.includes(m3[1])) {
+      const values = m3[2].split(",").map((v3) => v3.trim().toLowerCase()).filter((v3) => v3 !== "");
+      filters[m3[1]] = [...filters[m3[1]] ?? [], ...values];
+      continue;
+    }
+    words.push(token.toLowerCase());
+  }
+  let number = null;
+  if (words.length === 1) {
+    const w3 = words[0];
+    const re = idPrefix ? new RegExp(`^(?:${idPrefix}-)?(\\d+)$`) : /^(\d+)$/;
+    const m3 = re.exec(w3);
+    if (m3) number = m3[1];
+  }
+  return { words: number === null ? words : [], number, filters };
+}
+function matchRank(haystacks, words) {
+  if (words.length === 0) return 1;
+  const hs = haystacks.map((h3) => h3.toLowerCase());
+  for (const w3 of words) if (!hs.some((h3) => h3.includes(w3))) return null;
+  return hs.some((h3) => h3.startsWith(words[0])) ? 0 : 1;
+}
+function idRank(id, number) {
+  const m3 = /(\d+)$/.exec(id);
+  if (!m3) return null;
+  if (m3[1] === number) return 0;
+  return m3[1].startsWith(number) ? 1 : null;
+}
+function searchItems(items, query, opts) {
+  const ranked = [];
+  items.forEach((item2, index) => {
+    const rank = query.number !== null ? opts.id ? idRank(opts.id(item2), query.number) : null : matchRank(opts.haystacks(item2), query.words);
+    if (rank === null) return;
+    ranked.push({ item: item2, rank, recency: opts.recency?.(item2) ?? 0, index });
+  });
+  ranked.sort((a3, b2) => a3.rank - b2.rank || b2.recency - a3.recency || a3.index - b2.index);
+  return ranked.map((r3) => r3.item);
+}
+function pageOf(items, shown) {
+  return { items: items.slice(0, shown), rest: Math.max(0, items.length - shown) };
+}
+function escapeLinkText(text2) {
+  return text2.replace(/([\\[\]])/g, "\\$1");
+}
+function encodeLinkPath(path) {
+  return path.replace(/[ ()<>%]/g, (c3) => `%${c3.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`);
+}
+function markdownLink(text2, path, anchor) {
+  return `[${escapeLinkText(text2)}](${encodeLinkPath(path)}${anchor ? `#${encodeLinkPath(anchor)}` : ""})`;
+}
+function splitLinkTarget(target) {
+  const t3 = target.trim().replace(/^<(.*)>$/, "$1");
+  if (t3 === "" || t3.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(t3)) return null;
+  const hash = t3.indexOf("#");
+  const rawPath = hash < 0 ? t3 : t3.slice(0, hash);
+  const rawAnchor = hash < 0 ? "" : t3.slice(hash + 1);
+  const decode = (s3) => {
+    try {
+      return decodeURIComponent(s3);
+    } catch {
+      return s3;
+    }
+  };
+  return { path: decode(rawPath), anchor: decode(rawAnchor) };
+}
+var LINK_RE = /(!?)\[((?:\\.|[^\]\\\n])*)\]\(([^()\s]+|<[^>\n]+>)\)/g;
+function findMarkdownLinks(doc, range) {
+  const found = [];
+  let offset = 0;
+  let fence = null;
+  let lineNo = 0;
+  let inFrontmatter = false;
+  for (const line of doc.split("\n")) {
+    const start = offset;
+    offset += line.length + 1;
+    if (lineNo === 0 && line.trim() === "---") {
+      inFrontmatter = true;
+      lineNo++;
+      continue;
+    }
+    lineNo++;
+    if (inFrontmatter) {
+      if (/^(---|\.\.\.)\s*$/.test(line)) inFrontmatter = false;
+      continue;
+    }
+    const f4 = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fence !== null) {
+      if (f4 && f4[1][0] === fence[0] && f4[1].length >= fence.length && line.trim() === f4[1]) fence = null;
+      continue;
+    }
+    if (f4) {
+      fence = f4[1];
+      continue;
+    }
+    if (range && (offset <= range.from || start > range.to)) continue;
+    const masked = line.replace(/(`+)[^`]*?\1/g, (m3) => " ".repeat(m3.length));
+    for (const m3 of masked.matchAll(LINK_RE)) {
+      if (m3[1] === "!") continue;
+      const target = splitLinkTarget(m3[3]);
+      if (!target) continue;
+      const from = start + m3.index;
+      found.push({ from, to: from + m3[0].length, text: m3[2].replace(/\\(.)/g, "$1"), ...target });
+    }
+  }
+  return found;
+}
+
+// ../shared/src/link-chips.ts
+function resolveVaultPath(app, path, source) {
+  if (path === "") return null;
+  if (app.vault.getFileByPath(path)) return path;
+  return app.metadataCache.getFirstLinkpathDest(path, source)?.path ?? null;
+}
+function openPath(app, path, source, evt) {
+  void app.workspace.openLinkText(path, source, import_obsidian6.Keymap.isModEvent(evt));
+}
+var ChipWidget = class extends import_view.WidgetType {
+  chip;
+  app;
+  source;
+  constructor(chip, app, source) {
+    super();
+    this.chip = chip;
+    this.app = app;
+    this.source = source;
+  }
+  eq(other) {
+    return other.chip.key === this.chip.key && other.chip.mode === this.chip.mode;
+  }
+  toDOM() {
+    const el = document.createElement("span");
+    el.className = `vt-link-chip is-${this.chip.mode}`;
+    this.chip.render(el);
+    if (this.chip.mode === "replace") {
+      el.setAttribute("role", "link");
+      el.addEventListener("mousedown", (e3) => e3.preventDefault());
+      el.addEventListener("click", (e3) => {
+        e3.preventDefault();
+        openPath(this.app, this.chip.open ?? "", this.source, e3);
+      });
+    }
+    return el;
+  }
+  ignoreEvent() {
+    return this.chip.mode === "replace";
+  }
+};
+function touches(state, from, to) {
+  return state.selection.ranges.some((r3) => r3.from <= to && r3.to >= from);
+}
+function buildDecorations(view, app, opts) {
+  return chipDecorations(view.state, view.visibleRanges, app, opts);
+}
+function chipDecorations(state, visible, app, opts) {
+  if (!state.field(import_obsidian6.editorLivePreviewField, false)) return import_view.Decoration.none;
+  const source = state.field(import_obsidian6.editorInfoField, false)?.file?.path ?? "";
+  const doc = state.doc.toString();
+  const ranges = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const vr of visible) {
+    for (const link of findMarkdownLinks(doc, vr)) {
+      if (seen.has(link.from)) continue;
+      seen.add(link.from);
+      const chip = opts.resolve({ path: link.path, anchor: link.anchor, text: link.text, source });
+      if (!chip) continue;
+      const widget = new ChipWidget(chip, app, source);
+      if (chip.mode === "replace") {
+        if (touches(state, link.from, link.to)) continue;
+        ranges.push(import_view.Decoration.replace({ widget }).range(link.from, link.to));
+      } else {
+        ranges.push(import_view.Decoration.widget({ widget, side: -1 }).range(link.from));
+      }
+    }
+  }
+  return import_view.Decoration.set(ranges, true);
+}
+function installLinkChips(plugin, opts) {
+  const app = plugin.app;
+  const refresh = import_state.StateEffect.define();
+  const viewPlugin = import_view.ViewPlugin.fromClass(
+    class {
+      decorations;
+      constructor(view) {
+        this.decorations = buildDecorations(view, app, opts);
+      }
+      update(u4) {
+        const modeChanged = u4.startState.field(import_obsidian6.editorLivePreviewField, false) !== u4.state.field(import_obsidian6.editorLivePreviewField, false);
+        const asked = u4.transactions.some((t3) => t3.effects.some((e3) => e3.is(refresh)));
+        if (u4.docChanged || u4.selectionSet || u4.viewportChanged || modeChanged || asked) this.decorations = buildDecorations(u4.view, app, opts);
+      }
+    },
+    { decorations: (v3) => v3.decorations }
+  );
+  plugin.registerEditorExtension(viewPlugin);
+  plugin.register(
+    opts.subscribe(() => {
+      app.workspace.iterateAllLeaves((leaf) => {
+        const cm = leaf.view.editor?.cm;
+        if (cm instanceof import_view.EditorView) cm.dispatch({ effects: refresh.of(null) });
+      });
+    })
+  );
+  plugin.registerMarkdownPostProcessor((el, ctx) => {
+    for (const a3 of Array.from(el.querySelectorAll("a.internal-link"))) {
+      const href = a3.getAttribute("data-href") ?? a3.getAttribute("href") ?? "";
+      const target = splitLinkTarget(href);
+      if (!target) continue;
+      const text2 = a3.textContent ?? "";
+      let lead = null;
+      let replaced = false;
+      const undo = () => {
+        lead?.remove();
+        lead = null;
+        if (replaced) {
+          a3.removeClass("vt-link-chip", "is-replace");
+          a3.setText(text2);
+          replaced = false;
+        }
+      };
+      const draw = () => {
+        undo();
+        const chip = opts.resolve({ ...target, text: text2, source: ctx.sourcePath });
+        if (!chip) return;
+        if (chip.mode === "replace") {
+          a3.empty();
+          a3.addClass("vt-link-chip", "is-replace");
+          chip.render(a3);
+          replaced = true;
+          return;
+        }
+        lead = document.createElement("span");
+        lead.className = "vt-link-chip is-before";
+        chip.render(lead);
+        a3.prepend(lead);
+      };
+      draw();
+      const child = new import_obsidian6.MarkdownRenderChild(a3);
+      child.onload = () => child.register(opts.subscribe(draw));
+      ctx.addChild(child);
+    }
+  });
+}
+
+// ../shared/src/link-picker.ts
+var import_obsidian7 = require("obsidian");
+var LinkPicker = class extends import_obsidian7.SuggestModal {
+  shown = PAGE_SIZE;
+  lastQuery = null;
+  source;
+  constructor(app, source) {
+    super(app);
+    this.source = source;
+    registerCloseKey(this);
+    this.limit = Number.MAX_SAFE_INTEGER;
+    this.modalEl.addClass("vt-link-picker");
+    this.apply(source);
+    this.inputEl.addEventListener("keydown", (e3) => {
+      if (e3.key !== "Backspace" || this.inputEl.value !== "" || !this.source.back) return;
+      if (this.source.back(this)) e3.preventDefault();
+    });
+  }
+  /** 中身を差し替える（2 段階の検索の次の段）。打った文字は消す */
+  setSource(source, query = "") {
+    this.source = source;
+    this.apply(source);
+    this.setQuery(query);
+  }
+  setQuery(query) {
+    this.inputEl.value = query;
+    this.inputEl.dispatchEvent(new Event("input"));
+  }
+  apply(source) {
+    this.setPlaceholder(source.placeholder);
+    this.emptyStateText = source.empty ?? "No matches";
+    this.setInstructions(source.hint ? [{ command: "", purpose: source.hint }] : []);
+  }
+  getSuggestions(query) {
+    if (query !== this.lastQuery) {
+      this.shown = PAGE_SIZE;
+      this.lastQuery = query;
+    }
+    const { items, rest } = pageOf(this.source.search(query), this.shown);
+    const rows = items.map((item2) => ({ item: item2 }));
+    if (rest > 0) rows.push({ more: rest });
+    return rows;
+  }
+  renderSuggestion(row, el) {
+    if ("more" in row) {
+      el.addClass("vt-link-more");
+      el.setText(`Load more (${row.more})`);
+      return;
+    }
+    el.addClass("vt-link-row");
+    this.source.render(row.item, el);
+  }
+  selectSuggestion(row, _evt) {
+    if ("more" in row) {
+      this.shown += PAGE_SIZE;
+      this.inputEl.dispatchEvent(new Event("input"));
+      return;
+    }
+    if (this.source.choose(row.item, this) === "stay") return;
+    this.close();
+  }
+  onChooseSuggestion() {
+  }
+};
+function insertAtCursor(editor, text2) {
+  editor.replaceSelection(text2);
+  editor.focus();
+}
+function renderRow(el, parts) {
+  const lead = el.createSpan({ cls: "vt-link-row-lead" });
+  parts.lead?.(lead);
+  el.createSpan({ cls: `vt-link-row-title${parts.done ? " is-done" : ""}`, text: parts.title });
+  if (parts.note) el.createSpan({ cls: "vt-link-row-note", text: parts.note });
+}
+
+// src/core/link-search.ts
+var NOTE_EXCLUDED = ["issue/", "routine/", "member/", "daily/", "tmp/", "template/"];
+var TASK_FOLDERS = ["issue/", "routine/", "member/"];
+function aliasesOf(fm) {
+  const a3 = fm.aliases;
+  return Array.isArray(a3) ? a3.filter((x2) => typeof x2 === "string") : typeof a3 === "string" ? [a3] : [];
+}
+function isLinkableNote(path) {
+  return !path.startsWith(".") && !NOTE_EXCLUDED.some((f4) => path.startsWith(f4));
+}
+function searchNotes(notes, input, recency) {
+  const q2 = parseLinkQuery(input, ["t", "f"]);
+  const types = (q2.filters.t ?? []).flatMap((t3) => t3 === "wiki" ? [...WIKI_TYPES] : [t3]);
+  const folders = (q2.filters.f ?? []).map((f4) => f4.replace(/^\/+/, ""));
+  const words = q2.number !== null ? [q2.number] : q2.words;
+  const pool = notes.filter(
+    (n2) => isLinkableNote(n2.path) && (types.length === 0 || types.includes(String(n2.frontmatter.type ?? ""))) && (folders.length === 0 || folders.some((f4) => n2.path.toLowerCase().startsWith(f4)))
+  );
+  return searchItems(pool, { ...q2, words, number: null }, {
+    haystacks: (n2) => [noteTitle(n2.frontmatter, n2.basename), ...aliasesOf(n2.frontmatter), n2.path],
+    recency: (n2) => recency(n2.path)
+  });
+}
+function noteLinkOf(n2) {
+  return markdownLink(noteTitle(n2.frontmatter, n2.basename), n2.path);
+}
+function searchHeadings(headings, input) {
+  const q2 = parseLinkQuery(input);
+  const words = q2.number !== null ? [q2.number] : q2.words;
+  return searchItems(headings, { ...q2, words, number: null }, { haystacks: (h3) => [h3.heading] });
+}
+function headingLink(n2, heading) {
+  return markdownLink(`${noteTitle(n2.frontmatter, n2.basename)} \u203A ${heading}`, n2.path, heading);
+}
+function dailyEntries(paths) {
+  return paths.flatMap((path) => {
+    if (!path.startsWith("daily/") || !path.endsWith(".md")) return [];
+    const d3 = dailyDate((path.split("/").pop() ?? "").replace(/\.md$/, ""));
+    return d3 ? [{ path, date: d3.date, label: d3.label }] : [];
+  });
+}
+function searchDailies(entries, input) {
+  const q2 = parseLinkQuery(input);
+  const words = q2.number !== null ? [q2.number] : q2.words;
+  const sorted = [...entries].sort((a3, b2) => b2.date.localeCompare(a3.date));
+  return sorted.filter((e3) => words.every((w3) => e3.label.toLowerCase().includes(w3) || e3.date.replace(/-/g, "").includes(w3.replace(/-/g, ""))));
+}
+function dailyLink(e3) {
+  return markdownLink(e3.label, e3.path);
+}
+function searchDecks(decks, input) {
+  const q2 = parseLinkQuery(input);
+  const words = q2.number !== null ? [q2.number] : q2.words;
+  return searchItems(decks, { ...q2, words, number: null }, { haystacks: (d3) => [d3.title, d3.path], recency: (d3) => d3.mtime });
+}
+function linkIcon(path, anchor, type) {
+  if (TASK_FOLDERS.some((f4) => path.startsWith(f4))) return null;
+  if (path.startsWith("slide/")) return "presentation";
+  if (!path.endsWith(".md")) return null;
+  if (anchor !== "") return "hash";
+  if (path.startsWith("daily/")) return "calendar";
+  if (typeof type === "string" && WIKI_TYPES.includes(type)) return "book-open";
+  if (type === "source") return "library";
+  return "file-text";
+}
+
+// src/obsidian/link-insert.ts
+function icon(el, name) {
+  const span = el.createSpan({ cls: "vt-icon", attr: { "aria-hidden": "true" } });
+  (0, import_obsidian8.setIcon)(span, name);
+}
+var recencyOf = (app) => (path) => app.vault.getFileByPath(path)?.stat.mtime ?? 0;
+function noteRow(n2, el) {
+  const folder = n2.path.includes("/") ? n2.path.slice(0, n2.path.lastIndexOf("/")) : "";
+  renderRow(el, { lead: (l3) => icon(l3, linkIcon(n2.path, "", n2.frontmatter.type) ?? "file-text"), title: noteTitle(n2.frontmatter, n2.basename), note: folder });
+}
+function noteSource(app, editor) {
+  const notes = collectNotes(app);
+  return {
+    placeholder: "Search notes",
+    hint: "t:wiki / t:<type> \xB7 f:<folder>/",
+    search: (q2) => searchNotes(notes, q2, recencyOf(app)),
+    render: noteRow,
+    choose: (n2) => insertAtCursor(editor, noteLinkOf(n2))
+  };
+}
+function headingSource(app, editor) {
+  const notes = collectNotes(app);
+  const headingsStep = (n2) => {
+    const file = app.vault.getFileByPath(n2.path);
+    const headings = (file ? app.metadataCache.getFileCache(file)?.headings : void 0) ?? [];
+    const list = headings.map((h3) => ({ heading: h3.heading, level: h3.level }));
+    return {
+      placeholder: `Headings in ${noteTitle(n2.frontmatter, n2.basename)}`,
+      hint: "Backspace: back to notes",
+      search: (q2) => searchHeadings(list, q2).map((heading) => ({ heading, of: n2 })),
+      render: (row, el) => {
+        if (!("heading" in row)) return;
+        renderRow(el, { lead: (l3) => l3.createSpan({ cls: "vt-link-row-note", text: "#".repeat(row.heading.level) }), title: row.heading.heading });
+      },
+      choose: (row) => {
+        if ("heading" in row) insertAtCursor(editor, headingLink(row.of, row.heading.heading));
+      },
+      back: (picker) => {
+        picker.setSource(first);
+        return true;
+      },
+      empty: "No headings"
+    };
+  };
+  const first = {
+    placeholder: "Search notes, then a heading",
+    hint: "t:wiki / t:<type> \xB7 f:<folder>/",
+    search: (q2) => searchNotes(notes, q2, recencyOf(app)).map((note) => ({ note })),
+    render: (row, el) => {
+      if ("note" in row) noteRow(row.note, el);
+    },
+    choose: (row, picker) => {
+      if (!("note" in row)) return;
+      picker.setSource(headingsStep(row.note));
+      return "stay";
+    }
+  };
+  return first;
+}
+async function dailySource(app, manager, editor, report) {
+  const entries = dailyEntries(app.vault.getMarkdownFiles().map((f4) => f4.path));
+  const { path, existing } = await manager.todaysDaily();
+  const d3 = dailyDate((path.split("/").pop() ?? "").replace(/\.md$/, ""));
+  const today = !existing && d3 ? { path, date: d3.date, label: d3.label } : null;
+  return {
+    placeholder: "Search daily notes (e.g. 1120, 2026-11)",
+    search: (q2) => {
+      const rows = searchDailies(entries, q2).map((entry) => ({ entry }));
+      if (today && searchDailies([today], q2).length > 0) rows.unshift({ today });
+      return rows;
+    },
+    render: (row, el) => {
+      const e3 = "today" in row ? row.today : row.entry;
+      renderRow(el, { lead: (l3) => icon(l3, "calendar"), title: e3.label, note: "today" in row ? "Today (create)" : "" });
+    },
+    choose: async (row) => {
+      if ("entry" in row) return insertAtCursor(editor, dailyLink(row.entry));
+      try {
+        await manager.createTodaysDaily();
+        insertAtCursor(editor, dailyLink(row.today));
+      } catch (e3) {
+        report("\u4ECA\u65E5\u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+      }
+    }
+  };
+}
+var DECK_BUILD = "index.html";
+async function loadDecks(app) {
+  const builds = app.vault.getFiles().filter((f4) => f4.path.startsWith("slide/") && f4.name === DECK_BUILD);
+  return Promise.all(
+    builds.map(async (f4) => {
+      const folder = f4.parent?.path ?? "";
+      const source = app.vault.getFileByPath(`${folder}/deck.html`) ?? f4;
+      const text2 = await app.vault.cachedRead(source).catch(() => "");
+      const m3 = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text2);
+      const title = (m3?.[1] ?? "").replace(/\s+/g, " ").trim() || folder.split("/").pop() || folder;
+      return { path: f4.path, title, mtime: source.stat.mtime };
+    })
+  );
+}
+function slideSource(decks, editor) {
+  return {
+    placeholder: "Search slide decks",
+    search: (q2) => searchDecks(decks, q2),
+    render: (d3, el) => renderRow(el, { lead: (l3) => icon(l3, "presentation"), title: d3.title, note: d3.path.replace(/^slide\//, "").replace(/\/index\.html$/, "") }),
+    choose: (d3) => insertAtCursor(editor, markdownLink(d3.title, d3.path)),
+    empty: "No slide decks"
+  };
+}
+function chipFor(app, t3) {
+  const path = resolveVaultPath(app, t3.path, t3.source);
+  if (!path) return null;
+  const file = app.vault.getFileByPath(path);
+  if (!(file instanceof import_obsidian8.TFile)) return null;
+  const type = file.extension === "md" ? app.metadataCache.getFileCache(file)?.frontmatter?.type : void 0;
+  const name = linkIcon(path, t3.anchor, type);
+  if (!name) return null;
+  return { mode: "before", key: name, render: (el) => (0, import_obsidian8.setIcon)(el, name) };
+}
+function installLinkInsert(plugin, manager, report) {
+  const app = plugin.app;
+  const open = (source) => new LinkPicker(app, source).open();
+  plugin.addCommand({ id: "insert-note-link", name: "Insert link to note", icon: "link", editorCallback: (editor) => open(noteSource(app, editor)) });
+  plugin.addCommand({ id: "insert-heading-link", name: "Insert link to heading", icon: "link", editorCallback: (editor) => open(headingSource(app, editor)) });
+  plugin.addCommand({
+    id: "insert-daily-link",
+    name: "Insert link to daily note",
+    icon: "link",
+    editorCallback: (editor) => {
+      dailySource(app, manager, editor, report).then(open, (e3) => report("\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u4E00\u89A7\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+    }
+  });
+  plugin.addCommand({
+    id: "insert-slide-link",
+    name: "Insert link to slide deck",
+    icon: "link",
+    editorCallback: (editor) => {
+      loadDecks(app).then((decks) => open(slideSource(decks, editor)), (e3) => report("\u30B9\u30E9\u30A4\u30C9\u306E\u4E00\u89A7\u3092\u4F5C\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+    }
+  });
+  installLinkChips(plugin, {
+    resolve: (t3) => chipFor(app, t3),
+    subscribe: (fn) => {
+      let timer;
+      const bump = () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(fn, 300);
+      };
+      const meta = app.metadataCache.on("resolved", bump);
+      const files = [app.vault.on("create", bump), app.vault.on("delete", bump), app.vault.on("rename", bump)];
+      return () => {
+        window.clearTimeout(timer);
+        app.metadataCache.offref(meta);
+        for (const r3 of files) app.vault.offref(r3);
+      };
+    }
+  });
+}
+
+// src/obsidian/snippet-session.ts
+var import_state2 = require("@codemirror/state");
 var lastId = 0;
 var newId = () => ++lastId;
 function typedCharAt(tr, char) {
@@ -2057,7 +2626,7 @@ function typedCharAt(tr, char) {
   return count === 1 ? at : null;
 }
 function sessionField(trigger) {
-  return import_state.StateField.define({
+  return import_state2.StateField.define({
     create: () => null,
     update(prev, tr) {
       if (!tr.docChanged && !tr.selection) return prev;
@@ -2077,7 +2646,7 @@ var slashSessionField = sessionField(SLASH_TRIGGER);
 var atSessionField = sessionField(AT_TRIGGER);
 
 // src/obsidian/SnippetSuggest.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 var SNIPPET_KIND = {
   label: "Snippet",
   field: slashSessionField,
@@ -2087,10 +2656,10 @@ var SNIPPET_KIND = {
 var INLINE_KIND = {
   label: "Inline template",
   field: atSessionField,
-  load: (m3) => m3.loadInlineTemplates().then(({ snippets, problems }) => ({ snippets: withoutCommands(snippets), problems })),
+  load: (m3) => m3.loadInlineTemplates(),
   bodyOf: (s3) => inlineBody(s3.body)
 };
-var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
+var SnippetSuggest = class extends import_obsidian9.EditorSuggest {
   constructor(app, manager, kind = SNIPPET_KIND) {
     super(app);
     this.manager = manager;
@@ -2173,7 +2742,7 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
     });
   }
   /**
-   * command のあるスニペット（ADR-0094）。打った `/…` を消してカーソルをそこに置き、コマンドを実行する。
+   * command のあるスニペット（ADR-0094）とインラインテンプレート（ADR-0194）。打った `/…` や `@…` を消してカーソルをそこに置き、コマンドを実行する。
    * 実行できなければ打った文字を戻して知らせる
    */
   runCommand(command, editor, start, end) {
@@ -2185,14 +2754,14 @@ var SnippetSuggest = class extends import_obsidian6.EditorSuggest {
     if (commands.executeCommandById(command)) return;
     editor.replaceRange(typed, start);
     editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + typed.length));
-    new import_obsidian6.Notice(`${command} \u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093\uFF08${command.split(":")[0]} \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09`);
+    new import_obsidian9.Notice(`${command} \u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093\uFF08${command.split(":")[0]} \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09`);
   }
 };
 
 // src/obsidian/view.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian7.ItemView {
+  class PreactView extends import_obsidian10.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -2214,7 +2783,7 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var import_obsidian8 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 var created = { label: "Created", sort: "created", cell: (n2) => shortDate(n2.frontmatter.created) };
 var titleColumn = { label: "Title", sort: "title", cell: (n2) => noteTitle(n2.frontmatter, n2.basename) };
 var SPECS = {
@@ -2252,7 +2821,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian8.Platform.isPhone });
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian11.Platform.isPhone });
   };
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-list", children: [
     /* @__PURE__ */ u3("input", { class: "vt-tpl-search", type: "search", placeholder: "Filter by title", "aria-label": "Filter by title", value: query, onInput: (e3) => setQuery(e3.currentTarget.value) }),
@@ -2271,11 +2840,11 @@ var NoteListView = make(SPECS.note);
 var SourceListView = make(SPECS.source);
 
 // src/views/TmpListView.tsx
-var import_obsidian10 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/obsidian/ConfirmDeleteModal.ts
-var import_obsidian9 = require("obsidian");
-var ConfirmDeleteModal = class extends import_obsidian9.Modal {
+var import_obsidian12 = require("obsidian");
+var ConfirmDeleteModal = class extends import_obsidian12.Modal {
   constructor(app, path, onConfirm) {
     super(app);
     this.path = path;
@@ -2287,7 +2856,7 @@ var ConfirmDeleteModal = class extends import_obsidian9.Modal {
   onOpen() {
     this.setTitle("Delete file");
     this.contentEl.createEl("p", { text: `${this.path} \u3092\u524A\u9664\u3057\u307E\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002` });
-    new import_obsidian9.Setting(this.contentEl).addButton(
+    new import_obsidian12.Setting(this.contentEl).addButton(
       (b2) => b2.setButtonText("Delete").setWarning().onClick(() => {
         this.close();
         this.onConfirm();
@@ -2323,20 +2892,20 @@ function TmpListView({ app }) {
     const file = app.vault.getFileByPath(entry.path);
     if (!file) return;
     if (openableInObsidian(entry.ext)) {
-      void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian10.Platform.isPhone });
+      void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian13.Platform.isPhone });
       return;
     }
     const withDefault = app;
-    if (import_obsidian10.Platform.isDesktopApp && typeof withDefault.openWithDefaultApp === "function") withDefault.openWithDefaultApp(file.path);
-    else new import_obsidian10.Notice(`${entry.name} \u306F Obsidian \u3067\u958B\u3051\u307E\u305B\u3093`);
+    if (import_obsidian13.Platform.isDesktopApp && typeof withDefault.openWithDefaultApp === "function") withDefault.openWithDefaultApp(file.path);
+    else new import_obsidian13.Notice(`${entry.name} \u306F Obsidian \u3067\u958B\u3051\u307E\u305B\u3093`);
   };
   const remove = (entry) => {
     new ConfirmDeleteModal(app, entry.path, () => {
       const file = app.vault.getAbstractFileByPath(entry.path);
-      if (!(file instanceof import_obsidian10.TFile)) return;
+      if (!(file instanceof import_obsidian13.TFile)) return;
       app.fileManager.trashFile(file).catch((e3) => {
         console.error("pkm-template: \u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-        new import_obsidian10.Notice(`\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+        new import_obsidian13.Notice(`\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
       });
     }).open();
   };
@@ -2366,12 +2935,12 @@ var LIST_VIEWS = [
   // tmp/ のファイル（ADR-0045）。Markdown 以外も出す
   { type: "pkm-template-tmp-list", title: "Temporary files", icon: "folder-clock", component: TmpListView }
 ];
-var PkmTemplatePlugin = class extends import_obsidian11.Plugin {
+var PkmTemplatePlugin = class extends import_obsidian14.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
     const openCreateModal = async () => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian11.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian14.MarkdownView);
       const linkEditor = view && view.getMode() === "source" && view.editor.hasFocus() ? view.editor : null;
       try {
         const templates = await this.manager.loadEnabledTemplates();
@@ -2406,14 +2975,15 @@ var PkmTemplatePlugin = class extends import_obsidian11.Plugin {
     this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager));
     this.registerEditorExtension(atSessionField);
     this.registerEditorSuggest(new SnippetSuggest(this.app, this.manager, INLINE_KIND));
+    installLinkInsert(this, this.manager, (msg, err) => this.report(msg, err));
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian11.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian14.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`pkm-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian11.Notice(`${message}${detail}`);
+    new import_obsidian14.Notice(`${message}${detail}`);
   }
 };
