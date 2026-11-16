@@ -4369,12 +4369,12 @@ function SubIssues(props) {
 function PresetButton(props) {
   const { ctx, issue, index } = props;
   const open = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const preset of index.data.presets) {
       m3.addItem(
         (mi) => mi.setTitle(preset.name).setIcon("copy-plus").onClick(
           () => void ctx.writer.applyPreset(issue.id, preset).then(
-            (keys) => new import_obsidian5.Notice(`\u30D7\u30EA\u30BB\u30C3\u30C8\u300C${preset.name}\u300D\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\uFF08\u30B5\u30D6 ${keys.length} \u4EF6\uFF09`),
+            (keys) => new import_obsidian6.Notice(`\u30D7\u30EA\u30BB\u30C3\u30C8\u300C${preset.name}\u300D\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\uFF08\u30B5\u30D6 ${keys.length} \u4EF6\uFF09`),
             (err) => ctx.report("\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err)
           )
         )
