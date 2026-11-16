@@ -18,9 +18,9 @@ import { editorInfoField, editorLivePreviewField } from "obsidian";
 const card = (id: string) => `<!-- sub-issue\nid: ${id}\nsummary: Task\nstatus: open\n-->`;
 const text = `${card("aaaaaa")}\n\nBody\n\n${card("bbbbbb")}\n\n`;
 
-function create(anchor: number) {
+function build(anchor: number, subOpen: Record<string, unknown> = {}) {
 	let field: StateField<any>;
-	const ctx = { settings: { subOpen: {} }, store: { subscribe: () => () => {} } } as unknown as TaskContext;
+	const ctx = { settings: { subOpen }, store: { subscribe: () => () => {} } } as unknown as TaskContext;
 	installSubCards(ctx, {
 		registerEditorExtension: (f: unknown[]) => { field = f.find((x) => x instanceof StateField) as StateField<any>; },
 		registerMarkdownPostProcessor: () => {},
@@ -28,9 +28,22 @@ function create(anchor: number) {
 		register: () => {},
 	} as unknown as Plugin);
 	const state = EditorState.create({ doc: text, selection: { anchor }, extensions: [editorInfoField, editorLivePreviewField, field!] });
+	return state.field(field!).all as import("@codemirror/view").DecorationSet;
+}
+
+function create(anchor: number) {
 	const ranges: [number, number][] = [];
-	state.field(field!).all.between(0, text.length, (from: number, to: number) => { ranges.push([from, to]); });
+	build(anchor).between(0, text.length, (from: number, to: number) => { ranges.push([from, to]); });
 	return ranges;
+}
+
+/** 本文の最後の行の下に余白を置く行（class が vt-sub-body-end の行の先頭） */
+function bodyEnds(subOpen: Record<string, unknown>) {
+	const lines: number[] = [];
+	build(text.length, subOpen).between(0, text.length, (from: number, _to: number, d: any) => {
+		if (d.spec.class === "vt-sub-body-end") lines.push(from);
+	});
+	return lines;
 }
 
 describe("閉じたサブのカード", () => {
@@ -42,5 +55,15 @@ describe("閉じたサブのカード", () => {
 	it("本文にカーソルを入れたら本文を隠さない", () => {
 		const cursor = text.indexOf("Body") + 1;
 		expect(create(cursor).some(([from, to]) => from <= cursor && to >= cursor)).toBe(false);
+	});
+});
+
+describe("開いたサブの本文と次の題の間の余白", () => {
+	it("開いたサブの本文の最後の行に付ける", () => {
+		const open = { "issue/i-1.md": ["aaaaaa"] };
+		expect(bodyEnds(open)).toEqual([text.indexOf("Body")]);
+	});
+	it("閉じたサブには付けない", () => {
+		expect(bodyEnds({})).toEqual([]);
 	});
 });

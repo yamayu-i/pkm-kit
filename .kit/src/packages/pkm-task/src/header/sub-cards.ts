@@ -54,6 +54,9 @@ function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): 
 
 const CLOSED_CLASS = "vt-sub-body-closed";
 const AREA_HIDDEN = "vt-subissue-area-hidden";
+/** 開いたサブの本文と、次のサブの題の行の間に余白を置く（Reading は本文のセクション、Live Preview は本文の最後の行に付ける） */
+const BODY_SECTION = "vt-sub-body-section";
+const BODY_END = Decoration.line({ class: "vt-sub-body-end" });
 
 /** Reading で描いたセクション。scroller は、DOM にあるのを見たときのスクロール領域（画面外では DOM から外れるため覚えておく） */
 interface SectionEntry {
@@ -345,6 +348,7 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 			mctx.addChild(child);
 		} else if (r.role === "body") {
 			const done = isDoneId(r.id);
+			el.addClass(BODY_SECTION);
 			addEntry(bodies, path, { id: r.id, el, line: info.lineStart, done }, mctx);
 			el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r.id) || (done && !closedShown.has(path)));
 		}
@@ -564,6 +568,9 @@ function build(ctx: TaskContext, state: EditorState): Built {
 		}
 		if (collapsed && sectionTo > b.cardTo) {
 			folds.push(Decoration.replace({ block: true }).range(b.cardTo, sectionTo));
+		}
+		if (!collapsed && layout[b.index + 1] && b.bodyTo > b.bodyFrom) {
+			all.push(BODY_END.range(state.doc.lineAt(b.bodyTo).from));
 		}
 	}
 	return { all: Decoration.set(all, true), folds: Decoration.set(folds, true) };

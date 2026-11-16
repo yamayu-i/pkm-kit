@@ -3783,6 +3783,10 @@ body.is-mobile .vt-toast {
 .vt-subissues div.vt-subissue-summary:hover .vt-subissue-summary-text { color: inherit; }
 .markdown-preview-view .vt-sub-card-section { margin-block: 0; }
 
+/* 開いたサブの本文と、次のサブの題の行の間の余白（Reading は次のカードの上、Live Preview は本文の最後の行の下） */
+.markdown-preview-view .vt-sub-body-section:not(.vt-sub-body-closed) + .vt-sub-card-section { margin-top: var(--vt-space-24); }
+.markdown-source-view.mod-cm6 .cm-line.vt-sub-body-end { padding-bottom: var(--vt-space-24); }
+
 
 /* 本文の「Show N closed」（終わったサブを出す・隠す。ADR-0181） */
 .vt-sub-closed-host {
