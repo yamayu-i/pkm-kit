@@ -1,6 +1,6 @@
-import { boardItems, emptyBoard, pendingBoards, unfinished, type DailyBoard, type RoutineResult } from "./board";
+import { boardItems, emptyBoard, unfinished, type RoutineResult } from "./board";
 import { cautionIssues, deadIssues, type DueLists } from "./daily";
-import { addDays, type LocalDate } from "./dates";
+import { addDays, localToday, type LocalDate } from "./dates";
 import { isActive, isInbox, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
 import type { SubIssue } from "./sub-issue";
@@ -53,11 +53,23 @@ export function boardWorkload(index: TaskIndex, date: LocalDate, availableMinute
 	};
 }
 
-/** 各ボードで carried になった回数を issue の ID ごとに数える */
-export function carryCounts(boards: Iterable<DailyBoard>): Map<string, number> {
+/**
+ * 持ち越した回数を、issue の ID・サブの合成キーごとに数える（ADR-0189）。今日より前のボードに載っていて、
+ * 手で持ち越した（carried）か、その日のうちに open / in-progress 以外の status にした記録（statuslog）がなければ、その日に持ち越したとみなす。
+ * 締めや持ち越しの操作をしなくても数えられる。statuslog のない端末で変えたものは多めに数えることがある（助言の目安）
+ */
+export function carryCounts(index: TaskIndex, today: LocalDate): Map<string, number> {
+	// その日のうちに片付けた（open / in-progress 以外にした）鍵: 「日付 鍵」
+	const settled = new Set<string>();
+	for (const e of index.data.statusLogs) {
+		if (e.to === "open" || e.to === "in-progress") continue;
+		settled.add(`${localToday(new Date(e.atMs))} ${e.sub ? `${e.task}#${e.sub}` : e.task}`);
+	}
 	const counts = new Map<string, number>();
-	for (const b of boards) {
-		for (const id of b.board.carried) {
+	for (const b of index.data.boards) {
+		if (b.date >= today) continue;
+		for (const id of b.board.issues) {
+			if (!b.board.carried.includes(id) && settled.has(`${b.date} ${id}`)) continue;
 			counts.set(id, (counts.get(id) ?? 0) + 1);
 		}
 	}
@@ -187,7 +199,6 @@ export interface TaskOverview {
 	caution: DueLists;
 	inboxCount: number;
 	inboxSample: Issue[];
-	pendingBoards: { date: LocalDate; unfinishedIssues: string[]; unfinishedSubs: string[]; unfinishedRoutines: string[] }[];
 	runningTimers: { id: string; taskId: string; summary: string | null; from: string; elapsedMinutes: number }[];
 	frequentlyCarried: { issue: Issue; count: number }[];
 	stalled: StalledIssuesResult;
@@ -210,16 +221,6 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 	const caution = cautionIssues(index.data.issues, date, cautionDays);
 
 	const inbox = index.data.issues.filter((i) => isInbox(i, date));
-	const pending = pendingBoards(index, index.data.boards, date).map((b) => {
-		const u = unfinished(index, b.date, b.board);
-		return {
-			date: b.date,
-			unfinishedIssues: u.issues.map((i) => i.id),
-			unfinishedSubs: u.subs.map((x) => x.key),
-			unfinishedRoutines: u.routines.map((r) => r.id),
-		};
-	});
-
 	const runningTimers = index.running().map((l) => ({
 		id: l.id,
 		taskId: l.taskId,
@@ -229,7 +230,7 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 		elapsedMinutes: Math.max(0, Math.round((now - l.fromMs) / 60_000)),
 	}));
 
-	const counts = carryCounts(index.data.boards);
+	const counts = carryCounts(index, date);
 	const frequentlyCarried = [...counts.entries()]
 		.filter(([, c]) => c >= minCarryCount)
 		.map(([id, count]) => ({ issue: index.issues.get(id)!, count }))
@@ -257,7 +258,6 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 		caution,
 		inboxCount: inbox.length,
 		inboxSample: inbox.slice(0, 10),
-		pendingBoards: pending,
 		runningTimers,
 		frequentlyCarried,
 		stalled,

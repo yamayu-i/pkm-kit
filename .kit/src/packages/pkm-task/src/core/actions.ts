@@ -14,11 +14,6 @@ export function closePatch(): Patch {
 	return { status: "closed", delegated_to: null, revisit: null, tickler: null };
 }
 
-/** Inbox に戻す: clarified を外す。期限と Calendar（scheduled）は残す（ADR-0148）。Tickler は消す（残すと Inbox に出ない。ADR-0152） */
-export function inboxPatch(): Patch {
-	return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
-}
-
 /** Next（整理済み・日付なし）にする。someday なら open に戻す（ADR-0148）。整理したので Tickler を消す（ADR-0152） */
 export function nextPatch(issue: Issue): Patch {
 	return { clarified: true, tickler: null, ...(issue.status === "someday" ? reopenPatch() : {}) };
@@ -44,17 +39,9 @@ export function somedayPatch(revisit: LocalDate | null = null): Patch {
 	return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
 }
 
-/** someday から戻すときは open にして revisit を外す */
+/** someday から戻すときは open にして revisit を外す。clarified は書き込み（completeIssuePatch）が外す（ADR-0189） */
 export function reopenPatch(): Patch {
 	return { status: "open", revisit: null };
-}
-
-/** リストからの status の変更（ADR-0018）。委任先は delegated のときだけ使う */
-export function statusPatch(status: Status, delegatedTo: string | null = null): Patch {
-	if (status === "closed") return closePatch();
-	if (status === "canceled") return cancelPatch();
-	if (status === "someday") return somedayPatch();
-	return { status, delegated_to: status === "delegated" ? delegatedTo : null, revisit: null };
 }
 
 /** 期限を変える。someday は期限を持たないので、入れるときは open に戻す（ADR-0018） */

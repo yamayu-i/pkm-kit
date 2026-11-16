@@ -107,11 +107,11 @@ describe("ボードを締める", () => {
 		expect(f.texts.get(notePath)!.match(/## Task board/g)).toHaveLength(1);
 		expect(ops(f)).toHaveLength(1);
 	});
-	it("未完了なら本文もログも書かない", async () => {
+	it("未完了があっても締め、要約に持ち越しと書く（ADR-0189）", async () => {
 		const f = fixture("open");
-		await expect(f.writer.closeBoard(date, "pc")).rejects.toThrow(/未完了/);
-		expect(f.texts.get(notePath)).toBe(note);
-		expect(f.texts.has(logPath)).toBe(false);
+		await f.writer.closeBoard(date, "pc");
+		expect(f.texts.get(notePath)).toContain("（持ち越し）");
+		expect(f.texts.get(logPath)).toContain('"op":"close"');
 	});
 	it("デイリーノートがなければ type と created 付きで作る", async () => {
 		const line = JSON.stringify({ id: "bo_x", at: "2026-10-31T00:00:00.000Z", date, op: "add", task: "i-1" });

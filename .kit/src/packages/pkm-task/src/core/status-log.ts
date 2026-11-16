@@ -125,29 +125,6 @@ export function closedAtMap(logs: readonly StatusLogEntry[], closedIds: Iterable
 	return out;
 }
 
-/** カードの「次の status」ボタン（ADR-0031）。closed / canceled の「戻す」は別に扱う */
-export function nextStatuses(status: Status): Status[] {
-	switch (status) {
-		case "open":
-		case "waiting":
-			return ["in-progress"];
-		case "in-progress":
-			return ["closed"];
-		case "delegated":
-			return ["in-progress", "closed"];
-		default:
-			return [];
-	}
-}
-
-/**
- * task board のカードの status メニューに出す status（ADR-0032）。
- * issue は delegated も選べる（委任先はその場で選ぶ）。someday はボードの上では選ばない。routine はその日の結果だけ
- */
-export function boardMenuStatuses(kind: "issue" | "routine"): Status[] {
-	return kind === "issue" ? ["open", "in-progress", "waiting", "delegated", "closed", "canceled"] : ["open", "closed", "canceled"];
-}
-
 export function isDoneStatus(status: Status): boolean {
 	return status === "closed" || status === "canceled";
 }

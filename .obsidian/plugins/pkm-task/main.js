@@ -574,9 +574,6 @@ function installHeaderMount(options) {
   });
 }
 
-// src/header/IssueHeader.tsx
-var import_obsidian6 = require("obsidian");
-
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/hooks/dist/hooks.module.js
 var t2;
 var r2;
@@ -838,12 +835,6 @@ function routineResults(index, routine, today, days) {
     const result = index.board(date)?.board.routines[routine.id];
     return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
   });
-}
-function pendingBoards(index, boards, today) {
-  return boards.filter((b2) => b2.date < today && !b2.board.closed).filter((b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return unfinishedCount(u4) > 0;
-  }).sort((a3, b2) => a3.date.localeCompare(b2.date));
 }
 function sortByOrder(items, idOf, order) {
   if (!order || order.length === 0) return [...items];
@@ -2146,11 +2137,144 @@ function closedAtMap(logs, closedIds) {
   for (const e3 of logs) if (ids.has(e3.task) && isIssueStatusLog(e3) && e3.to === "closed") out.set(e3.task, e3.atMs);
   return out;
 }
-function boardMenuStatuses(kind) {
-  return kind === "issue" ? ["open", "in-progress", "waiting", "delegated", "closed", "canceled"] : ["open", "closed", "canceled"];
-}
 function isDoneStatus(status) {
   return status === "closed" || status === "canceled";
+}
+
+// src/core/actions.ts
+function cancelPatch() {
+  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
+}
+function closePatch() {
+  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
+}
+function nextPatch(issue) {
+  return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function backToNextPatch() {
+  return { scheduled: null, tickler: null, clarified: true };
+}
+function ticklerPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function calendarPatch(issue, date) {
+  return { scheduled: date, clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
+}
+function somedayPatch(revisit = null) {
+  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
+}
+function reopenPatch() {
+  return { status: "open", revisit: null };
+}
+function duePatch(issue, key, date) {
+  return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function scheduledPatch(issue, date) {
+  return { scheduled: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function ticklerFieldPatch(issue, date) {
+  return { tickler: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
+}
+function reschedulePatch(target, to) {
+  return { [target]: to };
+}
+
+// src/core/transition.ts
+var STATUS_TRANSITIONS = {
+  open: ["in-progress", "waiting", "delegated", "someday", "closed", "canceled"],
+  "in-progress": ["waiting", "delegated", "someday", "closed", "canceled"],
+  waiting: ["in-progress", "someday", "closed", "canceled"],
+  delegated: ["in-progress", "someday", "closed", "canceled"],
+  someday: ["open", "closed", "canceled"],
+  closed: ["canceled"],
+  canceled: ["closed"]
+};
+var isDone2 = (s3) => s3 === "closed" || s3 === "canceled";
+function transitionTargets(from) {
+  return STATUSES.filter((s3) => STATUS_TRANSITIONS[from].includes(s3));
+}
+function canTransition(from, to, reopenTo = null) {
+  if (from === to) return false;
+  if (STATUS_TRANSITIONS[from].includes(to)) return true;
+  return isDone2(from) && reopenTo !== null && !isDone2(reopenTo) && to === reopenTo;
+}
+function transitionError(from, to, reopenTo = null) {
+  const targets = [...transitionTargets(from), ...isDone2(from) && reopenTo !== null && !isDone2(reopenTo) ? [`${reopenTo}\uFF08Reopen\uFF09`] : []];
+  return `status \u306F ${from} \u304B\u3089 ${to} \u306B\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3002\u79FB\u308C\u308B\u5148: ${targets.join(", ")}\uFF08ADR-0183\uFF09`;
+}
+function canTransitionAll(froms, to) {
+  return froms.length > 0 && froms.every((from) => canTransition(from, to));
+}
+function primaryStep(status) {
+  switch (status) {
+    case "open":
+      return { kind: "status", to: "in-progress", label: "Start" };
+    case "in-progress":
+      return { kind: "status", to: "closed", label: "Close" };
+    case "waiting":
+    case "delegated":
+      return { kind: "status", to: "in-progress", label: "Resume" };
+    case "someday":
+      return { kind: "status", to: "open", label: "Reopen" };
+    default:
+      return { kind: "reopen", label: "Reopen" };
+  }
+}
+function reopenStatus(logs, task, sub = null) {
+  for (let i3 = logs.length - 1; i3 >= 0; i3--) {
+    const e3 = logs[i3];
+    if (e3.task !== task || (e3.sub ?? null) !== sub) continue;
+    if (isDone2(e3.to) && !isDone2(e3.from)) return e3.from;
+  }
+  return "open";
+}
+function stopsTimer(to) {
+  return to !== "open" && to !== "in-progress";
+}
+function unstarsOn(to) {
+  return to === "waiting" || to === "delegated" || to === "someday";
+}
+function timerStartStatus(from) {
+  return from === "open" || from === "waiting" || from === "delegated" ? "in-progress" : null;
+}
+function issueStatusPatch(to, opts = {}) {
+  if (to === "closed") return closePatch();
+  if (to === "canceled") return cancelPatch();
+  if (to === "someday") return somedayPatch(opts.revisit ?? null);
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegated_to: opts.delegatedTo, revisit: null, tickler: null };
+  }
+  if (to === "open") return { status: to, delegated_to: null, revisit: null };
+  return { status: to, delegated_to: null, revisit: null, tickler: null };
+}
+function subStatusPatch(to, opts = {}) {
+  if (to === "delegated") {
+    if (!opts.delegatedTo) throw new Error("delegated \u306B\u3059\u308B\u3068\u304D\u306F\u59D4\u4EFB\u5148\u3092\u9078\u3093\u3067\u304F\u3060\u3055\u3044");
+    return { status: to, delegatedTo: opts.delegatedTo };
+  }
+  if (to === "someday") return { status: to, delegatedTo: null, scheduled: null, softDeadline: null, deadline: null };
+  if (to === "canceled") return { status: to, delegatedTo: null, softDeadline: null, deadline: null };
+  return { status: to, delegatedTo: null };
+}
+function completeIssuePatch(to, fields, from = null) {
+  const base = to === "delegated" ? { revisit: null, tickler: null } : issueStatusPatch(to, { revisit: fields.revisit ?? null });
+  if (from === "someday" && to === "open") base.clarified = null;
+  return { ...base, ...fields };
+}
+function completeSubPatch(to, patch) {
+  const base = to === "delegated" ? {} : subStatusPatch(to);
+  return { ...base, ...patch };
+}
+function canSetTickler(status) {
+  return status === "open" || status === "someday";
+}
+function ticklerError(status) {
+  return `Tickler \u306F open\uFF08\u3068 someday\uFF09\u306E issue \u3060\u3051\u306B\u4ED8\u3051\u3089\u308C\u307E\u3059\u3002\u4ECA\u306F ${status} \u3067\u3059\uFF08ADR-0183\uFF09`;
+}
+function canApplyAll(froms, op) {
+  if (op === "tickler") return froms.length > 0 && froms.every(canSetTickler);
+  return canTransitionAll(froms, op);
 }
 
 // src/core/index.ts
@@ -2297,6 +2421,11 @@ var TaskIndex = class {
     const issue = this.issues.get(id);
     return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
   }
+  /** closed / canceled からの ↩ の戻る先（ADR-0183）。key は issue の ID かサブの合成キー。分からなければ open */
+  reopenStatus(key) {
+    const sub = parseSubKey(key);
+    return sub ? reopenStatus(this.data.statusLogs, sub.parent, sub.id) : reopenStatus(this.data.statusLogs, key);
+  }
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {
     const logs = this.data.statusLogs;
@@ -2317,17 +2446,12 @@ function sidebarCounts(index, today) {
   const dead = deadIssues(issues, today);
   const deadSub = deadSubs(index, today);
   const missed = missedIssues(issues, today).length + missedSubs(index, today).length;
-  const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
   const scheduledToday = index.toAutoAdd(today);
   const todayLeft = unfinished(index, today, todayBoard);
-  const previousCount = pending.reduce((n2, b2) => {
-    const u4 = unfinished(index, b2.date, b2.board);
-    return n2 + unfinishedCount(u4);
-  }, 0);
   return {
-    // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・前のボード・今日の Calendar・今日の未完了
-    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + previousCount + scheduledToday.length + unfinishedCount(todayLeft),
+    // 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
+    daily: dead.deadline.length + dead.softDeadline.length + deadSub.deadline.length + deadSub.softDeadline.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
     inbox: issues.filter((i3) => isInbox(i3, today)).length,
     organize: organizeQueue(issues, today).length,
     scheduled: issues.filter((i3) => isScheduledAhead(i3, today)).length,
@@ -2378,55 +2502,8 @@ function parseDurationInput(input) {
   return min > 0 ? min : null;
 }
 
-// src/core/actions.ts
-function cancelPatch() {
-  return { status: "canceled", soft_deadline: null, deadline: null, delegated_to: null, revisit: null, tickler: null };
-}
-function closePatch() {
-  return { status: "closed", delegated_to: null, revisit: null, tickler: null };
-}
-function inboxPatch() {
-  return { status: "open", clarified: null, delegated_to: null, revisit: null, tickler: null };
-}
-function nextPatch(issue) {
-  return { clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function backToNextPatch() {
-  return { scheduled: null, tickler: null, clarified: true };
-}
-function ticklerPatch(issue, date) {
-  return { tickler: date, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function calendarPatch(issue, date) {
-  return { scheduled: date, clarified: true, tickler: null, ...issue.status === "someday" ? reopenPatch() : {} };
-}
-function somedayPatch(revisit = null) {
-  return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
-}
-function reopenPatch() {
-  return { status: "open", revisit: null };
-}
-function statusPatch(status, delegatedTo = null) {
-  if (status === "closed") return closePatch();
-  if (status === "canceled") return cancelPatch();
-  if (status === "someday") return somedayPatch();
-  return { status, delegated_to: status === "delegated" ? delegatedTo : null, revisit: null };
-}
-function duePatch(issue, key, date) {
-  return { [key]: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function scheduledPatch(issue, date) {
-  return { scheduled: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function ticklerFieldPatch(issue, date) {
-  return { tickler: date, ...issue.status === "someday" && date !== null ? reopenPatch() : {} };
-}
-function reschedulePatch(target, to) {
-  return { [target]: to };
-}
-
 // src/obsidian/issue-editors.tsx
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // ../shared/src/date-input.ts
 function ymd(year, month, day) {
@@ -2932,6 +3009,116 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
   }
 };
 
+// src/obsidian/status-change.tsx
+var import_obsidian3 = require("obsidian");
+
+// src/ui/hooks.ts
+function useStoreVersion(store) {
+  const [version, setVersion] = d2(store.version);
+  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
+  return version;
+}
+function useNow(intervalMs = 3e4) {
+  const [now, setNow] = d2(Date.now());
+  h2(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+// src/ui/StatusIcon.tsx
+var SHAPES = {
+  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+  "in-progress": /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
+  ] }),
+  waiting: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
+  ] }),
+  delegated: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
+  ] }),
+  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
+  closed: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
+  ] }),
+  canceled: /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
+    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
+  ] })
+};
+function StatusIcon(props) {
+  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
+}
+
+// src/obsidian/status-change.tsx
+var isDone3 = (s3) => s3 === "closed" || s3 === "canceled";
+function changeIssueStatus(ctx, issue, to) {
+  const save = (delegatedTo) => ctx.writer.update(issue.path, issueStatusPatch(to, { delegatedTo })).catch((e3) => ctx.report("status \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  if (to === "delegated") return pickMember(ctx, (id) => void save(id));
+  if (to === issue.status) return;
+  return save();
+}
+function changeSubStatus(ctx, sub, to, save) {
+  const write = (patch) => Promise.resolve(save ? save(patch) : ctx.writer.updateSub(sub.key, patch)).then(
+    () => void 0,
+    (e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)
+  );
+  if (to === "delegated") return pickMember(ctx, (id) => void write(subStatusPatch(to, { delegatedTo: id })));
+  if (to === sub.status) return;
+  return write(subStatusPatch(to));
+}
+function changeByKey(ctx, key, to, save) {
+  const issue = ctx.store.index.issues.get(key);
+  if (issue) return changeIssueStatus(ctx, issue, to);
+  const sub = ctx.store.index.sub(key);
+  if (sub) return changeSubStatus(ctx, sub, to, save);
+}
+function statusOf(ctx, key) {
+  return (ctx.store.index.issues.get(key) ?? ctx.store.index.sub(key))?.status ?? null;
+}
+function reopenByKey(ctx, key, save) {
+  return changeByKey(ctx, key, ctx.store.index.reopenStatus(key), save);
+}
+function showStatusMenu(ctx, e3, key, save) {
+  const current = statusOf(ctx, key);
+  if (current === null) return;
+  const m3 = new import_obsidian3.Menu();
+  const title = (s3) => s3 === "delegated" ? "delegated\u2026" : s3;
+  m3.addItem(
+    (mi) => mi.setTitle(title(current)).setChecked(true).onClick(() => {
+      if (current === "delegated") void changeByKey(ctx, key, current, save);
+    })
+  );
+  for (const s3 of transitionTargets(current)) m3.addItem((mi) => mi.setTitle(title(s3)).onClick(() => void changeByKey(ctx, key, s3, save)));
+  if (isDone3(current)) {
+    const to = ctx.store.index.reopenStatus(key);
+    m3.addSeparator();
+    m3.addItem((mi) => mi.setTitle(`Reopen (\u2192 ${to})`).setIcon("undo-2").onClick(() => void reopenByKey(ctx, key, save)));
+  }
+  m3.showAtMouseEvent(e3);
+}
+function StatusStepButton(props) {
+  const { ctx, keyOf, save } = props;
+  useStoreVersion(ctx.store);
+  const status = statusOf(ctx, keyOf);
+  if (status === null) return null;
+  const step = primaryStep(status);
+  const reopenTo = step.kind === "reopen" ? ctx.store.index.reopenStatus(keyOf) : null;
+  const title = step.kind === "reopen" ? `Reopen (\u2192 ${reopenTo})` : `${step.label} (\u2192 ${step.to})`;
+  const run = (e3) => {
+    e3.stopPropagation();
+    const done = step.kind === "reopen" ? reopenByKey(ctx, keyOf, save) : changeByKey(ctx, keyOf, step.to, save);
+    void Promise.resolve(done).then(() => props.onDone?.());
+  };
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-status-step", "aria-label": title, title, onClick: run, children: step.kind === "reopen" ? /* @__PURE__ */ u3(Icon, { name: "undo-2" }) : /* @__PURE__ */ u3(StatusIcon, { status: step.to }) });
+}
+
 // src/obsidian/issue-editors.tsx
 var ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 var saveIssue = (ctx, issue) => (fields) => void ctx.writer.update(issue.path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
@@ -2943,7 +3130,7 @@ function pickMember(ctx, onPick) {
   }).open();
 }
 function priorityMenu(e3, current, save) {
-  const m3 = new import_obsidian3.Menu();
+  const m3 = new import_obsidian4.Menu();
   for (const p3 of PRIORITIES) m3.addItem((item) => item.setTitle(p3).setChecked(p3 === current).onClick(() => save({ priority: p3 })));
   m3.addItem((item) => item.setTitle("None").onClick(() => save({ priority: null })));
   m3.showAtMouseEvent(e3);
@@ -2978,7 +3165,7 @@ function editStatusDetail(ctx, current, save) {
   )).open();
 }
 function estimateMenu(ctx, e3, current, save) {
-  const m3 = new import_obsidian3.Menu();
+  const m3 = new import_obsidian4.Menu();
   for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
   m3.addItem(
     (item) => item.setTitle("Enter\u2026").onClick(
@@ -2998,20 +3185,6 @@ function estimateMenu(ctx, e3, current, save) {
     )
   );
   m3.addItem((item) => item.setTitle("Clear").onClick(() => save({ estimated: null })));
-  m3.showAtMouseEvent(e3);
-}
-function statusMenu(ctx, e3, issue) {
-  const save = saveIssue(ctx, issue);
-  const m3 = new import_obsidian3.Menu();
-  for (const s3 of STATUSES) {
-    m3.addItem(
-      (item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => {
-        if (s3 === issue.status) return;
-        if (s3 === "delegated") pickMember(ctx, (id) => save(statusPatch(s3, id)));
-        else save(statusPatch(s3));
-      })
-    );
-  }
   m3.showAtMouseEvent(e3);
 }
 function editDue(ctx, issue, key) {
@@ -3064,15 +3237,16 @@ function editSummary(ctx, issue) {
 }
 function issueRowMenu(ctx, e3, issue) {
   const save = saveIssue(ctx, issue);
-  const m3 = new import_obsidian3.Menu();
+  const m3 = new import_obsidian4.Menu();
   m3.addItem((item) => item.setTitle("summary").setIcon("pencil").onClick(() => editSummary(ctx, issue)));
-  m3.addItem((item) => item.setTitle("status").setIcon("circle-dot").onClick(() => statusMenu(ctx, e3, issue)));
+  m3.addItem((item) => item.setTitle("status").setIcon("circle-dot").onClick(() => showStatusMenu(ctx, e3, issue.id)));
   m3.addItem((item) => item.setTitle("status-detail").setIcon("pencil").onClick(() => editStatusDetail(ctx, issue.statusDetail, save)));
   m3.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e3, issue.priority, save)));
   m3.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
   m3.addSeparator();
   m3.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-  m3.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+  if (canSetTickler(issue.status)) m3.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+  else if (issue.tickler !== null) m3.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
   m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
   m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
@@ -3082,36 +3256,25 @@ function issueRowMenu(ctx, e3, issue) {
 // src/core/pick.ts
 function pickTimerControl(status, picked, running) {
   if (running) return "stop";
-  if (isDoneStatus(status)) return null;
+  if (isDoneStatus(status) || isWatchStatus(status)) return null;
+  if (status === "someday") return "pick";
   return picked ? "start" : "pick";
+}
+function pickedStatus(status) {
+  return status === "in-progress" || isWatchStatus(status) ? "in-progress" : "open";
 }
 function pickIssuePatch(issue) {
   if (isNext(issue)) return null;
-  return { status: issue.status === "in-progress" ? "in-progress" : "open", clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
+  return { status: pickedStatus(issue.status), clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
 }
 function pickSubPatch(sub, today) {
   if (isNextSub(sub, today)) return null;
   const future = sub.start !== null && sub.start > today;
-  return { status: sub.status === "in-progress" ? "in-progress" : "open", delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
-}
-
-// src/ui/hooks.ts
-function useStoreVersion(store) {
-  const [version, setVersion] = d2(store.version);
-  h2(() => store.subscribe(() => setVersion(store.version)), [store]);
-  return version;
-}
-function useNow(intervalMs = 3e4) {
-  const [now, setNow] = d2(Date.now());
-  h2(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
+  return { status: pickedStatus(sub.status), delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
 }
 
 // src/obsidian/board-actions.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/core/board-lanes.ts
 var TOP_LIMIT = 4;
@@ -3181,7 +3344,7 @@ function watchCards(index, exclude = /* @__PURE__ */ new Set()) {
   return cards2.filter((c3) => !exclude.has(c3.key)).sort((a3, b2) => byPick(owner(a3), owner(b2)) || rank(a3) - rank(b2));
 }
 function unstarOps(index, date, key, to) {
-  if (!isWatchStatus(to)) return [];
+  if (!unstarsOn(to)) return [];
   return index.board(date)?.board.stars.includes(key) ? [{ op: "star", task: key, on: false }] : [];
 }
 function cardRuns(cards2) {
@@ -3273,7 +3436,6 @@ async function patchAll(ctx, issues, patch, label) {
 }
 var closeIssues = (ctx, issues) => patchAll(ctx, issues, closePatch(), "\u9589\u3058\u308B\u3053\u3068\u304C");
 var cancelIssues = (ctx, issues) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-var inboxIssues = (ctx, issues) => patchAll(ctx, issues, inboxPatch(), "Inbox \u306B\u623B\u3059\u3053\u3068\u304C");
 var somedayIssues = (ctx, issues, revisit = null) => patchAll(ctx, issues, somedayPatch(revisit), "Someday \u306B\u79FB\u3059\u3053\u3068\u304C");
 async function ticklerIssues(ctx, issues) {
   const date = await askDate(ctx, "Tickler (back to Inbox on this date)", addDays(localToday(), 1));
@@ -3322,8 +3484,8 @@ async function addSubToBoard(ctx, date, sub) {
 async function resumeCard(ctx, date, card) {
   if (card.kind === "routine") return;
   try {
-    if (card.kind === "issue") await ctx.writer.update(card.issue.path, statusPatch("in-progress"));
-    else await ctx.writer.updateSub(card.key, { status: "in-progress", delegatedTo: null });
+    if (card.kind === "issue") await ctx.writer.update(card.issue.path, issueStatusPatch("in-progress"));
+    else await ctx.writer.updateSub(card.key, subStatusPatch("in-progress"));
     if (!isOnBoard(ctx.store.index, date, card.key)) await ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "add", task: card.key }]);
   } catch (e3) {
     ctx.report("Resume \u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
@@ -3338,7 +3500,7 @@ function setStar(ctx, date, key, on) {
   const { board, lanes } = lanesOn(ctx, date);
   if (on && lanes.routine.some((c3) => c3.key === key)) return Promise.resolve();
   if (on && !board.stars.includes(key) && !canStar(lanes)) {
-    new import_obsidian4.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
+    new import_obsidian5.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
     return Promise.resolve();
   }
   return guard(ctx, "\u2605 \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "star", task: key, on }]));
@@ -3346,7 +3508,7 @@ function setStar(ctx, date, key, on) {
 function moveCard(ctx, date, key, lane, before) {
   const { board, lanes, previous } = lanesOn(ctx, date);
   if (lane === "top" && !board.stars.includes(key) && !canStar(lanes)) {
-    new import_obsidian4.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u5165\u308C\u3066\u304F\u3060\u3055\u3044`);
+    new import_obsidian5.Notice(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u5165\u308C\u3066\u304F\u3060\u3055\u3044`);
     return Promise.resolve();
   }
   return guard(ctx, "\u30AB\u30FC\u30C9\u3092\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, moveOps(lanes, board, key, lane, before, previous)));
@@ -3391,8 +3553,7 @@ async function carryIssues(ctx, date, issues, kind) {
   if ((kind === "move" || kind === "tickler") && to === null) return;
   try {
     for (const issue of issues) {
-      if (kind === "inbox") await ctx.writer.update(issue.path, inboxPatch());
-      else if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
+      if (kind === "next") await ctx.writer.update(issue.path, backToNextPatch());
       else if (kind === "move") await ctx.writer.update(issue.path, { scheduled: to });
       else if (kind === "tickler") await ctx.writer.update(issue.path, ticklerPatch(issue, to));
     }
@@ -3633,35 +3794,6 @@ function PickTimer(props) {
   );
 }
 
-// src/ui/StatusIcon.tsx
-var SHAPES = {
-  open: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-  "in-progress": /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-fill vt-si-spin", d: "M12 7a5 5 0 0 1 0 10z" })
-  ] }),
-  waiting: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M10 9.5v5M14 9.5v5" })
-  ] }),
-  delegated: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M19.37 6.84A9 9 0 1 0 19.37 17.16" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M11 12h10M18 9l3 3-3 3" })
-  ] }),
-  someday: /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9", pathLength: "48", "stroke-dasharray": "2.4 3.6" }),
-  closed: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-fill vt-si-pop", cx: "12", cy: "12", r: "10" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-knock vt-si-draw", d: "M8 12.3l2.8 2.8L16.2 9.6", pathLength: "14" })
-  ] }),
-  canceled: /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3("circle", { class: "vt-si-ring", cx: "12", cy: "12", r: "9" }),
-    /* @__PURE__ */ u3("path", { class: "vt-si-ring", d: "M8.5 15.5l7-7" })
-  ] })
-};
-function StatusIcon(props) {
-  return /* @__PURE__ */ u3("svg", { class: `vt-status-icon vt-si-${props.status} ${props.class ?? ""}`, viewBox: "0 0 24 24", "aria-hidden": "true", children: SHAPES[props.status] });
-}
-
 // src/ui/badges.tsx
 function StatusBadge(props) {
   return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
@@ -3686,7 +3818,7 @@ function LabelBadge(props) {
 }
 
 // src/header/SubIssues.tsx
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/ui/FilterChip.tsx
 function FilterChip(props) {
@@ -4221,12 +4353,12 @@ function SubIssues(props) {
 function PresetButton(props) {
   const { ctx, issue, index } = props;
   const open = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     for (const preset of index.data.presets) {
       m3.addItem(
         (mi) => mi.setTitle(preset.name).setIcon("copy-plus").onClick(
           () => void ctx.writer.applyPreset(issue.id, preset).then(
-            (keys) => new import_obsidian5.Notice(`\u30D7\u30EA\u30BB\u30C3\u30C8\u300C${preset.name}\u300D\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\uFF08\u30B5\u30D6 ${keys.length} \u4EF6\uFF09`),
+            (keys) => new import_obsidian6.Notice(`\u30D7\u30EA\u30BB\u30C3\u30C8\u300C${preset.name}\u300D\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\uFF08\u30B5\u30D6 ${keys.length} \u4EF6\uFF09`),
             (err) => ctx.report("\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u8FFD\u52A0\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", err)
           )
         )
@@ -4247,18 +4379,9 @@ function SubRow(props) {
   const running = index.running(sub.key);
   const hint = subHint(sub, localToday());
   const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-  const changeStatus = (next) => {
-    if (next === "delegated") return pickMember(ctx, (id) => save({ status: next, delegatedTo: id }));
-    if (next === sub.status) return;
-    save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
-  };
-  const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian5.Menu();
-    for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
-    m3.showAtMouseEvent(e3);
-  };
+  const statusMenu = (e3) => showStatusMenu(ctx, e3, sub.key);
   const moreMenu = (e3) => {
-    const m3 = new import_obsidian5.Menu();
+    const m3 = new import_obsidian6.Menu();
     const at = props.visible.indexOf(sub.key);
     m3.addItem((mi) => mi.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
     m3.addSeparator();
@@ -4287,7 +4410,8 @@ function SubRow(props) {
         if (dragged && dragged !== sub.key) props.onDrop(dragged);
       },
       children: /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+        /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: sub.key }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", title: sub.summary, onClick: () => openSubEditor(ctx, sub), children: [
           /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
           hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
@@ -4458,22 +4582,7 @@ function SummaryField(props) {
 }
 function StatusField(props) {
   const { ctx, issue, index, save } = props;
-  const change = (next) => {
-    if (next === issue.status) return;
-    if (next === "delegated") {
-      pickMember(ctx, (id) => save({ status: next, delegated_to: id }));
-      return;
-    }
-    const fields = { status: next, delegated_to: null };
-    if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null, tickler: null });
-    else fields.revisit = null;
-    save(fields);
-  };
-  const menu = (e3) => {
-    const m3 = new import_obsidian6.Menu();
-    for (const s3 of STATUSES) m3.addItem((item) => item.setTitle(s3).setChecked(s3 === issue.status).onClick(() => change(s3)));
-    m3.showAtMouseEvent(e3);
-  };
+  const menu = (e3) => showStatusMenu(ctx, e3, issue.id);
   const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
   const editRevisit = () => new PreactModal(ctx.app, "revisit (shows up in Organize after this date)", (close) => /* @__PURE__ */ u3(
     DateForm,
@@ -4488,6 +4597,7 @@ function StatusField(props) {
   const member = issue.delegatedTo === null ? null : index.members.get(issue.delegatedTo);
   return /* @__PURE__ */ u3(S, { children: [
     /* @__PURE__ */ u3(StatusBadge, { status: issue.status, wide: true, onClick: menu }),
+    /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: issue.id }),
     /* @__PURE__ */ u3("div", { class: "vt-status-detail", children: [
       issue.status === "delegated" && /* @__PURE__ */ u3("button", { class: "vt-field-chip", onClick: () => pickMember(ctx, (id) => save({ delegated_to: id })), children: [
         /* @__PURE__ */ u3(Icon, { name: "user" }),
@@ -4556,7 +4666,7 @@ function ScheduleStrip(props) {
         "calendar >",
         issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""
       ] }),
-      /* @__PURE__ */ u3(
+      canSetTickler(issue.status) ? /* @__PURE__ */ u3(
         "button",
         {
           class: `vt-field-chip${issue.tickler ? "" : " is-placeholder"}`,
@@ -4568,7 +4678,12 @@ function ScheduleStrip(props) {
             issue.tickler ? formatShortDate(issue.tickler) : "\u2014"
           ]
         }
-      )
+      ) : issue.tickler && /* @__PURE__ */ u3("button", { class: "vt-field-chip", title: "Only open issues can have a Tickler. Click to clear it", onClick: () => save({ tickler: null }), children: [
+        /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
+        "tickler ",
+        formatShortDate(issue.tickler),
+        " \xD7"
+      ] })
     ] })
   ] });
 }
@@ -5368,19 +5483,11 @@ function SubCard(props) {
 }
 function SubRow2(props) {
   const { ctx, sub, open, save } = props;
-  const changeStatus = (next) => {
-    if (next === "delegated") return pickMember(ctx, (id) => void save({ status: next, delegatedTo: id }));
-    if (next === sub.status) return;
-    void save(next === "someday" ? { status: next, scheduled: null, softDeadline: null, deadline: null } : { status: next });
-  };
-  const statusMenu2 = (e3) => {
-    const m3 = new import_obsidian10.Menu();
-    for (const s3 of STATUSES) m3.addItem((mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === sub.status).onClick(() => changeStatus(s3)));
-    m3.showAtMouseEvent(e3);
-  };
+  const statusMenu = (e3) => showStatusMenu(ctx, e3, sub.key, (patch) => save(patch));
   const hint = subHint(sub, localToday());
   return /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
-    /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu2, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+    /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
+    /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: sub.key, save: (patch) => save(patch) }),
     /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
       /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
       /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
@@ -6703,8 +6810,8 @@ function boardSummary(index, date, board) {
   };
   const lines = [SECTION, ""];
   const present = board.issues.filter((id) => index.issues.has(id) || index.sub(id) !== void 0);
-  const statusOf = (id) => index.issues.get(id)?.status ?? index.sub(id)?.status;
-  const closed = present.filter((id) => statusOf(id) === "closed");
+  const statusOf2 = (id) => index.issues.get(id)?.status ?? index.sub(id)?.status;
+  const closed = present.filter((id) => statusOf2(id) === "closed");
   const others = present.filter((id) => !closed.includes(id));
   const routines = Object.entries(board.routines);
   lines.push("### \u5B8C\u4E86", "");
@@ -6714,7 +6821,8 @@ function boardSummary(index, date, board) {
   if (others.length > 0 || routines.some(([, r3]) => r3 === "canceled")) {
     lines.push("", "### \u6301\u3061\u8D8A\u3057\u30FB\u4E2D\u6B62", "");
     for (const id of others) {
-      const note = board.carried.includes(id) ? "\u6301\u3061\u8D8A\u3057" : statusOf(id) ?? "?";
+      const status = statusOf2(id);
+      const note = board.carried.includes(id) || status === "open" || status === "in-progress" ? "\u6301\u3061\u8D8A\u3057" : status ?? "?";
       lines.push(`- ${link(id)}\uFF08${note}\uFF09`);
     }
     for (const [id, r3] of routines) if (r3 === "canceled") lines.push(`- ${link(id)}\uFF08canceled\uFF09`);
@@ -6750,8 +6858,6 @@ function upsertSummary(text, summary) {
 function closeBoardNote(text, date, index, board) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  const remaining = unfinished(index, date, board);
-  if (unfinishedCount(remaining) > 0) throw new Error("\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF\u304C\u3042\u308B\u305F\u3081\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093");
   return upsertSummary(text, boardSummary(index, date, board));
 }
 
@@ -7020,8 +7126,8 @@ var TaskWriter = class {
     for (const path of paths) await this.update(path, typeof fields === "function" ? fields(path) : fields);
   }
   /**
-   * frontmatter の欄をまとめて更新する。issue の status が変わったら、statuslog に書き、
-   * closed / canceled なら記録中のタイマーを止め、onStatusChange を呼ぶ（ADR-0031）
+   * frontmatter の欄をまとめて更新する。issue の status は遷移表（ADR-0183）にある遷移だけを書き、ほかは例外にする（取り消しの undo は除く）。
+   * status が変わったら、statuslog に書き、★ を外し、今の作業でなくなればタイマーを止め、onStatusChange を呼ぶ（ADR-0031, 0184, 0183）
    */
   async update(path, fields, via = "ui") {
     const before = {};
@@ -7030,6 +7136,16 @@ var TaskWriter = class {
     await this.app.fileManager.processFrontMatter(this.file(path), (fm) => {
       from = fm.status;
       id = fm.id;
+      const next = fields.status;
+      if (via !== "undo" && fileKind(path) === "issue" && isStatus2(from) && isStatus2(next) && from !== next) {
+        const reopenTo = typeof fm.id === "string" ? this.store.index.reopenStatus(fm.id) : null;
+        if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
+        fields = completeIssuePatch(next, fields, from);
+      }
+      const after = isStatus2(next) ? next : from;
+      if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus2(after) && after !== "open") {
+        throw new Error(ticklerError(after));
+      }
       for (const [key, value] of Object.entries(fields)) {
         before[key] = structuredClone(fm[key]);
         if (value === null || value === void 0 || Array.isArray(value) && value.length === 0 || value === "") delete fm[key];
@@ -7041,7 +7157,7 @@ var TaskWriter = class {
     if (fileKind(path) !== "issue" || !isStatus2(from) || !isStatus2(to) || from === to || typeof id !== "string") return;
     await this.recordStatus(id, from, to, via);
     await this.unstar(id, to);
-    if (isDoneStatus(to)) {
+    if (stopsTimer(to)) {
       const running = this.store.index.running(id);
       if (running.length > 0) await this.stopTimer(running);
     }
@@ -7049,12 +7165,18 @@ var TaskWriter = class {
   }
   /**
    * サブの項目を書き換える（ADR-0135）。key は合成キー。status が変わったら statuslog に task と sub で書き、
-   * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+   * 今の作業でなくなればそのサブの記録中のタイマーを止める。遷移表にない遷移は例外（ADR-0183）。親の status は変えない
    */
   async updateSub(key, patch, via = "ui") {
     const sub = this.store.index.sub(key);
     if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
-    const fixed = normalizeSubPatch(patch);
+    let fixed = normalizeSubPatch(patch);
+    const next = fixed.status;
+    if (via !== "undo" && next !== void 0 && next !== sub.status) {
+      const reopenTo = this.store.index.reopenStatus(sub.key);
+      if (!canTransition(sub.status, next, reopenTo)) throw new Error(transitionError(sub.status, next, reopenTo));
+      fixed = completeSubPatch(next, fixed);
+    }
     let change = null;
     await this.app.vault.process(this.file(sub.path), (text) => {
       const siblings = parseSubIssues(sub.path, sub.parent, text, import_obsidian18.parseYaml).subs.map((s3) => s3.id === sub.id ? { ...s3, ...fixed, id: s3.id } : s3);
@@ -7075,7 +7197,7 @@ var TaskWriter = class {
   async afterSubStatusChange(sub, from, to, via = "ui") {
     await this.recordStatus(sub.parent, from, to, via, sub.id);
     await this.unstar(sub.key, to);
-    if (isDoneStatus(to)) {
+    if (stopsTimer(to)) {
       const running = this.store.index.running(sub.key);
       if (running.length > 0) await this.stopTimer(running);
     }
@@ -7298,11 +7420,13 @@ var TaskWriter = class {
     for (const id of targets) {
       const sub = this.store.index.sub(id);
       if (sub) {
-        if (sub.status === "open") await this.updateSub(id, { status: "in-progress" }, "timer");
+        const to2 = timerStartStatus(sub.status);
+        if (to2) await this.updateSub(id, { status: to2 }, "timer");
         continue;
       }
       const issue = this.store.index.issues.get(id);
-      if (issue?.status === "open") await this.update(issue.path, { status: "in-progress" }, "timer");
+      const to = issue ? timerStartStatus(issue.status) : null;
+      if (issue && to) await this.update(issue.path, { status: to, delegated_to: null }, "timer");
     }
   }
   /** 記録を止める（to を今にする） */
@@ -7429,7 +7553,7 @@ function IssueTable(props) {
         /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: issue.summary, children: issue.summary })
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-col-priority", children: /* @__PURE__ */ u3(PriorityBadge, { priority: issue.priority, onClick: (e3) => priorityMenu(e3, issue.priority, saveIssue(ctx, issue)) }) }),
-      /* @__PURE__ */ u3("span", { class: "vt-col-status", children: /* @__PURE__ */ u3(StatusBadge, { status: issue.status, onClick: (e3) => statusMenu(ctx, e3, issue) }) }),
+      /* @__PURE__ */ u3("span", { class: "vt-col-status", children: /* @__PURE__ */ u3(StatusBadge, { status: issue.status, onClick: (e3) => showStatusMenu(ctx, e3, issue.id) }) }),
       columns.map((c3) => /* @__PURE__ */ u3("span", { class: `vt-col-${c3}`, children: cell(issue, c3) })),
       /* @__PURE__ */ u3("span", { class: "vt-col-menu", children: /* @__PURE__ */ u3("button", { class: "vt-icon-button", "aria-label": `Edit ${issue.id}`, title: "Edit", onClick: (e3) => issueRowMenu(ctx, e3, issue), children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) }) })
     ] }, issue.id))
@@ -7439,7 +7563,7 @@ function ActionBar(props) {
   return /* @__PURE__ */ u3("div", { class: `vt-actionbar${props.count > 0 ? " is-active" : ""}`, children: [
     /* @__PURE__ */ u3("span", { class: "vt-actionbar-count", children: props.count > 0 ? `${props.count} selected` : "Select rows to act on them" }),
     /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-    props.actions.map((a3) => /* @__PURE__ */ u3("button", { class: `vt-button${a3.tone ? ` is-${a3.tone}` : ""}`, disabled: props.count === 0, onClick: a3.run, children: a3.label }))
+    props.actions.map((a3) => /* @__PURE__ */ u3("button", { class: `vt-button${a3.tone ? ` is-${a3.tone}` : ""}`, disabled: props.count === 0 || a3.disabled === true, onClick: a3.run, children: a3.label }))
   ] });
 }
 
@@ -7458,34 +7582,20 @@ var LANE_EMPTY = {
   top: "Pick up to 4 cards that matter most today. Drag them here, or use the card menu.",
   next: "Nothing else to do today."
 };
-function changeIssueStatus(ctx, issue, to) {
-  const save = (patch) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status \u3092\u5909\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", err));
-  if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id)));
-  else save(statusPatch(to));
-}
-function changeSubStatus(ctx, sub, to) {
-  const save = (patch) => void ctx.writer.updateSub(sub.key, patch).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-  if (to === "delegated") return pickMember(ctx, (id) => save({ status: to, delegatedTo: id }));
-  if (to === sub.status) return;
-  save(to === "someday" ? { status: to, scheduled: null, softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
-}
 var DRAG_TYPE2 = "text/plain";
 var readDrag2 = (e3) => e3.dataTransfer?.getData(DRAG_TYPE2) || null;
 var isDragLane = (lane) => lane === "top" || lane === "next";
-function showStatusMenu(ctx, date, card, status, e3) {
+function showStatusMenu2(ctx, date, card, status, e3) {
+  if (card.kind !== "routine") return showStatusMenu(ctx, e3, card.key);
   const m3 = new import_obsidian20.Menu();
-  for (const s3 of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
+  for (const s3 of ROUTINE_RESULTS) {
     m3.addItem(
-      (mi) => mi.setTitle(s3 === "delegated" ? "delegated\u2026" : s3).setChecked(s3 === status).onClick(() => {
-        if (card.kind === "routine") return void setRoutineResult(ctx, date, card.key, s3 === "open" ? null : s3);
-        if (s3 === status && s3 !== "delegated") return;
-        if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s3);
-        else changeSubStatus(ctx, card.sub, s3);
-      })
+      (mi) => mi.setTitle(s3).setChecked(s3 === status).onClick(() => void setRoutineResult(ctx, date, card.key, s3 === "open" ? null : s3))
     );
   }
   m3.showAtMouseEvent(e3);
 }
+var ROUTINE_RESULTS = ["open", "closed", "canceled"];
 function TaskCard(props) {
   const { ctx, date, board, lanes, lane, card, now } = props;
   const index = ctx.store.index;
@@ -7500,7 +7610,7 @@ function TaskCard(props) {
   const last = card.kind === "issue" ? index.lastStatusLog(card.issue.id) : void 0;
   const enter = last !== void 0 && last.to === status && Date.now() - last.atMs < ENTER_MS;
   const starred = board.stars.includes(key);
-  const statusMenu2 = (e3) => showStatusMenu(ctx, date, card, status, e3);
+  const statusMenu = (e3) => showStatusMenu2(ctx, date, card, status, e3);
   const moreMenu = (e3) => {
     const m3 = new import_obsidian20.Menu();
     if (!done && card.kind !== "routine") {
@@ -7541,7 +7651,8 @@ function TaskCard(props) {
         }
       } : {},
       children: [
-        /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu2 }),
+        /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu }),
+        card.kind !== "routine" && /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: key }),
         /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: summary }),
         !done && card.kind !== "routine" && /* @__PURE__ */ u3(
           "button",
@@ -7586,7 +7697,7 @@ function WatchCard(props) {
     m3.showAtMouseEvent(e3);
   };
   return /* @__PURE__ */ u3("div", { class: `vt-task vt-watch-task${card.kind === "sub" ? " is-sub" : ""}`, "data-key": card.key, children: [
-    /* @__PURE__ */ u3(StatusBadge, { status, onClick: (e3) => showStatusMenu(ctx, date, card, status, e3) }),
+    /* @__PURE__ */ u3(StatusBadge, { status, onClick: (e3) => showStatusMenu2(ctx, date, card, status, e3) }),
     /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${card.key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian20.Keymap.isModEvent(e3) !== false)), children: summary }),
     delegatedTo && /* @__PURE__ */ u3("span", { class: "vt-chip-mini vt-watch-member", title: member ? memberLabel(member) : delegatedTo, children: [
       "@",
@@ -7715,8 +7826,8 @@ function Board(props) {
           "button",
           {
             class: "vt-button is-primary",
-            disabled: leftCount > 0 || total === 0,
-            title: "You can close the board when nothing is left",
+            disabled: total === 0,
+            title: "Write today's record to the daily note. Unfinished cards are recorded as carried over",
             onClick: () => void closeBoard(ctx, date),
             children: [
               /* @__PURE__ */ u3(Icon, { name: "check" }),
@@ -7746,14 +7857,14 @@ function Board(props) {
 }
 function carryActions(ctx, date, sel, primary, done) {
   const run = (p3) => void p3.then(done);
+  const statuses = sel.map((i3) => i3.status);
   return [
     ...primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => run(carryIssues(ctx, date, sel, "today")) }] : [],
     { label: "Back to Next", icon: "list-todo", ...primary === "next" ? { tone: "primary" } : {}, run: () => run(carryIssues(ctx, date, sel, "next")) },
-    { label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+    { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
     ...sel.length > 0 && sel.every((i3) => i3.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : [],
-    { label: "Close", icon: "check", run: () => run(closeIssues(ctx, sel)) },
-    { label: "Cancel", icon: "x", run: () => run(cancelIssues(ctx, sel)) },
-    { label: "Inbox", icon: "inbox", run: () => run(carryIssues(ctx, date, sel, "inbox")) }
+    { label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
+    { label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) }
   ];
 }
 function SubRows(props) {
@@ -7786,7 +7897,6 @@ function RoutineRows(props) {
 // src/views/DailyView.tsx
 var STEPS = [
   { key: "calendar", label: "Calendar", icon: "calendar" },
-  { key: "previous", label: "Previous boards", icon: "history" },
   { key: "pick", label: "Pick", icon: "list-todo" },
   { key: "board", label: "Board", icon: "layout-dashboard" }
 ];
@@ -7831,9 +7941,10 @@ function DueSection(props) {
         actions: [
           { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
           { label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+          // 守れない期限は結び直す: 日を変える・保留する（Someday）・やめる（Cancel。ADR-0189）
+          { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
     ),
@@ -7893,9 +8004,8 @@ function MissedSection(props) {
             { label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
             { label: "Move date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled").then(done) },
             { label: "Back to Next", icon: "list-todo", run: () => void backToNextIssues(ctx, sel).then(done) },
-            { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-            { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-            { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
+            { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
           ]
         }
       ),
@@ -7920,36 +8030,6 @@ function MissedSection(props) {
     ] })
   ] });
 }
-function PreviousStep(props) {
-  const { ctx } = props;
-  const index = ctx.store.index;
-  return /* @__PURE__ */ u3(S, { children: props.boards.map((b2) => {
-    const left = unfinished(index, b2.date, b2.board);
-    if (unfinishedCount(left) === 0) return null;
-    return /* @__PURE__ */ u3("section", { class: "vt-card", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-          "Board of ",
-          formatShortDate(b2.date)
-        ] }),
-        /* @__PURE__ */ u3("span", { class: "vt-count", children: unfinishedCount(left) })
-      ] }),
-      /* @__PURE__ */ u3(PreviousIssues, { ctx, date: b2.date, issues: left.issues }),
-      /* @__PURE__ */ u3(SubRows, { ctx, date: b2.date, subs: left.subs, primary: "today" }),
-      /* @__PURE__ */ u3(RoutineRows, { ctx, date: b2.date, routines: left.routines })
-    ] }, b2.date);
-  }) });
-}
-function PreviousIssues(props) {
-  const { ctx, date, issues } = props;
-  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
-  const sel = issues.filter((i3) => selected.has(i3.id));
-  if (issues.length === 0) return null;
-  return /* @__PURE__ */ u3(S, { children: [
-    /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["status-detail", "calendar", "deadline", "estimated"] }),
-    /* @__PURE__ */ u3(ActionBar, { count: sel.length, actions: carryActions(ctx, date, sel, "today", () => setSelected(/* @__PURE__ */ new Set())) })
-  ] });
-}
 function PickStep(props) {
   const { ctx, issues } = props;
   const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
@@ -7970,10 +8050,9 @@ function PickStep(props) {
           count: sel.length,
           actions: [
             { label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i3) => i3.id)).then(done) },
-            { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-            { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-            { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-            { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) }
+            { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+            { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+            { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
           ]
         }
       )
@@ -8000,7 +8079,6 @@ function DailyView(props) {
   const cautionSub = cautionSubs(index, today);
   const missed = missedIssues(issues, today);
   const missedSub = missedSubs(index, today);
-  const pending = pendingBoards(index, index.data.boards, today);
   const todayBoard = index.board(today)?.board ?? emptyBoard();
   const pick = pickCandidates(index, today, todayBoard);
   const toAdd = index.toAutoAdd(today);
@@ -8008,7 +8086,6 @@ function DailyView(props) {
   const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.deadline.length + s3.softDeadline.length;
   const counts = {
     calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
-    previous: pending.reduce((n2, b2) => n2 + unfinishedCount(unfinished(index, b2.date, b2.board)), 0),
     pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0),
     board: unfinishedCount(todayLeft)
   };
@@ -8066,7 +8143,6 @@ function DailyView(props) {
       )
     ] }, s3.key)) }),
     step === "calendar" && /* @__PURE__ */ u3(CalendarStep, { ctx, dead, deadSub, caution, cautionSub, missed, missedSub }),
-    step === "previous" && (pending.length > 0 ? /* @__PURE__ */ u3(PreviousStep, { ctx, boards: pending }) : /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No boards left open" })),
     step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
@@ -8118,10 +8194,10 @@ function InboxView(props) {
         count: sel.length,
         actions: [
           { label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-          { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-          { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+          { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
     )
@@ -8581,11 +8657,10 @@ function IssueListView(props) {
       {
         count: sel.length,
         actions: [
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-          { label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-          { label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-          { label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i3) => i3.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+          { label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i3) => i3.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
     ),
@@ -9100,9 +9175,9 @@ function SomedayView(props) {
         count: sel.length,
         actions: [
           { label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
-          { label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
+          { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
-          { label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) }
+          { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }
         ]
       }
     )

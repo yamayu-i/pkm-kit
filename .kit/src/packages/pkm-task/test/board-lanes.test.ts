@@ -231,10 +231,11 @@ describe("サブのカード（ADR-0137）", () => {
 		const { index } = load([parent], [line(DATE, { op: "add", task: "i-1#aaaaaa" }), line(DATE, { op: "add", task: "i-1#cccccc" })]);
 		const board = index.board(DATE)!.board;
 		expect(unfinished(index, DATE, board).subs.map((s) => s.key)).toEqual(["i-1#aaaaaa"]);
-		expect(() => closeBoardNote("", DATE, index, board)).toThrow();
+		// 未完了があっても締められ、未完了は持ち越しと書く（ADR-0189）
+		expect(closeBoardNote("", DATE, index, board)).toContain("## Task board");
 		const summary = boardSummary(index, DATE, board);
 		expect(summary).toContain("- [i-1 › 試験](issue/i-1.md)");
-		expect(summary).toContain("- [i-1 › 仕様](issue/i-1.md)（open）");
+		expect(summary).toContain("- [i-1 › 仕様](issue/i-1.md)（持ち越し）");
 	});
 
 	it("移行したサブの以前の ID を指すボードの記録は、そのサブの合成キーとして読む", () => {

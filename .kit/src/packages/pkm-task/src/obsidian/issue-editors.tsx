@@ -1,12 +1,14 @@
 import { Menu } from "obsidian";
-import { duePatch, scheduledPatch, statusPatch, ticklerFieldPatch } from "../core/actions";
+import { duePatch, scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import { formatMinutes, parseDurationInput } from "../core/format";
-import { PRIORITIES, STATUSES, STATUS_DETAIL_MAX, type Issue, type Priority } from "../core/schema";
+import { PRIORITIES, STATUS_DETAIL_MAX, type Issue, type Priority } from "../core/schema";
 import { DateForm, TextForm } from "../ui/forms";
 import { LabelForm } from "../ui/LabelForm";
 import type { TaskContext } from "./context";
 import { MemberSuggestModal, PreactModal } from "./modals";
 import type { FieldValue } from "./writer";
+import { showStatusMenu } from "./status-change";
+import { canSetTickler } from "../core/transition";
 
 const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 
@@ -88,25 +90,6 @@ export function estimateMenu(ctx: TaskContext, e: MouseEvent, current: number | 
 	m.showAtMouseEvent(e);
 }
 
-/** リストの status（ADR-0018）。delegated は委任先も選ぶ */
-export function statusMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): void {
-	const save = saveIssue(ctx, issue);
-	const m = new Menu();
-	for (const s of STATUSES) {
-		m.addItem((item) =>
-			item
-				.setTitle(s)
-				.setChecked(s === issue.status)
-				.onClick(() => {
-					if (s === issue.status) return;
-					if (s === "delegated") pickMember(ctx, (id) => save(statusPatch(s, id)));
-					else save(statusPatch(s));
-				}),
-		);
-	}
-	m.showAtMouseEvent(e);
-}
-
 export function editDue(ctx: TaskContext, issue: Issue, key: "soft_deadline" | "deadline"): void {
 	new PreactModal(ctx.app, key, (close) => (
 		<DateForm
@@ -162,13 +145,14 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	const save = saveIssue(ctx, issue);
 	const m = new Menu();
 	m.addItem((item) => item.setTitle("summary").setIcon("pencil").onClick(() => editSummary(ctx, issue)));
-	m.addItem((item) => item.setTitle("status").setIcon("circle-dot").onClick(() => statusMenu(ctx, e, issue)));
+	m.addItem((item) => item.setTitle("status").setIcon("circle-dot").onClick(() => showStatusMenu(ctx, e, issue.id)));
 	m.addItem((item) => item.setTitle("status-detail").setIcon("pencil").onClick(() => editStatusDetail(ctx, issue.statusDetail, save)));
 	m.addItem((item) => item.setTitle("priority").setIcon("flag").onClick(() => priorityMenu(e, issue.priority, save)));
 	m.addItem((item) => item.setTitle("label").setIcon("tag").onClick(() => editLabels(ctx, issue.labels, save)));
 	m.addSeparator();
 	m.addItem((item) => item.setTitle("Calendar").setIcon("calendar").onClick(() => editScheduled(ctx, issue)));
-	m.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+	if (canSetTickler(issue.status)) m.addItem((item) => item.setTitle("Tickler").setIcon("alarm-clock").onClick(() => editTickler(ctx, issue)));
+	else if (issue.tickler !== null) m.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
 	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
 	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));

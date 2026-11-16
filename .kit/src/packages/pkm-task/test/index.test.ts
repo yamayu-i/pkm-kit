@@ -156,6 +156,11 @@ describe("lintVault", () => {
 		]);
 	});
 
+	it("Tickler は open だけ。ほかの status に残っていたら知らせる（ADR-0183）", () => {
+		const d = data({ issues: [issue("i-1", { status: "open", tickler: "2026-12-01" }), issue("i-2", { status: "in-progress", tickler: "2026-12-01" })] });
+		expect(codes(d)).toEqual(["issue/i-2.md stale-tickler"]);
+	});
+
 	it("member の label も定義にあるかを見る（ADR-0036）", () => {
 		const d = data({ labels: [{ name: "仕事", color: "#d0d0d0" }], members: [member("m-1", { label: ["仕事", "取引先"] })] });
 		expect(codes(d)).toEqual(["member/m-1.md unknown-label"]);

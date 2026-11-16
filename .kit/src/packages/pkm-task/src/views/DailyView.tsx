@@ -1,25 +1,25 @@
 import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
-import { emptyBoard, unfinished, unfinishedCount, pendingBoards, type DailyBoard } from "../core/board";
+import { emptyBoard, unfinished, unfinishedCount } from "../core/board";
 import { cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists, type SubDueLists } from "../core/daily";
-import { formatShortDate, localToday, type LocalDate } from "../core/dates";
+import { formatShortDate, localToday } from "../core/dates";
 import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
 import { addSubToBoard, addToBoard } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
-import { askDate, backToNextIssues, cancelIssues, closeIssues, inboxIssues, rescheduleIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
+import { askDate, backToNextIssues, cancelIssues, closeIssues, rescheduleIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useNow, useStoreVersion } from "../ui/hooks";
-import { Board, ParentHead, RoutineRows, SubRows, carryActions } from "./Board";
+import { Board, ParentHead } from "./Board";
+import { canApplyAll } from "../core/transition";
 
-type Step = "calendar" | "previous" | "pick" | "board";
+type Step = "calendar" | "pick" | "board";
 
 const STEPS: { key: Step; label: string; icon: string }[] = [
 	{ key: "calendar", label: "Calendar", icon: "calendar" },
-	{ key: "previous", label: "Previous boards", icon: "history" },
 	{ key: "pick", label: "Pick", icon: "list-todo" },
 	{ key: "board", label: "Board", icon: "layout-dashboard" },
 ];
@@ -82,9 +82,10 @@ function DueSection(props: { ctx: TaskContext; target: RescheduleTarget; title: 
 					actions={[
 						{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
 						{ label: target === "deadline" ? "Change Deadline" : "Change Soft Deadline", icon: "flag", run: () => void rescheduleIssues(ctx, sel, target).then(done) },
-						{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-						{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-						{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
+						{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+						// 守れない期限は結び直す: 日を変える・保留する（Someday）・やめる（Cancel。ADR-0189）
+						{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+						{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 					]}
 				/>
 			)}
@@ -152,9 +153,8 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 							{ label: "Add to today's board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
 							{ label: "Move date", icon: "calendar-clock", run: () => void rescheduleIssues(ctx, sel, "scheduled").then(done) },
 							{ label: "Back to Next", icon: "list-todo", run: () => void backToNextIssues(ctx, sel).then(done) },
-							{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-							{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-							{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
+							{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+							{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 						]}
 					/>
 				)}
@@ -175,44 +175,6 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 					]}
 				/>
 			</section>
-		</>
-	);
-}
-
-/** 締めていない過去のボードの未完了（ADR-0009, 0150）。ボードの日付ごとに issue・サブ・routine をまとめる */
-function PreviousStep(props: { ctx: TaskContext; boards: DailyBoard[] }) {
-	const { ctx } = props;
-	const index = ctx.store.index;
-	return (
-		<>
-			{props.boards.map((b) => {
-				const left = unfinished(index, b.date, b.board);
-				if (unfinishedCount(left) === 0) return null;
-				return (
-					<section class="vt-card" key={b.date}>
-						<div class="vt-section-head">
-							<span class="vt-field-label">Board of {formatShortDate(b.date)}</span>
-							<span class="vt-count">{unfinishedCount(left)}</span>
-						</div>
-						<PreviousIssues ctx={ctx} date={b.date} issues={left.issues} />
-						<SubRows ctx={ctx} date={b.date} subs={left.subs} primary="today" />
-						<RoutineRows ctx={ctx} date={b.date} routines={left.routines} />
-					</section>
-				);
-			})}
-		</>
-	);
-}
-
-function PreviousIssues(props: { ctx: TaskContext; date: LocalDate; issues: Issue[] }) {
-	const { ctx, date, issues } = props;
-	const [selected, setSelected] = useState<Set<string>>(new Set());
-	const sel = issues.filter((i) => selected.has(i.id));
-	if (issues.length === 0) return null;
-	return (
-		<>
-			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["status-detail", "calendar", "deadline", "estimated"]} />
-			<ActionBar count={sel.length} actions={carryActions(ctx, date, sel, "today", () => setSelected(new Set()))} />
 		</>
 	);
 }
@@ -238,10 +200,9 @@ function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: 
 						count={sel.length}
 						actions={[
 							{ label: "Add to board", icon: "calendar-check", tone: "primary", run: () => void addToBoard(ctx, today, sel.map((i) => i.id)).then(done) },
-							{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-							{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-							{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
-							{ label: "Inbox", icon: "inbox", run: () => void inboxIssues(ctx, sel).then(done) },
+							{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+							{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+							{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 						]}
 					/>
 				</section>
@@ -277,7 +238,6 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const cautionSub = cautionSubs(index, today);
 	const missed = missedIssues(issues, today);
 	const missedSub = missedSubs(index, today);
-	const pending = pendingBoards(index, index.data.boards, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
 	const pick = pickCandidates(index, today, todayBoard);
 	const toAdd = index.toAutoAdd(today);
@@ -286,7 +246,6 @@ export function DailyView(props: { ctx: TaskContext }) {
 
 	const counts: Record<Step, number> = {
 		calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
-		previous: pending.reduce((n, b) => n + unfinishedCount(unfinished(index, b.date, b.board)), 0),
 		pick: pick.issues.length + pick.groups.reduce((n, g) => n + g.subs.length, 0),
 		board: unfinishedCount(todayLeft),
 	};
@@ -356,7 +315,6 @@ export function DailyView(props: { ctx: TaskContext }) {
 			</nav>
 
 			{step === "calendar" && <CalendarStep ctx={ctx} dead={dead} deadSub={deadSub} caution={caution} cautionSub={cautionSub} missed={missed} missedSub={missedSub} />}
-			{step === "previous" && (pending.length > 0 ? <PreviousStep ctx={ctx} boards={pending} /> : <div class="vt-empty">No boards left open</div>)}
 			{step === "pick" && <PickStep ctx={ctx} issues={pick.issues} groups={pick.groups} />}
 			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
 

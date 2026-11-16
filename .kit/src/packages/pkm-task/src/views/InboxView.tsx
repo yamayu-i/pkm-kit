@@ -7,6 +7,7 @@ import { cancelIssues, closeIssues, nextIssues, somedayIssues, ticklerIssues } f
 import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
+import { canApplyAll } from "../core/transition";
 
 /** Inbox（ADR-0009, 0148, 0152）: Inbox の一覧と、summary だけで作る入力欄 */
 export function InboxView(props: { ctx: TaskContext }) {
@@ -47,10 +48,10 @@ export function InboxView(props: { ctx: TaskContext }) {
 				count={sel.length}
 				actions={[
 					{ label: "Next", icon: "list-todo", tone: "primary", run: () => void nextIssues(ctx, sel).then(done) },
-					{ label: "Tickler", icon: "alarm-clock", run: () => void ticklerIssues(ctx, sel).then(done) },
-					{ label: "Someday", icon: "cloud", run: () => void somedayIssues(ctx, sel).then(done) },
-					{ label: "Close", icon: "check", run: () => void closeIssues(ctx, sel).then(done) },
-					{ label: "Cancel", icon: "x", run: () => void cancelIssues(ctx, sel).then(done) },
+					{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
+					{ label: "Someday", icon: "cloud", disabled: !canApplyAll(sel.map((i) => i.status), "someday"), run: () => void somedayIssues(ctx, sel).then(done) },
+					{ label: "Close", icon: "check", disabled: !canApplyAll(sel.map((i) => i.status), "closed"), run: () => void closeIssues(ctx, sel).then(done) },
+					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },
 				]}
 			/>
 		</div>

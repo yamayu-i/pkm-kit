@@ -20,13 +20,13 @@ describe("要約を書いて締める", () => {
 		expect(next).not.toContain("closed: true");
 		expect(closeBoardNote(next, date, index(), board)).toBe(next);
 	});
-	it("未完了の issue は締めない", () => {
-		expect(() => closeBoardNote(note, date, index("open"), board)).toThrow(/未完了/);
+	it("未完了の issue があっても締め、持ち越しと書く（締めは記録だけ。ADR-0189）", () => {
+		expect(closeBoardNote(note, date, index("open"), board)).toContain("[i-1 作業](issue/i-1.md)（持ち越し）");
 	});
-	it("未完了の routine は締めない", () => {
+	it("未完了の routine があっても締める（ADR-0189）", () => {
 		const routine = parseRoutine("routine/r-1.md", { type: "routine", id: "r-1", summary: "習慣", repeat: { every: "day" }, start: date }).value!;
 		const tasks = new TaskIndex({ ...index().data, routines: [routine] });
-		expect(() => closeBoardNote(note, date, tasks, board)).toThrow(/未完了/);
+		expect(closeBoardNote(note, date, tasks, board)).toContain("## Task board");
 	});
 	it("鍵が指すものがない issue は、完了にも未完了にも数えず、締めを止めない（ADR-0137）", () => {
 		const text = closeBoardNote(note, date, new TaskIndex(emptyVaultData()), board);

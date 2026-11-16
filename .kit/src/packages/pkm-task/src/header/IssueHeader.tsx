@@ -1,11 +1,10 @@
-import { Menu } from "obsidian";
 import type { ComponentChild } from "preact";
 import { useState } from "preact/hooks";
 import { addDays, formatShortDate, localDateTime, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
-import { STATUSES, type Issue, type Status } from "../core/schema";
+import type { Issue } from "../core/schema";
 import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
 import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
@@ -19,6 +18,8 @@ import type { WorklogEntry } from "../core/worklog";
 import { useNow, useStoreVersion } from "../ui/hooks";
 import { SubIssues } from "./SubIssues";
 import { Pager } from "../ui/Pager";
+import { showStatusMenu, StatusStepButton } from "../obsidian/status-change";
+import { canSetTickler } from "../core/transition";
 
 const WORKLOG_PAGE = 5;
 
@@ -110,23 +111,8 @@ export function SummaryField(props: { badge: ComponentChild; summary: string; sa
 
 function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
 	const { ctx, issue, index, save } = props;
-	const change = (next: Status) => {
-		if (next === issue.status) return;
-		if (next === "delegated") {
-			pickMember(ctx, (id) => save({ status: next, delegated_to: id }));
-			return;
-		}
-		const fields: Record<string, FieldValue> = { status: next, delegated_to: null };
-		// someday にするときは予定と期限を外す。someday 以外では revisit は使わない（ADR-0006）
-		if (next === "someday") Object.assign(fields, { scheduled: null, soft_deadline: null, deadline: null, tickler: null });
-		else fields.revisit = null;
-		save(fields);
-	};
-	const menu = (e: MouseEvent) => {
-		const m = new Menu();
-		for (const s of STATUSES) m.addItem((item) => item.setTitle(s).setChecked(s === issue.status).onClick(() => change(s)));
-		m.showAtMouseEvent(e);
-	};
+	// メニューは遷移表の先だけ。付随の変更も表で決まる（ADR-0183）
+	const menu = (e: MouseEvent) => showStatusMenu(ctx, e, issue.id);
 	const editDetail = () => editStatusDetail(ctx, issue.statusDetail, save);
 	const editRevisit = () =>
 		new PreactModal(ctx.app, "revisit (shows up in Organize after this date)", (close) => (
@@ -142,6 +128,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 	return (
 		<>
 			<StatusBadge status={issue.status} wide onClick={menu} />
+			<StatusStepButton ctx={ctx} keyOf={issue.id} />
 			<div class="vt-status-detail">
 				{issue.status === "delegated" && (
 					<button class="vt-field-chip" onClick={() => pickMember(ctx, (id) => save({ delegated_to: id }))}>
@@ -226,14 +213,24 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 				<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
 					calendar &gt;{issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""}
 				</button>
-				<button
-					class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
-					title="Tickler: hidden until this date, then back to Inbox"
-					onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
-				>
-					<Icon name="alarm-clock" />
-					tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}
-				</button>
+				{/* Tickler は open（と someday）だけが持つ。ほかの status では、残っている日を消すだけ（ADR-0183） */}
+				{canSetTickler(issue.status) ? (
+					<button
+						class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
+						title="Tickler: hidden until this date, then back to Inbox"
+						onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
+					>
+						<Icon name="alarm-clock" />
+						tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}
+					</button>
+				) : (
+					issue.tickler && (
+						<button class="vt-field-chip" title="Only open issues can have a Tickler. Click to clear it" onClick={() => save({ tickler: null })}>
+							<Icon name="alarm-clock" />
+							tickler {formatShortDate(issue.tickler)} ×
+						</button>
+					)
+				)}
 			</div>
 		</div>
 	);

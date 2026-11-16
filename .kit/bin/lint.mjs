@@ -8286,6 +8286,17 @@ function closedAtMap(logs, closedIds) {
   return out;
 }
 
+// src/core/transition.ts
+var isDone = (s) => s === "closed" || s === "canceled";
+function reopenStatus(logs, task, sub = null) {
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const e = logs[i];
+    if (e.task !== task || (e.sub ?? null) !== sub) continue;
+    if (isDone(e.to) && !isDone(e.from)) return e.from;
+  }
+  return "open";
+}
+
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
@@ -8386,6 +8397,11 @@ var TaskIndex = class {
   statusBefore(id) {
     const issue = this.issues.get(id);
     return issue ? statusBefore(this.data.statusLogs, id, issue.status) : null;
+  }
+  /** closed / canceled からの ↩ の戻る先（ADR-0183）。key は issue の ID かサブの合成キー。分からなければ open */
+  reopenStatus(key) {
+    const sub = parseSubKey(key);
+    return sub ? reopenStatus(this.data.statusLogs, sub.parent, sub.id) : reopenStatus(this.data.statusLogs, key);
   }
   /** その issue の最後の status の記録 */
   lastStatusLog(id) {
@@ -8550,6 +8566,9 @@ function lintVault(data2, options = {}) {
     }
     if (issue.status === "someday" && (issue.scheduled !== null || issue.softDeadline !== null || issue.deadline !== null)) {
       add("warning", path, "someday-with-dates", "someday \u306A\u306E\u306B scheduled / soft_deadline / deadline \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059");
+    }
+    if (issue.tickler !== null && issue.status !== "open") {
+      add("warning", path, "stale-tickler", "open \u3067\u306F\u306A\u3044\u306E\u306B tickler \u304C\u3042\u308A\u307E\u3059\uFF08Inbox \u306B\u3082 Next \u306B\u3082\u51FA\u307E\u305B\u3093\u3002ADR-0183\uFF09");
     }
     if (issue.revisit !== null && issue.status !== "someday") {
       add("warning", path, "stale-revisit", "someday \u3067\u306F\u306A\u3044\u306E\u306B revisit \u304C\u3042\u308A\u307E\u3059");

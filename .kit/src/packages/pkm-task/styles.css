@@ -675,6 +675,39 @@ button.vt-badge:disabled::after {
 	color: var(--vt-on-surface);
 }
 
+/* status のボタン（ADR-0183）。よく使う遷移を 1 つ。アイコンは押した後の status の形をモノクロ（弱い文字の色）で出し、今の status（色付き）と見分ける */
+.vt-status-step {
+	flex: none;
+	--vt-knock: var(--vt-surface);
+}
+
+.vt-status-step .vt-status-icon {
+	color: currentColor;
+}
+
+/* ボードのカードでは、ホバーとフォーカスのときだけ見せる。場所は取っておき、カードの幅を変えない（ADR-0137, 0183） */
+.vt-task .vt-status-step {
+	visibility: hidden;
+}
+
+.vt-task:hover .vt-status-step,
+.vt-task:focus-within .vt-status-step {
+	visibility: visible;
+}
+
+/* ホバーのない端末と、狭いボード（題を残す）では出さない（status のメニューだけ） */
+@media (hover: none) {
+	.vt-task .vt-status-step {
+		display: none;
+	}
+}
+
+@container (max-width: 480px) {
+	.vt-task .vt-status-step {
+		display: none;
+	}
+}
+
 /* ---------- 工数 ---------- */
 
 .vt-effort {
@@ -3608,6 +3641,16 @@ body.is-mobile .vt-toast {
 .vt-sub-sticky .vt-subissue {
 	box-shadow: var(--vt-elevation-2);
 }
+
+/* サブの今の status のアイコンは、status の印の色で出す（隣の status のボタンはモノクロ。ADR-0183） */
+.vt-subissue-status .vt-si-open { --vt-dot: var(--vt-green); }
+.vt-subissue-status .vt-si-in-progress { --vt-dot: var(--vt-blue); }
+.vt-subissue-status .vt-si-waiting,
+.vt-subissue-status .vt-si-delegated { --vt-dot: var(--vt-pink); }
+.vt-subissue-status .vt-si-someday { --vt-dot: var(--vt-sky); }
+.vt-subissue-status .vt-si-closed { --vt-dot: var(--vt-purple); }
+.vt-subissue-status .vt-si-canceled { --vt-dot: var(--vt-gray); }
+.vt-subissue-status { --vt-knock: var(--vt-surface); }
 
 .vt-subissue.is-unreadable .vt-subissue-status {
 	color: var(--vt-red);

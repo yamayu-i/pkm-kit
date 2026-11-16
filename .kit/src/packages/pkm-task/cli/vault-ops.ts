@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
-import { backToNextPatch, cancelPatch, closePatch, inboxPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
+import { backToNextPatch, ticklerPatch } from "../src/core/actions";
+import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, stopsTimer, ticklerError, timerStartStatus, transitionError } from "../src/core/transition";
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
@@ -11,7 +12,7 @@ import { nextIds, pathForId } from "../src/core/ids";
 import type { TaskIndex } from "../src/core/index";
 import { frontmatterRange, newDailyContent, newIssueContent } from "../src/core/issue-file";
 import { PRIORITIES, STATUS_DETAIL_MAX, STATUSES, parseIssue, type Issue, type Priority, type Status } from "../src/core/schema";
-import { isDoneStatus, statusLogLine, statusLogPath, type StatusVia } from "../src/core/status-log";
+import { statusLogLine, statusLogPath, type StatusVia } from "../src/core/status-log";
 import {
 	appendWorklogLine,
 	newWorklogId,
@@ -226,12 +227,12 @@ export function setRoutineResultOnDisk(
 }
 
 /** 持ち越しの片付け方（ADR-0152）。reschedule は以前の名前で move と同じ */
-export type CarryMode = "today" | "next" | "move" | "tickler" | "inbox" | "reschedule";
+export type CarryMode = "today" | "next" | "move" | "tickler" | "reschedule";
 
 /**
  * ボードの未完了を片付けて carried にする（ADR-0137, 0152）。today: 今日のボードに載せる（日付を書かない）、
  * next: Calendar・Tickler を消して Next に戻す、move: Calendar の日を to にする、tickler: Tickler の日を to にする、
- * inbox: clarified を外す。サブは tickler と inbox を持たない
+ * サブは tickler を持たない（Inbox に戻す mode はない。ADR-0189）
  */
 export function carryIssuesOnDisk(
 	root: string,
@@ -246,7 +247,8 @@ export function carryIssuesOnDisk(
 	if (!isLocalDate(date)) throw new Error(`日付が YYYY-MM-DD ではありません: ${String(date)}`);
 	if (!Array.isArray(issueIds) || issueIds.length === 0) throw new Error("issue_ids を 1 件以上指定してください");
 	const kind = mode === "reschedule" ? "move" : mode;
-	if (!["today", "next", "move", "tickler", "inbox"].includes(kind)) throw new Error("mode は today / next / move / tickler / inbox のどれかにしてください");
+	// Inbox に戻す（inbox）はない。やらなかったものは Next に戻すか、その日に考え直すなら Tickler にする（ADR-0189）
+	if (!["today", "next", "move", "tickler"].includes(kind)) throw new Error("mode は today / next / move / tickler のどれかにしてください（inbox はありません。ADR-0189）");
 	if ((kind === "move" || kind === "tickler") && (to === null || !isLocalDate(to))) {
 		throw new Error(`reschedule_to に YYYY-MM-DD の日付を指定してください: ${String(to)}`);
 	}
@@ -256,14 +258,17 @@ export function carryIssuesOnDisk(
 		assertBoardKey(index, id);
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
 		// サブは整理の対象ではないので、Tickler も Inbox も持たない（ADR-0148, 0152）
-		if ((kind === "inbox" || kind === "tickler") && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
+		if (kind === "tickler" && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
+		// Tickler は open（と someday）だけ（ADR-0183）
+		const status = index.issues.get(id)?.status;
+		if (kind === "tickler" && status !== undefined && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
 	}
 
 	for (const id of issueIds) {
 		const issue = index.issues.get(id);
 		if (issue) {
 			const patch =
-				kind === "inbox" ? inboxPatch() : kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to!) : null;
+				kind === "next" ? backToNextPatch() : kind === "move" ? { scheduled: to } : kind === "tickler" ? ticklerPatch(issue, to!) : null;
 			if (patch) updateIssueFrontmatter(root, issue.path, patch, { device, now, via: "mcp" });
 			continue;
 		}
@@ -409,7 +414,7 @@ export interface UpdateIssueInput {
 
 /**
  * issue を検査付きで更新する。log があれば status の変化を statuslog に書き、
- * closed / canceled にしたら記録中のタイマーを止める（ADR-0031）
+ * 遷移表（ADR-0183）にない status の遷移はエラー。open / in-progress 以外にしたら記録中のタイマーを止める（ADR-0031, 0183）
  */
 export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateIssueInput, log?: Omit<StatusLogContext, "via">): Issue {
 	const current = index.issues.get(input.id);
@@ -423,10 +428,12 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	}
 	if (input.status !== undefined) {
 		if (!STATUSES.includes(input.status)) throw new Error(`status が不正です: ${String(input.status)}`);
-		if (input.status === "closed") Object.assign(patch, closePatch());
-		else if (input.status === "canceled") Object.assign(patch, cancelPatch());
-		else if (input.status === "someday") Object.assign(patch, somedayPatch(input.revisit ?? current.revisit));
-		else patch.status = input.status;
+		// 遷移表にない遷移はエラーにし、移れる先を返す（ADR-0183）。付随の変更は画面と同じ表で補う
+		if (input.status !== current.status) {
+			const reopenTo = index.reopenStatus(current.id);
+			if (!canTransition(current.status, input.status, reopenTo)) throw new Error(transitionError(current.status, input.status, reopenTo));
+			Object.assign(patch, completeIssuePatch(input.status, input.status === "someday" ? { revisit: input.revisit ?? current.revisit } : {}, current.status));
+		}
 	}
 	if (input.status_detail !== undefined) {
 		if (input.status_detail !== null && input.status_detail.length > STATUS_DETAIL_MAX) {
@@ -503,11 +510,21 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	if (current.status === "someday" && input.status === undefined && hasDatesAdded) {
 		patch.status = "open";
 		patch.revisit = null;
+		// Someday から戻したものは整理し直す（ADR-0189）
+		if (input.clarified === undefined) patch.clarified = null;
+	}
+
+	// Tickler は open だけが持つ（ADR-0183）
+	const afterStatus = (patch.status as Status | undefined) ?? current.status;
+	if (typeof patch.tickler === "string" && afterStatus !== "open") throw new Error(ticklerError(afterStatus));
+	// Inbox に戻す（clarified を外す）のは open の issue だけ。issue 画面の切り替えと同じ（ADR-0189）
+	if ((input.clarified === false || input.clarified === null) && afterStatus !== "open") {
+		throw new Error(`clarified を外せるのは open の issue だけです。今は ${afterStatus} です（ADR-0189）`);
 	}
 
 	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
 	if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
-	if (isDoneStatus(updated.status) && !isDoneStatus(current.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? new Date());
+	if (updated.status !== current.status && stopsTimer(updated.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? new Date());
 	return updated;
 }
 
@@ -520,12 +537,18 @@ function unstarOnDisk(root: string, index: TaskIndex, key: string, to: Status, l
 
 /**
  * サブの項目を書き換える（ADR-0135）。status が変わったら statuslog に task と sub で書き、
- * closed / canceled ならそのサブの記録中のタイマーを止める。親の status は変えない
+ * open / in-progress 以外にしたらそのサブの記録中のタイマーを止める。遷移表にない遷移はエラー（ADR-0183）。親の status は変えない
  */
 export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string, patch: SubIssuePatch, log?: StatusLogContext): SubIssue {
 	const current = index.sub(key);
 	if (!current) throw new Error(`サブがありません: ${key}`);
 	patch = normalizeSubPatch(patch);
+	// 遷移表にない遷移はエラー。付随の変更は画面と同じ表で補う（ADR-0183）
+	if (patch.status !== undefined && patch.status !== current.status && log?.via !== "undo") {
+		const reopenTo = index.reopenStatus(key);
+		if (!canTransition(current.status, patch.status, reopenTo)) throw new Error(transitionError(current.status, patch.status, reopenTo));
+		patch = completeSubPatch(patch.status, patch);
+	}
 	const siblings = index.subs(current.parent).map((s) => (s.id === current.id ? { ...s, ...patch, id: s.id } : s));
 	assertSubIssues(index, siblings, [current.id]);
 	const text = readTextOrEmpty(root, current.path);
@@ -534,7 +557,7 @@ export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string
 	if (log && r.before.status !== r.after.status) {
 		appendStatusLogOnDisk(root, current.parent, r.before.status, r.after.status, log, current.id);
 		unstarOnDisk(root, index, key, r.after.status, log);
-		if (isDoneStatus(r.after.status) && !isDoneStatus(r.before.status)) stopTimerOnDisk(root, index, [key], log.now);
+		if (stopsTimer(r.after.status)) stopTimerOnDisk(root, index, [key], log.now);
 	}
 	return r.after;
 }
@@ -607,15 +630,17 @@ export function startTimerOnDisk(root: string, index: TaskIndex, taskIds: string
 		current,
 	);
 	writeTextInVault(root, relPath, next);
-	// open の issue とサブは、記録を始めたら in-progress にする（ADR-0031, 0135）
+	// open・waiting・delegated の issue とサブは、記録を始めたら in-progress にする（ADR-0031, 0135, 0183）
 	for (const id of targets) {
 		const sub = index.sub(id);
 		if (sub) {
-			if (sub.status === "open") updateSubIssueOnDisk(root, index, id, { status: "in-progress" }, { device: dev, now, via: "timer" });
+			const to = timerStartStatus(sub.status);
+			if (to) updateSubIssueOnDisk(root, index, id, { status: to }, { device: dev, now, via: "timer" });
 			continue;
 		}
 		const issue = index.issues.get(id);
-		if (issue?.status === "open") updateIssueFrontmatter(root, issue.path, { status: "in-progress" }, { device: dev, now, via: "timer" });
+		const to = issue ? timerStartStatus(issue.status) : null;
+		if (issue && to) updateIssueFrontmatter(root, issue.path, completeIssuePatch(to, { status: to }), { device: dev, now, via: "timer" });
 	}
 	return targets;
 }

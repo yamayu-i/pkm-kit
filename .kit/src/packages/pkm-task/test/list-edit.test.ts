@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { duePatch, reschedulePatch, scheduledPatch, statusPatch } from "../src/core/actions";
+import { duePatch, reschedulePatch, scheduledPatch } from "../src/core/actions";
+import { issueStatusPatch } from "../src/core/transition";
 import { emptyBoard, markCarried, routineResults } from "../src/core/board";
 import { TaskIndex, emptyVaultData, sidebarCounts } from "../src/core/index";
 import { parseRepeat, serializeRepeat } from "../src/core/repeat";
@@ -11,12 +12,12 @@ function issue(fm: Record<string, unknown> = {}): Issue {
 }
 
 describe("リストの編集（ADR-0018）", () => {
-	it("status: ボードのカードと同じ規則で欄を外す", () => {
-		expect(statusPatch("closed")).toMatchObject({ status: "closed", delegated_to: null, revisit: null });
-		expect(statusPatch("canceled")).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
-		expect(statusPatch("someday")).toMatchObject({ status: "someday", scheduled: null, soft_deadline: null, deadline: null });
-		expect(statusPatch("waiting")).toEqual({ status: "waiting", delegated_to: null, revisit: null });
-		expect(statusPatch("delegated", "m-1")).toEqual({ status: "delegated", delegated_to: "m-1", revisit: null });
+	it("status: ボードのカードと同じ規則で欄を外す（ADR-0183 で waiting / delegated は Tickler も消す）", () => {
+		expect(issueStatusPatch("closed")).toMatchObject({ status: "closed", delegated_to: null, revisit: null });
+		expect(issueStatusPatch("canceled")).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
+		expect(issueStatusPatch("someday")).toMatchObject({ status: "someday", scheduled: null, soft_deadline: null, deadline: null });
+		expect(issueStatusPatch("waiting")).toEqual({ status: "waiting", delegated_to: null, revisit: null, tickler: null });
+		expect(issueStatusPatch("delegated", { delegatedTo: "m-1" })).toEqual({ status: "delegated", delegated_to: "m-1", revisit: null, tickler: null });
 	});
 
 	it("someday に Calendar の日や期限を入れると open に戻す。外すだけなら戻さない（ADR-0018, 0152）", () => {

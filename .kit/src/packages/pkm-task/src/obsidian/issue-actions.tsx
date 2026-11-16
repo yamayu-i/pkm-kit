@@ -1,4 +1,4 @@
-import { backToNextPatch, cancelPatch, closePatch, inboxPatch, nextPatch, reschedulePatch, somedayPatch, ticklerPatch, type Patch, type RescheduleTarget } from "../core/actions";
+import { backToNextPatch, cancelPatch, closePatch, nextPatch, reschedulePatch, somedayPatch, ticklerPatch, type Patch, type RescheduleTarget } from "../core/actions";
 import { addDays, localToday, type LocalDate } from "../core/dates";
 import type { Issue } from "../core/schema";
 import { DateForm } from "../ui/forms";
@@ -45,7 +45,6 @@ async function patchAll(ctx: TaskContext, issues: Issue[], patch: Patch | ((i: I
 
 export const closeIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, closePatch(), "閉じることが");
 export const cancelIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-export const inboxIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, inboxPatch(), "Inbox に戻すことが");
 export const somedayIssues = (ctx: TaskContext, issues: Issue[], revisit: LocalDate | null = null) =>
 	patchAll(ctx, issues, somedayPatch(revisit), "Someday に移すことが");
 

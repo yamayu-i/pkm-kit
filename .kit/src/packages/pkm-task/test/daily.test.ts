@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cancelPatch, inboxPatch, nextPatch, reschedulePatch, scheduledPatch, somedayPatch } from "../src/core/actions";
-import { boardItems, dailyNotePath, emptyBoard, parseBoard, pendingBoards, unfinished, type DailyBoard } from "../src/core/board";
+import { cancelPatch, nextPatch, reschedulePatch, scheduledPatch, somedayPatch } from "../src/core/actions";
+import { boardItems, dailyNotePath, emptyBoard, parseBoard, unfinished, type DailyBoard } from "../src/core/board";
 import { cautionIssues, deadIssues, scheduledOn } from "../src/core/daily";
 import { TaskIndex, emptyVaultData, type VaultData } from "../src/core/index";
 import { defaultQuery, queryIssues } from "../src/core/list";
@@ -26,14 +26,6 @@ describe("actions", () => {
 	it("Cancel / Someday は期限を外す", () => {
 		expect(cancelPatch()).toMatchObject({ status: "canceled", soft_deadline: null, deadline: null });
 		expect(somedayPatch("2026-12-01")).toMatchObject({ status: "someday", scheduled: null, deadline: null, revisit: "2026-12-01" });
-	});
-
-	it("Inbox に戻すと clarified を外すだけで、予定と期限は残す（ADR-0148）", () => {
-		const patch = inboxPatch();
-		expect(patch).toMatchObject({ status: "open", clarified: null });
-		expect(patch).not.toHaveProperty("scheduled");
-		expect(patch).not.toHaveProperty("soft_deadline");
-		expect(patch).not.toHaveProperty("deadline");
 	});
 
 	it("Next にすると clarified を付け、Tickler を消す。someday なら open に戻す（ADR-0148, 0152）", () => {
@@ -101,14 +93,6 @@ describe("board", () => {
 		expect(ids(u.issues)).toEqual(["i-1"]);
 		expect(ids(u.routines)).toEqual(["r-1"]);
 		expect(ids(unfinished(index, "2026-10-30", { ...board, carried: ["i-1"] }).issues)).toEqual([]);
-
-		const boards: DailyBoard[] = [
-			{ date: "2026-10-29", path: "a", board: { ...board, routines: { "r-1": "closed" } } },
-			{ date: "2026-10-28", path: "b", board: { ...emptyBoard(), issues: ["i-2"], routines: { "r-1": "canceled" } } },
-			{ date: "2026-10-27", path: "c", board: { ...board, closed: true } },
-			{ date: "2026-10-31", path: "d", board },
-		];
-		expect(pendingBoards(index, boards, "2026-10-31").map((b) => b.date)).toEqual(["2026-10-29"]);
 	});
 });
 
@@ -187,7 +171,7 @@ describe("summary", () => {
 		);
 		const text = boardSummary(index, "2026-10-31", { ...emptyBoard(), issues: ["i-1", "i-2"] });
 		expect(text).toContain("- [i-1 送る](issue/i-1.md)");
-		expect(text).toContain("- [i-2 確認](issue/i-2.md)（open）");
+		expect(text).toContain("- [i-2 確認](issue/i-2.md)（持ち越し）");
 		expect(text).toMatch(/- \d\d:\d\d–\d\d:\d\d（45m） \[i-1 送る\]\(issue\/i-1\.md\)/);
 	});
 

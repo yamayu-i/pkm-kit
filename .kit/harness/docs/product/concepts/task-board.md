@@ -2,7 +2,7 @@
 
 ## 目的
 
-その日にやることを 1 つの盤面に並べ、片付けて締めることで一日を区切る。
+その日にやることを 1 つの盤面に並べ、締めて一日の記録を残す。
 
 ## 状態
 
@@ -10,11 +10,11 @@
 
 ## 操作
 
-載せる・外す、★ を付ける、並べ替える、status を変える、持ち越す（Back to Next、Tickler、Move date、Inbox）、締める。
+載せる・外す、★ を付ける、並べ替える、status を変える、持ち越す（Back to Next、Tickler、Move date）、締める。
 
 ## 使い方の筋道
 
-今日が Calendar の日の issue とサブイシュー、今日の routine は自動で載る。カードは status とタイマーで欄に分かれる（[ボードの欄と ★](task-board-lane.md)）。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。未完了が 0 になると締められ、締めなかったボードは翌日「Previous boards」に出る。
+今日が Calendar の日の issue とサブイシュー、今日の routine は自動で載る。カードは status とタイマーで欄に分かれる（[ボードの欄と ★](task-board-lane.md)）。closed / canceled は下の「Done」に移る。持ち越したものはボードに残るが未完了に数えない。締めると記録が残る。未完了が残っていても締められ、未完了は持ち越しと書かれる。締めなくても催促しない。持ち越しの回数は、その日に片付けなかったものを自動で数える（[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)）。
 
 ## 根拠
 

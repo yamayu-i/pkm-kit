@@ -59,9 +59,9 @@ try{
    if(screen.provider==="template"&&screen.screen.startsWith("create")){const input=page.locator('input[type="text"]');if(await input.count())await input.first().fill("次の一歩");}
    await page.waitForTimeout(120);
    if(errors.length)throw Error(key+": "+errors.join("; "));
-   if(screen.provider==="task"&&["previous","pick","board"].includes(screen.screen)){
+   if(screen.provider==="task"&&["pick","board"].includes(screen.screen)){
     const current=await page.locator('[aria-current="step"]').innerText();
-    const expected={previous:"Previous boards",pick:"Pick",board:"Board"}[screen.screen];
+    const expected={pick:"Pick",board:"Board"}[screen.screen];
     if(!current.includes(expected))throw Error(key+": 違う段階が表示されている: "+current);
    }
    const el=screen.provider==="browser"?page.locator("body"):page.locator("#wide");

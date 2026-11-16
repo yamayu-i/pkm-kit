@@ -1,6 +1,5 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { statusPatch } from "../core/actions";
 import { unfinished, unfinishedCount, type BoardState } from "../core/board";
 import { boardLanes, canStar, showRoutineLane, TOP_LIMIT, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
 import { formatShortDate, type LocalDate } from "../core/dates";
@@ -8,8 +7,9 @@ import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
 import type { Issue, Routine, Status } from "../core/schema";
 import { memberLabel } from "../core/member";
-import { boardMenuStatuses, isDoneStatus } from "../core/status-log";
-import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
+import { isDoneStatus } from "../core/status-log";
+import { canApplyAll } from "../core/transition";
+import type { SubIssue } from "../core/sub-issue";
 import {
 	addSubToBoard,
 	addToBoard,
@@ -29,7 +29,7 @@ import {
 } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues } from "../obsidian/issue-actions";
-import { pickMember } from "../obsidian/issue-editors";
+import { changeSubStatus, showStatusMenu as showTaskStatusMenu, StatusStepButton } from "../obsidian/status-change";
 import { BoardIssueModal, type BoardChoice } from "../obsidian/modals";
 import { StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
@@ -55,21 +55,6 @@ const LANE_EMPTY: Partial<Record<LaneId, string>> = {
 	next: "Nothing else to do today.",
 };
 
-/** issue の status を変える。delegated にするときは委任先を選ぶ（ADR-0032）。ほかの status にすると delegated_to を外す */
-function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): void {
-	const save = (patch: Record<string, string | null>) => void ctx.writer.update(issue.path, patch).catch((err) => ctx.report("status を変えられませんでした", err));
-	if (to === "delegated") pickMember(ctx, (id) => save(statusPatch(to, id) as Record<string, string | null>));
-	else save(statusPatch(to) as Record<string, string | null>);
-}
-
-/** サブの status を変える（サブの画面と同じ。ADR-0142） */
-function changeSubStatus(ctx: TaskContext, sub: SubIssue, to: Status): void {
-	const save = (patch: SubIssuePatch) => void ctx.writer.updateSub(sub.key, patch).catch((e) => ctx.report("サブを保存できませんでした", e));
-	if (to === "delegated") return pickMember(ctx, (id) => save({ status: to, delegatedTo: id }));
-	if (to === sub.status) return;
-	save(to === "someday" ? { status: to, scheduled: null, softDeadline: null, deadline: null } : { status: to, delegatedTo: null });
-}
-
 /** ドラッグで運ぶ値（カードの鍵） */
 const DRAG_TYPE = "text/plain";
 const readDrag = (e: DragEvent): string | null => e.dataTransfer?.getData(DRAG_TYPE) || null;
@@ -77,25 +62,23 @@ const readDrag = (e: DragEvent): string | null => e.dataTransfer?.getData(DRAG_T
 /** ドラッグで並べられる欄（ADR-0137: ★ と次にやる順の間と中だけ） */
 const isDragLane = (lane: LaneId): lane is "top" | "next" => lane === "top" || lane === "next";
 
-/** カードの status のメニュー（ボードのカードと Watch で共通）。routine はその日の結果 */
+/** カードの status のメニュー（ボードのカードと Watch で共通）。issue とサブは遷移表の先だけ（ADR-0183）。routine はその日の結果 */
 function showStatusMenu(ctx: TaskContext, date: LocalDate, card: BoardCard, status: Status, e: MouseEvent): void {
+	if (card.kind !== "routine") return showTaskStatusMenu(ctx, e, card.key);
 	const m = new Menu();
-	for (const s of boardMenuStatuses(card.kind === "routine" ? "routine" : "issue")) {
+	for (const s of ROUTINE_RESULTS) {
 		m.addItem((mi) =>
 			mi
-				.setTitle(s === "delegated" ? "delegated…" : s)
+				.setTitle(s)
 				.setChecked(s === status)
-				.onClick(() => {
-					if (card.kind === "routine") return void setRoutineResult(ctx, date, card.key, s === "open" ? null : (s as "closed" | "canceled"));
-					// delegated をもう一度選んだときは、委任先を選び直す
-					if (s === status && s !== "delegated") return;
-					if (card.kind === "issue") changeIssueStatus(ctx, card.issue, s);
-					else changeSubStatus(ctx, card.sub, s);
-				}),
+				.onClick(() => void setRoutineResult(ctx, date, card.key, s === "open" ? null : s)),
 		);
 	}
 	m.showAtMouseEvent(e);
 }
+
+/** routine のその日の結果（ADR-0010） */
+const ROUTINE_RESULTS = ["open", "closed", "canceled"] as const;
 
 /** カード 1 枚（ADR-0137）。status のバッジ・題・再生・メニューだけ */
 function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lanes: BoardLanes; lane: LaneId; card: BoardCard; now: number }) {
@@ -157,6 +140,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				: {})}
 		>
 			<StatusBadge status={status} enter={enter} onClick={statusMenu} />
+			{card.kind !== "routine" && <StatusStepButton ctx={ctx} keyOf={key} />}
 			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 				{summary}
 			</span>
@@ -383,8 +367,8 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 					) : (
 						<button
 							class="vt-button is-primary"
-							disabled={leftCount > 0 || total === 0}
-							title="You can close the board when nothing is left"
+							disabled={total === 0}
+							title="Write today's record to the daily note. Unfinished cards are recorded as carried over"
 							onClick={() => void closeBoard(ctx, date)}
 						>
 							<Icon name="check" /> Close board
@@ -421,14 +405,14 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
  */
 export function carryActions(ctx: TaskContext, date: LocalDate, sel: Issue[], primary: "today" | "next", done: () => void) {
 	const run = (p: Promise<void>) => void p.then(done);
+	const statuses = sel.map((i) => i.status);
 	return [
 		...(primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary" as const, run: () => run(carryIssues(ctx, date, sel, "today")) }] : []),
 		{ label: "Back to Next", icon: "list-todo", ...(primary === "next" ? { tone: "primary" as const } : {}), run: () => run(carryIssues(ctx, date, sel, "next")) },
-		{ label: "Tickler", icon: "alarm-clock", run: () => run(carryIssues(ctx, date, sel, "tickler")) },
+		{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
 		...(sel.length > 0 && sel.every((i) => i.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : []),
-		{ label: "Close", icon: "check", run: () => run(closeIssues(ctx, sel)) },
-		{ label: "Cancel", icon: "x", run: () => run(cancelIssues(ctx, sel)) },
-		{ label: "Inbox", icon: "inbox", run: () => run(carryIssues(ctx, date, sel, "inbox")) },
+		{ label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
+		{ label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },
 	];
 }
 
