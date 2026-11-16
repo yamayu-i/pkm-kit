@@ -10,12 +10,11 @@ import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PreactModal } from "./modals";
 
-type DateKey = "start" | "end" | "softDeadline" | "deadline" | "scheduled";
+/** サブの日付。期限は end が兼ねる（ADR-0190） */
+type DateKey = "start" | "end" | "scheduled";
 const DATE_FIELDS: [DateKey, string][] = [
 	["start", "Start"],
 	["end", "End"],
-	["softDeadline", "Soft deadline"],
-	["deadline", "Deadline"],
 	["scheduled", "Calendar"],
 ];
 
@@ -84,10 +83,12 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 	const siblings = ctx.store.index.subs(sub.parent).filter((s) => s.id !== sub.id);
 	const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
 
-	const editDate = (key: DateKey, label: string) => pickSubDate(ctx, label, draft[key], (v) => set({ [key]: v }));
+	// someday に期間を入れたら open に戻す。someday にしたら Calendar の日と期間を外す（ADR-0190。保存のときと同じ規則）
+	const editDate = (key: DateKey, label: string) =>
+		pickSubDate(ctx, label, draft[key], (v) => setDraft((d) => ({ ...d, [key]: v, ...(d.status === "someday" && key !== "scheduled" && v !== null ? { status: "open" as Status } : {}) })));
 	const changeStatus = (status: Status) => {
 		if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
-		else set({ status, ...(status === "delegated" ? {} : { delegatedTo: null }) });
+		else set({ status, ...(status === "delegated" ? {} : { delegatedTo: null }), ...(status === "someday" ? { scheduled: null, start: null, end: null } : {}) });
 	};
 
 	const save = () => {

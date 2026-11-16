@@ -120,6 +120,21 @@ describe("parseSubIssues", () => {
 	});
 });
 
+describe("なくした期限の項目（ADR-0190）", () => {
+	it("soft_deadline / deadline は読まずに警告し、書き換えると消える", () => {
+		const text = `${HEAD}\n<!-- sub-issue\nid: aaaaaa\nsummary: x\nstatus: open\nend: 2026-11-20\nsoft_deadline: 2026-11-18\ndeadline: 2026-11-19\n-->\n`;
+		const { subs, problems } = subsOf(text);
+		expect(problems.map((p) => [p.severity, p.code])).toEqual([["warning", "sub-deadline-removed"]]);
+		expect(problems[0]!.message).toContain("soft_deadline と deadline");
+		expect(subs[0]).not.toHaveProperty("deadline");
+		expect(subs[0]).not.toHaveProperty("softDeadline");
+		const written = replaceSubIssues(text, subs);
+		expect(written).not.toContain("deadline");
+		expect(written).toContain("end: 2026-11-20");
+		expect(subsOf(written).problems).toEqual([]);
+	});
+});
+
 describe("書き出し", () => {
 	it("パース → 書き出し → パースで同じになる（本文と並びも保つ）", () => {
 		const first = subsOf(SAMPLE);

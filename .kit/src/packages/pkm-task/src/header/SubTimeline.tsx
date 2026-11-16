@@ -239,11 +239,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 							const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
 							const handles = barWidth >= HANDLE * 3;
 							const period = bar ? `${formatShortDate(bar.start)} – ${formatShortDate(bar.end)}` : "";
-							const marks = [
-								...(sub.softDeadline ? [{ date: sub.softDeadline, cls: "is-soft", label: `Soft deadline ${formatShortDate(sub.softDeadline)}` }] : []),
-								...(sub.deadline ? [{ date: sub.deadline, cls: "is-hard", label: `Deadline ${formatShortDate(sub.deadline)}` }] : []),
-							];
-							const nothing = !bar && sub.scheduled === null && marks.length === 0;
+							const nothing = !bar && sub.scheduled === null;
 							return (
 								<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={bar ? undefined : "Click a day to set the period"}>
 									{nothing && <span class="vt-timeline-none">No dates</span>}
@@ -251,9 +247,6 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 										sub.scheduled !== null && (
 											<span class="vt-timeline-dot" style={{ left: `${xOf(sub.scheduled) + px / 2}px` }} title={`Calendar ${formatShortDate(sub.scheduled)}`} />
 										)}
-									{marks.map((m) => (
-										<span class={`vt-timeline-mark ${m.cls}`} style={{ left: `${xOf(m.date) + px - 1}px` }} title={m.label} />
-									))}
 									{bar && (
 										<div
 											data-sub-id={sub.id}
