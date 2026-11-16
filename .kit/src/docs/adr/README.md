@@ -99,4 +99,5 @@
 | [0165](0165-issue-screen-pick-and-reading.md) | 承認 | issue の本文表示を下部に集約し、Pick の後にタイマーを出す |
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
+| [0181](0181-sub-done-to-bottom-and-hidden.md) | 提案 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 <!-- adr-index:end -->
