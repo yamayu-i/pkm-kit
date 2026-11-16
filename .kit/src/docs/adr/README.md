@@ -32,7 +32,7 @@
 | [0015](0015-board-layout-simplified.md) | 承認（一部置換: 0137） | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
 | [0017](0017-date-input.md) | 承認（一部置換: 0078） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
-| [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032, 0077, 0152） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
+| [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032, 0077, 0152, 0183） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
 | [0021](0021-routine-effort-and-sidebar.md) | 承認（一部置換: 0024, 0033） | routine 画面の total / average と左サイドバーのナビゲーション View |
@@ -45,8 +45,8 @@
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる |
 | [0030](0030-organize-schedule-calendar.md) | 承認（ADR-0009 の Organize の「右: 予定を入れる」を一部置換。一部置換: 0078, 0148, 0152） | Organize の予定入れを、複数日を選べるカレンダーにする |
-| [0031](0031-status-quick-change.md) | 承認（一部置換: 0032, 0137。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
-| [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認（ADR-0002 と ADR-0006 の `mid_due` の名前、ADR-0009 / ADR-0014 / ADR-0018 のアクション名、ADR-0031 のカードの status メニューを一部置換。一部置換: 0152） | 日付のアクション名の整理、mid_due の改名（soft_deadline）、ボードからの delegated |
+| [0031](0031-status-quick-change.md) | 承認（一部置換: 0032, 0137, 0183。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
+| [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認（ADR-0002 と ADR-0006 の `mid_due` の名前、ADR-0009 / ADR-0014 / ADR-0018 のアクション名、ADR-0031 のカードの status メニューを一部置換。一部置換: 0152, 0183） | 日付のアクション名の整理、mid_due の改名（soft_deadline）、ボードからの delegated |
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
 | [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認（ADR-0012 の estimated の入力と換算、ADR-0009 / ADR-0014 の DailyTaskView の「今日の予定」の段階、ADR-0014 のカードの置き場所を一部置換。一部置換: 0137, 0152） | estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
 | [0035](0035-member-view-and-fields.md) | 承認（一部置換: 0077） | member の項目（name / nickname / alias）と、member の専用 View |
@@ -100,5 +100,6 @@
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
 | [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
-| [0184](0184-pick-in-progress-and-watch-lane.md) | 承認 | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
+| [0183](0183-status-transition-rules.md) | 承認 | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
+| [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
 <!-- adr-index:end -->
