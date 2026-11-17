@@ -54,7 +54,7 @@ function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): 
 
 const CLOSED_CLASS = "vt-sub-body-closed";
 const AREA_HIDDEN = "vt-subissue-area-hidden";
-/** 開いたサブの本文と、次のサブの題の行の間に余白を置く（Reading は本文のセクション、Live Preview は本文の最後の行に付ける） */
+/** 開いたサブの本文と、次のサブの題の行の間に余白を置く（Reading は本文のセクション、Live Preview は次のサブの題の直前の行に付ける） */
 const BODY_SECTION = "vt-sub-body-section";
 const BODY_END = Decoration.line({ class: "vt-sub-body-end" });
 
@@ -569,8 +569,10 @@ function build(ctx: TaskContext, state: EditorState): Built {
 		if (collapsed && sectionTo > b.cardTo) {
 			folds.push(Decoration.replace({ block: true }).range(b.cardTo, sectionTo));
 		}
+		// 余白は次のサブの題の直前の行（本文の後の空行を含む）に付ける。最後の空でない行に付けると、
+		// 本文の終わりで改行して書き足すときに、余白が書いている行の上に残る
 		if (!collapsed && layout[b.index + 1] && b.bodyTo > b.bodyFrom) {
-			all.push(BODY_END.range(state.doc.lineAt(b.bodyTo).from));
+			all.push(BODY_END.range(state.doc.lineAt(sectionTo).from));
 		}
 	}
 	return { all: Decoration.set(all, true), folds: Decoration.set(folds, true) };
