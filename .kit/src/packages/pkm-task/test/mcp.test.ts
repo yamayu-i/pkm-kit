@@ -209,6 +209,20 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(issueDetail.effortMinutes).toBe(30);
 	});
 
+	it("get_overview は routine の積み残しを出し、set_routine_result でもとの日に結果を付けると消える（ADR-0206）", () => {
+		const later: McpContext = { root, device: "ai", now: () => new Date("2026-11-20T10:00:00.000Z") };
+		type Overview = { missedRoutines: { date: string; routineId: string }[]; missedRoutineCount: number };
+		const before = callMcpTool(later, "get_overview", {}) as Overview;
+		expect(before.missedRoutines).toEqual([
+			{ date: "2026-11-18", routineId: "r-1", summary: "朝会" },
+			{ date: "2026-11-19", routineId: "r-1", summary: "朝会" },
+		]);
+		callMcpTool(later, "set_routine_result", { date: "2026-11-18", routine_id: "r-1", result: "canceled" });
+		const after = callMcpTool(later, "get_overview", {}) as Overview;
+		expect(after.missedRoutineCount).toBe(1);
+		expect(after.missedRoutines.map((m) => m.date)).toEqual(["2026-11-19"]);
+	});
+
 	it("JSON-RPC 2.0 の initialize / tools/list / tools/call リクエストに応答する", () => {
 		const initRes = handleMcpRequest(ctx, { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
 		expect(initRes?.result).toHaveProperty("serverInfo");

@@ -7366,11 +7366,6 @@ var require_dist = __commonJS({
   }
 });
 
-// cli/mcp.ts
-import { createInterface } from "node:readline";
-import { realpathSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 // ../shared/src/dates.ts
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var DAY_MS = 864e5;
@@ -7427,6 +7422,82 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
   const offset = -now.getTimezoneOffset();
   const sign = offset >= 0 ? "+" : "-";
   return `${localToday(now)}T${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}${sign}${pad2(offset / 60)}:${pad2(offset % 60)}`;
+}
+
+// src/core/board.ts
+var BOARD_KEY = "board";
+function emptyBoard() {
+  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function parseBoard(value) {
+  const raw = record(value);
+  const board = emptyBoard();
+  if (Array.isArray(raw.issues)) {
+    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
+  }
+  if (Array.isArray(raw.carried)) {
+    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
+  }
+  for (const [id, r] of Object.entries(record(raw.routines))) if (r === "closed" || r === "canceled") board.routines[id] = r;
+  board.closed = raw.closed === true;
+  return board;
+}
+function dailyNotePath(date) {
+  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+}
+var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function boardItems(index, date, board) {
+  const issues = board.issues.map((id) => index.issues.get(id)).filter((i) => i !== void 0);
+  const subs = board.issues.map((key) => index.sub(key)).filter((s) => s !== void 0);
+  return { issues, subs, routines: routinesOnDay(index, date) };
+}
+function unfinished(index, date, board) {
+  const items = boardItems(index, date, board);
+  const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
+  return {
+    issues: items.issues.filter((i) => left(i.status, i.id)),
+    subs: items.subs.filter((s) => left(s.status, s.key)),
+    routines: items.routines.filter((r) => board.routines[r.id] === void 0)
+  };
+}
+function markCarried(board, ids) {
+  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
+}
+function routineResults(index, routine, today, days) {
+  return Array.from({ length: days }, (_, i) => {
+    const date = addDays(today, i - days + 1);
+    const result = index.board(date)?.board.routines[routine.id];
+    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
+  });
+}
+function sortByOrder(items, idOf, order) {
+  if (!order || order.length === 0) return [...items];
+  const rank = new Map(order.map((id, i) => [id, i]));
+  const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a, b) => (rank.get(idOf(a)) ?? 0) - (rank.get(idOf(b)) ?? 0));
+  return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
+}
+function reorder(visible, id, before) {
+  const rest = visible.filter((x) => x !== id);
+  const at = before === null ? -1 : rest.indexOf(before);
+  return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+function nextOrder(visible, previous) {
+  const result = [...visible];
+  if (!previous) return result;
+  const shown = new Set(visible);
+  let prev = null;
+  let headAt = 0;
+  for (const id of previous) {
+    if (!shown.has(id) && !result.includes(id)) {
+      if (prev === null) result.splice(headAt++, 0, id);
+      else result.splice(result.indexOf(prev) + 1, 0, id);
+    }
+    prev = id;
+  }
+  return result;
 }
 
 // src/core/ids.ts
@@ -7562,6 +7633,8 @@ var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
 var PRIORITIES = ["high", "mid", "low", "chore"];
 var STATUS_DETAIL_MAX = 20;
+var ROUTINE_CATEGORIES = ["closing"];
+var DEFAULT_CATEGORY_NAME = "default";
 var Reader = class {
   constructor(path, fm) {
     this.path = path;
@@ -7732,9 +7805,27 @@ function parseRoutine(path, fm) {
     priority: r.oneOf("priority", PRIORITIES),
     labels: r.strings("label"),
     estimated: r.minutes("estimated"),
+    category: routineCategory(r, fm.category),
+    order: routineOrder(r, fm.order),
     created: r.datetime("created")
   };
   return { value: id === null ? null : routine, problems: r.problems };
+}
+function routineCategory(r, value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (value === DEFAULT_CATEGORY_NAME) {
+    r.problem("reserved-category", "category \u306E default \u306F\u4E88\u7D04\u8A9E\u3067\u3059\u3002default \u306B\u3059\u308B\u306A\u3089 category \u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0206\uFF09", "warning");
+    return null;
+  }
+  if (typeof value === "string" && ROUTINE_CATEGORIES.includes(value)) return value;
+  r.problem("invalid-category", `category \u306F ${ROUTINE_CATEGORIES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F default\uFF09: ${String(value)}`, "warning");
+  return null;
+}
+function routineOrder(r, value) {
+  if (value === void 0 || value === null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  r.problem("invalid-field", `order \u306F\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(value)}`, "warning");
+  return null;
 }
 function parseMember(path, fm) {
   const r = new Reader(path, fm);
@@ -8668,81 +8759,41 @@ var TaskIndex = class {
   }
 };
 
-// src/core/board.ts
-var BOARD_KEY = "board";
-function emptyBoard() {
-  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
+// src/core/routine-order.ts
+var CATEGORY_GROUPS = [null, ...ROUTINE_CATEGORIES];
+function compareRoutines(a, b) {
+  if (a.order !== null && b.order !== null && a.order !== b.order) return a.order - b.order;
+  if (a.order !== null && b.order === null) return -1;
+  if (a.order === null && b.order !== null) return 1;
+  return a.id.localeCompare(b.id, "en", { numeric: true });
 }
-function record(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+function sortRoutines(routines) {
+  return [...routines].sort(compareRoutines);
 }
-function parseBoard(value) {
-  const raw = record(value);
-  const board = emptyBoard();
-  if (Array.isArray(raw.issues)) {
-    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
-  }
-  if (Array.isArray(raw.carried)) {
-    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
-  }
-  for (const [id, r] of Object.entries(record(raw.routines))) if (r === "closed" || r === "canceled") board.routines[id] = r;
-  board.closed = raw.closed === true;
-  return board;
+function routinesOnDay(index, date, category) {
+  const list = index.routinesOn(date);
+  return sortRoutines(category === void 0 ? list : list.filter((r) => r.category === category));
 }
-function dailyNotePath(date) {
-  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
-}
-var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
-function boardItems(index, date, board) {
-  const issues = board.issues.map((id) => index.issues.get(id)).filter((i) => i !== void 0);
-  const subs = board.issues.map((key) => index.sub(key)).filter((s) => s !== void 0);
-  return { issues, subs, routines: index.routinesOn(date) };
-}
-function unfinished(index, date, board) {
-  const items = boardItems(index, date, board);
-  const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
-  return {
-    issues: items.issues.filter((i) => left(i.status, i.id)),
-    subs: items.subs.filter((s) => left(s.status, s.key)),
-    routines: items.routines.filter((r) => board.routines[r.id] === void 0)
-  };
-}
-function markCarried(board, ids) {
-  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
-}
-function routineResults(index, routine, today, days) {
-  return Array.from({ length: days }, (_, i) => {
-    const date = addDays(today, i - days + 1);
-    const result = index.board(date)?.board.routines[routine.id];
-    return { date, state: result ?? (routineOccursOn(routine, date) ? "none" : "off") };
-  });
-}
-function sortByOrder(items, idOf, order) {
-  if (!order || order.length === 0) return [...items];
-  const rank = new Map(order.map((id, i) => [id, i]));
-  const inOrder = items.filter((it) => rank.has(idOf(it))).sort((a, b) => (rank.get(idOf(a)) ?? 0) - (rank.get(idOf(b)) ?? 0));
-  return [...inOrder, ...items.filter((it) => !rank.has(idOf(it)))];
-}
-function reorder(visible, id, before) {
-  const rest = visible.filter((x) => x !== id);
-  const at = before === null ? -1 : rest.indexOf(before);
-  return at < 0 ? [...rest, id] : [...rest.slice(0, at), id, ...rest.slice(at)];
-}
-function nextOrder(visible, previous) {
-  const result = [...visible];
-  if (!previous) return result;
-  const shown = new Set(visible);
-  let prev = null;
-  let headAt = 0;
-  for (const id of previous) {
-    if (!shown.has(id) && !result.includes(id)) {
-      if (prev === null) result.splice(headAt++, 0, id);
-      else result.splice(result.indexOf(prev) + 1, 0, id);
+var MISSED_ROUTINES_SINCE = "2026-11-18";
+function missedRoutines(index, today, since = MISSED_ROUTINES_SINCE) {
+  const out = [];
+  for (const routine of index.routines.values()) {
+    const anchor = routineAnchor(routine);
+    if (!routine.active || routine.repeat === null || anchor === null) continue;
+    const from = anchor > since ? anchor : since;
+    for (let d = from; d < today; d = addDays(d, 1)) {
+      if (!routineOccursOn(routine, d)) continue;
+      if (index.board(d)?.board.routines[routine.id] !== void 0) continue;
+      out.push({ date: d, routine });
     }
-    prev = id;
   }
-  return result;
+  return out.sort((a, b) => a.date === b.date ? compareRoutines(a.routine, b.routine) : a.date < b.date ? -1 : 1);
 }
+
+// cli/mcp.ts
+import { createInterface } from "node:readline";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // src/core/board-lanes.ts
 var LANES = ["working", "top", "routine", "next", "watch", "done"];
@@ -8758,7 +8809,7 @@ function boardCards(index, date, board) {
     const sub = index.sub(key);
     if (sub) cards.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
   }
-  for (const routine of index.routinesOn(date)) cards.push({ kind: "routine", key: routine.id, routine });
+  for (const routine of routinesOnDay(index, date, null)) cards.push({ kind: "routine", key: routine.id, routine });
   return cards;
 }
 function cardStatus(board, card) {
@@ -11013,7 +11064,7 @@ var VaultCache = class {
 var TOOLS = [
   {
     name: "get_overview",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30DC\u30FC\u30C9\u3001\u8CA0\u8377\u3001\u671F\u9650\u5207\u308C\u30FB\u671F\u9650\u9593\u8FD1\u3001Inbox\u4EF6\u6570\u3001\u672A\u7DE0\u3081\u306E\u904E\u53BB\u30DC\u30FC\u30C9\u3001\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3001\u6301\u3061\u8D8A\u3057\u904E\u591A\u30FB\u505C\u6EDE\u30BF\u30B9\u30AF\u3001\u898B\u7A4D\u3082\u308A\u7CBE\u5EA6\u3092\u307E\u3068\u3081\u3066\u53D6\u5F97\u3059\u308B",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30DC\u30FC\u30C9\u3001\u8CA0\u8377\u3001\u671F\u9650\u5207\u308C\u30FB\u671F\u9650\u9593\u8FD1\u3001Inbox\u4EF6\u6570\u3001routine \u306E\u7A4D\u307F\u6B8B\u3057\uFF08\u4E88\u5B9A\u65E5\u306B\u7D50\u679C\u306E\u306A\u3044\u3082\u306E\u3002set_routine_result \u3067\u3082\u3068\u306E\u65E5\u306B\u7D50\u679C\u3092\u4ED8\u3051\u308B\uFF09\u3001\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3001\u6301\u3061\u8D8A\u3057\u904E\u591A\u30FB\u505C\u6EDE\u30BF\u30B9\u30AF\u3001\u898B\u7A4D\u3082\u308A\u7CBE\u5EA6\u3092\u307E\u3068\u3081\u3066\u53D6\u5F97\u3059\u308B",
     inputSchema: {
       type: "object",
       properties: {
@@ -11435,6 +11486,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
       });
       const top = (xs) => xs.slice(0, OVERVIEW_TOP);
       const { stalled } = overview;
+      const missed = missedRoutines(index, today);
       return {
         ...overview,
         stalled: { inProgressStale: top(stalled.inProgressStale), revisitDue: top(stalled.revisitDue), waitingOrDelegated: top(stalled.waitingOrDelegated) },
@@ -11443,6 +11495,9 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
           revisitDue: stalled.revisitDue.length,
           waitingOrDelegated: stalled.waitingOrDelegated.length
         },
+        // routine の積み残し（ADR-0206）。古い順
+        missedRoutines: top(missed).map((m) => ({ date: m.date, routineId: m.routine.id, summary: m.routine.summary })),
+        missedRoutineCount: missed.length,
         problems: top(problems),
         problemCount: problems.length
       };

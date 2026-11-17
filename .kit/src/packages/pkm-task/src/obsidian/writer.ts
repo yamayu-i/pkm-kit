@@ -3,6 +3,8 @@ import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
+import { DEFAULT_REVIEW_TEMPLATE, insertReviewTemplate, REVIEW_SNIPPET_PATHS, snippetBody } from "../core/review-template";
+import type { RoutinePatch } from "../core/routine-order";
 import { unstarOps } from "../core/board-lanes";
 import { localDateTime, localToday, type LocalDate } from "../core/dates";
 import { nextIds, pathForId } from "../core/ids";
@@ -481,6 +483,38 @@ export class TaskWriter {
 		const note = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent(localDateTime()));
 		await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
 		await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
+	}
+
+	/**
+	 * 振り返りの型（ADR-0206）を、その日のデイリーノートの本文の冒頭に入れる（ノートがなければ作る）。
+	 * 型の見出しがすでにあれば何もしない。デイリーノートのパスを返す
+	 */
+	async insertReview(date: LocalDate): Promise<string> {
+		const template = await this.reviewTemplate();
+		const path = normalizePath(dailyNotePath(date));
+		const note = await this.getOrCreate(path, newDailyContent(localDateTime()));
+		await this.app.vault.process(note, (text) => insertReviewTemplate(text, template));
+		return path;
+	}
+
+	/** 振り返りの型。その Vault のスニペット → 上流の既定 → 組み込みの既定の順（ADR-0060, 0206）。隠しパスも読めるよう adapter で読む */
+	private async reviewTemplate(): Promise<string> {
+		const { adapter } = this.app.vault;
+		for (const path of REVIEW_SNIPPET_PATHS) {
+			try {
+				if (!(await adapter.exists(path))) continue;
+				const body = snippetBody(await adapter.read(path));
+				if (body) return body;
+			} catch {
+				// 読めなければ次へ
+			}
+		}
+		return DEFAULT_REVIEW_TEMPLATE;
+	}
+
+	/** routine の category と order を書く（一覧のドラッグ。ADR-0206）。category の null は欄ごと消す（default） */
+	async updateRoutines(patches: readonly RoutinePatch[]): Promise<void> {
+		for (const { path, ...fields } of patches) await this.update(path, fields);
 	}
 
 	/** routine を作る（ADR-0010） */

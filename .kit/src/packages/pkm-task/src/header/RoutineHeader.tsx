@@ -4,7 +4,7 @@ import { routineResults, type RoutineDayResult } from "../core/board";
 import { formatShortDate, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { describeRepeat, type RepeatRule } from "../core/repeat";
-import type { Routine } from "../core/schema";
+import { DEFAULT_CATEGORY_NAME, ROUTINE_CATEGORIES, type Routine, type RoutineCategory } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { estimateMenu, priorityMenu, type Save } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
@@ -93,6 +93,19 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 				}}
 			/>
 		)).open();
+	// category（ADR-0206）: default（なし）か closing。default は欄ごと消す
+	const categoryMenu = (e: MouseEvent) => {
+		const m = new Menu();
+		for (const c of [null, ...ROUTINE_CATEGORIES] as (RoutineCategory | null)[]) {
+			m.addItem((mi) =>
+				mi
+					.setTitle(c ?? DEFAULT_CATEGORY_NAME)
+					.setChecked(routine.category === c)
+					.onClick(() => save({ category: c })),
+			);
+		}
+		m.showAtMouseEvent(e);
+	};
 	const effort = index.routineEffort(routine.id, Date.now());
 	return (
 		<div class="vt-issue">
@@ -129,6 +142,11 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					</button>
 				</div>
 				<div class="vt-row vt-chips">
+					<button class="vt-field-chip" aria-label="Category" title="Where it appears: default is the board, closing is the Closing screen" onClick={categoryMenu}>
+						<Icon name={routine.category === "closing" ? "moon" : "layout-dashboard"} />
+						{routine.category ?? DEFAULT_CATEGORY_NAME}
+						<Icon name="chevron-down" />
+					</button>
 					<PriorityBadge priority={routine.priority} onClick={(e) => priorityMenu(e, routine.priority, save)} />
 					<LabelsField ctx={ctx} labels={routine.labels} index={index} save={save} />
 				</div>

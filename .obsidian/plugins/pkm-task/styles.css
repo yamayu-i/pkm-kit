@@ -2037,8 +2037,141 @@ button.vt-badge:disabled::after {
 	fill: currentColor;
 }
 
-.vt-unfinished {
+/* ボードの末尾の Close board（ADR-0206） */
+.vt-board-foot {
+	margin-top: 12px;
+}
+
+/* ---------- Closing の画面（ADR-0206） ---------- */
+
+.vt-closing {
+	display: flex;
+	flex-direction: column;
 	gap: 12px;
+}
+
+.vt-closing-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.vt-closing-head .vt-chip-mini {
+	gap: 4px;
+}
+
+.vt-closing-head .vt-chip-mini .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-closing-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.vt-closing-done {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 群（Closed など）。アイコンと色は見出しだけに付け、行には付けない */
+.vt-closing-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.vt-closing-group-head {
+	display: inline-flex;
+	align-self: flex-start;
+	align-items: center;
+	gap: 4px;
+	height: 24px;
+	padding: 0 12px 0 8px;
+	border-radius: var(--vt-radius-full);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-closing-group-head .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-closing-group-head.is-closed { background: var(--vt-purple-container); color: var(--vt-on-purple-container); }
+.vt-closing-group-head.is-not-done { background: var(--vt-amber-container); color: var(--vt-on-amber-container); }
+.vt-closing-group-head.is-waiting { background: var(--vt-pink-container); color: var(--vt-on-pink-container); }
+.vt-closing-group-head.is-canceled { background: var(--vt-gray-container); color: var(--vt-on-gray-container); }
+
+/* 詰めた一覧の行（ADR-0206）。一覧性を優先し、枠も面も付けず、高さを 28px にする */
+.vt-compact-list {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.vt-compact-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	min-height: 28px;
+	padding: 0 4px;
+	border-radius: var(--vt-radius-s);
+	font-size: var(--vt-type-body-medium-size);
+	line-height: var(--vt-type-body-medium-line-height);
+}
+
+.vt-compact-row:hover {
+	background: var(--vt-surface);
+}
+
+.vt-compact-step {
+	display: inline-flex;
+	flex: none;
+	justify-content: center;
+	width: 24px;
+}
+
+.vt-compact-row > .vt-icon {
+	flex: none;
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-compact-row > .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-compact-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.vt-compact-title:hover {
+	color: var(--vt-primary);
+	text-decoration: underline;
+}
+
+.vt-compact-meta {
+	flex: none;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	white-space: nowrap;
+}
+
+.vt-compact-row .vt-chip-mini {
+	height: 20px;
 }
 
 /* ---------- 取り消しのトースト（ADR-0031） ---------- */
@@ -2673,6 +2806,51 @@ body.is-mobile .vt-toast {
 }
 
 /* ---------- Routine List ---------- */
+
+/* category の群（ADR-0206）。ドラッグを落とせるときは primary の枠 + secondary-container の面 */
+.vt-routine-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px;
+	border: 1px solid transparent;
+	border-radius: var(--vt-radius-l);
+}
+
+.vt-routine-group + .vt-routine-group {
+	margin-top: 4px;
+}
+
+.vt-routine-group.is-over {
+	border-color: var(--vt-primary);
+	background: var(--vt-secondary-container);
+}
+
+.vt-routine-item.is-drop-before {
+	position: relative;
+}
+
+.vt-routine-item.is-drop-before::before {
+	content: "";
+	position: absolute;
+	top: -8px;
+	right: 0;
+	left: 0;
+	border-top: var(--vt-border-width-thick) solid var(--vt-primary);
+	pointer-events: none;
+}
+
+.vt-drag-handle {
+	display: inline-flex;
+	flex: none;
+	color: var(--vt-on-surface-variant);
+	cursor: grab;
+}
+
+.vt-drag-handle .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
 
 .vt-routine-list {
 	display: flex;

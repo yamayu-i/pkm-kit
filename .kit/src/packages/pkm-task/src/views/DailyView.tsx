@@ -7,7 +7,9 @@ import { formatShortDate, localToday } from "../core/dates";
 import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
-import { addSubToBoard, addToBoard } from "../obsidian/board-actions";
+import { addSubToBoard, addToBoard, beginClosing, setRoutineResult } from "../obsidian/board-actions";
+import { missedRoutines, type MissedRoutine } from "../core/routine-order";
+import { ClosingView } from "./ClosingView";
 import type { TaskContext } from "../obsidian/context";
 import { askDate, backToNextIssues, cancelIssues, closeIssues, rescheduleIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
 import { Icon } from "../ui/Icon";
@@ -114,10 +116,10 @@ function SubDueSection(props: { ctx: TaskContext; subs: SubIssue[] }) {
 }
 
 /** Calendar の段階（ADR-0150）: 期限切れ・期限が近い・Missed（過ぎた Calendar の日）。issue とサブ */
-function CalendarStep(props: { ctx: TaskContext; dead: DueLists; deadSub: SubIssue[]; caution: DueLists; cautionSub: SubIssue[]; missed: Issue[]; missedSub: SubIssue[] }) {
+function CalendarStep(props: { ctx: TaskContext; dead: DueLists; deadSub: SubIssue[]; caution: DueLists; cautionSub: SubIssue[]; missed: Issue[]; missedSub: SubIssue[]; missedRoutines: MissedRoutine[] }) {
 	const { ctx } = props;
 	const total = (l: DueLists, s: SubIssue[]) => l.deadline.length + l.softDeadline.length + s.length;
-	if (total(props.dead, props.deadSub) + total(props.caution, props.cautionSub) + props.missed.length + props.missedSub.length === 0) {
+	if (total(props.dead, props.deadSub) + total(props.caution, props.cautionSub) + props.missed.length + props.missedSub.length + props.missedRoutines.length === 0) {
 		return <div class="vt-empty">Nothing overdue, due soon, or missed</div>;
 	}
 	// issue の表は件数がなくても出す（今までどおり）。サブの end の表は件数があるときだけ
@@ -139,7 +141,9 @@ function CalendarStep(props: { ctx: TaskContext; dead: DueLists; deadSub: SubIss
 					{props.cautionSub.length > 0 && <SubDueSection ctx={ctx} subs={props.cautionSub} />}
 				</>
 			)}
+			{props.missed.length + props.missedSub.length + props.missedRoutines.length > 0 && <h3 class="vt-h">Missed</h3>}
 			{props.missed.length + props.missedSub.length > 0 && <MissedSection ctx={ctx} issues={props.missed} subs={props.missedSub} />}
+			{props.missedRoutines.length > 0 && <MissedRoutinesSection ctx={ctx} missed={props.missedRoutines} />}
 		</>
 	);
 }
@@ -153,7 +157,6 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 	const today = localToday();
 	return (
 		<>
-			<h3 class="vt-h">Missed</h3>
 			<section class="vt-card">
 				<div class="vt-section-head">
 					<span class="vt-field-label">Calendar</span>
@@ -190,6 +193,42 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 				/>
 			</section>
 		</>
+	);
+}
+
+/**
+ * routine の積み残し（ADR-0206）: 予定日に結果を付けなかったもの。Calendar の日の Missed とは節を分け、
+ * 予定日ごとに 1 行（行の先頭がどの日の分か）。結果は、もとの日のボードに書く
+ */
+function MissedRoutinesSection(props: { ctx: TaskContext; missed: MissedRoutine[] }) {
+	const { ctx } = props;
+	return (
+		<section class="vt-card" aria-label="Missed routines">
+			<div class="vt-section-head">
+				<span class="vt-field-label">Routines</span>
+				<span class="vt-count">{props.missed.length}</span>
+			</div>
+			<div class="vt-routine-rows">
+				{props.missed.map(({ date, routine }) => (
+					<div class="vt-routine-row" key={`${date}/${routine.id}`}>
+						<span class="vt-date-chip" title={`Scheduled on ${date}`}>
+							{formatShortDate(date)}
+						</span>
+						<span class="vt-badge vt-id vt-routine-id">{routine.id}</span>
+						<span class="vt-cell-summary" title={routine.summary}>
+							{routine.summary}
+						</span>
+						<span class="vt-spacer" />
+						<button class="vt-button" onClick={() => void setRoutineResult(ctx, date, routine.id, "closed")}>
+							Close
+						</button>
+						<button class="vt-button is-text" onClick={() => void setRoutineResult(ctx, date, routine.id, "canceled")}>
+							Cancel
+						</button>
+					</div>
+				))}
+			</div>
+		</section>
 	);
 }
 
@@ -258,7 +297,7 @@ function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: 
 }
 
 /**
- * DailyTaskView（ADR-0009, 0150）。Calendar → Previous boards → Pick → Board の順に、件数のある段階を通る。
+ * DailyTaskView（ADR-0009, 0150）。Calendar → Pick → Board の順に、件数のある段階を通る。ボードの Close board で Closing の画面に移る（ADR-0206）。
  * どの段階も Next で飛ばせ、上の段階表示からいつでも移れる。
  * 今日が Calendar の日の issue とサブは、開いているあいだ自動でボードに載せる（ADR-0034, 0152）
  */
@@ -275,6 +314,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const cautionSub = cautionSubs(index, today);
 	const missed = missedIssues(issues, today);
 	const missedSub = missedSubs(index, today);
+	const missedRoutine = missedRoutines(index, today);
 	const todayBoard = index.board(today)?.board ?? emptyBoard();
 	const pick = pickCandidates(index, today, todayBoard);
 	const toAdd = index.toAutoAdd(today);
@@ -282,7 +322,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 	const lists = (l: DueLists, s: SubIssue[]) => l.deadline.length + l.softDeadline.length + s.length;
 
 	const counts: Record<Step, number> = {
-		calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
+		calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length + missedRoutine.length,
 		pick: pick.issues.length + pick.groups.reduce((n, g) => n + g.subs.length, 0) + pick.stalled.length,
 		board: unfinishedCount(todayLeft),
 	};
@@ -290,6 +330,8 @@ export function DailyView(props: { ctx: TaskContext }) {
 	// 「Next」で通り過ぎた段階と、手で選んだ段階（ADR-0150。段階ごとの特例はない）
 	const [passed, setPassed] = useState<Set<Step>>(new Set());
 	const [manual, setManual] = useState<Step | null>(null);
+	// Closing の画面（ADR-0206）。段階表示には入れず、← Board でボードに戻る
+	const [closingView, setClosingView] = useState(false);
 	const step = currentStep(
 		STEPS.map((s) => s.key),
 		counts,
@@ -327,6 +369,22 @@ export function DailyView(props: { ctx: TaskContext }) {
 		setManual(null);
 	};
 
+	if (closingView) {
+		return (
+			<div class="vt-page">
+				<header class="vt-page-head">
+					<h2 class="vt-page-title">Today · {formatShortDate(today)}</h2>
+				</header>
+				<ClosingView ctx={ctx} index={index} date={today} board={todayBoard} onBack={() => setClosingView(false)} />
+			</div>
+		);
+	}
+
+	const startClosing = () => {
+		setClosingView(true);
+		void beginClosing(ctx, today);
+	};
+
 	return (
 		<div class="vt-page">
 			<header class="vt-page-head">
@@ -351,9 +409,9 @@ export function DailyView(props: { ctx: TaskContext }) {
 				))}
 			</nav>
 
-			{step === "calendar" && <CalendarStep ctx={ctx} dead={dead} deadSub={deadSub} caution={caution} cautionSub={cautionSub} missed={missed} missedSub={missedSub} />}
+			{step === "calendar" && <CalendarStep ctx={ctx} dead={dead} deadSub={deadSub} caution={caution} cautionSub={cautionSub} missed={missed} missedSub={missedSub} missedRoutines={missedRoutine} />}
 			{step === "pick" && <PickStep ctx={ctx} issues={pick.issues} groups={pick.groups} stalled={pick.stalled} />}
-			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
+			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} onClosing={startClosing} />}
 
 			{step !== "board" && (
 				<div class="vt-page-foot">

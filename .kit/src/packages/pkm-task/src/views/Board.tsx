@@ -1,26 +1,20 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { unfinished, unfinishedCount, type BoardState } from "../core/board";
+import type { BoardState } from "../core/board";
 import { boardLanes, canStar, showRoutineLane, TOP_LIMIT, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
-import type { Issue, Routine, Status } from "../core/schema";
+import type { Status } from "../core/schema";
 import { memberLabel } from "../core/member";
 import { isDoneStatus } from "../core/status-log";
-import { canApplyAll } from "../core/transition";
-import type { SubIssue } from "../core/sub-issue";
 import {
 	addSubToBoard,
 	addToBoard,
 	resumeCard,
-	carryIssues,
-	carrySubs,
-	closeBoard,
 	createOnBoard,
 	moveCard,
 	removeFromBoard,
-	reopenBoard,
 	setRoutineResult,
 	setStar,
 	startTimer,
@@ -28,12 +22,11 @@ import {
 	stopTimer,
 } from "../obsidian/board-actions";
 import type { TaskContext } from "../obsidian/context";
-import { cancelIssues, closeIssues } from "../obsidian/issue-actions";
-import { changeSubStatus, showStatusMenu as showTaskStatusMenu, StatusStepButton } from "../obsidian/status-change";
+import { showStatusMenu as showTaskStatusMenu, StatusStepButton } from "../obsidian/status-change";
 import { BoardIssueModal, type BoardChoice } from "../obsidian/modals";
 import { StatusBadge } from "../ui/badges";
 import { Icon } from "../ui/Icon";
-import { ActionBar, IssueTable } from "../ui/IssueTable";
+import { StatusIcon } from "../ui/StatusIcon";
 import { useNow } from "../ui/hooks";
 import { openWorklogTimes } from "../obsidian/worklog-times";
 import { linkProps } from "../ui/a11y";
@@ -80,6 +73,29 @@ function showStatusMenu(ctx: TaskContext, date: LocalDate, card: BoardCard, stat
 
 /** routine のその日の結果（ADR-0010） */
 const ROUTINE_RESULTS = ["open", "closed", "canceled"] as const;
+
+/**
+ * routine の status のボタン（ADR-0206）。issue と同じ見た目で、open なら closed にし、closed / canceled なら open に戻す（↩）。
+ * date はその結果を書く日（積み残しは、もとの日）
+ */
+export function RoutineStepButton(props: { ctx: TaskContext; date: LocalDate; id: string; status: Status }) {
+	const reopen = props.status !== "open";
+	const title = reopen ? "Reopen (→ open)" : "Close (→ closed)";
+	return (
+		<button
+			type="button"
+			class="vt-icon-button vt-status-step"
+			aria-label={title}
+			title={title}
+			onClick={(e) => {
+				e.stopPropagation();
+				void setRoutineResult(props.ctx, props.date, props.id, reopen ? null : "closed");
+			}}
+		>
+			{reopen ? <Icon name="undo-2" /> : <StatusIcon status="closed" />}
+		</button>
+	);
+}
 
 /** カード 1 枚（ADR-0137）。status のバッジ・題・再生・メニューだけ */
 function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lanes: BoardLanes; lane: LaneId; card: BoardCard; now: number }) {
@@ -142,7 +158,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				: {})}
 		>
 			<StatusBadge status={status} enter={enter} onClick={statusMenu} />
-			{card.kind !== "routine" && <StatusStepButton ctx={ctx} keyOf={key} onBoard />}
+			{card.kind !== "routine" ? <StatusStepButton ctx={ctx} keyOf={key} onBoard /> : <RoutineStepButton ctx={ctx} date={date} id={key} status={status} />}
 			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 				{summary}
 			</span>
@@ -309,18 +325,13 @@ export function boardCandidates(index: TaskIndex, date: LocalDate, board: BoardS
 	return [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...subs.map((sub) => ({ kind: "sub" as const, sub }))];
 }
 
-/** task board（ADR-0009, 0137）。status とタイマーで決まる欄、再生 / 停止、未完了の整理、締める */
-export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState }) {
+/** task board（ADR-0009, 0137）。status とタイマーで決まる欄、再生 / 停止。末尾の Close board で Closing の画面に移る（ADR-0206） */
+export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; onClosing: () => void }) {
 	const { ctx, index, date, board } = props;
 	const now = useNow(30_000);
-	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const lanes = boardLanes(index, date, board);
 	// Watch はボードの外のものも出すので、ボードが空かどうかには数えない（ADR-0184）
 	const total = Object.values(lanes).reduce((n, l) => n + l.length, 0) - lanes.watch.length;
-	const left = unfinished(index, date, board);
-	const leftIssues = left.issues;
-	const leftCount = unfinishedCount(left);
-	const sel = leftIssues.filter((i) => selected.has(i.id));
 	const addIssue = () => {
 		new BoardIssueModal(ctx.app, boardCandidates(index, date, board), (choice) => {
 			if (choice.kind === "issue") void addToBoard(ctx, date, [choice.issue.id]);
@@ -355,130 +366,18 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				</div>
 			)}
 
-			<section class="vt-card vt-unfinished">
-				<div class="vt-section-head">
-					<span class="vt-field-label">Not done</span>
-					<span class="vt-count">{leftCount}</span>
-					<span class="vt-spacer" />
-					{board.closed ? (
-						<>
-							<span class="vt-done-label">
-								<Icon name="check-circle-2" /> Closed
-							</span>
-							<button class="vt-button is-text" onClick={() => void reopenBoard(ctx, date)}>
-								Reopen
-							</button>
-						</>
-					) : (
-						<button
-							class="vt-button is-primary"
-							disabled={total === 0}
-							title="Write today's record to the daily note. Unfinished cards are recorded as carried over"
-							onClick={() => void closeBoard(ctx, date)}
-						>
-							<Icon name="check" /> Close board
-						</button>
-					)}
-				</div>
-				{leftCount === 0 ? (
-					<div class="vt-empty">{total === 0 ? "—" : "All done"}</div>
-				) : (
-					<>
-						{leftIssues.length > 0 && (
-							<>
-								<IssueTable ctx={ctx} issues={leftIssues} selected={selected} onSelect={setSelected} columns={["status-detail", "calendar", "deadline", "estimated"]} empty="All issues are done" />
-								<ActionBar
-									count={sel.length}
-									actions={[
-										...carryActions(ctx, date, sel, "next", () => setSelected(new Set())),
-									]}
-								/>
-							</>
-						)}
-						<SubRows ctx={ctx} date={date} subs={left.subs} primary="next" />
-						<RoutineRows ctx={ctx} date={date} routines={left.routines} />
-					</>
-				)}
-			</section>
-		</div>
-	);
-}
-
-/**
- * 未完了の issue の片付け（ADR-0152）。primary が today なら今日のボードに載せる（前のボード）、next なら Next に戻す（今日のボード）。
- * Move date は Calendar の日（scheduled）を持つものだけのとき出す
- */
-export function carryActions(ctx: TaskContext, date: LocalDate, sel: Issue[], primary: "today" | "next", done: () => void) {
-	const run = (p: Promise<void>) => void p.then(done);
-	const statuses = sel.map((i) => i.status);
-	return [
-		...(primary === "today" ? [{ label: "Add to today's board", icon: "calendar-check", tone: "primary" as const, run: () => run(carryIssues(ctx, date, sel, "today")) }] : []),
-		{ label: "Back to Next", icon: "list-todo", ...(primary === "next" ? { tone: "primary" as const } : {}), run: () => run(carryIssues(ctx, date, sel, "next")) },
-		{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(statuses, "tickler"), run: () => run(carryIssues(ctx, date, sel, "tickler")) },
-		...(sel.length > 0 && sel.every((i) => i.scheduled !== null) ? [{ label: "Move date", icon: "calendar-clock", run: () => run(carryIssues(ctx, date, sel, "move")) }] : []),
-		{ label: "Close", icon: "check", disabled: !canApplyAll(statuses, "closed"), run: () => run(closeIssues(ctx, sel)) },
-		{ label: "Cancel", icon: "x", disabled: !canApplyAll(statuses, "canceled"), run: () => run(cancelIssues(ctx, sel)) },
-	];
-}
-
-/** 未完了のサブ（ADR-0137, 0152）。Close・Cancel・Next に戻す・Calendar の日を選び直す。Tickler と Inbox はない（サブは整理の対象外。ADR-0148） */
-export function SubRows(props: { ctx: TaskContext; date: LocalDate; subs: SubIssue[]; primary: "today" | "next"; showDate?: boolean }) {
-	const { ctx, date } = props;
-	if (props.subs.length === 0) return null;
-	return (
-		<div class="vt-routine-rows vt-sub-rows">
-			{props.subs.map((s) => (
-				<div class="vt-routine-row" key={s.key}>
-					{props.showDate && <span class="vt-date-chip">{formatShortDate(date)}</span>}
-					<span class="vt-badge vt-id">{s.parent}</span>
-					<span class="vt-cell-summary" title={`${s.parent} › ${s.summary}`}>
-						{s.summary}
+			<div class="vt-page-foot vt-board-foot">
+				{board.closed ? (
+					<span class="vt-done-label">
+						<Icon name="check-circle-2" /> Closed
 					</span>
-					<span class="vt-spacer" />
-					{props.primary === "today" && (
-						<button class="vt-button" onClick={() => void carrySubs(ctx, date, [s], "today")}>
-							Add to today's board
-						</button>
-					)}
-					<button class={`vt-button${props.primary === "next" ? "" : " is-text"}`} onClick={() => void carrySubs(ctx, date, [s], "next")}>
-						Back to Next
-					</button>
-					<button class="vt-button is-text" onClick={() => changeSubStatus(ctx, s, "closed")}>
-						Close
-					</button>
-					{s.scheduled !== null && (
-						<button class="vt-button is-text" onClick={() => void carrySubs(ctx, date, [s], "move")}>
-							Move date
-						</button>
-					)}
-					<button class="vt-button is-text" onClick={() => changeSubStatus(ctx, s, "canceled")}>
-						Cancel
-					</button>
-				</div>
-			))}
-		</div>
-	);
-}
-
-/** 結果のない routine。その日のうちに closed か canceled にする（ADR-0010） */
-export function RoutineRows(props: { ctx: TaskContext; date: LocalDate; routines: Routine[]; showDate?: boolean }) {
-	if (props.routines.length === 0) return null;
-	return (
-		<div class="vt-routine-rows">
-			{props.routines.map((r) => (
-				<div class="vt-routine-row">
-					{props.showDate && <span class="vt-date-chip">{formatShortDate(props.date)}</span>}
-					<span class="vt-badge vt-id vt-routine-id">{r.id}</span>
-					<span class="vt-cell-summary">{r.summary}</span>
-					<span class="vt-spacer" />
-					<button class="vt-button" onClick={() => void setRoutineResult(props.ctx, props.date, r.id, "closed")}>
-						Close
-					</button>
-					<button class="vt-button is-text" onClick={() => void setRoutineResult(props.ctx, props.date, r.id, "canceled")}>
-						Cancel
-					</button>
-				</div>
-			))}
+				) : (
+					<span />
+				)}
+				<button class="vt-button is-primary" title="Review today and write the record to the daily note" onClick={props.onClosing}>
+					<Icon name="moon" /> Close board
+				</button>
+			</div>
 		</div>
 	);
 }

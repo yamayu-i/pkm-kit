@@ -219,6 +219,9 @@ packages/design/tokens.json（正本）
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 切り替えボタン | `.vt-segmented`（`.vt-segmented-button`） | M3 の segmented button。表示の切り替え（1 つだけ選ぶ）に使い、絞り込みチップと分ける。丸い枠でつないだボタン（32px。`.is-small` は 24px）、選んだものは secondary-container の面。アイコンだけのときは名前をツールチップと `aria-label` に出す（`Segmented` 部品、`src/ui/Segmented.tsx`） |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
+| 詰めた一覧 | `.vt-compact-list`（`.vt-compact-row`・`.vt-compact-step`・`.vt-compact-title`・`.vt-compact-meta`） | 一覧性を優先する 1 行の一覧（28px。枠も面もなく、ホバーで `--vt-surface`）。行は 24px の status のボタンの場所（ボタンが出なくても幅を取る）・題（1 行で省略。押すと開き、ホバーで primary の下線）・右に弱い文字の付記だけ。色とアイコンは行に付けず、群の見出しに付ける。Closing の画面（ADR-0206） |
+| 群の見出し | `.vt-closing-group-head`（`.is-closed` / `.is-not-done` / `.is-waiting` / `.is-canceled`） | 24px の丸いラベル。アイコン・名前・件数を tonal の面で出す（closed = purple、not done = amber、waiting = pink、canceled = gray）。詰めた一覧の群の上に置く（ADR-0206） |
+| routine の群 | `.vt-routine-group` | Routines の一覧の category の群（default / closing）。見出しは名前・件数・弱い文字の説明。行（`.vt-routine-item`）は左のつまみ（`grip-vertical`）でドラッグし、行の上に落とすと前に入る（primary の線。`.is-drop-before`）。群の空いた所に落とすと末尾に入り、群を primary の枠 + secondary-container の面にする（ADR-0206） |
 | カード（ボード） | `.vt-task` | 押せるカード。1 行に status のバッジ（メニュー）・題・星ボタン（`.vt-star`。付いているときは primary で塗る）・再生 / 停止・`⋯` のメニューだけを置き、大きくしない。ID は出さず表題を優先する。記録中は緑の枠。Top 4 と Up next ではドラッグでき、別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。ADR-0114, 0137） |
 | 再生 / 停止 | `.vt-play` | 緑（再生）/ 赤（停止 + 経過時間）の丸いボタン。未 Pick は同じ 36px の `.vt-play.vt-pick`。issue の Worklog 見出しと上下のサブで共通の表示条件を使い、closed・canceled は非表示、記録中は状態に関係なく停止を表示する |
 | 記録の時刻を直すボタン | `.vt-time-edit`（`.vt-icon-button`） | 再生 / 停止の左の 24px の色のない丸（`history`）。再生 / 停止より目立たせない。ボードのカードと Tasks Now の行に出し、幅 480px 以下のボードでは隠して `⋯` のメニューから開く（ADR-0193） |
