@@ -38,9 +38,9 @@ function create(anchor: number) {
 }
 
 /** 本文の最後の行の下に余白を置く行（class が vt-sub-body-end の行の先頭） */
-function bodyEnds(subOpen: Record<string, unknown>) {
+function bodyEnds(subOpen: Record<string, unknown>, anchor = text.length) {
 	const lines: number[] = [];
-	build(text.length, subOpen).between(0, text.length, (from: number, _to: number, d: any) => {
+	build(anchor, subOpen).between(0, text.length, (from: number, _to: number, d: any) => {
 		if (d.spec.class === "vt-sub-body-end") lines.push(from);
 	});
 	return lines;
@@ -59,9 +59,14 @@ describe("閉じたサブのカード", () => {
 });
 
 describe("開いたサブの本文と次の題の間の余白", () => {
-	it("開いたサブの本文の最後の行に付ける", () => {
+	it("次のサブの題の直前の行に付ける（本文の後の空行を含む）", () => {
 		const open = { "issue/i-1.md": ["aaaaaa"] };
-		expect(bodyEnds(open)).toEqual([text.indexOf("Body")]);
+		expect(bodyEnds(open)).toEqual([text.indexOf("<!-- sub-issue", 1) - 1]);
+	});
+	it("本文の終わりで改行して書いている行より上に余白を出さない", () => {
+		const open = { "issue/i-1.md": ["aaaaaa"] };
+		const typing = text.indexOf("Body") + "Body\n".length;
+		expect(bodyEnds(open, typing).every((from) => from >= typing)).toBe(true);
 	});
 	it("閉じたサブには付けない", () => {
 		expect(bodyEnds({})).toEqual([]);

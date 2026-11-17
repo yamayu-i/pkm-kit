@@ -6136,7 +6136,7 @@ function build(ctx, state) {
       folds.push(import_view.Decoration.replace({ block: true }).range(b2.cardTo, sectionTo));
     }
     if (!collapsed && layout[b2.index + 1] && b2.bodyTo > b2.bodyFrom) {
-      all.push(BODY_END.range(state.doc.lineAt(b2.bodyTo).from));
+      all.push(BODY_END.range(state.doc.lineAt(sectionTo).from));
     }
   }
   return { all: import_view.Decoration.set(all, true), folds: import_view.Decoration.set(folds, true) };
