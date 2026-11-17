@@ -8,6 +8,7 @@
 
 - routine の一覧と作成のフォーム（summary、くり返し、estimated）。estimated は単位付きで入れられる。ほかの項目は routine 画面で入れる
 - 一時停止（active）を切り替えられる。行を押すと [routine 画面](task-routine-screen.md) を開く
+- category ごとの群（default → closing）に分けて出す。行をドラッグすると、群の中で順番を変え、別の群に落とすと category を変える。`···` のメニューの Move up / Move down / Move to … でも動かせる（スマホ）。この順番で、ボードの Routines の欄と Closing の画面に並ぶ
 
 ## 使う概念
 
@@ -15,7 +16,7 @@
 
 ## 根拠
 
-[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)
+[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)
 
 ## 入力と制約
 
@@ -23,7 +24,7 @@
 
 ## 操作と保存
 
-作成は routine ノートを増やし、有効／無効は active を変更します。繰り返しの実績は当日の board に残り、無効化しても履歴は消しません。
+作成は routine ノートを増やし、有効／無効は active を、並べ替えは category と order を変更します。繰り返しの実績は当日の board に残り、無効化しても履歴は消しません。
 
 ## 失敗時と戻し方
 

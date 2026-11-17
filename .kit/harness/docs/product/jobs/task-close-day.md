@@ -9,10 +9,11 @@
 
 ## 今の流れ
 
-1. 片付けたい人は、[Today](../surfaces/task-today.md) の [task board](../surfaces/task-board.md) で未完了のカードを片付ける: Back to Next、Tickler、Move date、Close、Cancel。片付けなくてもよい（やらなかったものは Next に残る）。routine はその日のうちに closed か canceled にする
-2. 「Close board」で締める。未完了が残っていても押せる。デイリーノートの `## Task board` 節に、完了・持ち越し（片付けなかった未完了を含む）・worklog の要約がリンク付きで書かれる
-3. 締めなくても困らない。締めなかったボードを催促しない。前の日の未完了は、Next（Pick）と Calendar の Missed から選べる
-4. AI と振り返るときは、task-coach が持ち越しを片付けてボードを締め、振り返りをデイリーノートの末尾に追記する（[MCP と task-coach](../surfaces/task-mcp.md)）
+1. [Today](../surfaces/task-today.md) の [task board](../surfaces/task-board.md) の末尾の「Close board」を押す。[Closing の画面](../surfaces/task-closing.md) に移り、右のペインにデイリーノートが開いて、本文の冒頭に振り返りの型が入る
+2. Closing の画面で、closing の routine（振り返りなど）を片付け、その日のタスク（Closed / Not done / Waiting / Canceled）と、その日に作った・変えたノートを一覧で見ながら、デイリーノートに振り返りを書く。片付けたいタスクは、その場で status のボタンで閉じる。片付けなくてもよい（やらなかったものは Next に残る）
+3. 「Finish closing」で記録を書く。未完了が残っていても押せる。デイリーノートの `## Task board` 節に、完了・持ち越し（片付けなかった未完了を含む）・worklog の要約がリンク付きで書かれる
+4. 締めなくても困らない。締めなかったボードを催促しない。前の日の未完了は、Next（Pick）と Calendar の Missed から選べる
+5. AI と振り返るときは、task-coach が持ち越しを片付けてボードを締め、振り返りをデイリーノートの末尾に追記する（[MCP と task-coach](../surfaces/task-mcp.md)）
 
 ## 関わる概念
 
@@ -20,7 +21,8 @@
 
 ## うまくいっている兆し
 
-- 記録を残したい日に、Close board を 1 回押すだけで締まる
+- 一日の終わりに Close board を押せば、振り返りに必要なもの（その日の作業の一覧とデイリーノート）が並ぶ
+- routine の実行漏れが、翌日の Missed で見つかって片付く
 - 持ち越した issue が、翌日の Pick で選ばれて片付く
 
 ## 知られている困りごと
@@ -33,4 +35,4 @@
 
 ## 期待する結果と、つまずいたとき
 
-daily に要約があること。未完了は持ち越しとして記録される。持ち越しの回数はボードの記録から自動で数えられる（[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)）。
+daily に要約があること。未完了は持ち越しとして記録される。持ち越しの回数はボードの記録から自動で数えられる（[ADR-0189](../../../../src/docs/adr/0189-gtd-inbox-and-optional-close.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)）。

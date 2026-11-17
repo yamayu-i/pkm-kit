@@ -60,7 +60,7 @@ if(provider==="task"){
  else if(screen==="now")draw(TasksNowDialog,{ctx});
  else if(screen==="capture")openCaptureModal(ctx as never);
  else if(screen==="status")registerRunningStatusBar(new (Plugin as any)(app),store as never,{path:noop,sidebar:noop});
- else {draw(VIEWS[screen!],{ctx});if(["board","pick"].includes(screen!))setTimeout(()=>root.querySelectorAll<HTMLButtonElement>(".vt-step")[screen==="board"?2:1]?.click(),0)}
+ else {draw(VIEWS[screen!],{ctx});if(["board","pick","closing"].includes(screen!))setTimeout(()=>{root.querySelectorAll<HTMLButtonElement>(".vt-step")[screen==="pick"?1:2]?.click();if(screen==="closing")setTimeout(()=>root.querySelector<HTMLButtonElement>(".vt-board-foot .is-primary")?.click(),0)},0)}
 } else if(provider==="template"){
  const views:any={daily:DailyListView,notes:NoteListView,sources:SourceListView,tmp:TmpListView};
  if(views[screen!])draw(views[screen!],{app});

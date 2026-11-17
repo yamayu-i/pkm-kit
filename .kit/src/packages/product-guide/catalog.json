@@ -48,6 +48,20 @@
       ".kit/src/packages/pkm-task/src"
     ]
   },
+  "surfaces/task-closing.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "closing",
+        "label": "一日を締める",
+        "detail": "closing の routine、その日のタスクの群、作った・変えたノートを 1 行ずつ見て、記録を書きます。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ]
+  },
   "surfaces/task-issue-screen.md": {
     "kind": "visual",
     "screens": [

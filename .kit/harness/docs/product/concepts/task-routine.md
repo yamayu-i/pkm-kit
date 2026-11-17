@@ -6,19 +6,19 @@
 
 ## 状態
 
-`routine/r-N.md`: `summary`、`repeat`（every / interval / on）、`start`、`end`、`active`、`priority`、[label](task-label.md)、[estimated](task-estimate.md)。その日の結果（closed / canceled）はボードの操作ログにあり、routine のノートには書かない。
+`routine/r-N.md`: `summary`、`repeat`（every / interval / on）、`start`、`end`、`active`、`priority`、[label](task-label.md)、[estimated](task-estimate.md)、`category`（`closing` か、なし = default。`default` は予約語で書かない）、`order`（category の中の並び）。その日の結果（closed / canceled）はボードの操作ログにあり、routine のノートには書かない。
 
 ## 操作
 
-作る・一時停止する（Routines）、くり返しを変える（routine 画面）、その日の結果を決める（ボード）、タイマーを動かす。
+作る・一時停止する・並べる・category を変える（Routines）、くり返しを変える（routine 画面）、その日の結果を決める（ボード）、タイマーを動かす。
 
 ## 使い方の筋道
 
-くり返しに当てはまる日には、自動でボードに載る。その日のうちに closed か canceled にし、翌日に持ち越さない。status、Calendar の日、期限は持たない。
+くり返しに当てはまる日には、default の routine は自動でボードに、closing の routine は Closing の画面に出る。その日のうちに closed か canceled にする。付けないまま日が過ぎたものは積み残しとして、結果を付けるまで Today の Calendar の Missed（Routines の節）に出る（実行漏れに気づくため。[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)）。status、Calendar の日、期限は持たない。
 
 ## 根拠
 
-[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0021](../../../../src/docs/adr/0021-routine-effort-and-sidebar.md)
+[ADR-0010](../../../../src/docs/adr/0010-routine.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0021](../../../../src/docs/adr/0021-routine-effort-and-sidebar.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)
 
 ## 繰り返しの入力と判定
 
