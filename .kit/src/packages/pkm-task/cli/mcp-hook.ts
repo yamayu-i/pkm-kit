@@ -4,6 +4,7 @@
  *
  * 使い方（.claude/settings.json）: node "$CLAUDE_PROJECT_DIR/.kit/bin/mcp-hook.mjs"
  */
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { logEnabled, recordBypass, type HookPayload } from "./mcp-log";
 
@@ -14,7 +15,7 @@ export function handleHook(input: string, env: NodeJS.ProcessEnv = process.env):
 	recordBypass(root, payload);
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	let input = "";
 	process.stdin.setEncoding("utf8");
 	process.stdin.on("data", (d) => (input += d));

@@ -2,6 +2,7 @@ import { createRequire as __kitCreateRequire } from "node:module";
 const require = __kitCreateRequire(import.meta.url);
 
 // cli/mcp-hook.ts
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // cli/mcp-log.ts
@@ -90,7 +91,7 @@ function handleHook(input, env = process.env) {
   const root = env.CLAUDE_PROJECT_DIR ?? payload.cwd ?? process.cwd();
   recordBypass(root, payload);
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let input = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (d) => input += d);

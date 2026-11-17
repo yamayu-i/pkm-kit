@@ -16,7 +16,7 @@
  * ADR-0056 より後（LEGACY_MAX より大きい番号）は、2 つのディレクトリで共通の番号の空間なので重なってはいけない。
  * それより前の番号は、ディレクトリごとに連番で振っていたので重なってよい
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync, realpathSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -105,7 +105,7 @@ export function indexDir(dir, { write = false } = {}) {
 	return problems;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const write = process.argv.includes("--write");
 	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	const dirs = positional.length ? positional : DEFAULT_DIRS.map((d) => join(root, d));

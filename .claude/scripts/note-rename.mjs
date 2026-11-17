@@ -13,7 +13,7 @@
  *   node .claude/scripts/note-rename.mjs --apply <対応表.json> [--dry-run]
  *     対応表は { "もとのパス": "新しいパス" }（Vault ルートからのパス）
  */
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isExternal, splitTarget, stripCode } from "./lib/markdown.mjs";
@@ -174,7 +174,7 @@ export function applyRenames(root, plan) {
 	}
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const root = fileURLToPath(new URL("../..", import.meta.url));
 	const args = process.argv.slice(2);
 	if (args[0] === "--list") {

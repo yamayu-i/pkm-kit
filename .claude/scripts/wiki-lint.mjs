@@ -6,7 +6,7 @@
  * 使い方: node .claude/scripts/wiki-lint.mjs [Vault のルート]
  * 人のノート（LLM が直せない場所）の問題は警告、それ以外はエラー。エラーがあれば終了コード 1。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractLinks, findWikiLinks, isExternal, parseFrontmatter, splitTarget, stripCode } from "./lib/markdown.mjs";
@@ -134,7 +134,7 @@ function format({ path, line, message }) {
 	return `  ${path}${line ? `:${line}` : ""}  ${message}`;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const root = process.argv[2] ?? fileURLToPath(new URL("../..", import.meta.url));
 	const { errors, warnings } = lintVault(root);
 	if (warnings.length) {

@@ -14,7 +14,7 @@
  * 使い方: node .claude/scripts/check-docs.mjs [文書のディレクトリ（既定は .claude）] [--links-only]
  *   --links-only  リンク切れだけを見る（目次のない文書。.kit/src/docs のプラグインの ADR など）
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, normalize, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractLinks, isExternal, parseFrontmatter, splitTarget, stripCode, walk } from "./lib/markdown.mjs";
@@ -90,7 +90,7 @@ export function checkDocs(dir, { linksOnly = false } = {}) {
 	return { errors, warnings };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	const dir = positional[0] ?? fileURLToPath(new URL("..", import.meta.url));
 	const { errors, warnings } = checkDocs(dir, { linksOnly: process.argv.includes("--links-only") });

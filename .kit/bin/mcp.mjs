@@ -7368,6 +7368,7 @@ var require_dist = __commonJS({
 
 // cli/mcp.ts
 import { createInterface } from "node:readline";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // ../shared/src/dates.ts
@@ -11810,7 +11811,7 @@ function runServer(argv) {
     }
   });
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);
   if (argv[0] === "report") runReport(argv.slice(1));
   else runServer(argv);

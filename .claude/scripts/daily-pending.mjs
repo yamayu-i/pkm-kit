@@ -12,7 +12,7 @@
  * 使い方: node .claude/scripts/daily-pending.mjs [--today YYYY-MM-DD]
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DAILY_RE, vaultFiles, WIKI_LOG } from "./lib/vault.mjs";
@@ -60,7 +60,7 @@ export function pendingDaily(root, today = localDate()) {
 	return { last, head: git("rev-parse", "--short", "HEAD").trim(), pending: result };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const root = fileURLToPath(new URL("../..", import.meta.url));
 	const i = process.argv.indexOf("--today");
 	const { last, head, pending } = pendingDaily(root, i === -1 ? undefined : process.argv[i + 1]);

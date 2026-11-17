@@ -8,6 +8,7 @@
  *   node .kit/bin/mcp.mjs report [Vault のルート] [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--json]   利用ログの集計
  */
 import { createInterface } from "node:readline";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { emptyBoard, routineResults, unfinished, type RoutineResult } from "../src/core/board";
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
@@ -995,7 +996,7 @@ function runServer(argv: string[]): void {
 	});
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const argv = process.argv.slice(2);
 	if (argv[0] === "report") runReport(argv.slice(1));
 	else runServer(argv);

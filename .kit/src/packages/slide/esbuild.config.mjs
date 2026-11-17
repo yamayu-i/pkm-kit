@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import esbuild from "esbuild";
 
@@ -54,7 +55,7 @@ export const assetsPlugin = {
 	},
 };
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	await esbuild.build({
 		entryPoints: ["cli/slide.ts"],
 		outdir: bindir,
