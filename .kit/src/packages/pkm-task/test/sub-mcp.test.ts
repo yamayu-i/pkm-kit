@@ -233,3 +233,29 @@ describe("MCP の Inbox に戻す（ADR-0189）", () => {
 		expect(issueOf("i-3")).toMatchObject({ status: "open", clarified: false, deadline: "2026-11-30" });
 	});
 });
+
+describe("MCP で Calendar とサブを同時に持たせない（ADR-0203）", () => {
+	let root: string;
+	let ctx: McpContext;
+	const SUB = "<!-- sub-issue\nid: aaaaaa\nsummary: サブ\nstatus: closed\n-->\n";
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "vault-calendar-subs-mcp-"));
+		mkdirSync(join(root, "issue"));
+		writeFileSync(join(root, "issue/i-1.md"), `---\ntype: issue\nid: i-1\nsummary: Project\nstatus: open\nclarified: true\n---\n${SUB}`);
+		writeFileSync(join(root, "issue/i-2.md"), "---\ntype: issue\nid: i-2\nsummary: Calendar\nstatus: open\nclarified: true\nscheduled: 2026-11-20\n---\n");
+		ctx = { root, device: "ai", now: () => now };
+	});
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("サブ（閉じたものも）を持つ issue に update_issue で Calendar の日を付けるとエラー。消すのはよい", () => {
+		expect(() => callMcpTool(ctx, "update_issue", { id: "i-1", scheduled: "2026-11-20" })).toThrow(/サブイシューを持つ issue には Calendar/);
+		callMcpTool(ctx, "update_issue", { id: "i-1", scheduled: null });
+		expect(new TaskIndex(readVault(root).data).issues.get("i-1")!.scheduled).toBeNull();
+	});
+
+	it("Calendar の日を持つ issue に create_sub_issues でサブを足すとエラーで、何も書かない", () => {
+		const before = readFileSync(join(root, "issue/i-2.md"), "utf8");
+		expect(() => callMcpTool(ctx, "create_sub_issues", { parent: "i-2", items: [{ summary: "x" }] })).toThrow(/Calendar の日を持つ issue にはサブイシューを足せません/);
+		expect(readFileSync(join(root, "issue/i-2.md"), "utf8")).toBe(before);
+	});
+});
