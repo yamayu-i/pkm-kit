@@ -109,4 +109,5 @@
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認 | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
+| [0206](0206-closing-view-and-routine-category.md) | 提案 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 <!-- adr-index:end -->
