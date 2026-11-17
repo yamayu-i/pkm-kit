@@ -19,7 +19,9 @@
 | 依存する先 | depends_on | 同じ親内のサブ ID の配列。循環不可 |
 | 委任先 | delegated_to | member の ID |
 
-label・priority は親の文脈を使う。サブに soft_deadline / deadline はない（外の都合で決まる締切は親の deadline に書く）。someday にすると Calendar の日と期間を外し、someday のサブに期間を入れると open に戻る。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。
+label・priority は親の文脈を使う。サブに soft_deadline / deadline はない（外の都合で決まる締切は親の deadline に書く）。someday にすると Calendar の日と期間を外し、someday のサブに期間を入れると open に戻る。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。サブ（閉じたものも含む）を持つ issue は Calendar の日を持たず、Calendar の日を持つ issue にはサブを作れない（ADR-0203）。
+
+サブの Next は、open か in-progress で、Calendar の日がなく、親が Next で、今日が期間（start〜end。片方だけならその 1 日）に入るもの。期間がないサブ・今日が期間の外のサブは Pick できず、issue 画面では Timeline で期間を決めるよう案内する。
 
 ## 操作
 

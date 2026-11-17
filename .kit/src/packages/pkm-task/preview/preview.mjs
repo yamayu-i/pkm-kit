@@ -70,7 +70,8 @@ for (const theme of ["light", "dark"]) {
 		await page.locator("#narrow").screenshot({ path: `${out}${screen}-${theme}-narrow.png` });
 
 		for (const root of ["#wide", "#narrow"]) {
-			const expectedControl = { header: "Stop timer", "header-unpicked": "Pick", "header-picked": "Start timer", "header-someday": "Pick", "header-closed": null };
+			// someday は Next でないので Pick を出さない（ADR-0203）
+			const expectedControl = { header: "Stop timer", "header-unpicked": "Pick", "header-picked": "Start timer", "header-someday": null, "header-closed": null };
 			if (Object.hasOwn(expectedControl, screen)) {
 				const control = page.locator(`${root} .vt-worklog .vt-section-head button[aria-label]`);
 				const labels = await control.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
@@ -81,6 +82,11 @@ for (const theme of ["light", "dark"]) {
 					const box = await button.boundingBox();
 					if (!box || box.width !== 36 || box.height !== 36) problems.push(`${where} ${root}: Pick / 再生が 36px でない: ${JSON.stringify(box)}`);
 				}
+			}
+			// 期間の外のサブ（i-14 の kkkkkk は end が昨日）には、Pick の代わりに Timeline のボタンを出す（ADR-0203）
+			if (screen === "header-unpicked") {
+				const sub = await page.locator(`${root} .vt-subissue-list .vt-play`).evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
+				if (JSON.stringify(sub) !== JSON.stringify(["Open Timeline"])) problems.push(`${where} ${root}: 期間の外のサブの操作 ${JSON.stringify(sub)} != ["Open Timeline"]`);
 			}
 			for (const p of await page.evaluate(auditInPage, { rootSelector: root, targetMin })) {
 				problems.push(`${where} ${root}: [${p.rule}] ${p.where}: ${p.message}`);

@@ -43,7 +43,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 1. 締めていない過去のボードは催促しない（締めは記録だけ。ADR-0189）。昨日の未完了は Next に残っているので、2 の候補に含めて選ぶ
 2. `dead`（期限切れ）、`caution`（期限間近）、`scheduledNotOnBoard`（今日の Calendar）を提示し、今日やるべき候補を挙げる。Next（`task_list_issues` で open・`clarified`・Calendar の日も Tickler もないもの）から、文脈・時間・優先度で選ぶ（GTD の Engage。ADR-0150）
-3. 今日やると決めたものは `task_add_to_board` で載せる。`scheduled` は書かない（Calendar はその日にやらなければならない日だけに使う。ADR-0152）。今日の最重要を 4 件まで選んで `task_star_card` で ★ を付け、やる順を `task_order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱う
+3. 今日やると決めたものは `task_add_to_board` で載せる。`scheduled` は書かない（Calendar はその日にやらなければならない日だけに使う。ADR-0152）。今日の最重要を 4 件まで選んで `task_star_card` で ★ を付け、やる順を `task_order_card` で並べる（並びは翌日以降にも引き継ぐ。★ はその日だけ）。サブイシューは合成キー（`i-12#k3f9a2`）で扱う。載せるサブは、親が Next で、今日が期間（`start`〜`end`）に入るものにする。期間がないか今日が期間の外のサブは、勝手に期間を書かず、期間を決めるかをユーザーに提案する（ADR-0203）
 4. `workload.overloadedByMinutes > 0`（詰め込みすぎ）または `unestimatedCount > 0`（見積もりなし）なら指摘し、優先度の低いものを別日にリスケするか、見積もりを設定する（`task_update_issue`）よう提案する
 
 ### 日中（優先度の相談・割り込み対応）
