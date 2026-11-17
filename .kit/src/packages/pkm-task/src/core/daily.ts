@@ -84,10 +84,12 @@ export function currentStep<K extends string>(steps: readonly K[], counts: Recor
 	return steps.find((s) => s !== last && counts[s] > 0 && !passed.has(s)) ?? last;
 }
 
-/** Pick の候補（ADR-0150）: Next の issue と、親ごとにまとめたサブ */
+/** Pick の候補（ADR-0150, 0203）: Next の issue と、親ごとにまとめたサブと、次の行動のない Project */
 export interface PickCandidates {
 	issues: Issue[];
 	groups: { parent: Issue; subs: SubIssue[] }[];
+	/** Next の Project（active なサブを持つ issue）のうち、Next のサブが 1 つもないもの（今日のボードに載っているものも含めて） */
+	stalled: Issue[];
 }
 
 const priorityRank = (p: Issue["priority"]) => (p === null ? PRIORITIES.length : PRIORITIES.indexOf(p));
@@ -99,22 +101,29 @@ export const byPick = (a: Issue, b: Issue) =>
 /**
  * Pick の候補（ADR-0150）。今日のボードにないものだけ。
  * - issue: Next（isNext。open で clarified か in-progress で、Calendar も Tickler もない。ADR-0184）。active なサブを持つ親（Project）は行にしない
- * - サブ: Next（isNextSub。open か in-progress で、Calendar の日がなく、start がないか今日以前）。親が active なもの。親ごとにまとめ、親の中の順に並べる
+ * - サブ: Next（isNextSub。open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入っている。ADR-0203）。親ごとにまとめ、親の中の順に並べる
+ * - 次の行動のない Project（ADR-0203）: Next の Project で、Next のサブが 1 つもないもの。Pick の段階から消えないように出す
  * 並びは priority → deadline → 見直しが古い順（サブは親の値）
  */
 export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardState): PickCandidates {
 	const on = new Set(board.issues);
 	const groups = new Map<string, SubIssue[]>();
+	const withNext = new Set<string>();
 	for (const s of index.data.subIssues) {
-		if (on.has(s.key) || index.sub(s.key) !== s) continue;
-		if (!isNextSub(s, today)) continue;
-		const parent = index.issues.get(s.parent);
-		if (!parent || !isActive(parent)) continue;
+		if (index.sub(s.key) !== s) continue;
+		if (!isNextSub(s, index.issues.get(s.parent), today)) continue;
+		withNext.add(s.parent);
+		if (on.has(s.key)) continue;
 		groups.set(s.parent, [...(groups.get(s.parent) ?? []), s]);
 	}
 	const projects = new Set(index.data.subIssues.filter((s) => isActive(s) && index.sub(s.key) === s).map((s) => s.parent));
 	const issues = [...index.issues.values()].filter((i) => !on.has(i.id) && !projects.has(i.id) && isNext(i)).sort(byPick);
+	const stalled = [...projects]
+		.map((id) => index.issues.get(id))
+		.filter((i): i is Issue => i !== undefined && isNext(i) && !withNext.has(i.id))
+		.sort(byPick);
 	return {
+		stalled,
 		issues,
 		groups: [...groups.entries()]
 			.map(([id, subs]) => ({ parent: index.issues.get(id)!, subs: subs.sort((a, b) => a.order - b.order) }))

@@ -142,7 +142,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 				: {})}
 		>
 			<StatusBadge status={status} enter={enter} onClick={statusMenu} />
-			{card.kind !== "routine" && <StatusStepButton ctx={ctx} keyOf={key} />}
+			{card.kind !== "routine" && <StatusStepButton ctx={ctx} keyOf={key} onBoard />}
 			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 				{summary}
 			</span>

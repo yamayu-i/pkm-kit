@@ -1,5 +1,5 @@
 import { Menu, Notice } from "obsidian";
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
@@ -10,6 +10,7 @@ import type { TaskContext } from "../obsidian/context";
 import { PickTimer } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import { revealSub } from "./sub-reveal";
+import { setTimelineRevealer } from "./sub-timeline-reveal";
 import type { TimelineScale } from "../core/timeline";
 import { FilterChip } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
@@ -27,14 +28,27 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 	// 表示（List / Timeline）と目盛り（Day / Week）は保存しない（ADR-0143）
 	const [mode, setMode] = useState<"list" | "timeline">("list");
 	const [scale, setScale] = useState<TimelineScale>("day");
+	// 期間の外のサブの Timeline のボタン（ADR-0203）で目立たせるサブ。表示を切り替えたら外す
+	const [target, setTarget] = useState<string | null>(null);
+	const card = useRef<HTMLElement>(null);
+	useEffect(() => {
+		setTimelineRevealer(issue.id, (sub) => {
+			setMode("timeline");
+			setTarget(sub.key);
+			card.current?.scrollIntoView({ block: "nearest" });
+		});
+		return () => setTimelineRevealer(issue.id, null);
+	}, [issue.id]);
 	const subs = index.subs(issue.id);
+	// Calendar の日を持つ issue はサブを持たない（ADR-0203）。両方あるとき（外で編集したもの）は、データが見えなくならないように出す
+	if (issue.scheduled !== null && subs.length === 0) return null;
 	const shown = visibleSubs(subs, showClosed);
 	const counts = subCounts(subs);
 	const effort = index.effortByKey(now);
 	const visibleKeys = shown.map((s) => s.key);
 	const move = (key: string, before: string | null) => void ctx.writer.moveSubBefore(key, before).catch((e) => ctx.report("サブを並べ替えられませんでした", e));
 	return (
-		<section class="vt-card vt-subissues">
+		<section class="vt-card vt-subissues" ref={card}>
 			<div class="vt-section-head">
 				<span class="vt-field-label">Sub-issues</span>
 				{counts.total > 0 && (
@@ -52,13 +66,20 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 								<span class="vt-subissues-modes-sep" aria-hidden="true" />
 							</>
 						)}
-						<FilterChip label="List" on={mode === "list"} onClick={() => setMode("list")} />
+						<FilterChip
+							label="List"
+							on={mode === "list"}
+							onClick={() => {
+								setMode("list");
+								setTarget(null);
+							}}
+						/>
 						<FilterChip label="Timeline" on={mode === "timeline"} onClick={() => setMode("timeline")} />
 					</div>
 				)}
 				<PresetButton ctx={ctx} issue={issue} index={index} />
 			</div>
-			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} />}
+			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} target={target} />}
 			{mode === "list" && shown.length > 0 && (
 				<ul class="vt-subissue-list">
 					{shown.map((sub) => (

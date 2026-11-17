@@ -3256,6 +3256,12 @@ body.is-mobile .vt-toast {
 	background: var(--vt-state-hover);
 }
 
+/* 期間の外のサブの Timeline のボタンから来た行（ADR-0203）。期間を決める行を示す */
+.vt-timeline-label.is-target {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
 .vt-timeline-label .vt-status-icon {
 	flex: none;
 }

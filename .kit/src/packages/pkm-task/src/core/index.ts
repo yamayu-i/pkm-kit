@@ -60,9 +60,29 @@ export function isNext(issue: Issue, _today?: LocalDate): boolean {
 	return ready && issue.scheduled === null && issue.tickler === null;
 }
 
-/** サブの Next（ADR-0150, 0184）: open か in-progress で、Calendar の日がなく、start がないか today 以前 */
-export function isNextSub(sub: Pick<SubIssue, "status" | "scheduled" | "start">, today: LocalDate): boolean {
-	return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && (sub.start === null || sub.start <= today);
+/** 今日がサブの期間（start〜end、両端を含む）に入っているか。片方だけならその 1 日（Timeline の棒と同じ。ADR-0143, 0203） */
+export function inPeriod(sub: Pick<SubIssue, "start" | "end">, today: LocalDate): boolean {
+	const start = sub.start ?? sub.end;
+	const end = sub.end ?? sub.start;
+	return start !== null && end !== null && start <= today && today <= end;
+}
+
+/** 期間のほかは、サブの Next の条件を満たすか: open か in-progress で、Calendar の日がなく、親が Next */
+function nextSubApartFromPeriod(sub: Pick<SubIssue, "status" | "scheduled">, parent: Issue | undefined): boolean {
+	return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== undefined && isNext(parent);
+}
+
+/**
+ * サブの Next（ADR-0150, 0184, 0203）: open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入っている。
+ * 期間のないサブは Next に入らない。issue 画面の Pick と DailyTaskView の Pick の候補の両方がこれを使う
+ */
+export function isNextSub(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate): boolean {
+	return nextSubApartFromPeriod(sub, parent) && inPeriod(sub, today);
+}
+
+/** 期間を決めれば Next になるサブ（ADR-0203）: 期間のほかは Next の条件を満たし、期間がないか今日が期間の外。issue 画面では Pick の代わりに Timeline を出す */
+export function needsPeriod(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate): boolean {
+	return nextSubApartFromPeriod(sub, parent) && !inPeriod(sub, today);
 }
 
 /** Watch の欄（ADR-0184）に出す status。待っているもの（GTD の Waiting For） */
