@@ -11,7 +11,7 @@
  * 使い方: node .claude/scripts/usage-report.mjs [--since YYYY-MM-DD]（既定は 30 日前）
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pendingDaily } from "./daily-pending.mjs";
@@ -129,7 +129,7 @@ export function usageReport(root, since = daysAgo(30), today = new Date().toISOS
 	return out.join("\n");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const root = fileURLToPath(new URL("../..", import.meta.url));
 	const i = process.argv.indexOf("--since");
 	console.log(usageReport(root, i === -1 ? undefined : process.argv[i + 1]));

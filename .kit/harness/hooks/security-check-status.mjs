@@ -4,7 +4,7 @@
 // 記録はレポート（.kit/harness/security/reports/YYYY-MM-DD[-名前].md）だけ。作業ツリーと origin/main の両方から読む。
 // 1 つのファイルに書き足す実施記録は、並行するブランチがぶつかるので置かない（ADR-0056）
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -67,7 +67,7 @@ export function statusMessage(last, today = new Date()) {
 	return `[security-check] OK（${prev}、${days} 日前。次回期限まで ${INTERVAL_DAYS - days} 日）`;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const root = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 	// 上流（pkm-kit）のときだけ知らせる。子の Vault（.kit-local/ がある）ではプラグインのソースを変えないので出さない（ADR-0011）
 	if (!existsSync(join(root, ".kit-local"))) console.log(statusMessage(latestCheck(collectReports(root))));

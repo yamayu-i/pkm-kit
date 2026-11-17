@@ -16,7 +16,7 @@
  * --escalation を付けず、すでに .kit-local/config.json もなければ、端末で尋ねる（端末でなければ失敗する）。
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
@@ -163,7 +163,7 @@ async function ask(kit) {
 	}
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	const root = resolve(positional[0] ?? fileURLToPath(new URL("..", import.meta.url)));
 	const dryRun = process.argv.includes("--dry-run");

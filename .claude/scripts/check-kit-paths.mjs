@@ -13,7 +13,7 @@
  *   --fetch  上流のコミットが手元になければ、.kit-local/upstream.json の url から取得する（CI 用）
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,7 +89,7 @@ function childMode(root, fetch) {
 	return { errors: checkChildChanges([...new Set(changed)], patterns, record.commit), commit: record.commit };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	const root = positional[0] ?? fileURLToPath(new URL("../..", import.meta.url));
 	try {

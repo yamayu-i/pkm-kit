@@ -13,7 +13,7 @@
  *       未適用の移行を表示する。あれば終了コード 1（verify と CI が使う）。上流（.kit-local/ がない）では何もしない
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -79,7 +79,7 @@ function arg(name) {
 	return hit ? hit.slice(name.length + 3) : null;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 	const root = resolve(positional[0] ?? fileURLToPath(new URL("..", import.meta.url)));
 	try {

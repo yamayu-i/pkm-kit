@@ -15,6 +15,7 @@
  *   範囲を省くと origin/main..HEAD。例: `origin/main..HEAD`、`-1 <commit>`
  */
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { stripCode } from "./lib/markdown.mjs";
 import { classify, KEBAB_MD_RE } from "./lib/vault.mjs";
@@ -173,7 +174,7 @@ function checkRenameCommit(repo, sha, add) {
 	for (const path of [...removed, ...added]) add(path, "改名の操作でファイルを足したり消したりしない");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const repo = fileURLToPath(new URL("../..", import.meta.url));
 	const range = process.argv.slice(2);
 	const problems = checkCommits(repo, range.length ? range : undefined);

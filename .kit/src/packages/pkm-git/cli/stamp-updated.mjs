@@ -10,7 +10,7 @@
  *   node .kit/bin/stamp-updated.mjs --migrate   空・欠けた updated に、最後に変えたコミットの日時を入れる(1 回だけ)
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatIso, isTargetPath, setUpdated, shouldStamp } from "../src/stamp/updated.ts";
@@ -84,7 +84,7 @@ export function migrate(repo, { offsetMinutes } = {}) {
 	return done;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const repo = git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
 	const mode = process.argv[2];
 	if (mode === "--staged") {

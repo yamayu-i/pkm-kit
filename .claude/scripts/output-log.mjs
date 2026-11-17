@@ -15,7 +15,7 @@
  *   node .claude/scripts/output-log.mjs summary [--since YYYY-MM-DD] [--until YYYY-MM-DD]（既定は 30 日前から今日）
  */
 import { randomBytes } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -229,7 +229,7 @@ export function main(argv, root, print = console.log) {
 	else fail("コマンドは start / end / issue / summary");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	try {
 		main(process.argv.slice(2), fileURLToPath(new URL("../..", import.meta.url)));
 	} catch (e) {
