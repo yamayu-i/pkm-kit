@@ -10,7 +10,7 @@ import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PickTimer } from "./pick-toggle";
-import { SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
+import { DependsField, SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
 import { showStatusMenu, StatusStepButton } from "./status-change";
 
 /** issue の md のパスから、親の issue の ID（`issue/i-12.md` → `i-12`） */
@@ -220,22 +220,8 @@ function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: stri
 						}}
 					/>
 				</label>
+				{others.length > 0 && <DependsField candidates={others} dependsOn={sub.dependsOn} onChange={(dependsOn) => void save({ dependsOn })} />}
 			</div>
-			{others.length > 0 && (
-				<fieldset class="vt-subissue-depends">
-					<legend>Depends on</legend>
-					{others.map((s) => (
-						<label class="vt-check">
-							<input
-								type="checkbox"
-								checked={sub.dependsOn.includes(s.id)}
-								onChange={(e) => void save({ dependsOn: e.currentTarget.checked ? [...sub.dependsOn, s.id] : sub.dependsOn.filter((d) => d !== s.id) })}
-							/>
-							{s.summary}
-						</label>
-					))}
-				</fieldset>
-			)}
 			{(props.error ?? estimatedError) !== null && <div class="vt-error">{props.error ?? estimatedError}</div>}
 			{props.onShowSource && (
 				<div class="vt-form">

@@ -643,3 +643,16 @@ export function touchedSubErrors(subs: readonly SubIssueInput[], touched: readon
 export function normalizeSubPatch(patch: SubIssuePatch): SubIssuePatch {
 	return patch.status !== undefined && patch.status !== "delegated" && patch.delegatedTo === undefined ? { ...patch, delegatedTo: null } : patch;
 }
+
+/** 「Depends on」のボタンの文言。text は 0 件で None、1 件で題、2 件以上で件数。title は選んだ題を候補の順に並べたもの */
+export function dependsChip(candidates: Pick<SubIssue, "id" | "summary">[], dependsOn: string[]): { text: string; title: string | null; empty: boolean } {
+	const picked = candidates.filter((s) => dependsOn.includes(s.id));
+	if (picked.length === 0) return { text: "None", title: null, empty: true };
+	const title = picked.map((s) => s.summary).join("\n");
+	return { text: picked.length === 1 ? picked[0]!.summary : `${picked.length} sub-issues`, title, empty: false };
+}
+
+/** 依存先を 1 件付け外しする */
+export function toggleDepends(dependsOn: string[], id: string): string[] {
+	return dependsOn.includes(id) ? dependsOn.filter((d) => d !== id) : [...dependsOn, id];
+}

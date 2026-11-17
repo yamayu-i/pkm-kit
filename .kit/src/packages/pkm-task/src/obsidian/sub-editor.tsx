@@ -1,8 +1,9 @@
+import { Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { STATUSES, type Status } from "../core/schema";
-import { subItemPatch, type SubIssue } from "../core/sub-issue";
+import { dependsChip, subItemPatch, toggleDepends, type SubIssue } from "../core/sub-issue";
 import { revealSub } from "../header/sub-reveal";
 import { DateForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
@@ -67,6 +68,29 @@ export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate 
 }
 
 export const SUB_DATE_FIELDS = DATE_FIELDS;
+
+/**
+ * 「Depends on」の欄。押すと同じ親のほかのサブのメニューを開き、選んだものを付け外しする。
+ * 1 行で済むように、選んだ題はボタンの文言（1 件は題、2 件以上は件数）とツールチップで見せる
+ */
+export function DependsField(props: { candidates: SubIssue[]; dependsOn: string[]; onChange: (next: string[]) => void }) {
+	const { candidates, dependsOn } = props;
+	const chip = dependsChip(candidates, dependsOn);
+	const open = (e: MouseEvent) => {
+		const m = new Menu();
+		for (const s of candidates) m.addItem((item) => item.setTitle(s.summary).setChecked(dependsOn.includes(s.id)).onClick(() => props.onChange(toggleDepends(dependsOn, s.id))));
+		m.showAtMouseEvent(e);
+	};
+	return (
+		<div class="vt-text-field">
+			<span>Depends on</span>
+			<button type="button" class={`vt-field-chip vt-subissue-depends${chip.empty ? " is-placeholder" : ""}`} title={chip.title ?? undefined} aria-haspopup="menu" onClick={open}>
+				<Icon name="link" />
+				<span class="vt-subissue-depends-text">{chip.text}</span>
+			</button>
+		</div>
+	);
+}
 
 /** 「Edit sub-issue」のダイアログ（ADR-0142）。項目だけを直す。本文は「Open note」で下部のカードを開いて直す（ADR-0179） */
 export function openSubEditor(ctx: TaskContext, sub: SubIssue): void {
@@ -152,22 +176,8 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 					<span>Estimated</span>
 					<input type="text" class="vt-small-input" placeholder="e.g. 2h" value={estimated} onInput={(e) => setEstimated(e.currentTarget.value)} />
 				</label>
+				{siblings.length > 0 && <DependsField candidates={siblings} dependsOn={draft.dependsOn} onChange={(dependsOn) => set({ dependsOn })} />}
 			</div>
-			{siblings.length > 0 && (
-				<fieldset class="vt-subissue-depends">
-					<legend>Depends on</legend>
-					{siblings.map((s) => (
-						<label class="vt-check">
-							<input
-								type="checkbox"
-								checked={draft.dependsOn.includes(s.id)}
-								onChange={(e) => set({ dependsOn: e.currentTarget.checked ? [...draft.dependsOn, s.id] : draft.dependsOn.filter((d) => d !== s.id) })}
-							/>
-							{s.summary}
-						</label>
-					))}
-				</fieldset>
-			)}
 			{error !== null && <div class="vt-error">{error}</div>}
 			<div class="vt-form">
 				<button type="button" class="vt-danger-text" onClick={() => deleteSubWithConfirm(ctx, sub, close)}>
