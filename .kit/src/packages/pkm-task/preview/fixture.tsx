@@ -9,6 +9,7 @@ import { IssueHeader } from "../src/header/IssueHeader";
 import { SubTimeline } from "../src/header/SubTimeline";
 import { visibleSubs } from "../src/core/sub-issue";
 import { StatusUndo } from "../src/obsidian/status-undo";
+import { SubCard } from "../src/obsidian/sub-card";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
 import { PresetHeader } from "../src/header/PresetHeader";
@@ -158,6 +159,11 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 			{/* 記録の開始・終了を直すダイアログと時計（ADR-0193） */}
 			<WorklogTimesForm summary="見積もりを出す" running initialFromMs={Date.now() - 1_800_000} onSubmit={() => {}} />
 			<ClockPicker hour={22} minute={38} onChange={() => {}} onDone={() => {}} />
+			{/* 開いたサブのカード（ADR-0161）。Depends on は 1 行のボタンとメニュー */}
+			{["hhhhhh", "dddddd"].map((id) => {
+				const subs = store.index.subs("i-2");
+				return <SubCard ctx={ctx as never} sub={subs.find((s) => s.id === id)!} siblings={subs} open onToggle={() => {}} save={noop} delayMs={null} />;
+			})}
 		</div>
 	),
 };

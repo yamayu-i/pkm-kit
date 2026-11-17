@@ -3356,17 +3356,15 @@ body.is-mobile .vt-toast {
 	border-radius: var(--vt-radius-s);
 }
 
+/* Depends on: 長い題は 1 行で切る */
 .vt-subissue-depends {
-	margin: 0;
-	padding: 4px 8px;
-	border: 1px solid var(--vt-outline-variant);
-	border-radius: var(--vt-radius-s);
+	max-width: 100%;
 }
 
-.vt-subissue-depends legend {
-	padding: 0 4px;
-	color: var(--vt-on-surface-variant);
-	font-size: var(--vt-type-label-medium-size);
+.vt-subissue-depends-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .vt-subissue-body-input {
