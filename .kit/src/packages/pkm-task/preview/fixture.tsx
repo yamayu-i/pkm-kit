@@ -60,6 +60,7 @@ const boardLog = [
 	boardOp(t, { op: "star", task: "i-6", on: true }),
 	boardOp(t, { op: "order", tasks: ["i-2#eeeeee", "i-6", "i-2#dddddd", "i-2#gggggg", "i-1"] }),
 	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
+	boardOp(t, { op: "routine", task: "r-5", result: "closed" }),
 	boardOp(addDays(t, -2), { op: "routine", task: "r-1", result: "canceled" }),
 ];
 
@@ -105,6 +106,9 @@ const { data } = collectVault({
 		),
 		{ path: "routine/r-1.md", frontmatter: { type: "routine", id: "r-1", summary: "朝のメール確認", repeat: { every: "day" }, start: addDays(t, -30), estimated: 15 } },
 		{ path: "routine/r-2.md", frontmatter: { type: "routine", id: "r-2", summary: "週次レビュー", repeat: { every: "week", on: ["fri"] }, start: addDays(t, -30) } },
+		// closing の routine（ADR-0206）。Closing の画面の上に並び順で出る
+		{ path: "routine/r-4.md", frontmatter: { type: "routine", id: "r-4", summary: "日次振り返りを書く", repeat: { every: "day" }, start: addDays(t, -30), category: "closing", order: 2 } },
+		{ path: "routine/r-5.md", frontmatter: { type: "routine", id: "r-5", summary: "明日の予定を確かめる", repeat: { every: "day" }, start: addDays(t, -30), category: "closing", order: 1 } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
 		{ path: "member/m-2.md", frontmatter: { type: "member", id: "m-2", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", label: ["仕事"] } },
@@ -124,8 +128,15 @@ const { data } = collectVault({
 
 export const store = { index: new TaskIndex(data), version: 1, subscribe: () => () => {}, mtime: () => Date.now(), problems: [] };
 const noop = async () => {};
+/** Closing の Notes（ADR-0206）に出るノート */
+const note = (path: string, hoursAgo: number, created: string | null, title?: string) => ({ path, basename: path.replace(/^.*\//, "").replace(/\.md$/, ""), stat: { mtime: Date.now() - hoursAgo * 3_600_000 }, fm: { created, ...(title ? { title } : {}) } });
+const notes = [note("wiki/llm-wiki.md", 0.5, "2026-10-01T10:00:00+09:00", "LLM wiki の仕組み"), note("会議メモ.md", 1, localDateTime()), note("issue/i-2.md", 2, null)];
 export const ctx = {
-	app: { vault: { getFileByPath: () => null } },
+	app: {
+		vault: { getFileByPath: () => null, getMarkdownFiles: () => notes },
+		metadataCache: { getFileCache: (f: { fm: unknown }) => ({ frontmatter: f.fm }) },
+		workspace: { getLeavesOfType: () => [], revealLeaf: noop },
+	},
 	store,
 	writer: new Proxy({}, { get: () => noop }),
 	settings: { deviceName: "pc", presets: [] },
@@ -140,6 +151,7 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	daily: DailyView,
 	board: DailyView,
 	pick: DailyView,
+	closing: DailyView,
 	issues: IssueListView,
 	inbox: InboxView,
 	organize: OrganizeView,
@@ -223,6 +235,12 @@ if (name in headerPaths || name === "routine" || name === "member" || name === "
 		render(h(VIEWS[name]!, { ctx: ctx as never }), el);
 		// board は DailyView の最後の段階、pick は Pick の段階（ADR-0150）を開いた状態
 		if (name === "board") setTimeout(() => el.querySelector<HTMLButtonElement>(".vt-step:last-child")?.click(), 0);
+		// closing はボードの Close board を押した状態（ADR-0206）
+		if (name === "closing")
+			setTimeout(() => {
+				el.querySelector<HTMLButtonElement>(".vt-step:last-child")?.click();
+				setTimeout(() => el.querySelector<HTMLButtonElement>(".vt-board-foot .is-primary")?.click(), 0);
+			}, 0);
 		if (name === "pick") setTimeout(() => el.querySelectorAll<HTMLButtonElement>(".vt-step")[2]?.click(), 0);
 	}
 	// 取り消しのトースト（ADR-0031）。画面の右下に固定で出る

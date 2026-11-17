@@ -52,8 +52,17 @@ export interface Routine {
 	priority: Priority | null;
 	labels: string[];
 	estimated: number | null;
+	/** 出す場所（ADR-0206）。null は default（ボードの routine の欄）、closing は Closing の画面 */
+	category: RoutineCategory | null;
+	/** カテゴリーの中の並び（小さい順。ないものは後ろに ID の順。ADR-0206） */
+	order: number | null;
 	created: string | null;
 }
+
+/** routine の category（ADR-0206）。書かないもの（null）を default と呼ぶ。default は予約語で frontmatter には書かない */
+export const ROUTINE_CATEGORIES = ["closing"] as const;
+export type RoutineCategory = (typeof ROUTINE_CATEGORIES)[number];
+export const DEFAULT_CATEGORY_NAME = "default";
 
 /** 委任先の人（ADR-0007, 0035）。nickname と alias は、なければ name と ID で埋めた値 */
 export interface Member {
@@ -265,9 +274,29 @@ export function parseRoutine(path: string, fm: Frontmatter): Parsed<Routine> {
 		priority: r.oneOf("priority", PRIORITIES),
 		labels: r.strings("label"),
 		estimated: r.minutes("estimated"),
+		category: routineCategory(r, fm.category),
+		order: routineOrder(r, fm.order),
 		created: r.datetime("created"),
 	};
 	return { value: id === null ? null : routine, problems: r.problems };
+}
+
+function routineCategory(r: Reader, value: unknown): RoutineCategory | null {
+	if (value === undefined || value === null || value === "") return null;
+	if (value === DEFAULT_CATEGORY_NAME) {
+		r.problem("reserved-category", "category の default は予約語です。default にするなら category を消してください（ADR-0206）", "warning");
+		return null;
+	}
+	if (typeof value === "string" && (ROUTINE_CATEGORIES as readonly string[]).includes(value)) return value as RoutineCategory;
+	r.problem("invalid-category", `category は ${ROUTINE_CATEGORIES.join(" / ")} のどれかにしてください（なしは default）: ${String(value)}`, "warning");
+	return null;
+}
+
+function routineOrder(r: Reader, value: unknown): number | null {
+	if (value === undefined || value === null) return null;
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	r.problem("invalid-field", `order は数にしてください: ${String(value)}`, "warning");
+	return null;
 }
 
 export function parseMember(path: string, fm: Frontmatter): Parsed<Member> {

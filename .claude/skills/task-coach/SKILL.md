@@ -55,7 +55,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 1. `task_get_board` と `task_get_worklog_summary`（今日の日付）で、今日完了したもの・未完了のもの・実績工数を確認する
 2. 記録中のままのタイマーがあれば `task_stop_timer` で止めるか確認する
-3. 未完了の routine があれば結果を聞き、`task_set_routine_result`（`closed` / `canceled`）で記録する
+3. 未完了の routine があれば結果を聞き、`task_set_routine_result`（`closed` / `canceled`）で記録する。`task_get_overview` の `missedRoutines`（予定日に結果を付けなかった積み残し）があれば、どの日の分かを示して結果を聞き、`date` にもとの日を入れて記録する（ADR-0206）
 4. 未完了の issue は、片付けたいものだけ `task_carry_issues` で片付ける（Next に戻す `next`・Tickler にする `tickler`（open だけ）・Calendar の日を選び直す `move`）。やらなかったものは Next に残るので、全部を片付けなくてよい。Inbox に戻す mode はない（GTD では in に戻さない。ADR-0189）
 5. `task_close_board` でボードを締め、デイリーノートの `## Task board` に要約を書き出す。未完了が残っていても締められ、未完了は持ち越しと書かれる
 6. 1 日の振り返りや翌日への申し送りをまとめ、`task_append_daily_note`（見出し例: `AI 振り返り`）でデイリーノート本文の末尾に追記する

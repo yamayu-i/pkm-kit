@@ -51,7 +51,7 @@ button{font:inherit;color:inherit;background:transparent;border:none;border-radi
 }
 
 // 撮る画面（引数で絞れる: pnpm preview:ui daily inbox）
-const SCREENS = ["header", "header-unpicked", "header-picked", "header-someday", "header-closed", "timeline", "routine", "member", "preset", "daily", "pick", "board", "issues", "inbox", "organize", "scheduled", "someday", "routines", "labels", "presets", "members", "sidebar", "forms"];
+const SCREENS = ["header", "header-unpicked", "header-picked", "header-someday", "header-closed", "timeline", "routine", "member", "preset", "daily", "pick", "board", "closing", "issues", "inbox", "organize", "scheduled", "someday", "routines", "labels", "presets", "members", "sidebar", "forms"];
 const wanted = process.argv.slice(2).filter((a) => SCREENS.includes(a));
 const screens = wanted.length > 0 ? wanted : SCREENS;
 

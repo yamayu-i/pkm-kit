@@ -7,6 +7,7 @@
  *   node .kit/bin/mcp.mjs [Vault のルート] [--device=ai] [--toolset=task,note,daily,wiki,check]   サーバー（meta は常に公開する）
  *   node .kit/bin/mcp.mjs report [Vault のルート] [--since=YYYY-MM-DD] [--until=YYYY-MM-DD] [--json]   利用ログの集計
  */
+import { missedRoutines } from "../src/core/routine-order";
 import { createInterface } from "node:readline";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -134,7 +135,7 @@ export interface JsonRpcResponse {
 const TOOLS: McpToolDef[] = [
 	{
 		name: "get_overview",
-		description: "指定日（既定は今日）のボード、負荷、期限切れ・期限間近、Inbox件数、未締めの過去ボード、記録中タイマー、持ち越し過多・停滞タスク、見積もり精度をまとめて取得する",
+		description: "指定日（既定は今日）のボード、負荷、期限切れ・期限間近、Inbox件数、routine の積み残し（予定日に結果のないもの。set_routine_result でもとの日に結果を付ける）、記録中タイマー、持ち越し過多・停滞タスク、見積もり精度をまとめて取得する",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -582,6 +583,7 @@ function callTaskTool(
 			// 一覧は件数と上位だけにする。全件は check_vault と task_list_issues で取る（ADR-0156 の 3）
 			const top = <T>(xs: T[]) => xs.slice(0, OVERVIEW_TOP);
 			const { stalled } = overview;
+			const missed = missedRoutines(index, today);
 			return {
 				...overview,
 				stalled: { inProgressStale: top(stalled.inProgressStale), revisitDue: top(stalled.revisitDue), waitingOrDelegated: top(stalled.waitingOrDelegated) },
@@ -590,6 +592,9 @@ function callTaskTool(
 					revisitDue: stalled.revisitDue.length,
 					waitingOrDelegated: stalled.waitingOrDelegated.length,
 				},
+				// routine の積み残し（ADR-0206）。古い順
+				missedRoutines: top(missed).map((m) => ({ date: m.date, routineId: m.routine.id, summary: m.routine.summary })),
+				missedRoutineCount: missed.length,
 				problems: top(problems),
 				problemCount: problems.length,
 			};

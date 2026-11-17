@@ -14,7 +14,7 @@ Open today's daily note で開く（なければテンプレートから作る�
 
 ## 使い方の筋道
 
-ボードを締めると `## Task board` 節に要約が入る。AI は振り返りを末尾に追記し、wiki への反映先のリンクを末尾に足す。タスクの View の「Today」とは別のもの。
+ボードの Close board を押すと、本文の冒頭に振り返りの型（スニペット `daily-review.md`。子は `template/snippet/daily-review.md` で上書きできる）が 1 回だけ入る。Closing の画面で記録を書くと `## Task board` 節に要約が入る。AI は振り返りを末尾に追記し、wiki への反映先のリンクを末尾に足す。タスクの View の「Today」とは別のもの。
 
 ## 根拠
 

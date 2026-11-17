@@ -1,9 +1,10 @@
 import { addDays, type LocalDate } from "./dates";
 import { isActive, isWatchStatus, routineOccursOn, type TaskIndex } from "./index";
 import type { Issue, Routine, Status } from "./schema";
+import { routinesOnDay } from "./routine-order";
 import type { SubIssue } from "./sub-issue";
 
-/** routine のその日の結果（ADR-0010: その日のうちに closed か canceled にする） */
+/** routine のその日の結果（ADR-0010）。付けないまま日が過ぎたものは積み残し（ADR-0206） */
 export type RoutineResult = "closed" | "canceled";
 
 /**
@@ -73,7 +74,7 @@ export function isOnBoard(index: TaskIndex, date: LocalDate, key: string): boole
 export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const issues = board.issues.map((id) => index.issues.get(id)).filter((i): i is Issue => i !== undefined);
 	const subs = board.issues.map((key) => index.sub(key)).filter((s): s is SubIssue => s !== undefined);
-	return { issues, subs, routines: index.routinesOn(date) };
+	return { issues, subs, routines: routinesOnDay(index, date) };
 }
 
 /**

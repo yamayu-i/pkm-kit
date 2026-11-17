@@ -135,35 +135,6 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
   return `${localToday(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
 }
 
-// ../pkm-task/src/core/board.ts
-var BOARD_KEY = "board";
-function emptyBoard() {
-  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
-}
-function record(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-}
-function parseBoard(value) {
-  const raw = record(value);
-  const board = emptyBoard();
-  if (Array.isArray(raw.issues)) {
-    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
-  }
-  if (Array.isArray(raw.carried)) {
-    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
-  }
-  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
-  board.closed = raw.closed === true;
-  return board;
-}
-function dailyNotePath(date) {
-  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
-}
-var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
-function markCarried(board, ids) {
-  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
-}
-
 // ../pkm-task/src/core/ids.ts
 function idNumber(id, prefix) {
   const m3 = new RegExp(`^${prefix}-([1-9]\\d*)$`).exec(id);
@@ -244,6 +215,8 @@ function parseRepeat(value) {
 var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
 var PRIORITIES = ["high", "mid", "low", "chore"];
+var ROUTINE_CATEGORIES = ["closing"];
+var DEFAULT_CATEGORY_NAME = "default";
 var Reader = class {
   constructor(path, fm) {
     this.path = path;
@@ -414,9 +387,27 @@ function parseRoutine(path, fm) {
     priority: r3.oneOf("priority", PRIORITIES),
     labels: r3.strings("label"),
     estimated: r3.minutes("estimated"),
+    category: routineCategory(r3, fm.category),
+    order: routineOrder(r3, fm.order),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : routine, problems: r3.problems };
+}
+function routineCategory(r3, value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (value === DEFAULT_CATEGORY_NAME) {
+    r3.problem("reserved-category", "category \u306E default \u306F\u4E88\u7D04\u8A9E\u3067\u3059\u3002default \u306B\u3059\u308B\u306A\u3089 category \u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0206\uFF09", "warning");
+    return null;
+  }
+  if (typeof value === "string" && ROUTINE_CATEGORIES.includes(value)) return value;
+  r3.problem("invalid-category", `category \u306F ${ROUTINE_CATEGORIES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F default\uFF09: ${String(value)}`, "warning");
+  return null;
+}
+function routineOrder(r3, value) {
+  if (value === void 0 || value === null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  r3.problem("invalid-field", `order \u306F\u6570\u306B\u3057\u3066\u304F\u3060\u3055\u3044: ${String(value)}`, "warning");
+  return null;
 }
 function parseMember(path, fm) {
   const r3 = new Reader(path, fm);
@@ -427,6 +418,38 @@ function parseMember(path, fm) {
   const alias = (r3.string("alias") ?? "").replace(/^@+/, "").trim();
   if (id === null) return { value: null, problems: r3.problems };
   return { value: { path, id, name, nickname, alias: alias || id, labels: r3.strings("label"), created: r3.datetime("created") }, problems: r3.problems };
+}
+
+// ../pkm-task/src/core/routine-order.ts
+var CATEGORY_GROUPS = [null, ...ROUTINE_CATEGORIES];
+
+// ../pkm-task/src/core/board.ts
+var BOARD_KEY = "board";
+function emptyBoard() {
+  return { issues: [], stars: [], routines: {}, carried: [], closed: false };
+}
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+}
+function parseBoard(value) {
+  const raw = record(value);
+  const board = emptyBoard();
+  if (Array.isArray(raw.issues)) {
+    for (const id of raw.issues) if (typeof id === "string" && !board.issues.includes(id)) board.issues.push(id);
+  }
+  if (Array.isArray(raw.carried)) {
+    for (const id of raw.carried) if (typeof id === "string" && !board.carried.includes(id)) board.carried.push(id);
+  }
+  for (const [id, r3] of Object.entries(record(raw.routines))) if (r3 === "closed" || r3 === "canceled") board.routines[id] = r3;
+  board.closed = raw.closed === true;
+  return board;
+}
+function dailyNotePath(date) {
+  return `daily/${date.slice(0, 4)}/${date.slice(5, 7)}/${date}.md`;
+}
+var DAILY_PATH_RE = /^daily\/\d{4}\/\d{2}\/(\d{4}-\d{2}-\d{2})\.md$/;
+function markCarried(board, ids) {
+  for (const id of ids) if (!board.carried.includes(id)) board.carried.push(id);
 }
 
 // ../pkm-task/src/core/sub-issue.ts

@@ -40,6 +40,7 @@ ADR へのリンク。
 | [Members と member 画面](task-members.md) | View・画面 |
 | [Today](task-today.md) | View |
 | [task board](task-board.md) | View（Today の段階） |
+| [Closing](task-closing.md) | View（Today の中。段階表示には入らない） |
 | [issue 画面](task-issue-screen.md) | 画面 |
 | [routine 画面](task-routine-screen.md) | 画面 |
 | [Issues](task-issues.md) | View |

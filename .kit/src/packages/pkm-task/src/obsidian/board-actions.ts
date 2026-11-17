@@ -176,6 +176,24 @@ export async function closeBoard(ctx: TaskContext, date: LocalDate): Promise<voi
 	}
 }
 
+/**
+ * Closing を始める（ADR-0206）: デイリーノートの冒頭に振り返りの型を入れ（1 回だけ）、右のペインに開く。
+ * すでに開いているタブがあれば、それを出す
+ */
+export async function beginClosing(ctx: TaskContext, date: LocalDate): Promise<void> {
+	let path: string;
+	try {
+		path = await ctx.writer.insertReview(date);
+	} catch (e) {
+		ctx.report("振り返りの型を入れられませんでした", e);
+		return;
+	}
+	const { workspace } = ctx.app;
+	const open = workspace.getLeavesOfType?.("markdown").find((l) => (l.view as { file?: { path: string } | null }).file?.path === path);
+	if (open) await workspace.revealLeaf(open);
+	else await ctx.openPath(path);
+}
+
 export const reopenBoard = (ctx: TaskContext, date: LocalDate) =>
 	guard(ctx, "ボードを開き直せませんでした", ctx.writer.appendBoardOps(date, ctx.settings.deviceName, [{ op: "reopen" }]));
 
