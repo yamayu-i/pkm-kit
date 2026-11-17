@@ -14,7 +14,7 @@ Organize の「Calendar」（日付を 1 つ選ぶ。整理済みにもする）
 
 ## 使い方の筋道
 
-今日が Calendar の日の issue とサブイシューは、Today を開くと自動で今日のボードに載る。その日にボードから外したものは載せ直さない。過ぎて片付いていないものは、Today の Calendar の段階の「Missed」に、日を選び直すか Next に戻すまで出る。Calendar の日があるものは Next に入らない。
+今日が Calendar の日の issue とサブイシューは、Today を開くと自動で今日のボードに載る。その日にボードから外したものは載せ直さない。過ぎて片付いていないものは、Today の Calendar の段階の「Missed」に、日を選び直すか Next に戻すまで出る。Calendar の日があるものは Next に入らない。サブイシューを持つ issue は Calendar の日を持たない（何日もかかる作業はサブの期間で計画する。ADR-0203）。
 
 ## 根拠
 

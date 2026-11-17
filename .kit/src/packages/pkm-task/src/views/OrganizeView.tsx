@@ -75,6 +75,8 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	const root = useRef<HTMLDivElement>(null);
 	const queue = organizeQueue(ctx.store.index.issues.values(), today).filter((i) => !handled.has(i.id));
 	const issue = queue[0];
+	// サブを持つ issue は Calendar の日を持たない（ADR-0203）
+	const hasSubs = issue !== undefined && ctx.store.index.subs(issue.id).length > 0;
 	const excerpt = useExcerpt(ctx, issue);
 
 	const apply = async (patch: Patch, label: string) => {
@@ -273,7 +275,12 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 					<Icon name="alarm-clock" />
 					<span>Tickler</span>
 				</button>
-				<button class="vt-round" disabled={!issue} onClick={calendar} title="Calendar: must be done on a specific day">
+				<button
+					class="vt-round"
+					disabled={!issue || hasSubs}
+					onClick={calendar}
+					title={hasSubs ? "Calendar: not for an issue with sub-issues. Plan the sub-issues' periods instead" : "Calendar: must be done on a specific day"}
+				>
 					<Icon name="calendar-plus" />
 					<span>Calendar</span>
 				</button>

@@ -8562,6 +8562,9 @@ function lintVault(data2, options = {}) {
       if (!index.members.has(issue.delegatedTo)) add("error", path, "dangling-member", `delegated_to \u306E ${issue.delegatedTo} \u304C\u3042\u308A\u307E\u305B\u3093`);
       if (issue.status !== "delegated") add("warning", path, "stale-delegated-to", "delegated \u3067\u306F\u306A\u3044\u306E\u306B delegated_to \u304C\u3042\u308A\u307E\u3059");
     }
+    if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
+      add("warning", path, "calendar-with-subs", "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064\u306E\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0203\uFF09");
+    }
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
     }

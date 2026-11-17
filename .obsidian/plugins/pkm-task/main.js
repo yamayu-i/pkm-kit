@@ -481,15 +481,15 @@ function installHeaderMount(options) {
     resizers.get(host)?.disconnect();
     resizers.delete(host);
   };
-  let pending = /* @__PURE__ */ new Set();
+  let pending2 = /* @__PURE__ */ new Set();
   let frame;
   const check = (view) => {
-    pending.add(view);
+    pending2.add(view);
     if (frame !== void 0) return;
     frame = window.requestAnimationFrame(() => {
       frame = void 0;
-      const views = Array.from(pending);
-      pending = /* @__PURE__ */ new Set();
+      const views = Array.from(pending2);
+      pending2 = /* @__PURE__ */ new Set();
       report(
         eachSafely(views, (v3) => {
           if (scrolls.get(v3.contentEl)?.shown && headerMissing(sizersOf(v3), className)) mount(v3);
@@ -2154,16 +2154,19 @@ var byPick = (a3, b2) => priorityRank(a3.priority) - priorityRank(b2.priority) |
 function pickCandidates(index, today, board) {
   const on = new Set(board.issues);
   const groups = /* @__PURE__ */ new Map();
+  const withNext = /* @__PURE__ */ new Set();
   for (const s3 of index.data.subIssues) {
-    if (on.has(s3.key) || index.sub(s3.key) !== s3) continue;
-    if (!isNextSub(s3, today)) continue;
-    const parent = index.issues.get(s3.parent);
-    if (!parent || !isActive(parent)) continue;
+    if (index.sub(s3.key) !== s3) continue;
+    if (!isNextSub(s3, index.issues.get(s3.parent), today)) continue;
+    withNext.add(s3.parent);
+    if (on.has(s3.key)) continue;
     groups.set(s3.parent, [...groups.get(s3.parent) ?? [], s3]);
   }
   const projects = new Set(index.data.subIssues.filter((s3) => isActive(s3) && index.sub(s3.key) === s3).map((s3) => s3.parent));
   const issues = [...index.issues.values()].filter((i3) => !on.has(i3.id) && !projects.has(i3.id) && isNext(i3)).sort(byPick);
+  const stalled = [...projects].map((id) => index.issues.get(id)).filter((i3) => i3 !== void 0 && isNext(i3) && !withNext.has(i3.id)).sort(byPick);
   return {
+    stalled,
     issues,
     groups: [...groups.entries()].map(([id, subs]) => ({ parent: index.issues.get(id), subs: subs.sort((a3, b2) => a3.order - b2.order) })).sort((a3, b2) => byPick(a3.parent, b2.parent))
   };
@@ -2297,8 +2300,19 @@ function isNext(issue, _today) {
   const ready = issue.status === "in-progress" || issue.status === "open" && issue.clarified;
   return ready && issue.scheduled === null && issue.tickler === null;
 }
-function isNextSub(sub, today) {
-  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && (sub.start === null || sub.start <= today);
+function inPeriod(sub, today) {
+  const start = sub.start ?? sub.end;
+  const end = sub.end ?? sub.start;
+  return start !== null && end !== null && start <= today && today <= end;
+}
+function nextSubApartFromPeriod(sub, parent) {
+  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== void 0 && isNext(parent);
+}
+function isNextSub(sub, parent, today) {
+  return nextSubApartFromPeriod(sub, parent) && inPeriod(sub, today);
+}
+function needsPeriod(sub, parent, today) {
+  return nextSubApartFromPeriod(sub, parent) && !inPeriod(sub, today);
 }
 function isWatchStatus(status) {
   return status === "waiting" || status === "delegated";
@@ -3016,6 +3030,19 @@ var MemberSuggestModal = class extends import_obsidian2.SuggestModal {
 // src/obsidian/status-change.tsx
 var import_obsidian3 = require("obsidian");
 
+// src/core/pick.ts
+function pickTimerControl(s3) {
+  if (s3.running) return "stop";
+  if (isDoneStatus(s3.status) || isWatchStatus(s3.status) || s3.status === "someday") return null;
+  if (s3.picked) return "start";
+  if (s3.next) return "pick";
+  if (s3.needsPeriod) return "timeline";
+  return null;
+}
+function showsPrimaryStep(status, onBoard) {
+  return status !== "open" || onBoard;
+}
+
 // src/ui/hooks.ts
 function useStoreVersion(store) {
   const [version, setVersion] = d2(store.version);
@@ -3113,6 +3140,7 @@ function StatusStepButton(props) {
   const status = statusOf(ctx, keyOf);
   if (status === null) return null;
   const step = primaryStep(status);
+  if (!showsPrimaryStep(status, props.onBoard ?? isOnBoard(ctx.store.index, localToday(), keyOf))) return null;
   const reopenTo = step.kind === "reopen" ? ctx.store.index.reopenStatus(keyOf) : null;
   const title = step.kind === "reopen" ? `Reopen (\u2192 ${reopenTo})` : `${step.label} (\u2192 ${step.to})`;
   const run = (e3) => {
@@ -3257,24 +3285,30 @@ function issueRowMenu(ctx, e3, issue) {
   m3.showAtMouseEvent(e3);
 }
 
-// src/core/pick.ts
-function pickTimerControl(status, picked, running) {
-  if (running) return "stop";
-  if (isDoneStatus(status) || isWatchStatus(status)) return null;
-  if (status === "someday") return "pick";
-  return picked ? "start" : "pick";
+// src/header/sub-timeline-reveal.ts
+var revealers = /* @__PURE__ */ new Map();
+var pending = null;
+function setTimelineRevealer(parentId, fn) {
+  if (!fn) {
+    revealers.delete(parentId);
+    return;
+  }
+  revealers.set(parentId, fn);
+  if (pending?.parent === parentId) {
+    const sub = pending;
+    pending = null;
+    fn(sub);
+  }
 }
-function pickedStatus(status) {
-  return status === "in-progress" || isWatchStatus(status) ? "in-progress" : "open";
-}
-function pickIssuePatch(issue) {
-  if (isNext(issue)) return null;
-  return { status: pickedStatus(issue.status), clarified: true, scheduled: null, tickler: null, delegated_to: null, revisit: null };
-}
-function pickSubPatch(sub, today) {
-  if (isNextSub(sub, today)) return null;
-  const future = sub.start !== null && sub.start > today;
-  return { status: pickedStatus(sub.status), delegatedTo: null, scheduled: null, ...future ? { start: null } : {} };
+function revealInTimeline(sub) {
+  const fn = revealers.get(sub.parent);
+  if (!fn) {
+    pending = sub;
+    return false;
+  }
+  pending = null;
+  fn(sub);
+  return true;
 }
 
 // src/obsidian/board-actions.ts
@@ -3584,6 +3618,96 @@ function stopTimer(ctx, ids) {
   return guard(ctx, "\u8A18\u9332\u3092\u6B62\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", ctx.writer.stopTimer(running));
 }
 
+// src/obsidian/pick-toggle.tsx
+function PickToggle(props) {
+  const { ctx, keyOf } = props;
+  const [busy, setBusy] = d2(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      await addToBoard(ctx, localToday(), [keyOf]);
+    } catch (e3) {
+      ctx.report("Pick \u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-play vt-pick", "aria-label": "Pick", title: "Add to today's board", disabled: busy, onClick: () => void run(), children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
+}
+function TimelineButton(props) {
+  const { ctx, sub } = props;
+  const open = () => {
+    if (!revealInTimeline(sub)) void ctx.openPath(sub.path, false);
+  };
+  const title = "Today is outside this sub-issue's period. Open the Timeline to plan it";
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-play vt-pick", "aria-label": "Open Timeline", title, onClick: open, children: /* @__PURE__ */ u3(Icon, { name: "calendar-range" }) });
+}
+function PickTimer(props) {
+  const { ctx, keyOf } = props;
+  useStoreVersion(ctx.store);
+  const now = useNow();
+  const running = ctx.store.index.running(keyOf);
+  const index = ctx.store.index;
+  const today = localToday();
+  const issue = index.issues.get(keyOf);
+  const sub = issue ? void 0 : index.sub(keyOf);
+  const task = issue ?? sub;
+  if (!task) return null;
+  const parent = sub ? index.issues.get(sub.parent) : void 0;
+  const control = pickTimerControl({
+    status: task.status,
+    picked: isOnBoard(index, today, keyOf),
+    running: running.length > 0,
+    next: issue ? isNext(issue) : sub ? isNextSub(sub, parent, today) : false,
+    needsPeriod: sub ? needsPeriod(sub, parent, today) : false
+  });
+  if (control === null) return null;
+  if (control === "pick") return /* @__PURE__ */ u3(PickToggle, { ...props });
+  if (control === "timeline" && sub) return /* @__PURE__ */ u3(TimelineButton, { ctx, sub });
+  const elapsed = running.reduce((m3, log) => Math.max(m3, now - log.fromMs), 0);
+  const label = running.length ? "Stop timer" : "Start timer";
+  return /* @__PURE__ */ u3(
+    "button",
+    {
+      type: "button",
+      class: `vt-play${running.length ? " is-running" : ""}`,
+      "aria-label": label,
+      title: label,
+      onClick: () => void (running.length ? stopTimer(ctx, [keyOf]) : startTimer(ctx, [keyOf])),
+      children: [
+        /* @__PURE__ */ u3(Icon, { name: running.length ? "square" : "play" }),
+        running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
+      ]
+    }
+  );
+}
+
+// src/ui/badges.tsx
+function StatusBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
+    props.status,
+    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function IdBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
+}
+var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
+function PriorityBadge(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
+    props.priority ?? "priority",
+    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
+  ] });
+}
+function LabelBadge(props) {
+  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
+}
+
+// src/header/SubIssues.tsx
+var import_obsidian7 = require("obsidian");
+
 // src/obsidian/sub-editor.tsx
 var import_obsidian6 = require("obsidian");
 
@@ -3746,89 +3870,6 @@ function SubIssueForm(props) {
     }
   );
 }
-
-// src/obsidian/pick-toggle.tsx
-function PickToggle(props) {
-  const { ctx, keyOf } = props;
-  const [busy, setBusy] = d2(false);
-  const run = () => {
-    const today = localToday();
-    const issue = ctx.store.index.issues.get(keyOf);
-    const sub = ctx.store.index.sub(keyOf);
-    const issuePatch = issue ? pickIssuePatch(issue) : null;
-    const subPatch = sub ? pickSubPatch(sub, today) : null;
-    const patch = issuePatch ?? subPatch;
-    const apply2 = async () => {
-      setBusy(true);
-      try {
-        if (issue && issuePatch) await ctx.writer.update(issue.path, issuePatch);
-        else if (sub && subPatch) await ctx.writer.updateSub(sub.key, subPatch);
-        await addToBoard(ctx, today, [keyOf]);
-      } catch (e3) {
-        ctx.report("Pick \u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-      } finally {
-        setBusy(false);
-      }
-    };
-    if (!patch) return void apply2();
-    const fields = Object.entries(patch).map(([key, value]) => `${key}: ${value === null ? "\u89E3\u9664" : value}`).join("\u3001");
-    confirmModal(ctx, "Next \u306B\u3057\u3066 Pick", `Next \u306B\u3059\u308B\u305F\u3081\u3001\u6B21\u306E\u30D7\u30ED\u30D1\u30C6\u30A3\u3092\u5909\u66F4\u3057\u3066\u4ECA\u65E5\u306E\u30DC\u30FC\u30C9\u306B\u8F09\u305B\u307E\u3059\u3002${fields}`, "Pick", () => void apply2());
-  };
-  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-play vt-pick", "aria-label": "Pick", title: "Add to today's board", disabled: busy, onClick: run, children: /* @__PURE__ */ u3(Icon, { name: "calendar-check" }) });
-}
-function PickTimer(props) {
-  const { ctx, keyOf } = props;
-  useStoreVersion(ctx.store);
-  const now = useNow();
-  const running = ctx.store.index.running(keyOf);
-  const task = ctx.store.index.issues.get(keyOf) ?? ctx.store.index.sub(keyOf);
-  if (!task) return null;
-  const control = pickTimerControl(task.status, isOnBoard(ctx.store.index, localToday(), keyOf), running.length > 0);
-  if (control === null) return null;
-  if (control === "pick") return /* @__PURE__ */ u3(PickToggle, { ...props });
-  const elapsed = running.reduce((m3, log) => Math.max(m3, now - log.fromMs), 0);
-  const label = running.length ? "Stop timer" : "Start timer";
-  return /* @__PURE__ */ u3(
-    "button",
-    {
-      type: "button",
-      class: `vt-play${running.length ? " is-running" : ""}`,
-      "aria-label": label,
-      title: label,
-      onClick: () => void (running.length ? stopTimer(ctx, [keyOf]) : startTimer(ctx, [keyOf])),
-      children: [
-        /* @__PURE__ */ u3(Icon, { name: running.length ? "square" : "play" }),
-        running.length > 0 && /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(elapsed / 6e4) })
-      ]
-    }
-  );
-}
-
-// src/ui/badges.tsx
-function StatusBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-status vt-status-${props.status}${props.wide ? " is-wide" : ""}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3(StatusIcon, { status: props.status, class: props.enter ? "is-enter" : "" }),
-    props.status,
-    props.onClick && props.wide && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function IdBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: `vt-badge vt-id vt-status-${props.issue.status}`, children: props.issue.id });
-}
-var PRIORITY_ICONS = { high: "\u25B2", mid: "\u25A0", low: "\u25BC", chore: "\xB7", none: "+" };
-function PriorityBadge(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-badge vt-priority vt-priority-${props.priority ?? "none"}`, onClick: props.onClick, disabled: !props.onClick, children: [
-    /* @__PURE__ */ u3("span", { class: "vt-priority-icon", "aria-hidden": "true", children: PRIORITY_ICONS[props.priority ?? "none"] }),
-    props.priority ?? "priority",
-    props.onClick && /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-  ] });
-}
-function LabelBadge(props) {
-  return /* @__PURE__ */ u3("span", { class: "vt-badge vt-label", style: { backgroundColor: props.color }, children: props.name });
-}
-
-// src/header/SubIssues.tsx
-var import_obsidian7 = require("obsidian");
 
 // src/ui/Segmented.tsx
 function Segmented(props) {
@@ -4074,6 +4115,7 @@ var ROW = 36;
 var HANDLE = 8;
 function SubTimeline(props) {
   const { ctx, subs, scale } = props;
+  const target = props.target ?? null;
   const today = localToday();
   const px = DAY_PX[scale];
   const range = timelineRange(subs, today, scale);
@@ -4086,6 +4128,10 @@ function SubTimeline(props) {
   const body = A2(null);
   const [link, setLink] = d2(null);
   const [selected, setSelected] = d2(null);
+  const labels = A2(null);
+  h2(() => {
+    if (target !== null) labels.current?.querySelector(".vt-timeline-label.is-target")?.scrollIntoView({ block: "nearest" });
+  }, [target]);
   h2(() => {
     const el = scroller.current;
     if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
@@ -4174,7 +4220,7 @@ function SubTimeline(props) {
     void save(sub, { start: date, end: date });
   };
   return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`, onKeyDown: (e3) => e3.key === "Escape" && setSelected(null), children: [
-    /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", ref: labels, children: [
       /* @__PURE__ */ u3("div", { class: "vt-timeline-corner", children: /* @__PURE__ */ u3(
         Segmented,
         {
@@ -4188,10 +4234,19 @@ function SubTimeline(props) {
           onChange: props.onScale
         }
       ) }),
-      subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Open: ${sub.summary}`, onClick: () => revealSub(sub), children: [
-        /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
-        /* @__PURE__ */ u3("span", { class: "vt-timeline-label-text", children: sub.summary })
-      ] }))
+      subs.map((sub) => /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}${sub.key === target ? " is-target" : ""}`,
+          title: `Open: ${sub.summary}`,
+          onClick: () => revealSub(sub),
+          children: [
+            /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+            /* @__PURE__ */ u3("span", { class: "vt-timeline-label-text", children: sub.summary })
+          ]
+        }
+      ))
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-timeline-scroll", ref: scroller, children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
       /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
@@ -4329,13 +4384,24 @@ function SubIssues(props) {
   const [showClosed, setShowClosed] = d2(false);
   const [mode, setMode] = d2("list");
   const [scale, setScale] = d2("day");
+  const [target, setTarget] = d2(null);
+  const card = A2(null);
+  h2(() => {
+    setTimelineRevealer(issue.id, (sub) => {
+      setMode("timeline");
+      setTarget(sub.key);
+      card.current?.scrollIntoView({ block: "nearest" });
+    });
+    return () => setTimelineRevealer(issue.id, null);
+  }, [issue.id]);
   const subs = index.subs(issue.id);
+  if (issue.scheduled !== null && subs.length === 0) return null;
   const shown = visibleSubs(subs, showClosed);
   const counts = subCounts(subs);
   const effort = index.effortByKey(now);
   const visibleKeys = shown.map((s3) => s3.key);
   const move2 = (key, before) => void ctx.writer.moveSubBefore(key, before).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u4E26\u3079\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
-  return /* @__PURE__ */ u3("section", { class: "vt-card vt-subissues", children: [
+  return /* @__PURE__ */ u3("section", { class: "vt-card vt-subissues", ref: card, children: [
     /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Sub-issues" }),
       counts.total > 0 && /* @__PURE__ */ u3("span", { class: "vt-count", title: `${counts.open} open of ${counts.total}`, children: [
@@ -4353,12 +4419,15 @@ function SubIssues(props) {
             { value: "timeline", label: "Timeline", icon: "chart-gantt", iconFallback: "gantt-chart" }
           ],
           value: mode,
-          onChange: setMode
+          onChange: (v3) => {
+            setMode(v3);
+            if (v3 === "list") setTarget(null);
+          }
         }
       ),
       /* @__PURE__ */ u3(PresetButton, { ctx, issue, index })
     ] }),
-    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale, onScale: setScale }),
+    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale, onScale: setScale, target }),
     mode === "list" && shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
       SubRow,
       {
@@ -4566,7 +4635,7 @@ function IssueHeader(props) {
       ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3("div", { class: "vt-row vt-schedule", children: [
-      /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save }),
+      /* @__PURE__ */ u3(ScheduleStrip, { ctx, issue, save, calendar: issue.scheduled !== null || index.subs(issue.id).length === 0 }),
       /* @__PURE__ */ u3(DueFields, { ctx, issue, save })
     ] }) }),
     /* @__PURE__ */ u3(SubIssues, { ctx, issue, index, now }),
@@ -4665,7 +4734,7 @@ function LabelsField(props) {
   ] });
 }
 function ScheduleStrip(props) {
-  const { ctx, issue, save } = props;
+  const { ctx, issue, save, calendar } = props;
   const today = localToday();
   const days = Array.from({ length: 7 }, (_2, i3) => addDays(today, i3));
   const setCalendar = (d3) => save(scheduledPatch(issue, d3));
@@ -4681,12 +4750,12 @@ function ScheduleStrip(props) {
   )).open();
   const later = issue.scheduled !== null && issue.scheduled > days[6];
   return /* @__PURE__ */ u3("div", { class: "vt-strip", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-strip-days", children: days.map((d3) => /* @__PURE__ */ u3("div", { class: "vt-strip-col", children: [
+    calendar && /* @__PURE__ */ u3("div", { class: "vt-strip-days", children: days.map((d3) => /* @__PURE__ */ u3("div", { class: "vt-strip-col", children: [
       /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
       /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: issue.scheduled === d3, softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => setCalendar(issue.scheduled === d3 ? null : d3) })
     ] })) }),
     /* @__PURE__ */ u3("div", { class: "vt-row", children: [
-      /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: pick("Calendar (must be done on this day)", issue.scheduled, setCalendar), children: [
+      calendar && /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: pick("Calendar (must be done on this day)", issue.scheduled, setCalendar), children: [
         "calendar >",
         issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""
       ] }),
@@ -7359,6 +7428,16 @@ function preactViewCreator(spec, ctx) {
   return (leaf) => new PreactView(leaf);
 }
 
+// src/core/calendar-subs.ts
+function calendarWithSubsError(id, subCount, scheduled) {
+  if (scheduled === null || subCount === 0) return null;
+  return `${id}: \u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064 issue \u306B\u306F Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u4F55\u65E5\u3082\u304B\u304B\u308B\u4F5C\u696D\u306F\u3001\u30B5\u30D6\u306E\u671F\u9593\u3067\u8A08\u753B\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function subsWithCalendarError(issue) {
+  if (issue.scheduled === null) return null;
+  return `${issue.id}: Calendar \u306E\u65E5\u3092\u6301\u3064 issue \u306B\u306F\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u305B\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u5148\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+
 // src/obsidian/writer.ts
 var import_obsidian22 = require("obsidian");
 
@@ -7715,6 +7794,10 @@ var TaskWriter = class {
         if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
         fields = completeIssuePatch(next, fields, from);
       }
+      if (via !== "undo" && fileKind(path) === "issue" && typeof fields.scheduled === "string" && fields.scheduled !== "" && typeof fm.id === "string") {
+        const error = calendarWithSubsError(fm.id, this.store.index.subs(fm.id).length, fields.scheduled);
+        if (error) throw new Error(error);
+      }
       const after = isStatus2(next) ? next : from;
       if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus2(after) && after !== "open") {
         throw new Error(ticklerError(after));
@@ -7784,6 +7867,8 @@ var TaskWriter = class {
     const issue = this.store.index.issues.get(parentId);
     if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parentId}`);
     if (summaries.length === 0) return [];
+    const calendar = subsWithCalendarError(issue);
+    if (calendar) throw new Error(calendar);
     const created = localDateTime();
     let keys = [];
     await this.app.vault.process(this.file(issue.path), (text) => {
@@ -7948,6 +8033,8 @@ var TaskWriter = class {
   async applyPreset(parentId, preset) {
     const issue = this.store.index.issues.get(parentId);
     if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parentId}`);
+    const calendar = preset.subIssues.length > 0 ? subsWithCalendarError(issue) : null;
+    if (calendar) throw new Error(calendar);
     const created = localDateTime();
     let keys = [];
     await this.app.vault.process(this.file(issue.path), (text) => {
@@ -8553,7 +8640,7 @@ function TaskCard(props) {
       } : {},
       children: [
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu }),
-        card.kind !== "routine" && /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: key }),
+        card.kind !== "routine" && /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: key, onBoard: true }),
         /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: summary }),
         !done && card.kind !== "routine" && /* @__PURE__ */ u3(
           "button",
@@ -8947,7 +9034,7 @@ function PickStep(props) {
   const sel = issues.filter((i3) => selected.has(i3.id));
   const done = () => setSelected(/* @__PURE__ */ new Set());
   const today = localToday();
-  if (issues.length === 0 && props.groups.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No next actions to pick" });
+  if (issues.length === 0 && props.groups.length === 0 && props.stalled.length === 0) return /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No next actions to pick" });
   return /* @__PURE__ */ u3(S, { children: [
     issues.length > 0 && /* @__PURE__ */ u3("section", { class: "vt-card", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
@@ -8974,6 +9061,19 @@ function PickStep(props) {
         /* @__PURE__ */ u3("span", { class: "vt-count", children: props.groups.reduce((n2, g2) => n2 + g2.subs.length, 0) })
       ] }),
       /* @__PURE__ */ u3(SubLines, { ctx, subs: props.groups.flatMap((g2) => g2.subs), actions: (s3) => [{ label: "Add to board", primary: true, run: () => void addSubToBoard(ctx, today, s3) }] })
+    ] }),
+    props.stalled.length > 0 && // Next のサブが 1 つもない Project（ADR-0203）。Pick の段階から消えないように出し、issue 画面で期間を決めるかサブを足す
+    /* @__PURE__ */ u3("section", { class: "vt-card", children: [
+      /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "Projects without a next action" }),
+        /* @__PURE__ */ u3("span", { class: "vt-count", children: props.stalled.length })
+      ] }),
+      /* @__PURE__ */ u3("div", { class: "vt-routine-rows", children: props.stalled.map((p3) => /* @__PURE__ */ u3("div", { class: "vt-routine-row", children: [
+        /* @__PURE__ */ u3("span", { class: "vt-cell-summary", title: `${p3.id} ${p3.summary}`, children: p3.summary }),
+        /* @__PURE__ */ u3("span", { class: "vt-muted", children: "No sub-issue to do today" }),
+        /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+        /* @__PURE__ */ u3("button", { class: "vt-button is-text", onClick: () => void ctx.openPath(p3.path), children: "Open" })
+      ] }, p3.id)) })
     ] })
   ] });
 }
@@ -8997,7 +9097,7 @@ function DailyView(props) {
   const lists = (l3, s3) => l3.deadline.length + l3.softDeadline.length + s3.length;
   const counts = {
     calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
-    pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0),
+    pick: pick.issues.length + pick.groups.reduce((n2, g2) => n2 + g2.subs.length, 0) + pick.stalled.length,
     board: unfinishedCount(todayLeft)
   };
   const [passed, setPassed] = d2(/* @__PURE__ */ new Set());
@@ -9054,7 +9154,7 @@ function DailyView(props) {
       )
     ] }, s3.key)) }),
     step === "calendar" && /* @__PURE__ */ u3(CalendarStep, { ctx, dead, deadSub, caution, cautionSub, missed, missedSub }),
-    step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups }),
+    step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups, stalled: pick.stalled }),
     step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
       /* @__PURE__ */ u3("span", {}),
@@ -9644,6 +9744,7 @@ function OrganizeView(props) {
   const root = A2(null);
   const queue = organizeQueue(ctx.store.index.issues.values(), today).filter((i3) => !handled.has(i3.id));
   const issue = queue[0];
+  const hasSubs = issue !== void 0 && ctx.store.index.subs(issue.id).length > 0;
   const excerpt = useExcerpt(ctx, issue);
   const apply2 = async (patch, label) => {
     if (!issue) return;
@@ -9842,10 +9943,19 @@ function OrganizeView(props) {
         /* @__PURE__ */ u3(Icon, { name: "alarm-clock" }),
         /* @__PURE__ */ u3("span", { children: "Tickler" })
       ] }),
-      /* @__PURE__ */ u3("button", { class: "vt-round", disabled: !issue, onClick: calendar, title: "Calendar: must be done on a specific day", children: [
-        /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
-        /* @__PURE__ */ u3("span", { children: "Calendar" })
-      ] }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          class: "vt-round",
+          disabled: !issue || hasSubs,
+          onClick: calendar,
+          title: hasSubs ? "Calendar: not for an issue with sub-issues. Plan the sub-issues' periods instead" : "Calendar: must be done on a specific day",
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar-plus" }),
+            /* @__PURE__ */ u3("span", { children: "Calendar" })
+          ]
+        }
+      ),
       /* @__PURE__ */ u3("button", { class: "vt-round is-schedule", disabled: !issue, onClick: next, title: "Next action, no date (\u2192)", children: [
         /* @__PURE__ */ u3(Icon, { name: "list-todo" }),
         /* @__PURE__ */ u3("span", { children: "Next" })

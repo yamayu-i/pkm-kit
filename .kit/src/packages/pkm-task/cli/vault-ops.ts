@@ -1,3 +1,4 @@
+import { calendarWithSubsError, subsWithCalendarError } from "../src/core/calendar-subs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
@@ -259,6 +260,11 @@ export function carryIssuesOnDisk(
 		if (!board.issues.includes(id)) throw new Error(`${id} は ${date} のボードに載っていません`);
 		// サブは整理の対象ではないので、Tickler も Inbox も持たない（ADR-0148, 0152）
 		if (kind === "tickler" && index.sub(id)) throw new Error(`サブは ${kind} にできません: ${id}`);
+		// Calendar とサブを同時に持たせない（ADR-0203）
+		if (kind === "move" && index.issues.has(id)) {
+			const calendar = calendarWithSubsError(id, index.subs(id).length, to);
+			if (calendar) throw new Error(calendar);
+		}
 		// Tickler は open（と someday）だけ（ADR-0183）
 		const status = index.issues.get(id)?.status;
 		if (kind === "tickler" && status !== undefined && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
@@ -468,6 +474,9 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	}
 	if (input.scheduled !== undefined) {
 		if (input.scheduled !== null && !isLocalDate(input.scheduled)) throw new Error(`scheduled の日付が不正です: ${String(input.scheduled)}`);
+		// Calendar とサブを同時に持たせない（ADR-0203）
+		const calendar = calendarWithSubsError(current.id, index.subs(current.id).length, input.scheduled);
+		if (calendar) throw new Error(calendar);
 		patch.scheduled = input.scheduled;
 	}
 	if (input.tickler !== undefined) {
@@ -574,6 +583,8 @@ export function createSubIssuesOnDisk(root: string, index: TaskIndex, parent: st
 	const issue = index.issues.get(parent);
 	if (!issue) throw new Error(`issue がありません: ${parent}`);
 	if (!Array.isArray(items) || items.length === 0) throw new Error("items を 1 件以上指定してください");
+	const calendar = subsWithCalendarError(issue);
+	if (calendar) throw new Error(calendar);
 	const existing = index.subs(parent);
 	const taken = existing.map((s) => s.id);
 	const created = localDateTime(now);

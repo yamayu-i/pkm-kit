@@ -341,7 +341,7 @@ const TOOLS: McpToolDef[] = [
 				delegated_to: { type: ["string", "null"] },
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
-				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）。null で消す" },
+				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）。null で消す。サブイシューを持つ issue には付けられない（ADR-0203）" },
 				tickler: { type: ["string", "null"], description: "Tickler の日 YYYY-MM-DD（その日に Inbox に戻す）。null で消す" },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
@@ -356,7 +356,7 @@ const TOOLS: McpToolDef[] = [
 	{
 		name: "create_sub_issues",
 		description:
-			"issue の md の中にサブイシューを足す（ADR-0135。サブのサブは作れない）。items の順に、末尾か position の位置に置く。作ったサブの合成キー（i-12#k3f9a2）を返す。大きい issue を分けるときに使う",
+			"issue の md の中にサブイシューを足す（ADR-0135。サブのサブは作れない）。items の順に、末尾か position の位置に置く。作ったサブの合成キー（i-12#k3f9a2）を返す。大きい issue を分けるときに使う。Calendar の日（scheduled）を持つ issue には足せない（ADR-0203）",
 		inputSchema: {
 			type: "object",
 			properties: {

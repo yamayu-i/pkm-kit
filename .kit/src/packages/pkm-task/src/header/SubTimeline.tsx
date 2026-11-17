@@ -30,8 +30,9 @@ interface Link {
 }
 
 /** サブイシューのガントチャート（ADR-0143）。期間はドラッグで直し、指を離したときに 1 回だけ保存する */
-export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale; onScale: (scale: TimelineScale) => void }) {
+export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale; onScale: (scale: TimelineScale) => void; target?: string | null }) {
 	const { ctx, subs, scale } = props;
+	const target = props.target ?? null;
 	const today = localToday();
 	const px = DAY_PX[scale];
 	const range = timelineRange(subs, today, scale);
@@ -46,6 +47,12 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	const [link, setLink] = useState<Link | null>(null);
 	// 選んだ矢印（ADR-0163）。選ぶと × ボタンにフォーカスが移り、× か Delete で消す
 	const [selected, setSelected] = useState<{ from: string; to: string } | null>(null);
+
+	// 期間の外のサブの Timeline のボタンから来たとき（ADR-0203）、その行を画面に入れる（来たときだけ。ドラッグのたびには動かさない）
+	const labels = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (target !== null) labels.current?.querySelector(".vt-timeline-label.is-target")?.scrollIntoView({ block: "nearest" });
+	}, [target]);
 
 	// 開いたときと目盛りを変えたときは、今日が左寄りに見えるようにする
 	useEffect(() => {
@@ -145,7 +152,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 
 	return (
 		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
-			<div class="vt-timeline-labels">
+			<div class="vt-timeline-labels" ref={labels}>
 				{/* 目盛りの切り替えは、目盛り（日付の行）の隣に置く。表示の切り替え（List / Timeline）と離す */}
 				<div class="vt-timeline-corner">
 					<Segmented
@@ -160,7 +167,10 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 					/>
 				</div>
 				{subs.map((sub) => (
-					<button type="button" class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`} title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
+					<button
+						type="button"
+						class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}${sub.key === target ? " is-target" : ""}`}
+						title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
 						<StatusIcon status={sub.status} />
 						<span class="vt-timeline-label-text">{sub.summary}</span>
 					</button>

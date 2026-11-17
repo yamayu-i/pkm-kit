@@ -8,7 +8,7 @@
 
 - 段階を順に進む: **Calendar → Pick → Board**。件数のある段階を順に通り、「Next」で飛ばせる。手で選んだ段階は、片付くと次へ進む。上の段階表示は、今の段階だけ名前と件数を出し、ほかは番号（済みはチェック）の丸に縮める。残りがある段階には赤い点が付き、名前と件数はツールチップで分かる。丸を押すといつでも移れる
 - Calendar: 期限切れ（Overdue）・期限が近い（Due soon。3 日以内）は deadline と soft deadline の表が別々。操作は Add to today's board、Change Deadline / Change Soft Deadline、Tickler、Someday、Cancel、行の編集（守れない期限は結び直す）。Missed（[Calendar](../concepts/task-do-date.md) の日が過ぎて片付いていないもの）は Add to today's board、Move date、Back to Next、Close、Cancel。サブイシューは、期限切れ・期限が近い表では end（サブの期限）の表に、Missed の表にもそのまま出る。同じ issue のサブは親の小さい見出し（ID と題）の下にまとまる
-- Pick: Next（整理済みで、Calendar の日も Tickler もない open の issue）を priority → deadline → 見直しが古い順に出し、選んで今日のボードに載せる（日付は書かない）。Tickler・Someday・Cancel・Inbox もできる。サブイシュー（Calendar の日がなく、start が今日以前）は、親の小さい見出しの下に並べて「Add to board」で載せる。サブを持つ親は行に出さない
+- Pick: Next（整理済みで、Calendar の日も Tickler もない open の issue）を priority → deadline → 見直しが古い順に出し、選んで今日のボードに載せる（日付は書かない）。Tickler・Someday・Cancel・Inbox もできる。サブイシュー（Calendar の日がなく、親が Next で、今日が期間に入るもの）は、親の小さい見出しの下に並べて「Add to board」で載せる。サブを持つ親は行に出さない。Next のサブが 1 つもない Next の親は「Projects without a next action」に出し、Open で issue 画面を開いて期間を決めるかサブを足す
 - 開いているあいだ、今日が Calendar の日の issue とサブイシューを自動で今日のボードに載せる（その日に外したものは載せない）
 - 最後の段階は [task board](task-board.md)
 

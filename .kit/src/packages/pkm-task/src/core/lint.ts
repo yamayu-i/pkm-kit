@@ -136,6 +136,10 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 			if (!index.members.has(issue.delegatedTo)) add("error", path, "dangling-member", `delegated_to の ${issue.delegatedTo} がありません`);
 			if (issue.status !== "delegated") add("warning", path, "stale-delegated-to", "delegated ではないのに delegated_to があります");
 		}
+		// Calendar とサブを同時に持たせない（ADR-0203）。閉じたサブも数える。自動では消さない
+		if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
+			add("warning", path, "calendar-with-subs", "サブイシューを持つのに Calendar の日（scheduled）があります。どちらかを外してください（ADR-0203）");
+		}
 		if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
 			add("warning", path, "long-status-detail", `status-detail が ${STATUS_DETAIL_MAX} 文字を超えています`);
 		}

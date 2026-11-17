@@ -6,7 +6,6 @@ import { boardLanes, unstarOps, type BoardLanes } from "../src/core/board-lanes"
 import { pickCandidates } from "../src/core/daily";
 import { isNext, isNextSub, TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
-import { pickIssuePatch, pickSubPatch } from "../src/core/pick";
 import { parseIssue } from "../src/core/schema";
 import { todoTasks } from "../src/core/tasks-now";
 
@@ -45,11 +44,12 @@ describe("Next に in-progress を含める", () => {
 		for (const status of ["waiting", "delegated", "someday", "closed", "canceled"]) expect(isNext(fm({ status, clarified: true }))).toBe(false);
 	});
 
-	it("サブの Next: open か in-progress で、Calendar がなく、start がないか今日以前", () => {
+	it("サブの Next: open か in-progress で、Calendar がなく、親が Next で、今日が期間に入っている（ADR-0203）", () => {
+		const today = `start: ${DATE}\nend: ${DATE}\n`;
 		const index = load([
-			issue("i-1", {}, sub("aaaaaa", "a") + sub("bbbbbb", "b", "in-progress") + sub("cccccc", "c", "waiting") + sub("dddddd", "d", "in-progress", "scheduled: 2026-11-20\n") + sub("eeeeee", "e", "in-progress", "start: 2026-11-30\n") + sub("ffffff", "f", "delegated", "delegated_to: m-1\n")),
+			issue("i-1", { clarified: true }, sub("aaaaaa", "a", "open", today) + sub("bbbbbb", "b", "in-progress", today) + sub("cccccc", "c", "waiting", today) + sub("dddddd", "d", "in-progress", "scheduled: 2026-11-20\n" + today) + sub("eeeeee", "e", "in-progress", "start: 2026-11-30\n") + sub("ffffff", "f", "delegated", "delegated_to: m-1\n" + today)),
 		]);
-		const next = index.data.subIssues.filter((s) => isNextSub(s, DATE)).map((s) => s.id);
+		const next = index.data.subIssues.filter((s) => isNextSub(s, index.issues.get(s.parent), DATE)).map((s) => s.id);
 		expect(next).toEqual(["aaaaaa", "bbbbbb"]);
 	});
 
@@ -57,19 +57,11 @@ describe("Next に in-progress を含める", () => {
 		const index = load([
 			issue("i-1", { status: "in-progress" }),
 			issue("i-2", { status: "waiting", clarified: true }),
-			issue("i-3", { clarified: true }, sub("aaaaaa", "進行中", "in-progress") + sub("bbbbbb", "待ち", "waiting")),
+			issue("i-3", { clarified: true }, sub("aaaaaa", "進行中", "in-progress", `start: ${DATE}\n`) + sub("bbbbbb", "待ち", "waiting", `start: ${DATE}\n`)),
 		]);
 		const { issues, groups } = pickCandidates(index, DATE, emptyBoard());
 		expect(issues.map((i) => i.id)).toEqual(["i-1"]);
 		expect(groups.map((g) => [g.parent.id, g.subs.map((s) => s.id)])).toEqual([["i-3", ["aaaaaa"]]]);
-	});
-
-	it("Pick しても in-progress は in-progress のまま", () => {
-		expect(pickIssuePatch(fm({ status: "in-progress" }))).toBeNull();
-		const index = load([issue("i-1", {}, sub("aaaaaa", "a", "in-progress", "scheduled: 2026-11-20\nstart: 2026-11-30\n") + sub("bbbbbb", "b", "in-progress"))]);
-		const [a, b] = index.data.subIssues;
-		expect(pickSubPatch(a!, DATE)).toEqual({ status: "in-progress", delegatedTo: null, scheduled: null, start: null });
-		expect(pickSubPatch(b!, DATE)).toBeNull();
 	});
 });
 

@@ -13,9 +13,9 @@
 3. status（メニュー）と status-detail。delegated なら委任先。
 4. priority と label
 5. 今日からの 7 日のストリップ（押すとその日を Calendar の日にする。もう一度押すと消す。「calendar >」で先の日も選べる）、tickler（その日に Inbox に戻す）、soft deadline・deadline
-6. サブイシューの一覧（同じ Markdown に作る。題・状態・期間と依存を持ち、閉じたものは既定では隠す）。今日のボードに載せる Pick と、載った後の再生・停止を表示する。Timeline で期間と依存を見て直せる。見出しの Apply preset から[プリセット](task-presets.md)を選ぶと、そのサブを末尾に足し、本文を issue の本文の末尾に追記する
+6. サブイシューの一覧（同じ Markdown に作る。題・状態・期間と依存を持ち、閉じたものは既定では隠す）。今日のボードに載せる Pick と、載った後の再生・停止を表示する。Pick は Next のサブ（open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入る）にだけ出し、期間がないか今日が期間の外のサブには、代わりに Timeline のボタンを出す（押すと何も書き換えず、Timeline でそのサブの行を目立たせる）。status のボタンの Start は、今日のボードに載せたものにだけ出す。Calendar の日を持つ issue にはサブを作れず、このカードを出さないTimeline で期間と依存を見て直せる。見出しの Apply preset から[プリセット](task-presets.md)を選ぶと、そのサブを末尾に足し、本文を issue の本文の末尾に追記する
 7. estimated（プリセットか単位付きの入力）、実績、残り
-8. worklog（見出しに Pick、ボードに載った後は再生・停止。新しい順に 5 件ずつ。押して編集）
+8. worklog（見出しに Pick（Next の issue だけ。Inbox・Calendar・Tickler・someday には出さない）、ボードに載った後は再生・停止。新しい順に 5 件ずつ。押して編集）
 9. 本文（ふつうのエディタ。新しい issue は ToDo / Description / Note の見出し）
 
 ページの一番上に出る。編集の画面とリーディングビューの両方に出て、どちらでも編集できる。Properties 欄は隠す（ソースモードでは frontmatter が見える）。
@@ -34,7 +34,7 @@ summary・status・priority・label、分単位の estimated、YYYY-MM-DD の日
 
 ## 操作と保存
 
-各項目は親の frontmatter、サブは同じ Markdown 内の sub-issue ブロックへ保存します。Pick は今日のボードへの追加・除外を行い、Calendar の日は書きません。worklog は親と sub の組に紐付きます。
+各項目は親の frontmatter、サブは同じ Markdown 内の sub-issue ブロックへ保存します。Pick は今日のボードへの追加・除外を行い、Calendar の日もほかの項目も書きません。Next でないものは、先に Organize などで Next にしてから Pick します（ADR-0203）。サブを持つ issue には Calendar の日を付けられず、その欄を出しません。worklog は親と sub の組に紐付きます。
 
 ## 失敗時と戻し方
 

@@ -59,7 +59,7 @@ describe("Pick の候補", () => {
 		issue("i-4", {}), // Inbox
 		issue("i-5", { clarified: true, scheduled: "2026-11-20" }), // Calendar
 		issue("i-6", { clarified: true, tickler: "2026-11-20" }), // Tickler
-		issue("i-7", { clarified: true, priority: "mid" }, sub("aaaaaa", "先にやる") + sub("bbbbbb", "あとで", "start: 2026-11-30\n") + sub("cccccc", "決まった日", "scheduled: 2026-11-20\n") + sub("dddddd", "次に")),
+		issue("i-7", { clarified: true, priority: "mid" }, sub("aaaaaa", "先にやる", `start: ${today}\n`) + sub("bbbbbb", "あとで", "start: 2026-11-30\n") + sub("cccccc", "決まった日", "scheduled: 2026-11-20\n") + sub("dddddd", "次に", "start: 2026-11-10\nend: 2026-11-20\n")),
 		issue("i-8", { clarified: true, priority: "mid", reviewed: "2026-10-01" }),
 		issue("i-9", { status: "waiting", priority: "high" }, sub("eeeeee", "待っている親のサブ")),
 	]);
@@ -69,13 +69,10 @@ describe("Pick の候補", () => {
 		expect(issues.map((i) => i.id)).toEqual(["i-3", "i-2", "i-8", "i-1"]);
 	});
 
-	it("サブを持つ親は行に出さず、サブの見出しにする（親の priority の順、サブは親の中の順）。start が先のサブと Calendar のサブは出さない", () => {
+	it("サブを持つ親は行に出さず、サブの見出しにする（親の priority の順、サブは親の中の順）。start が先のサブと Calendar のサブ、Next でない親のサブは出さない（ADR-0203）", () => {
 		const { issues, groups } = pickCandidates(index, today, emptyBoard());
 		expect(issues.map((i) => i.id)).not.toContain("i-7");
-		expect(groups.map((g) => [g.parent.id, g.subs.map((s) => s.id)])).toEqual([
-			["i-9", ["eeeeee"]],
-			["i-7", ["aaaaaa", "dddddd"]],
-		]);
+		expect(groups.map((g) => [g.parent.id, g.subs.map((s) => s.id)])).toEqual([["i-7", ["aaaaaa", "dddddd"]]]);
 	});
 
 	it("親が active でない（closed・someday など）サブは出さない", () => {
@@ -92,7 +89,7 @@ describe("Pick の候補", () => {
 });
 
 describe("issue・サブの画面から今日のボードに載せる（Pick）", () => {
-	const subs = sub("aaaaaa", "サブ");
+	const subs = sub("aaaaaa", "サブ", `start: ${today}\n`);
 	const withBoard = (keys: string[]) => {
 		const boardLogs = [
 			{

@@ -9137,6 +9137,9 @@ function lintVault(data, options = {}) {
       if (!index.members.has(issue.delegatedTo)) add("error", path, "dangling-member", `delegated_to \u306E ${issue.delegatedTo} \u304C\u3042\u308A\u307E\u305B\u3093`);
       if (issue.status !== "delegated") add("warning", path, "stale-delegated-to", "delegated \u3067\u306F\u306A\u3044\u306E\u306B delegated_to \u304C\u3042\u308A\u307E\u3059");
     }
+    if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
+      add("warning", path, "calendar-with-subs", "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064\u306E\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0203\uFF09");
+    }
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
     }
@@ -9634,6 +9637,16 @@ function readVault(root) {
   return { data, problems, paths };
 }
 
+// src/core/calendar-subs.ts
+function calendarWithSubsError(id, subCount, scheduled) {
+  if (scheduled === null || subCount === 0) return null;
+  return `${id}: \u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064 issue \u306B\u306F Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u4F55\u65E5\u3082\u304B\u304B\u308B\u4F5C\u696D\u306F\u3001\u30B5\u30D6\u306E\u671F\u9593\u3067\u8A08\u753B\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function subsWithCalendarError(issue) {
+  if (issue.scheduled === null) return null;
+  return `${issue.id}: Calendar \u306E\u65E5\u3092\u6301\u3064 issue \u306B\u306F\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u305B\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u5148\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+
 // cli/vault-ops.ts
 var import_yaml2 = __toESM(require_dist(), 1);
 import { existsSync, mkdirSync, readFileSync as readFileSync2, writeFileSync } from "node:fs";
@@ -9874,6 +9887,10 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
     assertBoardKey(index, id);
     if (!board.issues.includes(id)) throw new Error(`${id} \u306F ${date} \u306E\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u307E\u305B\u3093`);
     if (kind === "tickler" && index.sub(id)) throw new Error(`\u30B5\u30D6\u306F ${kind} \u306B\u3067\u304D\u307E\u305B\u3093: ${id}`);
+    if (kind === "move" && index.issues.has(id)) {
+      const calendar = calendarWithSubsError(id, index.subs(id).length, to);
+      if (calendar) throw new Error(calendar);
+    }
     const status = index.issues.get(id)?.status;
     if (kind === "tickler" && status !== void 0 && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
   }
@@ -10012,6 +10029,8 @@ function updateIssueOnDisk(root, index, input, log) {
   }
   if (input.scheduled !== void 0) {
     if (input.scheduled !== null && !isLocalDate(input.scheduled)) throw new Error(`scheduled \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.scheduled)}`);
+    const calendar = calendarWithSubsError(current.id, index.subs(current.id).length, input.scheduled);
+    if (calendar) throw new Error(calendar);
     patch.scheduled = input.scheduled;
   }
   if (input.tickler !== void 0) {
@@ -10094,6 +10113,8 @@ function createSubIssuesOnDisk(root, index, parent, items, now, at) {
   const issue = index.issues.get(parent);
   if (!issue) throw new Error(`issue \u304C\u3042\u308A\u307E\u305B\u3093: ${parent}`);
   if (!Array.isArray(items) || items.length === 0) throw new Error("items \u3092 1 \u4EF6\u4EE5\u4E0A\u6307\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+  const calendar = subsWithCalendarError(issue);
+  if (calendar) throw new Error(calendar);
   const existing = index.subs(parent);
   const taken = existing.map((s) => s.id);
   const created = localDateTime(now);
@@ -11197,7 +11218,7 @@ var TOOLS = [
         delegated_to: { type: ["string", "null"] },
         priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
         labels: { type: "array", items: { type: "string" } },
-        scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09\u3002null \u3067\u6D88\u3059" },
+        scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09\u3002null \u3067\u6D88\u3059\u3002\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064 issue \u306B\u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF08ADR-0203\uFF09" },
         tickler: { type: ["string", "null"], description: "Tickler \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3002null \u3067\u6D88\u3059" },
         soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
@@ -11211,7 +11232,7 @@ var TOOLS = [
   },
   {
     name: "create_sub_issues",
-    description: "issue \u306E md \u306E\u4E2D\u306B\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u3059\uFF08ADR-0135\u3002\u30B5\u30D6\u306E\u30B5\u30D6\u306F\u4F5C\u308C\u306A\u3044\uFF09\u3002items \u306E\u9806\u306B\u3001\u672B\u5C3E\u304B position \u306E\u4F4D\u7F6E\u306B\u7F6E\u304F\u3002\u4F5C\u3063\u305F\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-12#k3f9a2\uFF09\u3092\u8FD4\u3059\u3002\u5927\u304D\u3044 issue \u3092\u5206\u3051\u308B\u3068\u304D\u306B\u4F7F\u3046",
+    description: "issue \u306E md \u306E\u4E2D\u306B\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u3059\uFF08ADR-0135\u3002\u30B5\u30D6\u306E\u30B5\u30D6\u306F\u4F5C\u308C\u306A\u3044\uFF09\u3002items \u306E\u9806\u306B\u3001\u672B\u5C3E\u304B position \u306E\u4F4D\u7F6E\u306B\u7F6E\u304F\u3002\u4F5C\u3063\u305F\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-12#k3f9a2\uFF09\u3092\u8FD4\u3059\u3002\u5927\u304D\u3044 issue \u3092\u5206\u3051\u308B\u3068\u304D\u306B\u4F7F\u3046\u3002Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u6301\u3064 issue \u306B\u306F\u8DB3\u305B\u306A\u3044\uFF08ADR-0203\uFF09",
     inputSchema: {
       type: "object",
       properties: {

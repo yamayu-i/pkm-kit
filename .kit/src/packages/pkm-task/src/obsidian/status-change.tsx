@@ -1,4 +1,7 @@
 import { Menu } from "obsidian";
+import { isOnBoard } from "../core/board";
+import { localToday } from "../core/dates";
+import { showsPrimaryStep } from "../core/pick";
 import type { Issue, Status } from "../core/schema";
 import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
 import { issueStatusPatch, primaryStep, subStatusPatch, transitionTargets } from "../core/transition";
@@ -86,12 +89,15 @@ export function showStatusMenu(ctx: TaskContext, e: MouseEvent, key: string, sav
  * status のボタン（ADR-0183）。いちばんよく使う遷移を 1 つだけ出す。アイコンは押した後の status の形、closed / canceled は ↩。
  * ボードでは CSS でホバー・フォーカスのときだけ見せる（場所は取っておく）
  */
-export function StatusStepButton(props: { ctx: TaskContext; keyOf: string; save?: SubSave; onDone?: () => void }) {
+export function StatusStepButton(props: { ctx: TaskContext; keyOf: string; save?: SubSave; onDone?: () => void; onBoard?: boolean }) {
 	const { ctx, keyOf, save } = props;
 	useStoreVersion(ctx.store);
 	const status = statusOf(ctx, keyOf);
 	if (status === null) return null;
 	const step = primaryStep(status);
+	// Start（open → in-progress）は、今日のボードに載せた（Pick した）ものにだけ出す（ADR-0203）。ボードのカードは載っているので onBoard を渡す。
+	// status のメニューからは、これまでどおり in-progress にできる
+	if (!showsPrimaryStep(status, props.onBoard ?? isOnBoard(ctx.store.index, localToday(), keyOf))) return null;
 	const reopenTo = step.kind === "reopen" ? ctx.store.index.reopenStatus(keyOf) : null;
 	const title = step.kind === "reopen" ? `Reopen (→ ${reopenTo})` : `${step.label} (→ ${step.to})`;
 	const run = (e: MouseEvent) => {

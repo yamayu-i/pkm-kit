@@ -61,7 +61,7 @@ export function IssueHeader(props: { ctx: TaskContext; path: string }) {
 			</section>
 			<section class="vt-card">
 				<div class="vt-row vt-schedule">
-					<ScheduleStrip ctx={ctx} issue={issue} save={save} />
+					<ScheduleStrip ctx={ctx} issue={issue} save={save} calendar={issue.scheduled !== null || index.subs(issue.id).length === 0} />
 					<DueFields ctx={ctx} issue={issue} save={save} />
 				</div>
 			</section>
@@ -183,8 +183,8 @@ export function LabelsField(props: { ctx: TaskContext; labels: string[]; index: 
  * Calendar（scheduled。その日にやらなければならない日 1 つ）と Tickler（この日に Inbox に戻す）。ADR-0152。
  * 7 日のセルで Calendar の日を選ぶ（同じ日をもう一度押すと消す）。先の日はカレンダーから選ぶ
  */
-function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
-	const { ctx, issue, save } = props;
+function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; calendar: boolean }) {
+	const { ctx, issue, save, calendar } = props;
 	const today = localToday();
 	const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
 	const setCalendar = (d: LocalDate | null) => save(scheduledPatch(issue, d));
@@ -201,18 +201,23 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 	const later = issue.scheduled !== null && issue.scheduled > days[6]!;
 	return (
 		<div class="vt-strip">
-			<div class="vt-strip-days">
-				{days.map((d) => (
-					<div class="vt-strip-col">
-						<span class="vt-weekday">{WEEKDAY_NAMES[weekdayOf(d)]}</span>
-						<DayCell date={d} scheduled={issue.scheduled === d} softDeadline={issue.softDeadline} deadline={issue.deadline} today={today} onClick={() => setCalendar(issue.scheduled === d ? null : d)} />
-					</div>
-				))}
-			</div>
+			{/* サブを持つ issue は Calendar の日を持たない（ADR-0203）。日を入れる欄を出さない（両方あるときは、消せるように出す） */}
+			{calendar && (
+				<div class="vt-strip-days">
+					{days.map((d) => (
+						<div class="vt-strip-col">
+							<span class="vt-weekday">{WEEKDAY_NAMES[weekdayOf(d)]}</span>
+							<DayCell date={d} scheduled={issue.scheduled === d} softDeadline={issue.softDeadline} deadline={issue.deadline} today={today} onClick={() => setCalendar(issue.scheduled === d ? null : d)} />
+						</div>
+					))}
+				</div>
+			)}
 			<div class="vt-row">
-				<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
-					calendar &gt;{issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""}
-				</button>
+				{calendar && (
+					<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
+						calendar &gt;{issue.scheduled !== null && (later || issue.scheduled < today) ? ` (${formatShortDate(issue.scheduled)})` : ""}
+					</button>
+				)}
 				{/* Tickler は open（と someday）だけが持つ。ほかの status では、残っている日を消すだけ（ADR-0183） */}
 				{canSetTickler(issue.status) ? (
 					<button

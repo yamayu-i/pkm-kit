@@ -194,13 +194,13 @@ function MissedSection(props: { ctx: TaskContext; issues: Issue[]; subs: SubIssu
 }
 
 /** Pick（ADR-0150）: Next から今日やるものを選んでボードに載せる。サブは親の小さい見出しの下に並べる */
-function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: Issue; subs: SubIssue[] }[] }) {
+function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: Issue; subs: SubIssue[] }[]; stalled: Issue[] }) {
 	const { ctx, issues } = props;
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const sel = issues.filter((i) => selected.has(i.id));
 	const done = () => setSelected(new Set());
 	const today = localToday();
-	if (issues.length === 0 && props.groups.length === 0) return <div class="vt-empty">No next actions to pick</div>;
+	if (issues.length === 0 && props.groups.length === 0 && props.stalled.length === 0) return <div class="vt-empty">No next actions to pick</div>;
 	return (
 		<>
 			{issues.length > 0 && (
@@ -228,6 +228,29 @@ function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: 
 						<span class="vt-count">{props.groups.reduce((n, g) => n + g.subs.length, 0)}</span>
 					</div>
 					<SubLines ctx={ctx} subs={props.groups.flatMap((g) => g.subs)} actions={(s) => [{ label: "Add to board", primary: true, run: () => void addSubToBoard(ctx, today, s) }]} />
+				</section>
+			)}
+			{props.stalled.length > 0 && (
+				// Next のサブが 1 つもない Project（ADR-0203）。Pick の段階から消えないように出し、issue 画面で期間を決めるかサブを足す
+				<section class="vt-card">
+					<div class="vt-section-head">
+						<span class="vt-field-label">Projects without a next action</span>
+						<span class="vt-count">{props.stalled.length}</span>
+					</div>
+					<div class="vt-routine-rows">
+						{props.stalled.map((p) => (
+							<div class="vt-routine-row" key={p.id}>
+								<span class="vt-cell-summary" title={`${p.id} ${p.summary}`}>
+									{p.summary}
+								</span>
+								<span class="vt-muted">No sub-issue to do today</span>
+								<span class="vt-spacer" />
+								<button class="vt-button is-text" onClick={() => void ctx.openPath(p.path)}>
+									Open
+								</button>
+							</div>
+						))}
+					</div>
 				</section>
 			)}
 		</>
@@ -260,7 +283,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 
 	const counts: Record<Step, number> = {
 		calendar: lists(dead, deadSub) + lists(caution, cautionSub) + missed.length + missedSub.length,
-		pick: pick.issues.length + pick.groups.reduce((n, g) => n + g.subs.length, 0),
+		pick: pick.issues.length + pick.groups.reduce((n, g) => n + g.subs.length, 0) + pick.stalled.length,
 		board: unfinishedCount(todayLeft),
 	};
 
@@ -329,7 +352,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 			</nav>
 
 			{step === "calendar" && <CalendarStep ctx={ctx} dead={dead} deadSub={deadSub} caution={caution} cautionSub={cautionSub} missed={missed} missedSub={missedSub} />}
-			{step === "pick" && <PickStep ctx={ctx} issues={pick.issues} groups={pick.groups} />}
+			{step === "pick" && <PickStep ctx={ctx} issues={pick.issues} groups={pick.groups} stalled={pick.stalled} />}
 			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} />}
 
 			{step !== "board" && (

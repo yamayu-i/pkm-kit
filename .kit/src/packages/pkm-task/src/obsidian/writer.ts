@@ -1,3 +1,4 @@
+import { calendarWithSubsError, subsWithCalendarError } from "../core/calendar-subs";
 import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
@@ -111,6 +112,11 @@ export class TaskWriter {
 				if (!canTransition(from, next, reopenTo)) throw new Error(transitionError(from, next, reopenTo));
 				fields = completeIssuePatch(next, fields, from);
 			}
+			// Calendar とサブを同時に持たせない（ADR-0203）。サブを持つ issue に Calendar の日を付けない
+			if (via !== "undo" && fileKind(path) === "issue" && typeof fields.scheduled === "string" && fields.scheduled !== "" && typeof fm.id === "string") {
+				const error = calendarWithSubsError(fm.id, this.store.index.subs(fm.id).length, fields.scheduled);
+				if (error) throw new Error(error);
+			}
 			// Tickler は open だけが持つ（ADR-0183）。書いた後の status が open でなければ付けない
 			const after = isStatus(next) ? next : from;
 			if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus(after) && after !== "open") {
@@ -187,6 +193,8 @@ export class TaskWriter {
 		const issue = this.store.index.issues.get(parentId);
 		if (!issue) throw new Error(`issue がありません: ${parentId}`);
 		if (summaries.length === 0) return [];
+		const calendar = subsWithCalendarError(issue);
+		if (calendar) throw new Error(calendar);
 		const created = localDateTime();
 		let keys: string[] = [];
 		await this.app.vault.process(this.file(issue.path), (text) => {
@@ -368,6 +376,8 @@ export class TaskWriter {
 	async applyPreset(parentId: string, preset: Pick<IssuePreset, "subIssues" | "body">): Promise<string[]> {
 		const issue = this.store.index.issues.get(parentId);
 		if (!issue) throw new Error(`issue がありません: ${parentId}`);
+		const calendar = preset.subIssues.length > 0 ? subsWithCalendarError(issue) : null;
+		if (calendar) throw new Error(calendar);
 		const created = localDateTime();
 		let keys: string[] = [];
 		await this.app.vault.process(this.file(issue.path), (text) => {
