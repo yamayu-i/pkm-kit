@@ -2628,7 +2628,8 @@ function Icon(props) {
     if (!ref.current) return;
     ref.current.replaceChildren();
     (0, import_obsidian.setIcon)(ref.current, props.name);
-  }, [props.name]);
+    if (!ref.current.firstChild && props.fallback) (0, import_obsidian.setIcon)(ref.current, props.fallback);
+  }, [props.name, props.fallback]);
   return /* @__PURE__ */ u3("span", { ref, class: `vt-icon ${props.class ?? ""}`, "aria-hidden": "true" });
 }
 
@@ -3829,15 +3830,20 @@ function LabelBadge(props) {
 // src/header/SubIssues.tsx
 var import_obsidian7 = require("obsidian");
 
-// src/ui/FilterChip.tsx
-function FilterChip(props) {
-  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
-    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
-    props.label
-  ] });
-}
-function toggle(list, v3) {
-  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+// src/ui/Segmented.tsx
+function Segmented(props) {
+  return /* @__PURE__ */ u3("div", { class: `vt-segmented${props.size === "small" ? " is-small" : ""}`, role: "group", "aria-label": props.label, children: props.options.map((o3) => /* @__PURE__ */ u3(
+    "button",
+    {
+      type: "button",
+      class: `vt-segmented-button${o3.value === props.value ? " is-on" : ""}${o3.icon ? " is-icon" : ""}`,
+      "aria-pressed": o3.value === props.value,
+      "aria-label": o3.icon ? o3.label : void 0,
+      title: o3.icon ? o3.label : void 0,
+      onClick: () => o3.value !== props.value && props.onChange(o3.value),
+      children: o3.icon ? /* @__PURE__ */ u3(Icon, { name: o3.icon, fallback: o3.iconFallback }) : o3.label
+    }
+  )) });
 }
 
 // src/core/timeline.ts
@@ -4169,8 +4175,20 @@ function SubTimeline(props) {
   };
   return /* @__PURE__ */ u3("div", { class: `vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`, onKeyDown: (e3) => e3.key === "Escape" && setSelected(null), children: [
     /* @__PURE__ */ u3("div", { class: "vt-timeline-labels", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-timeline-corner" }),
-      subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Edit: ${sub.summary}`, onClick: () => openSubEditor(ctx, sub), children: [
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-corner", children: /* @__PURE__ */ u3(
+        Segmented,
+        {
+          label: "Scale",
+          size: "small",
+          options: [
+            { value: "day", label: "Day" },
+            { value: "week", label: "Week" }
+          ],
+          value: scale,
+          onChange: props.onScale
+        }
+      ) }),
+      subs.map((sub) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`, title: `Open: ${sub.summary}`, onClick: () => revealSub(sub), children: [
         /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
         /* @__PURE__ */ u3("span", { class: "vt-timeline-label-text", children: sub.summary })
       ] }))
@@ -4326,18 +4344,21 @@ function SubIssues(props) {
         counts.total
       ] }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      counts.total > 0 && /* @__PURE__ */ u3("div", { class: "vt-subissues-modes", children: [
-        mode === "timeline" && /* @__PURE__ */ u3(S, { children: [
-          /* @__PURE__ */ u3(FilterChip, { label: "Day", on: scale === "day", onClick: () => setScale("day") }),
-          /* @__PURE__ */ u3(FilterChip, { label: "Week", on: scale === "week", onClick: () => setScale("week") }),
-          /* @__PURE__ */ u3("span", { class: "vt-subissues-modes-sep", "aria-hidden": "true" })
-        ] }),
-        /* @__PURE__ */ u3(FilterChip, { label: "List", on: mode === "list", onClick: () => setMode("list") }),
-        /* @__PURE__ */ u3(FilterChip, { label: "Timeline", on: mode === "timeline", onClick: () => setMode("timeline") })
-      ] }),
+      counts.total > 0 && /* @__PURE__ */ u3(
+        Segmented,
+        {
+          label: "View",
+          options: [
+            { value: "list", label: "List", icon: "list" },
+            { value: "timeline", label: "Timeline", icon: "chart-gantt", iconFallback: "gantt-chart" }
+          ],
+          value: mode,
+          onChange: setMode
+        }
+      ),
       /* @__PURE__ */ u3(PresetButton, { ctx, issue, index })
     ] }),
-    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale }),
+    mode === "timeline" && shown.length > 0 && /* @__PURE__ */ u3(SubTimeline, { ctx, subs: shown, scale, onScale: setScale }),
     mode === "list" && shown.length > 0 && /* @__PURE__ */ u3("ul", { class: "vt-subissue-list", children: shown.map((sub) => /* @__PURE__ */ u3(
       SubRow,
       {
@@ -4416,12 +4437,11 @@ function SubRow(props) {
       children: /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
         /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: sub.key }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", title: sub.summary, onClick: () => openSubEditor(ctx, sub), children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", title: `Open: ${sub.summary}`, onClick: () => revealSub(sub), children: [
           /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
           hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
         ] }),
         actual >= 1 && /* @__PURE__ */ u3("span", { class: "vt-subissue-actual vt-num", children: formatMinutes(actual) }),
-        /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Open note", title: "Open note", onClick: () => revealSub(sub), children: /* @__PURE__ */ u3(Icon, { name: "file-text" }) }),
         /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key }),
         /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "More actions", title: "More actions", onClick: moreMenu, children: /* @__PURE__ */ u3(Icon, { name: "more-horizontal" }) })
       ] })
@@ -9225,6 +9245,19 @@ function LabelManagerView(props) {
 
 // src/views/MemberListView.tsx
 var import_obsidian25 = require("obsidian");
+
+// src/ui/FilterChip.tsx
+function FilterChip(props) {
+  return /* @__PURE__ */ u3("button", { class: `vt-filter-chip${props.on ? " is-on" : ""}`, "aria-pressed": props.on, onClick: props.onClick, children: [
+    props.on && /* @__PURE__ */ u3(Icon, { name: "check" }),
+    props.label
+  ] });
+}
+function toggle(list, v3) {
+  return list.includes(v3) ? list.filter((x2) => x2 !== v3) : [...list, v3];
+}
+
+// src/views/MemberListView.tsx
 function MemberForm(props) {
   const [name, setName] = d2("");
   return /* @__PURE__ */ u3(

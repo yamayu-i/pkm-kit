@@ -65,3 +65,12 @@ ADR-0135 で、サブイシューに期間（`start` / `end`）と依存（`depe
 
 - `docs/design.md` の部品の表に、Timeline（棒・依存の矢印・今日の線・切り替え）を足す
 - ボード（#137）の決定とは関係しない
+
+## 追記（2026-11-17）: 切り替えの部品と置き場所
+
+4 つの絞り込みチップ（`Day` `Week` | `List` `Timeline`）が見出しの行に並び、どれが表示の切り替えでどれが目盛りか分かりにくかった。絞り込みチップは本来、絞り込みの部品でもある。
+
+- `List` / `Timeline` は、見出しの右の segmented button（`.vt-segmented`）にする。アイコンだけ（`list` と `chart-gantt`。古い Obsidian 向けに別名 `gantt-chart`）で、名前はツールチップと `aria-label` に出す
+- `Day` / `Week` は、Timeline の左上の角（題の列の上、日付の行の左）に、小さい segmented button で置く。目盛りの切り替えを目盛りの隣に置き、表示の切り替えと離す
+- 題を押したときの動きは ADR-0179 の追記に従う（Edit ダイアログではなく、下部のカードへ行く）
+- 却下: `[List | Day | Week]` の 1 つにまとめる。操作は 1 回で済むが、List と Day が並ぶと意味が伝わりにくい

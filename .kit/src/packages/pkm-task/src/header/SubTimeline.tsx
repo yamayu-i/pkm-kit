@@ -4,7 +4,9 @@ import type { SubIssue } from "../core/sub-issue";
 import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
+import { Segmented } from "../ui/Segmented";
 import { StatusIcon } from "../ui/StatusIcon";
+import { revealSub } from "./sub-reveal";
 
 /** 1 行の高さ（px）。styles.css の .vt-timeline と同じ */
 const ROW = 36;
@@ -28,7 +30,7 @@ interface Link {
 }
 
 /** サブイシューのガントチャート（ADR-0143）。期間はドラッグで直し、指を離したときに 1 回だけ保存する */
-export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale }) {
+export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale; onScale: (scale: TimelineScale) => void }) {
 	const { ctx, subs, scale } = props;
 	const today = localToday();
 	const px = DAY_PX[scale];
@@ -144,9 +146,21 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	return (
 		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
 			<div class="vt-timeline-labels">
-				<div class="vt-timeline-corner" />
+				{/* 目盛りの切り替えは、目盛り（日付の行）の隣に置く。表示の切り替え（List / Timeline）と離す */}
+				<div class="vt-timeline-corner">
+					<Segmented
+						label="Scale"
+						size="small"
+						options={[
+							{ value: "day", label: "Day" },
+							{ value: "week", label: "Week" },
+						]}
+						value={scale}
+						onChange={props.onScale}
+					/>
+				</div>
 				{subs.map((sub) => (
-					<button type="button" class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`} title={`Edit: ${sub.summary}`} onClick={() => openSubEditor(ctx, sub)}>
+					<button type="button" class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}`} title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
 						<StatusIcon status={sub.status} />
 						<span class="vt-timeline-label-text">{sub.summary}</span>
 					</button>

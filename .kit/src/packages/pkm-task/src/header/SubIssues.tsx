@@ -11,8 +11,8 @@ import { PickTimer } from "../obsidian/pick-toggle";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import { revealSub } from "./sub-reveal";
 import type { TimelineScale } from "../core/timeline";
-import { FilterChip } from "../ui/FilterChip";
 import { Icon } from "../ui/Icon";
+import { Segmented } from "../ui/Segmented";
 import { SubTimeline } from "./SubTimeline";
 import { StatusIcon } from "../ui/StatusIcon";
 import { showStatusMenu, StatusStepButton } from "../obsidian/status-change";
@@ -24,7 +24,7 @@ const DRAG_TYPE = "application/x-pkm-sub-issue";
 export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; now: number }) {
 	const { ctx, issue, index, now } = props;
 	const [showClosed, setShowClosed] = useState(false);
-	// 表示（List / Timeline）と目盛り（Day / Week）は保存しない（ADR-0143）
+	// 表示（List / Timeline）と目盛り（Day / Week）は保存しない（ADR-0143）。目盛りの切り替えは Timeline の左上に置く
 	const [mode, setMode] = useState<"list" | "timeline">("list");
 	const [scale, setScale] = useState<TimelineScale>("day");
 	const subs = index.subs(issue.id);
@@ -44,21 +44,19 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 				)}
 				<span class="vt-spacer" />
 				{counts.total > 0 && (
-					<div class="vt-subissues-modes">
-						{mode === "timeline" && (
-							<>
-								<FilterChip label="Day" on={scale === "day"} onClick={() => setScale("day")} />
-								<FilterChip label="Week" on={scale === "week"} onClick={() => setScale("week")} />
-								<span class="vt-subissues-modes-sep" aria-hidden="true" />
-							</>
-						)}
-						<FilterChip label="List" on={mode === "list"} onClick={() => setMode("list")} />
-						<FilterChip label="Timeline" on={mode === "timeline"} onClick={() => setMode("timeline")} />
-					</div>
+					<Segmented
+						label="View"
+						options={[
+							{ value: "list", label: "List", icon: "list" },
+							{ value: "timeline", label: "Timeline", icon: "chart-gantt", iconFallback: "gantt-chart" },
+						]}
+						value={mode}
+						onChange={setMode}
+					/>
 				)}
 				<PresetButton ctx={ctx} issue={issue} index={index} />
 			</div>
-			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} />}
+			{mode === "timeline" && shown.length > 0 && <SubTimeline ctx={ctx} subs={shown} scale={scale} onScale={setScale} />}
 			{mode === "list" && shown.length > 0 && (
 				<ul class="vt-subissue-list">
 					{shown.map((sub) => (
@@ -166,14 +164,12 @@ function SubRow(props: {
 					<StatusIcon status={sub.status} />
 				</button>
 				<StatusStepButton ctx={ctx} keyOf={sub.key} />
-				<button type="button" class="vt-subissue-summary" title={sub.summary} onClick={() => openSubEditor(ctx, sub)}>
+				{/* 題を押すと、下部のカードを開いて題を上端に出す（項目は開いたカードで直す） */}
+				<button type="button" class="vt-subissue-summary" title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
 					<span class="vt-subissue-summary-text">{sub.summary}</span>
 					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
 				</button>
 				{actual >= 1 && <span class="vt-subissue-actual vt-num">{formatMinutes(actual)}</span>}
-				<button type="button" class="vt-icon-button" aria-label="Open note" title="Open note" onClick={() => revealSub(sub)}>
-					<Icon name="file-text" />
-				</button>
 				<PickTimer ctx={ctx} keyOf={sub.key} />
 				<button type="button" class="vt-icon-button" aria-label="More actions" title="More actions" onClick={moreMenu}>
 					<Icon name="more-horizontal" />
