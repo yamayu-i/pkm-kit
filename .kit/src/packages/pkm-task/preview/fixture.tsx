@@ -191,8 +191,8 @@ if (name in headerPaths || name === "routine" || name === "member" || name === "
 		// ガントチャート（ADR-0143）: Day と Week を縦に並べる
 		const subs = visibleSubs(store.index.subs("i-2"), false);
 		const timeline = h("div", { class: "vt-subissues", style: "display:flex;flex-direction:column;gap:16px" }, [
-			h(SubTimeline, { ctx: ctx as never, subs, scale: "day" }),
-			h(SubTimeline, { ctx: ctx as never, subs, scale: "week" }),
+			h(SubTimeline, { ctx: ctx as never, subs, scale: "day", onScale: () => {} }),
+			h(SubTimeline, { ctx: ctx as never, subs, scale: "week", onScale: () => {} }),
 		]);
 		const header =
 			name === "timeline"

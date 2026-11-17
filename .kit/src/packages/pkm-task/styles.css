@@ -3196,18 +3196,63 @@ body.is-mobile .vt-toast {
 	resize: vertical;
 }
 
-/* 表示（List / Timeline）と目盛り（Day / Week）の切り替え（ADR-0143） */
-.vt-subissues-modes {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 4px;
+/* 表示の切り替え（M3 の segmented button）。List / Timeline はカードの見出しの右にアイコンで、
+ * Day / Week は Timeline の左上の角に小さく置く（ADR-0143 の追記）。絞り込みチップとは見た目を分ける */
+.vt-segmented {
+	display: inline-flex;
+	flex: none;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	overflow: hidden;
 }
 
-.vt-subissues-modes-sep {
+.vt-segmented-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 40px;
+	height: 32px;
+	padding: 0 12px;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	cursor: pointer;
+}
+
+.vt-segmented-button + .vt-segmented-button {
+	border-left: 1px solid var(--vt-outline);
+}
+
+.vt-segmented-button:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-segmented-button:focus-visible {
+	outline: 2px solid var(--vt-primary);
+	outline-offset: -2px;
+}
+
+.vt-segmented-button.is-on {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+.vt-segmented-button .vt-icon svg {
+	width: 20px;
 	height: 20px;
-	margin: 0 4px;
-	border-left: 1px solid var(--vt-outline-variant);
+}
+
+.vt-segmented.is-small .vt-segmented-button {
+	min-width: 0;
+	height: 24px;
+	padding: 0 8px;
+	font-size: var(--vt-type-label-small-size);
+	letter-spacing: var(--vt-type-label-small-tracking);
 }
 
 /* ---------- サブイシューのガントチャート（ADR-0143） ----------
@@ -3230,7 +3275,11 @@ body.is-mobile .vt-toast {
 }
 
 .vt-timeline-corner {
+	display: flex;
+	flex: none;
+	align-items: center;
 	height: 36px;
+	padding: 0 4px;
 	border-bottom: 1px solid var(--vt-outline-variant);
 }
 

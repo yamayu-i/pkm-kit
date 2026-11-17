@@ -12,6 +12,8 @@ export class Component { load() {} unload() {} }
 export const MarkdownRenderer = { render: async (_app: any, md: string, el: HTMLElement) => { for (const para of md.split(/\n\n+/)) { const p = document.createElement("p"); p.textContent = para; el.append(p); } } };
 export const parseYaml = (_text: string) => ({});
 const PATHS: Record<string, string> = {
+  list: '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+  "chart-gantt": '<path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/>',
   "chevron-down": '<path d="m6 9 6 6 6-6"/>',
   "chevron-left": '<path d="m15 18-6-6 6-6"/>',
   "chevron-right": '<path d="m9 18 6-6-6-6"/>',
