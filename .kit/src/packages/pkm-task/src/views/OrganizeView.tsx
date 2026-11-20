@@ -1,7 +1,7 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { confirmSomeday } from "../obsidian/someday-confirm";
-import { calendarPatch, cancelPatch, closePatch, nextPatch, somedayPatch, ticklerPatch, type Patch } from "../core/actions";
+import { calendarPatch, cancelPatch, closePatch, keepSomedayPatch, nextPatch, somedayPatch, ticklerPatch, type Patch } from "../core/actions";
 import { addDays, formatShortDate, localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { organizeQueue } from "../core/index";
@@ -63,7 +63,7 @@ function useExcerpt(ctx: TaskContext, issue: Issue | undefined): string {
 	return text;
 }
 
-/** Organize（ADR-0009, 0148, 0152）: Inbox と Someday を 1 枚ずつ整理する。→ Next / ← Someday / ↑ Tickler / ↓ Cancel */
+/** Organize（ADR-0009, 0148, 0152, 0212）: Inbox と revisit を迎えた Someday を 1 枚ずつ整理する。→ Next / ← Someday / ↑ Tickler / ↓ Cancel */
 export function OrganizeView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
@@ -128,7 +128,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	// Project のサブの期間が消えるときは、先に確認する（ADR-0210）
 	const someday = () => {
 		if (!issue) return;
-		if (issue.status === "someday") return void apply({ tickler: null }, "To Someday");
+		if (issue.status === "someday") return void apply(keepSomedayPatch(), "To Someday");
 		void confirmSomeday(ctx, [issue]).then((ok) => {
 			if (ok) void apply(somedayPatch(), "To Someday");
 		});

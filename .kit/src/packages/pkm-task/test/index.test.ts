@@ -79,7 +79,7 @@ describe("Inbox と Organize", () => {
 		expect(isNext(issue("i-1", { clarified: true, status: "waiting" }))).toBe(false);
 	});
 
-	it("Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday", () => {
+	it("Inbox の古い順 → revisit を過ぎた someday。revisit のない・先の someday は出さない（ADR-0212）", () => {
 		const queue = organizeQueue(
 			[
 				issue("i-1", { created: "2026-10-30T09:00:00+09:00" }),
@@ -93,7 +93,19 @@ describe("Inbox と Organize", () => {
 			],
 			"2026-10-31",
 		);
-		expect(queue.map((i) => i.id)).toEqual(["i-2", "i-1", "i-5", "i-4", "i-6", "i-3"]);
+		expect(queue.map((i) => i.id)).toEqual(["i-2", "i-1", "i-5"]);
+	});
+
+	it("revisit を過ぎた someday は revisit の古い順。今日の revisit も出す（ADR-0212）", () => {
+		const queue = organizeQueue(
+			[
+				issue("i-1", { status: "someday", revisit: "2026-10-31" }),
+				issue("i-2", { status: "someday", revisit: "2026-10-01" }),
+				issue("i-3", { status: "someday", revisit: "2026-11-01" }),
+			],
+			"2026-10-31",
+		);
+		expect(queue.map((i) => i.id)).toEqual(["i-2", "i-1"]);
 	});
 });
 
