@@ -240,7 +240,8 @@ describe("collectVault と索引", () => {
 });
 
 function vault(text: string, extra: Partial<VaultData> = {}): VaultData {
-	const issue = parseIssue("issue/i-1.md", { type: "issue", id: "i-1", summary: "i-1", status: "open" }).value!;
+	// 親は整理済み（Inbox の Project のサブの期間は period-in-inbox になる。ADR-0210）
+	const issue = parseIssue("issue/i-1.md", { type: "issue", id: "i-1", summary: "i-1", status: "open", clarified: true }).value!;
 	const { subs } = parseSubIssues("issue/i-1.md", "i-1", text, parse);
 	return { ...emptyVaultData(), issues: [issue], subIssues: subs, ...extra };
 }

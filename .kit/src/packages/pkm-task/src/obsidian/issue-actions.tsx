@@ -4,6 +4,7 @@ import type { Issue } from "../core/schema";
 import { DateForm } from "../ui/forms";
 import type { TaskContext } from "./context";
 import { PreactModal } from "./modals";
+import { confirmSomeday } from "./someday-confirm";
 
 /** 日付を 1 つ選ばせる（キャンセルなら null） */
 export function askDate(ctx: TaskContext, title: string, initial: LocalDate | null = null): Promise<LocalDate | null> {
@@ -45,8 +46,11 @@ async function patchAll(ctx: TaskContext, issues: Issue[], patch: Patch | ((i: I
 
 export const closeIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, closePatch(), "閉じることが");
 export const cancelIssues = (ctx: TaskContext, issues: Issue[]) => patchAll(ctx, issues, cancelPatch(), "Cancel ");
-export const somedayIssues = (ctx: TaskContext, issues: Issue[], revisit: LocalDate | null = null) =>
-	patchAll(ctx, issues, somedayPatch(revisit), "Someday に移すことが");
+/** Someday へ。Project のサブの期間が消えるときは、先に確認する（ADR-0210） */
+export async function somedayIssues(ctx: TaskContext, issues: Issue[], revisit: LocalDate | null = null): Promise<void> {
+	if (!(await confirmSomeday(ctx, issues))) return;
+	await patchAll(ctx, issues, somedayPatch(revisit), "Someday に移すことが");
+}
 
 /** Tickler（ADR-0152）: 日付を選び、その日まで出さずにその日に Inbox に戻す。既定は明日 */
 export async function ticklerIssues(ctx: TaskContext, issues: Issue[]): Promise<void> {

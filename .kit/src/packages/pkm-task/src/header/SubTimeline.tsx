@@ -4,6 +4,7 @@ import type { SubIssue } from "../core/sub-issue";
 import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
+import { canEditSubPeriod, periodInInboxMessage, subPeriodError } from "../core/project-periods";
 import { Segmented } from "../ui/Segmented";
 import { StatusIcon } from "../ui/StatusIcon";
 import { revealSub } from "./sub-reveal";
@@ -60,8 +61,20 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
 	}, [scale]);
 
-	const save = (sub: SubIssue, next: { start: LocalDate; end: LocalDate }) =>
-		ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e) => ctx.report("期間を保存できませんでした", e));
+	// 期間の規則（ADR-0210）。Inbox の Project では棒を作れず、動かせない。Tickler より前には置けない（置こうとしたら戻して理由を出す）
+	const index = ctx.store.index;
+	const parentId = subs[0]?.parent ?? null;
+	const parent = parentId === null ? undefined : index.issues.get(parentId);
+	const planned = parentId !== null && index.planned(parentId);
+	const lock = parentId === null || canEditSubPeriod(parent, planned, today) ? null : periodInInboxMessage(parentId);
+	const [notice, setNotice] = useState<string | null>(null);
+	const save = (sub: SubIssue, next: { start: LocalDate; end: LocalDate }) => {
+		if (lock !== null) return setNotice(lock);
+		const error = parent ? subPeriodError(parent, planned, sub, next, today) : null;
+		if (error) return setNotice(error);
+		setNotice(null);
+		return void ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e) => ctx.report("期間を保存できませんでした", e));
+	};
 	const shown = (sub: SubIssue) => {
 		const bar = barOf(sub);
 		return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
@@ -115,6 +128,7 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
 		const bar = barOf(sub);
 		if (!bar || e.button !== 0) return;
+		if (lock !== null) return setNotice(lock);
 		setSelected(null);
 		e.preventDefault();
 		e.stopPropagation();
@@ -151,169 +165,172 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	};
 
 	return (
-		<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
-			<div class="vt-timeline-labels" ref={labels}>
-				{/* 目盛りの切り替えは、目盛り（日付の行）の隣に置く。表示の切り替え（List / Timeline）と離す */}
-				<div class="vt-timeline-corner">
-					<Segmented
-						label="Scale"
-						size="small"
-						options={[
-							{ value: "day", label: "Day" },
-							{ value: "week", label: "Week" },
-						]}
-						value={scale}
-						onChange={props.onScale}
-					/>
-				</div>
-				{subs.map((sub) => (
-					<button
-						type="button"
-						class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}${sub.key === target ? " is-target" : ""}`}
-						title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
-						<StatusIcon status={sub.status} />
-						<span class="vt-timeline-label-text">{sub.summary}</span>
-					</button>
-				))}
-			</div>
-			<div class="vt-timeline-scroll" ref={scroller}>
-				<div class="vt-timeline-grid" style={{ width: `${width}px` }}>
-					<div class="vt-timeline-head">
-						{cols.map((c) => (
-							<div
-								class={`vt-timeline-col${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}${c.date === today ? " is-today" : ""}`}
-								style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }}
-							>
-								{c.month !== null && <span class="vt-timeline-month">{c.month}</span>}
-								<span class="vt-timeline-day">{c.label}</span>
-							</div>
-						))}
+		<>
+			{(notice ?? lock) !== null && <div class="vt-muted vt-timeline-notice">{notice ?? lock}</div>}
+			<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
+				<div class="vt-timeline-labels" ref={labels}>
+					{/* 目盛りの切り替えは、目盛り（日付の行）の隣に置く。表示の切り替え（List / Timeline）と離す */}
+					<div class="vt-timeline-corner">
+						<Segmented
+							label="Scale"
+							size="small"
+							options={[
+								{ value: "day", label: "Day" },
+								{ value: "week", label: "Week" },
+							]}
+							value={scale}
+							onChange={props.onScale}
+						/>
 					</div>
-					<div class="vt-timeline-body" ref={body} style={{ height: `${subs.length * ROW}px` }} onPointerDown={() => setSelected(null)}>
-						{cols.map((c) => (
-							<div class={`vt-timeline-stripe${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} />
-						))}
-						{/* 矢印は棒の下に描く（棒を塗りつぶさない）。経路は timeline.ts の routeArrows（途中の棒をよけ、線どうしが重ならないようにずらす） */}
-						<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
-							<defs>
-								{(["", "-late", "-related"] as const).map((suffix) => (
-									// 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
-									<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-										<path d="M1 0.5 L5 3 L1 5.5" class={`vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}`} />
-									</marker>
-								))}
-							</defs>
-							{routed.map((r) => (
-								<path
-									class={`vt-timeline-arrow${r.late ? " is-late" : ""}${r.related ? " is-related" : ""}`}
-									d={r.d}
-									marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : r.related ? "-related" : ""})`}
-								/>
+					{subs.map((sub) => (
+						<button
+							type="button"
+							class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}${sub.key === target ? " is-target" : ""}`}
+							title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
+							<StatusIcon status={sub.status} />
+							<span class="vt-timeline-label-text">{sub.summary}</span>
+						</button>
+					))}
+				</div>
+				<div class="vt-timeline-scroll" ref={scroller}>
+					<div class="vt-timeline-grid" style={{ width: `${width}px` }}>
+						<div class="vt-timeline-head">
+							{cols.map((c) => (
+								<div
+									class={`vt-timeline-col${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}${c.date === today ? " is-today" : ""}`}
+									style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }}
+								>
+									{c.month !== null && <span class="vt-timeline-month">{c.month}</span>}
+									<span class="vt-timeline-day">{c.label}</span>
+								</div>
 							))}
-							{link && (() => {
-								const row = rowOf.get(link.from)!;
-								const span = spans[row];
-								return span && <path class="vt-timeline-link" d={`M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}`} />;
-							})()}
-						</svg>
-						{/* 矢印を押して選ぶための、広い当たり判定（矢印の線は細いので）。棒（z-index 2）の下、行の上 */}
-						<svg class="vt-timeline-arrow-hits" aria-hidden="true" width={width} height={subs.length * ROW}>
-							{arrows.map((a, i) => {
-								const isSel = selected?.from === a.from && selected?.to === a.to;
-								return (
+						</div>
+						<div class="vt-timeline-body" ref={body} style={{ height: `${subs.length * ROW}px` }} onPointerDown={() => setSelected(null)}>
+							{cols.map((c) => (
+								<div class={`vt-timeline-stripe${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} />
+							))}
+							{/* 矢印は棒の下に描く（棒を塗りつぶさない）。経路は timeline.ts の routeArrows（途中の棒をよけ、線どうしが重ならないようにずらす） */}
+							<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
+								<defs>
+									{(["", "-late", "-related"] as const).map((suffix) => (
+										// 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
+										<marker id={`vt-timeline-arrowhead${suffix}`} viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+											<path d="M1 0.5 L5 3 L1 5.5" class={`vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}`} />
+										</marker>
+									))}
+								</defs>
+								{routed.map((r) => (
 									<path
-										class={`vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`}
-										d={routed[i]!.d}
-										onPointerDown={(e) => e.stopPropagation()}
-										onClick={() => setSelected({ from: a.from, to: a.to })}
+										class={`vt-timeline-arrow${r.late ? " is-late" : ""}${r.related ? " is-related" : ""}`}
+										d={r.d}
+										marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : r.related ? "-related" : ""})`}
 									/>
+								))}
+								{link && (() => {
+									const row = rowOf.get(link.from)!;
+									const span = spans[row];
+									return span && <path class="vt-timeline-link" d={`M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}`} />;
+								})()}
+							</svg>
+							{/* 矢印を押して選ぶための、広い当たり判定（矢印の線は細いので）。棒（z-index 2）の下、行の上 */}
+							<svg class="vt-timeline-arrow-hits" aria-hidden="true" width={width} height={subs.length * ROW}>
+								{arrows.map((a, i) => {
+									const isSel = selected?.from === a.from && selected?.to === a.to;
+									return (
+										<path
+											class={`vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`}
+											d={routed[i]!.d}
+											onPointerDown={(e) => e.stopPropagation()}
+											onClick={() => setSelected({ from: a.from, to: a.to })}
+										/>
+									);
+								})}
+							</svg>
+							{selected &&
+								(() => {
+									const i = arrows.findIndex((a) => a.from === selected.from && a.to === selected.to);
+									if (i < 0) return null;
+									const [x, y] = arrowMidpoint(routes[i]!);
+									return (
+										<button
+											type="button"
+											class="vt-timeline-arrow-remove"
+											style={{ left: `${x}px`, top: `${y}px` }}
+											title="Remove dependency"
+											aria-label="Remove dependency"
+											ref={(el) => el?.focus()}
+											onPointerDown={(e) => e.stopPropagation()}
+											onKeyDown={(e) => {
+												if (e.key === "Delete" || e.key === "Backspace") {
+													e.preventDefault();
+													removeDep(selected);
+												}
+											}}
+											onClick={() => removeDep(selected)}
+										>
+											×
+										</button>
+									);
+								})()}
+							<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
+							{subs.map((sub, i) => {
+								const bar = shown(sub);
+								const left = bar ? xOf(bar.start) : 0;
+								const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
+								const handles = barWidth >= HANDLE * 3;
+								const period = bar ? `${formatShortDate(bar.start)} – ${formatShortDate(bar.end)}` : "";
+								const nothing = !bar && sub.scheduled === null;
+								return (
+									<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={bar ? undefined : "Click a day to set the period"}>
+										{nothing && <span class="vt-timeline-none">No dates</span>}
+										{!bar &&
+											sub.scheduled !== null && (
+												<span class="vt-timeline-dot" style={{ left: `${xOf(sub.scheduled) + px / 2}px` }} title={`Calendar ${formatShortDate(sub.scheduled)}`} />
+											)}
+										{bar && (
+											<div
+												data-sub-id={sub.id}
+												class={`vt-timeline-bar vt-status-${sub.status}${link && link.from !== sub.id ? (link.target === sub.id ? " is-link-target" : canConnect(subs, link.from, sub.id) ? "" : " is-link-no") : ""}${selected?.to === sub.id || selected?.from === sub.id ? " is-selected-end" : ""}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
+												style={{ left: `${left}px`, width: `${barWidth}px` }}
+												tabIndex={0}
+												role="button"
+												aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`}
+												title={`${sub.summary}\n${period}`}
+												onPointerEnter={() => setHovered(sub.id)}
+												onPointerLeave={() => setHovered((h) => (h === sub.id ? null : h))}
+												onFocus={() => setFocused(sub.id)}
+												onBlur={() => setFocused((f) => (f === sub.id ? null : f))}
+												onPointerDown={(e) => startDrag(e, sub, "move")}
+												onPointerMove={moveDrag}
+												onPointerUp={() => endDrag(sub)}
+												onPointerCancel={() => setDrag(null)}
+												onKeyDown={(e) => keyDown(e, sub)}
+												onClick={(e) => e.stopPropagation()}
+											>
+												<span
+													class="vt-timeline-connector"
+													title="Connect: drag to a bar that depends on this"
+													aria-hidden="true"
+													onPointerDown={(e) => startLink(e, sub)}
+													onPointerMove={moveLink}
+													onPointerUp={endLink}
+													onPointerCancel={() => setLink(null)}
+												/>
+												{handles && (
+													<>
+														<span class="vt-timeline-handle is-start" aria-hidden="true" onPointerDown={(e) => startDrag(e, sub, "start")} onPointerMove={moveDrag} onPointerUp={() => endDrag(sub)} />
+														<span class="vt-timeline-handle is-end" aria-hidden="true" onPointerDown={(e) => startDrag(e, sub, "end")} onPointerMove={moveDrag} onPointerUp={() => endDrag(sub)} />
+													</>
+												)}
+											</div>
+										)}
+									</div>
 								);
 							})}
-						</svg>
-						{selected &&
-							(() => {
-								const i = arrows.findIndex((a) => a.from === selected.from && a.to === selected.to);
-								if (i < 0) return null;
-								const [x, y] = arrowMidpoint(routes[i]!);
-								return (
-									<button
-										type="button"
-										class="vt-timeline-arrow-remove"
-										style={{ left: `${x}px`, top: `${y}px` }}
-										title="Remove dependency"
-										aria-label="Remove dependency"
-										ref={(el) => el?.focus()}
-										onPointerDown={(e) => e.stopPropagation()}
-										onKeyDown={(e) => {
-											if (e.key === "Delete" || e.key === "Backspace") {
-												e.preventDefault();
-												removeDep(selected);
-											}
-										}}
-										onClick={() => removeDep(selected)}
-									>
-										×
-									</button>
-								);
-							})()}
-						<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
-						{subs.map((sub, i) => {
-							const bar = shown(sub);
-							const left = bar ? xOf(bar.start) : 0;
-							const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
-							const handles = barWidth >= HANDLE * 3;
-							const period = bar ? `${formatShortDate(bar.start)} – ${formatShortDate(bar.end)}` : "";
-							const nothing = !bar && sub.scheduled === null;
-							return (
-								<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={bar ? undefined : "Click a day to set the period"}>
-									{nothing && <span class="vt-timeline-none">No dates</span>}
-									{!bar &&
-										sub.scheduled !== null && (
-											<span class="vt-timeline-dot" style={{ left: `${xOf(sub.scheduled) + px / 2}px` }} title={`Calendar ${formatShortDate(sub.scheduled)}`} />
-										)}
-									{bar && (
-										<div
-											data-sub-id={sub.id}
-											class={`vt-timeline-bar vt-status-${sub.status}${link && link.from !== sub.id ? (link.target === sub.id ? " is-link-target" : canConnect(subs, link.from, sub.id) ? "" : " is-link-no") : ""}${selected?.to === sub.id || selected?.from === sub.id ? " is-selected-end" : ""}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
-											style={{ left: `${left}px`, width: `${barWidth}px` }}
-											tabIndex={0}
-											role="button"
-											aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`}
-											title={`${sub.summary}\n${period}`}
-											onPointerEnter={() => setHovered(sub.id)}
-											onPointerLeave={() => setHovered((h) => (h === sub.id ? null : h))}
-											onFocus={() => setFocused(sub.id)}
-											onBlur={() => setFocused((f) => (f === sub.id ? null : f))}
-											onPointerDown={(e) => startDrag(e, sub, "move")}
-											onPointerMove={moveDrag}
-											onPointerUp={() => endDrag(sub)}
-											onPointerCancel={() => setDrag(null)}
-											onKeyDown={(e) => keyDown(e, sub)}
-											onClick={(e) => e.stopPropagation()}
-										>
-											<span
-												class="vt-timeline-connector"
-												title="Connect: drag to a bar that depends on this"
-												aria-hidden="true"
-												onPointerDown={(e) => startLink(e, sub)}
-												onPointerMove={moveLink}
-												onPointerUp={endLink}
-												onPointerCancel={() => setLink(null)}
-											/>
-											{handles && (
-												<>
-													<span class="vt-timeline-handle is-start" aria-hidden="true" onPointerDown={(e) => startDrag(e, sub, "start")} onPointerMove={moveDrag} onPointerUp={() => endDrag(sub)} />
-													<span class="vt-timeline-handle is-end" aria-hidden="true" onPointerDown={(e) => startDrag(e, sub, "end")} onPointerMove={moveDrag} onPointerUp={() => endDrag(sub)} />
-												</>
-											)}
-										</div>
-									)}
-								</div>
-							);
-						})}
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

@@ -200,6 +200,7 @@ packages/design/tokens.json（正本）
 | ID | `.vt-id` | 丸いバッジ、等幅フォント、status の色 |
 | priority | `.vt-priority` | 記号（▲ ■ ▼ ·）付きのチップ + ▾。記号は飾りなので `aria-hidden` |
 | 入力チップ | `.vt-field-chip` | 枠線 + 先頭のアイコン。未入力は点線で「〜を追加」 |
+| 分類のバッジ | `.vt-badge.vt-gtd-list` | 読み取り専用。枠のない secondary-container の面 + 先頭の 16px のアイコン。押せる入力チップと見分ける。issue 画面の GTD の分類（Inbox・Next Action・Calendar・Tickler）と Project（ADR-0210） |
 | 期限 | `.vt-due` | ラベル・値・カレンダーアイコンの横並び。近づくと色が付く |
 | 日付の枠 | `.vt-day` | 7 日のストリップの 36px の角丸の四角。土日は枠が太い。今日は太字と下に点で、選んでいないときは枠と文字を primary にする（ADR-0030） |
 | 月のカレンダー | `.vt-cal`（`.vt-cal-day`） | 共有の部品（`packages/shared/src/month-calendar.tsx`、ADR-0078）。見出しは英語の月と年 + ‹ ›、曜日は 1 文字。日は枠のない 40px の丸、今日は primary の枠線の丸、選んだ日は `--vt-scheduled` の塗りの丸。月の外の日は空ける。期限は丸の外側の色の輪 |

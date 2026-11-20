@@ -75,7 +75,7 @@ ADR へのリンク。
 | 委任先 | delegated、委任先 | `member/m-N.md`、issue の `delegated_to` | member、委任先 |
 | status | open / in-progress / waiting / delegated / someday / closed / canceled | `status`、補足は `status-detail` | status |
 | status の取り消し | 「N件のステータスが変更されました。 元に戻す ›」 | `statuslog/` の `via: undo` | 取り消し |
-| Inbox | Inbox、Inbox に戻す（issue 画面の訂正だけ）、Next（整理済みにする） | `clarified`（真偽値。open で clarified でないものが Inbox） | Inbox |
+| Inbox | Inbox、Next（整理済みにする）。issue 画面は読み取り専用のバッジ（Inbox・Next Action・Calendar・Tickler・Project） | `clarified`（真偽値。open で clarified でないものが Inbox） | Inbox |
 | Someday | Someday、Someday へ | `status: someday`、`revisit`、`reviewed` | Someday |
 | Calendar | Calendar、Move date、Back to Next、Add to today's board。一覧の View は Scheduled | `scheduled`（日付 1 つ） | Calendar、Do Date、scheduled |
 | Tickler | Tickler | `tickler`（日付 1 つ） | Tickler |

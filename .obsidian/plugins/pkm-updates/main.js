@@ -771,9 +771,9 @@ var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
-function isInbox(issue, today) {
+function isInbox(issue, today, planned = false) {
   if (issue.status !== "open") return false;
-  if (issue.tickler !== null) return issue.tickler <= today;
+  if (issue.tickler !== null) return issue.tickler <= today && !planned;
   return !issue.clarified;
 }
 function isScheduledAhead(issue, today) {
@@ -785,12 +785,12 @@ function compareNullableAsc(a3, b2) {
   if (b2 === null) return 1;
   return a3 < b2 ? -1 : 1;
 }
-function organizeQueue(issues, today) {
+function organizeQueue(issues, today, planned = () => false) {
   const inbox = [];
   const revisitDue = [];
   const someday = [];
   for (const issue of issues) {
-    if (isInbox(issue, today)) inbox.push(issue);
+    if (isInbox(issue, today, planned(issue.id))) inbox.push(issue);
     else if (issue.status === "someday") {
       if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
       else someday.push(issue);

@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
 import { emptyBoard, unfinished, unfinishedCount } from "../core/board";
-import { cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists } from "../core/daily";
+import { allSubsDone, cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists } from "../core/daily";
 import { formatShortDate, localToday } from "../core/dates";
 import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
@@ -277,18 +277,27 @@ function PickStep(props: { ctx: TaskContext; issues: Issue[]; groups: { parent: 
 						<span class="vt-count">{props.stalled.length}</span>
 					</div>
 					<div class="vt-routine-rows">
-						{props.stalled.map((p) => (
-							<div class="vt-routine-row" key={p.id}>
-								<span class="vt-cell-summary" title={`${p.id} ${p.summary}`}>
-									{p.summary}
-								</span>
-								<span class="vt-muted">No sub-issue to do today</span>
-								<span class="vt-spacer" />
-								<button class="vt-button is-text" onClick={() => void ctx.openPath(p.path)}>
-									Open
-								</button>
-							</div>
-						))}
+						{props.stalled.map((p) => {
+							// サブがすべて閉じた Project は、親を閉じるよう促す。押したときだけ閉じる（ADR-0210）
+							const done = allSubsDone(ctx.store.index.subs(p.id));
+							return (
+								<div class="vt-routine-row" key={p.id}>
+									<span class="vt-cell-summary" title={`${p.id} ${p.summary}`}>
+										{p.summary}
+									</span>
+									<span class="vt-muted">{done ? "All sub-issues are done" : "No sub-issue to do today"}</span>
+									<span class="vt-spacer" />
+									{done && (
+										<button class="vt-button" onClick={() => void closeIssues(ctx, [p])}>
+											Close
+										</button>
+									)}
+									<button class="vt-button is-text" onClick={() => void ctx.openPath(p.path)}>
+										Open
+									</button>
+								</div>
+							);
+						})}
 					</div>
 				</section>
 			)}

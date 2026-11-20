@@ -7,7 +7,8 @@ import { readVault } from "../cli/read-vault";
 import { TaskIndex } from "../src/core/index";
 
 const now = new Date("2026-11-15T01:00:00.000Z");
-const HEAD = "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\nestimated: 300\n---\n\n## Note\n\n親の本文\n";
+// 親は整理済み（Inbox の Project のサブには期間を入れられない。ADR-0210）
+const HEAD = "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\nclarified: true\nestimated: 300\n---\n\n## Note\n\n親の本文\n";
 
 describe("MCP のサブイシューの操作（ADR-0135）", () => {
 	let root: string;

@@ -88,9 +88,9 @@
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179, ADR-0181, ADR-0190） | 親の issue 画面でサブイシューを見る・作る・並べる |
 | [0143](0143-sub-issue-timeline.md) | 承認（一部置換: 0190） | サブイシューのガントチャート（Timeline） |
-| [0148](0148-inbox-clarified.md) | 承認（一部置換: 0189） | Inbox は日付ではなく clarified（整理済み）で決める |
+| [0148](0148-inbox-clarified.md) | 承認（一部置換: 0189, 0210） | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184, 0189, 0190, 0203） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
-| [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
+| [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203, 0210） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認（一部置換: 0184） | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
 | [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161, 0190） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
@@ -104,10 +104,11 @@
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183, 0203） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
 | [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 | [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
-| [0190](0190-sub-end-as-due.md) | 承認 | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
+| [0190](0190-sub-end-as-due.md) | 承認（一部置換: 0210） | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
 | [0193](0193-worklog-quick-edit.md) | 承認 | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
-| [0203](0203-pick-and-start-follow-next.md) | 承認 | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
+| [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
 | [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
+| [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 <!-- adr-index:end -->

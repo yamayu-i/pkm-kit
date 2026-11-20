@@ -19,9 +19,9 @@
 | 依存する先 | depends_on | 同じ親内のサブ ID の配列。循環不可 |
 | 委任先 | delegated_to | member の ID |
 
-label・priority は親の文脈を使う。サブに soft_deadline / deadline はない（外の都合で決まる締切は親の deadline に書く）。someday にすると Calendar の日と期間を外し、someday のサブに期間を入れると open に戻る。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。サブ（閉じたものも含む）を持つ issue は Calendar の日を持たず、Calendar の日を持つ issue にはサブを作れない（ADR-0203）。
+label・priority は親の文脈を使う。サブに soft_deadline / deadline はない（外の都合で決まる締切は親の deadline に書く）。someday にすると Calendar の日と期間を外し、someday のサブに期間を入れると open に戻る。サブに Tickler と Inbox はない。親が完了してもサブの状態を自動で揃えず、サブがすべて終わっても親を自動では閉じない。サブ（閉じたものも含む）を持つ issue を Project と呼ぶ（サブがすべて閉じても Project のまま）。Project は Calendar の日を持たず、Calendar の日を持つ issue にはサブを作れない（ADR-0203）。Inbox（未整理）の Project のサブには期間を入れられない（変えるのも不可。消すのはよい）。Project の Tickler は、閉じていないサブの期間の始まりのいちばん早い日以前で、Tickler が先の Project のサブには Tickler の日以降に始まる期間だけを入れられる。Project を someday にすると、閉じていないサブの期間と Calendar の日を消す（ADR-0210）。
 
-サブの Next は、open か in-progress で、Calendar の日がなく、親が Next で、今日が期間（start〜end。片方だけならその 1 日）に入るもの。期間がないサブ・今日が期間の外のサブは Pick できず、issue 画面では Timeline で期間を決めるよう案内する。
+サブの Next は、open か in-progress で、Calendar の日がなく、親が Next で、今日が期間（start〜end。片方だけならその 1 日）に入るもの。Tickler の日を迎えた計画済み（閉じていないサブに期間がある）の Project は Next になるので、そのサブは期間に入れば Pick に出る。期間がないサブ・今日が期間の外のサブは Pick できず、issue 画面では Timeline で期間を決めるよう案内する。
 
 ## 操作
 
@@ -33,4 +33,4 @@ label・priority は親の文脈を使う。サブに soft_deadline / deadline �
 
 ## 根拠
 
-[ADR-0135](../../../../src/docs/adr/0135-sub-issues-in-issue-file.md)、[ADR-0190](../../../../src/docs/adr/0190-sub-end-as-due.md)
+[ADR-0135](../../../../src/docs/adr/0135-sub-issues-in-issue-file.md)、[ADR-0190](../../../../src/docs/adr/0190-sub-end-as-due.md)、[ADR-0203](../../../../src/docs/adr/0203-pick-and-start-follow-next.md)、[ADR-0210](../../../../src/docs/adr/0210-gtd-list-badge-and-project-rules.md)

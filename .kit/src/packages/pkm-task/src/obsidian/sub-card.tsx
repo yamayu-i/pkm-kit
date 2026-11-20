@@ -10,7 +10,7 @@ import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PickTimer } from "./pick-toggle";
-import { DependsField, SUB_DATE_FIELDS, pickSubDate } from "./sub-editor";
+import { DependsField, isPeriodKey, SUB_DATE_FIELDS, pickSubDate, subDateRules } from "./sub-editor";
 import { showStatusMenu, StatusStepButton } from "./status-change";
 
 /** issue の md のパスから、親の issue の ID（`issue/i-12.md` → `i-12`） */
@@ -157,6 +157,7 @@ function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: stri
 	const { ctx, sub, save, delayMs } = props;
 	const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
 	const others = props.siblings.filter((s) => s.id !== sub.id);
+	const rules = subDateRules(ctx, sub);
 	const summary = useDraft(sub.summary, (v) => (v.trim() === "" ? Promise.resolve(false) : save({ summary: v.trim() })), delayMs, (v) => v.trim());
 	const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
 	const [estimatedError, setEstimatedError] = useState<string | null>(null);
@@ -200,7 +201,14 @@ function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: stri
 				{SUB_DATE_FIELDS.map(([key, label]) => (
 					<div class="vt-text-field">
 						<span>{label}</span>
-						<button type="button" class={`vt-field-chip${sub[key] ? "" : " is-placeholder"}`} onClick={() => pickSubDate(ctx, label, sub[key], (v) => void save({ [key]: v }))}>
+						{/* Inbox の Project では期間を入れない。押せなくする（ADR-0210） */}
+						<button
+							type="button"
+							class={`vt-field-chip${sub[key] ? "" : " is-placeholder"}`}
+							disabled={rules.lock !== null && isPeriodKey(key)}
+							title={rules.lock !== null && isPeriodKey(key) ? rules.lock : undefined}
+							onClick={() => pickSubDate(ctx, label, sub[key], (v) => void save({ [key]: v }), rules.validate(key, sub))}
+						>
 							<Icon name="calendar" />
 							{sub[key] ? formatShortDate(sub[key]!) : "Not set"}
 						</button>

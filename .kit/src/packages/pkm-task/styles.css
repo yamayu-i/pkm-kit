@@ -269,6 +269,18 @@
 	white-space: nowrap;
 }
 
+/* GTD の分類と Project（ADR-0210）。読み取り専用のバッジ。押せる入力チップ（.vt-field-chip）と見分けるため、枠を付けず tonal の面にする */
+.vt-badge.vt-gtd-list {
+	background-color: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+	cursor: default;
+}
+
+.vt-badge.vt-gtd-list .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
 button.vt-badge {
 	cursor: pointer;
 }

@@ -6,10 +6,14 @@ import { isId } from "./ids";
 import type { Problem } from "./problem";
 import { STATUS_DETAIL_MAX } from "./schema";
 import { parseSubKey, subKey, type SubIssue } from "./sub-issue";
+import { localToday, type LocalDate } from "./dates";
+import { periodInInboxMessage, ticklerWithSubsError } from "./project-periods";
 
 export interface LintOptions {
 	/** Vault にあるファイルのパス。related のパス参照を確かめるのに使う（省略時は確かめない） */
 	paths?: ReadonlySet<string>;
+	/** 今日（Tickler の検査に使う。省略時は端末の今日） */
+	today?: LocalDate;
 }
 
 function safeDecode(path: string): string {
@@ -97,6 +101,7 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 	const add = (severity: Problem["severity"], path: string, code: string, message: string) =>
 		problems.push({ severity, path, code, message });
 	const index = new TaskIndex(data);
+	const today = options.today ?? localToday();
 
 	for (const [kind, items] of [
 		["issue", data.issues],
@@ -139,6 +144,14 @@ export function lintVault(data: VaultData, options: LintOptions = {}): Problem[]
 		// Calendar とサブを同時に持たせない（ADR-0203）。閉じたサブも数える。自動では消さない
 		if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
 			add("warning", path, "calendar-with-subs", "サブイシューを持つのに Calendar の日（scheduled）があります。どちらかを外してください（ADR-0203）");
+		}
+		// Project のサブの期間（ADR-0210）。md を直接書き換えたものは止められないので知らせる。自動では消さない
+		if (index.planned(issue.id) && index.inbox(issue, today)) {
+			add("warning", path, "period-in-inbox", `${periodInInboxMessage(issue.id)}（期間のあるサブがあります）`);
+		}
+		if (issue.tickler !== null && issue.tickler > today) {
+			const error = ticklerWithSubsError(issue.id, index.subs(issue.id), issue.tickler, today);
+			if (error) add("warning", path, "tickler-after-sub-period", error);
 		}
 		if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
 			add("warning", path, "long-status-detail", `status-detail が ${STATUS_DETAIL_MAX} 文字を超えています`);

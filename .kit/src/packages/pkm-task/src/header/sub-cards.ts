@@ -361,6 +361,9 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 function editorSave(ctx: TaskContext, view: EditorView, path: string, id: string): SaveSub {
 	return async (patch) => {
 		const text = view.state.doc.toString();
+		// 期間の規則（ADR-0210）。ファイルに書くとき（updateSub）と同じ検査
+		const current = parseSubIssues(path, issueIdOf(path), text, parseYaml).subs.find((s) => s.id === id) ?? null;
+		ctx.writer.assertSubPeriod(issueIdOf(path), current, patch);
 		const r = subHeadChange(path, issueIdOf(path), text, id, patch, parseYaml, new Set(ctx.store.index.members.keys()));
 		// status が終わりに変わるときは、項目の書き換えとブロックの末尾への移動を 1 回で行う（ADR-0181）
 		if (r.changes.length > 1 || r.change.insert !== text.slice(r.change.from, r.change.to)) view.dispatch({ changes: r.changes, userEvent: "input.sub-card" });

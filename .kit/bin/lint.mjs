@@ -7568,6 +7568,9 @@ function normalizeDate(value) {
   }
   return null;
 }
+function formatShortDate(date) {
+  return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
+}
 
 // src/core/ids.ts
 function idNumber(id, prefix) {
@@ -8225,43 +8228,6 @@ function lastOrder(history, date) {
   return found;
 }
 
-// src/core/daily.ts
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
-}
-
-// src/core/effort.ts
-function prorateEffort(intervals, now) {
-  const events = [];
-  for (const iv of intervals) {
-    const to = iv.toMs ?? Math.max(now, iv.fromMs);
-    if (!(to > iv.fromMs)) continue;
-    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
-  }
-  events.sort((a, b) => a.t - b.t);
-  const result = /* @__PURE__ */ new Map();
-  const active = /* @__PURE__ */ new Map();
-  let k = 0;
-  let prev = 0;
-  for (let i = 0; i < events.length; ) {
-    const t = events[i].t;
-    if (k > 0 && t > prev) {
-      const share = (t - prev) / k;
-      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
-    }
-    for (; i < events.length && events[i].t === t; i++) {
-      const e = events[i];
-      const count = (active.get(e.taskId) ?? 0) + e.delta;
-      if (count === 0) active.delete(e.taskId);
-      else active.set(e.taskId, count);
-      k += e.delta;
-      if (!result.has(e.taskId)) result.set(e.taskId, 0);
-    }
-    prev = t;
-  }
-  return result;
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8320,11 +8286,86 @@ function closedAtMap(logs, closedIds) {
   for (const e of logs) if (ids.has(e.task) && isIssueStatusLog(e) && e.to === "closed") out.set(e.task, e.atMs);
   return out;
 }
+function isDoneStatus(status) {
+  return status === "closed" || status === "canceled";
+}
+
+// src/core/daily.ts
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
+}
+
+// src/core/effort.ts
+function prorateEffort(intervals, now) {
+  const events = [];
+  for (const iv of intervals) {
+    const to = iv.toMs ?? Math.max(now, iv.fromMs);
+    if (!(to > iv.fromMs)) continue;
+    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+  }
+  events.sort((a, b) => a.t - b.t);
+  const result = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Map();
+  let k = 0;
+  let prev = 0;
+  for (let i = 0; i < events.length; ) {
+    const t = events[i].t;
+    if (k > 0 && t > prev) {
+      const share = (t - prev) / k;
+      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
+    }
+    for (; i < events.length && events[i].t === t; i++) {
+      const e = events[i];
+      const count = (active.get(e.taskId) ?? 0) + e.delta;
+      if (count === 0) active.delete(e.taskId);
+      else active.set(e.taskId, count);
+      k += e.delta;
+      if (!result.has(e.taskId)) result.set(e.taskId, 0);
+    }
+    prev = t;
+  }
+  return result;
+}
 
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
+}
+function ticklerReleased(issue, today, planned) {
+  return planned && issue.tickler !== null && issue.tickler <= today;
+}
+function isInbox(issue, today, planned = false) {
+  if (issue.status !== "open") return false;
+  if (issue.tickler !== null) return issue.tickler <= today && !planned;
+  return !issue.clarified;
+}
+function isNext(issue, today, planned = false) {
+  const released = today !== void 0 && issue.status === "open" && ticklerReleased(issue, today, planned);
+  const ready = issue.status === "in-progress" || issue.status === "open" && (issue.clarified || released);
+  return ready && issue.scheduled === null && (issue.tickler === null || released);
+}
+function gtdList(issue, today, planned = false) {
+  if (issue.status !== "open" && issue.status !== "in-progress") return null;
+  if (isInbox(issue, today, planned)) return "inbox";
+  if (isNext(issue, today, planned)) return "next";
+  if (issue.scheduled !== null) return "calendar";
+  if (issue.tickler !== null && issue.tickler > today) return "tickler";
+  return null;
+}
+function hasPlannedSubs(subs) {
+  return subs.some((s) => s.status !== "closed" && s.status !== "canceled" && (s.start !== null || s.end !== null));
+}
+function inPeriod(sub, today) {
+  const start = sub.start ?? sub.end;
+  const end = sub.end ?? sub.start;
+  return start !== null && end !== null && start <= today && today <= end;
+}
+function nextSubApartFromPeriod(sub, parent, today, parentPlanned) {
+  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== void 0 && isNext(parent, today, parentPlanned);
+}
+function isNextSub(sub, parent, today, parentPlanned = false) {
+  return nextSubApartFromPeriod(sub, parent, today, parentPlanned) && inPeriod(sub, today);
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -8361,6 +8402,30 @@ var TaskIndex = class {
   /** その issue のサブ（md に書いた順。ADR-0135） */
   subs(parentId) {
     return this.subsOf.get(parentId) ?? [];
+  }
+  /** サブを 1 つでも持つ issue（Project）か。サブの status は見ない（ADR-0203, 0210） */
+  isProject(id) {
+    return this.subs(id).length > 0;
+  }
+  /** 計画済みの Project か: 閉じていないサブに期間がある（ADR-0210） */
+  planned(id) {
+    return hasPlannedSubs(this.subs(id));
+  }
+  /** Inbox か（索引のサブで、Tickler の日を迎えた計画済みの Project を除く。ADR-0210） */
+  inbox(issue, today) {
+    return isInbox(issue, today, this.planned(issue.id));
+  }
+  /** Next Action か（ADR-0210 の Tickler の例外を含む） */
+  next(issue, today) {
+    return isNext(issue, today, this.planned(issue.id));
+  }
+  /** サブの Next（親の Tickler の例外を含む。ADR-0203, 0210） */
+  nextSub(sub, today) {
+    return isNextSub(sub, this.issues.get(sub.parent), today, this.planned(sub.parent));
+  }
+  /** GTD の分類（ADR-0210） */
+  list(issue, today) {
+    return gtdList(issue, today, this.planned(issue.id));
   }
   /** 合成キー `i-12#k3f9a2` のサブ */
   sub(key) {
@@ -8478,6 +8543,37 @@ function parseLabels(text) {
   return { labels, problems: problems2 };
 }
 
+// src/core/project-periods.ts
+function periodStart(p) {
+  return p.start ?? p.end;
+}
+function periodInInboxMessage(parentId) {
+  return `${parentId}: Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E Project \u306E\u30B5\u30D6\u306B\u306F\u3001\u671F\u9593\u3092\u5165\u308C\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002\u5148\u306B Inbox \u3067\u6574\u7406\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function earliestPeriodStart(subs) {
+  let earliest = null;
+  for (const s of subs) {
+    if (isDoneStatus(s.status)) continue;
+    const start = periodStart(s);
+    if (start !== null && (earliest === null || start < earliest)) earliest = start;
+  }
+  return earliest;
+}
+function ticklerLimit(subs, today) {
+  const latest = earliestPeriodStart(subs);
+  return { latest, blocked: latest !== null && latest <= today };
+}
+function ticklerBlockedMessage(id) {
+  return `${id}: \u671F\u9593\u304C\u3059\u3067\u306B\u59CB\u307E\u3063\u3066\u3044\u308B\u30B5\u30D6\u304C\u3042\u308B\u306E\u3067\u3001Tickler \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9593\u3092\u5F8C\u308D\u306B\u305A\u3089\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function ticklerWithSubsError(id, subs, tickler, today) {
+  if (tickler === null) return null;
+  const { latest, blocked } = ticklerLimit(subs, today);
+  if (latest === null || tickler <= latest) return null;
+  if (blocked) return ticklerBlockedMessage(id);
+  return `${id}: Tickler \u306F\u30B5\u30D6\u306E\u671F\u9593\u306E\u59CB\u307E\u308A\uFF08${formatShortDate(latest)}\uFF09\u3088\u308A\u5F8C\u306B\u3067\u304D\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002${formatShortDate(latest)} \u4EE5\u524D\u306B\u3059\u308B\u304B\u3001\u30B5\u30D6\u306E\u671F\u9593\u3092\u5F8C\u308D\u306B\u305A\u3089\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+
 // src/core/lint.ts
 function safeDecode(path) {
   try {
@@ -8548,6 +8644,7 @@ function lintVault(data2, options = {}) {
   const problems2 = [];
   const add = (severity, path, code, message) => problems2.push({ severity, path, code, message });
   const index = new TaskIndex(data2);
+  const today = options.today ?? localToday();
   for (const [kind, items] of [
     ["issue", data2.issues],
     ["routine", data2.routines],
@@ -8587,6 +8684,13 @@ function lintVault(data2, options = {}) {
     }
     if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
       add("warning", path, "calendar-with-subs", "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064\u306E\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0203\uFF09");
+    }
+    if (index.planned(issue.id) && index.inbox(issue, today)) {
+      add("warning", path, "period-in-inbox", `${periodInInboxMessage(issue.id)}\uFF08\u671F\u9593\u306E\u3042\u308B\u30B5\u30D6\u304C\u3042\u308A\u307E\u3059\uFF09`);
+    }
+    if (issue.tickler !== null && issue.tickler > today) {
+      const error = ticklerWithSubsError(issue.id, index.subs(issue.id), issue.tickler, today);
+      if (error) add("warning", path, "tickler-after-sub-period", error);
     }
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
