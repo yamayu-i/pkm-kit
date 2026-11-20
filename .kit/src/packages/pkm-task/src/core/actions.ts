@@ -39,6 +39,16 @@ export function somedayPatch(revisit: LocalDate | null = null): Patch {
 	return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
 }
 
+/** someday のまま残す（Organize で revisit を迎えたものに Someday を選んだとき）。revisit の役目は終わったので消す（ADR-0212） */
+export function keepSomedayPatch(): Patch {
+	return { tickler: null, revisit: null };
+}
+
+/** Someday の一覧の Reviewed（週次の見直し）。見直した日だけを書く（ADR-0212） */
+export function reviewedPatch(date: LocalDate): Patch {
+	return { reviewed: date };
+}
+
 /** someday から戻すときは open にして revisit を外す。clarified は書き込み（completeIssuePatch）が外す（ADR-0189） */
 export function reopenPatch(): Patch {
 	return { status: "open", revisit: null };

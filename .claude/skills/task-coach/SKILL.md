@@ -60,13 +60,14 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 5. `task_close_board` でボードを締め、デイリーノートの `## Task board` に要約を書き出す。未完了が残っていても締められ、未完了は持ち越しと書かれる
 6. 1 日の振り返りや翌日への申し送りをまとめ、`task_append_daily_note`（見出し例: `AI 振り返り`）でデイリーノート本文の末尾に追記する
 
-### 週次（Inbox 仕分け・停滞タスクと持ち越し常連の見直し）
+### 週次（Inbox 仕分け・Someday・停滞タスクと持ち越し常連の見直し）
 
 1. `task_get_overview` と `task_list_issues(inbox_only: true)` を呼ぶ。Inbox は「open で `clarified` でない issue」で、日付は見ない（締切だけある未整理の issue も入る）。整理できたら `task_update_issue` で `clarified: true` にする（日付を決めない次の行動なら日付は入れない）。Inbox に戻す（`clarified: false`）のは、誤って整理済みにした open の issue の訂正だけ。行動が曖昧になったものは、その場で次の行動を決め直す（題を直す・サブに分ける）か、考え直す日を Tickler にする（ADR-0189）。Inbox の Project のサブには期間を入れられない（先に整理する）。Project に Tickler を付けるときは、閉じていないサブの期間の始まりのいちばん早い日以前にする。Project を someday にするとサブの期間と Calendar の日が消えるので、ユーザーに確かめてから `clear_sub_periods: true` を付ける（ADR-0210）
 2. **持ち越し常連（`frequentlyCarried`）**: なぜ進まないのか（粒度が大きすぎる、前提条件が揃っていない、実はやらなくてよい）を一緒に確認し、サブイシューへの分割（`task_create_sub_issues` で親の md の中に足す。サブのサブは作れない）や `someday` / `canceled` への変更を提案する
 3. **停滞タスク（`stalled.inProgressStale` / `revisitDue` / `waitingOrDelegated`）**: 状況を確認し、`status_detail` の更新や次アクションの設定を行う
-4. **見積もり精度（`estimation`）**: 見積もりに対して実績が恒常的に膨らんでいないかを確認し、今後の見積もりの目安を調整する
-5. 週次の振り返りを当日のデイリーノート末尾に `task_append_daily_note` で追記する
+4. **Someday**: `task_list_issues(statuses: ["someday"])` で取り、`reviewed` が古い順（未設定が先）に見る。Organize には revisit を迎えたものしか出ないので、ほかはここで見直す。続けるなら `status: "open"`（Inbox に戻る）、日付を決めるなら `tickler`、やめるなら `canceled`、残すなら `reviewed` を今日にする（思い出したい日があれば `revisit`）。件数が多ければ古いものから数件に絞って提案する（ADR-0212）
+5. **見積もり精度（`estimation`）**: 見積もりに対して実績が恒常的に膨らんでいないかを確認し、今後の見積もりの目安を調整する
+6. 週次の振り返りを当日のデイリーノート末尾に `task_append_daily_note` で追記する
 
 ## 3. 守ること
 

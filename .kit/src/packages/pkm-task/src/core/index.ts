@@ -148,18 +148,14 @@ function compareNullableAsc(a: string | null, b: string | null): number {
 export function organizeQueue(issues: Iterable<Issue>, today: LocalDate, planned: (id: string) => boolean = () => false): Issue[] {
 	const inbox: Issue[] = [];
 	const revisitDue: Issue[] = [];
-	const someday: Issue[] = [];
 	for (const issue of issues) {
 		if (isInbox(issue, today, planned(issue.id))) inbox.push(issue);
-		else if (issue.status === "someday") {
-			if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
-			else someday.push(issue);
-		}
+		// revisit を迎えた someday だけを整理に戻す。ほかの someday の見直しは週次で行う（ADR-0212）
+		else if (issue.status === "someday" && issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
 	}
 	inbox.sort((a, b) => compareNullableAsc(a.created, b.created));
 	revisitDue.sort((a, b) => compareNullableAsc(a.revisit, b.revisit));
-	someday.sort((a, b) => compareNullableAsc(a.reviewed, b.reviewed));
-	return [...inbox, ...revisitDue, ...someday];
+	return [...inbox, ...revisitDue];
 }
 
 /** メモリ上の索引（ADR-0002）。サブの引き当てなど保存しない値はここで作る */

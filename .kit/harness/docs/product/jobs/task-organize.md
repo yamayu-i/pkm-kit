@@ -5,11 +5,11 @@
 
 ## ジョブ
 
-数分の空き時間ができたとき、溜まった Inbox と、見直す時期の来た Someday を 1 件ずつ片付けたい。溜めたものが重荷にならず、やるべきものだけが予定に入るように。
+数分の空き時間ができたとき、溜まった Inbox と、revisit を迎えた Someday を 1 件ずつ片付けたい。溜めたものが重荷にならず、やるべきものだけが予定に入るように。
 
 ## 今の流れ
 
-1. [Organize](../surfaces/task-organize.md) を開く。Inbox の古い順 → revisit を過ぎた Someday → 見ていない期間が長い Someday の順に 1 件ずつカードが出る
+1. [Organize](../surfaces/task-organize.md) を開く。Inbox の古い順 → revisit を迎えた Someday の順に 1 件ずつカードが出る
 2. スワイプ・ボタン・矢印キーで決める: Next（日付を決めずに整理済みにする）、Tickler（今は決めず、その日に Inbox に戻す）、To Someday、Cancel、Calendar（その日にやらなければならない日を 1 つ選ぶ）、Already done
 3. 1 つ前に戻せる
 
@@ -29,7 +29,7 @@
 
 ## 始める条件
 
-Inbox または見直し対象の Someday があること。
+Inbox または revisit を迎えた Someday があること。ほかの Someday の見直しは[週の見直し](task-review-week.md)で行う。
 
 ## 期待する結果と、つまずいたとき
 

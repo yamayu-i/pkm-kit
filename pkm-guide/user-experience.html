@@ -365,10 +365,10 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <li>望む成果: <a href="#strategy-md--望む成果">2</a></li>
 </ul>
 <h3 id="jobs-task-organize-md--ジョブ">ジョブ</h3>
-<p>数分の空き時間ができたとき、溜まった Inbox と、見直す時期の来た Someday を 1 件ずつ片付けたい。溜めたものが重荷にならず、やるべきものだけが予定に入るように。</p>
+<p>数分の空き時間ができたとき、溜まった Inbox と、revisit を迎えた Someday を 1 件ずつ片付けたい。溜めたものが重荷にならず、やるべきものだけが予定に入るように。</p>
 <h3 id="jobs-task-organize-md--今の流れ">今の流れ</h3>
 <ol>
-<li><a href="#surfaces-task-organize-md">Organize</a> を開く。Inbox の古い順 → revisit を過ぎた Someday → 見ていない期間が長い Someday の順に 1 件ずつカードが出る</li>
+<li><a href="#surfaces-task-organize-md">Organize</a> を開く。Inbox の古い順 → revisit を迎えた Someday の順に 1 件ずつカードが出る</li>
 <li>スワイプ・ボタン・矢印キーで決める: Next（日付を決めずに整理済みにする）、Tickler（今は決めず、その日に Inbox に戻す）、To Someday、Cancel、Calendar（その日にやらなければならない日を 1 つ選ぶ）、Already done</li>
 <li>1 つ前に戻せる</li>
 </ol>
@@ -382,7 +382,7 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <h3 id="jobs-task-organize-md--知られている困りごと">知られている困りごと</h3>
 <p>まだない</p>
 <h3 id="jobs-task-organize-md--始める条件">始める条件</h3>
-<p>Inbox または見直し対象の Someday があること。</p>
+<p>Inbox または revisit を迎えた Someday があること。ほかの Someday の見直しは<a href="#jobs-task-review-week-md">週の見直し</a>で行う。</p>
 <h3 id="jobs-task-organize-md--期待する結果と-つまずいたとき">期待する結果と、つまずいたとき</h3>
 <p>対象ごとに次の行動・保留・Calendar・Tickler 等を決められること。直前の選択を間違えたら Organize で戻す。</p>
 <footer><a href="#contents">目次へ</a> 前: <a href="#jobs-task-close-day-md">一日の終わりに締める</a> 次: <a href="#jobs-task-plan-day-md">朝、今日やることを決める</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/jobs/task-organize.md">原本</a></footer></article>
@@ -421,12 +421,13 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <li>望む成果: <a href="#strategy-md--望む成果">1</a>、<a href="#strategy-md--望む成果">2</a></li>
 </ul>
 <h3 id="jobs-task-review-week-md--ジョブ">ジョブ</h3>
-<p>週の区切りに、止まっている issue と何度も持ち越している issue、溜まった Inbox を見直したい。計画が現実からずれたままにならないように。</p>
+<p>週の区切りに、止まっている issue と何度も持ち越している issue、溜まった Inbox、Someday を見直したい。計画が現実からずれたままにならないように。</p>
 <h3 id="jobs-task-review-week-md--今の流れ">今の流れ</h3>
 <ol>
 <li>AI と行うときは、task-coach の週次の手順で、停滞（in-progress なのに作業がない、waiting・delegated の放置）と持ち越し常連、見積もりのずれを見る（<a href="#surfaces-task-mcp-md">MCP と task-coach</a>）</li>
 <li>分ける・Someday にする・期限を変えるなどを決め、<a href="#surfaces-task-issues-md">Issues</a> や <a href="#surfaces-task-issue-screen-md">issue 画面</a> で直す</li>
 <li>Inbox は <a href="#surfaces-task-organize-md">Organize</a> で片付ける</li>
+<li><a href="#surfaces-task-someday-md">Someday</a> の一覧を reviewed が古い順に見て、続けるものは Back to Inbox、日付を決めるものは Tickler、やめるものは Cancel、残すものは Reviewed にする（<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0212-organize-inbox-and-revisit-only.md">ADR-0212</a>）</li>
 </ol>
 <h3 id="jobs-task-review-week-md--関わる概念">関わる概念</h3>
 <p><a href="#concepts-task-status-md">status</a>、<a href="#concepts-task-board-md">task board</a>、<a href="#concepts-task-estimate-md">estimated</a>、<a href="#concepts-task-someday-md">Someday</a></p>
@@ -1076,21 +1077,21 @@ ADR へのリンク。
 </ul>
 <h3 id="surfaces-task-organize-md--今の振る舞い">今の振る舞い</h3>
 <ul>
-<li>1 件ずつカードで出す。順は Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday</li>
+<li>1 件ずつカードで出す。対象は Inbox と、revisit を迎えた someday だけ（revisit のない・先の someday は出さない）。順は Inbox の古い順 → revisit の古い順</li>
 <li>カード: summary、作成日、本文の冒頭。priority と label はカードの上で変えられる</li>
-<li>操作（スワイプ・ボタン・矢印キー）: Next（→。日付を決めずに整理済み（<code>clarified: true</code>）にする）、To Someday（←）、Tickler（↑。日付を 1 つ選び、その日に Inbox に戻す）、Cancel（↓）。ボタンだけ: Calendar（その日にやらなければならない日を 1 つ選ぶ。整理済みにもする。estimated は求めない）、Already done。整理の操作はどれも Tickler を消す</li>
+<li>操作（スワイプ・ボタン・矢印キー）: Next（→。日付を決めずに整理済み（<code>clarified: true</code>）にする）、To Someday（←）、Tickler（↑。日付を 1 つ選び、その日に Inbox に戻す）、Cancel（↓）。revisit を迎えた someday で To Someday を選ぶと revisit を消す。ボタンだけ: Calendar（その日にやらなければならない日を 1 つ選ぶ。整理済みにもする。estimated は求めない）、Already done。整理の操作はどれも Tickler を消す</li>
 <li>整理したカードは reviewed を今日にする。1 つ前に戻せる</li>
 </ul>
 <h3 id="surfaces-task-organize-md--使う概念">使う概念</h3>
 <p><a href="#concepts-task-inbox-md">Inbox</a>、<a href="#concepts-task-someday-md">Someday</a>、<a href="#concepts-task-do-date-md">Calendar</a>、<a href="#concepts-task-tickler-md">Tickler</a>、<a href="#concepts-task-estimate-md">estimated と実績</a></p>
 <h3 id="surfaces-task-organize-md--根拠">根拠</h3>
-<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0009-views.md">ADR-0009</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0030-organize-schedule-calendar.md">ADR-0030</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0148-inbox-clarified.md">ADR-0148</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0152-calendar-and-tickler.md">ADR-0152</a></p>
+<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0009-views.md">ADR-0009</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0030-organize-schedule-calendar.md">ADR-0030</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0148-inbox-clarified.md">ADR-0148</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0152-calendar-and-tickler.md">ADR-0152</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0212-organize-inbox-and-revisit-only.md">ADR-0212</a></p>
 <h3 id="surfaces-task-organize-md--入力と制約">入力と制約</h3>
-<p>整理対象は Inbox と見直し対象の Someday。Calendar と Tickler は日付を 1 つ選びます。estimated は必須ではありません。</p>
+<p>整理対象は Inbox と revisit を迎えた Someday。ほかの Someday の見直しは週次で <a href="#surfaces-task-someday-md">Someday</a> の一覧で行います。Calendar と Tickler は日付を 1 つ選びます。estimated は必須ではありません。</p>
 <h3 id="surfaces-task-organize-md--操作と保存">操作と保存</h3>
 <p>Next は clarified、Calendar は scheduled と clarified、Tickler は tickler を保存します。整理の記録として reviewed を更新します。本文を書き直す操作ではありません。</p>
 <h3 id="surfaces-task-organize-md--失敗時と戻し方">失敗時と戻し方</h3>
-<p>直前の整理は戻す操作で取り消せます。空なら未整理や見直し対象がない状態です。選び間違えた日付は対象の issue でも直せます。</p>
+<p>直前の整理は戻す操作で取り消せます。空なら未整理のものも revisit を迎えた Someday もない状態です。選び間違えた日付は対象の issue でも直せます。</p>
 <h3 id="surfaces-task-organize-md--端末の違い">端末の違い</h3>
 <p>PC の矢印キー・ボタン、タッチのスワイプ・ボタンで操作します。本文の入力中のキー操作と混同しないようボタンも使えます。</p>
 <section class="gallery"><h3>実装の画面例</h3><h4>1 件ずつ整理</h4><p>Next・Someday・Tickler・Calendar へ整理するカードです。</p><figure><a class="shot light wide" href="ui/task--organize-light-wide.png"><img src="ui/task--organize-light-wide.png" alt="1 件ずつ整理 / light / wide" loading="lazy"><span>画像を開く · light / wide</span></a><a class="shot light narrow" href="ui/task--organize-light-narrow.png"><img src="ui/task--organize-light-narrow.png" alt="1 件ずつ整理 / light / narrow" loading="lazy"><span>画像を開く · light / narrow</span></a><a class="shot dark wide" href="ui/task--organize-dark-wide.png"><img src="ui/task--organize-dark-wide.png" alt="1 件ずつ整理 / dark / wide" loading="lazy"><span>画像を開く · dark / wide</span></a><a class="shot dark narrow" href="ui/task--organize-dark-narrow.png"><img src="ui/task--organize-dark-narrow.png" alt="1 件ずつ整理 / dark / narrow" loading="lazy"><span>画像を開く · dark / narrow</span></a><figcaption>1 件ずつ整理 — 合成データによる実装プレビュー</figcaption></figure><details><summary>整理するものがない</summary><p>カードをすべて処理した状態です。</p><figure><a class="shot light wide" href="ui/task--organize--empty-light-wide.png"><img src="ui/task--organize--empty-light-wide.png" alt="整理するものがない / light / wide" loading="lazy"><span>画像を開く · light / wide</span></a><a class="shot light narrow" href="ui/task--organize--empty-light-narrow.png"><img src="ui/task--organize--empty-light-narrow.png" alt="整理するものがない / light / narrow" loading="lazy"><span>画像を開く · light / narrow</span></a><a class="shot dark wide" href="ui/task--organize--empty-dark-wide.png"><img src="ui/task--organize--empty-dark-wide.png" alt="整理するものがない / dark / wide" loading="lazy"><span>画像を開く · dark / wide</span></a><a class="shot dark narrow" href="ui/task--organize--empty-dark-narrow.png"><img src="ui/task--organize--empty-dark-narrow.png" alt="整理するものがない / dark / narrow" loading="lazy"><span>画像を開く · dark / narrow</span></a><figcaption>整理するものがない — 合成データによる実装プレビュー</figcaption></figure></details></section><footer><a href="#contents">目次へ</a> 前: <a href="#surfaces-task-now-md">Tasks Now</a> 次: <a href="#surfaces-task-presets-md">Presets とプリセット画面</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/surfaces/task-organize.md">原本</a></footer></article>
@@ -1232,12 +1233,13 @@ ADR へのリンク。
 <h3 id="surfaces-task-someday-md--今の振る舞い">今の振る舞い</h3>
 <ul>
 <li>someday の issue の一覧。列: priority、status、labels、revisit、reviewed。reviewed が古い順にも並べられる</li>
+<li>週次の見直しの場。上から見て、残すものに Reviewed（reviewed を今日にするだけ）を押す。ほかの操作: Back to Inbox、Tickler、revisit（その日に Organize に出す）、Cancel</li>
 <li>行の編集は <a href="#surfaces-task-issues-md">Issues</a> と同じ。Tickler を付けるか、Calendar の日や期限を入れると open に戻る</li>
 </ul>
 <h3 id="surfaces-task-someday-md--使う概念">使う概念</h3>
 <p><a href="#concepts-task-someday-md">Someday</a></p>
 <h3 id="surfaces-task-someday-md--根拠">根拠</h3>
-<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0006-status-inbox-someday.md">ADR-0006</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0009-views.md">ADR-0009</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0018-list-edit-routine-screen.md">ADR-0018</a></p>
+<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0006-status-inbox-someday.md">ADR-0006</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0009-views.md">ADR-0009</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0018-list-edit-routine-screen.md">ADR-0018</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0212-organize-inbox-and-revisit-only.md">ADR-0212</a></p>
 <h3 id="surfaces-task-someday-md--入力と制約">入力と制約</h3>
 <p>status が someday の issue が対象です。見直し日 revisit と見直した日 reviewed は YYYY-MM-DD です。</p>
 <h3 id="surfaces-task-someday-md--操作と保存">操作と保存</h3>
@@ -1645,9 +1647,9 @@ ADR へのリンク。
 <h3 id="concepts-task-someday-md--状態">状態</h3>
 <p><code>status: someday</code>。任意で <code>revisit</code>（見直す日）。Organize で最後に見た日は <code>reviewed</code>。</p>
 <h3 id="concepts-task-someday-md--操作">操作</h3>
-<p>Organize の「Someday へ」、status のメニュー。Someday の一覧で見る。</p>
+<p>Organize の「Someday へ」、status のメニュー。Someday の一覧で見て、週次で見直す（Reviewed で reviewed を今日にする）。</p>
 <h3 id="concepts-task-someday-md--使い方の筋道">使い方の筋道</h3>
-<p>someday にすると、Calendar の日・期限・Tickler が消え、Today・Scheduled・Issues の既定の表示から消える。revisit を過ぎると Organize に出てくる。Calendar の日や期限を入れると open に戻る。Someday から open に戻したもの（status のメニュー・Someday の一覧の Back to Inbox・日付を入れたとき）は Inbox に入り、整理し直す（Organize で Next・Calendar を選んだときは整理済みのまま。<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0189-gtd-inbox-and-optional-close.md">ADR-0189</a>）。</p>
+<p>someday にすると、Calendar の日・期限・Tickler が消え、Today・Scheduled・Issues の既定の表示から消える。revisit を迎えると Organize に出てくる（revisit がなければ Organize には出ず、週次レビューで Someday の一覧から見直す。Organize で Someday に残すと revisit は消える。<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0212-organize-inbox-and-revisit-only.md">ADR-0212</a>）。Calendar の日や期限を入れると open に戻る。Someday から open に戻したもの（status のメニュー・Someday の一覧の Back to Inbox・日付を入れたとき）は Inbox に入り、整理し直す（Organize で Next・Calendar を選んだときは整理済みのまま。<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0189-gtd-inbox-and-optional-close.md">ADR-0189</a>）。</p>
 <h3 id="concepts-task-someday-md--根拠">根拠</h3>
 <p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0006-status-inbox-someday.md">ADR-0006</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0018-list-edit-routine-screen.md">ADR-0018</a></p>
 <footer><a href="#contents">目次へ</a> 前: <a href="#concepts-task-routine-md">routine</a> 次: <a href="#concepts-task-status-md">status</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/concepts/task-someday.md">原本</a></footer></article>

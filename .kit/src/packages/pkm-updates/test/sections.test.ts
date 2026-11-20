@@ -58,18 +58,20 @@ describe("載せる規則", () => {
 	it("issue は当たる一覧すべてに出す（Issues は closed も含むすべて）", () => {
 		const notes = [
 			issue(1, NEW),
-			issue(2, NEW, { status: "someday" }),
+			// Organize には revisit を迎えた someday だけが出る（ADR-0212）
+			issue(2, NEW, { status: "someday", revisit: "2026-11-08" }),
 			issue(3, NEW, { scheduled: "2026-11-09", clarified: true }),
 			issue(4, NEW, { status: "closed" }),
 			issue(5, OLD),
+			issue(6, NEW, { status: "someday" }),
 		];
 		expect(ids(notes)).toEqual({
 			// 同じ updated ならパスの順
-			issues: ["issue/i-1.md", "issue/i-2.md", "issue/i-3.md", "issue/i-4.md"],
+			issues: ["issue/i-1.md", "issue/i-2.md", "issue/i-3.md", "issue/i-4.md", "issue/i-6.md"],
 			inbox: ["issue/i-1.md"],
 			organize: ["issue/i-1.md", "issue/i-2.md"],
 			scheduled: ["issue/i-3.md"],
-			someday: ["issue/i-2.md"],
+			someday: ["issue/i-2.md", "issue/i-6.md"],
 		});
 	});
 

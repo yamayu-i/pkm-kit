@@ -5,13 +5,14 @@
 
 ## ジョブ
 
-週の区切りに、止まっている issue と何度も持ち越している issue、溜まった Inbox を見直したい。計画が現実からずれたままにならないように。
+週の区切りに、止まっている issue と何度も持ち越している issue、溜まった Inbox、Someday を見直したい。計画が現実からずれたままにならないように。
 
 ## 今の流れ
 
 1. AI と行うときは、task-coach の週次の手順で、停滞（in-progress なのに作業がない、waiting・delegated の放置）と持ち越し常連、見積もりのずれを見る（[MCP と task-coach](../surfaces/task-mcp.md)）
 2. 分ける・Someday にする・期限を変えるなどを決め、[Issues](../surfaces/task-issues.md) や [issue 画面](../surfaces/task-issue-screen.md) で直す
 3. Inbox は [Organize](../surfaces/task-organize.md) で片付ける
+4. [Someday](../surfaces/task-someday.md) の一覧を reviewed が古い順に見て、続けるものは Back to Inbox、日付を決めるものは Tickler、やめるものは Cancel、残すものは Reviewed にする（[ADR-0212](../../../../src/docs/adr/0212-organize-inbox-and-revisit-only.md)）
 
 ## 関わる概念
 

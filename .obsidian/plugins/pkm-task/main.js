@@ -1361,6 +1361,12 @@ function calendarPatch(issue, date) {
 function somedayPatch(revisit = null) {
   return { status: "someday", scheduled: null, soft_deadline: null, deadline: null, delegated_to: null, revisit, tickler: null };
 }
+function keepSomedayPatch() {
+  return { tickler: null, revisit: null };
+}
+function reviewedPatch(date) {
+  return { reviewed: date };
+}
 function reopenPatch() {
   return { status: "open", revisit: null };
 }
@@ -2431,18 +2437,13 @@ function compareNullableAsc(a3, b2) {
 function organizeQueue(issues, today, planned = () => false) {
   const inbox = [];
   const revisitDue = [];
-  const someday = [];
   for (const issue of issues) {
     if (isInbox(issue, today, planned(issue.id))) inbox.push(issue);
-    else if (issue.status === "someday") {
-      if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
-      else someday.push(issue);
-    }
+    else if (issue.status === "someday" && issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
   }
   inbox.sort((a3, b2) => compareNullableAsc(a3.created, b2.created));
   revisitDue.sort((a3, b2) => compareNullableAsc(a3.revisit, b2.revisit));
-  someday.sort((a3, b2) => compareNullableAsc(a3.reviewed, b2.reviewed));
-  return [...inbox, ...revisitDue, ...someday];
+  return [...inbox, ...revisitDue];
 }
 var TaskIndex = class {
   constructor(data) {
@@ -10345,7 +10346,7 @@ function OrganizeView(props) {
   };
   const someday = () => {
     if (!issue) return;
-    if (issue.status === "someday") return void apply2({ tickler: null }, "To Someday");
+    if (issue.status === "someday") return void apply2(keepSomedayPatch(), "To Someday");
     void confirmSomeday(ctx, [issue]).then((ok) => {
       if (ok) void apply2(somedayPatch(), "To Someday");
     });
@@ -10832,8 +10833,12 @@ function SomedayView(props) {
     sel.map((i3) => i3.path),
     reopenPatch()
   ).then(done, (e3) => ctx.report("Inbox \u306B\u623B\u305B\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const markReviewed = () => void ctx.writer.updateMany(
+    sel.map((i3) => i3.path),
+    reviewedPatch(localToday())
+  ).then(done, (e3) => ctx.report("\u898B\u76F4\u3057\u305F\u65E5\u3092\u8A18\u9332\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   const setRevisit = async () => {
-    const date = await askDate(ctx, "revisit (shows up in Organize after this date)");
+    const date = await askDate(ctx, "revisit (shows up in Organize from this date)");
     if (date === null) return;
     await ctx.writer.updateMany(
       sel.map((i3) => i3.path),
@@ -10846,11 +10851,7 @@ function SomedayView(props) {
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Someday" }),
       /* @__PURE__ */ u3("span", { class: "vt-count", children: issues.length }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      /* @__PURE__ */ u3("select", { class: "dropdown", value: order, onChange: (e3) => setOrder(e3.currentTarget.value), children: ORDERS.map((o3) => /* @__PURE__ */ u3("option", { value: o3.key, children: o3.label })) }),
-      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", disabled: issues.length === 0, onClick: () => void ctx.openView("pkm-task-organize"), children: [
-        /* @__PURE__ */ u3(Icon, { name: "layers" }),
-        " Review in Organize"
-      ] })
+      /* @__PURE__ */ u3("select", { class: "dropdown", value: order, onChange: (e3) => setOrder(e3.currentTarget.value), children: ORDERS.map((o3) => /* @__PURE__ */ u3("option", { value: o3.key, children: o3.label })) })
     ] }),
     /* @__PURE__ */ u3(IssueTable, { ctx, issues, selected, onSelect: setSelected, columns: ["labels", "revisit", "reviewed"], empty: "Someday is empty" }),
     /* @__PURE__ */ u3(
@@ -10858,7 +10859,8 @@ function SomedayView(props) {
       {
         count: sel.length,
         actions: [
-          { label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
+          { label: "Reviewed", icon: "check", tone: "primary", run: markReviewed },
+          { label: "Back to Inbox", icon: "inbox", run: reopen },
           { label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i3) => i3.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
           { label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e3) => ctx.report("revisit \u3092\u8A2D\u5B9A\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3)) },
           { label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i3) => i3.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) }

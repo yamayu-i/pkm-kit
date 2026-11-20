@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { backToNextPatch, calendarPatch, nextPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
+import { backToNextPatch, calendarPatch, keepSomedayPatch, nextPatch, reviewedPatch, somedayPatch, ticklerPatch } from "../src/core/actions";
 import { missedIssues, missedSubs } from "../src/core/daily";
 import { TaskIndex, emptyVaultData, isInbox, isNext, organizeQueue } from "../src/core/index";
 import { collectVault } from "../src/core/load";
@@ -103,6 +103,14 @@ describe("Missed（過ぎた Calendar）", () => {
 });
 
 describe("操作の patch", () => {
+	it("Someday に残す: revisit と Tickler を消す。status は変えない（ADR-0212）", () => {
+		expect(keepSomedayPatch()).toEqual({ tickler: null, revisit: null });
+	});
+
+	it("Reviewed: 見直した日だけを書く（ADR-0212）", () => {
+		expect(reviewedPatch("2026-11-20")).toEqual({ reviewed: "2026-11-20" });
+	});
+
 	it("Tickler: 日付を書く。someday なら open に戻す", () => {
 		expect(ticklerPatch(issue("i-1"), "2026-11-20")).toEqual({ tickler: "2026-11-20" });
 		expect(ticklerPatch(issue("i-1", { status: "someday", revisit: "2026-12-01" }), "2026-11-20")).toEqual({ tickler: "2026-11-20", status: "open", revisit: null });
