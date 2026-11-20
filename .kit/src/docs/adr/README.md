@@ -40,7 +40,7 @@
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認（一部置換: 0189） | MCP サーバーによるタスク参照・編集とタスクコーチ |
-| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035, 0077） | 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す |
+| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035, 0077。一部補足: 0213） | 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す |
 | [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる |
@@ -111,5 +111,5 @@
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
 | [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
-| [0213](0213-note-list-folders.md) | 提案 | Notes の一覧に、note/ のフォルダの木の表示を足す |
+| [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
 <!-- adr-index:end -->
