@@ -111,6 +111,6 @@
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
 | [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
-| [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
+| [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
 <!-- adr-index:end -->
