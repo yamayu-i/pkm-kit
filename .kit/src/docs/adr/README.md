@@ -110,5 +110,5 @@
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認 | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
 | [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
-| [0210](0210-gtd-list-badge-and-project-rules.md) | 提案 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
+| [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 <!-- adr-index:end -->
