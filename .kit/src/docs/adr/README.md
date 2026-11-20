@@ -23,7 +23,7 @@
 | [0006](0006-status-inbox-someday.md) | 承認（一部置換: 0032, 0148） | status の定義、Inbox と Someday |
 | [0007](0007-labels-and-members.md) | 承認（一部置換: 0024, 0035） | label の定義ファイルと、委任先（member） |
 | [0008](0008-ui-preact.md) | 承認（一部置換: 0077） | UI は Preact。issue 画面は CodeMirror の widget |
-| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033, 0034, 0135, 0150, 0152） | View の一覧と各 View の振る舞い |
+| [0009](0009-views.md) | 承認（一部置換: 0018, 0021, 0024, 0030, 0032, 0033, 0034, 0135, 0150, 0152, 0212） | View の一覧と各 View の振る舞い |
 | [0010](0010-routine.md) | 承認 | 繰り返しタスク（routine, `r-N`） |
 | [0011](0011-quick-capture.md) | 承認 | ショートカットでの issue 一括登録 |
 | [0012](0012-issue-screen.md) | 承認（一部置換: 0034, 0077, 0135） | issue 画面の構成と、親子関係の編集 |
@@ -111,4 +111,5 @@
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
 | [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
+| [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 <!-- adr-index:end -->

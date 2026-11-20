@@ -788,18 +788,13 @@ function compareNullableAsc(a3, b2) {
 function organizeQueue(issues, today, planned = () => false) {
   const inbox = [];
   const revisitDue = [];
-  const someday = [];
   for (const issue of issues) {
     if (isInbox(issue, today, planned(issue.id))) inbox.push(issue);
-    else if (issue.status === "someday") {
-      if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
-      else someday.push(issue);
-    }
+    else if (issue.status === "someday" && issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
   }
   inbox.sort((a3, b2) => compareNullableAsc(a3.created, b2.created));
   revisitDue.sort((a3, b2) => compareNullableAsc(a3.revisit, b2.revisit));
-  someday.sort((a3, b2) => compareNullableAsc(a3.reviewed, b2.reviewed));
-  return [...inbox, ...revisitDue, ...someday];
+  return [...inbox, ...revisitDue];
 }
 
 // ../pkm-task/src/core/labels.ts

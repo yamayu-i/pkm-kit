@@ -1,9 +1,9 @@
 import { useState } from "preact/hooks";
-import { reopenPatch } from "../core/actions";
+import { localToday } from "../core/dates";
+import { reopenPatch, reviewedPatch } from "../core/actions";
 import type { Issue } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { askDate, cancelIssues, ticklerIssues } from "../obsidian/issue-actions";
-import { Icon } from "../ui/Icon";
 import { ActionBar, IssueTable } from "../ui/IssueTable";
 import { useStoreVersion } from "../ui/hooks";
 import { canApplyAll } from "../core/transition";
@@ -24,7 +24,7 @@ function sortSomeday(issues: Issue[], order: Order): Issue[] {
 	);
 }
 
-/** Someday List（ADR-0006, 0009） */
+/** Someday List（ADR-0006, 0009, 0212）。週次の見直しの場 */
 export function SomedayView(props: { ctx: TaskContext }) {
 	const { ctx } = props;
 	useStoreVersion(ctx.store);
@@ -43,8 +43,16 @@ export function SomedayView(props: { ctx: TaskContext }) {
 				reopenPatch(),
 			)
 			.then(done, (e) => ctx.report("Inbox に戻せませんでした", e));
+	// 週次の見直しで、残すと決めたものに見た日を付ける（ADR-0212）
+	const markReviewed = () =>
+		void ctx.writer
+			.updateMany(
+				sel.map((i) => i.path),
+				reviewedPatch(localToday()),
+			)
+			.then(done, (e) => ctx.report("見直した日を記録できませんでした", e));
 	const setRevisit = async () => {
-		const date = await askDate(ctx, "revisit (shows up in Organize after this date)");
+		const date = await askDate(ctx, "revisit (shows up in Organize from this date)");
 		if (date === null) return;
 		await ctx.writer.updateMany(
 			sel.map((i) => i.path),
@@ -63,15 +71,13 @@ export function SomedayView(props: { ctx: TaskContext }) {
 						<option value={o.key}>{o.label}</option>
 					))}
 				</select>
-				<button class="vt-button is-primary" disabled={issues.length === 0} onClick={() => void ctx.openView("pkm-task-organize")}>
-					<Icon name="layers" /> Review in Organize
-				</button>
 			</header>
 			<IssueTable ctx={ctx} issues={issues} selected={selected} onSelect={setSelected} columns={["labels", "revisit", "reviewed"]} empty="Someday is empty" />
 			<ActionBar
 				count={sel.length}
 				actions={[
-					{ label: "Back to Inbox", icon: "inbox", tone: "primary", run: reopen },
+					{ label: "Reviewed", icon: "check", tone: "primary", run: markReviewed },
+					{ label: "Back to Inbox", icon: "inbox", run: reopen },
 					{ label: "Tickler", icon: "alarm-clock", disabled: !canApplyAll(sel.map((i) => i.status), "tickler"), run: () => void ticklerIssues(ctx, sel).then(done) },
 					{ label: "revisit", icon: "calendar-clock", run: () => void setRevisit().catch((e) => ctx.report("revisit を設定できませんでした", e)) },
 					{ label: "Cancel", icon: "x", disabled: !canApplyAll(sel.map((i) => i.status), "canceled"), run: () => void cancelIssues(ctx, sel).then(done) },

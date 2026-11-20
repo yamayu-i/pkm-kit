@@ -7,6 +7,7 @@
 ## 今の振る舞い
 
 - someday の issue の一覧。列: priority、status、labels、revisit、reviewed。reviewed が古い順にも並べられる
+- 週次の見直しの場。上から見て、残すものに Reviewed（reviewed を今日にするだけ）を押す。ほかの操作: Back to Inbox、Tickler、revisit（その日に Organize に出す）、Cancel
 - 行の編集は [Issues](task-issues.md) と同じ。Tickler を付けるか、Calendar の日や期限を入れると open に戻る
 
 ## 使う概念
@@ -15,7 +16,7 @@
 
 ## 根拠
 
-[ADR-0006](../../../../src/docs/adr/0006-status-inbox-someday.md)、[ADR-0009](../../../../src/docs/adr/0009-views.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)
+[ADR-0006](../../../../src/docs/adr/0006-status-inbox-someday.md)、[ADR-0009](../../../../src/docs/adr/0009-views.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0212](../../../../src/docs/adr/0212-organize-inbox-and-revisit-only.md)
 
 ## 入力と制約
 
