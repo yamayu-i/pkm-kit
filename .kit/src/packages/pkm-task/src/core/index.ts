@@ -42,22 +42,50 @@ export function isActive(issue: Pick<Issue, "status">): boolean {
 }
 
 /**
- * Inbox（未整理）: open で、clarified でない。日付（期限・Calendar）は見ない（ADR-0148）。
- * Tickler（ADR-0152）: 日付の前は出さず、日付が来たら clarified でも出す（整理を先送りしたものが戻る）
+ * Tickler の日を迎えた、計画済みの Project か（ADR-0210）。閉じていないサブに期間があれば、整理し直さずに Next Action として扱う。
+ * planned は hasPlannedSubs（索引からは TaskIndex.planned）
  */
-export function isInbox(issue: Issue, today: LocalDate): boolean {
+function ticklerReleased(issue: Issue, today: LocalDate, planned: boolean): boolean {
+	return planned && issue.tickler !== null && issue.tickler <= today;
+}
+
+/**
+ * Inbox（未整理）: open で、clarified でない。日付（期限・Calendar）は見ない（ADR-0148）。
+ * Tickler（ADR-0152）: 日付の前は出さず、日付が来たら clarified でも出す（整理を先送りしたものが戻る）。
+ * ただし計画済みの Project は、日付が来たら Next Action になる（ADR-0210）
+ */
+export function isInbox(issue: Issue, today: LocalDate, planned = false): boolean {
 	if (issue.status !== "open") return false;
-	if (issue.tickler !== null) return issue.tickler <= today;
+	if (issue.tickler !== null) return issue.tickler <= today && !planned;
 	return !issue.clarified;
 }
 
 /**
  * Next Actions: open で clarified のもの、または in-progress（着手したので整理済み）で、Calendar（scheduled）も Tickler もない
- * （ADR-0148, 0152, 0184）。日付は保存しない。waiting / delegated は Watch の欄で見張る
+ * （ADR-0148, 0152, 0184）。日付は保存しない。waiting / delegated は Watch の欄で見張る。
+ * Tickler の日を迎えた計画済みの Project も Next（ADR-0210。today と planned を渡したときだけ）
  */
-export function isNext(issue: Issue, _today?: LocalDate): boolean {
-	const ready = issue.status === "in-progress" || (issue.status === "open" && issue.clarified);
-	return ready && issue.scheduled === null && issue.tickler === null;
+export function isNext(issue: Issue, today?: LocalDate, planned = false): boolean {
+	const released = today !== undefined && issue.status === "open" && ticklerReleased(issue, today, planned);
+	const ready = issue.status === "in-progress" || (issue.status === "open" && (issue.clarified || released));
+	return ready && issue.scheduled === null && (issue.tickler === null || released);
+}
+
+/** GTD の分類（ADR-0210）。issue 画面の読み取り専用のバッジと MCP が使う。waiting・delegated・someday・閉じたものは null */
+export type GtdList = "inbox" | "next" | "calendar" | "tickler";
+
+export function gtdList(issue: Issue, today: LocalDate, planned = false): GtdList | null {
+	if (issue.status !== "open" && issue.status !== "in-progress") return null;
+	if (isInbox(issue, today, planned)) return "inbox";
+	if (isNext(issue, today, planned)) return "next";
+	if (issue.scheduled !== null) return "calendar";
+	if (issue.tickler !== null && issue.tickler > today) return "tickler";
+	return null;
+}
+
+/** 閉じていないサブに、期間（start か end）があるか（ADR-0210。計画済みの Project） */
+export function hasPlannedSubs(subs: readonly Pick<SubIssue, "status" | "start" | "end">[]): boolean {
+	return subs.some((s) => s.status !== "closed" && s.status !== "canceled" && (s.start !== null || s.end !== null));
 }
 
 /** 今日がサブの期間（start〜end、両端を含む）に入っているか。片方だけならその 1 日（Timeline の棒と同じ。ADR-0143, 0203） */
@@ -68,21 +96,21 @@ export function inPeriod(sub: Pick<SubIssue, "start" | "end">, today: LocalDate)
 }
 
 /** 期間のほかは、サブの Next の条件を満たすか: open か in-progress で、Calendar の日がなく、親が Next */
-function nextSubApartFromPeriod(sub: Pick<SubIssue, "status" | "scheduled">, parent: Issue | undefined): boolean {
-	return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== undefined && isNext(parent);
+function nextSubApartFromPeriod(sub: Pick<SubIssue, "status" | "scheduled">, parent: Issue | undefined, today: LocalDate, parentPlanned: boolean): boolean {
+	return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== undefined && isNext(parent, today, parentPlanned);
 }
 
 /**
  * サブの Next（ADR-0150, 0184, 0203）: open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入っている。
  * 期間のないサブは Next に入らない。issue 画面の Pick と DailyTaskView の Pick の候補の両方がこれを使う
  */
-export function isNextSub(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate): boolean {
-	return nextSubApartFromPeriod(sub, parent) && inPeriod(sub, today);
+export function isNextSub(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate, parentPlanned = false): boolean {
+	return nextSubApartFromPeriod(sub, parent, today, parentPlanned) && inPeriod(sub, today);
 }
 
 /** 期間を決めれば Next になるサブ（ADR-0203）: 期間のほかは Next の条件を満たし、期間がないか今日が期間の外。issue 画面では Pick の代わりに Timeline を出す */
-export function needsPeriod(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate): boolean {
-	return nextSubApartFromPeriod(sub, parent) && !inPeriod(sub, today);
+export function needsPeriod(sub: Pick<SubIssue, "status" | "scheduled" | "start" | "end">, parent: Issue | undefined, today: LocalDate, parentPlanned = false): boolean {
+	return nextSubApartFromPeriod(sub, parent, today, parentPlanned) && !inPeriod(sub, today);
 }
 
 /** Watch の欄（ADR-0184）に出す status。待っているもの（GTD の Waiting For） */
@@ -117,12 +145,12 @@ function compareNullableAsc(a: string | null, b: string | null): number {
 }
 
 /** Organize に出す順（ADR-0009）: Inbox の古い順 → revisit を過ぎた someday → reviewed が古い someday */
-export function organizeQueue(issues: Iterable<Issue>, today: LocalDate): Issue[] {
+export function organizeQueue(issues: Iterable<Issue>, today: LocalDate, planned: (id: string) => boolean = () => false): Issue[] {
 	const inbox: Issue[] = [];
 	const revisitDue: Issue[] = [];
 	const someday: Issue[] = [];
 	for (const issue of issues) {
-		if (isInbox(issue, today)) inbox.push(issue);
+		if (isInbox(issue, today, planned(issue.id))) inbox.push(issue);
 		else if (issue.status === "someday") {
 			if (issue.revisit !== null && issue.revisit <= today) revisitDue.push(issue);
 			else someday.push(issue);
@@ -162,6 +190,36 @@ export class TaskIndex {
 	/** その issue のサブ（md に書いた順。ADR-0135） */
 	subs(parentId: string): SubIssue[] {
 		return this.subsOf.get(parentId) ?? [];
+	}
+
+	/** サブを 1 つでも持つ issue（Project）か。サブの status は見ない（ADR-0203, 0210） */
+	isProject(id: string): boolean {
+		return this.subs(id).length > 0;
+	}
+
+	/** 計画済みの Project か: 閉じていないサブに期間がある（ADR-0210） */
+	planned(id: string): boolean {
+		return hasPlannedSubs(this.subs(id));
+	}
+
+	/** Inbox か（索引のサブで、Tickler の日を迎えた計画済みの Project を除く。ADR-0210） */
+	inbox(issue: Issue, today: LocalDate): boolean {
+		return isInbox(issue, today, this.planned(issue.id));
+	}
+
+	/** Next Action か（ADR-0210 の Tickler の例外を含む） */
+	next(issue: Issue, today: LocalDate): boolean {
+		return isNext(issue, today, this.planned(issue.id));
+	}
+
+	/** サブの Next（親の Tickler の例外を含む。ADR-0203, 0210） */
+	nextSub(sub: SubIssue, today: LocalDate): boolean {
+		return isNextSub(sub, this.issues.get(sub.parent), today, this.planned(sub.parent));
+	}
+
+	/** GTD の分類（ADR-0210） */
+	list(issue: Issue, today: LocalDate): GtdList | null {
+		return gtdList(issue, today, this.planned(issue.id));
 	}
 
 	/** 合成キー `i-12#k3f9a2` のサブ */
@@ -280,8 +338,8 @@ export function sidebarCounts(index: TaskIndex, today: LocalDate): SidebarCounts
 	return {
 		// 期限切れ（issue とサブ）・過ぎた Calendar の日（ADR-0150, 0152）・今日の Calendar・今日の未完了。前のボードは数えない（締めは記録だけ。ADR-0189）
 		daily: dead.deadline.length + dead.softDeadline.length + deadSub.length + missed + scheduledToday.length + unfinishedCount(todayLeft),
-		inbox: issues.filter((i) => isInbox(i, today)).length,
-		organize: organizeQueue(issues, today).length,
+		inbox: issues.filter((i) => index.inbox(i, today)).length,
+		organize: organizeQueue(issues, today, (id) => index.planned(id)).length,
 		scheduled: issues.filter((i) => isScheduledAhead(i, today)).length,
 		issues: issues.filter(isActive).length,
 		someday: issues.filter((i) => i.status === "someday").length,

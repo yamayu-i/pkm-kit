@@ -30,7 +30,8 @@ vi.mock("obsidian", async () => {
 	return { TFile: class {}, normalizePath: (path: string) => path, parseYaml: yaml.parse };
 });
 
-const HEAD = "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\n---\n\n## Note\n\n親の本文\n";
+// 親は整理済み（Inbox の Project のサブには期間を入れられない。ADR-0210）
+const HEAD = "---\ntype: issue\nid: i-1\nsummary: 親\nstatus: open\nclarified: true\n---\n\n## Note\n\n親の本文\n";
 const block = (id: string, extra = "") => `<!-- sub-issue\nid: ${id}\nsummary: ${id}\nstatus: open\n${extra}-->\n`;
 const subsOf = (text: string) => parseSubIssues("issue/i-1.md", "i-1", text, parse).subs;
 

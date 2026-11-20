@@ -1,4 +1,5 @@
 import { calendarWithSubsError, subsWithCalendarError } from "../core/calendar-subs";
+import { somedayClears, subPeriodError, ticklerWithSubsError } from "../core/project-periods";
 import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
@@ -124,6 +125,11 @@ export class TaskWriter {
 			if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && isStatus(after) && after !== "open") {
 				throw new Error(ticklerError(after));
 			}
+			// Project の Tickler は、サブの期間の始まりのうち、いちばん早い日以前（ADR-0210）
+			if (via !== "undo" && fileKind(path) === "issue" && typeof fields.tickler === "string" && fields.tickler !== "" && typeof fm.id === "string") {
+				const error = ticklerWithSubsError(fm.id, this.store.index.subs(fm.id), fields.tickler, localToday());
+				if (error) throw new Error(error);
+			}
 			for (const [key, value] of Object.entries(fields)) {
 				before[key] = structuredClone(fm[key]) as FieldValue;
 				if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === "") delete fm[key];
@@ -133,6 +139,8 @@ export class TaskWriter {
 		this.store.refreshSoon();
 		const to = fields.status;
 		if (fileKind(path) !== "issue" || !isStatus(from) || !isStatus(to) || from === to || typeof id !== "string") return;
+		// Project を someday にしたら、閉じていないサブの期間と Calendar の日を消す（ADR-0210。画面は先に確認のダイアログを出す）
+		if (to === "someday" && via !== "undo") await this.clearSubPeriods(id);
 		await this.recordStatus(id, from, to, via);
 		await this.unstar(id, to);
 		if (stopsTimer(to)) {
@@ -151,6 +159,7 @@ export class TaskWriter {
 		if (!sub) throw new Error(`サブがありません: ${key}`);
 		// someday に期間を入れたら open に戻す（ADR-0190）
 		let fixed = normalizeSubPatch(reopenSubOnPeriod(sub.status, patch));
+		if (via !== "undo") this.assertSubPeriod(sub.parent, sub, fixed);
 		const next = fixed.status;
 		if (via !== "undo" && next !== undefined && next !== sub.status) {
 			const reopenTo = this.store.index.reopenStatus(sub.key);
@@ -183,6 +192,33 @@ export class TaskWriter {
 			const running = this.store.index.running(sub.key);
 			if (running.length > 0) await this.stopTimer(running);
 		}
+	}
+
+	/**
+	 * サブの期間を書いてよいか（ADR-0210）。Inbox の Project のサブには入れない・変えない。Tickler より前に始めない。
+	 * 通らなければ例外。本文のカード（エディタの文書に書く。ADR-0161）も、書く前にこれを呼ぶ
+	 */
+	assertSubPeriod(parentId: string, before: { start: LocalDate | null; end: LocalDate | null } | null, patch: SubIssuePatch): void {
+		if (patch.start === undefined && patch.end === undefined) return;
+		const parent = this.store.index.issues.get(parentId);
+		if (!parent) return;
+		const after = { start: patch.start !== undefined ? patch.start : (before?.start ?? null), end: patch.end !== undefined ? patch.end : (before?.end ?? null) };
+		const error = subPeriodError(parent, this.store.index.planned(parentId), before, after, localToday());
+		if (error) throw new Error(error);
+	}
+
+	/** issue の閉じていないサブの期間と Calendar の日を消す（Project を someday にしたとき。ADR-0210）。消したサブの数を返す */
+	async clearSubPeriods(parentId: string): Promise<number> {
+		const targets = somedayClears(this.store.index.subs(parentId));
+		const issue = this.store.index.issues.get(parentId);
+		if (targets.length === 0 || !issue) return 0;
+		await this.app.vault.process(this.file(issue.path), (text) => {
+			let out = text;
+			for (const sub of targets) out = updateSubIssueText(issue.path, issue.id, out, sub.id, { start: null, end: null, scheduled: null }, parseYaml).text;
+			return out;
+		});
+		this.store.refreshSoon();
+		return targets.length;
 	}
 
 	private assertSubs(subs: Parameters<typeof touchedSubErrors>[0], touched: string[]): void {

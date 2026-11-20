@@ -1,6 +1,5 @@
 import { useState } from "preact/hooks";
 import { localToday } from "../core/dates";
-import { isInbox } from "../core/index";
 import { openCaptureModal } from "../obsidian/capture";
 import type { TaskContext } from "../obsidian/context";
 import { cancelIssues, closeIssues, nextIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
@@ -16,7 +15,7 @@ export function InboxView(props: { ctx: TaskContext }) {
 	const [draft, setDraft] = useState("");
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const today = localToday();
-	const issues = [...ctx.store.index.issues.values()].filter((i) => isInbox(i, today)).sort((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
+	const issues = [...ctx.store.index.issues.values()].filter((i) => ctx.store.index.inbox(i, today)).sort((a, b) => (b.created ?? "").localeCompare(a.created ?? ""));
 	const sel = issues.filter((i) => selected.has(i.id));
 	const done = () => setSelected(new Set());
 	const create = (e: Event) => {

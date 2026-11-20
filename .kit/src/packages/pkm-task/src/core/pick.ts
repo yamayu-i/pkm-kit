@@ -1,5 +1,6 @@
 import { isWatchStatus } from "./index";
 import type { Status } from "./schema";
+import { primaryStep, type PrimaryStep } from "./transition";
 import { isDoneStatus } from "./status-log";
 
 /** issue 画面の Pick・タイマーのボタンを決める材料（ADR-0165, 0203） */
@@ -35,4 +36,17 @@ export function pickTimerControl(s: PickTimerState): "pick" | "start" | "stop" |
  */
 export function showsPrimaryStep(status: Status, onBoard: boolean): boolean {
 	return status !== "open" || onBoard;
+}
+
+/** issue が Project か（ADR-0210）。none は通常の issue とサブ、done はサブがすべて閉じた Project */
+export type ProjectState = "none" | "open" | "done";
+
+/**
+ * status のボタンに出す遷移（ADR-0183, 0203, 0210）。null なら出さない。
+ * Project の親は Pick の行にならないので Start を出さない。サブがすべて閉じた Project が open・in-progress なら Close を出す（押したときだけ閉じる）
+ */
+export function primaryStepFor(status: Status, onBoard: boolean, project: ProjectState = "none"): PrimaryStep | null {
+	if (project === "done" && (status === "open" || status === "in-progress")) return { kind: "status", to: "closed", label: "Close" };
+	if (project !== "none" && status === "open") return null;
+	return showsPrimaryStep(status, onBoard) ? primaryStep(status) : null;
 }

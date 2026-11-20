@@ -1,4 +1,5 @@
 import { calendarWithSubsError, subsWithCalendarError } from "../src/core/calendar-subs";
+import { describeClear, somedayClears, subPeriodError, ticklerWithSubsError } from "../src/core/project-periods";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { parse, stringify } from "yaml";
@@ -268,6 +269,11 @@ export function carryIssuesOnDisk(
 		// Tickler は open（と someday）だけ（ADR-0183）
 		const status = index.issues.get(id)?.status;
 		if (kind === "tickler" && status !== undefined && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
+		// Project の Tickler は、サブの期間の始まり以前（ADR-0210）
+		if (kind === "tickler" && index.issues.has(id)) {
+			const error = ticklerWithSubsError(id, index.subs(id), to, localToday(now));
+			if (error) throw new Error(error);
+		}
 	}
 
 	for (const id of issueIds) {
@@ -416,6 +422,8 @@ export interface UpdateIssueInput {
 	estimated?: number | null;
 	/** false / null は項目を消す（未設定が未整理。ADR-0148） */
 	clarified?: boolean | null;
+	/** Project を someday にするとき、閉じていないサブの期間と Calendar の日を消してよい（確認の代わり。ADR-0210） */
+	clear_sub_periods?: boolean;
 }
 
 /**
@@ -481,6 +489,9 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 	}
 	if (input.tickler !== undefined) {
 		if (input.tickler !== null && !isLocalDate(input.tickler)) throw new Error(`tickler の日付が不正です: ${String(input.tickler)}`);
+		// Project の Tickler は、サブの期間の始まり以前（ADR-0210）
+		const error = ticklerWithSubsError(current.id, index.subs(current.id), input.tickler, localToday(log?.now ?? new Date()));
+		if (error) throw new Error(error);
 		patch.tickler = input.tickler;
 	}
 	if (input.soft_deadline !== undefined) {
@@ -531,7 +542,20 @@ export function updateIssueOnDisk(root: string, index: TaskIndex, input: UpdateI
 		throw new Error(`clarified を外せるのは open の issue だけです。今は ${afterStatus} です（ADR-0189）`);
 	}
 
+	// Project を someday にすると、閉じていないサブの期間と Calendar の日を消す。消すものがあれば clear_sub_periods: true を求める（ADR-0210）
+	const clears = afterStatus === "someday" && current.status !== "someday" ? somedayClears(index.subs(current.id)) : [];
+	if (clears.length > 0 && input.clear_sub_periods !== true) {
+		throw new Error(
+			`${current.id} を someday にすると、次のサブの期間と Calendar の日を消します: ${clears.map(describeClear).join(" / ")}。消してよければ clear_sub_periods: true を付けてください（ADR-0210）`,
+		);
+	}
+
 	const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : undefined);
+	if (clears.length > 0) {
+		let text = readTextOrEmpty(root, current.path);
+		for (const sub of clears) text = updateSubIssueText(current.path, current.id, text, sub.id, { start: null, end: null, scheduled: null }, parse).text;
+		writeTextInVault(root, current.path, text);
+	}
 	if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
 	if (updated.status !== current.status && stopsTimer(updated.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? new Date());
 	return updated;
@@ -553,6 +577,8 @@ export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string
 	if (!current) throw new Error(`サブがありません: ${key}`);
 	// someday に期間を入れたら open に戻す（ADR-0190）
 	patch = normalizeSubPatch(reopenSubOnPeriod(current.status, patch));
+	// Inbox の Project のサブには期間を入れない・変えない。Tickler より前に始めない（ADR-0210）
+	if (log?.via !== "undo") assertSubPeriodOnDisk(index, current.parent, current, patch, localToday(log?.now ?? new Date()));
 	// 遷移表にない遷移はエラー。付随の変更は画面と同じ表で補う（ADR-0183）
 	if (patch.status !== undefined && patch.status !== current.status && log?.via !== "undo") {
 		const reopenTo = index.reopenStatus(key);
@@ -570,6 +596,16 @@ export function updateSubIssueOnDisk(root: string, index: TaskIndex, key: string
 		if (stopsTimer(r.after.status)) stopTimerOnDisk(root, index, [key], log.now);
 	}
 	return r.after;
+}
+
+/** サブの期間を書いてよいか（ADR-0210）。Obsidian の書き込み（TaskWriter.assertSubPeriod）と同じ判定 */
+function assertSubPeriodOnDisk(index: TaskIndex, parentId: string, before: Pick<SubIssue, "start" | "end"> | null, patch: Pick<SubIssuePatch, "start" | "end">, today: LocalDate): void {
+	if (patch.start === undefined && patch.end === undefined) return;
+	const parent = index.issues.get(parentId);
+	if (!parent) return;
+	const after = { start: patch.start !== undefined ? patch.start : (before?.start ?? null), end: patch.end !== undefined ? patch.end : (before?.end ?? null) };
+	const error = subPeriodError(parent, index.planned(parentId), before, after, today);
+	if (error) throw new Error(error);
 }
 
 /** 書く前の検査（ADR-0135）。touched のサブ（足す・変えるもの）に関わる問題だけで止める（ほかのサブの既存の誤りは lint に任せる） */
@@ -593,6 +629,7 @@ export function createSubIssuesOnDisk(root: string, index: TaskIndex, parent: st
 		taken.push(id);
 		return newSubIssueInput(item, id, created);
 	});
+	for (const sub of subs) assertSubPeriodOnDisk(index, parent, null, sub, localToday(now));
 	assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
 	const text = readTextOrEmpty(root, issue.path);
 	writeTextInVault(root, issue.path, insertSubIssuesText(issue.path, parent, text, subs, parse, at));

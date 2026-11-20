@@ -1,15 +1,17 @@
 import { Menu } from "obsidian";
 import { isOnBoard } from "../core/board";
 import { localToday } from "../core/dates";
-import { showsPrimaryStep } from "../core/pick";
+import { primaryStepFor, type ProjectState } from "../core/pick";
+import { allSubsDone } from "../core/daily";
 import type { Issue, Status } from "../core/schema";
 import type { SubIssue, SubIssuePatch } from "../core/sub-issue";
-import { issueStatusPatch, primaryStep, subStatusPatch, transitionTargets } from "../core/transition";
+import { issueStatusPatch, subStatusPatch, transitionTargets } from "../core/transition";
 import { Icon } from "../ui/Icon";
 import { useStoreVersion } from "../ui/hooks";
 import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
+import { confirmSomeday } from "./someday-confirm";
 
 /**
  * status を変える画面の処理（ADR-0183）。どの画面もここを通し、メニューは遷移表の先だけ、ボタンはよく使う 1 つだけを出す。
@@ -27,6 +29,8 @@ export function changeIssueStatus(ctx: TaskContext, issue: Issue, to: Status): P
 		ctx.writer.update(issue.path, issueStatusPatch(to, { delegatedTo })).catch((e) => ctx.report("status を変えられませんでした", e));
 	if (to === "delegated") return pickMember(ctx, (id) => void save(id));
 	if (to === issue.status) return;
+	// Project を someday にするときは、サブの期間が消えるので先に確認する（ADR-0210）
+	if (to === "someday") return confirmSomeday(ctx, [issue]).then((ok) => (ok ? save() : undefined));
 	return save();
 }
 
@@ -94,10 +98,12 @@ export function StatusStepButton(props: { ctx: TaskContext; keyOf: string; save?
 	useStoreVersion(ctx.store);
 	const status = statusOf(ctx, keyOf);
 	if (status === null) return null;
-	const step = primaryStep(status);
 	// Start（open → in-progress）は、今日のボードに載せた（Pick した）ものにだけ出す（ADR-0203）。ボードのカードは載っているので onBoard を渡す。
-	// status のメニューからは、これまでどおり in-progress にできる
-	if (!showsPrimaryStep(status, props.onBoard ?? isOnBoard(ctx.store.index, localToday(), keyOf))) return null;
+	// Project には Start を出さず、サブがすべて閉じたら Close を出す（ADR-0210）。status のメニューからは、これまでどおり in-progress にできる
+	const index = ctx.store.index;
+	const project: ProjectState = !index.issues.has(keyOf) || !index.isProject(keyOf) ? "none" : allSubsDone(index.subs(keyOf)) ? "done" : "open";
+	const step = primaryStepFor(status, props.onBoard ?? isOnBoard(index, localToday(), keyOf), project);
+	if (step === null) return null;
 	const reopenTo = step.kind === "reopen" ? ctx.store.index.reopenStatus(keyOf) : null;
 	const title = step.kind === "reopen" ? `Reopen (→ ${reopenTo})` : `${step.label} (→ ${step.to})`;
 	const run = (e: MouseEvent) => {

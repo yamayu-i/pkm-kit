@@ -1,7 +1,7 @@
 import { boardItems, emptyBoard, unfinished, type RoutineResult } from "./board";
 import { cautionIssues, deadIssues, type DueLists } from "./daily";
 import { addDays, localToday, type LocalDate } from "./dates";
-import { isActive, isInbox, type TaskIndex } from "./index";
+import { isActive, type TaskIndex } from "./index";
 import type { Issue, Routine } from "./schema";
 import type { SubIssue } from "./sub-issue";
 
@@ -220,7 +220,7 @@ export function buildOverview(index: TaskIndex, date: LocalDate, now: number, op
 	const dead = deadIssues(index.data.issues, date);
 	const caution = cautionIssues(index.data.issues, date, cautionDays);
 
-	const inbox = index.data.issues.filter((i) => isInbox(i, date));
+	const inbox = index.data.issues.filter((i) => index.inbox(i, date));
 	const runningTimers = index.running().map((l) => ({
 		id: l.id,
 		taskId: l.taskId,

@@ -15,12 +15,12 @@ import { emptyBoard, routineResults, unfinished, type RoutineResult } from "../s
 import { isLocalDate, localToday, type LocalDate } from "../src/core/dates";
 import { prorateEffort } from "../src/core/effort";
 import { LANES, boardLanes, cardStatus, cardSummary, type BoardCard } from "../src/core/board-lanes";
-import { isInbox, TaskIndex } from "../src/core/index";
+import { TaskIndex } from "../src/core/index";
 import { lintVault } from "../src/core/lint";
 import { defaultQuery, queryIssues, type IssueQuery, type SortKey } from "../src/core/list";
 import { buildOverview, carryCounts } from "../src/core/metrics";
 import { rawEffortMinutes, reviewWorklogs } from "../src/core/review";
-import type { Priority, Status } from "../src/core/schema";
+import type { Issue, Priority, Status } from "../src/core/schema";
 import { readVault } from "./read-vault";
 import {
 	addToBoardOnDisk,
@@ -159,7 +159,7 @@ const TOOLS: McpToolDef[] = [
 	},
 	{
 		name: "list_issues",
-		description: "条件（status、priority、label、予定の有無、Inboxのみ、文字列検索、並び順）で絞った issue 一覧を取得する",
+		description: "条件（status、priority、label、予定の有無、Inboxのみ、文字列検索、並び順）で絞った issue 一覧を取得する。各 issue に GTD の分類 list（inbox・next・calendar・tickler・null）と project（サブを持つか）が付く（ADR-0210）",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -168,7 +168,7 @@ const TOOLS: McpToolDef[] = [
 				priorities: { type: "array", items: { type: "string" } },
 				labels: { type: "array", items: { type: "string" } },
 				scheduled: { type: "string", enum: ["any", "yes", "no"] },
-				inbox_only: { type: "boolean", description: "true のとき Inbox（open で clarified でない。日付は見ない。ADR-0148）の issue のみ返す" },
+				inbox_only: { type: "boolean", description: "true のとき Inbox（open で clarified でない。日付は見ない。ADR-0148。Tickler の日を迎えた計画済みの Project は除く。ADR-0210）の issue のみ返す" },
 				sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "scheduled", "next_scheduled"], description: "next_scheduled は以前の名前（scheduled と同じ）" },
 				desc: { type: "boolean" },
 				limit: { type: "number", description: "最大件数（既定 100）" },
@@ -343,13 +343,14 @@ const TOOLS: McpToolDef[] = [
 				priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
 				labels: { type: "array", items: { type: "string" } },
 				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）。null で消す。サブイシューを持つ issue には付けられない（ADR-0203）" },
-				tickler: { type: ["string", "null"], description: "Tickler の日 YYYY-MM-DD（その日に Inbox に戻す）。null で消す" },
+				tickler: { type: ["string", "null"], description: "Tickler の日 YYYY-MM-DD（その日に Inbox に戻す。期間を持つサブがある Project は、その日に Next に出る）。null で消す。Project では、閉じていないサブの期間の始まりのいちばん早い日以前だけ（ADR-0210）" },
 				soft_deadline: { type: ["string", "null"] },
 				deadline: { type: ["string", "null"] },
 				revisit: { type: ["string", "null"] },
 				reviewed: { type: ["string", "null"] },
 				estimated: { type: ["number", "null"] },
 				clarified: { type: ["boolean", "null"], description: "整理済みか（ADR-0148）。true で Inbox から出る。false / null で Inbox に戻す（日付は残る。open の issue だけ。ADR-0189）" },
+				clear_sub_periods: { type: "boolean", description: "サブを持つ issue（Project）を someday にするとき、閉じていないサブの期間と Calendar の日を消してよいか。消すものがあるのに true でなければエラーで、消えるものを返す（ADR-0210）" },
 			},
 			required: ["id"],
 		},
@@ -370,7 +371,7 @@ const TOOLS: McpToolDef[] = [
 							summary: { type: "string" },
 							status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
 							delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
-							start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
+							start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）。Inbox（未整理）の親のサブには start・end を入れられない。親に Tickler があれば、その日以降に始める（ADR-0210）" },
 							end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）。サブの期限を兼ね、Daily の期限の表に出る（ADR-0190）" },
 							scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
 							estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
@@ -395,7 +396,7 @@ const TOOLS: McpToolDef[] = [
 				summary: { type: "string" },
 				status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
 				delegated_to: { type: ["string", "null"], description: "status が delegated のときだけ（m-N）" },
-				start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）" },
+				start: { type: ["string", "null"], description: "ガントチャートの開始日（YYYY-MM-DD）。Inbox（未整理）の親のサブには start・end を入れられない。親に Tickler があれば、その日以降に始める（ADR-0210）" },
 				end: { type: ["string", "null"], description: "ガントチャートの終了日（YYYY-MM-DD）。サブの期限を兼ね、Daily の期限の表に出る（ADR-0190）" },
 				scheduled: { type: ["string", "null"], description: "Calendar の日 YYYY-MM-DD（その日にやらなければならない日。ADR-0152）" },
 				estimated: { type: ["number", "null"], description: "分。親の estimated（全体の予算）には足さない" },
@@ -626,8 +627,10 @@ function callTaskTool(
 		}
 		case "list_issues": {
 			const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 100;
+			// GTD の分類（inbox・next・calendar・tickler・null）と、Project（サブを持つ）かを足す（ADR-0210）
+			const withList = (i: Issue) => ({ ...i, list: index.list(i, today), project: index.isProject(i.id) });
 			if (args.inbox_only === true) {
-				return index.data.issues.filter((i) => isInbox(i, today)).slice(0, limit);
+				return index.data.issues.filter((i) => index.inbox(i, today)).slice(0, limit).map(withList);
 			}
 			const q: IssueQuery = {
 				...defaultQuery(),
@@ -639,7 +642,7 @@ function callTaskTool(
 				...(typeof args.sort === "string" ? { sort: (args.sort === "next_scheduled" ? "scheduled" : args.sort) as SortKey } : {}),
 				...(typeof args.desc === "boolean" ? { desc: args.desc } : {}),
 			};
-			return queryIssues(index.data.issues, q, today).slice(0, limit);
+			return queryIssues(index.data.issues, q, today).slice(0, limit).map(withList);
 		}
 		case "get_issue": {
 			const id = String(args.id ?? "");
@@ -650,6 +653,8 @@ function callTaskTool(
 			const counts = carryCounts(index, today);
 			return {
 				...issue,
+				list: index.list(issue, today),
+				project: index.isProject(id),
 				body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,
 				subIssues: index.subs(id).map(({ path: _path, parent: _parent, ...s }) => ({ ...s, effortMinutes: Math.round(byKey.get(s.key) ?? 0) })),
 				effortMinutes: Math.round(efforts.get(id) ?? 0),
@@ -798,6 +803,7 @@ function callTaskTool(
 				...(args.reviewed !== undefined ? { reviewed: args.reviewed as LocalDate | null } : {}),
 				...(args.estimated !== undefined ? { estimated: args.estimated as number | null } : {}),
 				...(args.clarified !== undefined ? { clarified: args.clarified as boolean | null } : {}),
+				...(args.clear_sub_periods === true ? { clear_sub_periods: true } : {}),
 			}, { device: ctx.device, now });
 		}
 		case "create_sub_issues": {

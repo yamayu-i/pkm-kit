@@ -102,24 +102,26 @@ describe("DailyTaskView の Pick", () => {
 		issue("i-3", {}, sub("eeeeee", "Inbox の親")),
 		issue("i-4", { clarified: true }, sub("ffffff", "済んだ", period(today, today), "closed")),
 		issue("i-5", { clarified: true }),
+		issue("i-6", { clarified: true }, sub("gggggg", "過ぎた", period("2026-11-10", "2026-11-16"))),
 	]);
 
 	it("サブの候補は新しい Next で選ぶ（期間の外と、Next でない親のサブは出ない）", () => {
 		const { groups, issues } = pickCandidates(index, today, emptyBoard());
 		expect(groups.map((g) => [g.parent.id, g.subs.map((s) => s.id)])).toEqual([["i-2", ["cccccc"]]]);
-		// active なサブを持たない i-4 は、単独の行になる
-		expect(issues.map((i) => i.id)).toEqual(["i-4", "i-5"]);
+		// サブがすべて閉じた i-4 も Project のまま。単独の行にならない（ADR-0210）
+		expect(issues.map((i) => i.id)).toEqual(["i-5"]);
 	});
 
 	it("Next のサブが 1 つもない Next の Project を、次の行動のない Project として出す（Inbox の親は出さない）", () => {
-		expect(pickCandidates(index, today, emptyBoard()).stalled.map((i) => i.id)).toEqual(["i-1"]);
+		// i-1 は先の期間のサブがあるので出さない。サブがすべて閉じた i-4 は出す（ADR-0210）
+		expect(pickCandidates(index, today, emptyBoard()).stalled.map((i) => i.id)).toEqual(["i-4", "i-6"]);
 	});
 
 	it("Next のサブが今日のボードに載っていれば、次の行動はあるので出さない", () => {
 		const board = { ...emptyBoard(), issues: ["i-2#cccccc"] };
 		const r = pickCandidates(index, today, board);
 		expect(r.groups).toEqual([]);
-		expect(r.stalled.map((i) => i.id)).toEqual(["i-1"]);
+		expect(r.stalled.map((i) => i.id)).toEqual(["i-4", "i-6"]);
 	});
 });
 

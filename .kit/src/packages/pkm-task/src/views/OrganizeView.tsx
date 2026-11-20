@@ -1,5 +1,6 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { confirmSomeday } from "../obsidian/someday-confirm";
 import { calendarPatch, cancelPatch, closePatch, nextPatch, somedayPatch, ticklerPatch, type Patch } from "../core/actions";
 import { addDays, formatShortDate, localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
@@ -73,7 +74,7 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 	const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
 	const start = useRef<{ x: number; y: number } | null>(null);
 	const root = useRef<HTMLDivElement>(null);
-	const queue = organizeQueue(ctx.store.index.issues.values(), today).filter((i) => !handled.has(i.id));
+	const queue = organizeQueue(ctx.store.index.issues.values(), today, (id) => ctx.store.index.planned(id)).filter((i) => !handled.has(i.id));
 	const issue = queue[0];
 	// サブを持つ issue は Calendar の日を持たない（ADR-0203）
 	const hasSubs = issue !== undefined && ctx.store.index.subs(issue.id).length > 0;
@@ -124,7 +125,14 @@ export function OrganizeView(props: { ctx: TaskContext }) {
 			if (d) void apply(ticklerPatch(target, d), `Tickler: ${formatShortDate(d)}`);
 		});
 	};
-	const someday = () => void apply(issue?.status === "someday" ? { tickler: null } : somedayPatch(), "To Someday");
+	// Project のサブの期間が消えるときは、先に確認する（ADR-0210）
+	const someday = () => {
+		if (!issue) return;
+		if (issue.status === "someday") return void apply({ tickler: null }, "To Someday");
+		void confirmSomeday(ctx, [issue]).then((ok) => {
+			if (ok) void apply(somedayPatch(), "To Someday");
+		});
+	};
 	const next = () => void apply(issue ? nextPatch(issue) : {}, "Next");
 	const cancel = () => void apply(cancelPatch(), "Cancel");
 	const close = () => void apply(closePatch(), "Closed");

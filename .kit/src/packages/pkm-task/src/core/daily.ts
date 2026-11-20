@@ -1,6 +1,7 @@
 import { diffDays, type LocalDate } from "./dates";
 import type { BoardState } from "./board";
-import { isActive, isNext, isNextSub, type TaskIndex } from "./index";
+import { isActive, type TaskIndex } from "./index";
+import { isDoneStatus } from "./status-log";
 import { PRIORITIES, type Issue } from "./schema";
 import type { SubIssue } from "./sub-issue";
 
@@ -88,7 +89,7 @@ export function currentStep<K extends string>(steps: readonly K[], counts: Recor
 export interface PickCandidates {
 	issues: Issue[];
 	groups: { parent: Issue; subs: SubIssue[] }[];
-	/** Next の Project（active なサブを持つ issue）のうち、Next のサブが 1 つもないもの（今日のボードに載っているものも含めて） */
+	/** Next の Project（サブを持つ issue）のうち、Next のサブが 1 つもなく、先の期間もないもの（今日のボードに載っているものも含めて。ADR-0203, 0210） */
 	stalled: Issue[];
 }
 
@@ -100,9 +101,10 @@ export const byPick = (a: Issue, b: Issue) =>
 
 /**
  * Pick の候補（ADR-0150）。今日のボードにないものだけ。
- * - issue: Next（isNext。open で clarified か in-progress で、Calendar も Tickler もない。ADR-0184）。active なサブを持つ親（Project）は行にしない
+ * - issue: Next（isNext。open で clarified か in-progress で、Calendar も Tickler もない。ADR-0184）。サブを持つ親（Project。サブの status は見ない。ADR-0210）は行にしない
  * - サブ: Next（isNextSub。open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入っている。ADR-0203）。親ごとにまとめ、親の中の順に並べる
- * - 次の行動のない Project（ADR-0203）: Next の Project で、Next のサブが 1 つもないもの。Pick の段階から消えないように出す
+ * - 次の行動のない Project（ADR-0203, 0210）: Next の Project で、Next のサブが 1 つもなく、今日より後に始まる期間のサブもないもの。
+ *   サブがすべて閉じたものも入る（親を閉じるよう促す）。Pick の段階から消えないように出す
  * 並びは priority → deadline → 見直しが古い順（サブは親の値）
  */
 export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardState): PickCandidates {
@@ -111,16 +113,16 @@ export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardS
 	const withNext = new Set<string>();
 	for (const s of index.data.subIssues) {
 		if (index.sub(s.key) !== s) continue;
-		if (!isNextSub(s, index.issues.get(s.parent), today)) continue;
+		if (!index.nextSub(s, today)) continue;
 		withNext.add(s.parent);
 		if (on.has(s.key)) continue;
 		groups.set(s.parent, [...(groups.get(s.parent) ?? []), s]);
 	}
-	const projects = new Set(index.data.subIssues.filter((s) => isActive(s) && index.sub(s.key) === s).map((s) => s.parent));
-	const issues = [...index.issues.values()].filter((i) => !on.has(i.id) && !projects.has(i.id) && isNext(i)).sort(byPick);
+	const projects = new Set(index.data.subIssues.filter((s) => index.sub(s.key) === s).map((s) => s.parent));
+	const issues = [...index.issues.values()].filter((i) => !on.has(i.id) && !projects.has(i.id) && index.next(i, today)).sort(byPick);
 	const stalled = [...projects]
 		.map((id) => index.issues.get(id))
-		.filter((i): i is Issue => i !== undefined && isNext(i) && !withNext.has(i.id))
+		.filter((i): i is Issue => i !== undefined && index.next(i, today) && !withNext.has(i.id) && !hasFuturePeriod(index.subs(i.id), today))
 		.sort(byPick);
 	return {
 		stalled,
@@ -129,4 +131,14 @@ export function pickCandidates(index: TaskIndex, today: LocalDate, board: BoardS
 			.map(([id, subs]) => ({ parent: index.issues.get(id)!, subs: subs.sort((a, b) => a.order - b.order) }))
 			.sort((a, b) => byPick(a.parent, b.parent)),
 	};
+}
+
+/** 閉じていないサブに、今日より後に始まる期間があるか（次の行動が計画されている。ADR-0210） */
+export function hasFuturePeriod(subs: readonly SubIssue[], today: LocalDate): boolean {
+	return subs.some((s) => !isDoneStatus(s.status) && (s.start ?? s.end) !== null && (s.start ?? s.end)! > today);
+}
+
+/** サブがすべて閉じた（closed・canceled）Project か。親を閉じるよう促す（ADR-0210）。サブがなければ偽 */
+export function allSubsDone(subs: readonly Pick<SubIssue, "status">[]): boolean {
+	return subs.length > 0 && subs.every((s) => isDoneStatus(s.status));
 }

@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { isOnBoard } from "../core/board";
 import { localToday } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { isNext, isNextSub, needsPeriod } from "../core/index";
+import { needsPeriod } from "../core/index";
 import { pickTimerControl } from "../core/pick";
 import type { SubIssue } from "../core/sub-issue";
 import { revealInTimeline } from "../header/sub-timeline-reveal";
@@ -64,8 +64,8 @@ export function PickTimer(props: { ctx: TaskContext; keyOf: string }) {
 		status: task.status,
 		picked: isOnBoard(index, today, keyOf),
 		running: running.length > 0,
-		next: issue ? isNext(issue) : sub ? isNextSub(sub, parent, today) : false,
-		needsPeriod: sub ? needsPeriod(sub, parent, today) : false,
+		next: issue ? index.next(issue, today) : sub ? index.nextSub(sub, today) : false,
+		needsPeriod: sub ? needsPeriod(sub, parent, today, index.planned(sub.parent)) : false,
 	});
 	if (control === null) return null;
 	if (control === "pick") return <PickToggle {...props} />;
