@@ -11,7 +11,7 @@ import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } 
 import { PreactModal } from "../obsidian/modals";
 import { PickTimer } from "../obsidian/pick-toggle";
 import type { FieldValue } from "../obsidian/writer";
-import { IdBadge, LabelBadge, PriorityBadge, StatusBadge } from "../ui/badges";
+import { GtdListBadge, IdBadge, LabelBadge, PriorityBadge, ProjectBadge, StatusBadge } from "../ui/badges";
 import { DateForm, DayCell, WorklogForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
@@ -20,6 +20,7 @@ import { SubIssues } from "./SubIssues";
 import { Pager } from "../ui/Pager";
 import { showStatusMenu, StatusStepButton } from "../obsidian/status-change";
 import { canSetTickler } from "../core/transition";
+import { ticklerBlockedMessage, ticklerLimit, ticklerWithSubsError } from "../core/project-periods";
 
 const WORKLOG_PAGE = 5;
 
@@ -125,6 +126,7 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 			/>
 		)).open();
 	const member = issue.delegatedTo === null ? null : index.members.get(issue.delegatedTo);
+	const list = index.list(issue, localToday());
 	return (
 		<>
 			<StatusBadge status={issue.status} wide onClick={menu} />
@@ -136,18 +138,9 @@ function StatusField(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; 
 						{member ? member.nickname : issue.delegatedTo ?? "Choose delegate"}
 					</button>
 				)}
-				{issue.status === "open" && (
-					// 整理したか（ADR-0148）。open のときだけ Inbox に関わるので、そのときだけ出す
-					<button
-						class={`vt-field-chip${issue.clarified ? "" : " is-placeholder"}`}
-						aria-pressed={issue.clarified}
-						title={issue.clarified ? "Clarified. Click to return to Inbox" : "In Inbox (not clarified). Click to mark as clarified"}
-						onClick={() => save({ clarified: issue.clarified ? null : true })}
-					>
-						<Icon name={issue.clarified ? "list-todo" : "inbox"} />
-						{issue.clarified ? "Clarified" : "Inbox"}
-					</button>
-				)}
+				{/* GTD の分類と Project（ADR-0210）。読み取り専用。整理は Inbox・Organize で行う */}
+				{list !== null && <GtdListBadge issue={issue} list={list} />}
+				{index.isProject(issue.id) && <ProjectBadge />}
 				{issue.status === "someday" && (
 					<button class="vt-field-chip" onClick={editRevisit}>
 						<Icon name="calendar-clock" />
@@ -188,10 +181,14 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 	const today = localToday();
 	const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
 	const setCalendar = (d: LocalDate | null) => save(scheduledPatch(issue, d));
-	const pick = (title: string, initial: LocalDate | null, onPick: (d: LocalDate | null) => void) => () =>
+	// Project の Tickler は、サブの期間の始まりのいちばん早い日以前（ADR-0210）。期間がすでに始まっていれば付けられない
+	const subs = ctx.store.index.subs(issue.id);
+	const limit = ticklerLimit(subs, today);
+	const pick = (title: string, initial: LocalDate | null, onPick: (d: LocalDate | null) => void, validate?: (d: LocalDate) => string | null) => () =>
 		new PreactModal(ctx.app, title, (close) => (
 			<DateForm
 				initial={initial}
+				validate={validate}
 				onSubmit={(v) => {
 					close();
 					onPick(v);
@@ -222,8 +219,10 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 				{canSetTickler(issue.status) ? (
 					<button
 						class={`vt-field-chip${issue.tickler ? "" : " is-placeholder"}`}
-						title="Tickler: hidden until this date, then back to Inbox"
-						onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)))}
+						title={limit.blocked ? ticklerBlockedMessage(issue.id) : "Tickler: hidden until this date, then back to Inbox"}
+						onClick={pick("Tickler (back to Inbox on this date)", issue.tickler ?? addDays(today, 1), (d) => save(ticklerFieldPatch(issue, d)), (d) =>
+							ticklerWithSubsError(issue.id, subs, d, today),
+						)}
 					>
 						<Icon name="alarm-clock" />
 						tickler {issue.tickler ? formatShortDate(issue.tickler) : "—"}

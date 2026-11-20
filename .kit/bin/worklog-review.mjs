@@ -8080,43 +8080,6 @@ function lastOrder(history, date) {
   return found;
 }
 
-// src/core/daily.ts
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
-}
-
-// src/core/effort.ts
-function prorateEffort(intervals, now2) {
-  const events = [];
-  for (const iv of intervals) {
-    const to = iv.toMs ?? Math.max(now2, iv.fromMs);
-    if (!(to > iv.fromMs)) continue;
-    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
-  }
-  events.sort((a, b) => a.t - b.t);
-  const result = /* @__PURE__ */ new Map();
-  const active = /* @__PURE__ */ new Map();
-  let k = 0;
-  let prev = 0;
-  for (let i = 0; i < events.length; ) {
-    const t = events[i].t;
-    if (k > 0 && t > prev) {
-      const share = (t - prev) / k;
-      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
-    }
-    for (; i < events.length && events[i].t === t; i++) {
-      const e = events[i];
-      const count = (active.get(e.taskId) ?? 0) + e.delta;
-      if (count === 0) active.delete(e.taskId);
-      else active.set(e.taskId, count);
-      k += e.delta;
-      if (!result.has(e.taskId)) result.set(e.taskId, 0);
-    }
-    prev = t;
-  }
-  return result;
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8176,10 +8139,82 @@ function closedAtMap(logs, closedIds) {
   return out;
 }
 
+// src/core/daily.ts
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
+}
+
+// src/core/effort.ts
+function prorateEffort(intervals, now2) {
+  const events = [];
+  for (const iv of intervals) {
+    const to = iv.toMs ?? Math.max(now2, iv.fromMs);
+    if (!(to > iv.fromMs)) continue;
+    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+  }
+  events.sort((a, b) => a.t - b.t);
+  const result = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Map();
+  let k = 0;
+  let prev = 0;
+  for (let i = 0; i < events.length; ) {
+    const t = events[i].t;
+    if (k > 0 && t > prev) {
+      const share = (t - prev) / k;
+      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
+    }
+    for (; i < events.length && events[i].t === t; i++) {
+      const e = events[i];
+      const count = (active.get(e.taskId) ?? 0) + e.delta;
+      if (count === 0) active.delete(e.taskId);
+      else active.set(e.taskId, count);
+      k += e.delta;
+      if (!result.has(e.taskId)) result.set(e.taskId, 0);
+    }
+    prev = t;
+  }
+  return result;
+}
+
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
+}
+function ticklerReleased(issue, today, planned) {
+  return planned && issue.tickler !== null && issue.tickler <= today;
+}
+function isInbox(issue, today, planned = false) {
+  if (issue.status !== "open") return false;
+  if (issue.tickler !== null) return issue.tickler <= today && !planned;
+  return !issue.clarified;
+}
+function isNext(issue, today, planned = false) {
+  const released = today !== void 0 && issue.status === "open" && ticklerReleased(issue, today, planned);
+  const ready = issue.status === "in-progress" || issue.status === "open" && (issue.clarified || released);
+  return ready && issue.scheduled === null && (issue.tickler === null || released);
+}
+function gtdList(issue, today, planned = false) {
+  if (issue.status !== "open" && issue.status !== "in-progress") return null;
+  if (isInbox(issue, today, planned)) return "inbox";
+  if (isNext(issue, today, planned)) return "next";
+  if (issue.scheduled !== null) return "calendar";
+  if (issue.tickler !== null && issue.tickler > today) return "tickler";
+  return null;
+}
+function hasPlannedSubs(subs) {
+  return subs.some((s) => s.status !== "closed" && s.status !== "canceled" && (s.start !== null || s.end !== null));
+}
+function inPeriod(sub, today) {
+  const start = sub.start ?? sub.end;
+  const end = sub.end ?? sub.start;
+  return start !== null && end !== null && start <= today && today <= end;
+}
+function nextSubApartFromPeriod(sub, parent, today, parentPlanned) {
+  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== void 0 && isNext(parent, today, parentPlanned);
+}
+function isNextSub(sub, parent, today, parentPlanned = false) {
+  return nextSubApartFromPeriod(sub, parent, today, parentPlanned) && inPeriod(sub, today);
 }
 function routineAnchor(routine) {
   return routine.start ?? (routine.created ? routine.created.slice(0, 10) : null);
@@ -8216,6 +8251,30 @@ var TaskIndex = class {
   /** その issue のサブ（md に書いた順。ADR-0135） */
   subs(parentId) {
     return this.subsOf.get(parentId) ?? [];
+  }
+  /** サブを 1 つでも持つ issue（Project）か。サブの status は見ない（ADR-0203, 0210） */
+  isProject(id) {
+    return this.subs(id).length > 0;
+  }
+  /** 計画済みの Project か: 閉じていないサブに期間がある（ADR-0210） */
+  planned(id) {
+    return hasPlannedSubs(this.subs(id));
+  }
+  /** Inbox か（索引のサブで、Tickler の日を迎えた計画済みの Project を除く。ADR-0210） */
+  inbox(issue, today) {
+    return isInbox(issue, today, this.planned(issue.id));
+  }
+  /** Next Action か（ADR-0210 の Tickler の例外を含む） */
+  next(issue, today) {
+    return isNext(issue, today, this.planned(issue.id));
+  }
+  /** サブの Next（親の Tickler の例外を含む。ADR-0203, 0210） */
+  nextSub(sub, today) {
+    return isNextSub(sub, this.issues.get(sub.parent), today, this.planned(sub.parent));
+  }
+  /** GTD の分類（ADR-0210） */
+  list(issue, today) {
+    return gtdList(issue, today, this.planned(issue.id));
   }
   /** 合成キー `i-12#k3f9a2` のサブ */
   sub(key) {

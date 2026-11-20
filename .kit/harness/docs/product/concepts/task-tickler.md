@@ -14,8 +14,8 @@ Organize の「Tickler」（↑。既定は明日）、Today の Pick・Calendar
 
 ## 使い方の筋道
 
-日付の前は、Inbox・Next・Today の Pick・Organize のどこにも出ない（期限は Tickler があっても Today に出る）。日付が来ると Inbox に戻り、Organize で整理し直す。整理の操作（Next・Calendar・Someday・Cancel・Already done）は `tickler` を消す。
+日付の前は、Inbox・Next・Today の Pick・Organize のどこにも出ない（期限は Tickler があっても Today に出る）。日付が来ると Inbox に戻り、Organize で整理し直す。ただし計画済み（閉じていないサブに期間がある）の Project は、日付が来ると Next Action になる（整理し直さない）。Project の Tickler は、閉じていないサブの期間の始まりのいちばん早い日以前だけで、期間がすでに始まっていれば付けられない。Tickler が先の Project のサブには、Tickler の日以降に始まる期間だけを入れられる（ADR-0210）。整理の操作（Next・Calendar・Someday・Cancel・Already done）は `tickler` を消す。
 
 ## 根拠
 
-[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)
+[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)、[ADR-0210](../../../../src/docs/adr/0210-gtd-list-badge-and-project-rules.md)

@@ -1,6 +1,7 @@
 import { Menu } from "obsidian";
 import { useState } from "preact/hooks";
-import { formatShortDate, type LocalDate } from "../core/dates";
+import { formatShortDate, localToday, type LocalDate } from "../core/dates";
+import { canEditSubPeriod, periodInInboxMessage, subPeriodError } from "../core/project-periods";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { STATUSES, type Status } from "../core/schema";
 import { dependsChip, subItemPatch, toggleDepends, type SubIssue } from "../core/sub-issue";
@@ -12,7 +13,7 @@ import { pickMember } from "./issue-editors";
 import { PreactModal } from "./modals";
 
 /** サブの日付。期限は end が兼ねる（ADR-0190） */
-type DateKey = "start" | "end" | "scheduled";
+export type DateKey = "start" | "end" | "scheduled";
 const DATE_FIELDS: [DateKey, string][] = [
 	["start", "Start"],
 	["end", "End"],
@@ -54,10 +55,11 @@ export function deleteSubWithConfirm(ctx: TaskContext, sub: SubIssue, done?: () 
 }
 
 /** 日付を選ぶダイアログ（サブの項目。ダイアログと本文の一覧で使う） */
-export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate | null, onPick: (value: LocalDate | null) => void): void {
+export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate | null, onPick: (value: LocalDate | null) => void, validate?: (value: LocalDate) => string | null): void {
 	new PreactModal(ctx.app, label, (close) => (
 		<DateForm
 			initial={initial}
+			validate={validate}
 			allowClear
 			onSubmit={(v) => {
 				close();
@@ -68,6 +70,26 @@ export function pickSubDate(ctx: TaskContext, label: string, initial: LocalDate 
 }
 
 export const SUB_DATE_FIELDS = DATE_FIELDS;
+
+/**
+ * サブの日付の欄の規則（ADR-0210）。lock は Inbox の Project で期間（Start・End）を入れられない理由（入れられるなら null）。
+ * validate は、その日にしてよいか（Tickler より前に始まる期間を止める）。Calendar の日（scheduled）は対象外
+ */
+export function subDateRules(ctx: TaskContext, sub: SubIssue): { lock: string | null; validate: (key: DateKey, draft: Pick<SubIssue, "start" | "end">) => ((d: LocalDate) => string | null) | undefined } {
+	const index = ctx.store.index;
+	const parent = index.issues.get(sub.parent);
+	const today = localToday();
+	const planned = index.planned(sub.parent);
+	const lock = canEditSubPeriod(parent, planned, today) ? null : periodInInboxMessage(sub.parent);
+	return {
+		lock,
+		validate: (key, draft) =>
+			key === "scheduled" || !parent ? undefined : (d) => subPeriodError(parent, planned, { start: sub.start, end: sub.end }, { start: draft.start, end: draft.end, [key]: d }, today),
+	};
+}
+
+/** 期間の欄か（Inbox の Project で押せなくする。ADR-0210） */
+export const isPeriodKey = (key: DateKey) => key !== "scheduled";
 
 /**
  * 「Depends on」の欄。押すと同じ親のほかのサブのメニューを開き、選んだものを付け外しする。
@@ -108,8 +130,15 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 	const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
 
 	// someday に期間を入れたら open に戻す。someday にしたら Calendar の日と期間を外す（ADR-0190。保存のときと同じ規則）
+	const rules = subDateRules(ctx, sub);
 	const editDate = (key: DateKey, label: string) =>
-		pickSubDate(ctx, label, draft[key], (v) => setDraft((d) => ({ ...d, [key]: v, ...(d.status === "someday" && key !== "scheduled" && v !== null ? { status: "open" as Status } : {}) })));
+		pickSubDate(
+			ctx,
+			label,
+			draft[key],
+			(v) => setDraft((d) => ({ ...d, [key]: v, ...(d.status === "someday" && key !== "scheduled" && v !== null ? { status: "open" as Status } : {}) })),
+			rules.validate(key, draft),
+		);
 	const changeStatus = (status: Status) => {
 		if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
 		else set({ status, ...(status === "delegated" ? {} : { delegatedTo: null }), ...(status === "someday" ? { scheduled: null, start: null, end: null } : {}) });
@@ -164,13 +193,20 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 				{DATE_FIELDS.map(([key, label]) => (
 					<div class="vt-text-field">
 						<span>{label}</span>
-						<button type="button" class={`vt-field-chip${draft[key] ? "" : " is-placeholder"}`} onClick={() => editDate(key, label)}>
+						{/* Inbox の Project では期間を入れない。押せなくし、理由を下に出す（ADR-0210） */}
+						<button
+							type="button"
+							class={`vt-field-chip${draft[key] ? "" : " is-placeholder"}`}
+							disabled={rules.lock !== null && isPeriodKey(key)}
+							onClick={() => editDate(key, label)}
+						>
 							<Icon name="calendar" />
 							{draft[key] ? formatShortDate(draft[key]!) : "Not set"}
 						</button>
 					</div>
 				))}
 			</div>
+			{rules.lock !== null && <div class="vt-muted">{rules.lock}</div>}
 			<div class="vt-subissue-form-row">
 				<label class="vt-text-field">
 					<span>Estimated</span>

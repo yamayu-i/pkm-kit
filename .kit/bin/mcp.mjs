@@ -7423,6 +7423,9 @@ function localDateTime(now = /* @__PURE__ */ new Date()) {
   const sign = offset >= 0 ? "+" : "-";
   return `${localToday(now)}T${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}${sign}${pad2(offset / 60)}:${pad2(offset % 60)}`;
 }
+function formatShortDate(date) {
+  return `${date.slice(5, 7)}/${date.slice(8, 10)} (${WEEKDAY_NAMES[weekdayOf(date)]})`;
+}
 
 // src/core/board.ts
 var BOARD_KEY = "board";
@@ -8488,68 +8491,6 @@ function lastOrder(history, date) {
   return found;
 }
 
-// src/core/daily.ts
-var byDate = (key) => (a, b) => (a[key] ?? "").localeCompare(b[key] ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
-function deadIssues(issues, today) {
-  const deadline = [];
-  const softDeadline = [];
-  for (const i of issues) {
-    if (!isActive(i)) continue;
-    if (i.deadline !== null && i.deadline < today) deadline.push(i);
-    if (i.softDeadline !== null && i.softDeadline < today) softDeadline.push(i);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
-}
-function cautionIssues(issues, today, days = 3) {
-  const within = (d) => d !== null && diffDays(d, today) >= 0 && diffDays(d, today) <= days;
-  const deadline = [];
-  const softDeadline = [];
-  for (const i of issues) {
-    if (!isActive(i)) continue;
-    if (within(i.deadline)) deadline.push(i);
-    if (within(i.softDeadline)) softDeadline.push(i);
-  }
-  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
-}
-function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
-  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
-}
-var priorityRank = (p) => p === null ? PRIORITIES.length : PRIORITIES.indexOf(p);
-var nullsLast = (a, b) => a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b);
-var byPick = (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || nullsLast(a.deadline, b.deadline) || nullsLast(a.reviewed ?? "", b.reviewed ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
-
-// src/core/effort.ts
-function prorateEffort(intervals, now) {
-  const events = [];
-  for (const iv of intervals) {
-    const to = iv.toMs ?? Math.max(now, iv.fromMs);
-    if (!(to > iv.fromMs)) continue;
-    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
-  }
-  events.sort((a, b) => a.t - b.t);
-  const result = /* @__PURE__ */ new Map();
-  const active = /* @__PURE__ */ new Map();
-  let k = 0;
-  let prev = 0;
-  for (let i = 0; i < events.length; ) {
-    const t = events[i].t;
-    if (k > 0 && t > prev) {
-      const share = (t - prev) / k;
-      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
-    }
-    for (; i < events.length && events[i].t === t; i++) {
-      const e = events[i];
-      const count = (active.get(e.taskId) ?? 0) + e.delta;
-      if (count === 0) active.delete(e.taskId);
-      else active.set(e.taskId, count);
-      k += e.delta;
-      if (!result.has(e.taskId)) result.set(e.taskId, 0);
-    }
-    prev = t;
-  }
-  return result;
-}
-
 // src/core/status-log.ts
 var STATUS_VIAS = ["ui", "timer", "undo", "mcp"];
 var STATUS_LOG_PATH_RE = /^statuslog\/([^/]+)\/(\d{4}-\d{2})\.jsonl$/;
@@ -8629,15 +8570,107 @@ function isDoneStatus(status) {
   return status === "closed" || status === "canceled";
 }
 
+// src/core/daily.ts
+var byDate = (key) => (a, b) => (a[key] ?? "").localeCompare(b[key] ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
+function deadIssues(issues, today) {
+  const deadline = [];
+  const softDeadline = [];
+  for (const i of issues) {
+    if (!isActive(i)) continue;
+    if (i.deadline !== null && i.deadline < today) deadline.push(i);
+    if (i.softDeadline !== null && i.softDeadline < today) softDeadline.push(i);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
+}
+function cautionIssues(issues, today, days = 3) {
+  const within = (d) => d !== null && diffDays(d, today) >= 0 && diffDays(d, today) <= days;
+  const deadline = [];
+  const softDeadline = [];
+  for (const i of issues) {
+    if (!isActive(i)) continue;
+    if (within(i.deadline)) deadline.push(i);
+    if (within(i.softDeadline)) softDeadline.push(i);
+  }
+  return { deadline: deadline.sort(byDate("deadline")), softDeadline: softDeadline.sort(byDate("softDeadline")) };
+}
+function scheduledOn(issues, date, exclude = /* @__PURE__ */ new Set()) {
+  return [...issues].filter((i) => isActive(i) && i.scheduled === date && !exclude.has(i.id)).sort((a, b) => a.id.localeCompare(b.id, "en", { numeric: true }));
+}
+var priorityRank = (p) => p === null ? PRIORITIES.length : PRIORITIES.indexOf(p);
+var nullsLast = (a, b) => a === b ? 0 : a === null ? 1 : b === null ? -1 : a.localeCompare(b);
+var byPick = (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || nullsLast(a.deadline, b.deadline) || nullsLast(a.reviewed ?? "", b.reviewed ?? "") || a.id.localeCompare(b.id, "en", { numeric: true });
+
+// src/core/effort.ts
+function prorateEffort(intervals, now) {
+  const events = [];
+  for (const iv of intervals) {
+    const to = iv.toMs ?? Math.max(now, iv.fromMs);
+    if (!(to > iv.fromMs)) continue;
+    events.push({ t: iv.fromMs, delta: 1, taskId: iv.taskId }, { t: to, delta: -1, taskId: iv.taskId });
+  }
+  events.sort((a, b) => a.t - b.t);
+  const result = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Map();
+  let k = 0;
+  let prev = 0;
+  for (let i = 0; i < events.length; ) {
+    const t = events[i].t;
+    if (k > 0 && t > prev) {
+      const share = (t - prev) / k;
+      for (const [taskId, count] of active) result.set(taskId, (result.get(taskId) ?? 0) + share * count);
+    }
+    for (; i < events.length && events[i].t === t; i++) {
+      const e = events[i];
+      const count = (active.get(e.taskId) ?? 0) + e.delta;
+      if (count === 0) active.delete(e.taskId);
+      else active.set(e.taskId, count);
+      k += e.delta;
+      if (!result.has(e.taskId)) result.set(e.taskId, 0);
+    }
+    prev = t;
+  }
+  return result;
+}
+
 // src/core/index.ts
 var INACTIVE_STATUSES = ["closed", "canceled", "someday"];
 function isActive(issue) {
   return !INACTIVE_STATUSES.includes(issue.status);
 }
-function isInbox(issue, today) {
+function ticklerReleased(issue, today, planned) {
+  return planned && issue.tickler !== null && issue.tickler <= today;
+}
+function isInbox(issue, today, planned = false) {
   if (issue.status !== "open") return false;
-  if (issue.tickler !== null) return issue.tickler <= today;
+  if (issue.tickler !== null) return issue.tickler <= today && !planned;
   return !issue.clarified;
+}
+function isNext(issue, today, planned = false) {
+  const released = today !== void 0 && issue.status === "open" && ticklerReleased(issue, today, planned);
+  const ready = issue.status === "in-progress" || issue.status === "open" && (issue.clarified || released);
+  return ready && issue.scheduled === null && (issue.tickler === null || released);
+}
+function gtdList(issue, today, planned = false) {
+  if (issue.status !== "open" && issue.status !== "in-progress") return null;
+  if (isInbox(issue, today, planned)) return "inbox";
+  if (isNext(issue, today, planned)) return "next";
+  if (issue.scheduled !== null) return "calendar";
+  if (issue.tickler !== null && issue.tickler > today) return "tickler";
+  return null;
+}
+function hasPlannedSubs(subs) {
+  return subs.some((s) => s.status !== "closed" && s.status !== "canceled" && (s.start !== null || s.end !== null));
+}
+function inPeriod(sub, today) {
+  const start = sub.start ?? sub.end;
+  const end = sub.end ?? sub.start;
+  return start !== null && end !== null && start <= today && today <= end;
+}
+function nextSubApartFromPeriod(sub, parent, today, parentPlanned) {
+  return (sub.status === "open" || sub.status === "in-progress") && sub.scheduled === null && parent !== void 0 && isNext(parent, today, parentPlanned);
+}
+function isNextSub(sub, parent, today, parentPlanned = false) {
+  return nextSubApartFromPeriod(sub, parent, today, parentPlanned) && inPeriod(sub, today);
 }
 function isWatchStatus(status) {
   return status === "waiting" || status === "delegated";
@@ -8677,6 +8710,30 @@ var TaskIndex = class {
   /** その issue のサブ（md に書いた順。ADR-0135） */
   subs(parentId) {
     return this.subsOf.get(parentId) ?? [];
+  }
+  /** サブを 1 つでも持つ issue（Project）か。サブの status は見ない（ADR-0203, 0210） */
+  isProject(id) {
+    return this.subs(id).length > 0;
+  }
+  /** 計画済みの Project か: 閉じていないサブに期間がある（ADR-0210） */
+  planned(id) {
+    return hasPlannedSubs(this.subs(id));
+  }
+  /** Inbox か（索引のサブで、Tickler の日を迎えた計画済みの Project を除く。ADR-0210） */
+  inbox(issue, today) {
+    return isInbox(issue, today, this.planned(issue.id));
+  }
+  /** Next Action か（ADR-0210 の Tickler の例外を含む） */
+  next(issue, today) {
+    return isNext(issue, today, this.planned(issue.id));
+  }
+  /** サブの Next（親の Tickler の例外を含む。ADR-0203, 0210） */
+  nextSub(sub, today) {
+    return isNextSub(sub, this.issues.get(sub.parent), today, this.planned(sub.parent));
+  }
+  /** GTD の分類（ADR-0210） */
+  list(issue, today) {
+    return gtdList(issue, today, this.planned(issue.id));
   }
   /** 合成キー `i-12#k3f9a2` のサブ */
   sub(key) {
@@ -9081,6 +9138,60 @@ function parseLabels(text) {
   return { labels, problems };
 }
 
+// src/core/project-periods.ts
+function periodStart(p) {
+  return p.start ?? p.end;
+}
+function onlyClears(before, after) {
+  const keep = (k) => after[k] === null || after[k] === (before?.[k] ?? null);
+  return keep("start") && keep("end");
+}
+function periodInInboxMessage(parentId) {
+  return `${parentId}: Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E Project \u306E\u30B5\u30D6\u306B\u306F\u3001\u671F\u9593\u3092\u5165\u308C\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002\u5148\u306B Inbox \u3067\u6574\u7406\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function periodBeforeTicklerMessage(parentId, tickler) {
+  return `${parentId}: Tickler\uFF08${formatShortDate(tickler)}\uFF09\u3088\u308A\u524D\u306B\u59CB\u307E\u308B\u671F\u9593\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002${formatShortDate(tickler)} \u4EE5\u964D\u306B\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function subPeriodError(parent, planned, before, after, today) {
+  if (onlyClears(before, after)) return null;
+  if (isInbox(parent, today, planned)) return periodInInboxMessage(parent.id);
+  const start = periodStart(after);
+  if (parent.tickler !== null && parent.tickler > today && start !== null && start < parent.tickler) return periodBeforeTicklerMessage(parent.id, parent.tickler);
+  return null;
+}
+function earliestPeriodStart(subs) {
+  let earliest = null;
+  for (const s of subs) {
+    if (isDoneStatus(s.status)) continue;
+    const start = periodStart(s);
+    if (start !== null && (earliest === null || start < earliest)) earliest = start;
+  }
+  return earliest;
+}
+function ticklerLimit(subs, today) {
+  const latest = earliestPeriodStart(subs);
+  return { latest, blocked: latest !== null && latest <= today };
+}
+function ticklerBlockedMessage(id) {
+  return `${id}: \u671F\u9593\u304C\u3059\u3067\u306B\u59CB\u307E\u3063\u3066\u3044\u308B\u30B5\u30D6\u304C\u3042\u308B\u306E\u3067\u3001Tickler \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9593\u3092\u5F8C\u308D\u306B\u305A\u3089\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function ticklerWithSubsError(id, subs, tickler, today) {
+  if (tickler === null) return null;
+  const { latest, blocked } = ticklerLimit(subs, today);
+  if (latest === null || tickler <= latest) return null;
+  if (blocked) return ticklerBlockedMessage(id);
+  return `${id}: Tickler \u306F\u30B5\u30D6\u306E\u671F\u9593\u306E\u59CB\u307E\u308A\uFF08${formatShortDate(latest)}\uFF09\u3088\u308A\u5F8C\u306B\u3067\u304D\u307E\u305B\u3093\uFF08ADR-0210\uFF09\u3002${formatShortDate(latest)} \u4EE5\u524D\u306B\u3059\u308B\u304B\u3001\u30B5\u30D6\u306E\u671F\u9593\u3092\u5F8C\u308D\u306B\u305A\u3089\u3057\u3066\u304F\u3060\u3055\u3044`;
+}
+function somedayClears(subs) {
+  return subs.filter((s) => !isDoneStatus(s.status) && (s.start !== null || s.end !== null || s.scheduled !== null));
+}
+function describeClear(sub) {
+  const parts = [];
+  if (sub.start !== null || sub.end !== null) parts.push(`${sub.start ? formatShortDate(sub.start) : "\u2014"} \u2013 ${sub.end ? formatShortDate(sub.end) : "\u2014"}`);
+  if (sub.scheduled !== null) parts.push(`calendar ${formatShortDate(sub.scheduled)}`);
+  return `${sub.summary}\uFF08${parts.join("\u3001")}\uFF09`;
+}
+
 // src/core/lint.ts
 function safeDecode(path) {
   try {
@@ -9151,6 +9262,7 @@ function lintVault(data, options = {}) {
   const problems = [];
   const add = (severity, path, code, message) => problems.push({ severity, path, code, message });
   const index = new TaskIndex(data);
+  const today = options.today ?? localToday();
   for (const [kind, items] of [
     ["issue", data.issues],
     ["routine", data.routines],
@@ -9190,6 +9302,13 @@ function lintVault(data, options = {}) {
     }
     if (issue.scheduled !== null && index.subs(issue.id).length > 0) {
       add("warning", path, "calendar-with-subs", "\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064\u306E\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0203\uFF09");
+    }
+    if (index.planned(issue.id) && index.inbox(issue, today)) {
+      add("warning", path, "period-in-inbox", `${periodInInboxMessage(issue.id)}\uFF08\u671F\u9593\u306E\u3042\u308B\u30B5\u30D6\u304C\u3042\u308A\u307E\u3059\uFF09`);
+    }
+    if (issue.tickler !== null && issue.tickler > today) {
+      const error = ticklerWithSubsError(issue.id, index.subs(issue.id), issue.tickler, today);
+      if (error) add("warning", path, "tickler-after-sub-period", error);
     }
     if (issue.statusDetail.length > STATUS_DETAIL_MAX) {
       add("warning", path, "long-status-detail", `status-detail \u304C ${STATUS_DETAIL_MAX} \u6587\u5B57\u3092\u8D85\u3048\u3066\u3044\u307E\u3059`);
@@ -9392,7 +9511,7 @@ function buildOverview(index, date, now, options = {}) {
   const scheduledNotOnBoard = index.toAutoAdd(date);
   const dead = deadIssues(index.data.issues, date);
   const caution = cautionIssues(index.data.issues, date, cautionDays);
-  const inbox = index.data.issues.filter((i) => isInbox(i, date));
+  const inbox = index.data.issues.filter((i) => index.inbox(i, date));
   const runningTimers = index.running().map((l) => ({
     id: l.id,
     taskId: l.taskId,
@@ -9944,6 +10063,10 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
     }
     const status = index.issues.get(id)?.status;
     if (kind === "tickler" && status !== void 0 && !canSetTickler(status)) throw new Error(`${id}: ${ticklerError(status)}`);
+    if (kind === "tickler" && index.issues.has(id)) {
+      const error = ticklerWithSubsError(id, index.subs(id), to, localToday(now));
+      if (error) throw new Error(error);
+    }
   }
   for (const id of issueIds) {
     const issue = index.issues.get(id);
@@ -10086,6 +10209,8 @@ function updateIssueOnDisk(root, index, input, log) {
   }
   if (input.tickler !== void 0) {
     if (input.tickler !== null && !isLocalDate(input.tickler)) throw new Error(`tickler \u306E\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059: ${String(input.tickler)}`);
+    const error = ticklerWithSubsError(current.id, index.subs(current.id), input.tickler, localToday(log?.now ?? /* @__PURE__ */ new Date()));
+    if (error) throw new Error(error);
     patch.tickler = input.tickler;
   }
   if (input.soft_deadline !== void 0) {
@@ -10125,7 +10250,18 @@ function updateIssueOnDisk(root, index, input, log) {
   if ((input.clarified === false || input.clarified === null) && afterStatus !== "open") {
     throw new Error(`clarified \u3092\u5916\u305B\u308B\u306E\u306F open \u306E issue \u3060\u3051\u3067\u3059\u3002\u4ECA\u306F ${afterStatus} \u3067\u3059\uFF08ADR-0189\uFF09`);
   }
+  const clears = afterStatus === "someday" && current.status !== "someday" ? somedayClears(index.subs(current.id)) : [];
+  if (clears.length > 0 && input.clear_sub_periods !== true) {
+    throw new Error(
+      `${current.id} \u3092 someday \u306B\u3059\u308B\u3068\u3001\u6B21\u306E\u30B5\u30D6\u306E\u671F\u9593\u3068 Calendar \u306E\u65E5\u3092\u6D88\u3057\u307E\u3059: ${clears.map(describeClear).join(" / ")}\u3002\u6D88\u3057\u3066\u3088\u3051\u308C\u3070 clear_sub_periods: true \u3092\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0210\uFF09`
+    );
+  }
   const updated = updateIssueFrontmatter(root, current.path, patch, log ? { ...log, via: "mcp" } : void 0);
+  if (clears.length > 0) {
+    let text = readTextOrEmpty(root, current.path);
+    for (const sub of clears) text = updateSubIssueText(current.path, current.id, text, sub.id, { start: null, end: null, scheduled: null }, import_yaml2.parse).text;
+    writeTextInVault(root, current.path, text);
+  }
   if (updated.status !== current.status) unstarOnDisk(root, index, current.id, updated.status, log);
   if (updated.status !== current.status && stopsTimer(updated.status)) stopTimerOnDisk(root, index, [current.id], log?.now ?? /* @__PURE__ */ new Date());
   return updated;
@@ -10139,6 +10275,7 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
   const current = index.sub(key);
   if (!current) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
   patch = normalizeSubPatch(reopenSubOnPeriod(current.status, patch));
+  if (log?.via !== "undo") assertSubPeriodOnDisk(index, current.parent, current, patch, localToday(log?.now ?? /* @__PURE__ */ new Date()));
   if (patch.status !== void 0 && patch.status !== current.status && log?.via !== "undo") {
     const reopenTo = index.reopenStatus(key);
     if (!canTransition(current.status, patch.status, reopenTo)) throw new Error(transitionError(current.status, patch.status, reopenTo));
@@ -10155,6 +10292,14 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
     if (stopsTimer(r.after.status)) stopTimerOnDisk(root, index, [key], log.now);
   }
   return r.after;
+}
+function assertSubPeriodOnDisk(index, parentId, before, patch, today) {
+  if (patch.start === void 0 && patch.end === void 0) return;
+  const parent = index.issues.get(parentId);
+  if (!parent) return;
+  const after = { start: patch.start !== void 0 ? patch.start : before?.start ?? null, end: patch.end !== void 0 ? patch.end : before?.end ?? null };
+  const error = subPeriodError(parent, index.planned(parentId), before, after, today);
+  if (error) throw new Error(error);
 }
 function assertSubIssues(index, subs, touched) {
   const errors = touchedSubErrors(subs, touched, new Set(index.members.keys()));
@@ -10174,6 +10319,7 @@ function createSubIssuesOnDisk(root, index, parent, items, now, at) {
     taken.push(id);
     return newSubIssueInput(item, id, created);
   });
+  for (const sub of subs) assertSubPeriodOnDisk(index, parent, null, sub, localToday(now));
   assertSubIssues(index, [...existing, ...subs], subs.map((s) => s.id));
   const text = readTextOrEmpty(root, issue.path);
   writeTextInVault(root, issue.path, insertSubIssuesText(issue.path, parent, text, subs, import_yaml2.parse, at));
@@ -11087,7 +11233,7 @@ var TOOLS = [
   },
   {
     name: "list_issues",
-    description: "\u6761\u4EF6\uFF08status\u3001priority\u3001label\u3001\u4E88\u5B9A\u306E\u6709\u7121\u3001Inbox\u306E\u307F\u3001\u6587\u5B57\u5217\u691C\u7D22\u3001\u4E26\u3073\u9806\uFF09\u3067\u7D5E\u3063\u305F issue \u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B",
+    description: "\u6761\u4EF6\uFF08status\u3001priority\u3001label\u3001\u4E88\u5B9A\u306E\u6709\u7121\u3001Inbox\u306E\u307F\u3001\u6587\u5B57\u5217\u691C\u7D22\u3001\u4E26\u3073\u9806\uFF09\u3067\u7D5E\u3063\u305F issue \u4E00\u89A7\u3092\u53D6\u5F97\u3059\u308B\u3002\u5404 issue \u306B GTD \u306E\u5206\u985E list\uFF08inbox\u30FBnext\u30FBcalendar\u30FBtickler\u30FBnull\uFF09\u3068 project\uFF08\u30B5\u30D6\u3092\u6301\u3064\u304B\uFF09\u304C\u4ED8\u304F\uFF08ADR-0210\uFF09",
     inputSchema: {
       type: "object",
       properties: {
@@ -11096,7 +11242,7 @@ var TOOLS = [
         priorities: { type: "array", items: { type: "string" } },
         labels: { type: "array", items: { type: "string" } },
         scheduled: { type: "string", enum: ["any", "yes", "no"] },
-        inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox\uFF08open \u3067 clarified \u3067\u306A\u3044\u3002\u65E5\u4ED8\u306F\u898B\u306A\u3044\u3002ADR-0148\uFF09\u306E issue \u306E\u307F\u8FD4\u3059" },
+        inbox_only: { type: "boolean", description: "true \u306E\u3068\u304D Inbox\uFF08open \u3067 clarified \u3067\u306A\u3044\u3002\u65E5\u4ED8\u306F\u898B\u306A\u3044\u3002ADR-0148\u3002Tickler \u306E\u65E5\u3092\u8FCE\u3048\u305F\u8A08\u753B\u6E08\u307F\u306E Project \u306F\u9664\u304F\u3002ADR-0210\uFF09\u306E issue \u306E\u307F\u8FD4\u3059" },
         sort: { type: "string", enum: ["id", "summary", "status", "priority", "soft_deadline", "deadline", "created", "scheduled", "next_scheduled"], description: "next_scheduled \u306F\u4EE5\u524D\u306E\u540D\u524D\uFF08scheduled \u3068\u540C\u3058\uFF09" },
         desc: { type: "boolean" },
         limit: { type: "number", description: "\u6700\u5927\u4EF6\u6570\uFF08\u65E2\u5B9A 100\uFF09" }
@@ -11270,13 +11416,14 @@ var TOOLS = [
         priority: { type: ["string", "null"], enum: ["high", "mid", "low", "chore", null] },
         labels: { type: "array", items: { type: "string" } },
         scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09\u3002null \u3067\u6D88\u3059\u3002\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u6301\u3064 issue \u306B\u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF08ADR-0203\uFF09" },
-        tickler: { type: ["string", "null"], description: "Tickler \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\uFF09\u3002null \u3067\u6D88\u3059" },
+        tickler: { type: ["string", "null"], description: "Tickler \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B Inbox \u306B\u623B\u3059\u3002\u671F\u9593\u3092\u6301\u3064\u30B5\u30D6\u304C\u3042\u308B Project \u306F\u3001\u305D\u306E\u65E5\u306B Next \u306B\u51FA\u308B\uFF09\u3002null \u3067\u6D88\u3059\u3002Project \u3067\u306F\u3001\u9589\u3058\u3066\u3044\u306A\u3044\u30B5\u30D6\u306E\u671F\u9593\u306E\u59CB\u307E\u308A\u306E\u3044\u3061\u3070\u3093\u65E9\u3044\u65E5\u4EE5\u524D\u3060\u3051\uFF08ADR-0210\uFF09" },
         soft_deadline: { type: ["string", "null"] },
         deadline: { type: ["string", "null"] },
         revisit: { type: ["string", "null"] },
         reviewed: { type: ["string", "null"] },
         estimated: { type: ["number", "null"] },
-        clarified: { type: ["boolean", "null"], description: "\u6574\u7406\u6E08\u307F\u304B\uFF08ADR-0148\uFF09\u3002true \u3067 Inbox \u304B\u3089\u51FA\u308B\u3002false / null \u3067 Inbox \u306B\u623B\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u308B\u3002open \u306E issue \u3060\u3051\u3002ADR-0189\uFF09" }
+        clarified: { type: ["boolean", "null"], description: "\u6574\u7406\u6E08\u307F\u304B\uFF08ADR-0148\uFF09\u3002true \u3067 Inbox \u304B\u3089\u51FA\u308B\u3002false / null \u3067 Inbox \u306B\u623B\u3059\uFF08\u65E5\u4ED8\u306F\u6B8B\u308B\u3002open \u306E issue \u3060\u3051\u3002ADR-0189\uFF09" },
+        clear_sub_periods: { type: "boolean", description: "\u30B5\u30D6\u3092\u6301\u3064 issue\uFF08Project\uFF09\u3092 someday \u306B\u3059\u308B\u3068\u304D\u3001\u9589\u3058\u3066\u3044\u306A\u3044\u30B5\u30D6\u306E\u671F\u9593\u3068 Calendar \u306E\u65E5\u3092\u6D88\u3057\u3066\u3088\u3044\u304B\u3002\u6D88\u3059\u3082\u306E\u304C\u3042\u308B\u306E\u306B true \u3067\u306A\u3051\u308C\u3070\u30A8\u30E9\u30FC\u3067\u3001\u6D88\u3048\u308B\u3082\u306E\u3092\u8FD4\u3059\uFF08ADR-0210\uFF09" }
       },
       required: ["id"]
     }
@@ -11296,7 +11443,7 @@ var TOOLS = [
               summary: { type: "string" },
               status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
               delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
-              start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
+              start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09\u3002Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E\u89AA\u306E\u30B5\u30D6\u306B\u306F start\u30FBend \u3092\u5165\u308C\u3089\u308C\u306A\u3044\u3002\u89AA\u306B Tickler \u304C\u3042\u308C\u3070\u3001\u305D\u306E\u65E5\u4EE5\u964D\u306B\u59CB\u3081\u308B\uFF08ADR-0210\uFF09" },
               end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
               scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
               estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
@@ -11321,7 +11468,7 @@ var TOOLS = [
         summary: { type: "string" },
         status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
         delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
-        start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09" },
+        start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09\u3002Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E\u89AA\u306E\u30B5\u30D6\u306B\u306F start\u30FBend \u3092\u5165\u308C\u3089\u308C\u306A\u3044\u3002\u89AA\u306B Tickler \u304C\u3042\u308C\u3070\u3001\u305D\u306E\u65E5\u4EE5\u964D\u306B\u59CB\u3081\u308B\uFF08ADR-0210\uFF09" },
         end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
         scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
         estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
@@ -11529,8 +11676,9 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
     }
     case "list_issues": {
       const limit = typeof args.limit === "number" && args.limit > 0 ? args.limit : 100;
+      const withList = (i) => ({ ...i, list: index.list(i, today), project: index.isProject(i.id) });
       if (args.inbox_only === true) {
-        return index.data.issues.filter((i) => isInbox(i, today)).slice(0, limit);
+        return index.data.issues.filter((i) => index.inbox(i, today)).slice(0, limit).map(withList);
       }
       const q = {
         ...defaultQuery(),
@@ -11542,7 +11690,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         ...typeof args.sort === "string" ? { sort: args.sort === "next_scheduled" ? "scheduled" : args.sort } : {},
         ...typeof args.desc === "boolean" ? { desc: args.desc } : {}
       };
-      return queryIssues(index.data.issues, q, today).slice(0, limit);
+      return queryIssues(index.data.issues, q, today).slice(0, limit).map(withList);
     }
     case "get_issue": {
       const id = String(args.id ?? "");
@@ -11553,6 +11701,8 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
       const counts = carryCounts(index, today);
       return {
         ...issue,
+        list: index.list(issue, today),
+        project: index.isProject(id),
         body: splitSubIssueText(readMarkdownBody(ctx.root, issue.path)).head,
         subIssues: index.subs(id).map(({ path: _path, parent: _parent, ...s }) => ({ ...s, effortMinutes: Math.round(byKey.get(s.key) ?? 0) })),
         effortMinutes: Math.round(efforts.get(id) ?? 0),
@@ -11697,7 +11847,8 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         ...args.revisit !== void 0 ? { revisit: args.revisit } : {},
         ...args.reviewed !== void 0 ? { reviewed: args.reviewed } : {},
         ...args.estimated !== void 0 ? { estimated: args.estimated } : {},
-        ...args.clarified !== void 0 ? { clarified: args.clarified } : {}
+        ...args.clarified !== void 0 ? { clarified: args.clarified } : {},
+        ...args.clear_sub_periods === true ? { clear_sub_periods: true } : {}
       }, { device: ctx.device, now });
     }
     case "create_sub_issues": {

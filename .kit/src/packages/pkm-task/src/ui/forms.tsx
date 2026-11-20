@@ -66,14 +66,29 @@ function DateTextField(props: { text: string; parsed: LocalDate | null; onText: 
 }
 
 /** 日付を 1 つ選ぶ。短い書き方の入力（ADR-0017）とカレンダーで選べる。クリアもできる */
-export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: LocalDate | null) => void; allowClear?: boolean; presets?: boolean }) {
+export function DateForm(props: {
+	initial: LocalDate | null;
+	onSubmit: (value: LocalDate | null) => void;
+	allowClear?: boolean;
+	presets?: boolean;
+	/** 選べない日なら理由（日本語）を返す。選ぶ前に止め、理由を出す（ADR-0210 の Tickler の上限など） */
+	validate?: (value: LocalDate) => string | null;
+}) {
 	const today = localToday();
 	const [text, setText] = useState(props.initial ?? "");
 	const [month, setMonth] = useState((props.initial ?? today).slice(0, 7));
 	const ref = useRef<HTMLInputElement>(null);
 	useEffect(() => ref.current?.select(), []);
 	const parsed = parseDateInput(text, today);
-	const invalid = text.trim() !== "" && parsed === null;
+	const rejected = parsed !== null && props.validate ? props.validate(parsed) : null;
+	const invalid = (text.trim() !== "" && parsed === null) || rejected !== null;
+	/** 選べない日を押したら、閉じずに入力欄に入れて理由を出す */
+	const choose = (d: LocalDate) => {
+		if (props.validate?.(d)) {
+			setText(d);
+			setMonth(d.slice(0, 7));
+		} else props.onSubmit(d);
+	};
 	return (
 		<form
 			class="vt-date-form"
@@ -99,13 +114,14 @@ export function DateForm(props: { initial: LocalDate | null; onSubmit: (value: L
 						["Tomorrow", 1],
 						["Next week", 7],
 					].map(([label, n]) => (
-						<button type="button" class="vt-field-chip" onClick={() => props.onSubmit(addDays(today, n as number))}>
+						<button type="button" class="vt-field-chip" onClick={() => choose(addDays(today, n as number))}>
 							{label}
 						</button>
 					))}
 				</div>
 			)}
-			<MonthCalendar month={month} onMonth={setMonth} today={today} isSelected={(d) => d === parsed} onPick={(d) => props.onSubmit(d)} />
+			<MonthCalendar month={month} onMonth={setMonth} today={today} isSelected={(d) => d === parsed} onPick={choose} />
+			{rejected !== null && <div class="vt-error">{rejected}</div>}
 			<div class="vt-form">
 				{props.allowClear !== false && (
 					<button type="button" onClick={() => props.onSubmit(null)}>
