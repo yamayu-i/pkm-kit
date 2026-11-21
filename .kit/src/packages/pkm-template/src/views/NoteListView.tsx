@@ -6,6 +6,7 @@ import { shortDate, tagList } from "../core/note-format";
 import { filterByQuery, importedSourcePaths, notesOfType, sortNotes, withoutTmp, type NoteInfo, type SortKey, type SortOrder } from "../core/note-list";
 import { dailyDate, noteTitle } from "../core/note-title";
 import { collectNotes, useVaultChanges } from "../obsidian/note-index";
+import { NoteFolders } from "./NoteFolders";
 
 interface Column {
 	label: string;
@@ -20,6 +21,20 @@ interface ListSpec {
 	/** 既定の並べ替え */
 	sort: SortKey;
 	columns: Column[];
+	/** 表と note/ のフォルダの木をタブで切り替える（ADR-0213） */
+	folders?: boolean;
+}
+
+type Mode = "table" | "folders";
+/** 選んだタブを端末ごとに覚える（Vault の中には書かない） */
+const MODE_KEY = "pkm-template-note-list-mode";
+
+function loadMode(app: App): Mode {
+	try {
+		return app.loadLocalStorage(MODE_KEY) === "folders" ? "folders" : "table";
+	} catch {
+		return "table";
+	}
 }
 
 const created: Column = { label: "Created", sort: "created", cell: (n) => shortDate(n.frontmatter.created) };
@@ -38,6 +53,7 @@ const SPECS = {
 		empty: "No notes",
 		sort: "created",
 		columns: [titleColumn, { label: "Tags", cell: (n) => tagList(n.frontmatter.tags).join(" ") }, created],
+		folders: true,
 	},
 	source: {
 		type: "source",
@@ -56,10 +72,12 @@ function NoteList({ app, spec }: { app: App; spec: ListSpec }) {
 	const tick = useVaultChanges(app);
 	const [query, setQuery] = useState("");
 	const [sort, setSort] = useState<{ key: SortKey; order: SortOrder }>({ key: spec.sort, order: "desc" });
+	const [mode, setMode] = useState<Mode>(() => (spec.folders ? loadMode(app) : "table"));
 
 	const all = useMemo(() => withoutTmp(collectNotes(app)), [app, tick]);
 	const imported = useMemo(() => importedSourcePaths(all), [all]);
-	const rows = useMemo(() => sortNotes(filterByQuery(notesOfType(all, spec.type), query), sort.key, sort.order), [all, spec, query, sort]);
+	const ofType = useMemo(() => notesOfType(all, spec.type), [all, spec]);
+	const rows = useMemo(() => sortNotes(filterByQuery(ofType, query), sort.key, sort.order), [ofType, query, sort]);
 
 	const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, order: s.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" }));
 	const open = (path: string) => {
@@ -67,10 +85,30 @@ function NoteList({ app, spec }: { app: App; spec: ListSpec }) {
 		if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: Platform.isPhone });
 	};
 
+	const choose = (next: Mode) => {
+		setMode(next);
+		try {
+			app.saveLocalStorage(MODE_KEY, next);
+		} catch {
+			// 覚えられなくても、切り替えはできる
+		}
+	};
+
 	return (
 		<div class="vt-tpl-list">
+			{spec.folders ? (
+				<div class="vt-tpl-segmented" role="group" aria-label="View">
+					{(["table", "folders"] as const).map((m) => (
+						<button key={m} type="button" class={`vt-tpl-segmented-button${mode === m ? " is-on" : ""}`} aria-pressed={mode === m} onClick={() => mode !== m && choose(m)}>
+							{m === "table" ? "Table" : "Folders"}
+						</button>
+					))}
+				</div>
+			) : null}
 			<input class="vt-tpl-search" type="search" placeholder="Filter by title" aria-label="Filter by title" value={query} onInput={(e) => setQuery(e.currentTarget.value)} />
-			{rows.length === 0 ? (
+			{mode === "folders" ? (
+				<NoteFolders app={app} notes={ofType} tick={tick} query={query} />
+			) : rows.length === 0 ? (
 				<div class="vt-tpl-empty">{query.trim() === "" ? spec.empty : "No matching notes"}</div>
 			) : (
 				<table class="vt-tpl-table">

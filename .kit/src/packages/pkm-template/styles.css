@@ -417,3 +417,252 @@
 	cursor: pointer;
 }
 
+
+/* ---------- Notes の Table と Folders の切り替え（ADR-0213。pkm-task の .vt-segmented と同じ形） ---------- */
+
+.vt-tpl-segmented {
+	display: inline-flex;
+	align-self: flex-start;
+	border: 1px solid var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	overflow: hidden;
+}
+
+.vt-tpl-segmented-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 72px;
+	height: 32px;
+	padding: 0 var(--vt-space-12);
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-family: inherit;
+	font-size: var(--vt-type-label-medium-size);
+	font-weight: var(--vt-type-label-medium-weight);
+	letter-spacing: var(--vt-type-label-medium-tracking);
+	cursor: pointer;
+}
+
+.vt-tpl-segmented-button + .vt-tpl-segmented-button {
+	border-left: 1px solid var(--vt-outline);
+}
+
+.vt-tpl-segmented-button:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-segmented-button.is-on {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
+/* ---------- Notes の Folders: note/ の木（ADR-0213。Slides の木 ADR-0124 と同じ見た目） ---------- */
+
+.vt-tpl-icon {
+	display: inline-flex;
+	flex: none;
+}
+
+.vt-tpl-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.vt-tpl-folders {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-8);
+}
+
+.vt-tpl-folder-tools {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--vt-space-8);
+}
+
+.vt-tpl-select {
+	height: 36px;
+	border-radius: var(--vt-radius-full);
+}
+
+.vt-tpl-folder-tools .vt-tpl-button {
+	gap: var(--vt-space-8);
+}
+
+.vt-tpl-tree,
+.vt-tpl-group {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--vt-space-4);
+}
+
+.vt-tpl-tree {
+	min-height: 120px;
+	padding: var(--vt-space-4);
+	border-radius: var(--vt-radius-m);
+	transition: box-shadow var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+/* 中の段は 1 段ずつ字下げする（入れ子で積み重なる） */
+.vt-tpl-group {
+	margin-top: var(--vt-space-4);
+	padding-left: var(--vt-space-20);
+}
+
+.vt-tpl-item {
+	min-width: 0;
+}
+
+/* 落とす先は primary から作る色（基本の色を変えても追従する） */
+.vt-tpl-tree.is-drop {
+	box-shadow: inset 0 0 0 2px var(--vt-primary);
+}
+
+.vt-tpl-row {
+	display: flex;
+	align-items: center;
+	padding-right: var(--vt-space-4);
+	border: var(--vt-border-width-thin) solid var(--vt-outline-variant);
+	border-radius: var(--vt-radius-m);
+	background: var(--vt-surface-container);
+	transition: background-color var(--vt-duration-short2) var(--vt-easing-standard);
+}
+
+.vt-tpl-row:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-row.is-drop {
+	background-color: var(--vt-primary-state-hover);
+	box-shadow: inset 0 0 0 2px var(--vt-primary);
+}
+
+.vt-tpl-row-main {
+	flex: 1 1 0;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--vt-space-8);
+	height: 40px;
+	padding: 0 var(--vt-space-8);
+	border: none;
+	border-radius: var(--vt-radius-m);
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font-family: inherit;
+	font-size: var(--vt-type-body-medium-size);
+	text-align: left;
+	cursor: pointer;
+}
+
+.vt-tpl-row-main:hover {
+	background: transparent;
+}
+
+.vt-tpl-row .vt-tpl-icon {
+	color: var(--vt-on-surface-variant);
+}
+
+.vt-tpl-row:hover .vt-tpl-icon {
+	color: var(--vt-primary);
+}
+
+.vt-tpl-twisty {
+	flex: none;
+	display: inline-grid;
+	place-items: center;
+	width: 16px;
+}
+
+.vt-tpl-name {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.vt-tpl-row.is-folder .vt-tpl-name {
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-tpl-where {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+}
+
+.vt-tpl-row-meta {
+	margin-left: auto;
+	flex: 0 1 auto;
+	min-width: 0;
+	display: inline-flex;
+	gap: var(--vt-space-12);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	line-height: var(--vt-type-label-small-line-height);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.vt-tpl-row-tags {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.vt-tpl-blank {
+	padding: var(--vt-space-8) var(--vt-space-8) var(--vt-space-8) var(--vt-space-32);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-small-size);
+	line-height: var(--vt-type-body-small-line-height);
+}
+
+.vt-tpl-more {
+	flex: none;
+	display: inline-grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+}
+
+.vt-tpl-more:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+}
+
+.vt-tpl-hint.is-error {
+	color: var(--vt-error);
+}
+
+/* 狭いペインでは Tags を隠し、Created だけを出す */
+@container (max-width: 480px) {
+	.vt-tpl-row-tags {
+		display: none;
+	}
+
+	.vt-tpl-group {
+		padding-left: var(--vt-space-12);
+	}
+}
