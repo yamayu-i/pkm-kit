@@ -1820,7 +1820,7 @@ function layoutSubIssues(path, parent, text, parseYaml5) {
   blocks.forEach((raw, index) => {
     const lines = raw.split("\n");
     const lineEnd = (i3) => lines[i3].replace(/\r$/, "").length;
-    const startOf = (i3) => lines.slice(0, i3).reduce((n2, l3) => n2 + l3.length + 1, 0);
+    const startOf2 = (i3) => lines.slice(0, i3).reduce((n2, l3) => n2 + l3.length + 1, 0);
     const endIdx = lines.findIndex((l3, i3) => i3 > 0 && l3.trim() === BLOCK_END);
     const id = parsed[index]?.sub?.id ?? null;
     if (endIdx < 0) {
@@ -1828,7 +1828,7 @@ function layoutSubIssues(path, parent, text, parseYaml5) {
     } else {
       let last = lines.length - 1;
       while (last > endIdx && lines[last].trim() === "") last--;
-      const bodyFrom = Math.min(pos + startOf(endIdx + 1), pos + raw.length);
+      const bodyFrom = Math.min(pos + startOf2(endIdx + 1), pos + raw.length);
       out.push({
         index,
         id,
@@ -1837,9 +1837,9 @@ function layoutSubIssues(path, parent, text, parseYaml5) {
         bodyStartLine: line + endIdx + 1,
         bodyEndLine: line + last,
         from: pos,
-        cardTo: pos + startOf(endIdx) + lineEnd(endIdx),
+        cardTo: pos + startOf2(endIdx) + lineEnd(endIdx),
         bodyFrom,
-        bodyTo: last > endIdx ? pos + startOf(last) + lineEnd(last) : bodyFrom
+        bodyTo: last > endIdx ? pos + startOf2(last) + lineEnd(last) : bodyFrom
       });
     }
     pos += raw.length;
@@ -7566,7 +7566,113 @@ function openCaptureModal(ctx) {
 
 // src/obsidian/settings.ts
 var import_obsidian17 = require("obsidian");
-var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {} };
+
+// src/core/closing.ts
+function localDateOf2(ms) {
+  const d3 = new Date(ms);
+  return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}-${String(d3.getDate()).padStart(2, "0")}`;
+}
+var DEFAULT_CLOSING_GRACE_HOUR = 4;
+function startOf(date, hour = 0) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  return new Date(y3, m3 - 1, d3, hour).getTime();
+}
+function closingWindow(date, graceHour) {
+  return { fromMs: startOf(date), toMs: startOf(addDays(date, 1), graceHour) };
+}
+var inWindow = (ms, w3) => ms >= w3.fromMs && ms < w3.toMs;
+function inGrace(now, graceHour) {
+  return now.getHours() < graceHour;
+}
+function closingTarget(index, now, graceHour) {
+  const today = localToday(now);
+  if (!inGrace(now, graceHour)) return today;
+  const yesterday = addDays(today, -1);
+  const daily = index.board(yesterday);
+  return daily && !daily.board.closed ? yesterday : today;
+}
+function holdAutoClose(date, now, graceHour) {
+  return inGrace(now, graceHour) && date === addDays(localToday(now), -1);
+}
+var CLOSING_GROUPS = ["closed", "not-done", "waiting", "canceled"];
+function groupOf(status) {
+  if (status === "closed") return "closed";
+  if (status === "canceled" || status === "someday") return "canceled";
+  if (status === "waiting" || status === "delegated") return "waiting";
+  return "not-done";
+}
+function itemStatus(board, item) {
+  if (item.kind === "issue") return item.issue.status;
+  if (item.kind === "sub") return item.sub.status;
+  return board.routines[item.routine.id] ?? "open";
+}
+function workedMinutes(index, date) {
+  const out = /* @__PURE__ */ new Map();
+  for (const l3 of index.data.worklogs) {
+    if (l3.toMs === null || localDateOf2(l3.fromMs) !== date) continue;
+    const key = workKey(l3);
+    out.set(key, (out.get(key) ?? 0) + (l3.toMs - l3.fromMs) / 6e4);
+  }
+  return out;
+}
+function closingGroups(index, date, board, graceHour = 0) {
+  const minutes = workedMinutes(index, date);
+  const window2 = closingWindow(date, graceHour);
+  const items = [];
+  const seen = /* @__PURE__ */ new Set();
+  const push = (item) => {
+    if (seen.has(item.key)) return;
+    seen.add(item.key);
+    items.push(item);
+  };
+  const on = boardItems(index, date, board);
+  for (const key of board.issues) {
+    const issue = index.issues.get(key);
+    if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
+    const sub = issue ? void 0 : index.sub(key);
+    if (sub) push({ kind: "sub", key, sub, minutes: minutes.get(key) ?? 0 });
+  }
+  for (const log of index.data.statusLogs) {
+    if (log.to !== "closed" && log.to !== "canceled") continue;
+    if (!inWindow(log.atMs, window2)) continue;
+    const key = log.sub ? `${log.task}#${log.sub}` : log.task;
+    if (log.sub) {
+      const sub = index.sub(key);
+      if (sub) push({ kind: "sub", key, sub, minutes: minutes.get(key) ?? 0 });
+    } else {
+      const issue = index.issues.get(key);
+      if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
+    }
+  }
+  for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0 });
+  const groups = { closed: [], "not-done": [], waiting: [], canceled: [] };
+  for (const item of items) groups[groupOf(itemStatus(board, item))].push(item);
+  return groups;
+}
+function closingRoutines(index, date) {
+  return routinesOnDay(index, date, "closing");
+}
+var TASK_FOLDERS = ["daily/", "issue/", "routine/", "member/", "preset/", "tmp/", "template/"];
+function isClosingNote(path) {
+  if (!path.endsWith(".md")) return false;
+  if (TASK_FOLDERS.some((f4) => path.startsWith(f4))) return false;
+  return !path.split("/").some((part) => part.startsWith("."));
+}
+function closingNotes(notes, date, graceHour = 0) {
+  const window2 = closingWindow(date, graceHour);
+  return notes.filter((n2) => isClosingNote(n2.path) && inWindow(n2.mtime, window2)).sort((a3, b2) => b2.mtime - a3.mtime).map((note) => ({ note, created: createdIn(note.created, date, window2) }));
+}
+function createdIn(created, date, window2) {
+  if (!created) return false;
+  const ms = Date.parse(created);
+  return Number.isNaN(ms) ? created.slice(0, 10) === date : inWindow(ms, window2);
+}
+
+// src/obsidian/settings.ts
+var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR };
+function sanitizeGraceHour(v3) {
+  return typeof v3 === "number" && Number.isInteger(v3) && v3 >= 0 && v3 <= 6 ? v3 : DEFAULT_CLOSING_GRACE_HOUR;
+}
 var TaskSettingTab = class extends import_obsidian17.PluginSettingTab {
   constructor(app, plugin, settings, save) {
     super(app, plugin);
@@ -7583,6 +7689,13 @@ var TaskSettingTab = class extends import_obsidian17.PluginSettingTab {
         await this.save();
       })
     );
+    new import_obsidian17.Setting(this.containerEl).setName("\u7DE0\u3081\u306E\u7336\u4E88\uFF08\u6642\uFF09").setDesc("0 \u6642\u304B\u3089\u3053\u306E\u6642\u523B\u307E\u3067\u306B Close board \u3092\u62BC\u3059\u3068\u3001\u7DE0\u3081\u3066\u3044\u306A\u3044\u524D\u65E5\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u307E\u3059\u30020 \u306B\u3059\u308B\u3068\u3001\u3044\u3064\u3082\u4ECA\u65E5\u3092\u7DE0\u3081\u307E\u3059").addDropdown((d3) => {
+      for (let h3 = 0; h3 <= 6; h3++) d3.addOption(String(h3), h3 === 0 ? "\u306A\u3057" : `${h3}:00 \u307E\u3067`);
+      d3.setValue(String(this.settings.closingGraceHour)).onChange(async (v3) => {
+        this.settings.closingGraceHour = sanitizeGraceHour(Number(v3));
+        await this.save();
+      });
+    });
   }
 };
 
@@ -8819,83 +8932,6 @@ function stepperItems(steps, current, counts, passed) {
 // src/views/ClosingView.tsx
 var import_obsidian24 = require("obsidian");
 
-// src/core/closing.ts
-function localDateOf2(ms) {
-  const d3 = new Date(ms);
-  return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}-${String(d3.getDate()).padStart(2, "0")}`;
-}
-var CLOSING_GROUPS = ["closed", "not-done", "waiting", "canceled"];
-function groupOf(status) {
-  if (status === "closed") return "closed";
-  if (status === "canceled" || status === "someday") return "canceled";
-  if (status === "waiting" || status === "delegated") return "waiting";
-  return "not-done";
-}
-function itemStatus(board, item) {
-  if (item.kind === "issue") return item.issue.status;
-  if (item.kind === "sub") return item.sub.status;
-  return board.routines[item.routine.id] ?? "open";
-}
-function workedMinutes(index, date) {
-  const out = /* @__PURE__ */ new Map();
-  for (const l3 of index.data.worklogs) {
-    if (l3.toMs === null || localDateOf2(l3.fromMs) !== date) continue;
-    const key = workKey(l3);
-    out.set(key, (out.get(key) ?? 0) + (l3.toMs - l3.fromMs) / 6e4);
-  }
-  return out;
-}
-function closingGroups(index, date, board) {
-  const minutes = workedMinutes(index, date);
-  const items = [];
-  const seen = /* @__PURE__ */ new Set();
-  const push = (item) => {
-    if (seen.has(item.key)) return;
-    seen.add(item.key);
-    items.push(item);
-  };
-  const on = boardItems(index, date, board);
-  for (const key of board.issues) {
-    const issue = index.issues.get(key);
-    if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
-    const sub = issue ? void 0 : index.sub(key);
-    if (sub) push({ kind: "sub", key, sub, minutes: minutes.get(key) ?? 0 });
-  }
-  for (const log of index.data.statusLogs) {
-    if (log.to !== "closed" && log.to !== "canceled") continue;
-    if (localDateOf2(log.atMs) !== date) continue;
-    const key = log.sub ? `${log.task}#${log.sub}` : log.task;
-    if (log.sub) {
-      const sub = index.sub(key);
-      if (sub) push({ kind: "sub", key, sub, minutes: minutes.get(key) ?? 0 });
-    } else {
-      const issue = index.issues.get(key);
-      if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
-    }
-  }
-  for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0 });
-  const groups = { closed: [], "not-done": [], waiting: [], canceled: [] };
-  for (const item of items) groups[groupOf(itemStatus(board, item))].push(item);
-  return groups;
-}
-function closingRoutines(index, date) {
-  return routinesOnDay(index, date, "closing");
-}
-var TASK_FOLDERS = ["daily/", "issue/", "routine/", "member/", "preset/", "tmp/", "template/"];
-function isClosingNote(path) {
-  if (!path.endsWith(".md")) return false;
-  if (TASK_FOLDERS.some((f4) => path.startsWith(f4))) return false;
-  return !path.split("/").some((part) => part.startsWith("."));
-}
-function closingNotes(notes, date) {
-  return notes.filter((n2) => isClosingNote(n2.path) && localDateOf2(n2.mtime) === date).sort((a3, b2) => b2.mtime - a3.mtime).map((note) => ({ note, created: createdOn(note.created, date) }));
-}
-function createdOn(created, date) {
-  if (!created) return false;
-  const ms = Date.parse(created);
-  return Number.isNaN(ms) ? created.slice(0, 10) === date : localDateOf2(ms) === date;
-}
-
 // src/views/Board.tsx
 var import_obsidian23 = require("obsidian");
 
@@ -9265,7 +9301,14 @@ function Board(props) {
         /* @__PURE__ */ u3(Icon, { name: "check-circle-2" }),
         " Closed"
       ] }) : /* @__PURE__ */ u3("span", {}),
-      /* @__PURE__ */ u3("button", { class: "vt-button is-primary", title: "Review today and write the record to the daily note", onClick: props.onClosing, children: [
+      props.closingDate !== void 0 && props.closingDate !== date ? (
+        // 猶予の間は前日を締める。どの日を締めるかを文言で示す（ADR-0226）
+        /* @__PURE__ */ u3("button", { class: "vt-button is-primary", title: "It's past midnight: review the previous day and write the record to its daily note", onClick: props.onClosing, children: [
+          /* @__PURE__ */ u3(Icon, { name: "moon" }),
+          " Close ",
+          formatShortDate(props.closingDate)
+        ] })
+      ) : /* @__PURE__ */ u3("button", { class: "vt-button is-primary", title: "Review today and write the record to the daily note", onClick: props.onClosing, children: [
         /* @__PURE__ */ u3(Icon, { name: "moon" }),
         " Close board"
       ] })
@@ -9310,11 +9353,12 @@ function TaskRow(props) {
 }
 function ClosingView(props) {
   const { ctx, index, date, board } = props;
+  const grace = ctx.settings.closingGraceHour;
   const routines = closingRoutines(index, date);
   const routinesLeft = routines.filter((r3) => board.routines[r3.id] === void 0).length;
-  const groups = closingGroups(index, date, board);
+  const groups = closingGroups(index, date, board, grace);
   const taskCount = CLOSING_GROUPS.reduce((n2, g2) => n2 + groups[g2].length, 0);
-  const notes = closingNotes(vaultNotes(ctx), date);
+  const notes = closingNotes(vaultNotes(ctx), date, grace);
   const total = [...workedMinutes(index, date).values()].reduce((a3, b2) => a3 + b2, 0);
   return /* @__PURE__ */ u3("div", { class: "vt-closing", children: [
     /* @__PURE__ */ u3("div", { class: "vt-closing-head", children: [
@@ -9326,6 +9370,7 @@ function ClosingView(props) {
         "Closing \xB7 ",
         formatShortDate(date)
       ] }),
+      !props.isToday && /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: "yesterday" }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       total > 0 && /* @__PURE__ */ u3("span", { class: "vt-chip-mini vt-num", title: "Time recorded today", children: [
         /* @__PURE__ */ u3(Icon, { name: "timer" }),
@@ -9368,7 +9413,7 @@ function ClosingView(props) {
         /* @__PURE__ */ u3(Icon, { name: created ? "file-plus" : "file-text" }),
         /* @__PURE__ */ u3("span", { class: "vt-compact-title", title: note.path, ...linkProps((e3) => void ctx.openPath(note.path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: note.title }),
         created && /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: "new" }),
-        /* @__PURE__ */ u3("span", { class: "vt-compact-meta vt-num", children: localDateOf2(note.mtime) === date ? hm2(note.mtime) : "" })
+        /* @__PURE__ */ u3("span", { class: "vt-compact-meta vt-num", children: hm2(note.mtime) })
       ] }, note.path)) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
@@ -9704,7 +9749,9 @@ function DailyView(props) {
   };
   const [passed, setPassed] = d2(/* @__PURE__ */ new Set());
   const [manual, setManual] = d2(null);
-  const [closingView, setClosingView] = d2(false);
+  const [closingDate, setClosingDate] = d2(null);
+  const grace = ctx.settings.closingGraceHour;
+  const target = closingTarget(index, new Date(now), grace);
   const step = currentStep(
     STEPS.map((s3) => s3.key),
     counts,
@@ -9724,6 +9771,7 @@ function DailyView(props) {
   h2(() => {
     for (const b2 of index.data.boards) {
       if (b2.date >= today || b2.board.closed || closing.current.has(b2.date)) continue;
+      if (holdAutoClose(b2.date, new Date(now), grace)) continue;
       if (unfinishedCount(unfinished(index, b2.date, b2.board)) > 0) continue;
       closing.current.add(b2.date);
       void ctx.writer.closeBoard(b2.date, ctx.settings.deviceName).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
@@ -9733,18 +9781,18 @@ function DailyView(props) {
     setPassed(/* @__PURE__ */ new Set([...passed, step]));
     setManual(null);
   };
-  if (closingView) {
+  if (closingDate !== null) {
     return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
       /* @__PURE__ */ u3("header", { class: "vt-page-head", children: /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: [
         "Today \xB7 ",
         formatShortDate(today)
       ] }) }),
-      /* @__PURE__ */ u3(ClosingView, { ctx, index, date: today, board: todayBoard, onBack: () => setClosingView(false) })
+      /* @__PURE__ */ u3(ClosingView, { ctx, index, date: closingDate, board: index.board(closingDate)?.board ?? emptyBoard(), isToday: closingDate === today, onBack: () => setClosingDate(null) })
     ] });
   }
   const startClosing = () => {
-    setClosingView(true);
-    void beginClosing(ctx, today);
+    setClosingDate(target);
+    void beginClosing(ctx, target);
   };
   return /* @__PURE__ */ u3("div", { class: "vt-page", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: [
@@ -9771,7 +9819,7 @@ function DailyView(props) {
     ] }, s3.key)) }),
     step === "calendar" && /* @__PURE__ */ u3(CalendarStep, { ctx, dead, deadSub, caution, cautionSub, missed, missedSub, missedRoutines: missedRoutine }),
     step === "pick" && /* @__PURE__ */ u3(PickStep, { ctx, issues: pick.issues, groups: pick.groups, stalled: pick.stalled }),
-    step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard, onClosing: startClosing }),
+    step === "board" && /* @__PURE__ */ u3(Board, { ctx, index, date: today, board: todayBoard, closingDate: target, onClosing: startClosing }),
     step !== "board" && /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
       /* @__PURE__ */ u3("span", {}),
       /* @__PURE__ */ u3("button", { class: "vt-button is-primary", onClick: next, children: [
@@ -11259,6 +11307,7 @@ var PkmTaskPlugin = class extends import_obsidian33.Plugin {
     const saved = await loadPluginDataOrLegacy(this, "vault-task") ?? {};
     Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
     this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
+    this.taskSettings.closingGraceHour = sanitizeGraceHour(saved.closingGraceHour);
     if (!this.taskSettings.deviceName) {
       const git = this.app.plugins?.plugins?.["pkm-git"];
       const name = git?.data?.deviceName;

@@ -53,7 +53,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 ### 夕方・夜（振り返り・ボードの締め）
 
-1. `task_get_board` と `task_get_worklog_summary`（今日の日付）で、今日完了したもの・未完了のもの・実績工数を確認する
+1. `task_get_board` と `task_get_worklog_summary`（今日の日付。0 時を過ぎて前日を締めるなら前日の日付。ADR-0226）で、今日完了したもの・未完了のもの・実績工数を確認する
 2. 記録中のままのタイマーがあれば `task_stop_timer` で止めるか確認する
 3. 未完了の routine があれば結果を聞き、`task_set_routine_result`（`closed` / `canceled`）で記録する。`task_get_overview` の `missedRoutines`（予定日に結果を付けなかった積み残し）があれば、どの日の分かを示して結果を聞き、`date` にもとの日を入れて記録する（ADR-0206）
 4. 未完了の issue は、片付けたいものだけ `task_carry_issues` で片付ける（Next に戻す `next`・Tickler にする `tickler`（open だけ）・Calendar の日を選び直す `move`）。やらなかったものは Next に残るので、全部を片付けなくてよい。Inbox に戻す mode はない（GTD では in に戻さない。ADR-0189）

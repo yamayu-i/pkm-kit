@@ -9,7 +9,7 @@ import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { sanitizeSubOpen } from "./core/sub-issue";
-import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, type TaskSettings } from "./obsidian/settings";
+import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, sanitizeGraceHour, type TaskSettings } from "./obsidian/settings";
 import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { workKey } from "./core/worklog";
 import { StatusUndo } from "./obsidian/status-undo";
@@ -153,6 +153,7 @@ export default class PkmTaskPlugin extends Plugin {
 		const saved = ((await loadPluginDataOrLegacy(this, "vault-task")) ?? {}) as Partial<TaskSettings>;
 		Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
 		this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
+		this.taskSettings.closingGraceHour = sanitizeGraceHour(saved.closingGraceHour);
 		if (!this.taskSettings.deviceName) {
 			// 端末名の初期値は pkm-git の端末名にする（同じ端末なら同じ名前がよい）
 			const git = (this.app as unknown as { plugins?: { plugins?: Record<string, { data?: { deviceName?: unknown } }> } }).plugins?.plugins?.["pkm-git"];

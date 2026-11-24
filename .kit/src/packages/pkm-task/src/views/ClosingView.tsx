@@ -60,13 +60,14 @@ function TaskRow(props: { ctx: TaskContext; date: LocalDate; board: BoardState; 
  * Closing の画面（ADR-0206）。Today の中の 1 画面で、段階表示には入れない。
  * 上から closing の routine、その日のタスクの群、その日に変えたノート、記録を書くボタン
  */
-export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; onBack: () => void }) {
+export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; isToday: boolean; onBack: () => void }) {
 	const { ctx, index, date, board } = props;
+	const grace = ctx.settings.closingGraceHour;
 	const routines = closingRoutines(index, date);
 	const routinesLeft = routines.filter((r) => board.routines[r.id] === undefined).length;
-	const groups = closingGroups(index, date, board);
+	const groups = closingGroups(index, date, board, grace);
 	const taskCount = CLOSING_GROUPS.reduce((n, g) => n + groups[g].length, 0);
-	const notes = closingNotes(vaultNotes(ctx), date);
+	const notes = closingNotes(vaultNotes(ctx), date, grace);
 	const total = [...workedMinutes(index, date).values()].reduce((a, b) => a + b, 0);
 	return (
 		<div class="vt-closing">
@@ -75,6 +76,7 @@ export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: L
 					<Icon name="arrow-left" /> Board
 				</button>
 				<h3 class="vt-h">Closing · {formatShortDate(date)}</h3>
+				{!props.isToday && <span class="vt-chip-mini">yesterday</span>}
 				<span class="vt-spacer" />
 				{total > 0 && (
 					<span class="vt-chip-mini vt-num" title="Time recorded today">
@@ -142,7 +144,7 @@ export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: L
 									{note.title}
 								</span>
 								{created && <span class="vt-chip-mini">new</span>}
-								<span class="vt-compact-meta vt-num">{localDateOf(note.mtime) === date ? hm(note.mtime) : ""}</span>
+								<span class="vt-compact-meta vt-num">{hm(note.mtime)}</span>
 							</li>
 						))}
 					</ul>

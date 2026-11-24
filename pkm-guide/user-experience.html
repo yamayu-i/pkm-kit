@@ -338,7 +338,7 @@ article > p, article > ul, article > ol, article > blockquote { max-width: var(-
 <p>一日を終えるとき、残ったものの行き先を決めて、今日の記録を残したい。明日の朝に昨日の後片付けから始めずに済むように。</p>
 <h3 id="jobs-task-close-day-md--今の流れ">今の流れ</h3>
 <ol>
-<li><a href="#surfaces-task-today-md">Today</a> の <a href="#surfaces-task-board-md">task board</a> の末尾の「Close board」を押す。<a href="#surfaces-task-closing-md">Closing の画面</a> に移り、右のペインにデイリーノートが開いて、本文の冒頭に振り返りの型が入る</li>
+<li><a href="#surfaces-task-today-md">Today</a> の <a href="#surfaces-task-board-md">task board</a> の末尾の「Close board」を押す。<a href="#surfaces-task-closing-md">Closing の画面</a> に移り、右のペインにデイリーノートが開いて、本文の冒頭に振り返りの型が入る。0 時を過ぎても、締めの猶予の時刻（既定は 4 時）までは前日を締める（ボタンが <code>Close 11/23 MON</code> になる）</li>
 <li>Closing の画面で、closing の routine（振り返りなど）を片付け、その日のタスク（Closed / Not done / Waiting / Canceled）と、その日に作った・変えたノートを一覧で見ながら、デイリーノートに振り返りを書く。片付けたいタスクは、その場で status のボタンで閉じる。片付けなくてもよい（やらなかったものは Next に残る）</li>
 <li>「Finish closing」で記録を書く。未完了が残っていても押せる。デイリーノートの <code>## Task board</code> 節に、完了・持ち越し（片付けなかった未完了を含む）・worklog の要約がリンク付きで書かれる</li>
 <li>締めなくても困らない。締めなかったボードを催促しない。前の日の未完了は、Next（Pick）と Calendar の Missed から選べる</li>
@@ -801,7 +801,7 @@ ADR へのリンク。
 <li>Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも <code>i-12 › 題</code> の形で候補に出る。載せても日付は書かない（ADR-0152）</li>
 <li>status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる</li>
 <li>未完了の一覧（Not done の欄）はない。未完了のカードは欄に出ているので、そこで片付ける（<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0206-closing-view-and-routine-category.md">ADR-0206</a>）</li>
-<li>ボードの末尾の「Close board」で <a href="#surfaces-task-closing-md">Closing の画面</a> に移り、右のペインにデイリーノートを開いて、本文の冒頭に振り返りの型を入れる。記録（<code>## Task board</code> 節）は Closing の画面の「Finish closing」で書く</li>
+<li>ボードの末尾の「Close board」で <a href="#surfaces-task-closing-md">Closing の画面</a> に移り、右のペインにデイリーノートを開いて、本文の冒頭に振り返りの型を入れる。記録（<code>## Task board</code> 節）は Closing の画面の「Finish closing」で書く。0 時から締めの猶予の時刻（既定は 4 時）までは、前日のボードを締めていなければ、ボタンが <code>Close 11/23 MON</code> になって前日を締める（<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0226-closing-date-across-midnight.md">ADR-0226</a>）。未完了のない前日のボードの自動の締めも、猶予が過ぎるまで待つ</li>
 </ul>
 <h3 id="surfaces-task-board-md--使う概念">使う概念</h3>
 <p><a href="#concepts-task-board-md">task board</a>、<a href="#concepts-task-board-lane-md">ボードの欄と ★</a>、<a href="#concepts-task-status-md">status</a>、<a href="#concepts-task-worklog-md">worklog とタイマー</a>、<a href="#concepts-task-routine-md">routine</a>、<a href="#concepts-task-member-md">委任先</a>、<a href="#concepts-task-issue-md">サブイシュー</a></p>
@@ -850,16 +850,18 @@ ADR へのリンク。
 <h3 id="surfaces-task-closing-md--今の振る舞い">今の振る舞い</h3>
 <ul>
 <li>Close board を押すと、この画面に移り、今日のデイリーノートを右のペインに開く（なければ作る。開いているタブがあればそれを出す）。デイリーノートの本文の冒頭（frontmatter の直後）に振り返りの型を入れる。型の最初の見出しがすでにあれば入れない（何度押しても 1 回だけ）</li>
+<li>締める日（締めの日）は Close board を押したときに決まり、← Board で戻るまで変わらない。締めている途中で 0 時を過ぎても、画面は同じ日のまま。0 時から締めの猶予の時刻（設定。既定は 4 時、端末ごと）までに押し、前日のボードを締めていなければ前日を締める。そのときは前日のデイリーノートを開いて型を入れ、見出しに <code>yesterday</code> を出す</li>
 <li>上の「← Board」と下の「← Board」でボードに戻る。見出しの右にその日の作業時間の合計</li>
 <li>Closing routines: 今日に出てくる、category が closing の routine を並び順に出す。status のボタンで closed にする（↩ で戻す）。すべて片付くと見出しに「All done」</li>
 <li>Tasks: 今日のボードのもの、今日 closed / canceled にしたもの（ボードの外も）、今日の default の routine を、Closed・Not done（open / in-progress。記録では持ち越し）・Waiting（waiting / delegated）・Canceled（canceled / someday）の群に分ける。件数のない群は出さない。アイコンと色は群の見出しだけに付ける。行は 1 行で、status のボタン・題（押すと開く）・付記（サブは親の ID、routine、その日の作業時間）だけ</li>
+<li>Tasks の「closed / canceled にしたもの」と Notes は、締めの日の 0 時から翌日の猶予の時刻までを数える（0:20 に閉じたものや書いたノートも前日の締めに出る）。作業時間は記録を始めた日で数える</li>
 <li>Notes: 今日に変えたノート（タスク管理のデータ・<code>tmp/</code>・<code>template/</code>・隠しパスを除く）を新しい順に出す。作ったもの（created が今日）には <code>new</code>。押すと開く</li>
 <li>「Finish closing」でデイリーノートの <code>## Task board</code> 節に要約を書く。未完了が残っていても書け、未完了は持ち越しと書く。書いた後は Closed と Reopen を出す。押さなくても催促しない</li>
 </ul>
 <h3 id="surfaces-task-closing-md--使う概念">使う概念</h3>
 <p><a href="#concepts-task-board-md">task board</a>、<a href="#concepts-task-routine-md">routine</a>、<a href="#concepts-task-status-md">status</a>、<a href="#concepts-task-worklog-md">worklog とタイマー</a>、<a href="#concepts-note-daily-md">デイリーノート</a></p>
 <h3 id="surfaces-task-closing-md--根拠">根拠</h3>
-<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0189-gtd-inbox-and-optional-close.md">ADR-0189</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0206-closing-view-and-routine-category.md">ADR-0206</a></p>
+<p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0189-gtd-inbox-and-optional-close.md">ADR-0189</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0206-closing-view-and-routine-category.md">ADR-0206</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0226-closing-date-across-midnight.md">ADR-0226</a></p>
 <h3 id="surfaces-task-closing-md--入力と制約">入力と制約</h3>
 <p>振り返りの型はスニペット <code>daily-review.md</code> です。上流の既定は <code>.kit/templates/snippet/daily-review.md</code> で、その Vault の <code>template/snippet/daily-review.md</code> を置くとそちらを使います。テンプレート変数（<code>{{...}}</code>）は展開しません。</p>
 <h3 id="surfaces-task-closing-md--操作と保存">操作と保存</h3>
