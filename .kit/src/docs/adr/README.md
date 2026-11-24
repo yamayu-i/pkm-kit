@@ -113,4 +113,5 @@
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
+| [0226](0226-closing-date-across-midnight.md) | 提案 | 締めの日付を Close board で決め、夜中の 0 時から決めた時刻までは前日を締める |
 <!-- adr-index:end -->
