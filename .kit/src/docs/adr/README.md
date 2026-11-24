@@ -113,4 +113,5 @@
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
+| [0228](0228-date-time-input-language.md) | 提案 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
 <!-- adr-index:end -->
