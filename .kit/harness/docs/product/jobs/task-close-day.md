@@ -9,7 +9,7 @@
 
 ## 今の流れ
 
-1. [Today](../surfaces/task-today.md) の [task board](../surfaces/task-board.md) の末尾の「Close board」を押す。[Closing の画面](../surfaces/task-closing.md) に移り、右のペインにデイリーノートが開いて、本文の冒頭に振り返りの型が入る
+1. [Today](../surfaces/task-today.md) の [task board](../surfaces/task-board.md) の末尾の「Close board」を押す。[Closing の画面](../surfaces/task-closing.md) に移り、右のペインにデイリーノートが開いて、本文の冒頭に振り返りの型が入る。0 時を過ぎても、締めの猶予の時刻（既定は 4 時）までは前日を締める（ボタンが `Close 11/23 MON` になる）
 2. Closing の画面で、closing の routine（振り返りなど）を片付け、その日のタスク（Closed / Not done / Waiting / Canceled）と、その日に作った・変えたノートを一覧で見ながら、デイリーノートに振り返りを書く。片付けたいタスクは、その場で status のボタンで閉じる。片付けなくてもよい（やらなかったものは Next に残る）
 3. 「Finish closing」で記録を書く。未完了が残っていても押せる。デイリーノートの `## Task board` 節に、完了・持ち越し（片付けなかった未完了を含む）・worklog の要約がリンク付きで書かれる
 4. 締めなくても困らない。締めなかったボードを催促しない。前の日の未完了は、Next（Pick）と Calendar の Missed から選べる

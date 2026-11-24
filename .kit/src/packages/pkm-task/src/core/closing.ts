@@ -1,6 +1,6 @@
 import type { BoardState } from "./board";
 import { boardItems } from "./board";
-import type { LocalDate } from "./dates";
+import { addDays, localToday, type LocalDate } from "./dates";
 import type { TaskIndex } from "./index";
 import { routinesOnDay } from "./routine-order";
 import type { Issue, Routine, Status } from "./schema";
@@ -15,6 +15,40 @@ import { workKey } from "./worklog";
 export function localDateOf(ms: number): LocalDate {
 	const d = new Date(ms);
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** 締めの猶予（時）の既定（ADR-0226）。0 時からこの時刻までは前日を締める */
+export const DEFAULT_CLOSING_GRACE_HOUR = 4;
+
+function startOf(date: LocalDate, hour = 0): number {
+	const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+	return new Date(y, m - 1, d, hour).getTime();
+}
+
+/** 締めの範囲（ADR-0226）: その日の 0 時から、翌日の猶予の時刻まで（猶予 0 ならその日の終わりまで） */
+export function closingWindow(date: LocalDate, graceHour: number): { fromMs: number; toMs: number } {
+	return { fromMs: startOf(date), toMs: startOf(addDays(date, 1), graceHour) };
+}
+
+const inWindow = (ms: number, w: { fromMs: number; toMs: number }) => ms >= w.fromMs && ms < w.toMs;
+
+/** 猶予の間か（暦の今日の 0 時から猶予の時刻まで） */
+function inGrace(now: Date, graceHour: number): boolean {
+	return now.getHours() < graceHour;
+}
+
+/** Close board が締める日（ADR-0226）。猶予の間で、前日のボードがあって締めていなければ前日、ほかは今日 */
+export function closingTarget(index: TaskIndex, now: Date, graceHour: number): LocalDate {
+	const today = localToday(now);
+	if (!inGrace(now, graceHour)) return today;
+	const yesterday = addDays(today, -1);
+	const daily = index.board(yesterday);
+	return daily && !daily.board.closed ? yesterday : today;
+}
+
+/** 未完了のない過去のボードの自動の締めを待つか（ADR-0226）。猶予の間の前日のボード */
+export function holdAutoClose(date: LocalDate, now: Date, graceHour: number): boolean {
+	return inGrace(now, graceHour) && date === addDays(localToday(now), -1);
 }
 
 export type ClosingGroup = "closed" | "not-done" | "waiting" | "canceled";
@@ -50,11 +84,12 @@ export function workedMinutes(index: TaskIndex, date: LocalDate): Map<string, nu
 }
 
 /**
- * その日の作業の群。ボードに載っているもの、その日に closed / canceled にしたもの（statuslog。ボードの外も）、
+ * その日の作業の群。ボードに載っているもの、締めの範囲（ADR-0226）に closed / canceled にしたもの（statuslog。ボードの外も）、
  * その日の routine（closing を除く。closing は画面の上の節に出す）。群の中は、issue とサブはボードに載せた順（ボードの外は後ろ）、routine は後ろに並び順
  */
-export function closingGroups(index: TaskIndex, date: LocalDate, board: BoardState): Record<ClosingGroup, ClosingItem[]> {
+export function closingGroups(index: TaskIndex, date: LocalDate, board: BoardState, graceHour = 0): Record<ClosingGroup, ClosingItem[]> {
 	const minutes = workedMinutes(index, date);
+	const window = closingWindow(date, graceHour);
 	const items: ClosingItem[] = [];
 	const seen = new Set<string>();
 	const push = (item: ClosingItem) => {
@@ -71,7 +106,7 @@ export function closingGroups(index: TaskIndex, date: LocalDate, board: BoardSta
 	}
 	for (const log of index.data.statusLogs) {
 		if (log.to !== "closed" && log.to !== "canceled") continue;
-		if (localDateOf(log.atMs) !== date) continue;
+		if (!inWindow(log.atMs, window)) continue;
 		const key = log.sub ? `${log.task}#${log.sub}` : log.task;
 		if (log.sub) {
 			const sub = index.sub(key);
@@ -111,16 +146,17 @@ export function isClosingNote(path: string): boolean {
 	return !path.split("/").some((part) => part.startsWith("."));
 }
 
-/** その日に変えたノート（新しい順）。作ったかは created の日付で決める */
-export function closingNotes(notes: readonly NoteStat[], date: LocalDate): { note: NoteStat; created: boolean }[] {
+/** 締めの範囲（ADR-0226）に変えたノート（新しい順）。作ったかは created が同じ範囲かで決める */
+export function closingNotes(notes: readonly NoteStat[], date: LocalDate, graceHour = 0): { note: NoteStat; created: boolean }[] {
+	const window = closingWindow(date, graceHour);
 	return notes
-		.filter((n) => isClosingNote(n.path) && localDateOf(n.mtime) === date)
+		.filter((n) => isClosingNote(n.path) && inWindow(n.mtime, window))
 		.sort((a, b) => b.mtime - a.mtime)
-		.map((note) => ({ note, created: createdOn(note.created, date) }));
+		.map((note) => ({ note, created: createdIn(note.created, date, window) }));
 }
 
-function createdOn(created: string | null, date: LocalDate): boolean {
+function createdIn(created: string | null, date: LocalDate, window: { fromMs: number; toMs: number }): boolean {
 	if (!created) return false;
 	const ms = Date.parse(created);
-	return Number.isNaN(ms) ? created.slice(0, 10) === date : localDateOf(ms) === date;
+	return Number.isNaN(ms) ? created.slice(0, 10) === date : inWindow(ms, window);
 }

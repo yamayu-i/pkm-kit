@@ -326,7 +326,7 @@ export function boardCandidates(index: TaskIndex, date: LocalDate, board: BoardS
 }
 
 /** task board（ADR-0009, 0137）。status とタイマーで決まる欄、再生 / 停止。末尾の Close board で Closing の画面に移る（ADR-0206） */
-export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; onClosing: () => void }) {
+export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; closingDate?: LocalDate; onClosing: () => void }) {
 	const { ctx, index, date, board } = props;
 	const now = useNow(30_000);
 	const lanes = boardLanes(index, date, board);
@@ -374,9 +374,16 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 				) : (
 					<span />
 				)}
-				<button class="vt-button is-primary" title="Review today and write the record to the daily note" onClick={props.onClosing}>
-					<Icon name="moon" /> Close board
-				</button>
+				{props.closingDate !== undefined && props.closingDate !== date ? (
+					// 猶予の間は前日を締める。どの日を締めるかを文言で示す（ADR-0226）
+					<button class="vt-button is-primary" title="It's past midnight: review the previous day and write the record to its daily note" onClick={props.onClosing}>
+						<Icon name="moon" /> Close {formatShortDate(props.closingDate)}
+					</button>
+				) : (
+					<button class="vt-button is-primary" title="Review today and write the record to the daily note" onClick={props.onClosing}>
+						<Icon name="moon" /> Close board
+					</button>
+				)}
 			</div>
 		</div>
 	);

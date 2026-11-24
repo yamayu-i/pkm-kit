@@ -15,7 +15,7 @@
 - Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも `i-12 › 題` の形で候補に出る。載せても日付は書かない（ADR-0152）
 - status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる
 - 未完了の一覧（Not done の欄）はない。未完了のカードは欄に出ているので、そこで片付ける（[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)）
-- ボードの末尾の「Close board」で [Closing の画面](task-closing.md) に移り、右のペインにデイリーノートを開いて、本文の冒頭に振り返りの型を入れる。記録（`## Task board` 節）は Closing の画面の「Finish closing」で書く
+- ボードの末尾の「Close board」で [Closing の画面](task-closing.md) に移り、右のペインにデイリーノートを開いて、本文の冒頭に振り返りの型を入れる。記録（`## Task board` 節）は Closing の画面の「Finish closing」で書く。0 時から締めの猶予の時刻（既定は 4 時）までは、前日のボードを締めていなければ、ボタンが `Close 11/23 MON` になって前日を締める（[ADR-0226](../../../../src/docs/adr/0226-closing-date-across-midnight.md)）。未完了のない前日のボードの自動の締めも、猶予が過ぎるまで待つ
 
 ## 使う概念
 
