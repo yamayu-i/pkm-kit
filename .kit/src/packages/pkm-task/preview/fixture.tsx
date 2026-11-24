@@ -139,7 +139,7 @@ export const ctx = {
 	},
 	store,
 	writer: new Proxy({}, { get: () => noop }),
-	settings: { deviceName: "pc", presets: [] },
+	settings: { deviceName: "pc", presets: [], closingGraceHour: 4 },
 	saveSettings: noop,
 	openPath: noop,
 	openView: noop,

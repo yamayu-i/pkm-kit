@@ -1,4 +1,5 @@
 import { PluginSettingTab, Setting, type App, type Plugin } from "obsidian";
+import { DEFAULT_CLOSING_GRACE_HOUR } from "../core/closing";
 import type { IssueQuery } from "../core/list";
 import type { SubOpenMap } from "../core/sub-issue";
 import { sanitizeDeviceName } from "../core/worklog";
@@ -15,9 +16,16 @@ export interface TaskSettings {
 	pausedTasks: string[];
 	/** 本文のサブの一覧で開いているサブ（ノートのパスごとのサブの id。この端末だけ。ADR-0158） */
 	subOpen: SubOpenMap;
+	/** 締めの猶予（時。0〜6）。0 時からこの時刻までは、締めていない前日のボードを Close board で締める（ADR-0226） */
+	closingGraceHour: number;
 }
 
-export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {} };
+export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR };
+
+/** 締めの猶予として読める値（0〜6 の整数）。ほかは既定 */
+export function sanitizeGraceHour(v: unknown): number {
+	return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 6 ? v : DEFAULT_CLOSING_GRACE_HOUR;
+}
 
 export { sanitizeDeviceName } from "../core/worklog";
 
@@ -45,5 +53,15 @@ export class TaskSettingTab extends PluginSettingTab {
 						await this.save();
 					}),
 			);
+		new Setting(this.containerEl)
+			.setName("締めの猶予（時）")
+			.setDesc("0 時からこの時刻までに Close board を押すと、締めていない前日のボードを締めます。0 にすると、いつも今日を締めます")
+			.addDropdown((d) => {
+				for (let h = 0; h <= 6; h++) d.addOption(String(h), h === 0 ? "なし" : `${h}:00 まで`);
+				d.setValue(String(this.settings.closingGraceHour)).onChange(async (v) => {
+					this.settings.closingGraceHour = sanitizeGraceHour(Number(v));
+					await this.save();
+				});
+			});
 	}
 }

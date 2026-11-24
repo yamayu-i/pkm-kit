@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { RescheduleTarget } from "../core/actions";
 import { emptyBoard, unfinished, unfinishedCount } from "../core/board";
 import { allSubsDone, cautionIssues, cautionSubs, currentStep, deadIssues, deadSubs, missedIssues, missedSubs, pickCandidates, type DueLists } from "../core/daily";
-import { formatShortDate, localToday } from "../core/dates";
+import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import { stepperItems } from "../core/stepper";
 import type { Issue } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
 import { addSubToBoard, addToBoard, beginClosing, setRoutineResult } from "../obsidian/board-actions";
 import { missedRoutines, type MissedRoutine } from "../core/routine-order";
+import { closingTarget, holdAutoClose } from "../core/closing";
 import { ClosingView } from "./ClosingView";
 import type { TaskContext } from "../obsidian/context";
 import { askDate, backToNextIssues, cancelIssues, closeIssues, rescheduleIssues, somedayIssues, ticklerIssues } from "../obsidian/issue-actions";
@@ -339,8 +340,10 @@ export function DailyView(props: { ctx: TaskContext }) {
 	// 「Next」で通り過ぎた段階と、手で選んだ段階（ADR-0150。段階ごとの特例はない）
 	const [passed, setPassed] = useState<Set<Step>>(new Set());
 	const [manual, setManual] = useState<Step | null>(null);
-	// Closing の画面（ADR-0206）。段階表示には入れず、← Board でボードに戻る
-	const [closingView, setClosingView] = useState(false);
+	// Closing の画面（ADR-0206）。段階表示には入れず、← Board でボードに戻る。締めの日は Close board で決め、戻るまで変えない（ADR-0226）
+	const [closingDate, setClosingDate] = useState<LocalDate | null>(null);
+	const grace = ctx.settings.closingGraceHour;
+	const target = closingTarget(index, new Date(now), grace);
 	const step = currentStep(
 		STEPS.map((s) => s.key),
 		counts,
@@ -364,6 +367,8 @@ export function DailyView(props: { ctx: TaskContext }) {
 	useEffect(() => {
 		for (const b of index.data.boards) {
 			if (b.date >= today || b.board.closed || closing.current.has(b.date)) continue;
+			// 猶予の間の前日のボードは、締めの途中かもしれないので待つ（ADR-0226）
+			if (holdAutoClose(b.date, new Date(now), grace)) continue;
 			if (unfinishedCount(unfinished(index, b.date, b.board)) > 0) continue;
 			closing.current.add(b.date);
 			void ctx.writer
@@ -378,20 +383,20 @@ export function DailyView(props: { ctx: TaskContext }) {
 		setManual(null);
 	};
 
-	if (closingView) {
+	if (closingDate !== null) {
 		return (
 			<div class="vt-page">
 				<header class="vt-page-head">
 					<h2 class="vt-page-title">Today · {formatShortDate(today)}</h2>
 				</header>
-				<ClosingView ctx={ctx} index={index} date={today} board={todayBoard} onBack={() => setClosingView(false)} />
+				<ClosingView ctx={ctx} index={index} date={closingDate} board={index.board(closingDate)?.board ?? emptyBoard()} isToday={closingDate === today} onBack={() => setClosingDate(null)} />
 			</div>
 		);
 	}
 
 	const startClosing = () => {
-		setClosingView(true);
-		void beginClosing(ctx, today);
+		setClosingDate(target);
+		void beginClosing(ctx, target);
 	};
 
 	return (
@@ -420,7 +425,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 
 			{step === "calendar" && <CalendarStep ctx={ctx} dead={dead} deadSub={deadSub} caution={caution} cautionSub={cautionSub} missed={missed} missedSub={missedSub} missedRoutines={missedRoutine} />}
 			{step === "pick" && <PickStep ctx={ctx} issues={pick.issues} groups={pick.groups} stalled={pick.stalled} />}
-			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} onClosing={startClosing} />}
+			{step === "board" && <Board ctx={ctx} index={index} date={today} board={todayBoard} closingDate={target} onClosing={startClosing} />}
 
 			{step !== "board" && (
 				<div class="vt-page-foot">
