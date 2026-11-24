@@ -797,6 +797,80 @@ function monthGridDays(month) {
   return Array.from({ length: 42 }, (_2, i3) => addDays(start, i3));
 }
 
+// ../shared/src/date-input.ts
+function ymd(year, month, day) {
+  const date = `${year}-${month}-${day}`;
+  return isLocalDate(date) ? date : null;
+}
+function daysInMonth(year, month) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+function addMonths(date, n2) {
+  const [y3, m3, d3] = date.split("-").map(Number);
+  const first = new Date(Date.UTC(y3, m3 - 1 + n2, 1));
+  const year = first.getUTCFullYear();
+  const month = first.getUTCMonth() + 1;
+  return fromEpochDay(Date.UTC(year, month - 1, Math.min(d3, daysInMonth(year, month))) / 864e5);
+}
+function addWeekdays(date, weekday, sign, n2) {
+  const gap = (sign * (weekday - weekdayOf(date)) + 7) % 7 || 7;
+  return addDays(date, sign * (gap + (n2 - 1) * 7));
+}
+var DATE_WORDS = { today: 0, tomorrow: 1, yesterday: -1 };
+var DATE_UNIT_RE = /(\d*)(mo|y|w|d)/g;
+function relativeDate(today, sign, body) {
+  if (/^\d+$/.test(body)) return addDays(today, sign * Number(body));
+  let rest = body;
+  let months = 0;
+  let days = 0;
+  const seen = /* @__PURE__ */ new Set();
+  for (const m3 of body.matchAll(DATE_UNIT_RE)) {
+    const unit = m3[2];
+    if (seen.has(unit)) return null;
+    seen.add(unit);
+    const n2 = m3[1] === "" ? 1 : Number(m3[1]);
+    if (unit === "y") months += 12 * n2;
+    else if (unit === "mo") months += n2;
+    else if (unit === "w") days += 7 * n2;
+    else days += n2;
+    rest = rest.replace(m3[0], "");
+  }
+  if (seen.size === 0 || rest !== "") return null;
+  return addDays(addMonths(today, sign * months), sign * days);
+}
+function parseDateInput(input, today) {
+  const s3 = input.trim().toLowerCase();
+  const separated = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s3);
+  if (separated) return ymd(separated[1], separated[2], separated[3]);
+  if (/^\d+$/.test(s3)) {
+    const [year, month] = today.split("-");
+    if (s3.length === 2) return ymd(year, month, s3);
+    if (s3.length === 4) return ymd(year, s3.slice(0, 2), s3.slice(2));
+    if (s3.length === 6) return ymd(`20${s3.slice(0, 2)}`, s3.slice(2, 4), s3.slice(4));
+    if (s3.length === 8) return ymd(s3.slice(0, 4), s3.slice(4, 6), s3.slice(6));
+    return null;
+  }
+  if (s3 in DATE_WORDS) return addDays(today, DATE_WORDS[s3]);
+  const bare = WEEKDAY_NAMES.indexOf(s3);
+  if (bare >= 0) return addWeekdays(today, bare, 1, 1);
+  const m3 = /^([+-])(.+)$/.exec(s3);
+  if (!m3) return null;
+  const sign = m3[1] === "+" ? 1 : -1;
+  const weekday = /^(\d*)([a-z]{3})$/.exec(m3[2]);
+  const weekdayIndex = weekday ? WEEKDAY_NAMES.indexOf(weekday[2]) : -1;
+  if (weekday && weekdayIndex >= 0) {
+    const n2 = weekday[1] === "" ? 1 : Number(weekday[1]);
+    return n2 < 1 ? null : addWeekdays(today, weekdayIndex, sign, n2);
+  }
+  return relativeDate(today, sign, m3[2]);
+}
+var MINUTES_PER_DAY = 24 * 60;
+function formatDateLabel(date) {
+  return `${date} ${WEEKDAY_NAMES[weekdayOf(date)].toUpperCase()}`;
+}
+var DATE_INPUT_EXAMPLES = "e.g. 15 / 1224 / +1d / fri / +2w / +mo / tomorrow";
+var DATE_INPUT_ERROR = "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093";
+
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
 function u3(e3, t3, n2, o3, i3, u4) {
@@ -819,6 +893,11 @@ function shiftMonth(month, n2) {
   const [y3, m3] = month.split("-").map(Number);
   return new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7);
 }
+function yearOptions(displayYear, todayYear) {
+  const years = Array.from({ length: 21 }, (_2, i3) => todayYear - 10 + i3);
+  if (!years.includes(displayYear)) years.push(displayYear);
+  return years.sort((a3, b2) => a3 - b2);
+}
 function monthWeeks(month) {
   const days = monthGridDays(month).map((d3) => d3.startsWith(month) ? d3 : null);
   const weeks = [];
@@ -831,15 +910,61 @@ function monthWeeks(month) {
 function Chevron(props) {
   return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "20", height: "20", "aria-hidden": "true", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", children: /* @__PURE__ */ u3("path", { d: props.dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6" }) });
 }
+function DropArrow() {
+  return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "18", height: "18", "aria-hidden": "true", fill: "currentColor", children: /* @__PURE__ */ u3("path", { d: "M7 10l5 5 5-5z" }) });
+}
+function OptionList(props) {
+  const ref = A2(null);
+  h2(() => {
+    const list = ref.current;
+    const selected = list?.querySelector(".is-selected");
+    if (list && selected) list.scrollTop = selected.offsetTop - list.clientHeight / 2 + selected.offsetHeight / 2;
+  }, []);
+  return /* @__PURE__ */ u3("div", { class: "vt-cal-options", role: "group", "aria-label": props.label, ref, children: props.options.map((o3) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-option${o3.selected ? " is-selected" : ""}`, "aria-pressed": o3.selected, onClick: () => props.onPick(o3.value), children: o3.text }, o3.value)) });
+}
 function MonthCalendar(props) {
   const { month, today } = props;
+  const [view, setView] = d2("days");
+  const [year, monthNumber] = month.split("-").map(Number);
+  const toggle = (next) => setView(view === next ? "days" : next);
+  const pick = (y3, m3) => {
+    props.onMonth(`${y3}-${String(m3).padStart(2, "0")}`);
+    setView("days");
+  };
   return /* @__PURE__ */ u3("div", { class: "vt-cal", children: [
     /* @__PURE__ */ u3("div", { class: "vt-cal-head", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: formatMonthTitle(month) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-menu${view === "months" ? " is-open" : ""}`, "aria-expanded": view === "months", "aria-label": `Choose month (${MONTH_NAMES[monthNumber - 1]})`, onClick: () => toggle("months"), children: [
+          MONTH_NAMES[monthNumber - 1],
+          /* @__PURE__ */ u3(DropArrow, {})
+        ] }),
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-menu${view === "years" ? " is-open" : ""}`, "aria-expanded": view === "years", "aria-label": `Choose year (${year})`, onClick: () => toggle("years"), children: [
+          year,
+          /* @__PURE__ */ u3(DropArrow, {})
+        ] })
+      ] }),
+      view === "days" && /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+      ] })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
+    view === "months" && /* @__PURE__ */ u3(
+      OptionList,
+      {
+        label: "Months",
+        options: MONTH_NAMES.map((name, i3) => ({ value: i3 + 1, text: name.slice(0, 3), selected: i3 + 1 === monthNumber })),
+        onPick: (m3) => pick(year, m3)
+      }
+    ),
+    view === "years" && /* @__PURE__ */ u3(
+      OptionList,
+      {
+        label: "Years",
+        options: yearOptions(year, Number(today.slice(0, 4))).map((y3) => ({ value: y3, text: String(y3), selected: y3 === year })),
+        onPick: (y3) => pick(y3, monthNumber)
+      }
+    ),
+    view === "days" && /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
       WEEKDAY_INITIALS.map((w3, i3) => /* @__PURE__ */ u3("span", { class: "vt-cal-weekday", "aria-hidden": "true", title: WEEKDAY_NAMES[i3], children: w3 })),
       monthWeeks(month).flat().map((d3, i3) => {
         if (d3 === null) return /* @__PURE__ */ u3("span", { class: "vt-cal-blank" }, `b${i3}`);
@@ -856,54 +981,6 @@ function MonthCalendar(props) {
   ] });
 }
 
-// ../shared/src/date-input.ts
-function ymd(year, month, day) {
-  const date = `${year}-${month}-${day}`;
-  return isLocalDate(date) ? date : null;
-}
-function daysInMonth(year, month) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-function addMonths(date, n2) {
-  const [y3, m3, d3] = date.split("-").map(Number);
-  const first = new Date(Date.UTC(y3, m3 - 1 + n2, 1));
-  const year = first.getUTCFullYear();
-  const month = first.getUTCMonth() + 1;
-  return fromEpochDay(Date.UTC(year, month - 1, Math.min(d3, daysInMonth(year, month))) / 864e5);
-}
-function addWeekdays(date, weekday, sign, n2) {
-  const gap = (sign * (weekday - weekdayOf(date)) + 7) % 7 || 7;
-  return addDays(date, sign * (gap + (n2 - 1) * 7));
-}
-function parseDateInput(input, today) {
-  const s3 = input.trim().toLowerCase();
-  const separated = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s3);
-  if (separated) return ymd(separated[1], separated[2], separated[3]);
-  if (/^\d+$/.test(s3)) {
-    const [year, month] = today.split("-");
-    if (s3.length === 2) return ymd(year, month, s3);
-    if (s3.length === 4) return ymd(year, s3.slice(0, 2), s3.slice(2));
-    if (s3.length === 6) return ymd(`20${s3.slice(0, 2)}`, s3.slice(2, 4), s3.slice(4));
-    if (s3.length === 8) return ymd(s3.slice(0, 4), s3.slice(4, 6), s3.slice(6));
-    return null;
-  }
-  const bare = WEEKDAY_NAMES.indexOf(s3);
-  if (bare >= 0) return addWeekdays(today, bare, 1, 1);
-  const m3 = /^([+-])(\d*)([a-z]*)$/.exec(s3);
-  if (!m3) return null;
-  const sign = m3[1] === "+" ? 1 : -1;
-  const digits = m3[2];
-  const unit = m3[3];
-  const n2 = digits === "" ? 1 : Number(digits);
-  if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
-  if (unit === "d") return addDays(today, sign * n2);
-  if (unit === "w") return addDays(today, sign * n2 * 7);
-  if (unit === "m") return addMonths(today, sign * n2);
-  const weekday = WEEKDAY_NAMES.indexOf(unit);
-  if (weekday < 0 || n2 < 1) return null;
-  return addWeekdays(today, weekday, sign, n2);
-}
-
 // src/core/date-prompt.ts
 function parseDatePromptInput(input, today) {
   const words = input.trim().split(/\s+/).filter((w3) => w3 !== "");
@@ -915,7 +992,7 @@ function parseDatePromptInput(input, today) {
   return date === null ? null : { date, weekday };
 }
 function formatPromptDate(date, weekday) {
-  return weekday ? `${date} ${(WEEKDAY_NAMES[weekdayOf(date)] ?? "sun").toUpperCase()}` : date;
+  return weekday ? formatDateLabel(date) : date;
 }
 
 // ../shared/src/modal-keys.ts
@@ -954,7 +1031,7 @@ function DatePromptForm(props) {
               type: "text",
               class: "vt-tpl-input",
               "aria-label": "Date",
-              placeholder: "e.g. 15 / 1224 / +1d / mon / +2w / +2 -d",
+              placeholder: `${DATE_INPUT_EXAMPLES} / +2 -d`,
               value: text2,
               onInput: (e3) => {
                 const value = e3.currentTarget.value;
@@ -964,7 +1041,7 @@ function DatePromptForm(props) {
               }
             }
           ),
-          /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${output === null ? " is-error" : ""}`, "aria-live": "polite", children: output === null ? "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" : `Inserts: ${output}` }),
+          /* @__PURE__ */ u3("div", { class: `vt-tpl-preview${output === null ? " is-error" : ""}`, "aria-live": "polite", children: output === null ? DATE_INPUT_ERROR : `Inserts: ${output}` }),
           /* @__PURE__ */ u3("label", { class: "vt-tpl-check", children: [
             /* @__PURE__ */ u3("input", { type: "checkbox", checked: weekday, disabled: parsed?.weekday === true, onChange: (e3) => setWeekdayChecked(e3.currentTarget.checked) }),
             "Add weekday (-d)"

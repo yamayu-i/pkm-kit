@@ -1,5 +1,5 @@
-import { parseDateInput } from "../../../shared/src/date-input.ts";
-import { WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../../../shared/src/dates.ts";
+import { formatDateLabel, parseDateInput } from "../../../shared/src/date-input.ts";
+import type { LocalDate } from "../../../shared/src/dates.ts";
 
 export interface DatePromptValue {
 	date: LocalDate;
@@ -8,7 +8,7 @@ export interface DatePromptValue {
 }
 
 /**
- * 日付のダイアログの入力（ADR-0065）。ADR-0017 の短い書き方に、空白で区切った `-d`（曜日を付ける）を足す。
+ * 日付のダイアログの入力（ADR-0065）。入力言語の日付（ADR-0228）に、この欄だけの修飾として、空白で区切った `-d`（曜日を付ける）を足す。
  * 空なら今日。読めない入力と存在しない日付は null
  */
 export function parseDatePromptInput(input: string, today: LocalDate): DatePromptValue | null {
@@ -21,7 +21,7 @@ export function parseDatePromptInput(input: string, today: LocalDate): DatePromp
 	return date === null ? null : { date, weekday };
 }
 
-/** `YYYY-MM-DD` か `YYYY-MM-DD DDD`（`2026-11-08 SUN`）。曜日は `{{date:DDD}}` と同じ英大文字 3 字 */
+/** `YYYY-MM-DD` か `YYYY-MM-DD DDD`（`2026-11-08 SUN`）。曜日は `{{date:DDD}}` と同じ英大文字 3 字（解釈の表示と同じ。ADR-0228） */
 export function formatPromptDate(date: LocalDate, weekday: boolean): string {
-	return weekday ? `${date} ${(WEEKDAY_NAMES[weekdayOf(date)] ?? "sun").toUpperCase()}` : date;
+	return weekday ? formatDateLabel(date) : date;
 }

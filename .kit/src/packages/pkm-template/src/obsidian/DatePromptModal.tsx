@@ -1,6 +1,7 @@
 import { Modal, Platform, type App } from "obsidian";
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { DATE_INPUT_ERROR, DATE_INPUT_EXAMPLES } from "../../../shared/src/date-input.ts";
 import { localToday } from "../../../shared/src/dates.ts";
 import { MonthCalendar } from "../../../shared/src/month-calendar.tsx";
 import { formatPromptDate, parseDatePromptInput } from "../core/date-prompt";
@@ -33,7 +34,7 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 					type="text"
 					class="vt-tpl-input"
 					aria-label="Date"
-					placeholder="e.g. 15 / 1224 / +1d / mon / +2w / +2 -d"
+					placeholder={`${DATE_INPUT_EXAMPLES} / +2 -d`}
 					value={text}
 					onInput={(e) => {
 						const value = e.currentTarget.value;
@@ -43,7 +44,7 @@ function DatePromptForm(props: { onSubmit: (value: string) => void }) {
 					}}
 				/>
 				<div class={`vt-tpl-preview${output === null ? " is-error" : ""}`} aria-live="polite">
-					{output === null ? "日付として読めません" : `Inserts: ${output}`}
+					{output === null ? DATE_INPUT_ERROR : `Inserts: ${output}`}
 				</div>
 				<label class="vt-tpl-check">
 					<input type="checkbox" checked={weekday} disabled={parsed?.weekday === true} onChange={(e) => setWeekdayChecked(e.currentTarget.checked)} />

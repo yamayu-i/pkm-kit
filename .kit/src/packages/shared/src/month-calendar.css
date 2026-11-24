@@ -13,15 +13,16 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	padding-left: 8px;
+	padding-left: 0;
 }
 
+/* 見出しの月と年は、それぞれ一覧を開くボタン（ADR-0228 の 5） */
 .vt-cal-title {
+	display: flex;
 	flex: 1;
+	align-items: center;
+	gap: 4px;
 	color: var(--vt-on-surface);
-	font-size: var(--vt-type-title-medium-size);
-	font-weight: var(--vt-type-title-medium-weight);
-	letter-spacing: var(--vt-type-title-medium-tracking);
 }
 
 .vt-cal button {
@@ -125,6 +126,77 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.vt-cal-day.vt-cal-day {
+		transition: none;
+	}
+}
+
+/* ---------- 月と年の一覧（ADR-0228 の 5。Material 3 の日付の選択の、月と年のメニュー） ---------- */
+
+.vt-cal-menu.vt-cal-menu {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	height: 40px;
+	padding: 0 4px 0 8px;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-title-medium-size);
+	font-weight: var(--vt-type-title-medium-weight);
+	letter-spacing: var(--vt-type-title-medium-tracking);
+	cursor: pointer;
+}
+
+.vt-cal-menu.vt-cal-menu:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-cal-menu svg {
+	color: var(--vt-on-surface-variant);
+	transition: transform var(--vt-duration-short3) var(--vt-easing-standard);
+}
+
+.vt-cal-menu.is-open svg {
+	transform: rotate(180deg);
+}
+
+.vt-cal-options {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	max-height: 264px;
+	padding: 4px;
+	overflow-y: auto;
+}
+
+/* 表示中の月・年は塗りの丸（日の格子の選んだ日と同じ色） */
+.vt-cal-option.vt-cal-option {
+	height: 36px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-body-medium-size);
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+
+.vt-cal-option.vt-cal-option:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-cal-option.vt-cal-option.is-selected {
+	background: var(--vt-scheduled);
+	color: var(--vt-on-scheduled);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vt-cal-menu svg {
 		transition: none;
 	}
 }

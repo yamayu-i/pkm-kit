@@ -1966,10 +1966,10 @@ function parseWorklog(path, text) {
     if (sub !== null && !isSubId(sub)) return problem(line, "invalid-worklog", "sub \u304C\u82F1\u5C0F\u6587\u5B57\u3068\u6570\u5B57\u306E 6 \u6587\u5B57\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     const fromMs = typeof o3.from === "string" ? Date.parse(o3.from) : Number.NaN;
     if (Number.isNaN(fromMs)) return problem(line, "invalid-worklog", "from \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
-    let toMs2 = null;
+    let toMs = null;
     if (o3.to !== null && o3.to !== void 0) {
-      toMs2 = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
-      if (Number.isNaN(toMs2)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
+      toMs = typeof o3.to === "string" ? Date.parse(o3.to) : Number.NaN;
+      if (Number.isNaN(toMs)) return problem(line, "invalid-worklog", "to \u304C\u65E5\u6642\u3067\u306F\u3042\u308A\u307E\u305B\u3093");
     }
     entries.push({
       path,
@@ -1978,10 +1978,10 @@ function parseWorklog(path, text) {
       taskId: o3.task_id,
       sub,
       from: o3.from,
-      to: toMs2 === null ? null : o3.to,
+      to: toMs === null ? null : o3.to,
       description: typeof o3.description === "string" ? o3.description : "",
       fromMs,
-      toMs: toMs2
+      toMs
     });
   });
   return { entries, problems };
@@ -2013,8 +2013,8 @@ function replaceWorklogLine(text, entry, next) {
   return lines.join("\n");
 }
 var MIN_WORKLOG_MS = 6e4;
-function stopWorklogLines(text, entries, to, toMs2) {
-  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs2 - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
+function stopWorklogLines(text, entries, to, toMs) {
+  return [...entries].sort((a3, b2) => b2.line - a3.line).reduce((t3, e3) => replaceWorklogLine(t3, e3, toMs - e3.fromMs < MIN_WORKLOG_MS ? null : { from: e3.from, to, description: e3.description }), text);
 }
 function newWorklogId(random = Math.random) {
   const chars = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -2604,42 +2604,8 @@ function dueLevel(issue, due, today) {
   return String(left);
 }
 
-// src/core/format.ts
-var MINUTES_PER_DAY = 24 * 60;
-var UNIT_MINUTES = { d: MINUTES_PER_DAY, h: 60, m: 1 };
-function formatMinutes(minutes) {
-  const sign = minutes < 0 ? "-" : "";
-  let rest = Math.round(Math.abs(minutes));
-  const d3 = Math.floor(rest / MINUTES_PER_DAY);
-  rest -= d3 * MINUTES_PER_DAY;
-  const h3 = Math.floor(rest / 60);
-  const m3 = rest - h3 * 60;
-  const parts = [d3 ? `${d3}d` : "", h3 ? `${h3}h` : "", m3 ? `${m3}m` : ""].join("");
-  return sign + (parts || "0m");
-}
-function parseDurationInput(input) {
-  const text = input.trim().toLowerCase();
-  if (/^\d+(?:\.\d+)?$/.test(text)) {
-    const min2 = Math.round(Number(text));
-    return min2 > 0 ? min2 : null;
-  }
-  if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
-  const seen = /* @__PURE__ */ new Set();
-  let total = 0;
-  for (const m3 of text.matchAll(/(\d+(?:\.\d+)?)\s*([dhm])/g)) {
-    const unit = m3[2];
-    if (seen.has(unit)) return null;
-    seen.add(unit);
-    total += Number(m3[1]) * UNIT_MINUTES[unit];
-  }
-  const min = Math.round(total);
-  return min > 0 ? min : null;
-}
-
-// src/obsidian/issue-editors.tsx
-var import_obsidian4 = require("obsidian");
-
 // ../shared/src/date-input.ts
+var pad2 = (n2) => String(n2).padStart(2, "0");
 function ymd(year, month, day) {
   const date = `${year}-${month}-${day}`;
   return isLocalDate(date) ? date : null;
@@ -2658,6 +2624,28 @@ function addWeekdays(date, weekday, sign, n2) {
   const gap = (sign * (weekday - weekdayOf(date)) + 7) % 7 || 7;
   return addDays(date, sign * (gap + (n2 - 1) * 7));
 }
+var DATE_WORDS = { today: 0, tomorrow: 1, yesterday: -1 };
+var DATE_UNIT_RE = /(\d*)(mo|y|w|d)/g;
+function relativeDate(today, sign, body) {
+  if (/^\d+$/.test(body)) return addDays(today, sign * Number(body));
+  let rest = body;
+  let months = 0;
+  let days = 0;
+  const seen = /* @__PURE__ */ new Set();
+  for (const m3 of body.matchAll(DATE_UNIT_RE)) {
+    const unit = m3[2];
+    if (seen.has(unit)) return null;
+    seen.add(unit);
+    const n2 = m3[1] === "" ? 1 : Number(m3[1]);
+    if (unit === "y") months += 12 * n2;
+    else if (unit === "mo") months += n2;
+    else if (unit === "w") days += 7 * n2;
+    else days += n2;
+    rest = rest.replace(m3[0], "");
+  }
+  if (seen.size === 0 || rest !== "") return null;
+  return addDays(addMonths(today, sign * months), sign * days);
+}
 function parseDateInput(input, today) {
   const s3 = input.trim().toLowerCase();
   const separated = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s3);
@@ -2670,27 +2658,132 @@ function parseDateInput(input, today) {
     if (s3.length === 8) return ymd(s3.slice(0, 4), s3.slice(4, 6), s3.slice(6));
     return null;
   }
+  if (s3 in DATE_WORDS) return addDays(today, DATE_WORDS[s3]);
   const bare = WEEKDAY_NAMES.indexOf(s3);
   if (bare >= 0) return addWeekdays(today, bare, 1, 1);
-  const m3 = /^([+-])(\d*)([a-z]*)$/.exec(s3);
+  const m3 = /^([+-])(.+)$/.exec(s3);
   if (!m3) return null;
   const sign = m3[1] === "+" ? 1 : -1;
-  const digits = m3[2];
-  const unit = m3[3];
-  const n2 = digits === "" ? 1 : Number(digits);
-  if (unit === "") return digits === "" ? null : addDays(today, sign * n2);
-  if (unit === "d") return addDays(today, sign * n2);
-  if (unit === "w") return addDays(today, sign * n2 * 7);
-  if (unit === "m") return addMonths(today, sign * n2);
-  const weekday = WEEKDAY_NAMES.indexOf(unit);
-  if (weekday < 0 || n2 < 1) return null;
-  return addWeekdays(today, weekday, sign, n2);
+  const weekday = /^(\d*)([a-z]{3})$/.exec(m3[2]);
+  const weekdayIndex = weekday ? WEEKDAY_NAMES.indexOf(weekday[2]) : -1;
+  if (weekday && weekdayIndex >= 0) {
+    const n2 = weekday[1] === "" ? 1 : Number(weekday[1]);
+    return n2 < 1 ? null : addWeekdays(today, weekdayIndex, sign, n2);
+  }
+  return relativeDate(today, sign, m3[2]);
 }
 function parseTimeInput(input) {
-  const m3 = /^(\d{2}):?(\d{2})$/.exec(input.trim());
-  if (!m3 || Number(m3[1]) > 23 || Number(m3[2]) > 59) return null;
-  return `${m3[1]}:${m3[2]}`;
+  const m3 = /^(?:(\d{2})(\d{2})|(\d{1,2}):(\d{2}))$/.exec(input.trim());
+  if (!m3) return null;
+  const hour = Number(m3[1] ?? m3[3]);
+  const minute = Number(m3[2] ?? m3[4]);
+  if (hour > 23 || minute > 59) return null;
+  return `${pad2(hour)}:${pad2(minute)}`;
 }
+function localDateOf(ms) {
+  const d3 = new Date(ms);
+  return `${d3.getFullYear()}-${pad2(d3.getMonth() + 1)}-${pad2(d3.getDate())}`;
+}
+function composeDateTime(date, time) {
+  const [y3, mo, d3] = date.split("-").map(Number);
+  const [h3, mi] = time.split(":").map(Number);
+  const t3 = new Date(y3, mo - 1, d3, h3, mi, 0, 0);
+  return t3.getHours() === h3 && t3.getMinutes() === mi ? t3.getTime() : null;
+}
+function resolveTimeOnly(time, opts) {
+  const rule = opts.timeOnly ?? { kind: "today" };
+  if (rule.kind === "after") {
+    const base = localDateOf(rule.baseMs);
+    const same2 = composeDateTime(base, time);
+    return same2 !== null && same2 > rule.baseMs ? same2 : composeDateTime(addDays(base, 1), time);
+  }
+  const today = localDateOf(opts.now);
+  const same = composeDateTime(today, time);
+  if (rule.kind === "today" || same !== null && same <= opts.now) return same;
+  return composeDateTime(addDays(today, -1), time);
+}
+function parseDateTimeInput(input, opts) {
+  const words = input.trim().toLowerCase().split(/\s+/).filter((w3) => w3 !== "");
+  const floored = new Date(opts.now);
+  floored.setSeconds(0, 0);
+  if (words.length === 1) {
+    const w3 = words[0];
+    if (w3 === "now") return floored.getTime();
+    const relative = /^([+-])(?:(\d+)h)?(?:(\d+)m)?$/.exec(w3);
+    if (relative && (relative[2] !== void 0 || relative[3] !== void 0)) {
+      if (relative[1] === "+" && !opts.allowFuture) return null;
+      const minutes = Number(relative[2] ?? 0) * 60 + Number(relative[3] ?? 0);
+      return floored.getTime() + (relative[1] === "+" ? 1 : -1) * minutes * 6e4;
+    }
+    const time = parseTimeInput(w3);
+    return time === null ? null : resolveTimeOnly(time, opts);
+  }
+  if (words.length !== 2) return null;
+  const today = localDateOf(opts.now);
+  const [a3, b2] = words;
+  const timeFirst = parseTimeInput(a3);
+  if (timeFirst !== null) {
+    const date = parseDateInput(b2, today);
+    return date === null ? null : composeDateTime(date, timeFirst);
+  }
+  if (/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(a3)) {
+    const date = parseDateInput(a3, today);
+    const time = parseTimeInput(b2);
+    return date === null || time === null ? null : composeDateTime(date, time);
+  }
+  return null;
+}
+var MINUTES_PER_DAY = 24 * 60;
+var UNIT_MINUTES = { d: MINUTES_PER_DAY, h: 60, m: 1 };
+function parseDurationInput(input) {
+  const text = input.trim().toLowerCase();
+  if (/^\d+(?:\.\d+)?$/.test(text)) {
+    const min2 = Math.round(Number(text));
+    return min2 > 0 ? min2 : null;
+  }
+  if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
+  const seen = /* @__PURE__ */ new Set();
+  let total = 0;
+  for (const m3 of text.matchAll(/(\d+(?:\.\d+)?)\s*([dhm])/g)) {
+    const unit = m3[2];
+    if (seen.has(unit)) return null;
+    seen.add(unit);
+    total += Number(m3[1]) * UNIT_MINUTES[unit];
+  }
+  const min = Math.round(total);
+  return min > 0 ? min : null;
+}
+function formatDateTimeValue(ms) {
+  const d3 = new Date(ms);
+  return `${localDateOf(ms)} ${pad2(d3.getHours())}:${pad2(d3.getMinutes())}`;
+}
+function formatDateLabel(date) {
+  return `${date} ${WEEKDAY_NAMES[weekdayOf(date)].toUpperCase()}`;
+}
+function formatDateTimeLabel(ms) {
+  const value = formatDateTimeValue(ms);
+  return `${formatDateLabel(value.slice(0, 10))} ${value.slice(11)}`;
+}
+var DATE_INPUT_EXAMPLES = "e.g. 15 / 1224 / +1d / fri / +2w / +mo / tomorrow";
+var DATETIME_INPUT_EXAMPLES = "e.g. 2200 / -22m / 2200 -1d / 0930 fri / now";
+var DATE_INPUT_ERROR = "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093";
+var DATETIME_INPUT_ERROR = "\u65E5\u6642\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093";
+
+// src/core/format.ts
+var MINUTES_PER_DAY2 = 24 * 60;
+function formatMinutes(minutes) {
+  const sign = minutes < 0 ? "-" : "";
+  let rest = Math.round(Math.abs(minutes));
+  const d3 = Math.floor(rest / MINUTES_PER_DAY2);
+  rest -= d3 * MINUTES_PER_DAY2;
+  const h3 = Math.floor(rest / 60);
+  const m3 = rest - h3 * 60;
+  const parts = [d3 ? `${d3}d` : "", h3 ? `${h3}h` : "", m3 ? `${m3}m` : ""].join("");
+  return sign + (parts || "0m");
+}
+
+// src/obsidian/issue-editors.tsx
+var import_obsidian4 = require("obsidian");
 
 // ../../node_modules/.pnpm/preact@10.29.8/node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
@@ -2714,6 +2807,11 @@ function shiftMonth(month, n2) {
   const [y3, m3] = month.split("-").map(Number);
   return new Date(Date.UTC(y3, m3 - 1 + n2, 1)).toISOString().slice(0, 7);
 }
+function yearOptions(displayYear, todayYear) {
+  const years = Array.from({ length: 21 }, (_2, i3) => todayYear - 10 + i3);
+  if (!years.includes(displayYear)) years.push(displayYear);
+  return years.sort((a3, b2) => a3 - b2);
+}
 function monthWeeks(month) {
   const days = monthGridDays(month).map((d3) => d3.startsWith(month) ? d3 : null);
   const weeks = [];
@@ -2726,15 +2824,61 @@ function monthWeeks(month) {
 function Chevron(props) {
   return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "20", height: "20", "aria-hidden": "true", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", children: /* @__PURE__ */ u3("path", { d: props.dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6" }) });
 }
+function DropArrow() {
+  return /* @__PURE__ */ u3("svg", { viewBox: "0 0 24 24", width: "18", height: "18", "aria-hidden": "true", fill: "currentColor", children: /* @__PURE__ */ u3("path", { d: "M7 10l5 5 5-5z" }) });
+}
+function OptionList(props) {
+  const ref = A2(null);
+  h2(() => {
+    const list = ref.current;
+    const selected = list?.querySelector(".is-selected");
+    if (list && selected) list.scrollTop = selected.offsetTop - list.clientHeight / 2 + selected.offsetHeight / 2;
+  }, []);
+  return /* @__PURE__ */ u3("div", { class: "vt-cal-options", role: "group", "aria-label": props.label, ref, children: props.options.map((o3) => /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-option${o3.selected ? " is-selected" : ""}`, "aria-pressed": o3.selected, onClick: () => props.onPick(o3.value), children: o3.text }, o3.value)) });
+}
 function MonthCalendar(props) {
   const { month, today } = props;
+  const [view, setView] = d2("days");
+  const [year, monthNumber] = month.split("-").map(Number);
+  const toggle2 = (next) => setView(view === next ? "days" : next);
+  const pick = (y3, m3) => {
+    props.onMonth(`${y3}-${String(m3).padStart(2, "0")}`);
+    setView("days");
+  };
   return /* @__PURE__ */ u3("div", { class: "vt-cal", children: [
     /* @__PURE__ */ u3("div", { class: "vt-cal-head", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: formatMonthTitle(month) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+      /* @__PURE__ */ u3("span", { class: "vt-cal-title", "aria-live": "polite", children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-menu${view === "months" ? " is-open" : ""}`, "aria-expanded": view === "months", "aria-label": `Choose month (${MONTH_NAMES[monthNumber - 1]})`, onClick: () => toggle2("months"), children: [
+          MONTH_NAMES[monthNumber - 1],
+          /* @__PURE__ */ u3(DropArrow, {})
+        ] }),
+        /* @__PURE__ */ u3("button", { type: "button", class: `vt-cal-menu${view === "years" ? " is-open" : ""}`, "aria-expanded": view === "years", "aria-label": `Choose year (${year})`, onClick: () => toggle2("years"), children: [
+          year,
+          /* @__PURE__ */ u3(DropArrow, {})
+        ] })
+      ] }),
+      view === "days" && /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Previous month", title: "Previous month", onClick: () => props.onMonth(shiftMonth(month, -1)), children: /* @__PURE__ */ u3(Chevron, { dir: "left" }) }),
+        /* @__PURE__ */ u3("button", { type: "button", class: "vt-cal-nav", "aria-label": "Next month", title: "Next month", onClick: () => props.onMonth(shiftMonth(month, 1)), children: /* @__PURE__ */ u3(Chevron, { dir: "right" }) })
+      ] })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
+    view === "months" && /* @__PURE__ */ u3(
+      OptionList,
+      {
+        label: "Months",
+        options: MONTH_NAMES.map((name, i3) => ({ value: i3 + 1, text: name.slice(0, 3), selected: i3 + 1 === monthNumber })),
+        onPick: (m3) => pick(year, m3)
+      }
+    ),
+    view === "years" && /* @__PURE__ */ u3(
+      OptionList,
+      {
+        label: "Years",
+        options: yearOptions(year, Number(today.slice(0, 4))).map((y3) => ({ value: y3, text: String(y3), selected: y3 === year })),
+        onPick: (y3) => pick(y3, monthNumber)
+      }
+    ),
+    view === "days" && /* @__PURE__ */ u3("div", { class: "vt-cal-grid", role: "group", "aria-label": formatMonthTitle(month), children: [
       WEEKDAY_INITIALS.map((w3, i3) => /* @__PURE__ */ u3("span", { class: "vt-cal-weekday", "aria-hidden": "true", title: WEEKDAY_NAMES[i3], children: w3 })),
       monthWeeks(month).flat().map((d3, i3) => {
         if (d3 === null) return /* @__PURE__ */ u3("span", { class: "vt-cal-blank" }, `b${i3}`);
@@ -2751,6 +2895,126 @@ function MonthCalendar(props) {
   ] });
 }
 
+// src/core/worklog-times.ts
+function planWorklogTimes(input) {
+  const { running, fromMs, toMs, now } = input;
+  if (fromMs === null) return { kind: "error", error: "From \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" };
+  if (fromMs > now || toMs !== null && toMs > now) return { kind: "error", error: "\u4ECA\u3088\u308A\u5F8C\u306E\u65E5\u6642\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093" };
+  if (toMs !== null && toMs <= fromMs) return { kind: "error", error: "To \u306F From \u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" };
+  if (toMs === null) return running ? { kind: "continue", fromMs } : { kind: "start", fromMs };
+  return running ? { kind: "stop", fromMs, toMs } : { kind: "add", fromMs, toMs };
+}
+var INNER_LIMIT = 0.78;
+var INNER_RADIUS = 0.62;
+function clockValueAt(mode, x2, y3) {
+  const turn = (Math.atan2(x2, -y3) / (2 * Math.PI) + 1) % 1;
+  if (mode === "minute") return Math.round(turn * 60) % 60;
+  const hour = Math.round(turn * 12) % 12;
+  return Math.hypot(x2, y3) < INNER_LIMIT ? hour + 12 : hour;
+}
+function dialPositions(mode) {
+  const at = (value, step, radius, inner) => {
+    const angle = step / 12 * 2 * Math.PI;
+    return { value, x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius, inner };
+  };
+  if (mode === "minute") return Array.from({ length: 12 }, (_2, i3) => at(i3 * 5, i3, 1, false));
+  return [...Array.from({ length: 12 }, (_2, i3) => at(i3, i3, 1, false)), ...Array.from({ length: 12 }, (_2, i3) => at(i3 + 12, i3, INNER_RADIUS, true))];
+}
+function handPosition(mode, value) {
+  const turn = mode === "minute" ? value / 60 : value % 12 / 12;
+  const radius = mode === "hour" && value >= 12 ? INNER_RADIUS : 1;
+  const angle = turn * 2 * Math.PI;
+  return { x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius };
+}
+
+// src/ui/ClockPicker.tsx
+var pad22 = (n2) => String(n2).padStart(2, "0");
+var VIEW = 1.3;
+function ClockPicker(props) {
+  const [mode, setMode] = d2("hour");
+  const dragging = A2(false);
+  const dialRef = A2(null);
+  const value = mode === "hour" ? props.hour : props.minute;
+  const set = (v3) => mode === "hour" ? props.onChange(v3, props.minute) : props.onChange(props.hour, v3);
+  const pick = (e3) => {
+    const rect = e3.currentTarget.getBoundingClientRect();
+    const x2 = ((e3.clientX - rect.left) / rect.width - 0.5) * 2 * VIEW;
+    const y3 = ((e3.clientY - rect.top) / rect.height - 0.5) * 2 * VIEW;
+    set(clockValueAt(mode, x2, y3));
+  };
+  const choose = (next) => {
+    setMode(next);
+    dialRef.current?.focus();
+  };
+  const hand = handPosition(mode, value);
+  const numbers = dialPositions(mode);
+  const max = mode === "hour" ? 24 : 60;
+  return /* @__PURE__ */ u3("div", { class: "vt-clock", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-clock-display", children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "hour" ? " is-selected" : ""}`, "aria-pressed": mode === "hour", "aria-label": "Hour", onClick: () => choose("hour"), children: pad22(props.hour) }),
+      /* @__PURE__ */ u3("span", { class: "vt-clock-colon", "aria-hidden": "true", children: ":" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "minute" ? " is-selected" : ""}`, "aria-pressed": mode === "minute", "aria-label": "Minute", onClick: () => choose("minute"), children: pad22(props.minute) })
+    ] }),
+    /* @__PURE__ */ u3(
+      "div",
+      {
+        ref: dialRef,
+        class: "vt-clock-dial",
+        role: "slider",
+        tabIndex: 0,
+        "aria-label": mode === "hour" ? "Hour" : "Minute",
+        "aria-valuemin": 0,
+        "aria-valuemax": max - 1,
+        "aria-valuenow": value,
+        onPointerDown: (e3) => {
+          dragging.current = true;
+          e3.currentTarget.setPointerCapture?.(e3.pointerId);
+          pick(e3);
+        },
+        onPointerMove: (e3) => dragging.current && pick(e3),
+        onPointerUp: () => {
+          if (!dragging.current) return;
+          dragging.current = false;
+          if (mode === "hour") setMode("minute");
+        },
+        onKeyDown: (e3) => {
+          const step = e3.key === "ArrowUp" || e3.key === "ArrowRight" ? 1 : e3.key === "ArrowDown" || e3.key === "ArrowLeft" ? -1 : 0;
+          if (step !== 0) {
+            e3.preventDefault();
+            set((value + step + max) % max);
+          } else if (e3.key === "Enter") {
+            e3.preventDefault();
+            e3.stopPropagation();
+            if (mode === "hour") setMode("minute");
+            else props.onDone();
+          }
+        },
+        children: [
+          /* @__PURE__ */ u3("svg", { viewBox: `${-VIEW} ${-VIEW} ${VIEW * 2} ${VIEW * 2}`, "aria-hidden": "true", children: [
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-face", r: VIEW }),
+            /* @__PURE__ */ u3("line", { class: "vt-clock-hand", x1: 0, y1: 0, x2: hand.x, y2: hand.y }),
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-center", r: 0.04 }),
+            /* @__PURE__ */ u3("circle", { class: "vt-clock-knob", cx: hand.x, cy: hand.y, r: 0.17 })
+          ] }),
+          numbers.map((n2) => /* @__PURE__ */ u3(
+            "span",
+            {
+              class: `vt-clock-number${n2.inner ? " is-inner" : ""}${n2.value === value ? " is-selected" : ""}`,
+              style: { left: `${50 + n2.x / VIEW * 50}%`, top: `${50 + n2.y / VIEW * 50}%` },
+              "aria-hidden": "true",
+              children: pad22(n2.value)
+            }
+          ))
+        ]
+      }
+    ),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: props.onDone, children: "OK" })
+    ] })
+  ] });
+}
+
 // src/ui/Icon.tsx
 var import_obsidian = require("obsidian");
 function Icon(props) {
@@ -2762,6 +3026,68 @@ function Icon(props) {
     if (!ref.current.firstChild && props.fallback) (0, import_obsidian.setIcon)(ref.current, props.fallback);
   }, [props.name, props.fallback]);
   return /* @__PURE__ */ u3("span", { ref, class: `vt-icon ${props.class ?? ""}`, "aria-hidden": "true" });
+}
+
+// src/ui/DateTimeField.tsx
+var pad23 = (n2) => String(n2).padStart(2, "0");
+function DateTimeField(props) {
+  const [panel, setPanel] = d2(null);
+  const { parsed } = props;
+  const empty = props.text.trim() === "";
+  const commit = () => {
+    if (parsed !== null) props.onText(formatDateTimeValue(parsed));
+  };
+  const base = new Date(parsed ?? props.now());
+  const baseDate = formatDateTimeValue(base.getTime()).slice(0, 10);
+  const [month, setMonth] = d2(baseDate.slice(0, 7));
+  const set = (date, hour, minute) => {
+    const ms = composeDateTime(date, `${pad23(hour)}:${pad23(minute)}`);
+    if (ms !== null) props.onText(formatDateTimeValue(ms));
+  };
+  const toggle2 = (next) => {
+    if (next === "calendar") setMonth(baseDate.slice(0, 7));
+    setPanel(panel === next ? null : next);
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-text-field vt-wt-field", children: [
+    /* @__PURE__ */ u3("span", { children: props.label }),
+    /* @__PURE__ */ u3("div", { class: "vt-wt-row", children: [
+      /* @__PURE__ */ u3(
+        "input",
+        {
+          ref: props.inputRef,
+          type: "text",
+          "aria-label": props.label,
+          placeholder: props.placeholder ?? DATETIME_INPUT_EXAMPLES.replace(/^e\.g\. /, ""),
+          value: props.text,
+          onInput: (e3) => props.onText(e3.currentTarget.value),
+          onBlur: commit,
+          onKeyDown: (e3) => {
+            if (e3.key !== "Enter" || e3.isComposing || !props.onEnter) return;
+            e3.preventDefault();
+            commit();
+            props.onEnter();
+          }
+        }
+      ),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} calendar`, "aria-expanded": panel === "calendar", title: "Pick a date", onClick: () => toggle2("calendar"), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} clock`, "aria-expanded": panel === "clock", title: "Pick a time", onClick: () => toggle2("clock"), children: /* @__PURE__ */ u3(Icon, { name: "clock" }) })
+    ] }),
+    empty ? null : parsed === null ? /* @__PURE__ */ u3("div", { class: "vt-error", children: DATETIME_INPUT_ERROR }) : /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: formatDateTimeLabel(parsed) }),
+    panel === "calendar" && /* @__PURE__ */ u3(
+      MonthCalendar,
+      {
+        month,
+        onMonth: setMonth,
+        today: localToday(new Date(props.now())),
+        isSelected: (d3) => parsed !== null && d3 === baseDate,
+        onPick: (d3) => {
+          set(d3, base.getHours(), base.getMinutes());
+          setPanel(null);
+        }
+      }
+    ),
+    panel === "clock" && /* @__PURE__ */ u3(ClockPicker, { hour: base.getHours(), minute: base.getMinutes(), onChange: (h3, m3) => set(baseDate, h3, m3), onDone: () => setPanel(null) })
+  ] });
 }
 
 // src/ui/forms.tsx
@@ -2800,13 +3126,26 @@ function TextForm(props) {
   );
 }
 function DateHint(props) {
-  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: "e.g. 15 / 1224 / +1d / mon / +2w / +m" });
-  if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093" });
-  return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: `${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}` });
+  if (props.text.trim() === "") return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: DATE_INPUT_EXAMPLES });
+  if (props.parsed === null) return /* @__PURE__ */ u3("div", { class: "vt-error", children: DATE_INPUT_ERROR });
+  return /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: formatDateLabel(props.parsed) });
 }
 function DateTextField(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-date-field", children: [
-    /* @__PURE__ */ u3("input", { ref: props.inputRef, type: "text", "aria-label": "Date", placeholder: props.placeholder, value: props.text, onInput: (e3) => props.onText(e3.currentTarget.value) }),
+    /* @__PURE__ */ u3(
+      "input",
+      {
+        ref: props.inputRef,
+        type: "text",
+        "aria-label": "Date",
+        placeholder: props.placeholder,
+        value: props.text,
+        onInput: (e3) => props.onText(e3.currentTarget.value),
+        onBlur: () => {
+          if (props.parsed !== null && props.parsed !== props.text) props.onText(props.parsed);
+        }
+      }
+    ),
     /* @__PURE__ */ u3(DateHint, { text: props.text, parsed: props.parsed })
   ] });
 }
@@ -2876,74 +3215,16 @@ function DayCell(props) {
   const label = marks ? `${props.date}\uFF08${marks}\uFF09` : props.date;
   return /* @__PURE__ */ u3("button", { type: "button", class: cls.join(" "), onClick: props.onClick, "aria-pressed": props.scheduled, "aria-label": label, title: label, children: Number(props.date.slice(8, 10)) });
 }
-var pad2 = (n2) => String(n2).padStart(2, "0");
-function dateOfMs(ms) {
-  if (ms === null) return "";
-  const d3 = new Date(ms);
-  return `${d3.getFullYear()}-${pad2(d3.getMonth() + 1)}-${pad2(d3.getDate())}`;
-}
-function timeOfMs(ms) {
-  if (ms === null) return "";
-  const d3 = new Date(ms);
-  return `${pad2(d3.getHours())}:${pad2(d3.getMinutes())}`;
-}
-function DateTimeField(props) {
-  const today = localToday();
-  const parsed = parseDateInput(props.date, today);
-  const [open, setOpen] = d2(false);
-  const [month, setMonth] = d2((parsed ?? today).slice(0, 7));
-  return /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-    /* @__PURE__ */ u3("span", { children: props.label }),
-    /* @__PURE__ */ u3("div", { class: "vt-datetime", children: [
-      /* @__PURE__ */ u3(
-        "input",
-        {
-          type: "text",
-          "aria-label": `${props.label} date`,
-          placeholder: "Date",
-          value: props.date,
-          onInput: (e3) => {
-            props.onDate(e3.currentTarget.value);
-            const next = parseDateInput(e3.currentTarget.value, today);
-            if (next !== null) setMonth(next.slice(0, 7));
-          }
-        }
-      ),
-      /* @__PURE__ */ u3("input", { class: "vt-time-input", type: "text", "aria-label": `${props.label} time`, placeholder: "hhmm", value: props.time, onInput: (e3) => props.onTime(e3.currentTarget.value) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-calendar-toggle", "aria-label": `${props.label} calendar`, "aria-expanded": open, onClick: () => setOpen(!open), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) })
-    ] }),
-    props.date.trim() !== "" && /* @__PURE__ */ u3(DateHint, { text: props.date, parsed }),
-    open && /* @__PURE__ */ u3(
-      MonthCalendar,
-      {
-        month,
-        onMonth: setMonth,
-        today,
-        isSelected: (d3) => d3 === parsed,
-        onPick: (d3) => {
-          props.onDate(d3);
-          setOpen(false);
-        }
-      }
-    )
-  ] });
-}
-function toMs(date, time) {
-  const d3 = parseDateInput(date, localToday());
-  const t3 = parseTimeInput(time);
-  return d3 === null || t3 === null ? null : (/* @__PURE__ */ new Date(`${d3}T${t3}:00`)).getTime();
-}
 function WorklogForm(props) {
-  const [fromDate, setFromDate] = d2(dateOfMs(props.initial.fromMs));
-  const [fromTime, setFromTime] = d2(timeOfMs(props.initial.fromMs));
-  const [toDate, setToDate] = d2(dateOfMs(props.initial.toMs));
-  const [toTime, setToTime] = d2(timeOfMs(props.initial.toMs));
+  const now = Date.now;
+  const [fromText, setFromText] = d2(formatDateTimeValue(props.initial.fromMs));
+  const [toText, setToText] = d2(props.initial.toMs === null ? "" : formatDateTimeValue(props.initial.toMs));
   const [description, setDescription] = d2(props.initial.description);
   const [confirming, setConfirming] = d2(false);
-  const fromMs = toMs(fromDate, fromTime);
-  const running = toDate.trim() === "" && toTime.trim() === "";
-  const endMs = running ? null : toMs(toDate.trim() === "" ? fromDate : toDate, toTime);
-  const error = fromMs === null ? "\u958B\u59CB\u306E\u65E5\u4ED8\u3068\u6642\u523B\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" : !running && endMs === null ? "\u7D42\u4E86\u306E\u65E5\u4ED8\u3068\u6642\u523B\u3092\u78BA\u304B\u3081\u3066\u304F\u3060\u3055\u3044" : endMs !== null && endMs <= fromMs ? "\u7D42\u4E86\u306F\u958B\u59CB\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" : null;
+  const fromMs = parseDateTimeInput(fromText, { now: now(), timeOnly: { kind: "past" } });
+  const running = toText.trim() === "";
+  const endMs = running ? null : parseDateTimeInput(toText, { now: now(), timeOnly: fromMs === null ? { kind: "past" } : { kind: "after", baseMs: fromMs } });
+  const error = fromMs === null ? "\u958B\u59CB\u306E\u65E5\u6642\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" : !running && endMs === null ? "\u7D42\u4E86\u306E\u65E5\u6642\u3092\u78BA\u304B\u3081\u3066\u304F\u3060\u3055\u3044" : fromMs > now() || endMs !== null && endMs > now() ? "\u4ECA\u3088\u308A\u5F8C\u306E\u65E5\u6642\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093" : endMs !== null && endMs <= fromMs ? "\u7D42\u4E86\u306F\u958B\u59CB\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" : null;
   return /* @__PURE__ */ u3(
     "form",
     {
@@ -2953,8 +3234,8 @@ function WorklogForm(props) {
         if (error === null) props.onSubmit({ fromMs, toMs: endMs, description: description.trim() });
       },
       children: [
-        /* @__PURE__ */ u3(DateTimeField, { label: "Start", date: fromDate, time: fromTime, onDate: setFromDate, onTime: setFromTime }),
-        /* @__PURE__ */ u3(DateTimeField, { label: "End (empty while running)", date: toDate, time: toTime, onDate: setToDate, onTime: setToTime }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "Start", text: fromText, parsed: fromMs, onText: setFromText, now }),
+        /* @__PURE__ */ u3(DateTimeField, { label: "End", text: toText, parsed: endMs, placeholder: "Empty while running", onText: setToText, now }),
         /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
           /* @__PURE__ */ u3("span", { children: "Description" }),
           /* @__PURE__ */ u3("input", { type: "text", value: description, onInput: (e3) => setDescription(e3.currentTarget.value) })
@@ -8539,7 +8820,7 @@ function stepperItems(steps, current, counts, passed) {
 var import_obsidian24 = require("obsidian");
 
 // src/core/closing.ts
-function localDateOf(ms) {
+function localDateOf2(ms) {
   const d3 = new Date(ms);
   return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}-${String(d3.getDate()).padStart(2, "0")}`;
 }
@@ -8558,7 +8839,7 @@ function itemStatus(board, item) {
 function workedMinutes(index, date) {
   const out = /* @__PURE__ */ new Map();
   for (const l3 of index.data.worklogs) {
-    if (l3.toMs === null || localDateOf(l3.fromMs) !== date) continue;
+    if (l3.toMs === null || localDateOf2(l3.fromMs) !== date) continue;
     const key = workKey(l3);
     out.set(key, (out.get(key) ?? 0) + (l3.toMs - l3.fromMs) / 6e4);
   }
@@ -8582,7 +8863,7 @@ function closingGroups(index, date, board) {
   }
   for (const log of index.data.statusLogs) {
     if (log.to !== "closed" && log.to !== "canceled") continue;
-    if (localDateOf(log.atMs) !== date) continue;
+    if (localDateOf2(log.atMs) !== date) continue;
     const key = log.sub ? `${log.task}#${log.sub}` : log.task;
     if (log.sub) {
       const sub = index.sub(key);
@@ -8607,254 +8888,21 @@ function isClosingNote(path) {
   return !path.split("/").some((part) => part.startsWith("."));
 }
 function closingNotes(notes, date) {
-  return notes.filter((n2) => isClosingNote(n2.path) && localDateOf(n2.mtime) === date).sort((a3, b2) => b2.mtime - a3.mtime).map((note) => ({ note, created: createdOn(note.created, date) }));
+  return notes.filter((n2) => isClosingNote(n2.path) && localDateOf2(n2.mtime) === date).sort((a3, b2) => b2.mtime - a3.mtime).map((note) => ({ note, created: createdOn(note.created, date) }));
 }
 function createdOn(created, date) {
   if (!created) return false;
   const ms = Date.parse(created);
-  return Number.isNaN(ms) ? created.slice(0, 10) === date : localDateOf(ms) === date;
+  return Number.isNaN(ms) ? created.slice(0, 10) === date : localDateOf2(ms) === date;
 }
 
 // src/views/Board.tsx
 var import_obsidian23 = require("obsidian");
 
-// src/core/worklog-times.ts
-var pad22 = (n2) => String(n2).padStart(2, "0");
-function localMs(year, month, day, hour, minute) {
-  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59) return null;
-  const d3 = new Date(year, month - 1, day, hour, minute, 0, 0);
-  if (d3.getFullYear() !== year || d3.getMonth() !== month - 1 || d3.getDate() !== day || d3.getHours() !== hour) return null;
-  return d3.getTime();
-}
-function parseTimeInputAt(input, now) {
-  const s3 = input.trim().toLowerCase();
-  const ms = parseShape(s3, now);
-  return ms !== null && ms <= now ? ms : null;
-}
-function parseShape(s3, now) {
-  const base = new Date(now);
-  const relative = /^-(?:(\d+)h)?(?:(\d+)m)?$/.exec(s3);
-  if (relative && (relative[1] !== void 0 || relative[2] !== void 0)) {
-    const minutes = Number(relative[1] ?? 0) * 60 + Number(relative[2] ?? 0);
-    const floored = new Date(now);
-    floored.setSeconds(0, 0);
-    return floored.getTime() - minutes * 6e4;
-  }
-  const stored = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(s3);
-  if (stored) return localMs(Number(stored[1]), Number(stored[2]), Number(stored[3]), Number(stored[4]), Number(stored[5]));
-  const daysAgo = /^(\d{4})-(\d+)d$/.exec(s3);
-  if (daysAgo) {
-    const day = new Date(base.getFullYear(), base.getMonth(), base.getDate() - Number(daysAgo[2]));
-    return localMs(day.getFullYear(), day.getMonth() + 1, day.getDate(), Number(daysAgo[1].slice(0, 2)), Number(daysAgo[1].slice(2)));
-  }
-  if (!/^\d+$/.test(s3)) return null;
-  const hm3 = (t3) => [Number(t3.slice(-4, -2)), Number(t3.slice(-2))];
-  const [hour, minute] = hm3(s3);
-  const year = base.getFullYear();
-  const month = base.getMonth() + 1;
-  if (s3.length === 4) return localMs(year, month, base.getDate(), hour, minute);
-  if (s3.length === 6) return localMs(year, month, Number(s3.slice(0, 2)), hour, minute);
-  if (s3.length === 8) return localMs(year, Number(s3.slice(0, 2)), Number(s3.slice(2, 4)), hour, minute);
-  if (s3.length === 10) return localMs(2e3 + Number(s3.slice(0, 2)), Number(s3.slice(2, 4)), Number(s3.slice(4, 6)), hour, minute);
-  return null;
-}
-function formatTimeInput(ms) {
-  const d3 = new Date(ms);
-  return `${d3.getFullYear()}-${pad22(d3.getMonth() + 1)}-${pad22(d3.getDate())} ${pad22(d3.getHours())}:${pad22(d3.getMinutes())}`;
-}
-function planWorklogTimes(input) {
-  const { running, fromMs, toMs: toMs2, now } = input;
-  if (fromMs === null) return { kind: "error", error: "From \u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044" };
-  if (fromMs > now || toMs2 !== null && toMs2 > now) return { kind: "error", error: "\u4ECA\u3088\u308A\u5F8C\u306E\u65E5\u6642\u306F\u5165\u308C\u3089\u308C\u307E\u305B\u3093" };
-  if (toMs2 !== null && toMs2 <= fromMs) return { kind: "error", error: "To \u306F From \u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044" };
-  if (toMs2 === null) return running ? { kind: "continue", fromMs } : { kind: "start", fromMs };
-  return running ? { kind: "stop", fromMs, toMs: toMs2 } : { kind: "add", fromMs, toMs: toMs2 };
-}
-var INNER_LIMIT = 0.78;
-var INNER_RADIUS = 0.62;
-function clockValueAt(mode, x2, y3) {
-  const turn = (Math.atan2(x2, -y3) / (2 * Math.PI) + 1) % 1;
-  if (mode === "minute") return Math.round(turn * 60) % 60;
-  const hour = Math.round(turn * 12) % 12;
-  return Math.hypot(x2, y3) < INNER_LIMIT ? hour + 12 : hour;
-}
-function dialPositions(mode) {
-  const at = (value, step, radius, inner) => {
-    const angle = step / 12 * 2 * Math.PI;
-    return { value, x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius, inner };
-  };
-  if (mode === "minute") return Array.from({ length: 12 }, (_2, i3) => at(i3 * 5, i3, 1, false));
-  return [...Array.from({ length: 12 }, (_2, i3) => at(i3, i3, 1, false)), ...Array.from({ length: 12 }, (_2, i3) => at(i3 + 12, i3, INNER_RADIUS, true))];
-}
-function handPosition(mode, value) {
-  const turn = mode === "minute" ? value / 60 : value % 12 / 12;
-  const radius = mode === "hour" && value >= 12 ? INNER_RADIUS : 1;
-  const angle = turn * 2 * Math.PI;
-  return { x: Math.sin(angle) * radius, y: -Math.cos(angle) * radius };
-}
-
 // src/ui/WorklogTimesForm.tsx
-var pad23 = (n2) => String(n2).padStart(2, "0");
-function describe(ms) {
-  const text = formatTimeInput(ms);
-  const date = text.slice(0, 10);
-  return `${text.slice(5, 7)}/${text.slice(8, 10)} ${WEEKDAY_NAMES[weekdayOf(date)].toUpperCase()} ${text.slice(11)}`;
-}
-function compose(date, hour, minute) {
-  const [y3, m3, d3] = date.split("-").map(Number);
-  return new Date(y3, m3 - 1, d3, hour, minute, 0, 0).getTime();
-}
-var VIEW = 1.3;
-function ClockPicker(props) {
-  const [mode, setMode] = d2("hour");
-  const dragging = A2(false);
-  const dialRef = A2(null);
-  const value = mode === "hour" ? props.hour : props.minute;
-  const set = (v3) => mode === "hour" ? props.onChange(v3, props.minute) : props.onChange(props.hour, v3);
-  const pick = (e3) => {
-    const rect = e3.currentTarget.getBoundingClientRect();
-    const x2 = ((e3.clientX - rect.left) / rect.width - 0.5) * 2 * VIEW;
-    const y3 = ((e3.clientY - rect.top) / rect.height - 0.5) * 2 * VIEW;
-    set(clockValueAt(mode, x2, y3));
-  };
-  const choose = (next) => {
-    setMode(next);
-    dialRef.current?.focus();
-  };
-  const hand = handPosition(mode, value);
-  const numbers = dialPositions(mode);
-  const max = mode === "hour" ? 24 : 60;
-  return /* @__PURE__ */ u3("div", { class: "vt-clock", children: [
-    /* @__PURE__ */ u3("div", { class: "vt-clock-display", children: [
-      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "hour" ? " is-selected" : ""}`, "aria-pressed": mode === "hour", "aria-label": "Hour", onClick: () => choose("hour"), children: pad23(props.hour) }),
-      /* @__PURE__ */ u3("span", { class: "vt-clock-colon", "aria-hidden": "true", children: ":" }),
-      /* @__PURE__ */ u3("button", { type: "button", class: `vt-clock-part${mode === "minute" ? " is-selected" : ""}`, "aria-pressed": mode === "minute", "aria-label": "Minute", onClick: () => choose("minute"), children: pad23(props.minute) })
-    ] }),
-    /* @__PURE__ */ u3(
-      "div",
-      {
-        ref: dialRef,
-        class: "vt-clock-dial",
-        role: "slider",
-        tabIndex: 0,
-        "aria-label": mode === "hour" ? "Hour" : "Minute",
-        "aria-valuemin": 0,
-        "aria-valuemax": max - 1,
-        "aria-valuenow": value,
-        onPointerDown: (e3) => {
-          dragging.current = true;
-          e3.currentTarget.setPointerCapture?.(e3.pointerId);
-          pick(e3);
-        },
-        onPointerMove: (e3) => dragging.current && pick(e3),
-        onPointerUp: () => {
-          if (!dragging.current) return;
-          dragging.current = false;
-          if (mode === "hour") setMode("minute");
-        },
-        onKeyDown: (e3) => {
-          const step = e3.key === "ArrowUp" || e3.key === "ArrowRight" ? 1 : e3.key === "ArrowDown" || e3.key === "ArrowLeft" ? -1 : 0;
-          if (step !== 0) {
-            e3.preventDefault();
-            set((value + step + max) % max);
-          } else if (e3.key === "Enter") {
-            e3.preventDefault();
-            e3.stopPropagation();
-            if (mode === "hour") setMode("minute");
-            else props.onDone();
-          }
-        },
-        children: [
-          /* @__PURE__ */ u3("svg", { viewBox: `${-VIEW} ${-VIEW} ${VIEW * 2} ${VIEW * 2}`, "aria-hidden": "true", children: [
-            /* @__PURE__ */ u3("circle", { class: "vt-clock-face", r: VIEW }),
-            /* @__PURE__ */ u3("line", { class: "vt-clock-hand", x1: 0, y1: 0, x2: hand.x, y2: hand.y }),
-            /* @__PURE__ */ u3("circle", { class: "vt-clock-center", r: 0.04 }),
-            /* @__PURE__ */ u3("circle", { class: "vt-clock-knob", cx: hand.x, cy: hand.y, r: 0.17 })
-          ] }),
-          numbers.map((n2) => /* @__PURE__ */ u3(
-            "span",
-            {
-              class: `vt-clock-number${n2.inner ? " is-inner" : ""}${n2.value === value ? " is-selected" : ""}`,
-              style: { left: `${50 + n2.x / VIEW * 50}%`, top: `${50 + n2.y / VIEW * 50}%` },
-              "aria-hidden": "true",
-              children: pad23(n2.value)
-            }
-          ))
-        ]
-      }
-    ),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
-      /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text", onClick: props.onDone, children: "OK" })
-    ] })
-  ] });
-}
-function TimeField(props) {
-  const [panel, setPanel] = d2(null);
-  const parsed = parseTimeInputAt(props.text, props.now());
-  const empty = props.text.trim() === "";
-  const commit = () => {
-    if (parsed !== null) props.onText(formatTimeInput(parsed));
-  };
-  const base = new Date(parsed ?? props.now());
-  const baseDate = formatTimeInput(base.getTime()).slice(0, 10);
-  const [month, setMonth] = d2(baseDate.slice(0, 7));
-  const toggle2 = (next) => {
-    if (next === "calendar") setMonth(baseDate.slice(0, 7));
-    setPanel(panel === next ? null : next);
-  };
-  return /* @__PURE__ */ u3("div", { class: "vt-text-field vt-wt-field", children: [
-    /* @__PURE__ */ u3("span", { children: props.label }),
-    /* @__PURE__ */ u3("div", { class: "vt-wt-row", children: [
-      /* @__PURE__ */ u3(
-        "input",
-        {
-          ref: props.inputRef,
-          type: "text",
-          "aria-label": props.label,
-          placeholder: props.label === "From" ? "-22m / 2200 / 2200-1d" : "Empty to keep running",
-          value: props.text,
-          onInput: (e3) => props.onText(e3.currentTarget.value),
-          onBlur: commit,
-          onKeyDown: (e3) => {
-            if (e3.key !== "Enter" || e3.isComposing) return;
-            e3.preventDefault();
-            commit();
-            props.onEnter();
-          }
-        }
-      ),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} calendar`, "aria-expanded": panel === "calendar", title: "Pick a date", onClick: () => toggle2("calendar"), children: /* @__PURE__ */ u3(Icon, { name: "calendar" }) }),
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-wt-tool", "aria-label": `${props.label} clock`, "aria-expanded": panel === "clock", title: "Pick a time", onClick: () => toggle2("clock"), children: /* @__PURE__ */ u3(Icon, { name: "clock" }) })
-    ] }),
-    empty ? null : parsed === null ? /* @__PURE__ */ u3("div", { class: "vt-error", children: "\u65E5\u6642\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093\uFF08\u4ECA\u3088\u308A\u5F8C\u3082\u5165\u308C\u3089\u308C\u307E\u305B\u3093\uFF09" }) : /* @__PURE__ */ u3("div", { class: "vt-date-hint", children: describe(parsed) }),
-    panel === "calendar" && /* @__PURE__ */ u3(
-      MonthCalendar,
-      {
-        month,
-        onMonth: setMonth,
-        today: localToday(new Date(props.now())),
-        isSelected: (d3) => parsed !== null && d3 === baseDate,
-        onPick: (d3) => {
-          props.onText(formatTimeInput(compose(d3, base.getHours(), base.getMinutes())));
-          setPanel(null);
-        }
-      }
-    ),
-    panel === "clock" && /* @__PURE__ */ u3(
-      ClockPicker,
-      {
-        hour: base.getHours(),
-        minute: base.getMinutes(),
-        onChange: (h3, m3) => props.onText(formatTimeInput(compose(baseDate, h3, m3))),
-        onDone: () => setPanel(null)
-      }
-    )
-  ] });
-}
 function WorklogTimesForm(props) {
   const now = props.now ?? Date.now;
-  const [fromText, setFromText] = d2(props.initialFromMs === null ? "" : formatTimeInput(props.initialFromMs));
+  const [fromText, setFromText] = d2(props.initialFromMs === null ? "" : formatDateTimeValue(props.initialFromMs));
   const [toText, setToText] = d2("");
   const fromRef = A2(null);
   const toRef = A2(null);
@@ -8862,10 +8910,10 @@ function WorklogTimesForm(props) {
   const stopRef = A2(null);
   h2(() => fromRef.current?.select(), []);
   const toEmpty = toText.trim() === "";
-  const fromMs = parseTimeInputAt(fromText, now());
-  const toMs2 = toEmpty ? null : parseTimeInputAt(toText, now());
-  const unreadable = fromText.trim() !== "" && fromMs === null || !toEmpty && toMs2 === null;
-  const plan = unreadable ? null : planWorklogTimes({ running: props.running, fromMs, toMs: toMs2, now: now() });
+  const fromMs = parseDateTimeInput(fromText, { now: now(), timeOnly: { kind: "past" } });
+  const toMs = toEmpty ? null : parseDateTimeInput(toText, { now: now(), timeOnly: fromMs === null ? { kind: "past" } : { kind: "after", baseMs: fromMs } });
+  const unreadable = fromText.trim() !== "" && fromMs === null || !toEmpty && toMs === null;
+  const plan = unreadable ? null : planWorklogTimes({ running: props.running, fromMs, toMs, now: now() });
   const error = plan?.kind === "error" && fromText.trim() !== "" ? plan.error : null;
   const ready = plan !== null && plan.kind !== "error";
   const canPlay = ready && toEmpty;
@@ -8876,8 +8924,20 @@ function WorklogTimesForm(props) {
   const focusAction = (to) => setTimeout(() => (to === "play" ? playRef : stopRef).current?.focus(), 0);
   return /* @__PURE__ */ u3("div", { class: "vt-wt", children: [
     /* @__PURE__ */ u3("div", { class: "vt-wt-summary", children: props.summary }),
-    /* @__PURE__ */ u3(TimeField, { label: "From", text: fromText, onText: setFromText, inputRef: fromRef, now, onEnter: () => toRef.current?.focus() }),
-    /* @__PURE__ */ u3(TimeField, { label: "To", text: toText, onText: setToText, inputRef: toRef, now, onEnter: () => focusAction(toEmpty ? "play" : "stop") }),
+    /* @__PURE__ */ u3(DateTimeField, { label: "From", text: fromText, parsed: fromMs, onText: setFromText, inputRef: fromRef, now, onEnter: () => toRef.current?.focus() }),
+    /* @__PURE__ */ u3(
+      DateTimeField,
+      {
+        label: "To",
+        text: toText,
+        parsed: toMs,
+        placeholder: "Empty to keep running",
+        onText: setToText,
+        inputRef: toRef,
+        now,
+        onEnter: () => focusAction(toEmpty ? "play" : "stop")
+      }
+    ),
     error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
     /* @__PURE__ */ u3("div", { class: "vt-wt-actions", children: [
       /* @__PURE__ */ u3("span", { class: "vt-wt-note", children: props.running ? "Running: \u25B6 keeps it running, \u25A0 stops it" : "\u25B6 starts from From, \u25A0 adds a finished record" }),
@@ -9308,7 +9368,7 @@ function ClosingView(props) {
         /* @__PURE__ */ u3(Icon, { name: created ? "file-plus" : "file-text" }),
         /* @__PURE__ */ u3("span", { class: "vt-compact-title", title: note.path, ...linkProps((e3) => void ctx.openPath(note.path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: note.title }),
         created && /* @__PURE__ */ u3("span", { class: "vt-chip-mini", children: "new" }),
-        /* @__PURE__ */ u3("span", { class: "vt-compact-meta vt-num", children: localDateOf(note.mtime) === date ? hm2(note.mtime) : "" })
+        /* @__PURE__ */ u3("span", { class: "vt-compact-meta vt-num", children: localDateOf2(note.mtime) === date ? hm2(note.mtime) : "" })
       ] }, note.path)) })
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-page-foot", children: [
@@ -10921,7 +10981,7 @@ function restCard(worklogs, now) {
   if (elapsedMs < FOCUS_CAUTION_MS) return { elapsedMs, level: "caution", label: "Caution" };
   return { elapsedMs, level: "alert", label: "Over-focused" };
 }
-function describe2(index, key) {
+function describe(index, key) {
   const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
   return { id: key.includes("#") ? key.split("#")[0] : key, summary: task?.summary ?? "", path: task?.path ?? null };
 }
@@ -10931,7 +10991,7 @@ function runningTasks(index, now) {
     const key = workKey(l3);
     elapsed.set(key, Math.max(elapsed.get(key) ?? 0, Math.max(0, now - l3.fromMs)));
   }
-  return [...elapsed.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([key, ms]) => ({ key, ...describe2(index, key), elapsedMs: ms }));
+  return [...elapsed.entries()].sort((a3, b2) => b2[1] - a3[1]).map(([key, ms]) => ({ key, ...describe(index, key), elapsedMs: ms }));
 }
 function pausedTasks(index, keys) {
   const running = new Set(index.running().map(workKey));
@@ -10939,13 +10999,13 @@ function pausedTasks(index, keys) {
     const task = index.sub(key) ?? index.issues.get(key) ?? index.routines.get(key);
     if (!task) return false;
     return !("status" in task) || task.status !== "closed" && task.status !== "canceled";
-  }).map((key) => ({ key, ...describe2(index, key), elapsedMs: null }));
+  }).map((key) => ({ key, ...describe(index, key), elapsedMs: null }));
 }
 function todoTasks(index, today, excluded) {
   const stored = index.board(today)?.board ?? emptyBoard();
   const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
   const lanes = boardLanes(index, today, board);
-  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe2(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
+  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
 }
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function formatNow(ms) {

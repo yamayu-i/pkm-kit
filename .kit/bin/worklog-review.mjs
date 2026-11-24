@@ -7366,19 +7366,6 @@ var require_dist = __commonJS({
   }
 });
 
-// src/core/format.ts
-var MINUTES_PER_DAY = 24 * 60;
-function formatMinutes(minutes) {
-  const sign = minutes < 0 ? "-" : "";
-  let rest = Math.round(Math.abs(minutes));
-  const d = Math.floor(rest / MINUTES_PER_DAY);
-  rest -= d * MINUTES_PER_DAY;
-  const h = Math.floor(rest / 60);
-  const m = rest - h * 60;
-  const parts = [d ? `${d}d` : "", h ? `${h}h` : "", m ? `${m}m` : ""].join("");
-  return sign + (parts || "0m");
-}
-
 // ../shared/src/dates.ts
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var DAY_MS = 864e5;
@@ -7413,6 +7400,22 @@ function localToday(now2 = /* @__PURE__ */ new Date()) {
   const m = String(now2.getMonth() + 1).padStart(2, "0");
   const d = String(now2.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+// ../shared/src/date-input.ts
+var MINUTES_PER_DAY = 24 * 60;
+
+// src/core/format.ts
+var MINUTES_PER_DAY2 = 24 * 60;
+function formatMinutes(minutes) {
+  const sign = minutes < 0 ? "-" : "";
+  let rest = Math.round(Math.abs(minutes));
+  const d = Math.floor(rest / MINUTES_PER_DAY2);
+  rest -= d * MINUTES_PER_DAY2;
+  const h = Math.floor(rest / 60);
+  const m = rest - h * 60;
+  const parts = [d ? `${d}d` : "", h ? `${h}h` : "", m ? `${m}m` : ""].join("");
+  return sign + (parts || "0m");
 }
 
 // src/core/dates.ts

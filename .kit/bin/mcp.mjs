@@ -9822,13 +9822,16 @@ var import_yaml2 = __toESM(require_dist(), 1);
 import { existsSync, mkdirSync, readFileSync as readFileSync2, writeFileSync } from "node:fs";
 import { dirname, resolve, sep as sep2 } from "node:path";
 
-// src/core/format.ts
+// ../shared/src/date-input.ts
 var MINUTES_PER_DAY = 24 * 60;
+
+// src/core/format.ts
+var MINUTES_PER_DAY2 = 24 * 60;
 function formatMinutes(minutes) {
   const sign = minutes < 0 ? "-" : "";
   let rest = Math.round(Math.abs(minutes));
-  const d = Math.floor(rest / MINUTES_PER_DAY);
-  rest -= d * MINUTES_PER_DAY;
+  const d = Math.floor(rest / MINUTES_PER_DAY2);
+  rest -= d * MINUTES_PER_DAY2;
   const h = Math.floor(rest / 60);
   const m = rest - h * 60;
   const parts = [d ? `${d}d` : "", h ? `${h}h` : "", m ? `${m}m` : ""].join("");

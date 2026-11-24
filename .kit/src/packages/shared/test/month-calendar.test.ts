@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { formatMonthTitle, monthWeeks, shiftMonth, WEEKDAY_INITIALS } from "../src/month-calendar.tsx";
+import { formatMonthTitle, MONTH_NAMES, monthWeeks, shiftMonth, WEEKDAY_INITIALS, yearOptions } from "../src/month-calendar.tsx";
 
 describe("月のカレンダー（ADR-0078）", () => {
 	it("見出しは英語の月と年", () => {
@@ -40,6 +40,31 @@ describe("月のカレンダー（ADR-0078）", () => {
 		expect(rule(".vt-cal-day.vt-cal-day.is-today")).toMatch(/border-color:/);
 		expect(rule(".vt-cal-day.vt-cal-day.is-today")).not.toMatch(/background:/);
 		expect(rule(".vt-cal-day.vt-cal-day.is-selected")).toMatch(/background:/);
+	});
+});
+
+describe("月と年の一覧（ADR-0228 の 5）", () => {
+	it("月は 1 月〜12 月", () => {
+		expect(MONTH_NAMES).toHaveLength(12);
+		expect(MONTH_NAMES[0]).toBe("January");
+	});
+
+	it("年は今年の前後 10 年", () => {
+		const years = yearOptions(2026, 2026);
+		expect(years[0]).toBe(2016);
+		expect(years.at(-1)).toBe(2036);
+		expect(years).toHaveLength(21);
+	});
+
+	it("表示中の年がその外なら足す（順に並べる）", () => {
+		expect(yearOptions(2000, 2026)[0]).toBe(2000);
+		expect(yearOptions(2000, 2026)[1]).toBe(2016);
+		expect(yearOptions(2050, 2026).at(-1)).toBe(2050);
+	});
+
+	it("表示中の月・年は塗りの丸", () => {
+		const css = readFileSync(fileURLToPath(new URL("../src/month-calendar.css", import.meta.url)), "utf8");
+		expect(css).toMatch(/\.vt-cal-option\.vt-cal-option\.is-selected\s*\{[^}]*background:/);
 	});
 });
 
