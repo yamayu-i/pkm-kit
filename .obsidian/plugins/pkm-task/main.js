@@ -5026,9 +5026,12 @@ function TimelineChart(props) {
         load && props.load && /* @__PURE__ */ u3("div", { class: "vt-timeline-load", children: cols.map((c3) => {
           const v3 = columnLoad(load, c3.date, c3.span, props.load.capacity);
           const text = loadLabel(v3.minutes, v3.unknown);
-          const tip = `\u898B\u7A4D\u3082\u308A ${formatMinutes(v3.minutes)} / \u4F7F\u3048\u308B\u6642\u9593 ${formatMinutes(v3.capacity)}${v3.unknown > 0 ? `
-\u898B\u7A4D\u3082\u308A\u306E\u306A\u3044\u30B5\u30D6 ${v3.unknown} \u4EF6` : ""}`;
-          return /* @__PURE__ */ u3("div", { class: `vt-timeline-load-cell${v3.over ? " is-over" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` }, title: tip, children: text });
+          const tip = `Estimated ${formatMinutes(v3.minutes)} / available ${formatMinutes(v3.capacity)}${v3.over ? " (over)" : ""}${v3.unknown > 0 ? `
+${v3.unknown} sub-issue(s) without an estimate` : ""}`;
+          return /* @__PURE__ */ u3("div", { class: `vt-timeline-load-cell${v3.over ? " is-over" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` }, title: tip, children: [
+            text,
+            v3.over && /* @__PURE__ */ u3("span", { class: "vt-timeline-load-over", children: "!" })
+          ] });
         }) }),
         /* @__PURE__ */ u3("div", { class: "vt-timeline-body", ref: body, style: { height: `${height}px` }, onPointerDown: () => setSelected(null), children: [
           cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),

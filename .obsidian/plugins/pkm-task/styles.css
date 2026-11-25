@@ -4388,7 +4388,7 @@ body.is-mobile .vt-toast {
 }
 
 .vt-timeline-label.is-project:hover {
-	background: var(--vt-surface-container-high);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-timeline-label.is-project .vt-badge {
@@ -4466,6 +4466,11 @@ body.is-mobile .vt-toast {
 	white-space: nowrap;
 }
 
+/* 色だけで伝えない（WCAG 1.4.1）。超えた列は「!」も付ける */
+.vt-timeline-load-over {
+	margin-left: 2px;
+}
+
 .vt-timeline-load-cell.is-over {
 	background: var(--vt-red-container);
 	color: var(--vt-on-red-container);
@@ -4489,13 +4494,12 @@ body.is-mobile .vt-toast {
 }
 
 .vt-timeline-estimate:hover {
-	background: var(--vt-state-hover);
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
 .vt-projects-no-estimate {
-	height: 24px;
-	background: var(--vt-amber-container);
-	color: var(--vt-on-amber-container);
+	background: var(--vt-surface-container-high);
+	color: var(--vt-on-surface);
 }
 
 /* 見積もりのサイズのチップ（S / M / L / XL） */
@@ -4538,7 +4542,7 @@ body.is-mobile .vt-toast {
 }
 
 .vt-budget-value {
-	color: var(--vt-on-surface);
+	color: var(--vt-on-surface-variant);
 	font-size: var(--vt-type-title-large-size);
 	line-height: var(--vt-type-title-large-line-height);
 	font-variant-numeric: tabular-nums;

@@ -245,11 +245,11 @@ packages/design/tokens.json（正本）
 | サブの項目のカード | `.vt-sub-card`（Live Preview は `.vt-sub-card-host` の中） | issue の本文の、サブごとの項目のブロック（`<!-- sub-issue` から `-->`）を置き換えて描く。本文は置き換えず、issue 本体の描画のまま。行は同じ `.vt-subissue` で、左に開閉の矢印。開くと `.vt-subissue-form` の欄（題・日付と見積もりのチップ・依存先）をその場で直し、「Show source」で生の md を見せる。閉じたサブの本文は隠す（Reading は `.vt-sub-body-closed`）。読めないブロックは警告の行（`.is-unreadable`）。開閉はこの端末に保存する（ADR-0161）。題の行から開閉しても押した行の画面上の位置を保ち、上端に浮かんだ行から閉じたときはカードの題を上端に出す（ADR-0179）。開いたサブの本文と次のサブの題の行の間は space 24 を空ける（Reading は次のカードの `margin-top`、Live Preview は本文の最後の行 `.vt-sub-body-end` の `padding-bottom`） |
 | プリセット | `.vt-preset-subs`（`.vt-preset-sub`・`.vt-preset-hint`） | `preset/*.md` に差し込むヘッダー（ADR-0186）。issue と同じ題の部品（ID と名前）、「Sub-issues」のカードに題の入力欄の行（番号のラベル + 並べ替え・削除。Enter か欄を離れたときに保存）と素早い追加（`.vt-quick-add`）、呼び出し方の帯（`.vt-banner`）、本文の見出し「Body」。本文はふつうのエディタ。一覧（Presets）は Members と同じ行（ID・名前・本文の 1 行目・サブの件数）。呼び出しは issue 画面の「Sub-issues」の見出しの右の「Apply preset」（`copy-plus` のアイコンボタン）のメニュー |
 | ガントチャート | `.vt-timeline`（`.vt-timeline-bar`・`.vt-timeline-arrow`・`.vt-timeline-today`） | カード「Sub-issues」の Timeline（ADR-0143）。左に題の列、右に日の列（カードの中で横にスクロール）。行は 36px。棒は status の印の色（`--vt-dot`）で、ドラッグでずらし、両端のつまみで伸ばす。予定日は点、期限は amber / red の短い縦線、今日は primary の縦線、土日は surface-container の面、週の区切り（日曜）は細い線。依存は矢印で、遅れは error の色。棒の右端のコネクタ（`.vt-timeline-connector`）から別の棒へドラッグして依存を引き、矢印は押して選び（`.vt-timeline-arrow-hit`）× ボタン（`.vt-timeline-arrow-remove`）か Delete で消す（ADR-0163）。目盛りは Day（1 日 28px）と Week（日曜始まり、1 日 8px）。切り替えは segmented button（`.vt-segmented`）で、List / Timeline は見出しの右にアイコンで、Day / Week は Timeline の左上の角に小さく（`.is-small`）置く（ADR-0143 の追記） |
-| Projects | `.vt-projects`（`.vt-timeline-label.is-project`・`.vt-timeline-span`・`.vt-timeline-due`・`.vt-timeline-load`） | Project を横断するタイムライン（ADR-0231）。ガントチャートと同じ部品（`TimelineChart`）に、Project の行（surface-container の面。題は ID のバッジと太字で、押すと issue 画面を開く。サブの行は字下げ）を足す。Project の行には期間をまとめた細い棒（outline の色、読むだけ）と、期限の印（deadline は red、soft deadline は amber の縦線）。日付の見出しの下に負荷の行（`.vt-timeline-load`、24px。列ごとの見積もりの時間。使える時間を超えた列は red-container の面、未見積もりは `?`） |
+| Projects | `.vt-projects`（`.vt-timeline-label.is-project`・`.vt-timeline-span`・`.vt-timeline-due`・`.vt-timeline-load`） | Project を横断するタイムライン（ADR-0231）。ガントチャートと同じ部品（`TimelineChart`）に、Project の行（surface-container の面。題は ID のバッジと太字で、押すと issue 画面を開く。サブの行は字下げ）を足す。Project の行には期間をまとめた細い棒（outline の色、読むだけ）と、期限の印（deadline は red、soft deadline は amber の縦線）。日付の見出しの下に負荷の行（`.vt-timeline-load`、24px。列ごとの見積もりの時間。使える時間を超えた列は red-container の面と「!」（色だけで伝えない）、未見積もりは `?`。ツールチップは英語） |
 | 見積もりの印 | `.vt-timeline-estimate` | 近いうちの見積もりのないサブの棒の右に出す、点線の枠の小さなボタン「Estimate」（24px）。押すと S / M / L のメニュー（ADR-0231） |
 | サイズのチップ | `.vt-size-chips`（`.vt-segmented.is-small`） | 見積もりの S / M / L（/ XL）。小さい segmented button を使い、今の値を選んだ状態に見せる。ボタンは 32px 以上の幅（ADR-0231） |
 | estimated の入力欄 | `.vt-effort-cell.is-input`（`.vt-effort-input`） | issue・routine 画面の estimated（ADR-0231 の追記）。メニューではなく、ふつうの入力欄（outlined text field）をセルの中に置く。Enter か欄を離れると保存。読めない値は枠を error にして説明を出す |
-| 割り当てていない予算 | `.vt-budget`（`.vt-budget-value`） | Project の issue 画面の、日付のストリップの場所。estimated − サブの estimated の合計。負なら値を error の色（ADR-0231 の追記） |
+| 割り当てていない予算 | `.vt-budget`（`.vt-budget-value`） | Project の issue 画面の、日付のストリップの場所。estimated − サブの estimated の合計。読み取り専用なので値は on-surface-variant、負なら error の色と「Over the estimated」の文（ADR-0231 の追記） |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
 | リンクのチップ | `.vt-link-chip.is-replace`（`.vt-link-chip-title`・`.vt-link-chip-context`・`.vt-link-avatar`） | 本文の issue・サブ・routine・member へのリンクを置き換えて描く（ADR-0194。共有の部品 `packages/shared/src/link-chips.ts`）。文の中に収まるよう、20px の ID のバッジ（status の色。routine は blue、一時停止は gray）か頭文字の丸（secondary-container）と、primary の文字の今の題。済みは弱い文字の打ち消し線。サブは前に弱い文字で親の題 + ›。押すと開き、ホバーで題に下線 |
 | リンクの印 | `.vt-link-chip.is-before` | それ以外の Vault の中のノートへのリンクの前に足す 16px のアイコン（弱い文字の色）。リンクの文字は変えない（ADR-0194） |
@@ -261,7 +261,8 @@ packages/design/tokens.json（正本）
 
 | 種類 | 目印 |
 |---|---|
-| 選択肢から選ぶ（status、priority、estimated） | 末尾に ▾（`chevron-down`） |
+| 選択肢から選ぶ（status、priority） | 末尾に ▾（`chevron-down`） |
+| 欄に直接入力する（estimated） | ふつうの入力欄（outlined text field）。欄そのものが目印（ADR-0231 の追記） |
 | 文字を入力する（status-detail、summary） | 鉛筆（`pencil`）。summary はホバーで出す |
 | 日付を選ぶ（soft_deadline、deadline、revisit） | カレンダー（`calendar` / `calendar-clock`） |
 | 追加する（label、サブイシュー） | `plus` / `tag`、未入力なら点線 |

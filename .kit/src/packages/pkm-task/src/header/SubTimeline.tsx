@@ -278,10 +278,11 @@ export function TimelineChart(props: {
 								{cols.map((c) => {
 									const v = columnLoad(load, c.date, c.span, props.load!.capacity);
 									const text = loadLabel(v.minutes, v.unknown);
-									const tip = `見積もり ${formatMinutes(v.minutes)} / 使える時間 ${formatMinutes(v.capacity)}${v.unknown > 0 ? `\n見積もりのないサブ ${v.unknown} 件` : ""}`;
+									const tip = `Estimated ${formatMinutes(v.minutes)} / available ${formatMinutes(v.capacity)}${v.over ? " (over)" : ""}${v.unknown > 0 ? `\n${v.unknown} sub-issue(s) without an estimate` : ""}`;
 									return (
 										<div class={`vt-timeline-load-cell${v.over ? " is-over" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} title={tip}>
 											{text}
+											{v.over && <span class="vt-timeline-load-over">!</span>}
 										</div>
 									);
 								})}
