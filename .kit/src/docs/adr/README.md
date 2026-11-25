@@ -87,7 +87,7 @@
 | [0135](0135-sub-issues-in-issue-file.md) | 承認（一部置換: 0152, 0190） | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
 | [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179, ADR-0181, ADR-0190） | 親の issue 画面でサブイシューを見る・作る・並べる |
-| [0143](0143-sub-issue-timeline.md) | 承認（一部置換: 0190） | サブイシューのガントチャート（Timeline） |
+| [0143](0143-sub-issue-timeline.md) | 承認（一部置換: 0190, 0231） | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 承認（一部置換: 0189, 0210） | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184, 0189, 0190, 0203） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
 | [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203, 0210） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
@@ -102,7 +102,7 @@
 | [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 | [0183](0183-status-transition-rules.md) | 承認（一部置換: 0189, 0190, 0203） | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183, 0203） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
-| [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
+| [0186](0186-issue-presets.md) | 承認（一部置換: 0231） | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 | [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
 | [0190](0190-sub-end-as-due.md) | 承認（一部置換: 0210） | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
 | [0193](0193-worklog-quick-edit.md) | 承認（一部置換: 0228） | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
@@ -116,4 +116,5 @@
 | [0226](0226-closing-date-across-midnight.md) | 承認 | 締めの日付を Close board で決め、夜中の 0 時から決めた時刻までは前日を締める |
 | [0228](0228-date-time-input-language.md) | 承認 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
 | [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
+| [0231](0231-projects-timeline-and-load.md) | 承認 | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
 <!-- adr-index:end -->
