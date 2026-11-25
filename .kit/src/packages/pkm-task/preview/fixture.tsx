@@ -13,8 +13,9 @@ import { SubCard } from "../src/obsidian/sub-card";
 import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
 import { PresetHeader } from "../src/header/PresetHeader";
-import { CalendarForm, DateForm, WorklogForm } from "../src/ui/forms";
-import { ClockPicker, WorklogTimesForm } from "../src/ui/WorklogTimesForm";
+import { ClockPicker } from "../src/ui/ClockPicker";
+import { DateForm, WorklogForm } from "../src/ui/forms";
+import { WorklogTimesForm } from "../src/ui/WorklogTimesForm";
 import { DailyView } from "../src/views/DailyView";
 import { InboxView } from "../src/views/InboxView";
 import { IssueListView } from "../src/views/IssueListView";
@@ -165,8 +166,6 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
 			<DateForm initial={t} onSubmit={() => {}} />
-			{/* 期限の印（ADR-0030）: soft_deadline と deadline のある issue の「calendar >」 */}
-			<CalendarForm initial={[t]} softDeadline={addDays(t, 3)} deadline={addDays(t, 5)} onSubmit={() => {}} />
 			<WorklogForm initial={{ fromMs: Date.now() - 3_600_000, toMs: Date.now(), description: "作業" }} onSubmit={() => {}} onDelete={() => {}} />
 			{/* 記録の開始・終了を直すダイアログと時計（ADR-0193） */}
 			<WorklogTimesForm summary="見積もりを出す" running initialFromMs={Date.now() - 1_800_000} onSubmit={() => {}} />

@@ -31,7 +31,7 @@
 | [0014](0014-daily-board.md) | 承認（グループの並べ方は [ADR-0015](0015-board-layout-simplified.md)、ボードの状態の保存先は [ADR-0020](0020-board-oplog.md)、「今日の予定」の段階とカードの置き場所は [ADR-0034](0034-duration-input-auto-board-sticky-groups.md) で置換。一部置換: 0137, 0189） | DailyTaskView と task board の保存形式・細部 |
 | [0015](0015-board-layout-simplified.md) | 承認（一部置換: 0137） | task board のグループの並べ方を簡単にし、カードの ID を外す |
 | [0016](0016-design-under-control.md) | 承認 | デザインを管理下に置く（トークンの一元化、Obsidian の外観の固定、検査） |
-| [0017](0017-date-input.md) | 承認（一部置換: 0078） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
+| [0017](0017-date-input.md) | 承認（一部置換: 0078, 0228） | 日付の入力は自作のカレンダーと、短い書き方の入力欄にする |
 | [0018](0018-list-edit-routine-screen.md) | 承認（一部置換: 0021, 0032, 0077, 0152, 0183） | リストからの issue 編集、routine 画面、Do Today / Do Tomorrow |
 | [0019](0019-soften-theme.md) | 承認 | 目に優しくするため、ニュートラルな面と文字の色を抑える |
 | [0020](0020-board-oplog.md) | 承認 | ボードの状態を端末別の操作ログに置く |
@@ -66,7 +66,7 @@
 | [0075](0075-running-timer-status-bar.md) | 承認 | 記録中のタイマーを、PC のステータスバーに出す |
 | [0076](0076-ui-language.md) | 承認 | 自作プラグインの UI の言語を英語に寄せ、読ませる文だけ日本語にする |
 | [0077](0077-task-header-dom-mount.md) | 一部置換（ADR-0165） | issue / routine / member のヘッダーを、ノートのヘッダーと同じ DOM の差し込みにする |
-| [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
+| [0078](0078-simple-month-calendar.md) | 承認（ADR-0017・ADR-0030 のカレンダーの見た目と、ADR-0017 の入力の表を一部置換。一部置換: 0228） | 月のカレンダーを 1 つの部品にしてシンプルにし、すべての日付の選択で入力とカレンダーを使えるようにする |
 | [0085](0085-drawio-cli-build-render.md) | 置換（ADR-0111） | Claude Code が図を作る・直せるように、CLI に build / render / inspect を足し、描画を XML から自前で作る |
 | [0089](0089-git-auto-sync.md) | 承認 | PKM Git は自動で同期し、Git のコミットは共有の区切りだけで作る |
 | [0094](0094-snippet-command.md) | 承認（一部置換: 0111, 0194） | スニペットからコマンドを実行し、行頭の /drawio で新しい図とその参照を作る |
@@ -105,7 +105,7 @@
 | [0186](0186-issue-presets.md) | 承認 | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
 | [0189](0189-gtd-inbox-and-optional-close.md) | 承認 | 「Inbox に戻す」を GTD に合わせて絞り、ボードの締めを記録だけにする |
 | [0190](0190-sub-end-as-due.md) | 承認（一部置換: 0210） | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
-| [0193](0193-worklog-quick-edit.md) | 承認 | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
+| [0193](0193-worklog-quick-edit.md) | 承認（一部置換: 0228） | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
@@ -114,4 +114,6 @@
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
 | [0226](0226-closing-date-across-midnight.md) | 承認 | 締めの日付を Close board で決め、夜中の 0 時から決めた時刻までは前日を締める |
+| [0228](0228-date-time-input-language.md) | 承認 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
+| [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
 <!-- adr-index:end -->

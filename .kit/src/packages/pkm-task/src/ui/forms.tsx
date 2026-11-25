@@ -1,9 +1,9 @@
-import type { ComponentChildren, Ref } from "preact";
+import type { Ref } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { parseDateInput, parseTimeInput } from "../core/date-input";
-import { MonthCalendar, type DayMark } from "../../../shared/src/month-calendar.tsx";
-import { addDays, formatShortDate, localToday, type LocalDate, weekdayOf } from "../core/dates";
-import { Icon } from "./Icon";
+import { DATE_INPUT_ERROR, DATE_INPUT_EXAMPLES, formatDateLabel, formatDateTimeValue, parseDateInput, parseDateTimeInput } from "../../../shared/src/date-input.ts";
+import { MonthCalendar } from "../../../shared/src/month-calendar.tsx";
+import { addDays, localToday, type LocalDate, weekdayOf } from "../core/dates";
+import { DateTimeField } from "./DateTimeField";
 
 /** 1 行のテキストを入力して保存する */
 export function TextForm(props: { initial: string; maxLength?: number; placeholder?: string; onSubmit: (value: string) => void }) {
@@ -38,34 +38,37 @@ export function TextForm(props: { initial: string; maxLength?: number; placehold
 	);
 }
 
-/** 期限の印（ADR-0006・ADR-0030）。カレンダーの日に足す */
-function dueMark(date: LocalDate, softDeadline: LocalDate | null, deadline: LocalDate | null): DayMark | null {
-	const classes: string[] = [];
-	const notes: string[] = [];
-	if (date === softDeadline) (classes.push("is-soft-deadline"), notes.push("soft_deadline"));
-	if (date === deadline) (classes.push("is-deadline"), notes.push("deadline"));
-	if (deadline !== null && date > deadline) classes.push("is-after-deadline");
-	return classes.length > 0 ? { classes, notes } : null;
-}
-
 /** 入力の解釈の結果を、入力欄の下に出す */
 function DateHint(props: { text: string; parsed: LocalDate | null }) {
-	if (props.text.trim() === "") return <div class="vt-date-hint">e.g. 15 / 1224 / +1d / mon / +2w / +m</div>;
-	if (props.parsed === null) return <div class="vt-error">日付として読めません</div>;
-	return <div class="vt-date-hint">{`${props.parsed.slice(0, 4)}/${formatShortDate(props.parsed)}`}</div>;
+	if (props.text.trim() === "") return <div class="vt-date-hint">{DATE_INPUT_EXAMPLES}</div>;
+	if (props.parsed === null) return <div class="vt-error">{DATE_INPUT_ERROR}</div>;
+	return <div class="vt-date-hint">{formatDateLabel(props.parsed)}</div>;
 }
 
-/** 短い書き方の日付の入力欄（ADR-0017）と、解釈の結果。日付の選択はすべてこれとカレンダーを並べる（ADR-0078） */
+/**
+ * 日付の入力欄（入力言語。ADR-0228）と、解釈の結果。日付の選択はすべてこれとカレンダーを並べる（ADR-0078）。
+ * 欄を離れたときに、読めた入力を `yyyy-mm-dd` に書き換える
+ */
 function DateTextField(props: { text: string; parsed: LocalDate | null; onText: (value: string) => void; inputRef?: Ref<HTMLInputElement>; placeholder?: string }) {
 	return (
 		<div class="vt-date-field">
-			<input ref={props.inputRef} type="text" aria-label="Date" placeholder={props.placeholder} value={props.text} onInput={(e) => props.onText(e.currentTarget.value)} />
+			<input
+				ref={props.inputRef}
+				type="text"
+				aria-label="Date"
+				placeholder={props.placeholder}
+				value={props.text}
+				onInput={(e) => props.onText(e.currentTarget.value)}
+				onBlur={() => {
+					if (props.parsed !== null && props.parsed !== props.text) props.onText(props.parsed);
+				}}
+			/>
 			<DateHint text={props.text} parsed={props.parsed} />
 		</div>
 	);
 }
 
-/** 日付を 1 つ選ぶ。短い書き方の入力（ADR-0017）とカレンダーで選べる。クリアもできる */
+/** 日付を 1 つ選ぶ。入力言語の日付（ADR-0228）とカレンダーで選べる。クリアもできる */
 export function DateForm(props: {
 	initial: LocalDate | null;
 	onSubmit: (value: LocalDate | null) => void;
@@ -136,79 +139,6 @@ export function DateForm(props: {
 	);
 }
 
-/**
- * 月のカレンダーで実行日を on / off する（ADR-0012 の「calendar >」。Organize の Do Date の選択にも使う。ADR-0030）。
- * 短い書き方の入力で Enter を押しても、その日を選べる（ADR-0078）
- */
-export function CalendarForm(props: {
-	initial: LocalDate[];
-	softDeadline: LocalDate | null;
-	deadline: LocalDate | null;
-	onSubmit: (dates: LocalDate[]) => void;
-	/** 決定を押せるか（選んだ日付の数を受け取る）。省略時はいつでも押せる */
-	canSubmit?: (count: number) => boolean;
-	submitLabel?: string;
-	/** カレンダーと決定のボタンの間に出すもの（Organize の estimated など） */
-	children?: ComponentChildren;
-}) {
-	const today = localToday();
-	const [selected, setSelected] = useState(new Set(props.initial));
-	const [month, setMonth] = useState(today.slice(0, 7));
-	const [text, setText] = useState("");
-	const parsed = parseDateInput(text, today);
-	const enabled = props.canSubmit?.(selected.size) ?? true;
-	const toggle = (d: LocalDate) => {
-		const next = new Set(selected);
-		if (next.has(d)) next.delete(d);
-		else next.add(d);
-		setSelected(next);
-	};
-	return (
-		<div class="vt-calendar">
-			<form
-				class="vt-date-add"
-				onSubmit={(e) => {
-					e.preventDefault();
-					if (parsed === null) return;
-					// 入力からは足すだけ（すでに選んでいれば外さない）
-					setSelected(new Set(selected).add(parsed));
-					setMonth(parsed.slice(0, 7));
-					setText("");
-				}}
-			>
-				<DateTextField
-					text={text}
-					parsed={parsed}
-					placeholder="Type a date and press Enter"
-					onText={(value) => {
-						setText(value);
-						const next = parseDateInput(value, today);
-						if (next !== null) setMonth(next.slice(0, 7));
-					}}
-				/>
-				<button type="submit" disabled={parsed === null}>
-					Add
-				</button>
-			</form>
-			<MonthCalendar
-				month={month}
-				onMonth={setMonth}
-				today={today}
-				isSelected={(d) => selected.has(d)}
-				onPick={toggle}
-				mark={(d) => dueMark(d, props.softDeadline, props.deadline)}
-			/>
-			{props.children}
-			<div class="vt-form">
-				<span class="vt-muted">{selected.size} days</span>
-				<button class="mod-cta" disabled={!enabled} onClick={() => enabled && props.onSubmit([...selected].sort())}>
-					{props.submitLabel ?? "Save"}
-				</button>
-			</div>
-		</div>
-	);
-}
-
 /** 実行日の 1 日分の枠。7 日ストリップとカレンダーで共通 */
 export function DayCell(props: {
 	date: LocalDate;
@@ -241,75 +171,11 @@ export function DayCell(props: {
 	);
 }
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-function dateOfMs(ms: number | null): string {
-	if (ms === null) return "";
-	const d = new Date(ms);
-	return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function timeOfMs(ms: number | null): string {
-	if (ms === null) return "";
-	const d = new Date(ms);
-	return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
 export interface WorklogDraft {
 	fromMs: number;
 	/** 空なら記録中 */
 	toMs: number | null;
 	description: string;
-}
-
-/** 日付と時刻の入力欄（ADR-0017: 時刻は入力欄を分ける）。カレンダーはアイコンで開く */
-function DateTimeField(props: { label: string; date: string; time: string; onDate: (value: string) => void; onTime: (value: string) => void }) {
-	const today = localToday();
-	const parsed = parseDateInput(props.date, today);
-	const [open, setOpen] = useState(false);
-	const [month, setMonth] = useState((parsed ?? today).slice(0, 7));
-	return (
-		<div class="vt-text-field">
-			<span>{props.label}</span>
-			<div class="vt-datetime">
-				<input
-					type="text"
-					aria-label={`${props.label} date`}
-					placeholder="Date"
-					value={props.date}
-					onInput={(e) => {
-						props.onDate(e.currentTarget.value);
-						const next = parseDateInput(e.currentTarget.value, today);
-						if (next !== null) setMonth(next.slice(0, 7));
-					}}
-				/>
-				<input class="vt-time-input" type="text" aria-label={`${props.label} time`} placeholder="hhmm" value={props.time} onInput={(e) => props.onTime(e.currentTarget.value)} />
-				<button type="button" class="vt-calendar-toggle" aria-label={`${props.label} calendar`} aria-expanded={open} onClick={() => setOpen(!open)}>
-					<Icon name="calendar" />
-				</button>
-			</div>
-			{props.date.trim() !== "" && <DateHint text={props.date} parsed={parsed} />}
-			{open && (
-				<MonthCalendar
-					month={month}
-					onMonth={setMonth}
-					today={today}
-					isSelected={(d) => d === parsed}
-					onPick={(d) => {
-						props.onDate(d);
-						setOpen(false);
-					}}
-				/>
-			)}
-		</div>
-	);
-}
-
-/** 日付と時刻の入力を ms にする。読めなければ null */
-function toMs(date: string, time: string): number | null {
-	const d = parseDateInput(date, localToday());
-	const t = parseTimeInput(time);
-	return d === null || t === null ? null : new Date(`${d}T${t}:00`).getTime();
 }
 
 /** worklog 1 件の追加と編集（ADR-0012）。onDelete があれば削除を出す。削除は 2 回押して確定する */
@@ -318,24 +184,25 @@ export function WorklogForm(props: {
 	onSubmit: (draft: WorklogDraft) => void;
 	onDelete?: () => void;
 }) {
-	const [fromDate, setFromDate] = useState(dateOfMs(props.initial.fromMs));
-	const [fromTime, setFromTime] = useState(timeOfMs(props.initial.fromMs));
-	const [toDate, setToDate] = useState(dateOfMs(props.initial.toMs));
-	const [toTime, setToTime] = useState(timeOfMs(props.initial.toMs));
+	const now = Date.now;
+	const [fromText, setFromText] = useState(formatDateTimeValue(props.initial.fromMs));
+	const [toText, setToText] = useState(props.initial.toMs === null ? "" : formatDateTimeValue(props.initial.toMs));
 	const [description, setDescription] = useState(props.initial.description);
 	const [confirming, setConfirming] = useState(false);
-	const fromMs = toMs(fromDate, fromTime);
-	// 終了は時刻だけなら開始と同じ日。どちらも空なら記録中
-	const running = toDate.trim() === "" && toTime.trim() === "";
-	const endMs = running ? null : toMs(toDate.trim() === "" ? fromDate : toDate, toTime);
+	// 開始は過去向き、終了は開始より後（ADR-0228 の 4）。終了が空なら記録中
+	const fromMs = parseDateTimeInput(fromText, { now: now(), timeOnly: { kind: "past" } });
+	const running = toText.trim() === "";
+	const endMs = running ? null : parseDateTimeInput(toText, { now: now(), timeOnly: fromMs === null ? { kind: "past" } : { kind: "after", baseMs: fromMs } });
 	const error =
 		fromMs === null
-			? "開始の日付と時刻を入力してください"
+			? "開始の日時を入力してください"
 			: !running && endMs === null
-				? "終了の日付と時刻を確かめてください"
-				: endMs !== null && endMs <= fromMs
-					? "終了は開始より後にしてください"
-					: null;
+				? "終了の日時を確かめてください"
+				: fromMs > now() || (endMs !== null && endMs > now())
+					? "今より後の日時は入れられません"
+					: endMs !== null && endMs <= fromMs
+						? "終了は開始より後にしてください"
+						: null;
 	return (
 		<form
 			class="vt-worklog-form"
@@ -344,8 +211,8 @@ export function WorklogForm(props: {
 				if (error === null) props.onSubmit({ fromMs: fromMs!, toMs: endMs, description: description.trim() });
 			}}
 		>
-			<DateTimeField label="Start" date={fromDate} time={fromTime} onDate={setFromDate} onTime={setFromTime} />
-			<DateTimeField label="End (empty while running)" date={toDate} time={toTime} onDate={setToDate} onTime={setToTime} />
+			<DateTimeField label="Start" text={fromText} parsed={fromMs} onText={setFromText} now={now} />
+			<DateTimeField label="End" text={toText} parsed={endMs} placeholder="Empty while running" onText={setToText} now={now} />
 			<label class="vt-text-field">
 				<span>Description</span>
 				<input type="text" value={description} onInput={(e) => setDescription(e.currentTarget.value)} />

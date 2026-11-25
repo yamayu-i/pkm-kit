@@ -1,54 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { clockValueAt, dialPositions, formatTimeInput, parseTimeInputAt, planWorklogTimes } from "../src/core/worklog-times";
+import { clockValueAt, dialPositions, planWorklogTimes } from "../src/core/worklog-times";
 
-/** ADR-0193: 記録の開始・終了の短い書き方と、ダイアログの操作 */
+/** ADR-0193: 記録の開始・終了を直すダイアログの操作（書き方は shared/test/date-input.test.ts） */
 
 // 2026-11-16 (MON) 23:00（テストは日本時間）
 const NOW = new Date("2026-11-16T23:00:00+09:00").getTime();
 const at = (s: string) => new Date(`${s}:00+09:00`).getTime();
-
-describe("parseTimeInputAt", () => {
-	it.each([
-		["-22m", "2026-11-16T22:38"],
-		["-70m", "2026-11-16T21:50"],
-		["-1h10m", "2026-11-16T21:50"],
-		["-2h", "2026-11-16T21:00"],
-		["2200", "2026-11-16T22:00"],
-		["2200-1d", "2026-11-15T22:00"],
-		["2200-3d", "2026-11-13T22:00"],
-		["152200", "2026-11-15T22:00"],
-		["08262200", "2026-08-26T22:00"],
-		["2608262200", "2026-08-26T22:00"],
-		["2026-08-26 22:00", "2026-08-26T22:00"],
-		[" -22M ", "2026-11-16T22:38"],
-	])("%s → %s", (input, expected) => {
-		expect(parseTimeInputAt(input, NOW)).toBe(at(expected));
-	});
-
-	it("1 分未満を切り捨てた今を基準にする", () => {
-		expect(parseTimeInputAt("-1m", NOW + 30_000)).toBe(at("2026-11-16T22:59"));
-	});
-
-	it("月をまたぐ日の引き算", () => {
-		expect(parseTimeInputAt("0900-1d", at("2026-12-01T10:00"))).toBe(at("2026-11-30T09:00"));
-	});
-
-	it.each(["", "+10m", "-30", "262200-1d", "2400", "2260", "3122000", "0231 2200", "02302200", "abc", "-m", "-1d", "22:00", "-0m10"])("読めない: %j", (input) => {
-		expect(parseTimeInputAt(input, NOW)).toBeNull();
-	});
-
-	it("今より後は null（未来の日時）", () => {
-		expect(parseTimeInputAt("2301", NOW)).toBeNull();
-		expect(parseTimeInputAt("262200", NOW)).toBeNull();
-		expect(parseTimeInputAt("2300", NOW)).toBe(NOW);
-	});
-
-	it("書き換えた後の文字は同じ日時に戻る", () => {
-		const ms = at("2026-08-26T22:05");
-		expect(formatTimeInput(ms)).toBe("2026-08-26 22:05");
-		expect(parseTimeInputAt(formatTimeInput(ms), NOW)).toBe(ms);
-	});
-});
 
 describe("planWorklogTimes", () => {
 	const from = at("2026-11-16T22:00");

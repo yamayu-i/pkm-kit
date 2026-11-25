@@ -203,8 +203,9 @@ packages/design/tokens.json（正本）
 | 分類のバッジ | `.vt-badge.vt-gtd-list` | 読み取り専用。枠のない secondary-container の面 + 先頭の 16px のアイコン。押せる入力チップと見分ける。issue 画面の GTD の分類（Inbox・Next Action・Calendar・Tickler）と Project（ADR-0210） |
 | 期限 | `.vt-due` | ラベル・値・カレンダーアイコンの横並び。近づくと色が付く |
 | 日付の枠 | `.vt-day` | 7 日のストリップの 36px の角丸の四角。土日は枠が太い。今日は太字と下に点で、選んでいないときは枠と文字を primary にする（ADR-0030） |
-| 月のカレンダー | `.vt-cal`（`.vt-cal-day`） | 共有の部品（`packages/shared/src/month-calendar.tsx`、ADR-0078）。見出しは英語の月と年 + ‹ ›、曜日は 1 文字。日は枠のない 40px の丸、今日は primary の枠線の丸、選んだ日は `--vt-scheduled` の塗りの丸。月の外の日は空ける。期限は丸の外側の色の輪 |
-| 日付の入力 | `.vt-date-field` | 短い書き方の入力欄 + 解釈の表示（ADR-0017）。日付を選ぶ所では、必ず月のカレンダーと並べる（ADR-0078） |
+| 月のカレンダー | `.vt-cal`（`.vt-cal-day`） | 共有の部品（`packages/shared/src/month-calendar.tsx`、ADR-0078）。見出しは英語の月と年 + ‹ ›。月と年はそれぞれ ▾ のボタン（`.vt-cal-menu`）で、押すと日の格子の代わりに 3 列の一覧（`.vt-cal-options`、表示中は `--vt-scheduled` の塗りの丸。ADR-0228）を出す。曜日は 1 文字。日は枠のない 40px の丸、今日は primary の枠線の丸、選んだ日は `--vt-scheduled` の塗りの丸。月の外の日は空ける。期限は丸の外側の色の輪 |
+| 日付の入力 | `.vt-date-field` | 入力言語の日付の欄 + 解釈の表示（`2026-11-24 TUE`。ADR-0228）。日付を選ぶ所では、必ず月のカレンダーと並べる（ADR-0078） |
+| 日時の入力 | `.vt-wt-row` | 入力言語の日時（`時刻 [日付]`）の 1 つの欄 + カレンダーと時計のボタン + 解釈の表示（`2026-11-24 TUE 22:00`）。pkm-task の `ui/DateTimeField.tsx`（ADR-0193・ADR-0228） |
 | タイル | `.vt-effort-cell` | ラベル + 大きい数字。編集できるものは `.is-editable`、計算値は `.is-readonly` |
 | リストの項目 | `.vt-log` | 押せるカード。左に日付ブロック、右に時間のチップと鉛筆 |
 | ページング | `.vt-pager` | 丸い前後ボタン（40px、枠線）+ ページ番号（今のページは primary で塗る）。多いときは `…` で省略 |
