@@ -1,71 +1,71 @@
 {
-  "fingerprint": "81e9b74d24c55ba0e8cade871c9be2fae68154dac4845286e6a2380f63d4510a",
+  "fingerprint": "add5fa77e3501053b38541ba16666274f3c0f769ef75d5c4d9d14245af3ed314",
   "platform": "linux",
-  "browser": "153.0.8010.12",
+  "browser": "158.0.8127.36",
   "images": [
     {
       "screen": "task--daily",
       "file": "pkm-guide/ui/task--daily-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "c4144a984eb69985778a7b342455e78d5982396fdf8f4c9b82987799f81be02f",
-      "text": "0a61100376cd54c642f629278662097ead8e9d5320a760f1891d41dde8724105"
+      "sha256": "e6ce586f78fb25335a39973b2674b61cb5848fbff1a49480a9ae1fde650c2d35",
+      "text": "7eeeaa94a8385ccad13d150b219ff308ea0ca0f6e38aea890c09e2a12e58c656"
     },
     {
       "screen": "task--daily",
       "file": "pkm-guide/ui/task--daily-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "d6c03b38638ff0e7aef1878a28bbb8ff0fe4e53a1fea5c5f7251dae9ced60d34",
-      "text": "acf14539cdecd65386f4d05c5be71fb7dc6fa2a18890fd6ac5416a2627395ef2"
+      "sha256": "5875e123d65b6f12b806c4529a25803df5567a56d78acd0644c173000ee5bdd5",
+      "text": "c8ff5b837967fe95fdaf89fb452a65adf3a6cb0b33706b09a1a958bc307dc0df"
     },
     {
       "screen": "task--daily",
       "file": "pkm-guide/ui/task--daily-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "e70e9d280b2dcec7519ab16b8997ab7573657f1fdac7d78d6d9668f4db0edb00",
-      "text": "0a61100376cd54c642f629278662097ead8e9d5320a760f1891d41dde8724105"
+      "sha256": "1c5b792b7c2f69b09e8ea35d58e2c830f9a3d4d90fd249e4a8ac50023ab36fa0",
+      "text": "7eeeaa94a8385ccad13d150b219ff308ea0ca0f6e38aea890c09e2a12e58c656"
     },
     {
       "screen": "task--daily",
       "file": "pkm-guide/ui/task--daily-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "83e772ddf9e6ccab48735b89eb9a6ccffa50c1a58eda116017145bee60985729",
-      "text": "acf14539cdecd65386f4d05c5be71fb7dc6fa2a18890fd6ac5416a2627395ef2"
+      "sha256": "7c26428c11560b7e0ce02af6d0f2080c47d624eddd695516b989f1cd4509b385",
+      "text": "c8ff5b837967fe95fdaf89fb452a65adf3a6cb0b33706b09a1a958bc307dc0df"
     },
     {
       "screen": "task--pick",
       "file": "pkm-guide/ui/task--pick-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "502720b9f3ffb56353369cdea5536f284045f75a9f7fe0714f1fb6151899cc37",
-      "text": "c97fab7541285bd1d465d7c5d19d5cb0fc2a1680e4e97ad25baf00deb9ec9fca"
+      "sha256": "f8d4409726810e9d9abe4092958f8388432006b9a4ed954aea851046f4835454",
+      "text": "da6d9ca47aa13af5e80cb7c010190478cd0f17d2155aafd61be9ad0194b667e7"
     },
     {
       "screen": "task--pick",
       "file": "pkm-guide/ui/task--pick-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "d7f52f892fddf09737bf51b7447a201f4af352cf588923c6f565bcf58a62475b",
-      "text": "652af16e8be0d1ce26ffc9d7e5360afe067e11f13c5d7af6877357e39e847765"
+      "sha256": "0ed51509bd5559161f9ab688b4909f73909ddb3e4c230a05e5b11068747d7e59",
+      "text": "87155a2af4091c21e1bceb3713d508fc3b0d08c1baa793f67e7e211a37e92ac0"
     },
     {
       "screen": "task--pick",
       "file": "pkm-guide/ui/task--pick-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "3dfde8e9f3ecf594d7419c8a4c2279686f171bd163fa2a7a8a6aaeb50d8e64e5",
-      "text": "c97fab7541285bd1d465d7c5d19d5cb0fc2a1680e4e97ad25baf00deb9ec9fca"
+      "sha256": "a886c32c15955f4fd9331bf56c1b52f01ee711e3fbec2c8d335b0c93e87e3938",
+      "text": "da6d9ca47aa13af5e80cb7c010190478cd0f17d2155aafd61be9ad0194b667e7"
     },
     {
       "screen": "task--pick",
       "file": "pkm-guide/ui/task--pick-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "1e7c2fa3554de0438f8545e4160402ef395ed7303c392d26ede413188e890737",
-      "text": "652af16e8be0d1ce26ffc9d7e5360afe067e11f13c5d7af6877357e39e847765"
+      "sha256": "1041d66c11db7d0757ad2113cb1981578c929793852fda22bca03e366da04679",
+      "text": "87155a2af4091c21e1bceb3713d508fc3b0d08c1baa793f67e7e211a37e92ac0"
     },
     {
       "screen": "task--daily--empty",
@@ -200,96 +200,96 @@
       "file": "pkm-guide/ui/task--header-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "07136af09254c42c246f57bdfb0cb0839bf601fde5b3e89cdd511e549df40ae6",
-      "text": "80eafeb2916f9d73f9620a55ac2003306604e1dd728df7ac44f38c37069e24a0"
+      "sha256": "592203998007e966f9f19588b591863e314070f46e6f03d919a290196257f6a9",
+      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "8ed6c61b0c4cff3754b8a0cd467054d62942c01cd5f13fd247efa6788d6e8604",
-      "text": "80eafeb2916f9d73f9620a55ac2003306604e1dd728df7ac44f38c37069e24a0"
+      "sha256": "aebf570ff806e1bc77da6c84f9bc8fde77e52c1b8857bbee8d702f27878e8b42",
+      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "948e021a487fecb1821bd1e869b6f989db55c244da2d79bd87c72318d8a150aa",
-      "text": "80eafeb2916f9d73f9620a55ac2003306604e1dd728df7ac44f38c37069e24a0"
+      "sha256": "92721aa34094a248aa079a5e0066ecfb04e6c3b658a323c5ca37770baebca06f",
+      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "fbe9ff1453b3f9025232354135c3ddf0f8425536718e2ae3924e5a7bd343ec7e",
-      "text": "80eafeb2916f9d73f9620a55ac2003306604e1dd728df7ac44f38c37069e24a0"
+      "sha256": "a29800b5de97e141699974dcba036b8d80feb7a21558bc798d09c3a58b6b0496",
+      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
     },
     {
       "screen": "task--timeline",
       "file": "pkm-guide/ui/task--timeline-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "29d76ea284b0c810acd198c2c6af99b5466cf618acf7fe87323340a8355e68f4",
-      "text": "3929abbaca60d06e9d90f43f0dcc3c1db5bb3864853f039ef96eeaf4fbb022d3"
+      "sha256": "db63bf6b7fb7a6e129b62b2375befa70ce636b566b9c4c6ee3225074f95da3f4",
+      "text": "abec6e0823fa858caccb3bfdab01e27f732ddf0ea0225d93555ba301b2c29a21"
     },
     {
       "screen": "task--timeline",
       "file": "pkm-guide/ui/task--timeline-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "e520bcf4d48f2fc284236718f982522cbd565342a6ac5b339a0f62c483104de9",
-      "text": "3929abbaca60d06e9d90f43f0dcc3c1db5bb3864853f039ef96eeaf4fbb022d3"
+      "sha256": "ad8d86637c0d16e06c4c44f8d29612b034a992a7fc4f6ef42e02a558eef2d19f",
+      "text": "abec6e0823fa858caccb3bfdab01e27f732ddf0ea0225d93555ba301b2c29a21"
     },
     {
       "screen": "task--timeline",
       "file": "pkm-guide/ui/task--timeline-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "7e6005f1c81066dd791b23182af9e608966b61a6134ff42f659d24de9b46c223",
-      "text": "3929abbaca60d06e9d90f43f0dcc3c1db5bb3864853f039ef96eeaf4fbb022d3"
+      "sha256": "975dc0e1bd7557837f7c87a03913466eee47bd4e2018a7a19392dd13eca0ee26",
+      "text": "abec6e0823fa858caccb3bfdab01e27f732ddf0ea0225d93555ba301b2c29a21"
     },
     {
       "screen": "task--timeline",
       "file": "pkm-guide/ui/task--timeline-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "28851c4a0d38cad5e8ec2a118fb49df3426607df952bde39735bb87e68c32b32",
-      "text": "3929abbaca60d06e9d90f43f0dcc3c1db5bb3864853f039ef96eeaf4fbb022d3"
+      "sha256": "873b0491030d2107130961285e7a57a28a49cb202513e7e7c18dea2072718846",
+      "text": "abec6e0823fa858caccb3bfdab01e27f732ddf0ea0225d93555ba301b2c29a21"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "e7ce47ebb63219919152c77b6c5d76065cc1b0f8f5c00ea2d56ff520c604ffe5",
-      "text": "96a0a9024493425679d1ac5bc9efa75be8b79f3657d29f725fbcf987dbd335e8"
+      "sha256": "f54fa8c87d85fbd05c9b672710133618e65990c2ee1c07117cc67218ca1042b8",
+      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "082a2f63c65c31d850731f191515c1b54663d61e87ba04524b5dca4a6631c173",
-      "text": "96a0a9024493425679d1ac5bc9efa75be8b79f3657d29f725fbcf987dbd335e8"
+      "sha256": "b02f7ccc36993e6b0f433fe907509550458c159faaf05910fdd84c924953e760",
+      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "2b40aa923c3719574cbb01aa303bf4f704f0eebc2c879bd944116bd4ce6fdc62",
-      "text": "96a0a9024493425679d1ac5bc9efa75be8b79f3657d29f725fbcf987dbd335e8"
+      "sha256": "214a4e2a147d8820206a23fddefa636bdfc69e79836845f0bce08e8d4812b0d6",
+      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "1b93db4ebfa9f11dfa0e470a74fd96600aea4ea6b6c56ec6d8d5e193f1a46fab",
-      "text": "96a0a9024493425679d1ac5bc9efa75be8b79f3657d29f725fbcf987dbd335e8"
+      "sha256": "fb3a2d32c9d7f53921e86a8b297293527479c5c26be8379b59b61747141d8775",
+      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
     },
     {
       "screen": "task--header--closed",
@@ -328,32 +328,32 @@
       "file": "pkm-guide/ui/task--forms-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "d3ae4d640b6b2a4e8a7d5e841bcdb71c2e8b041b9ef9a8e4a2fa7ea11c5ffb88",
-      "text": "fd0160e76da0434d950045879623254d829ea1206ed11766a376ac5d6630b59a"
+      "sha256": "b5c46f926c6b7ec7dde060444df7dd7a3ee5b3b626cab14dee0841b3865ff1ae",
+      "text": "12a346b47457b3278bda6aec738847ce5780bf0d51dba14252889c80eb0c03eb"
     },
     {
       "screen": "task--forms",
       "file": "pkm-guide/ui/task--forms-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "cff8bd9fe565045dc47f46da81edad2077cfd780cd304dc3703545c2c01754cc",
-      "text": "fd0160e76da0434d950045879623254d829ea1206ed11766a376ac5d6630b59a"
+      "sha256": "3d6c1a83191bd42b3b9312689cf3db45387a654827e88cd9d6cf986b413f7c63",
+      "text": "12a346b47457b3278bda6aec738847ce5780bf0d51dba14252889c80eb0c03eb"
     },
     {
       "screen": "task--forms",
       "file": "pkm-guide/ui/task--forms-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "fbe63265c0514108856ec41c35060001025a5f3dbde54c431f680a7fcb970744",
-      "text": "fd0160e76da0434d950045879623254d829ea1206ed11766a376ac5d6630b59a"
+      "sha256": "61f078d4efb5280df927975caac830e400cfbb6e6d36d0e73479cf768d46c284",
+      "text": "12a346b47457b3278bda6aec738847ce5780bf0d51dba14252889c80eb0c03eb"
     },
     {
       "screen": "task--forms",
       "file": "pkm-guide/ui/task--forms-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "59dcff150a0d9a29effc3682f326ba3bb6f75071419f41a2d9d21277f524992b",
-      "text": "fd0160e76da0434d950045879623254d829ea1206ed11766a376ac5d6630b59a"
+      "sha256": "49833a7c148035e243f1fb814fd71462234f37fc8fc9095f3c6b8b70d3346002",
+      "text": "12a346b47457b3278bda6aec738847ce5780bf0d51dba14252889c80eb0c03eb"
     },
     {
       "screen": "task--routine",
@@ -392,32 +392,32 @@
       "file": "pkm-guide/ui/task--issues-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "d0c01d397bed4cd80e840f9a8ebe960f62ad05baa6d395e6d9b58403ca2ab12f",
-      "text": "a684e2e36f54d4baf3e54a546337e77771d2d20884240f935197a7969271c09d"
+      "sha256": "08750b6c219c23cd4620038cd04fdb2d1c005aa883924b335663022b1a7ab96d",
+      "text": "c866dc39dca00e8b1abbf7c2ce2ef6e6f77899733707d353613d584c6cd9ce6f"
     },
     {
       "screen": "task--issues",
       "file": "pkm-guide/ui/task--issues-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "af6eaf9bfb649e01992a1581eb6635d560ac6edb6e6df050980f04e0d3fb5dff",
-      "text": "30ec0320bcd4189a53cb55e2be7227cb8eb33cbc50e701ed3e1a89a095869841"
+      "sha256": "3f02b5e821db13b79c34e52dc8c05f7a7ffc410de58e25d035627fc43061bcaa",
+      "text": "439931d7b0e9cab41ff02ed46bf5f345c31e6a367fb3b583c47972e3d5605e7d"
     },
     {
       "screen": "task--issues",
       "file": "pkm-guide/ui/task--issues-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "83002f1f805c24e90c60b17efdf079118820d4fdcf3b9e2cfe3e9e453e91d37e",
-      "text": "a684e2e36f54d4baf3e54a546337e77771d2d20884240f935197a7969271c09d"
+      "sha256": "59e93613eeac5c342049fb7846b4b8893e6ef2be07d811e73dc06452ac86342a",
+      "text": "c866dc39dca00e8b1abbf7c2ce2ef6e6f77899733707d353613d584c6cd9ce6f"
     },
     {
       "screen": "task--issues",
       "file": "pkm-guide/ui/task--issues-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "6da84dc1b88f59f39acf685443aef1d3d3279b7fb706d971f247c2e429d95183",
-      "text": "30ec0320bcd4189a53cb55e2be7227cb8eb33cbc50e701ed3e1a89a095869841"
+      "sha256": "fe9d0a320d47125ab8767054a13ed3c1ab3352eeca2f9693e3d8238dbc45451b",
+      "text": "439931d7b0e9cab41ff02ed46bf5f345c31e6a367fb3b583c47972e3d5605e7d"
     },
     {
       "screen": "task--issues--empty",
@@ -520,96 +520,96 @@
       "file": "pkm-guide/ui/task--someday-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "72173810d269f813a9522d6dd6e03fcce90170960f476aa18d075d2bc098e7cb",
-      "text": "c6eb05847f8e0ab9aa4dd07d37fdd4a9f41b384f575e6f0508471eb717540da9"
+      "sha256": "f0630bc35c96841884609ab146ff5d7178322893d7320da0fbc7c30352cf0ea2",
+      "text": "8145f4f6dbbc7cfef5655f395812b388acc56d39e956839b674318c5693c2fbc"
     },
     {
       "screen": "task--someday",
       "file": "pkm-guide/ui/task--someday-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "e360b7d0cff6bb0e3cb00809108bd9f6647d8e134975b92bc086681a6ee79ed1",
-      "text": "2cdcaafa8929a2aa17eea842be360a8bc5fb499e3d8859caa160deb495218169"
+      "sha256": "6c29dc8c9ccf0513a7b512006e8f95922283e9a64c951d65f2952174638e617f",
+      "text": "a84a80172d63612faec87d806e17aec309a58048a7a7c7b69d6afa0f693beee5"
     },
     {
       "screen": "task--someday",
       "file": "pkm-guide/ui/task--someday-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "2321f438a10ad0b3be16487d9413cf11e19f4c9ae55e876a0b540102a2b92d7c",
-      "text": "c6eb05847f8e0ab9aa4dd07d37fdd4a9f41b384f575e6f0508471eb717540da9"
+      "sha256": "61fd7b5a97f92897d4e35461879f981c2a070454a6a5de583ce4e5af40d8fcad",
+      "text": "8145f4f6dbbc7cfef5655f395812b388acc56d39e956839b674318c5693c2fbc"
     },
     {
       "screen": "task--someday",
       "file": "pkm-guide/ui/task--someday-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "44f8567647a837783ff011e3a7997947ec7c7c21b05af6ba31b46f0744b2c529",
-      "text": "2cdcaafa8929a2aa17eea842be360a8bc5fb499e3d8859caa160deb495218169"
+      "sha256": "ec5ad4642b70c956ce9ab171d710f20999fd3b6a258aac373b260675448efcaa",
+      "text": "a84a80172d63612faec87d806e17aec309a58048a7a7c7b69d6afa0f693beee5"
     },
     {
       "screen": "task--someday--empty",
       "file": "pkm-guide/ui/task--someday--empty-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "59028645de94e8a68d25d15189d8d5f01dd878fd7c6fe99cdafdab9207e29359",
-      "text": "5c7e36c0349b6eb9c9e0d533eea488314b91677c3b2ece2076ac814b411af9c1"
+      "sha256": "493b4c3088bbd83646bd159f243ae68e2988afa65c1e2ab33abbf7b92ed5ae52",
+      "text": "75403d8bf2295d6aebecec33a5a6045afc24ccf3ba64ff9ddd7e19259c8c2c15"
     },
     {
       "screen": "task--someday--empty",
       "file": "pkm-guide/ui/task--someday--empty-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "ed07f90824f99e8f5a364f6ad22e05f0497787faf0ac2fed43d137bbe2c2dd67",
-      "text": "5c7e36c0349b6eb9c9e0d533eea488314b91677c3b2ece2076ac814b411af9c1"
+      "sha256": "0ed3a7d77ab64c13ef54687c8c1cc46d5f4b8fe650f99d3509009db50a18b5c1",
+      "text": "75403d8bf2295d6aebecec33a5a6045afc24ccf3ba64ff9ddd7e19259c8c2c15"
     },
     {
       "screen": "task--someday--empty",
       "file": "pkm-guide/ui/task--someday--empty-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "1a0088238ffc730c5227115157a3bd00567c69474f0b18a83527a73d9556183f",
-      "text": "5c7e36c0349b6eb9c9e0d533eea488314b91677c3b2ece2076ac814b411af9c1"
+      "sha256": "f10b4fac27067190a697e82f0744f4ad751fcb71cea6d567e869f00cfb9fc536",
+      "text": "75403d8bf2295d6aebecec33a5a6045afc24ccf3ba64ff9ddd7e19259c8c2c15"
     },
     {
       "screen": "task--someday--empty",
       "file": "pkm-guide/ui/task--someday--empty-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "150b1b921b970e94b29a2a3c77223eb6fc124a8e115133c07d38bfd27731da7c",
-      "text": "5c7e36c0349b6eb9c9e0d533eea488314b91677c3b2ece2076ac814b411af9c1"
+      "sha256": "50f840cac7b98979eaa7f83eae2f1eab4b85318b22ed251ed5df231b09780ca3",
+      "text": "75403d8bf2295d6aebecec33a5a6045afc24ccf3ba64ff9ddd7e19259c8c2c15"
     },
     {
       "screen": "task--organize",
       "file": "pkm-guide/ui/task--organize-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "b7607afef6c695ec12dfd0a5b9a9ff3a7ce288d4372984256305a988eb4d9b2e",
-      "text": "098b8292732954b867e7a1fd6227ac9516618789884ed0c5f62360b129644b47"
+      "sha256": "0cece2f8752750dc5b60819b74e78b640ef0c03ae547ffa7dd2c4cb48ff578e0",
+      "text": "834a135ba1a544934dec53713cfaf6b3f8d99d3588ca8e1be5691e6e9b69c2d9"
     },
     {
       "screen": "task--organize",
       "file": "pkm-guide/ui/task--organize-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "2df353c9c018da2dd731139cea20fac0bf4fe885adf59eb135faee0990254cf9",
-      "text": "5c4203d181808b05bf0b4c801202295e70f1045d96276772202ee0463e2767c9"
+      "sha256": "8aa5ba6f3633f4b5979b4cce03b4733dd8f101b0bbceecbad8d937f39ba46ad6",
+      "text": "ed3e653ff0b764f351d5e9b436269c03c185bb50baba8150e359f1471ced9175"
     },
     {
       "screen": "task--organize",
       "file": "pkm-guide/ui/task--organize-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "630cbdb3605c92e966521e099e09cca8c8a0670cf38d5a0449a4e355d2b462cd",
-      "text": "098b8292732954b867e7a1fd6227ac9516618789884ed0c5f62360b129644b47"
+      "sha256": "c818a70a53154911d80935cbea799eae8930465b6d4d53325c0e756d733f663f",
+      "text": "834a135ba1a544934dec53713cfaf6b3f8d99d3588ca8e1be5691e6e9b69c2d9"
     },
     {
       "screen": "task--organize",
       "file": "pkm-guide/ui/task--organize-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "af296b0871f6e46e3f1cd00de0a7898c1a9e83e0840f1a32956b369b4bd2dde8",
-      "text": "5c4203d181808b05bf0b4c801202295e70f1045d96276772202ee0463e2767c9"
+      "sha256": "1efc2d4a9441bf81afdc4200926679f0c161bb3ac11d4bc9fd250d2be61d396c",
+      "text": "ed3e653ff0b764f351d5e9b436269c03c185bb50baba8150e359f1471ced9175"
     },
     {
       "screen": "task--organize--empty",
@@ -706,6 +706,70 @@
       "width": "narrow",
       "sha256": "0bd9f31c07c8a1323f19c36ff4b5b1b0e888938a78f99b57765b95f4743289d0",
       "text": "9b8f20eccf3137dcc6bb577f1834248e8347859f9704c8fca2f416416525fc10"
+    },
+    {
+      "screen": "task--projects",
+      "file": "pkm-guide/ui/task--projects-light-wide.png",
+      "theme": "light",
+      "width": "wide",
+      "sha256": "528430277aa0214e1b357ad338ec51ab17d2486670f4fb2efda5ab13cf2ec804",
+      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+    },
+    {
+      "screen": "task--projects",
+      "file": "pkm-guide/ui/task--projects-light-narrow.png",
+      "theme": "light",
+      "width": "narrow",
+      "sha256": "00596d6302fb00c0998ddeb12b002043755f716742f1311e143aa12a99e40694",
+      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+    },
+    {
+      "screen": "task--projects",
+      "file": "pkm-guide/ui/task--projects-dark-wide.png",
+      "theme": "dark",
+      "width": "wide",
+      "sha256": "f8b155516e1729a85cf2954b2abf0953dd91716737218a475b04754bfd86e8a9",
+      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+    },
+    {
+      "screen": "task--projects",
+      "file": "pkm-guide/ui/task--projects-dark-narrow.png",
+      "theme": "dark",
+      "width": "narrow",
+      "sha256": "2a0ad19dc8ced4a2c2f7a2ceac18963fcfb588141af83386ed6a36930411bbfd",
+      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+    },
+    {
+      "screen": "task--projects--empty",
+      "file": "pkm-guide/ui/task--projects--empty-light-wide.png",
+      "theme": "light",
+      "width": "wide",
+      "sha256": "95ca045c4e4d2de37bf9f4872fd3f2d54d06223a47c3d3da4d5cd96e95e348dc",
+      "text": "c831567bb4dea209cfd5a5a97355139782b52e41dc998ccb7733e15c71ed819d"
+    },
+    {
+      "screen": "task--projects--empty",
+      "file": "pkm-guide/ui/task--projects--empty-light-narrow.png",
+      "theme": "light",
+      "width": "narrow",
+      "sha256": "60d972617d7f9083544a772d0d3d51e14875edf0c7189d7459bb0e29a5629722",
+      "text": "c831567bb4dea209cfd5a5a97355139782b52e41dc998ccb7733e15c71ed819d"
+    },
+    {
+      "screen": "task--projects--empty",
+      "file": "pkm-guide/ui/task--projects--empty-dark-wide.png",
+      "theme": "dark",
+      "width": "wide",
+      "sha256": "43d63ca917c0067ecc76374bcd657e2b7a00f255156d3546ac3278cca6e7169e",
+      "text": "c831567bb4dea209cfd5a5a97355139782b52e41dc998ccb7733e15c71ed819d"
+    },
+    {
+      "screen": "task--projects--empty",
+      "file": "pkm-guide/ui/task--projects--empty-dark-narrow.png",
+      "theme": "dark",
+      "width": "narrow",
+      "sha256": "146a6881a1c7f459d272b99b1805f4af5f86bb93d1eb97c1b67f82cc0343a27f",
+      "text": "c831567bb4dea209cfd5a5a97355139782b52e41dc998ccb7733e15c71ed819d"
     },
     {
       "screen": "task--routines",
@@ -840,32 +904,32 @@
       "file": "pkm-guide/ui/task--preset-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "497f9a7e30e8f9292ba7aa9e9fe9ad48a9a7d3fbecfd107b20d2193d2b175a01",
-      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+      "sha256": "df2cdc9ad99312f2ffe90e90d2a43e69e0bf0e3c5bccb90a8ccbcd47526f2acc",
+      "text": "bf5e37b6353e62c5756e71db7cfffa3f5a756fa179d5ff8c5620c448cab9285e"
     },
     {
       "screen": "task--preset",
       "file": "pkm-guide/ui/task--preset-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "6af68b3d95e0718aa52c8923b15cb4bcafda13e0a48eb9c258fef5dde924d120",
-      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+      "sha256": "cd027040aeb3b12e036b5d57a13c06fdd359d7dadb0bc1339353c56d17472594",
+      "text": "bf5e37b6353e62c5756e71db7cfffa3f5a756fa179d5ff8c5620c448cab9285e"
     },
     {
       "screen": "task--preset",
       "file": "pkm-guide/ui/task--preset-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "13abc7a628356f631d971cc2825715d46d0bac892069b6b53748b8cf4ec899fc",
-      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+      "sha256": "b74d34b4957a4af93d9f2393b8c2c6510732b4b9ffcb0a370e1a789a821a17c3",
+      "text": "bf5e37b6353e62c5756e71db7cfffa3f5a756fa179d5ff8c5620c448cab9285e"
     },
     {
       "screen": "task--preset",
       "file": "pkm-guide/ui/task--preset-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "6d051b515479875bb63f2adb8e6c7dc2afa5476d0a722b7503a547d89b16fca9",
-      "text": "a0c23e10f3e509db99f268bc2af9b7701cc20e8699c7374fb9896ab64269a447"
+      "sha256": "14dbe872d66087c2383908832f012b82248ea06422b0de907dc534ebf5d1da05",
+      "text": "bf5e37b6353e62c5756e71db7cfffa3f5a756fa179d5ff8c5620c448cab9285e"
     },
     {
       "screen": "task--capture",
@@ -936,32 +1000,32 @@
       "file": "pkm-guide/ui/task--sidebar-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "f450ae1efd6215bbada8e4609a45be5e7501a2e68552d00fb6eca77ac580d48f",
-      "text": "f0f23fbce4e3684eb514d6e773c92e2fe961f048774f9c7caf39c545740bcfe7"
+      "sha256": "4fbe756f3d4c6b5e718365098f06825650bb46ef00489fe19bc9d1c9ca09dea5",
+      "text": "407990c84c292c51c4d95dd5be5fa5a744b9de320bf6bcce7bb9748d8e4e5815"
     },
     {
       "screen": "task--sidebar",
       "file": "pkm-guide/ui/task--sidebar-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "af3a371bc1e93f2d68a0e41be10da90e40028c8f30dda2079e13a05f1ac77597",
-      "text": "f0f23fbce4e3684eb514d6e773c92e2fe961f048774f9c7caf39c545740bcfe7"
+      "sha256": "8ffba587c348a65f890dd8cf0fa65a75f8ef0abd3f162dcedf3aac60365ed4f9",
+      "text": "407990c84c292c51c4d95dd5be5fa5a744b9de320bf6bcce7bb9748d8e4e5815"
     },
     {
       "screen": "task--sidebar",
       "file": "pkm-guide/ui/task--sidebar-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "1b5587a6b1846364471b2e48edf046bd8da95ea9eb8ad2e2e18b107016a5c423",
-      "text": "f0f23fbce4e3684eb514d6e773c92e2fe961f048774f9c7caf39c545740bcfe7"
+      "sha256": "93f76d1c32ef7ac64b37c3bb9fdb4fd60107c8bd8a05c3ea57ebe89a0a0f701c",
+      "text": "407990c84c292c51c4d95dd5be5fa5a744b9de320bf6bcce7bb9748d8e4e5815"
     },
     {
       "screen": "task--sidebar",
       "file": "pkm-guide/ui/task--sidebar-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "19064bc47fa7c4c84a854d093ef53d3474627c5e1f99add7ae4a4dd4d03aba04",
-      "text": "f0f23fbce4e3684eb514d6e773c92e2fe961f048774f9c7caf39c545740bcfe7"
+      "sha256": "8a73797761d1a616924f2d16c139844cc60fb4afc565e6c4d7064a734d23ac2c",
+      "text": "407990c84c292c51c4d95dd5be5fa5a744b9de320bf6bcce7bb9748d8e4e5815"
     },
     {
       "screen": "task--status",
@@ -1256,32 +1320,32 @@
       "file": "pkm-guide/ui/template--notes-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "0b90535265a97bf96e283e3924188c5d0648002d6b033c7a722aca0007f3ba46",
-      "text": "9ac8e82956a766681fe9dbb8a7511349b5ec94a687534d4b31c3a2aa364de3f6"
+      "sha256": "8c00f0ebb3dcd1bfc7c9af15d3033fb15d07b065f98c888c7ade748e2b223d33",
+      "text": "21a78b4ff472621dcb020dcbfc28c3a2b2560af14c20390272d64c001534b568"
     },
     {
       "screen": "template--notes",
       "file": "pkm-guide/ui/template--notes-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "66fd1f74af112d6056fb603e29a247879e724042112740f7e3d0abe413384e0a",
-      "text": "9ac8e82956a766681fe9dbb8a7511349b5ec94a687534d4b31c3a2aa364de3f6"
+      "sha256": "71a275e295806b3ebca3a6f62a7a6b17f619d75843949859e05bc652fa348064",
+      "text": "21a78b4ff472621dcb020dcbfc28c3a2b2560af14c20390272d64c001534b568"
     },
     {
       "screen": "template--notes",
       "file": "pkm-guide/ui/template--notes-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "b9346d5ff687b34d4051b1720d6f0072c9bbb639d6a134b5ddd0a129be865018",
-      "text": "9ac8e82956a766681fe9dbb8a7511349b5ec94a687534d4b31c3a2aa364de3f6"
+      "sha256": "64ad30e64f11a58d28d80ad058aab3fa33e213091e1b1014ee7b5ce6f27b0317",
+      "text": "21a78b4ff472621dcb020dcbfc28c3a2b2560af14c20390272d64c001534b568"
     },
     {
       "screen": "template--notes",
       "file": "pkm-guide/ui/template--notes-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "ce5bd0588e223ebd0fce1b3834a9a37ed72758e36276fc28f8f7699ea376ae37",
-      "text": "9ac8e82956a766681fe9dbb8a7511349b5ec94a687534d4b31c3a2aa364de3f6"
+      "sha256": "8c0e78e9ae7eeebe4dc3284753129a22ace32ec1f32896533302064bf7f28824",
+      "text": "21a78b4ff472621dcb020dcbfc28c3a2b2560af14c20390272d64c001534b568"
     },
     {
       "screen": "template--sources",
@@ -1352,32 +1416,32 @@
       "file": "pkm-guide/ui/template--notes--empty-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "b15386db7e2a697b2581f12b32157aa9934b7ed4aa19cc1add771afd2a68b4cb",
-      "text": "efe1cde6778461309d027526e573420e94b5c6b685c408126472a1e829bd4e1d"
+      "sha256": "f96e6da6e716e0a7d5309f63ddb12a1fe41bef9b14f4a8a86c77d1be0610d602",
+      "text": "587433b38ba0b87785c31dc549d4d8a2b18d9b60ebe9537f37ca8d59101c6f92"
     },
     {
       "screen": "template--notes--empty",
       "file": "pkm-guide/ui/template--notes--empty-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "c1b462278f6edc8f52e3eed73f023fcfe997ab098344bbb8bafea274cdcb636f",
-      "text": "efe1cde6778461309d027526e573420e94b5c6b685c408126472a1e829bd4e1d"
+      "sha256": "a0a5eaba1f11d8cbb9f6b2046bf8c1f72f570cb40763f887097ab28bc1cc9892",
+      "text": "587433b38ba0b87785c31dc549d4d8a2b18d9b60ebe9537f37ca8d59101c6f92"
     },
     {
       "screen": "template--notes--empty",
       "file": "pkm-guide/ui/template--notes--empty-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "65e15b3bde97b990944a4c218d396f671b9b2a022726cd87f6269c2b2d7b3145",
-      "text": "efe1cde6778461309d027526e573420e94b5c6b685c408126472a1e829bd4e1d"
+      "sha256": "df6980505a7dd55232e99d3ed2194374294e29e310864dacc9ab6574aa4d6d55",
+      "text": "587433b38ba0b87785c31dc549d4d8a2b18d9b60ebe9537f37ca8d59101c6f92"
     },
     {
       "screen": "template--notes--empty",
       "file": "pkm-guide/ui/template--notes--empty-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "7bfb402b054d967b5fb5fe9db16b8c11c80cf9aa96cc4892ebe5c3ce8731a1dd",
-      "text": "efe1cde6778461309d027526e573420e94b5c6b685c408126472a1e829bd4e1d"
+      "sha256": "1423c9f8dedc839b638729c3ff057de19b4de65ed3a94d7ce9e9119d1eb5ce03",
+      "text": "587433b38ba0b87785c31dc549d4d8a2b18d9b60ebe9537f37ca8d59101c6f92"
     },
     {
       "screen": "template--header",
