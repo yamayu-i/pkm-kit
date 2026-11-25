@@ -3617,9 +3617,9 @@ body.is-mobile .vt-toast {
 /* 棒: status の印の色。ドラッグで動かす。両端はつまみ */
 .vt-timeline-bar {
 	position: absolute;
-	top: 6px;
-	/* 枠を含めて 24px（押せる大きさ。docs/design.md「検査の一覧」） */
-	height: 24px;
+	top: 4px;
+	/* 枠を含めて 28px（押せる大きさ。docs/design.md「検査の一覧」）。行の中央（18px）にそろえる */
+	height: 28px;
 	box-sizing: border-box;
 	border: 1px solid var(--vt-dot);
 	border-radius: var(--vt-radius-s);
@@ -4221,15 +4221,14 @@ body.is-mobile .vt-toast {
 }
 
 .vt-timeline-row.is-project {
-	background: color-mix(in srgb, var(--vt-surface-container) 60%, transparent);
 	pointer-events: none;
 }
 
 /* Project の期間をまとめた棒（読むだけ）と、親の期限の印 */
 .vt-timeline-span {
 	position: absolute;
-	top: 14px;
-	height: 8px;
+	top: 12px;
+	height: 12px;
 	border-radius: var(--vt-radius-full);
 	background: var(--vt-outline);
 	pointer-events: auto;
@@ -4237,9 +4236,9 @@ body.is-mobile .vt-toast {
 
 .vt-timeline-due {
 	position: absolute;
-	top: 6px;
-	width: 3px;
-	height: 24px;
+	top: 4px;
+	width: 4px;
+	height: 28px;
 	transform: translateX(-50%);
 	border-radius: var(--vt-radius-full);
 	pointer-events: auto;
@@ -4295,9 +4294,9 @@ body.is-mobile .vt-toast {
 /* 近いうちの見積もりのないサブの印。押すと S / M / L のメニュー */
 .vt-timeline-estimate {
 	position: absolute;
-	top: 6px;
+	top: 4px;
 	z-index: 2;
-	height: 24px;
+	height: 28px;
 	padding: 0 8px;
 	border: 1px dashed var(--vt-outline);
 	border-radius: var(--vt-radius-full);
