@@ -3,7 +3,7 @@ import { parse } from "yaml";
 import { emptyVaultData, TaskIndex } from "../src/core/index";
 import { parseIssue } from "../src/core/schema";
 import { parseSubIssues, type SubIssue } from "../src/core/sub-issue";
-import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadLabel, needsEstimate, projectGroups, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
+import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadLabel, needsEstimate, projectGroups, unallocatedBudget, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
 
 // 2026-11-15 は日曜
 const today = "2026-11-16";
@@ -57,6 +57,13 @@ describe("使う見積もり（親の予算の割り振り）", () => {
 		expect(est.get("i-1#bbbbbb")).toEqual({ minutes: 210, source: "budget" });
 		expect(est.get("i-1#cccccc")).toEqual({ minutes: 210, source: "budget" });
 		expect(est.get("i-1#ffffff")).toBeNull();
+	});
+
+	it("割り当てていない予算: 親 − canceled 以外のサブの合計。負は割り当てすぎ。親になければ null", () => {
+		const subs = subsOf("i-1", block("aaaaaa", "estimated: 120\n") + block("bbbbbb", "estimated: 60\n").replace("status: open", "status: closed") + block("cccccc", "estimated: 999\n").replace("status: open", "status: canceled") + block("dddddd"));
+		expect(unallocatedBudget(issue("i-1", { estimated: 600 }), subs)).toBe(420);
+		expect(unallocatedBudget(issue("i-1", { estimated: 100 }), subs)).toBe(-80);
+		expect(unallocatedBudget(issue("i-1"), subs)).toBeNull();
 	});
 
 	it("親に予算がない・残りが 0 以下なら見積もりなし", () => {

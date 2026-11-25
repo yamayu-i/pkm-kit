@@ -1,6 +1,7 @@
 import { Menu } from "obsidian";
 import { duePatch, scheduledPatch, ticklerFieldPatch } from "../core/actions";
-import { formatMinutes, parseDurationInput } from "../core/format";
+import { formatMinutes } from "../core/format";
+import { ESTIMATE_ERROR, parseEstimate } from "../ui/EstimateField";
 import { PRIORITIES, STATUS_DETAIL_MAX, type Issue, type Priority } from "../core/schema";
 import { DateForm, TextForm } from "../ui/forms";
 import { LabelForm } from "../ui/LabelForm";
@@ -9,8 +10,6 @@ import { MemberSuggestModal, PreactModal } from "./modals";
 import type { FieldValue } from "./writer";
 import { showStatusMenu } from "./status-change";
 import { canSetTickler } from "../core/transition";
-
-const ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 
 export type Save = (fields: Record<string, FieldValue>) => void;
 
@@ -67,27 +66,20 @@ export function editStatusDetail(ctx: TaskContext, current: string, save: Save):
 	)).open();
 }
 
-export function estimateMenu(ctx: TaskContext, e: MouseEvent, current: number | null, save: Save): void {
-	const m = new Menu();
-	for (const min of ESTIMATE_PRESETS) m.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
-	m.addItem((item) =>
-		item.setTitle("Enter…").onClick(() =>
-			new PreactModal(ctx.app, "estimated（m / h / d。1d = 24h）", (close) => (
-				<TextForm
-					initial={current === null ? "" : formatMinutes(current)}
-					placeholder="e.g. 30m / 2h / 1d / 1h30m"
-					onSubmit={(v) => {
-						const min = parseDurationInput(v);
-						if (min === null) return ctx.report(`時間として読めません: ${v}`);
-						close();
-						save({ estimated: min });
-					}}
-				/>
-			)).open(),
-		),
-	);
-	m.addItem((item) => item.setTitle("Clear").onClick(() => save({ estimated: null })));
-	m.showAtMouseEvent(e);
+/** estimated を入力欄で直す（メニューを出さない。ADR-0231 の追記）。空にすると消す */
+export function editEstimate(ctx: TaskContext, current: number | null, save: Save): void {
+	new PreactModal(ctx.app, "estimated（m / h / d。1d = 24h）", (close) => (
+		<TextForm
+			initial={current === null ? "" : formatMinutes(current)}
+			placeholder="e.g. 30m / 2h / 1d / 1h30m（空にすると消す）"
+			onSubmit={(v) => {
+				const min = parseEstimate(v);
+				if (min === undefined) return ctx.report(ESTIMATE_ERROR(v));
+				close();
+				save({ estimated: min });
+			}}
+		/>
+	)).open();
 }
 
 export function editDue(ctx: TaskContext, issue: Issue, key: "soft_deadline" | "deadline"): void {
@@ -155,6 +147,6 @@ export function issueRowMenu(ctx: TaskContext, e: MouseEvent, issue: Issue): voi
 	else if (issue.tickler !== null) m.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
 	m.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
 	m.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
-	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e, issue.estimated, save)));
+	m.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => editEstimate(ctx, issue.estimated, save)));
 	m.showAtMouseEvent(e);
 }

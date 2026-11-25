@@ -5,14 +5,17 @@ import { dueLevel } from "../core/due";
 import { formatMinutes } from "../core/format";
 import type { TaskIndex } from "../core/index";
 import type { Issue } from "../core/schema";
+import { unallocatedBudget } from "../core/projects";
+import type { SubIssue } from "../core/sub-issue";
 import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
-import { editLabels, editStatusDetail, estimateMenu, pickMember, priorityMenu } from "../obsidian/issue-editors";
+import { editLabels, editStatusDetail, pickMember, priorityMenu } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
 import { PickTimer } from "../obsidian/pick-toggle";
 import type { FieldValue } from "../obsidian/writer";
 import { GtdListBadge, IdBadge, LabelBadge, PriorityBadge, ProjectBadge, StatusBadge } from "../ui/badges";
 import { DateForm, DayCell, WorklogForm } from "../ui/forms";
+import { EstimateField } from "../ui/EstimateField";
 import { Icon } from "../ui/Icon";
 import type { WorklogEntry } from "../core/worklog";
 import { useNow, useStoreVersion } from "../ui/hooks";
@@ -209,6 +212,8 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 					))}
 				</div>
 			)}
+			{/* Project は Calendar の日を持たないので、その場所に、親の予算のうちサブにまだ割り当てていない分を出す（ADR-0231 の追記） */}
+			{subs.length > 0 && <UnallocatedBudget issue={issue} subs={subs} />}
 			<div class="vt-row">
 				{calendar && (
 					<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
@@ -236,6 +241,23 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 					)
 				)}
 			</div>
+		</div>
+	);
+}
+
+/** 親の estimated − 登録済みのサブの estimated の合計（canceled は数えない）。負なら割り当てすぎ */
+function UnallocatedBudget(props: { issue: Issue; subs: SubIssue[] }) {
+	const rest = unallocatedBudget(props.issue, props.subs);
+	const assigned = props.subs.filter((s) => s.status !== "canceled" && s.estimated !== null).reduce((n, s) => n + s.estimated!, 0);
+	const title =
+		props.issue.estimated === null
+			? "Set the estimated of this issue to see the budget left for sub-issues"
+			: `estimated ${formatMinutes(props.issue.estimated)} − sub-issues ${formatMinutes(assigned)} (canceled not counted)`;
+	return (
+		<div class={`vt-budget${rest !== null && rest < 0 ? " is-over" : ""}`} title={title}>
+			<span class="vt-field-label">unallocated</span>
+			<span class="vt-budget-value">{rest === null ? "—" : formatMinutes(rest)}</span>
+			<span class="vt-muted vt-budget-detail">{rest === null ? "No estimated" : rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues"}</span>
 		</div>
 	);
 }
@@ -271,16 +293,9 @@ function DueFields(props: { ctx: TaskContext; issue: Issue; save: Save }) {
 function Effort(props: { ctx: TaskContext; issue: Issue; index: TaskIndex; save: Save }) {
 	const { ctx, issue, index, save } = props;
 	const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
-	const menu = (e: MouseEvent) => estimateMenu(ctx, e, issue.estimated, save);
 	return (
 		<div class="vt-effort">
-			<button class="vt-effort-cell is-editable" onClick={menu}>
-				<span class="vt-field-label">
-					estimated
-					<Icon name="chevron-down" class="vt-trailing" />
-				</span>
-				<span class="vt-effort-value">{issue.estimated === null ? "—" : formatMinutes(issue.estimated)}</span>
-			</button>
+			<EstimateField value={issue.estimated} onSave={(estimated) => save({ estimated })} />
 			<div class="vt-effort-cell is-readonly" title="Calculated from the worklog">
 				<span class="vt-field-label">actual</span>
 				<span class="vt-effort-value">{formatMinutes(actual)}</span>

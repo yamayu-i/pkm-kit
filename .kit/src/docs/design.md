@@ -248,6 +248,8 @@ packages/design/tokens.json（正本）
 | Projects | `.vt-projects`（`.vt-timeline-label.is-project`・`.vt-timeline-span`・`.vt-timeline-due`・`.vt-timeline-load`） | Project を横断するタイムライン（ADR-0231）。ガントチャートと同じ部品（`TimelineChart`）に、Project の行（surface-container の面。題は ID のバッジと太字で、押すと issue 画面を開く。サブの行は字下げ）を足す。Project の行には期間をまとめた細い棒（outline の色、読むだけ）と、期限の印（deadline は red、soft deadline は amber の縦線）。日付の見出しの下に負荷の行（`.vt-timeline-load`、24px。列ごとの見積もりの時間。使える時間を超えた列は red-container の面、未見積もりは `?`） |
 | 見積もりの印 | `.vt-timeline-estimate` | 近いうちの見積もりのないサブの棒の右に出す、点線の枠の小さなボタン「Estimate」（24px）。押すと S / M / L のメニュー（ADR-0231） |
 | サイズのチップ | `.vt-size-chips`（`.vt-segmented.is-small`） | 見積もりの S / M / L（/ XL）。小さい segmented button を使い、今の値を選んだ状態に見せる。ボタンは 32px 以上の幅（ADR-0231） |
+| estimated の入力欄 | `.vt-effort-cell.is-input`（`.vt-effort-input`） | issue・routine 画面の estimated（ADR-0231 の追記）。メニューではなく、ふつうの入力欄（outlined text field）をセルの中に置く。Enter か欄を離れると保存。読めない値は枠を error にして説明を出す |
+| 割り当てていない予算 | `.vt-budget`（`.vt-budget-value`） | Project の issue 画面の、日付のストリップの場所。estimated − サブの estimated の合計。負なら値を error の色（ADR-0231 の追記） |
 | サイドバーの行 | `.vt-sidebar` / `.vt-nav-item` | 左サイドバーの画面移動ボタン（40px、先頭にアイコン、右端に件数） |
 | リンクのチップ | `.vt-link-chip.is-replace`（`.vt-link-chip-title`・`.vt-link-chip-context`・`.vt-link-avatar`） | 本文の issue・サブ・routine・member へのリンクを置き換えて描く（ADR-0194。共有の部品 `packages/shared/src/link-chips.ts`）。文の中に収まるよう、20px の ID のバッジ（status の色。routine は blue、一時停止は gray）か頭文字の丸（secondary-container）と、primary の文字の今の題。済みは弱い文字の打ち消し線。サブは前に弱い文字で親の題 + ›。押すと開き、ホバーで題に下線 |
 | リンクの印 | `.vt-link-chip.is-before` | それ以外の Vault の中のノートへのリンクの前に足す 16px のアイコン（弱い文字の色）。リンクの文字は変えない（ADR-0194） |

@@ -5,6 +5,8 @@
 - サブの見積もりを S（30m）・M（2h）・L（4h）のチップで入れられるようにした（Edit、本文のカード）。XL を押すと、サブを分けるよう促す
 - 見積もりがなく、期間が今日から 14 日のうちにかかるサブの棒の右に「Estimate」の印を出す（issue 画面の Timeline と Projects）
 - プリセットのサブに見積もりの既定値を持てるようにした（`sub_issues` の 1 件を `summary` と `estimated` の対応で書ける）
-- Timeline の棒の高さを、枠を含めて 24px にした（押せる大きさ）
+- Timeline の棒の高さを、枠を含めて 28px にした（押せる大きさ）
+- issue 画面で、サブを持つ issue（Project）には、日付のストリップの場所に「unallocated」（estimated − 登録済みのサブの estimated の合計）を出す
+- issue・routine 画面の estimated を、メニューではなく入力欄にした。一覧の列と行のメニューからは、入力欄のダイアログを直接開く
 
 子への影響: 移行はない。今のプリセット（題の文字列だけ）はそのまま読める。モバイルでは Projects の棒のドラッグと「Estimate」のメニューを確かめる。

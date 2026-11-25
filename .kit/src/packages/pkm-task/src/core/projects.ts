@@ -52,15 +52,23 @@ export type EffectiveEstimate = { minutes: number; source: "sub" | "budget" } | 
  */
 export function effectiveEstimates(parent: Pick<Issue, "estimated"> | undefined, subs: readonly SubIssue[]): Map<string, EffectiveEstimate> {
 	const out = new Map<string, EffectiveEstimate>();
-	const used = subs.filter((s) => s.status !== "canceled" && s.estimated !== null).reduce((n, s) => n + s.estimated!, 0);
 	const candidates = subs.filter((s) => s.estimated === null && !isDone(s));
-	const rest = parent?.estimated == null ? 0 : parent.estimated - used;
+	const rest = unallocatedBudget(parent, subs) ?? 0;
 	const share = candidates.length > 0 && rest > 0 ? rest / candidates.length : null;
 	for (const s of subs) {
 		if (s.estimated !== null) out.set(s.key, { minutes: s.estimated, source: "sub" });
 		else out.set(s.key, share !== null && !isDone(s) ? { minutes: share, source: "budget" } : null);
 	}
 	return out;
+}
+
+/**
+ * 親の予算のうち、サブにまだ割り当てていない分（分。ADR-0231 の追記）。
+ * 親の estimated − canceled 以外のサブの estimated の合計。負なら割り当てすぎ。親に estimated がなければ null
+ */
+export function unallocatedBudget(parent: Pick<Issue, "estimated"> | undefined, subs: readonly Pick<SubIssue, "status" | "estimated">[]): number | null {
+	if (parent?.estimated == null) return null;
+	return parent.estimated - subs.filter((s) => s.status !== "canceled" && s.estimated !== null).reduce((n, s) => n + s.estimated!, 0);
 }
 
 /** 1 日に使える時間（分）。端末ごとの設定 */

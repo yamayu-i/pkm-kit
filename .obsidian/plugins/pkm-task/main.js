@@ -2782,6 +2782,336 @@ function formatMinutes(minutes) {
   return sign + (parts || "0m");
 }
 
+// src/core/timeline.ts
+var DAY_PX = { day: 28, week: 8 };
+var PAD_DAYS = 2;
+var MIN_DAYS = 14;
+var MIN_WEEKS = 8;
+var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+var minDate = (dates) => dates.reduce((a3, b2) => b2 < a3 ? b2 : a3);
+var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
+function timelineRange(subs, today, scale) {
+  const dates = [today];
+  for (const s3 of subs) {
+    for (const d3 of [s3.start, s3.end, s3.scheduled]) if (d3) dates.push(d3);
+  }
+  let from = addDays(minDate(dates), -PAD_DAYS);
+  let to = addDays(maxDate(dates), PAD_DAYS);
+  if (scale === "week") {
+    from = addDays(from, -weekdayOf(from));
+    to = addDays(to, 6 - weekdayOf(to));
+  }
+  const days = Math.max(diffDays(to, from) + 1, scale === "week" ? MIN_WEEKS * 7 : MIN_DAYS);
+  return { from, days };
+}
+function timelineColumns(range, scale) {
+  const out = [];
+  const step = scale === "week" ? 7 : 1;
+  let prevMonth = -1;
+  for (let i3 = 0; i3 < range.days; i3 += step) {
+    const date = addDays(range.from, i3);
+    const month = Number(date.slice(5, 7)) - 1;
+    const day = Number(date.slice(8, 10));
+    const wd = weekdayOf(date);
+    const showMonth = i3 === 0 || (scale === "day" ? day === 1 : month !== prevMonth);
+    out.push({
+      date,
+      label: scale === "week" ? `${month + 1}/${day}` : String(day),
+      month: showMonth ? MONTHS[month] : null,
+      weekend: scale === "day" && (wd === 0 || wd === 6),
+      weekStart: wd === 0,
+      span: Math.min(step, range.days - i3)
+    });
+    prevMonth = month;
+  }
+  return out;
+}
+function dayOffset(range, date) {
+  return diffDays(date, range.from);
+}
+function dateAtX(range, x2, scale) {
+  const i3 = Math.min(range.days - 1, Math.max(0, Math.floor(x2 / DAY_PX[scale])));
+  return addDays(range.from, i3);
+}
+function barOf(sub) {
+  const a3 = sub.start ?? sub.end;
+  const b2 = sub.end ?? sub.start;
+  if (a3 === null || b2 === null) return null;
+  return a3 <= b2 ? { start: a3, end: b2 } : { start: b2, end: a3 };
+}
+function dragBar(bar, mode, delta) {
+  if (mode === "move") return { start: addDays(bar.start, delta), end: addDays(bar.end, delta) };
+  if (mode === "start") {
+    const start = addDays(bar.start, delta);
+    return { start: start > bar.end ? bar.end : start, end: bar.end };
+  }
+  const end = addDays(bar.end, delta);
+  return { start: bar.start, end: end < bar.start ? bar.start : end };
+}
+function dependencyArrows(subs) {
+  const bars = new Map(subs.map((s3) => [s3.id, barOf(s3)]));
+  const out = [];
+  for (const s3 of subs) {
+    const to = bars.get(s3.id);
+    if (!to) continue;
+    for (const dep of s3.dependsOn) {
+      const from = bars.get(dep);
+      if (!from || dep === s3.id) continue;
+      out.push({ from: dep, to: s3.id, late: to.start < from.end });
+    }
+  }
+  return out;
+}
+var ARROW_GAP = 8;
+var LANE_V = 4;
+var BAND_OFFSETS = [0, -3, 3, -6, 6];
+var BAR_CLEAR = 4;
+function routeArrows(arrows, bars, rowHeight) {
+  const mid = (row) => row * rowHeight + rowHeight / 2;
+  const maxX = Math.max(0, ...bars.map((b2) => b2?.x1 ?? 0)) + ARROW_GAP * 4;
+  const verticals = [];
+  const bands = [];
+  const columnFree = (x2, rowA, rowB) => {
+    for (let r3 = Math.min(rowA, rowB) + 1; r3 < Math.max(rowA, rowB); r3++) {
+      const b2 = bars[r3];
+      if (b2 && x2 > b2.x0 - BAR_CLEAR && x2 < b2.x1 + BAR_CLEAR) return false;
+    }
+    return true;
+  };
+  const verticalFree = (x2, y0, y1, share) => !verticals.some((v3) => !share(v3) && Math.abs(v3.x - x2) < 3 && Math.min(v3.y1, Math.max(y0, y1)) - Math.max(v3.y0, Math.min(y0, y1)) > 1);
+  const pickX = (ideal, lo, hi, rowA, rowB, y0, y1, share = () => false) => {
+    const limit = Math.max(ideal - lo, hi - ideal);
+    for (let d3 = 0; d3 <= limit; d3 += LANE_V) {
+      for (const x2 of d3 === 0 ? [ideal] : [ideal - d3, ideal + d3]) {
+        if (x2 < lo || x2 > hi) continue;
+        if (columnFree(x2, rowA, rowB) && verticalFree(x2, y0, y1, share)) return x2;
+      }
+    }
+    return null;
+  };
+  const pickBand = (boundary, xa, xb) => {
+    const base = boundary * rowHeight;
+    const [x0, x1] = [Math.min(xa, xb), Math.max(xa, xb)];
+    for (const off of BAND_OFFSETS) {
+      const y3 = base + off;
+      if (!bands.some((b2) => Math.abs(b2.y - y3) < 2 && Math.min(b2.x1, x1) - Math.max(b2.x0, x0) > 1)) return y3;
+    }
+    return base;
+  };
+  const record2 = (points, from, to) => {
+    for (let i3 = 1; i3 < points.length; i3++) {
+      const [ax, ay] = points[i3 - 1];
+      const [bx, by] = points[i3];
+      if (ax === bx) verticals.push({ x: ax, y0: Math.min(ay, by), y1: Math.max(ay, by), from, to });
+      else if (Math.abs(ay - Math.round(ay / rowHeight) * rowHeight) <= 8 && ay === by) bands.push({ y: ay, x0: Math.min(ax, bx), x1: Math.max(ax, bx) });
+    }
+  };
+  return arrows.map(({ fromRow, toRow }) => {
+    const src = bars[fromRow];
+    const dst = bars[toRow];
+    const x1 = src.x1;
+    const y1 = mid(fromRow);
+    const x2 = dst.x0;
+    const y22 = mid(toRow);
+    const down = toRow > fromRow;
+    if (x2 - x1 >= ARROW_GAP * 2) {
+      const xv = pickX(x2 - ARROW_GAP, x1 + BAR_CLEAR, x2 - BAR_CLEAR, fromRow, toRow, y1, y22, (v3) => v3.to === toRow);
+      if (xv !== null) {
+        const points2 = [[x1, y1], [xv, y1], [xv, y22], [x2, y22]];
+        record2(points2, fromRow, toRow);
+        return points2;
+      }
+    }
+    const srcBoundary = down ? fromRow + 1 : fromRow;
+    const dstBoundary = down ? toRow : toRow + 1;
+    const ySrcBand = srcBoundary * rowHeight;
+    const yDstBand = dstBoundary * rowHeight;
+    const xa = pickX(x1 + ARROW_GAP, x1 + BAR_CLEAR, x1 + ARROW_GAP * 4, fromRow, fromRow, y1, ySrcBand, (v3) => v3.from === fromRow) ?? x1 + ARROW_GAP;
+    const xb = pickX(x2 - ARROW_GAP, x2 - ARROW_GAP * 4, x2 - BAR_CLEAR, toRow, toRow, yDstBand, y22, (v3) => v3.to === toRow) ?? x2 - ARROW_GAP;
+    let points;
+    if (srcBoundary === dstBoundary) {
+      const yb = pickBand(srcBoundary, xa, xb);
+      points = [[x1, y1], [xa, y1], [xa, yb], [xb, yb], [xb, y22], [x2, y22]];
+    } else {
+      const xc = pickX(xb, 0, maxX, fromRow, toRow, ySrcBand, yDstBand) ?? xb;
+      const ys = pickBand(srcBoundary, xa, xc);
+      const yt = pickBand(dstBoundary, xc, xb);
+      points = [[x1, y1], [xa, y1], [xa, ys], [xc, ys], [xc, yt], [xb, yt], [xb, y22], [x2, y22]];
+    }
+    points = simplify(points);
+    record2(points, fromRow, toRow);
+    return points;
+  });
+}
+function simplify(points) {
+  const out = [];
+  for (const p3 of points) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p3[0] && last[1] === p3[1]) continue;
+    const prev = out[out.length - 2];
+    if (prev && last && (prev[0] === last[0] && last[0] === p3[0] || prev[1] === last[1] && last[1] === p3[1])) out[out.length - 1] = p3;
+    else out.push(p3);
+  }
+  return out;
+}
+var num = (n2) => String(Math.round(n2 * 100) / 100);
+function roundedPath(points, radius) {
+  if (points.length === 0) return "";
+  let d3 = `M${num(points[0][0])} ${num(points[0][1])}`;
+  for (let i3 = 1; i3 < points.length - 1; i3++) {
+    const [px, py] = points[i3 - 1];
+    const [cx, cy] = points[i3];
+    const [nx, ny] = points[i3 + 1];
+    const lenPrev = Math.hypot(cx - px, cy - py);
+    const lenNext = Math.hypot(nx - cx, ny - cy);
+    const r3 = Math.min(radius, lenPrev / 2, lenNext / 2);
+    const ax = cx - (cx - px) / (lenPrev || 1) * r3;
+    const ay = cy - (cy - py) / (lenPrev || 1) * r3;
+    const bx = cx + (nx - cx) / (lenNext || 1) * r3;
+    const by = cy + (ny - cy) / (lenNext || 1) * r3;
+    d3 += ` L${num(ax)} ${num(ay)} Q${num(cx)} ${num(cy)} ${num(bx)} ${num(by)}`;
+  }
+  const last = points[points.length - 1];
+  return `${d3} L${num(last[0])} ${num(last[1])}`;
+}
+function incomingOf(arrows, id) {
+  if (id === null) return null;
+  const idx = arrows.flatMap((a3, i3) => a3.to === id ? [i3] : []);
+  if (idx.length === 0) return null;
+  return { arrows: idx, from: [...new Set(idx.map((i3) => arrows[i3].from))] };
+}
+function canConnect(subs, from, to) {
+  if (from === to) return false;
+  const byId = new Map(subs.map((s3) => [s3.id, s3]));
+  const a3 = byId.get(from);
+  const b2 = byId.get(to);
+  if (!a3 || !b2 || !barOf(a3) || !barOf(b2)) return false;
+  if (b2.dependsOn.includes(from)) return false;
+  const seen = /* @__PURE__ */ new Set();
+  const stack2 = [...a3.dependsOn];
+  while (stack2.length > 0) {
+    const id = stack2.pop();
+    if (id === to) return false;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    stack2.push(...byId.get(id)?.dependsOn ?? []);
+  }
+  return true;
+}
+function arrowMidpoint(points) {
+  const i3 = Math.floor((points.length - 1) / 2) + 1;
+  const [x0, y0] = points[i3 - 1] ?? [0, 0];
+  const [x1, y1] = points[i3] ?? [x0, y0];
+  return [(x0 + x1) / 2, (y0 + y1) / 2];
+}
+
+// src/core/projects.ts
+var ID_NUM = (id) => Number(id.slice(2)) || 0;
+var earlier = (a3, b2) => a3 === null ? b2 : b2 === null ? a3 : a3 < b2 ? a3 : b2;
+var compareNullable = (a3, b2) => a3 === b2 ? 0 : a3 === null ? 1 : b2 === null ? -1 : a3.localeCompare(b2);
+function projectDue(issue) {
+  return issue.deadline ?? issue.softDeadline;
+}
+function projectGroups(index, showClosed) {
+  const groups = [];
+  for (const issue of index.issues.values()) {
+    if (issue.status === "closed" || issue.status === "canceled" || !index.isProject(issue.id)) continue;
+    const all = index.subs(issue.id);
+    const firstEnd = all.filter((s3) => !isDone2(s3)).reduce((acc, s3) => earlier(acc, barOf(s3)?.end ?? null), null);
+    groups.push({ issue, subs: visibleSubs(all, showClosed), closed: all.filter(isDone2).length, firstEnd });
+  }
+  groups.sort((a3, b2) => compareNullable(projectDue(a3.issue), projectDue(b2.issue)) || compareNullable(a3.firstEnd, b2.firstEnd) || ID_NUM(a3.issue.id) - ID_NUM(b2.issue.id));
+  return groups.map(({ firstEnd: _2, ...g2 }) => g2);
+}
+function effectiveEstimates(parent, subs) {
+  const out = /* @__PURE__ */ new Map();
+  const candidates = subs.filter((s3) => s3.estimated === null && !isDone2(s3));
+  const rest = unallocatedBudget(parent, subs) ?? 0;
+  const share = candidates.length > 0 && rest > 0 ? rest / candidates.length : null;
+  for (const s3 of subs) {
+    if (s3.estimated !== null) out.set(s3.key, { minutes: s3.estimated, source: "sub" });
+    else out.set(s3.key, share !== null && !isDone2(s3) ? { minutes: share, source: "budget" } : null);
+  }
+  return out;
+}
+function unallocatedBudget(parent, subs) {
+  if (parent?.estimated == null) return null;
+  return parent.estimated - subs.filter((s3) => s3.status !== "canceled" && s3.estimated !== null).reduce((n2, s3) => n2 + s3.estimated, 0);
+}
+var DEFAULT_CAPACITY = { weekday: 360, weekend: 0 };
+function capacityOn(date, cap) {
+  const wd = weekdayOf(date);
+  return wd === 0 || wd === 6 ? cap.weekend : cap.weekday;
+}
+function dayLoad(items, cap) {
+  const out = /* @__PURE__ */ new Map();
+  const at = (d3) => {
+    let v3 = out.get(d3);
+    if (!v3) out.set(d3, v3 = { minutes: 0, unknown: [] });
+    return v3;
+  };
+  for (const item of items) {
+    const days = [];
+    for (let i3 = 0; i3 <= diffDays(item.end, item.start); i3++) days.push(addDays(item.start, i3));
+    if (item.minutes === null) {
+      for (const d3 of days) at(d3).unknown.push(item.key);
+      continue;
+    }
+    const working = days.filter((d3) => capacityOn(d3, cap) > 0);
+    const spread = working.length > 0 ? working : days;
+    for (const d3 of spread) at(d3).minutes += item.minutes / spread.length;
+  }
+  return out;
+}
+function columnLoad(load, from, days, cap) {
+  let minutes = 0;
+  let capacity = 0;
+  const unknown = /* @__PURE__ */ new Set();
+  for (let i3 = 0; i3 < days; i3++) {
+    const d3 = addDays(from, i3);
+    capacity += capacityOn(d3, cap);
+    const v3 = load.get(d3);
+    if (!v3) continue;
+    minutes += v3.minutes;
+    for (const k3 of v3.unknown) unknown.add(k3);
+  }
+  minutes = Math.round(minutes * 100) / 100;
+  return { minutes, capacity, unknown: unknown.size, over: minutes > capacity };
+}
+function loadItems(groups, index) {
+  const out = [];
+  for (const g2 of groups) {
+    const est = effectiveEstimates(g2.issue, index.subs(g2.issue.id));
+    for (const s3 of g2.subs) {
+      const bar = barOf(s3);
+      if (!bar || isDone2(s3)) continue;
+      out.push({ key: s3.key, ...bar, minutes: est.get(s3.key)?.minutes ?? null });
+    }
+  }
+  return out;
+}
+function loadLabel(minutes, unknown) {
+  const h3 = Math.round(minutes / 60 * 2) / 2;
+  const text = h3 > 0 ? `${h3}h` : "";
+  return unknown > 0 ? `${text}?` : text;
+}
+var SIZES = [
+  { label: "S", minutes: 30 },
+  { label: "M", minutes: 120 },
+  { label: "L", minutes: 240 }
+];
+var XL_MESSAGE = "4 \u6642\u9593\u3092\u8D85\u3048\u308B\u4F5C\u696D\u306F\u3001\u30B5\u30D6\u3092\u5206\u3051\u3066\u304F\u3060\u3055\u3044";
+function sizeOf(minutes) {
+  return SIZES.find((s3) => s3.minutes === minutes)?.label ?? null;
+}
+var ESTIMATE_HORIZON_DAYS = 14;
+function needsEstimate(sub, today) {
+  if (isDone2(sub) || sub.estimated !== null) return false;
+  const bar = barOf(sub);
+  if (!bar) return false;
+  return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
+}
+
 // src/obsidian/issue-editors.tsx
 var import_obsidian4 = require("obsidian");
 
@@ -2794,6 +3124,50 @@ function u3(e3, t3, n2, o3, i3, u4) {
   var l3 = { type: e3, props: p3, key: n2, ref: a3, __k: null, __: null, __b: 0, __e: null, __c: null, constructor: void 0, __v: --f3, __i: -1, __u: 0, __source: i3, __self: u4 };
   if ("function" == typeof e3 && (a3 = e3.defaultProps)) for (c3 in a3) void 0 === p3[c3] && (p3[c3] = a3[c3]);
   return l.vnode && l.vnode(l3), l3;
+}
+
+// src/ui/EstimateField.tsx
+function parseEstimate(text) {
+  const v3 = text.trim();
+  if (v3 === "") return null;
+  return parseDurationInput(v3) ?? void 0;
+}
+var ESTIMATE_ERROR = (v3) => `\u898B\u7A4D\u3082\u308A\u3092\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}\uFF08\u4F8B: 30m / 2h / 1d / 1h30m\u3002\u7A7A\u306B\u3059\u308B\u3068\u6D88\u3057\u307E\u3059\uFF09`;
+function EstimateField(props) {
+  const text = props.value === null ? "" : formatMinutes(props.value);
+  const [draft, setDraft] = d2(text);
+  const [error, setError] = d2(null);
+  h2(() => setDraft(text), [text]);
+  const commit = () => {
+    const minutes = parseEstimate(draft);
+    if (minutes === void 0) return setError(ESTIMATE_ERROR(draft));
+    setError(null);
+    if (minutes !== props.value) props.onSave(minutes);
+  };
+  return /* @__PURE__ */ u3("label", { class: `vt-effort-cell is-input${error ? " is-error" : ""}`, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "estimated" }),
+    /* @__PURE__ */ u3(
+      "input",
+      {
+        type: "text",
+        class: "vt-effort-input",
+        value: draft,
+        placeholder: "\u2014",
+        "aria-invalid": error !== null,
+        title: error ?? "e.g. 30m / 2h / 1d / 1h30m (1d = 24h). Empty to clear",
+        onInput: (e3) => setDraft(e3.currentTarget.value),
+        onBlur: commit,
+        onKeyDown: (e3) => {
+          if (e3.key === "Enter" && !e3.isComposing) e3.currentTarget.blur();
+          if (e3.key === "Escape") {
+            setDraft(text);
+            setError(null);
+          }
+        }
+      }
+    ),
+    error && /* @__PURE__ */ u3("span", { class: "vt-name-error", children: error })
+  ] });
 }
 
 // ../shared/src/month-calendar.tsx
@@ -3654,7 +4028,6 @@ function StatusStepButton(props) {
 }
 
 // src/obsidian/issue-editors.tsx
-var ESTIMATE_PRESETS = [15, 30, 60, 120, 300, 480];
 var saveIssue = (ctx, issue) => (fields) => void ctx.writer.update(issue.path, fields).catch((e3) => ctx.report("\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
 function pickMember(ctx, onPick) {
   new MemberSuggestModal(ctx.app, [...ctx.store.index.members.values()], (choice) => {
@@ -3698,28 +4071,20 @@ function editStatusDetail(ctx, current, save) {
     }
   )).open();
 }
-function estimateMenu(ctx, e3, current, save) {
-  const m3 = new import_obsidian4.Menu();
-  for (const min of ESTIMATE_PRESETS) m3.addItem((item) => item.setTitle(formatMinutes(min)).onClick(() => save({ estimated: min })));
-  m3.addItem(
-    (item) => item.setTitle("Enter\u2026").onClick(
-      () => new PreactModal(ctx.app, "estimated\uFF08m / h / d\u30021d = 24h\uFF09", (close) => /* @__PURE__ */ u3(
-        TextForm,
-        {
-          initial: current === null ? "" : formatMinutes(current),
-          placeholder: "e.g. 30m / 2h / 1d / 1h30m",
-          onSubmit: (v3) => {
-            const min = parseDurationInput(v3);
-            if (min === null) return ctx.report(`\u6642\u9593\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${v3}`);
-            close();
-            save({ estimated: min });
-          }
-        }
-      )).open()
-    )
-  );
-  m3.addItem((item) => item.setTitle("Clear").onClick(() => save({ estimated: null })));
-  m3.showAtMouseEvent(e3);
+function editEstimate(ctx, current, save) {
+  new PreactModal(ctx.app, "estimated\uFF08m / h / d\u30021d = 24h\uFF09", (close) => /* @__PURE__ */ u3(
+    TextForm,
+    {
+      initial: current === null ? "" : formatMinutes(current),
+      placeholder: "e.g. 30m / 2h / 1d / 1h30m\uFF08\u7A7A\u306B\u3059\u308B\u3068\u6D88\u3059\uFF09",
+      onSubmit: (v3) => {
+        const min = parseEstimate(v3);
+        if (min === void 0) return ctx.report(ESTIMATE_ERROR(v3));
+        close();
+        save({ estimated: min });
+      }
+    }
+  )).open();
 }
 function editDue(ctx, issue, key) {
   new PreactModal(ctx.app, key, (close) => /* @__PURE__ */ u3(
@@ -3783,7 +4148,7 @@ function issueRowMenu(ctx, e3, issue) {
   else if (issue.tickler !== null) m3.addItem((item) => item.setTitle("Clear Tickler").setIcon("alarm-clock-off").onClick(() => saveIssue(ctx, issue)({ tickler: null })));
   m3.addItem((item) => item.setTitle("soft_deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "soft_deadline")));
   m3.addItem((item) => item.setTitle("deadline").setIcon("calendar").onClick(() => editDue(ctx, issue, "deadline")));
-  m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => estimateMenu(ctx, e3, issue.estimated, save)));
+  m3.addItem((item) => item.setTitle("estimated").setIcon("clock").onClick(() => editEstimate(ctx, issue.estimated, save)));
   m3.showAtMouseEvent(e3);
 }
 
@@ -4222,333 +4587,6 @@ function setSubRevealer(fn) {
 }
 function revealSub(sub) {
   reveal?.(sub);
-}
-
-// src/core/timeline.ts
-var DAY_PX = { day: 28, week: 8 };
-var PAD_DAYS = 2;
-var MIN_DAYS = 14;
-var MIN_WEEKS = 8;
-var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-var minDate = (dates) => dates.reduce((a3, b2) => b2 < a3 ? b2 : a3);
-var maxDate = (dates) => dates.reduce((a3, b2) => b2 > a3 ? b2 : a3);
-function timelineRange(subs, today, scale) {
-  const dates = [today];
-  for (const s3 of subs) {
-    for (const d3 of [s3.start, s3.end, s3.scheduled]) if (d3) dates.push(d3);
-  }
-  let from = addDays(minDate(dates), -PAD_DAYS);
-  let to = addDays(maxDate(dates), PAD_DAYS);
-  if (scale === "week") {
-    from = addDays(from, -weekdayOf(from));
-    to = addDays(to, 6 - weekdayOf(to));
-  }
-  const days = Math.max(diffDays(to, from) + 1, scale === "week" ? MIN_WEEKS * 7 : MIN_DAYS);
-  return { from, days };
-}
-function timelineColumns(range, scale) {
-  const out = [];
-  const step = scale === "week" ? 7 : 1;
-  let prevMonth = -1;
-  for (let i3 = 0; i3 < range.days; i3 += step) {
-    const date = addDays(range.from, i3);
-    const month = Number(date.slice(5, 7)) - 1;
-    const day = Number(date.slice(8, 10));
-    const wd = weekdayOf(date);
-    const showMonth = i3 === 0 || (scale === "day" ? day === 1 : month !== prevMonth);
-    out.push({
-      date,
-      label: scale === "week" ? `${month + 1}/${day}` : String(day),
-      month: showMonth ? MONTHS[month] : null,
-      weekend: scale === "day" && (wd === 0 || wd === 6),
-      weekStart: wd === 0,
-      span: Math.min(step, range.days - i3)
-    });
-    prevMonth = month;
-  }
-  return out;
-}
-function dayOffset(range, date) {
-  return diffDays(date, range.from);
-}
-function dateAtX(range, x2, scale) {
-  const i3 = Math.min(range.days - 1, Math.max(0, Math.floor(x2 / DAY_PX[scale])));
-  return addDays(range.from, i3);
-}
-function barOf(sub) {
-  const a3 = sub.start ?? sub.end;
-  const b2 = sub.end ?? sub.start;
-  if (a3 === null || b2 === null) return null;
-  return a3 <= b2 ? { start: a3, end: b2 } : { start: b2, end: a3 };
-}
-function dragBar(bar, mode, delta) {
-  if (mode === "move") return { start: addDays(bar.start, delta), end: addDays(bar.end, delta) };
-  if (mode === "start") {
-    const start = addDays(bar.start, delta);
-    return { start: start > bar.end ? bar.end : start, end: bar.end };
-  }
-  const end = addDays(bar.end, delta);
-  return { start: bar.start, end: end < bar.start ? bar.start : end };
-}
-function dependencyArrows(subs) {
-  const bars = new Map(subs.map((s3) => [s3.id, barOf(s3)]));
-  const out = [];
-  for (const s3 of subs) {
-    const to = bars.get(s3.id);
-    if (!to) continue;
-    for (const dep of s3.dependsOn) {
-      const from = bars.get(dep);
-      if (!from || dep === s3.id) continue;
-      out.push({ from: dep, to: s3.id, late: to.start < from.end });
-    }
-  }
-  return out;
-}
-var ARROW_GAP = 8;
-var LANE_V = 4;
-var BAND_OFFSETS = [0, -3, 3, -6, 6];
-var BAR_CLEAR = 4;
-function routeArrows(arrows, bars, rowHeight) {
-  const mid = (row) => row * rowHeight + rowHeight / 2;
-  const maxX = Math.max(0, ...bars.map((b2) => b2?.x1 ?? 0)) + ARROW_GAP * 4;
-  const verticals = [];
-  const bands = [];
-  const columnFree = (x2, rowA, rowB) => {
-    for (let r3 = Math.min(rowA, rowB) + 1; r3 < Math.max(rowA, rowB); r3++) {
-      const b2 = bars[r3];
-      if (b2 && x2 > b2.x0 - BAR_CLEAR && x2 < b2.x1 + BAR_CLEAR) return false;
-    }
-    return true;
-  };
-  const verticalFree = (x2, y0, y1, share) => !verticals.some((v3) => !share(v3) && Math.abs(v3.x - x2) < 3 && Math.min(v3.y1, Math.max(y0, y1)) - Math.max(v3.y0, Math.min(y0, y1)) > 1);
-  const pickX = (ideal, lo, hi, rowA, rowB, y0, y1, share = () => false) => {
-    const limit = Math.max(ideal - lo, hi - ideal);
-    for (let d3 = 0; d3 <= limit; d3 += LANE_V) {
-      for (const x2 of d3 === 0 ? [ideal] : [ideal - d3, ideal + d3]) {
-        if (x2 < lo || x2 > hi) continue;
-        if (columnFree(x2, rowA, rowB) && verticalFree(x2, y0, y1, share)) return x2;
-      }
-    }
-    return null;
-  };
-  const pickBand = (boundary, xa, xb) => {
-    const base = boundary * rowHeight;
-    const [x0, x1] = [Math.min(xa, xb), Math.max(xa, xb)];
-    for (const off of BAND_OFFSETS) {
-      const y3 = base + off;
-      if (!bands.some((b2) => Math.abs(b2.y - y3) < 2 && Math.min(b2.x1, x1) - Math.max(b2.x0, x0) > 1)) return y3;
-    }
-    return base;
-  };
-  const record2 = (points, from, to) => {
-    for (let i3 = 1; i3 < points.length; i3++) {
-      const [ax, ay] = points[i3 - 1];
-      const [bx, by] = points[i3];
-      if (ax === bx) verticals.push({ x: ax, y0: Math.min(ay, by), y1: Math.max(ay, by), from, to });
-      else if (Math.abs(ay - Math.round(ay / rowHeight) * rowHeight) <= 8 && ay === by) bands.push({ y: ay, x0: Math.min(ax, bx), x1: Math.max(ax, bx) });
-    }
-  };
-  return arrows.map(({ fromRow, toRow }) => {
-    const src = bars[fromRow];
-    const dst = bars[toRow];
-    const x1 = src.x1;
-    const y1 = mid(fromRow);
-    const x2 = dst.x0;
-    const y22 = mid(toRow);
-    const down = toRow > fromRow;
-    if (x2 - x1 >= ARROW_GAP * 2) {
-      const xv = pickX(x2 - ARROW_GAP, x1 + BAR_CLEAR, x2 - BAR_CLEAR, fromRow, toRow, y1, y22, (v3) => v3.to === toRow);
-      if (xv !== null) {
-        const points2 = [[x1, y1], [xv, y1], [xv, y22], [x2, y22]];
-        record2(points2, fromRow, toRow);
-        return points2;
-      }
-    }
-    const srcBoundary = down ? fromRow + 1 : fromRow;
-    const dstBoundary = down ? toRow : toRow + 1;
-    const ySrcBand = srcBoundary * rowHeight;
-    const yDstBand = dstBoundary * rowHeight;
-    const xa = pickX(x1 + ARROW_GAP, x1 + BAR_CLEAR, x1 + ARROW_GAP * 4, fromRow, fromRow, y1, ySrcBand, (v3) => v3.from === fromRow) ?? x1 + ARROW_GAP;
-    const xb = pickX(x2 - ARROW_GAP, x2 - ARROW_GAP * 4, x2 - BAR_CLEAR, toRow, toRow, yDstBand, y22, (v3) => v3.to === toRow) ?? x2 - ARROW_GAP;
-    let points;
-    if (srcBoundary === dstBoundary) {
-      const yb = pickBand(srcBoundary, xa, xb);
-      points = [[x1, y1], [xa, y1], [xa, yb], [xb, yb], [xb, y22], [x2, y22]];
-    } else {
-      const xc = pickX(xb, 0, maxX, fromRow, toRow, ySrcBand, yDstBand) ?? xb;
-      const ys = pickBand(srcBoundary, xa, xc);
-      const yt = pickBand(dstBoundary, xc, xb);
-      points = [[x1, y1], [xa, y1], [xa, ys], [xc, ys], [xc, yt], [xb, yt], [xb, y22], [x2, y22]];
-    }
-    points = simplify(points);
-    record2(points, fromRow, toRow);
-    return points;
-  });
-}
-function simplify(points) {
-  const out = [];
-  for (const p3 of points) {
-    const last = out[out.length - 1];
-    if (last && last[0] === p3[0] && last[1] === p3[1]) continue;
-    const prev = out[out.length - 2];
-    if (prev && last && (prev[0] === last[0] && last[0] === p3[0] || prev[1] === last[1] && last[1] === p3[1])) out[out.length - 1] = p3;
-    else out.push(p3);
-  }
-  return out;
-}
-var num = (n2) => String(Math.round(n2 * 100) / 100);
-function roundedPath(points, radius) {
-  if (points.length === 0) return "";
-  let d3 = `M${num(points[0][0])} ${num(points[0][1])}`;
-  for (let i3 = 1; i3 < points.length - 1; i3++) {
-    const [px, py] = points[i3 - 1];
-    const [cx, cy] = points[i3];
-    const [nx, ny] = points[i3 + 1];
-    const lenPrev = Math.hypot(cx - px, cy - py);
-    const lenNext = Math.hypot(nx - cx, ny - cy);
-    const r3 = Math.min(radius, lenPrev / 2, lenNext / 2);
-    const ax = cx - (cx - px) / (lenPrev || 1) * r3;
-    const ay = cy - (cy - py) / (lenPrev || 1) * r3;
-    const bx = cx + (nx - cx) / (lenNext || 1) * r3;
-    const by = cy + (ny - cy) / (lenNext || 1) * r3;
-    d3 += ` L${num(ax)} ${num(ay)} Q${num(cx)} ${num(cy)} ${num(bx)} ${num(by)}`;
-  }
-  const last = points[points.length - 1];
-  return `${d3} L${num(last[0])} ${num(last[1])}`;
-}
-function incomingOf(arrows, id) {
-  if (id === null) return null;
-  const idx = arrows.flatMap((a3, i3) => a3.to === id ? [i3] : []);
-  if (idx.length === 0) return null;
-  return { arrows: idx, from: [...new Set(idx.map((i3) => arrows[i3].from))] };
-}
-function canConnect(subs, from, to) {
-  if (from === to) return false;
-  const byId = new Map(subs.map((s3) => [s3.id, s3]));
-  const a3 = byId.get(from);
-  const b2 = byId.get(to);
-  if (!a3 || !b2 || !barOf(a3) || !barOf(b2)) return false;
-  if (b2.dependsOn.includes(from)) return false;
-  const seen = /* @__PURE__ */ new Set();
-  const stack2 = [...a3.dependsOn];
-  while (stack2.length > 0) {
-    const id = stack2.pop();
-    if (id === to) return false;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    stack2.push(...byId.get(id)?.dependsOn ?? []);
-  }
-  return true;
-}
-function arrowMidpoint(points) {
-  const i3 = Math.floor((points.length - 1) / 2) + 1;
-  const [x0, y0] = points[i3 - 1] ?? [0, 0];
-  const [x1, y1] = points[i3] ?? [x0, y0];
-  return [(x0 + x1) / 2, (y0 + y1) / 2];
-}
-
-// src/core/projects.ts
-var ID_NUM = (id) => Number(id.slice(2)) || 0;
-var earlier = (a3, b2) => a3 === null ? b2 : b2 === null ? a3 : a3 < b2 ? a3 : b2;
-var compareNullable = (a3, b2) => a3 === b2 ? 0 : a3 === null ? 1 : b2 === null ? -1 : a3.localeCompare(b2);
-function projectDue(issue) {
-  return issue.deadline ?? issue.softDeadline;
-}
-function projectGroups(index, showClosed) {
-  const groups = [];
-  for (const issue of index.issues.values()) {
-    if (issue.status === "closed" || issue.status === "canceled" || !index.isProject(issue.id)) continue;
-    const all = index.subs(issue.id);
-    const firstEnd = all.filter((s3) => !isDone2(s3)).reduce((acc, s3) => earlier(acc, barOf(s3)?.end ?? null), null);
-    groups.push({ issue, subs: visibleSubs(all, showClosed), closed: all.filter(isDone2).length, firstEnd });
-  }
-  groups.sort((a3, b2) => compareNullable(projectDue(a3.issue), projectDue(b2.issue)) || compareNullable(a3.firstEnd, b2.firstEnd) || ID_NUM(a3.issue.id) - ID_NUM(b2.issue.id));
-  return groups.map(({ firstEnd: _2, ...g2 }) => g2);
-}
-function effectiveEstimates(parent, subs) {
-  const out = /* @__PURE__ */ new Map();
-  const used = subs.filter((s3) => s3.status !== "canceled" && s3.estimated !== null).reduce((n2, s3) => n2 + s3.estimated, 0);
-  const candidates = subs.filter((s3) => s3.estimated === null && !isDone2(s3));
-  const rest = parent?.estimated == null ? 0 : parent.estimated - used;
-  const share = candidates.length > 0 && rest > 0 ? rest / candidates.length : null;
-  for (const s3 of subs) {
-    if (s3.estimated !== null) out.set(s3.key, { minutes: s3.estimated, source: "sub" });
-    else out.set(s3.key, share !== null && !isDone2(s3) ? { minutes: share, source: "budget" } : null);
-  }
-  return out;
-}
-var DEFAULT_CAPACITY = { weekday: 360, weekend: 0 };
-function capacityOn(date, cap) {
-  const wd = weekdayOf(date);
-  return wd === 0 || wd === 6 ? cap.weekend : cap.weekday;
-}
-function dayLoad(items, cap) {
-  const out = /* @__PURE__ */ new Map();
-  const at = (d3) => {
-    let v3 = out.get(d3);
-    if (!v3) out.set(d3, v3 = { minutes: 0, unknown: [] });
-    return v3;
-  };
-  for (const item of items) {
-    const days = [];
-    for (let i3 = 0; i3 <= diffDays(item.end, item.start); i3++) days.push(addDays(item.start, i3));
-    if (item.minutes === null) {
-      for (const d3 of days) at(d3).unknown.push(item.key);
-      continue;
-    }
-    const working = days.filter((d3) => capacityOn(d3, cap) > 0);
-    const spread = working.length > 0 ? working : days;
-    for (const d3 of spread) at(d3).minutes += item.minutes / spread.length;
-  }
-  return out;
-}
-function columnLoad(load, from, days, cap) {
-  let minutes = 0;
-  let capacity = 0;
-  const unknown = /* @__PURE__ */ new Set();
-  for (let i3 = 0; i3 < days; i3++) {
-    const d3 = addDays(from, i3);
-    capacity += capacityOn(d3, cap);
-    const v3 = load.get(d3);
-    if (!v3) continue;
-    minutes += v3.minutes;
-    for (const k3 of v3.unknown) unknown.add(k3);
-  }
-  minutes = Math.round(minutes * 100) / 100;
-  return { minutes, capacity, unknown: unknown.size, over: minutes > capacity };
-}
-function loadItems(groups, index) {
-  const out = [];
-  for (const g2 of groups) {
-    const est = effectiveEstimates(g2.issue, index.subs(g2.issue.id));
-    for (const s3 of g2.subs) {
-      const bar = barOf(s3);
-      if (!bar || isDone2(s3)) continue;
-      out.push({ key: s3.key, ...bar, minutes: est.get(s3.key)?.minutes ?? null });
-    }
-  }
-  return out;
-}
-function loadLabel(minutes, unknown) {
-  const h3 = Math.round(minutes / 60 * 2) / 2;
-  const text = h3 > 0 ? `${h3}h` : "";
-  return unknown > 0 ? `${text}?` : text;
-}
-var SIZES = [
-  { label: "S", minutes: 30 },
-  { label: "M", minutes: 120 },
-  { label: "L", minutes: 240 }
-];
-var XL_MESSAGE = "4 \u6642\u9593\u3092\u8D85\u3048\u308B\u4F5C\u696D\u306F\u3001\u30B5\u30D6\u3092\u5206\u3051\u3066\u304F\u3060\u3055\u3044";
-function sizeOf(minutes) {
-  return SIZES.find((s3) => s3.minutes === minutes)?.label ?? null;
-}
-var ESTIMATE_HORIZON_DAYS = 14;
-function needsEstimate(sub, today) {
-  if (isDone2(sub) || sub.estimated !== null) return false;
-  const bar = barOf(sub);
-  if (!bar) return false;
-  return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
 }
 
 // src/ui/SizeChips.tsx
@@ -5496,6 +5534,7 @@ function ScheduleStrip(props) {
       /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
       /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: issue.scheduled === d3, softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => setCalendar(issue.scheduled === d3 ? null : d3) })
     ] })) }),
+    subs.length > 0 && /* @__PURE__ */ u3(UnallocatedBudget, { issue, subs }),
     /* @__PURE__ */ u3("div", { class: "vt-row", children: [
       calendar && /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: pick("Calendar (must be done on this day)", issue.scheduled, setCalendar), children: [
         "calendar >",
@@ -5527,6 +5566,16 @@ function ScheduleStrip(props) {
     ] })
   ] });
 }
+function UnallocatedBudget(props) {
+  const rest = unallocatedBudget(props.issue, props.subs);
+  const assigned = props.subs.filter((s3) => s3.status !== "canceled" && s3.estimated !== null).reduce((n2, s3) => n2 + s3.estimated, 0);
+  const title = props.issue.estimated === null ? "Set the estimated of this issue to see the budget left for sub-issues" : `estimated ${formatMinutes(props.issue.estimated)} \u2212 sub-issues ${formatMinutes(assigned)} (canceled not counted)`;
+  return /* @__PURE__ */ u3("div", { class: `vt-budget${rest !== null && rest < 0 ? " is-over" : ""}`, title, children: [
+    /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "unallocated" }),
+    /* @__PURE__ */ u3("span", { class: "vt-budget-value", children: rest === null ? "\u2014" : formatMinutes(rest) }),
+    /* @__PURE__ */ u3("span", { class: "vt-muted vt-budget-detail", children: rest === null ? "No estimated" : rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues" })
+  ] });
+}
 function DueFields(props) {
   const { ctx, issue, save } = props;
   const today = localToday();
@@ -5553,15 +5602,8 @@ function DueFields(props) {
 function Effort(props) {
   const { ctx, issue, index, save } = props;
   const actual = index.effortMinutes(Date.now()).get(issue.id) ?? 0;
-  const menu = (e3) => estimateMenu(ctx, e3, issue.estimated, save);
   return /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
-    /* @__PURE__ */ u3("button", { class: "vt-effort-cell is-editable", onClick: menu, children: [
-      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-        "estimated",
-        /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-      ] }),
-      /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: issue.estimated === null ? "\u2014" : formatMinutes(issue.estimated) })
-    ] }),
+    /* @__PURE__ */ u3(EstimateField, { value: issue.estimated, onSave: (estimated) => save({ estimated }) }),
     /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "Calculated from the worklog", children: [
       /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "actual" }),
       /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(actual) })
@@ -6228,13 +6270,7 @@ function RoutineHeader(props) {
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card", children: /* @__PURE__ */ u3(Results, { results: routineResults(index, routine, localToday(), RESULT_DAYS) }) }),
     /* @__PURE__ */ u3("div", { class: "vt-effort", children: [
-      /* @__PURE__ */ u3("button", { class: "vt-effort-cell is-editable", onClick: (e3) => estimateMenu(ctx, e3, routine.estimated, save), children: [
-        /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
-          "estimated",
-          /* @__PURE__ */ u3(Icon, { name: "chevron-down", class: "vt-trailing" })
-        ] }),
-        /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: routine.estimated === null ? "\u2014" : formatMinutes(routine.estimated) })
-      ] }),
+      /* @__PURE__ */ u3(EstimateField, { value: routine.estimated, onSave: (estimated) => save({ estimated }) }),
       /* @__PURE__ */ u3("div", { class: "vt-effort-cell is-readonly", title: "Calculated from the worklog", children: [
         /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "total" }),
         /* @__PURE__ */ u3("span", { class: "vt-effort-value", children: formatMinutes(effort.total) })
@@ -9733,7 +9769,7 @@ function IssueTable(props) {
       case "labels":
         return editable(issue, c3, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
       case "estimated":
-        return editable(issue, c3, (e3) => estimateMenu(ctx, e3, issue.estimated, save), issue.estimated === null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }) : /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(issue.estimated) }));
+        return editable(issue, c3, () => editEstimate(ctx, issue.estimated, save), issue.estimated === null ? /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }) : /* @__PURE__ */ u3("span", { class: "vt-num", children: formatMinutes(issue.estimated) }));
       case "calendar": {
         const d3 = issue.scheduled;
         return editable(issue, c3, () => editScheduled(ctx, issue), d3 ? /* @__PURE__ */ u3("span", { class: "vt-num", children: formatShortDate(d3) }) : /* @__PURE__ */ u3("span", { class: "vt-muted", children: "\u2014" }));

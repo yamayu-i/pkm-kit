@@ -105,3 +105,11 @@ sub_issues:
 - `docs/design.md` の部品の表に、Projects・負荷の行・サイズのチップ・見積もりの印を足す
 - `.kit/changes/` に子から見える変更を書く。移行はない
 - サブの someday が要るかは別の Issue で考える（GTD の Someday/Maybe は Project の単位で、サブの単位では使いにくい）
+
+## 追記（2026-11-25）: issue 画面の割り当てていない予算と、estimated の入力欄
+
+使ってみて（#231 の続き）。
+
+- issue 画面の、Calendar の日のストリップの場所（Project は Calendar の日を持たない。[ADR-0203](0203-pick-and-start-follow-next.md)）に、「unallocated」を出す。値は、親の `estimated` − 登録済みのサブの `estimated` の合計（canceled は除く。上の「使う見積もり」の残りと同じ）。負なら割り当てすぎで、error の色にする。親に `estimated` がなければ「—」。読むだけ
+- estimated を選ぶメニュー（15m・30m・1h・2h・5h・8h・Enter…・Clear。[ADR-0012](0012-issue-screen.md)・[ADR-0034](0034-duration-input-auto-board-sticky-groups.md)）は使われず、値を直接入れていた。issue 画面・routine 画面の estimated は、その場で入れる入力欄にする（Enter か欄を離れると保存、Escape で戻す、空にすると消す。読めない値は保存せず説明を出す）。一覧（Issues などの列）と行のメニューからは、メニューを挟まず入力欄のダイアログを開く
+- 却下: メニューの候補を S / M / L に変える。issue の見積もりはサブより幅が広く、候補で足りないことが多い

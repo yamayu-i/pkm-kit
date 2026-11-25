@@ -6,7 +6,8 @@ import { formatMinutes } from "../core/format";
 import { describeRepeat, type RepeatRule } from "../core/repeat";
 import { DEFAULT_CATEGORY_NAME, ROUTINE_CATEGORIES, type Routine, type RoutineCategory } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
-import { estimateMenu, priorityMenu, type Save } from "../obsidian/issue-editors";
+import { priorityMenu, type Save } from "../obsidian/issue-editors";
+import { EstimateField } from "../ui/EstimateField";
 import { PreactModal } from "../obsidian/modals";
 import { PriorityBadge } from "../ui/badges";
 import { DateForm } from "../ui/forms";
@@ -155,13 +156,7 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 				<Results results={routineResults(index, routine, localToday(), RESULT_DAYS)} />
 			</section>
 			<div class="vt-effort">
-				<button class="vt-effort-cell is-editable" onClick={(e) => estimateMenu(ctx, e, routine.estimated, save)}>
-					<span class="vt-field-label">
-						estimated
-						<Icon name="chevron-down" class="vt-trailing" />
-					</span>
-					<span class="vt-effort-value">{routine.estimated === null ? "—" : formatMinutes(routine.estimated)}</span>
-				</button>
+				<EstimateField value={routine.estimated} onSave={(estimated) => save({ estimated })} />
 				<div class="vt-effort-cell is-readonly" title="Calculated from the worklog">
 					<span class="vt-field-label">total</span>
 					<span class="vt-effort-value">{formatMinutes(effort.total)}</span>

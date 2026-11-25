@@ -4329,3 +4329,44 @@ body.is-mobile .vt-toast {
 .vt-preset-sub .vt-size-chips {
 	margin-top: 4px;
 }
+
+/* estimated の欄（ADR-0231 の追記）。メニューではなく、ふつうの入力欄でその場で入力する */
+.vt-effort-cell.is-input {
+	background: var(--vt-surface-container);
+}
+
+.vt-ui .vt-effort-input.vt-effort-input {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-ui .vt-effort-cell.is-error .vt-effort-input.vt-effort-input {
+	border-color: var(--vt-error);
+}
+
+/* Project の Calendar の場所に出す、サブにまだ割り当てていない予算（ADR-0231 の追記） */
+.vt-budget {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px 16px;
+	border-radius: var(--vt-radius-l);
+	background: var(--vt-surface-container);
+}
+
+.vt-budget-value {
+	color: var(--vt-on-surface);
+	font-size: var(--vt-type-title-large-size);
+	line-height: var(--vt-type-title-large-line-height);
+	font-variant-numeric: tabular-nums;
+}
+
+.vt-budget.is-over .vt-budget-value {
+	color: var(--vt-error);
+}
+
+.vt-budget-detail {
+	font-size: var(--vt-type-body-small-size);
+}
