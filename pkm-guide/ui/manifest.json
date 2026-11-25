@@ -1,5 +1,5 @@
 {
-  "fingerprint": "b206daaeed989f4e3f2513322702ab9bfd1beae81fff4d4dcedfa9f43de0776c",
+  "fingerprint": "ee5468b1cda39df02ef10938d0ab8f8bcffcd33ca16670a494bcae5584d5ce54",
   "platform": "linux",
   "browser": "158.0.8127.36",
   "images": [
@@ -200,32 +200,32 @@
       "file": "pkm-guide/ui/task--header-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "592203998007e966f9f19588b591863e314070f46e6f03d919a290196257f6a9",
-      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
+      "sha256": "c499bd26622828dd21316abd58087b5611164aee4772b757e6dbd5b7e0cc415b",
+      "text": "bdcf3d4ad2ad27cca7ca3f6db11d5846ffe0c7f2b2472dd3316972e9d93e6221"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "aebf570ff806e1bc77da6c84f9bc8fde77e52c1b8857bbee8d702f27878e8b42",
-      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
+      "sha256": "aa32d5498420252e894f97a1c3a60997dd114ade5828e1ef2567b11e137fa700",
+      "text": "bdcf3d4ad2ad27cca7ca3f6db11d5846ffe0c7f2b2472dd3316972e9d93e6221"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "92721aa34094a248aa079a5e0066ecfb04e6c3b658a323c5ca37770baebca06f",
-      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
+      "sha256": "2ecb333370ccc80598105d3cd6989429db704da1ac289ec478b40000d99920ff",
+      "text": "bdcf3d4ad2ad27cca7ca3f6db11d5846ffe0c7f2b2472dd3316972e9d93e6221"
     },
     {
       "screen": "task--header",
       "file": "pkm-guide/ui/task--header-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "a29800b5de97e141699974dcba036b8d80feb7a21558bc798d09c3a58b6b0496",
-      "text": "8fad11748779e8fcbbca6417767adc6ef81da87e147f64b02e1e50312946466d"
+      "sha256": "1c8897d0d794e2a2e91aed6152a0832205e48a926837e5761595e1205c9a4583",
+      "text": "bdcf3d4ad2ad27cca7ca3f6db11d5846ffe0c7f2b2472dd3316972e9d93e6221"
     },
     {
       "screen": "task--timeline",
@@ -264,64 +264,64 @@
       "file": "pkm-guide/ui/task--header--unpicked-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "f54fa8c87d85fbd05c9b672710133618e65990c2ee1c07117cc67218ca1042b8",
-      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
+      "sha256": "0e21a33287c4853228786081f47fabb1c7ec92b97ef2679d0eb7915a49106673",
+      "text": "6c433d99a35661fa5b0fb12b707d2db2fe8141635d06460b07bb49ee6ec90d9c"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "b02f7ccc36993e6b0f433fe907509550458c159faaf05910fdd84c924953e760",
-      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
+      "sha256": "377c75d9ec20842fafc86dbd2e48bdfd7512b1bbe095e1a9ea3518c441498c0c",
+      "text": "6c433d99a35661fa5b0fb12b707d2db2fe8141635d06460b07bb49ee6ec90d9c"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "214a4e2a147d8820206a23fddefa636bdfc69e79836845f0bce08e8d4812b0d6",
-      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
+      "sha256": "8185a5abde8cc084fc14d635990a0e15df595311a8bc99084bd521d7757f4062",
+      "text": "6c433d99a35661fa5b0fb12b707d2db2fe8141635d06460b07bb49ee6ec90d9c"
     },
     {
       "screen": "task--header--unpicked",
       "file": "pkm-guide/ui/task--header--unpicked-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "fb3a2d32c9d7f53921e86a8b297293527479c5c26be8379b59b61747141d8775",
-      "text": "e236d379424f6cfbf77e12bbf496949f8d95930a153f4db6ffe32e6ad47b6376"
+      "sha256": "985744b78391adc8cd890484e6fdc70ea8dbc7a110193c3f5ffde5e98b453ee2",
+      "text": "6c433d99a35661fa5b0fb12b707d2db2fe8141635d06460b07bb49ee6ec90d9c"
     },
     {
       "screen": "task--header--closed",
       "file": "pkm-guide/ui/task--header--closed-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "5a5814148e4d38d21ca94f6bcc47e93b33fff8313a167d1cc8f819346d1d9140",
-      "text": "05677161873eef1653a31944fe915573a00c14eb1134d968eb29a67e868a56f8"
+      "sha256": "441b660dd0fb5c61a8251ff61ba85951c98e9542b41393abbb7025176b61b3a7",
+      "text": "4304583a997e8ad6381caaeba25f48afbb01f4db4f978239e97a7516c7d1b942"
     },
     {
       "screen": "task--header--closed",
       "file": "pkm-guide/ui/task--header--closed-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "15984a8fc0d298651db86179800e461dfea74a10e52c445188386f04e6bb8913",
-      "text": "05677161873eef1653a31944fe915573a00c14eb1134d968eb29a67e868a56f8"
+      "sha256": "06bd5cda16fa329b746cc79e90ffda581140a9cf9baba70af4e679deffe3e4b5",
+      "text": "4304583a997e8ad6381caaeba25f48afbb01f4db4f978239e97a7516c7d1b942"
     },
     {
       "screen": "task--header--closed",
       "file": "pkm-guide/ui/task--header--closed-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "923fdf02266196004c2fa293f13bae907b97515ae30136385ad9c7e6ecd5d81b",
-      "text": "05677161873eef1653a31944fe915573a00c14eb1134d968eb29a67e868a56f8"
+      "sha256": "8bf94402ad2e1becb50864ce94c16c13bef9b004d463aca9ffc55eda39fc37ae",
+      "text": "4304583a997e8ad6381caaeba25f48afbb01f4db4f978239e97a7516c7d1b942"
     },
     {
       "screen": "task--header--closed",
       "file": "pkm-guide/ui/task--header--closed-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "b738da02c78eaf4ba18f71ef166210d8e4565f4a55beac952af397dcab3a9a4a",
-      "text": "05677161873eef1653a31944fe915573a00c14eb1134d968eb29a67e868a56f8"
+      "sha256": "0f4746ad940f4f66bd68c259d54bf23d029727cfc1c024efdef7a8b34358136f",
+      "text": "4304583a997e8ad6381caaeba25f48afbb01f4db4f978239e97a7516c7d1b942"
     },
     {
       "screen": "task--forms",
@@ -360,32 +360,32 @@
       "file": "pkm-guide/ui/task--routine-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "639965b93f8f3f1bb61403fb01343e293328e6c4a02ff4b819b288d263749b5b",
-      "text": "3281f20ddbc80967f6b4a028d64c3897b9bff120d5812eb82fab1a6d0c58210c"
+      "sha256": "da6d1b956372fd6bd1808885b943e86236df3f353d78ed833a14c172fee5d851",
+      "text": "44241ad10ea0b605cfea324a0475cc46984de1811a730156fb05902dd6098d4c"
     },
     {
       "screen": "task--routine",
       "file": "pkm-guide/ui/task--routine-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "b01d372c65b83de12ae9438040661b60a021296bfce2cd67d4b91c0a951f285f",
-      "text": "3281f20ddbc80967f6b4a028d64c3897b9bff120d5812eb82fab1a6d0c58210c"
+      "sha256": "342e44e2707647c7429dfb94f35fef5579de845710bfa93c5b33d032fb30e5ca",
+      "text": "44241ad10ea0b605cfea324a0475cc46984de1811a730156fb05902dd6098d4c"
     },
     {
       "screen": "task--routine",
       "file": "pkm-guide/ui/task--routine-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "583832adcf2d6ac26a9ca3238c9913d52629a00c3c0783fca12d1e8284249f7a",
-      "text": "3281f20ddbc80967f6b4a028d64c3897b9bff120d5812eb82fab1a6d0c58210c"
+      "sha256": "3af0ed9f959aacca09a75101d3f6e5aaf61f86142ee7350ad4d43911a6b74f40",
+      "text": "44241ad10ea0b605cfea324a0475cc46984de1811a730156fb05902dd6098d4c"
     },
     {
       "screen": "task--routine",
       "file": "pkm-guide/ui/task--routine-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "2d85734184289c4a71e73323aa12c08026be7a9022a843a7bc1ff45282a88f1a",
-      "text": "3281f20ddbc80967f6b4a028d64c3897b9bff120d5812eb82fab1a6d0c58210c"
+      "sha256": "0d5bf38c6545f84e7939dcbaf3ce75947c285fc73462df92d39df5cba1b50db3",
+      "text": "44241ad10ea0b605cfea324a0475cc46984de1811a730156fb05902dd6098d4c"
     },
     {
       "screen": "task--issues",
