@@ -1,7 +1,11 @@
+import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
-import type { SubIssue } from "../core/sub-issue";
-import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale } from "../core/timeline";
+import { formatMinutes } from "../core/format";
+import { columnLoad, dayLoad, loadLabel, needsEstimate, SIZES, type Capacity, type LoadItem } from "../core/projects";
+import type { Issue } from "../core/schema";
+import { subKey, type SubIssue } from "../core/sub-issue";
+import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale, type TimelineSub } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { canEditSubPeriod, periodInInboxMessage, subPeriodError } from "../core/project-periods";
@@ -14,6 +18,12 @@ const ROW = 36;
 /** 棒の両端のつまみの幅（px）。棒がこれの 3 倍より短ければ、つまみを出さずに丸ごとずらす */
 const HANDLE = 8;
 
+/**
+ * 図の行（ADR-0231）。Project の行（題・期間をまとめた棒・期限の印。読むだけ）とサブの行。
+ * 親の画面はサブの行だけ、Projects は Project の行とその下のサブの行を並べる
+ */
+export type ChartRow = { kind: "project"; issue: Issue; subs: SubIssue[] } | { kind: "sub"; sub: SubIssue };
+
 interface Drag {
 	key: string;
 	mode: DragMode;
@@ -22,7 +32,7 @@ interface Drag {
 	delta: number;
 }
 
-/** 依存を引いている最中（ADR-0163）。x / y は日の列の左上からの px、target は離すと依存になる棒 */
+/** 依存を引いている最中（ADR-0163）。x / y は日の列の左上からの px、target は離すと依存になる棒（どれも合成キー） */
 interface Link {
 	from: string;
 	x: number;
@@ -30,13 +40,40 @@ interface Link {
 	target: string | null;
 }
 
-/** サブイシューのガントチャート（ADR-0143）。期間はドラッグで直し、指を離したときに 1 回だけ保存する */
+/** 図の中ではサブを合成キーで区別する（サブの id は同じ親の中でしか一意でない。ADR-0231） */
+function chartSub(sub: SubIssue): TimelineSub {
+	return { id: sub.key, start: sub.start, end: sub.end, scheduled: sub.scheduled, dependsOn: sub.dependsOn.map((d) => subKey(sub.parent, d)) };
+}
+
+/** サブイシューのガントチャート（ADR-0143）。親の画面のカード「Sub-issues」の Timeline */
 export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: TimelineScale; onScale: (scale: TimelineScale) => void; target?: string | null }) {
-	const { ctx, subs, scale } = props;
+	return <TimelineChart ctx={props.ctx} rows={props.subs.map((sub) => ({ kind: "sub", sub }))} scale={props.scale} onScale={props.onScale} target={props.target ?? null} />;
+}
+
+/**
+ * ガントチャートの部品（ADR-0143, 0163, 0231）。期間はドラッグで直し、指を離したときに 1 回だけ保存する。
+ * load を渡すと、日の列の見出しの下に負荷の行を出す（Projects）。onSubLabel はサブの題を押したとき（既定は下部のカードを出す）
+ */
+export function TimelineChart(props: {
+	ctx: TaskContext;
+	rows: ChartRow[];
+	scale: TimelineScale;
+	onScale: (scale: TimelineScale) => void;
+	target?: string | null;
+	load?: { capacity: Capacity; items: LoadItem[] };
+	onSubLabel?: (sub: SubIssue) => void;
+}) {
+	const { ctx, rows, scale } = props;
 	const target = props.target ?? null;
+	const subs = rows.flatMap((r) => (r.kind === "sub" ? [r.sub] : []));
 	const today = localToday();
 	const px = DAY_PX[scale];
-	const range = timelineRange(subs, today, scale);
+	// 範囲は、サブの日付と、Project の期限を含める
+	const dues: TimelineSub[] = rows.flatMap((r) => {
+		if (r.kind !== "project") return [];
+		return [r.issue.deadline, r.issue.softDeadline].flatMap((d) => (d ? [{ id: r.issue.id, start: null, end: null, scheduled: d, dependsOn: [] }] : []));
+	});
+	const range = timelineRange([...subs.map(chartSub), ...dues], today, scale);
 	const cols = timelineColumns(range, scale);
 	const width = range.days * px;
 	const scroller = useRef<HTMLDivElement>(null);
@@ -61,16 +98,18 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		if (el) el.scrollLeft = Math.max(0, (dayOffset(range, today) - 2) * px);
 	}, [scale]);
 
-	// 期間の規則（ADR-0210）。Inbox の Project では棒を作れず、動かせない。Tickler より前には置けない（置こうとしたら戻して理由を出す）
+	// 期間の規則（ADR-0210）は親ごと。Inbox の Project では棒を作れず、動かせない。Tickler より前には置けない（置こうとしたら戻して理由を出す）
 	const index = ctx.store.index;
-	const parentId = subs[0]?.parent ?? null;
-	const parent = parentId === null ? undefined : index.issues.get(parentId);
-	const planned = parentId !== null && index.planned(parentId);
-	const lock = parentId === null || canEditSubPeriod(parent, planned, today) ? null : periodInInboxMessage(parentId);
+	const lockOf = (parentId: string) => (canEditSubPeriod(index.issues.get(parentId), index.planned(parentId), today) ? null : periodInInboxMessage(parentId));
+	const parents = [...new Set(subs.map((s) => s.parent))];
+	// 親の画面（親が 1 つ）では、理由を図の上に出しておく。Projects では動かそうとしたときだけ出す
+	const fixedLock = parents.length === 1 && !rows.some((r) => r.kind === "project") ? lockOf(parents[0]!) : null;
 	const [notice, setNotice] = useState<string | null>(null);
 	const save = (sub: SubIssue, next: { start: LocalDate; end: LocalDate }) => {
+		const lock = lockOf(sub.parent);
 		if (lock !== null) return setNotice(lock);
-		const error = parent ? subPeriodError(parent, planned, sub, next, today) : null;
+		const parent = index.issues.get(sub.parent);
+		const error = parent ? subPeriodError(parent, index.planned(sub.parent), sub, next, today) : null;
 		if (error) return setNotice(error);
 		setNotice(null);
 		return void ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e) => ctx.report("期間を保存できませんでした", e));
@@ -80,11 +119,13 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
 	};
 	const xOf = (date: LocalDate) => dayOffset(range, date) * px;
-	const rowOf = new Map(subs.map((s, i) => [s.id, i]));
-	const arrows = dependencyArrows(subs.map((s) => ({ ...s, ...(shown(s) ?? {}) }))).map((a) => ({ ...a, fromRow: rowOf.get(a.from)!, toRow: rowOf.get(a.to)! }));
-	// 各行の棒の左右（px）。矢印は途中の棒をよけて引く（timeline.ts の routeArrows）
-	const spans = subs.map((s) => {
-		const bar = shown(s);
+	const byKey = new Map(subs.map((s) => [s.key, s]));
+	const rowOf = new Map(rows.flatMap((r, i) => (r.kind === "sub" ? [[r.sub.key, i] as const] : [])));
+	const chartSubs = subs.map((s) => ({ ...chartSub(s), ...(shown(s) ?? {}) }));
+	const arrows = dependencyArrows(chartSubs).map((a) => ({ ...a, fromRow: rowOf.get(a.from)!, toRow: rowOf.get(a.to)! }));
+	// 各行の棒の左右（px）。矢印は途中の棒をよけて引く（timeline.ts の routeArrows）。Project の行は矢印の通り道にする
+	const spans = rows.map((r) => {
+		const bar = r.kind === "sub" ? shown(r.sub) : null;
 		return bar ? { x0: xOf(bar.start), x1: xOf(bar.end) + px } : null;
 	});
 	const routes = routeArrows(arrows, spans, ROW);
@@ -92,12 +133,15 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 	const related = incomingOf(arrows, active);
 	const routed = arrows.map((a, i) => ({ late: a.late, related: related?.arrows.includes(i) ?? false, d: roundedPath(routes[i]!, 4) }));
 	const relatedFrom = new Set(related?.from ?? []);
+	// 依存は同じ親のサブの間だけ（depends_on は同じ親の中。ADR-0231）
+	const connectable = (from: string, to: string) => byKey.get(from)?.parent === byKey.get(to)?.parent && canConnect(chartSubs, from, to);
 
 	const saveDeps = (sub: SubIssue, dependsOn: string[]) => ctx.writer.updateSub(sub.key, { dependsOn }).catch((e) => ctx.report("依存を保存できませんでした", e));
 	const removeDep = (a: { from: string; to: string }) => {
-		const to = subs.find((s) => s.id === a.to);
+		const to = byKey.get(a.to);
+		const from = byKey.get(a.from);
 		setSelected(null);
-		if (to) void saveDeps(to, to.dependsOn.filter((d) => d !== a.from));
+		if (to && from) void saveDeps(to, to.dependsOn.filter((d) => d !== from.id));
 	};
 	// コネクタからのドラッグ。離した棒が、始めた棒に依存する（ADR-0163）
 	const pointInBody = (e: PointerEvent) => {
@@ -110,24 +154,26 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		e.stopPropagation();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		setSelected(null);
-		setLink({ from: sub.id, ...pointInBody(e), target: null });
+		setLink({ from: sub.key, ...pointInBody(e), target: null });
 	};
 	const moveLink = (e: PointerEvent) => {
 		if (!link) return;
-		const id = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-sub-id]")?.dataset.subId ?? null;
-		setLink({ ...link, ...pointInBody(e), target: id !== null && canConnect(subs, link.from, id) ? id : null });
+		const key = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-sub-key]")?.dataset.subKey ?? null;
+		setLink({ ...link, ...pointInBody(e), target: key !== null && connectable(link.from, key) ? key : null });
 	};
 	const endLink = () => {
 		if (!link) return;
 		const l = link;
 		setLink(null);
-		const to = l.target === null ? undefined : subs.find((s) => s.id === l.target);
-		if (to) void saveDeps(to, [...to.dependsOn, l.from]);
+		const to = l.target === null ? undefined : byKey.get(l.target);
+		const from = byKey.get(l.from);
+		if (to && from) void saveDeps(to, [...to.dependsOn, from.id]);
 	};
 
 	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
 		const bar = barOf(sub);
 		if (!bar || e.button !== 0) return;
+		const lock = lockOf(sub.parent);
 		if (lock !== null) return setNotice(lock);
 		setSelected(null);
 		e.preventDefault();
@@ -163,11 +209,23 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 		const date = dateAtX(range, e.clientX - rect.left, scale);
 		void save(sub, { start: date, end: date });
 	};
+	// 近いうちの見積もりのないサブの印（ADR-0231）。押すと S / M / L のメニュー
+	const pickSize = (e: MouseEvent, sub: SubIssue) => {
+		e.stopPropagation();
+		const m = new Menu();
+		for (const size of SIZES) {
+			m.addItem((item) => item.setTitle(`${size.label} (${formatMinutes(size.minutes)})`).onClick(() => void ctx.writer.updateSub(sub.key, { estimated: size.minutes }).catch((err) => ctx.report("見積もりを保存できませんでした", err))));
+		}
+		m.showAtMouseEvent(e);
+	};
+	const onSubLabel = props.onSubLabel ?? revealSub;
+	const height = rows.length * ROW;
+	const load = props.load ? dayLoad(props.load.items, props.load.capacity) : null;
 
 	return (
 		<>
-			{(notice ?? lock) !== null && <div class="vt-muted vt-timeline-notice">{notice ?? lock}</div>}
-			<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
+			{(notice ?? fixedLock) !== null && <div class="vt-muted vt-timeline-notice">{notice ?? fixedLock}</div>}
+			<div class={`vt-timeline is-${scale}${related ? " has-focus" : ""}${link ? " has-link" : ""}${load ? " has-load" : ""}`} onKeyDown={(e) => e.key === "Escape" && setSelected(null)}>
 				<div class="vt-timeline-labels" ref={labels}>
 					{/* 目盛りの切り替えは、目盛り（日付の行）の隣に置く。表示の切り替え（List / Timeline）と離す */}
 					<div class="vt-timeline-corner">
@@ -182,15 +240,25 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 							onChange={props.onScale}
 						/>
 					</div>
-					{subs.map((sub) => (
-						<button
-							type="button"
-							class={`vt-timeline-label${sub.status === "closed" || sub.status === "canceled" ? " is-done" : ""}${sub.key === target ? " is-target" : ""}`}
-							title={`Open: ${sub.summary}`} onClick={() => revealSub(sub)}>
-							<StatusIcon status={sub.status} />
-							<span class="vt-timeline-label-text">{sub.summary}</span>
-						</button>
-					))}
+					{load && <div class="vt-timeline-load-label" title="Estimated hours per column, compared with the time you can use (settings)">Load</div>}
+					{rows.map((row) =>
+						row.kind === "project" ? (
+							<button type="button" class="vt-timeline-label is-project" title={`Open: ${row.issue.summary}`} onClick={() => void ctx.openPath(row.issue.path)}>
+								<span class="vt-badge vt-id">{row.issue.id}</span>
+								<span class="vt-timeline-label-text">{row.issue.summary}</span>
+							</button>
+						) : (
+							<button
+								type="button"
+								class={`vt-timeline-label${row.sub.status === "closed" || row.sub.status === "canceled" ? " is-done" : ""}${row.sub.key === target ? " is-target" : ""}${rows.some((r) => r.kind === "project") ? " is-child" : ""}`}
+								title={`Open: ${row.sub.summary}`}
+								onClick={() => onSubLabel(row.sub)}
+							>
+								<StatusIcon status={row.sub.status} />
+								<span class="vt-timeline-label-text">{row.sub.summary}</span>
+							</button>
+						),
+					)}
 				</div>
 				<div class="vt-timeline-scroll" ref={scroller}>
 					<div class="vt-timeline-grid" style={{ width: `${width}px` }}>
@@ -205,12 +273,26 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 								</div>
 							))}
 						</div>
-						<div class="vt-timeline-body" ref={body} style={{ height: `${subs.length * ROW}px` }} onPointerDown={() => setSelected(null)}>
+						{load && props.load && (
+							<div class="vt-timeline-load">
+								{cols.map((c) => {
+									const v = columnLoad(load, c.date, c.span, props.load!.capacity);
+									const text = loadLabel(v.minutes, v.unknown);
+									const tip = `見積もり ${formatMinutes(v.minutes)} / 使える時間 ${formatMinutes(v.capacity)}${v.unknown > 0 ? `\n見積もりのないサブ ${v.unknown} 件` : ""}`;
+									return (
+										<div class={`vt-timeline-load-cell${v.over ? " is-over" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} title={tip}>
+											{text}
+										</div>
+									);
+								})}
+							</div>
+						)}
+						<div class="vt-timeline-body" ref={body} style={{ height: `${height}px` }} onPointerDown={() => setSelected(null)}>
 							{cols.map((c) => (
 								<div class={`vt-timeline-stripe${c.weekend ? " is-weekend" : ""}${c.weekStart ? " is-week-start" : ""}`} style={{ left: `${xOf(c.date)}px`, width: `${c.span * px}px` }} />
 							))}
 							{/* 矢印は棒の下に描く（棒を塗りつぶさない）。経路は timeline.ts の routeArrows（途中の棒をよけ、線どうしが重ならないようにずらす） */}
-							<svg class="vt-timeline-arrows" width={width} height={subs.length * ROW} aria-hidden="true">
+							<svg class="vt-timeline-arrows" width={width} height={height} aria-hidden="true">
 								<defs>
 									{(["", "-late", "-related"] as const).map((suffix) => (
 										// 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
@@ -226,14 +308,15 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 										marker-end={`url(#vt-timeline-arrowhead${r.late ? "-late" : r.related ? "-related" : ""})`}
 									/>
 								))}
-								{link && (() => {
-									const row = rowOf.get(link.from)!;
-									const span = spans[row];
-									return span && <path class="vt-timeline-link" d={`M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}`} />;
-								})()}
+								{link &&
+									(() => {
+										const row = rowOf.get(link.from)!;
+										const span = spans[row];
+										return span && <path class="vt-timeline-link" d={`M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}`} />;
+									})()}
 							</svg>
 							{/* 矢印を押して選ぶための、広い当たり判定（矢印の線は細いので）。棒（z-index 2）の下、行の上 */}
-							<svg class="vt-timeline-arrow-hits" aria-hidden="true" width={width} height={subs.length * ROW}>
+							<svg class="vt-timeline-arrow-hits" aria-hidden="true" width={width} height={height}>
 								{arrows.map((a, i) => {
 									const isSel = selected?.from === a.from && selected?.to === a.to;
 									return (
@@ -273,13 +356,16 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 									);
 								})()}
 							<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
-							{subs.map((sub, i) => {
+							{rows.map((row, i) => {
+								if (row.kind === "project") return <ProjectRow issue={row.issue} subs={row.subs.map((s) => shown(s))} top={i * ROW} xOf={xOf} px={px} />;
+								const sub = row.sub;
 								const bar = shown(sub);
 								const left = bar ? xOf(bar.start) : 0;
 								const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
 								const handles = barWidth >= HANDLE * 3;
 								const period = bar ? `${formatShortDate(bar.start)} – ${formatShortDate(bar.end)}` : "";
 								const nothing = !bar && sub.scheduled === null;
+								const key = sub.key;
 								return (
 									<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={bar ? undefined : "Click a day to set the period"}>
 										{nothing && <span class="vt-timeline-none">No dates</span>}
@@ -289,17 +375,17 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 											)}
 										{bar && (
 											<div
-												data-sub-id={sub.id}
-												class={`vt-timeline-bar vt-status-${sub.status}${link && link.from !== sub.id ? (link.target === sub.id ? " is-link-target" : canConnect(subs, link.from, sub.id) ? "" : " is-link-no") : ""}${selected?.to === sub.id || selected?.from === sub.id ? " is-selected-end" : ""}${drag?.key === sub.key ? " is-dragging" : ""}${active === sub.id && related ? " is-active" : ""}${relatedFrom.has(sub.id) ? " is-related" : ""}`}
+												data-sub-key={key}
+												class={`vt-timeline-bar vt-status-${sub.status}${link && link.from !== key ? (link.target === key ? " is-link-target" : connectable(link.from, key) ? "" : " is-link-no") : ""}${selected?.to === key || selected?.from === key ? " is-selected-end" : ""}${drag?.key === key ? " is-dragging" : ""}${active === key && related ? " is-active" : ""}${relatedFrom.has(key) ? " is-related" : ""}`}
 												style={{ left: `${left}px`, width: `${barWidth}px` }}
 												tabIndex={0}
 												role="button"
 												aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`}
 												title={`${sub.summary}\n${period}`}
-												onPointerEnter={() => setHovered(sub.id)}
-												onPointerLeave={() => setHovered((h) => (h === sub.id ? null : h))}
-												onFocus={() => setFocused(sub.id)}
-												onBlur={() => setFocused((f) => (f === sub.id ? null : f))}
+												onPointerEnter={() => setHovered(key)}
+												onPointerLeave={() => setHovered((h) => (h === key ? null : h))}
+												onFocus={() => setFocused(key)}
+												onBlur={() => setFocused((f) => (f === key ? null : f))}
 												onPointerDown={(e) => startDrag(e, sub, "move")}
 												onPointerMove={moveDrag}
 												onPointerUp={() => endDrag(sub)}
@@ -324,6 +410,11 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 												)}
 											</div>
 										)}
+										{bar && needsEstimate(sub, today) && (
+											<button type="button" class="vt-timeline-estimate" style={{ left: `${left + barWidth + 16}px` }} title="No estimate: choose a size" onClick={(e) => pickSize(e, sub)}>
+												Estimate
+											</button>
+										)}
 									</div>
 								);
 							})}
@@ -332,5 +423,24 @@ export function SubTimeline(props: { ctx: TaskContext; subs: SubIssue[]; scale: 
 				</div>
 			</div>
 		</>
+	);
+}
+
+/** Project の行（ADR-0231）: 出しているサブの期間をまとめた棒と、親の期限の印。読むだけ */
+function ProjectRow(props: { issue: Issue; subs: ({ start: LocalDate; end: LocalDate } | null)[]; top: number; xOf: (d: LocalDate) => number; px: number }) {
+	const { issue, xOf, px } = props;
+	const bars = props.subs.filter((b): b is { start: LocalDate; end: LocalDate } => b !== null);
+	const span = bars.length > 0 ? { start: bars.map((b) => b.start).reduce((a, b) => (b < a ? b : a)), end: bars.map((b) => b.end).reduce((a, b) => (b > a ? b : a)) } : null;
+	const marks = [
+		issue.softDeadline ? { date: issue.softDeadline, kind: "soft", label: `Soft deadline ${formatShortDate(issue.softDeadline)}` } : null,
+		issue.deadline ? { date: issue.deadline, kind: "hard", label: `Deadline ${formatShortDate(issue.deadline)}` } : null,
+	].filter((m) => m !== null);
+	return (
+		<div class="vt-timeline-row is-project" style={{ top: `${props.top}px` }}>
+			{span && <div class="vt-timeline-span" style={{ left: `${xOf(span.start)}px`, width: `${xOf(span.end) - xOf(span.start) + px}px` }} title={`${formatShortDate(span.start)} – ${formatShortDate(span.end)}`} />}
+			{marks.map((m) => (
+				<span class={`vt-timeline-due is-${m.kind}`} style={{ left: `${xOf(m.date) + px / 2}px` }} title={m.label} />
+			))}
+		</div>
 	);
 }

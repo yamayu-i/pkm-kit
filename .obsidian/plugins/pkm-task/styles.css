@@ -3798,8 +3798,10 @@ body.is-mobile .vt-toast {
 /* 棒: status の印の色。ドラッグで動かす。両端はつまみ */
 .vt-timeline-bar {
 	position: absolute;
-	top: 8px;
-	height: 20px;
+	top: 6px;
+	/* 枠を含めて 24px（押せる大きさ。docs/design.md「検査の一覧」） */
+	height: 24px;
+	box-sizing: border-box;
 	border: 1px solid var(--vt-dot);
 	border-radius: var(--vt-radius-s);
 	background: var(--vt-dot);
@@ -4367,6 +4369,147 @@ body.is-mobile .vt-toast {
 
 .vt-clock-number.is-selected {
 	color: var(--vt-on-primary);
+}
+
+/* ---------- Projects（ADR-0231） ----------
+ * 親の画面と同じ Timeline の部品に、Project の行と負荷の行を足す */
+.vt-projects .vt-timeline {
+	margin-top: 8px;
+}
+
+.vt-projects .vt-timeline-labels {
+	width: clamp(120px, 30%, 260px);
+}
+
+/* Project の行の題（押すと issue の詳細画面を開く）。サブの行は字下げする */
+.vt-timeline-label.is-project {
+	background: var(--vt-surface-container);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-label.is-project:hover {
+	background: var(--vt-surface-container-high);
+}
+
+.vt-timeline-label.is-project .vt-badge {
+	flex: none;
+	height: 20px;
+	padding: 0 4px;
+}
+
+.vt-timeline-label.is-child {
+	padding-left: 20px;
+}
+
+.vt-timeline-row.is-project {
+	background: color-mix(in srgb, var(--vt-surface-container) 60%, transparent);
+	pointer-events: none;
+}
+
+/* Project の期間をまとめた棒（読むだけ）と、親の期限の印 */
+.vt-timeline-span {
+	position: absolute;
+	top: 14px;
+	height: 8px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-outline);
+	pointer-events: auto;
+}
+
+.vt-timeline-due {
+	position: absolute;
+	top: 6px;
+	width: 3px;
+	height: 24px;
+	transform: translateX(-50%);
+	border-radius: var(--vt-radius-full);
+	pointer-events: auto;
+}
+
+.vt-timeline-due.is-hard {
+	background: var(--vt-red);
+}
+
+.vt-timeline-due.is-soft {
+	background: var(--vt-amber);
+}
+
+/* 負荷の行: 列ごとの見積もりの合計。使える時間を超えた列は error の面 */
+.vt-timeline-load-label {
+	display: flex;
+	flex: none;
+	align-items: center;
+	height: 24px;
+	padding: 0 8px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-weight: var(--vt-weight-semibold);
+}
+
+.vt-timeline-load {
+	position: relative;
+	height: 24px;
+	border-bottom: 1px solid var(--vt-outline-variant);
+}
+
+.vt-timeline-load-cell {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.vt-timeline-load-cell.is-over {
+	background: var(--vt-red-container);
+	color: var(--vt-on-red-container);
+	font-weight: var(--vt-weight-semibold);
+}
+
+/* 近いうちの見積もりのないサブの印。押すと S / M / L のメニュー */
+.vt-timeline-estimate {
+	position: absolute;
+	top: 6px;
+	z-index: 2;
+	height: 24px;
+	padding: 0 8px;
+	border: 1px dashed var(--vt-outline);
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-surface);
+	color: var(--vt-on-surface-variant);
+	font-size: var(--vt-type-label-small-size);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.vt-timeline-estimate:hover {
+	background: var(--vt-state-hover);
+}
+
+.vt-projects-no-estimate {
+	height: 24px;
+	background: var(--vt-amber-container);
+	color: var(--vt-on-amber-container);
+}
+
+/* 見積もりのサイズのチップ（S / M / L / XL） */
+.vt-size-chips {
+	flex: none;
+}
+
+.vt-segmented.is-small.vt-size-chips .vt-segmented-button {
+	min-width: 32px;
+}
+
+.vt-preset-sub .vt-size-chips {
+	margin-top: 4px;
 }
 
 /* ---------- 月のカレンダー（ADR-0078。packages/shared/src/month-calendar.tsx。pkm-task と pkm-template のビルドで styles.css に続ける） ---------- */

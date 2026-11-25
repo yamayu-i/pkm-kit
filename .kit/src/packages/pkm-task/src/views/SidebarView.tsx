@@ -39,6 +39,7 @@ export function SidebarView(props: { ctx: TaskContext }) {
 		{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", count: counts.inbox },
 		{ type: "pkm-task-organize", title: "Organize", icon: "layers", count: counts.organize },
 		{ type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", count: counts.scheduled },
+		{ type: "pkm-task-projects", title: "Projects", icon: "chart-gantt" },
 		{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", count: counts.issues },
 		{ type: "pkm-task-someday", title: "Someday", icon: "cloud", count: counts.someday },
 		{ type: "pkm-task-routines", title: "Routines", icon: "repeat", count: counts.routines },

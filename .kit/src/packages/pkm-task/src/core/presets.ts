@@ -12,6 +12,8 @@ export interface IssuePreset {
 	name: string;
 	/** サブの題（md に書いた順。重なってもよい） */
 	subIssues: string[];
+	/** サブの見積もりの既定値（分。subIssues と同じ並び。ADR-0231）。どれかに値があるときだけ持つ */
+	subEstimates?: (number | null)[];
 	/** frontmatter の後ろの本文（前の空行と末尾の空白を除く）。issue の本文の末尾に追記する */
 	body: string;
 	created: string | null;
@@ -35,10 +37,16 @@ export function parsePreset(path: string, fm: Frontmatter, text: string | undefi
 	const name = r.string("name") ?? "";
 	if (!name) r.problem("missing-name", "name がありません", "warning");
 	const subIssues: string[] = [];
+	const subEstimates: (number | null)[] = [];
 	for (const v of r.list("sub_issues")) {
-		const error = typeof v === "string" ? presetSubError(v) : "文字列ではありません";
-		if (error !== null) r.problem("invalid-preset-sub", `sub_issues: ${error}: ${JSON.stringify(v)}`);
-		else subIssues.push((v as string).trim());
+		const item = presetSubItem(v);
+		if (typeof item === "string") {
+			r.problem("invalid-preset-sub", `sub_issues: ${item}: ${JSON.stringify(v)}`);
+			continue;
+		}
+		if (item.estimateError !== null) r.problem("invalid-preset-sub", `sub_issues: ${item.estimateError}: ${JSON.stringify(v)}`);
+		subIssues.push(item.summary);
+		subEstimates.push(item.estimated);
 	}
 	let body = text === undefined ? "" : presetBodyOf(text);
 	const bodyError = presetBodyError(body);
@@ -47,7 +55,36 @@ export function parsePreset(path: string, fm: Frontmatter, text: string | undefi
 		body = "";
 	}
 	if (id === null) return { value: null, problems: r.problems };
-	return { value: { path, id, name: name || id, subIssues, body, created: r.datetime("created") }, problems: r.problems };
+	const estimates = subEstimates.some((e) => e !== null) ? { subEstimates } : {};
+	return { value: { path, id, name: name || id, subIssues, ...estimates, body, created: r.datetime("created") }, problems: r.problems };
+}
+
+/**
+ * sub_issues の 1 件（ADR-0186, 0231）: 題の文字列か、summary と estimated（分）の対応。
+ * 題が書けなければエラーの文。見積もりが書けなければ、見積もりなしにして estimateError に理由を入れる
+ */
+function presetSubItem(v: unknown): { summary: string; estimated: number | null; estimateError: string | null } | string {
+	if (typeof v === "string") {
+		const error = presetSubError(v);
+		return error ?? { summary: v.trim(), estimated: null, estimateError: null };
+	}
+	if (typeof v !== "object" || v === null || Array.isArray(v)) return "文字列か、summary と estimated の対応にしてください";
+	const o = v as Record<string, unknown>;
+	if (typeof o.summary !== "string") return "summary がありません";
+	const error = presetSubError(o.summary);
+	if (error !== null) return error;
+	const e = o.estimated;
+	if (e === undefined || e === null) return { summary: o.summary.trim(), estimated: null, estimateError: null };
+	if (typeof e === "number" && Number.isFinite(e) && e >= 0) return { summary: o.summary.trim(), estimated: e, estimateError: null };
+	return { summary: o.summary.trim(), estimated: null, estimateError: "estimated は 0 以上の数（分）にしてください" };
+}
+
+/** frontmatter の sub_issues に書く値。見積もりのない行は今までどおり文字列（ADR-0231） */
+export function presetSubItems(subIssues: readonly string[], subEstimates: readonly (number | null)[] | undefined): (string | { summary: string; estimated: number })[] {
+	return subIssues.map((summary, i) => {
+		const estimated = subEstimates?.[i] ?? null;
+		return estimated === null ? summary : { summary, estimated };
+	});
 }
 
 /** サブの題の検査（サブの項目に書けない値を止める。ADR-0135） */

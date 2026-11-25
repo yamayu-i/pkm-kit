@@ -6,6 +6,7 @@ import { formatMinutes, parseDurationInput } from "../core/format";
 import { isDoneStatus } from "../core/status-log";
 import { parseSubIssues, subHint, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
 import { Icon } from "../ui/Icon";
+import { SizeChips } from "../ui/SizeChips";
 import { StatusIcon } from "../ui/StatusIcon";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
@@ -228,6 +229,18 @@ function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: stri
 						}}
 					/>
 				</label>
+				{/* サイズのチップ（ADR-0231）。押すとすぐ保存する */}
+				<div class="vt-text-field">
+					<span>Size</span>
+					<SizeChips
+						minutes={sub.estimated}
+						onPick={(m) => {
+							setEstimatedError(null);
+							void save({ estimated: m });
+						}}
+						onXl={setEstimatedError}
+					/>
+				</div>
 				{others.length > 0 && <DependsField candidates={others} dependsOn={sub.dependsOn} onChange={(dependsOn) => void save({ dependsOn })} />}
 			</div>
 			{(props.error ?? estimatedError) !== null && <div class="vt-error">{props.error ?? estimatedError}</div>}
