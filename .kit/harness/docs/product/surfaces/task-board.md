@@ -23,11 +23,11 @@
 
 ## 根拠
 
-[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)
+[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)、[ADR-0234](../../../../src/docs/adr/0234-routine-missed-carry.md)
 
 ## 入力と制約
 
-Top 3 は 3 件まで。記録（Finish closing）は未完了が残っていても書けます。routine の結果は、その予定日の結果です（予定日に付けなかったものは、Today の Missed に積み残しとして出ます）。
+Top 3 は 3 件まで。記録（Finish closing）は未完了が残っていても書けます。routine の結果は、その予定日の結果です（予定日に付けなかったものは、Today の Missed に積み残しとして出ます）。`missed: carry` の routine の積み残しは、今日のボードの Routines の先頭に、起点の日の印（注意の色）を付けて出ます。今日の結果で、それまでの積み残しがまとめて片付きます。過去の日のボードでは、結果のない carry の routine は持ち越しとして扱い、未完了に数えません（自動の締めを止めないため。ADR-0234）。
 
 ## 操作と保存
 

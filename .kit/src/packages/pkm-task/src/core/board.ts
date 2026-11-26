@@ -79,15 +79,17 @@ export function boardItems(index: TaskIndex, date: LocalDate, board: BoardState)
 
 /**
  * 未完了: closed / canceled / someday になっておらず、片付けて（carried）もいない issue とサブと、結果のない routine。
- * waiting / delegated は数えない（今日の自分の作業は終わり、続きは Watch の欄で見張る。ADR-0184）
+ * waiting / delegated は数えない（今日の自分の作業は終わり、続きは Watch の欄で見張る。ADR-0184）。
+ * today を渡すと、それより前の日では、結果のない missed: carry の routine を数えない（次の日に持ち越したもの。
+ * 結果は後の日のボードに付くので、数えると過去のボードが自動で締まらない。ADR-0234）
  */
-export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
+export function unfinished(index: TaskIndex, date: LocalDate, board: BoardState, today?: LocalDate): { issues: Issue[]; subs: SubIssue[]; routines: Routine[] } {
 	const items = boardItems(index, date, board);
 	const left = (status: Status, key: string) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
 	return {
 		issues: items.issues.filter((i) => left(i.status, i.id)),
 		subs: items.subs.filter((s) => left(s.status, s.key)),
-		routines: items.routines.filter((r) => board.routines[r.id] === undefined),
+		routines: items.routines.filter((r) => board.routines[r.id] === undefined && !(today !== undefined && date < today && r.missed === "carry")),
 	};
 }
 

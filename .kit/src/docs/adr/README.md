@@ -109,7 +109,7 @@
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
-| [0206](0206-closing-view-and-routine-category.md) | 承認 | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
+| [0206](0206-closing-view-and-routine-category.md) | 承認（一部置換: 0234） | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
@@ -117,4 +117,5 @@
 | [0228](0228-date-time-input-language.md) | 承認 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
 | [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
 | [0231](0231-projects-timeline-and-load.md) | 承認 | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
+| [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 <!-- adr-index:end -->

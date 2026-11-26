@@ -223,6 +223,24 @@ describe("MCP サーバーと検査付き操作", () => {
 		expect(after.missedRoutines.map((m) => m.date)).toEqual(["2026-11-19"]);
 	});
 
+	it("missed: carry の routine は積み残しに出さず、get_board に持ち越しの起点を出す。今日の結果で片付く（ADR-0234）", () => {
+		writeFileSync(
+			join(root, "routine/r-1.md"),
+			"---\ntype: routine\nid: r-1\nsummary: 朝会\nrepeat:\n  every: day\nstart: 2026-10-01\nactive: true\nmissed: carry\ncreated: 2026-10-01T09:00:00+09:00\n---\n",
+		);
+		const later: McpContext = { root, device: "ai", now: () => new Date("2026-11-20T10:00:00.000Z") };
+		const overview = callMcpTool(later, "get_overview", {}) as { missedRoutineCount: number };
+		expect(overview.missedRoutineCount).toBe(0);
+		type Board = { lanes: { routine: { key: string; carriedFrom: string | null }[] } };
+		const board = callMcpTool(later, "get_board", { date: "2026-11-20" }) as Board;
+		expect(board.lanes.routine).toMatchObject([{ key: "r-1", carriedFrom: "2026-11-18" }]);
+		callMcpTool(later, "set_routine_result", { date: "2026-11-20", routine_id: "r-1", result: "closed" });
+		const next = callMcpTool(later, "get_board", { date: "2026-11-21" }) as Board;
+		expect(next.lanes.routine).toMatchObject([{ key: "r-1", carriedFrom: null }]);
+		const stats = callMcpTool(later, "get_routine_stats", { id: "r-1", days: 3 }) as { missed: string | null }[];
+		expect(stats[0]?.missed).toBe("carry");
+	});
+
 	it("JSON-RPC 2.0 の initialize / tools/list / tools/call リクエストに応答する", () => {
 		const initRes = handleMcpRequest(ctx, { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
 		expect(initRes?.result).toHaveProperty("serverInfo");

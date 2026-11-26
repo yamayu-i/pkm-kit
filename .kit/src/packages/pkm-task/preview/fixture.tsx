@@ -2,7 +2,7 @@
 import { h, render, type FunctionComponent } from "preact";
 import { parse } from "yaml";
 import { serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
-import { addDays, localDateTime, localToday } from "../src/core/dates";
+import { addDays, localDateTime, localToday, weekdayOf, WEEKDAY_NAMES } from "../src/core/dates";
 import { TaskIndex } from "../src/core/index";
 import { collectVault } from "../src/core/load";
 import { IssueHeader } from "../src/header/IssueHeader";
@@ -121,6 +121,8 @@ const { data } = collectVault({
 		// closing の routine（ADR-0206）。Closing の画面の上に並び順で出る
 		{ path: "routine/r-4.md", frontmatter: { type: "routine", id: "r-4", summary: "日次振り返りを書く", repeat: { every: "day" }, start: addDays(t, -30), category: "closing", order: 2 } },
 		{ path: "routine/r-5.md", frontmatter: { type: "routine", id: "r-5", summary: "明日の予定を確かめる", repeat: { every: "day" }, start: addDays(t, -30), category: "closing", order: 1 } },
+		// 積み残したら今日やる routine（ADR-0234）。2 日前の予定日に結果がないので、今日のボードに持ち越しで出る
+		{ path: "routine/r-6.md", frontmatter: { type: "routine", id: "r-6", summary: "週報を出す", repeat: { every: "week", on: [WEEKDAY_NAMES[weekdayOf(addDays(t, -2))]] }, start: addDays(t, -30), missed: "carry" } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
 		{ path: "member/m-2.md", frontmatter: { type: "member", id: "m-2", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", label: ["仕事"] } },

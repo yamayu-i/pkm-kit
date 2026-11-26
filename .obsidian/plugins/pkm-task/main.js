@@ -957,6 +957,8 @@ var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
 var PRIORITIES = ["high", "mid", "low", "chore"];
 var STATUS_DETAIL_MAX = 20;
+var ROUTINE_MISSED = ["carry"];
+var DEFAULT_MISSED_NAME = "list";
 var ROUTINE_CATEGORIES = ["closing"];
 var DEFAULT_CATEGORY_NAME = "default";
 var Reader = class {
@@ -1131,6 +1133,7 @@ function parseRoutine(path, fm) {
     estimated: r3.minutes("estimated"),
     category: routineCategory(r3, fm.category),
     order: routineOrder(r3, fm.order),
+    missed: routineMissed(r3, fm.missed),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : routine, problems: r3.problems };
@@ -1143,6 +1146,12 @@ function routineCategory(r3, value) {
   }
   if (typeof value === "string" && ROUTINE_CATEGORIES.includes(value)) return value;
   r3.problem("invalid-category", `category \u306F ${ROUTINE_CATEGORIES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F default\uFF09: ${String(value)}`, "warning");
+  return null;
+}
+function routineMissed(r3, value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (typeof value === "string" && ROUTINE_MISSED.includes(value)) return value;
+  r3.problem("invalid-missed", `missed \u306F ${ROUTINE_MISSED.join(" / ")} \u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F Calendar \u306E Missed \u306B\u4E26\u3079\u308B\uFF09: ${String(value)}`, "warning");
   return null;
 }
 function routineOrder(r3, value) {
@@ -1194,16 +1203,39 @@ function moveRoutine(routines, id, category, before) {
   return patches;
 }
 function routinesOnDay(index, date, category) {
-  const list = index.routinesOn(date);
-  return sortRoutines(category === void 0 ? list : list.filter((r3) => r3.category === category));
+  const carried = [];
+  const rest = [];
+  for (const routine of index.routines.values()) {
+    if (category !== void 0 && routine.category !== category) continue;
+    const from = carriedFrom(index, routine, date);
+    if (from !== null) carried.push({ from, routine });
+    else if (routineOccursOn(routine, date)) rest.push(routine);
+  }
+  carried.sort((a3, b2) => a3.from === b2.from ? compareRoutines(a3.routine, b2.routine) : a3.from < b2.from ? -1 : 1);
+  return [...carried.map((c3) => c3.routine), ...sortRoutines(rest)];
 }
 var MISSED_ROUTINES_SINCE = "2026-11-18";
+function countFrom(routine, since) {
+  const anchor = routineAnchor(routine);
+  if (!routine.active || routine.repeat === null || anchor === null) return null;
+  return anchor > since ? anchor : since;
+}
+function carriedFrom(index, routine, date, since = MISSED_ROUTINES_SINCE) {
+  if (routine.missed !== "carry") return null;
+  const start = countFrom(routine, since);
+  if (start === null) return null;
+  let pending2 = null;
+  for (let d3 = start; d3 < date; d3 = addDays(d3, 1)) {
+    if (index.board(d3)?.board.routines[routine.id] !== void 0) pending2 = null;
+    else if (pending2 === null && routineOccursOn(routine, d3)) pending2 = d3;
+  }
+  return pending2;
+}
 function missedRoutines(index, today, since = MISSED_ROUTINES_SINCE) {
   const out = [];
   for (const routine of index.routines.values()) {
-    const anchor = routineAnchor(routine);
-    if (!routine.active || routine.repeat === null || anchor === null) continue;
-    const from = anchor > since ? anchor : since;
+    const from = countFrom(routine, since);
+    if (from === null || routine.missed === "carry") continue;
     for (let d3 = from; d3 < today; d3 = addDays(d3, 1)) {
       if (!routineOccursOn(routine, d3)) continue;
       if (index.board(d3)?.board.routines[routine.id] !== void 0) continue;
@@ -1246,13 +1278,13 @@ function boardItems(index, date, board) {
   const subs = board.issues.map((key) => index.sub(key)).filter((s3) => s3 !== void 0);
   return { issues, subs, routines: routinesOnDay(index, date) };
 }
-function unfinished(index, date, board) {
+function unfinished(index, date, board, today) {
   const items = boardItems(index, date, board);
   const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
     issues: items.issues.filter((i3) => left(i3.status, i3.id)),
     subs: items.subs.filter((s3) => left(s3.status, s3.key)),
-    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
+    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0 && !(today !== void 0 && date < today && r3.missed === "carry"))
   };
 }
 function unfinishedCount(u4) {
@@ -4197,7 +4229,7 @@ function boardCards(index, date, board) {
     const sub = index.sub(key);
     if (sub) cards2.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
   }
-  for (const routine of routinesOnDay(index, date, null)) cards2.push({ kind: "routine", key: routine.id, routine });
+  for (const routine of routinesOnDay(index, date, null)) cards2.push({ kind: "routine", key: routine.id, routine, carriedFrom: carriedFrom(index, routine, date) });
   return cards2;
 }
 function cardStatus(board, card) {
@@ -6251,6 +6283,15 @@ function RoutineHeader(props) {
     }
     m3.showAtMouseEvent(e3);
   };
+  const missedMenu = (e3) => {
+    const m3 = new import_obsidian10.Menu();
+    for (const v3 of [null, ...ROUTINE_MISSED]) {
+      m3.addItem(
+        (mi) => mi.setTitle(v3 ?? DEFAULT_MISSED_NAME).setChecked(routine.missed === v3).onClick(() => save({ missed: v3 }))
+      );
+    }
+    m3.showAtMouseEvent(e3);
+  };
   const effort = index.routineEffort(routine.id, Date.now());
   return /* @__PURE__ */ u3("div", { class: "vt-issue", children: [
     /* @__PURE__ */ u3("div", { class: "vt-meta", children: [
@@ -6301,6 +6342,21 @@ function RoutineHeader(props) {
           routine.category ?? DEFAULT_CATEGORY_NAME,
           /* @__PURE__ */ u3(Icon, { name: "chevron-down" })
         ] }),
+        /* @__PURE__ */ u3(
+          "button",
+          {
+            class: "vt-field-chip",
+            "aria-label": "When missed",
+            title: "When missed: list shows it under Missed in Today's Calendar, carry puts it on today's board until it is closed",
+            onClick: missedMenu,
+            children: [
+              /* @__PURE__ */ u3(Icon, { name: routine.missed === "carry" ? "rotate-cw" : "list" }),
+              "missed: ",
+              routine.missed ?? DEFAULT_MISSED_NAME,
+              /* @__PURE__ */ u3(Icon, { name: "chevron-down" })
+            ]
+          }
+        ),
         /* @__PURE__ */ u3(PriorityBadge, { priority: routine.priority, onClick: (e3) => priorityMenu(e3, routine.priority, save) }),
         /* @__PURE__ */ u3(LabelsField, { ctx, labels: routine.labels, index, save })
       ] })
@@ -7967,7 +8023,7 @@ function closingGroups(index, date, board, graceHour = 0) {
       if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
     }
   }
-  for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0 });
+  for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0, carriedFrom: carriedFrom(index, routine, date) });
   const groups = { closed: [], "not-done": [], waiting: [], canceled: [] };
   for (const item of items) groups[groupOf(itemStatus(board, item))].push(item);
   return groups;
@@ -9407,6 +9463,14 @@ function showStatusMenu2(ctx, date, card, status, e3) {
   m3.showAtMouseEvent(e3);
 }
 var ROUTINE_RESULTS = ["open", "closed", "canceled"];
+function CarriedChip(props) {
+  const day = `${Number(props.from.slice(5, 7))}/${Number(props.from.slice(8, 10))}`;
+  return /* @__PURE__ */ u3("span", { class: "vt-chip-mini is-carried vt-num", title: `Carried over from ${formatShortDate(props.from)}. Closing it today settles the missed days`, children: [
+    /* @__PURE__ */ u3(Icon, { name: "rotate-cw" }),
+    " ",
+    day
+  ] });
+}
 function RoutineStepButton(props) {
   const reopen = props.status !== "open";
   const title = reopen ? "Reopen (\u2192 open)" : "Close (\u2192 closed)";
@@ -9484,6 +9548,7 @@ function TaskCard(props) {
         /* @__PURE__ */ u3(StatusBadge, { status, enter, onClick: statusMenu }),
         card.kind !== "routine" ? /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: key, onBoard: true }) : /* @__PURE__ */ u3(RoutineStepButton, { ctx, date, id: key, status }),
         /* @__PURE__ */ u3("span", { class: "vt-task-summary", title: card.kind === "sub" ? `${card.sub.parent} \u203A ${summary}` : `${key} ${summary}`, ...linkProps((e3) => void ctx.openPath(path, import_obsidian24.Keymap.isModEvent(e3) !== false)), children: summary }),
+        card.kind === "routine" && card.carriedFrom !== null && /* @__PURE__ */ u3(CarriedChip, { from: card.carriedFrom }),
         !done && card.kind !== "routine" && /* @__PURE__ */ u3(
           "button",
           {
@@ -9688,6 +9753,7 @@ function TaskRow(props) {
       " \u203A"
     ] }),
     /* @__PURE__ */ u3("span", { class: "vt-compact-title", title: summary, ...linkProps((e3) => void ctx.openPath(path, import_obsidian25.Keymap.isModEvent(e3) !== false)), children: summary || "(no summary)" }),
+    item.kind === "routine" && item.carriedFrom !== null && /* @__PURE__ */ u3(CarriedChip, { from: item.carriedFrom }),
     item.kind === "routine" && props.kindLabel !== false && /* @__PURE__ */ u3("span", { class: "vt-compact-meta", children: "routine" }),
     item.minutes > 0 && /* @__PURE__ */ u3("span", { class: "vt-compact-meta vt-num", children: formatMinutes(item.minutes) })
   ] });
@@ -9728,7 +9794,7 @@ function ClosingView(props) {
           " All done"
         ] })
       ] }),
-      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: routines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0 }, kindLabel: false }, r3.id)) })
+      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: routines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0, carriedFrom: carriedFrom(index, r3, date) }, kindLabel: false }, r3.id)) })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-closing-section", "aria-label": "Tasks", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
@@ -10113,7 +10179,7 @@ function DailyView(props) {
     for (const b2 of index.data.boards) {
       if (b2.date >= today || b2.board.closed || closing.current.has(b2.date)) continue;
       if (holdAutoClose(b2.date, new Date(now), grace)) continue;
-      if (unfinishedCount(unfinished(index, b2.date, b2.board)) > 0) continue;
+      if (unfinishedCount(unfinished(index, b2.date, b2.board, today)) > 0) continue;
       closing.current.add(b2.date);
       void ctx.writer.closeBoard(b2.date, ctx.settings.deviceName).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
     }

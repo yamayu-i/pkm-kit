@@ -56,8 +56,16 @@ export interface Routine {
 	category: RoutineCategory | null;
 	/** カテゴリーの中の並び（小さい順。ないものは後ろに ID の順。ADR-0206） */
 	order: number | null;
+	/** 積み残しの扱い（ADR-0234）。null は Calendar の Missed に並べる、carry は今日のボードに持ち越す */
+	missed: RoutineMissed | null;
 	created: string | null;
 }
+
+/** routine の積み残しの扱い（ADR-0234）。書かないもの（null）は Calendar の Missed に並べる（表示の名前は list） */
+export const ROUTINE_MISSED = ["carry"] as const;
+export type RoutineMissed = (typeof ROUTINE_MISSED)[number];
+/** missed を書かないものの表示の名前（frontmatter には書かない） */
+export const DEFAULT_MISSED_NAME = "list";
 
 /** routine の category（ADR-0206）。書かないもの（null）を default と呼ぶ。default は予約語で frontmatter には書かない */
 export const ROUTINE_CATEGORIES = ["closing"] as const;
@@ -276,6 +284,7 @@ export function parseRoutine(path: string, fm: Frontmatter): Parsed<Routine> {
 		estimated: r.minutes("estimated"),
 		category: routineCategory(r, fm.category),
 		order: routineOrder(r, fm.order),
+		missed: routineMissed(r, fm.missed),
 		created: r.datetime("created"),
 	};
 	return { value: id === null ? null : routine, problems: r.problems };
@@ -289,6 +298,13 @@ function routineCategory(r: Reader, value: unknown): RoutineCategory | null {
 	}
 	if (typeof value === "string" && (ROUTINE_CATEGORIES as readonly string[]).includes(value)) return value as RoutineCategory;
 	r.problem("invalid-category", `category は ${ROUTINE_CATEGORIES.join(" / ")} のどれかにしてください（なしは default）: ${String(value)}`, "warning");
+	return null;
+}
+
+function routineMissed(r: Reader, value: unknown): RoutineMissed | null {
+	if (value === undefined || value === null || value === "") return null;
+	if (typeof value === "string" && (ROUTINE_MISSED as readonly string[]).includes(value)) return value as RoutineMissed;
+	r.problem("invalid-missed", `missed は ${ROUTINE_MISSED.join(" / ")} にしてください（なしは Calendar の Missed に並べる）: ${String(value)}`, "warning");
 	return null;
 }
 

@@ -9,7 +9,8 @@ import type { TaskContext } from "../obsidian/context";
 import { StatusStepButton } from "../obsidian/status-change";
 import { linkProps } from "../ui/a11y";
 import { Icon } from "../ui/Icon";
-import { RoutineStepButton } from "./Board";
+import { carriedFrom } from "../core/routine-order";
+import { CarriedChip, RoutineStepButton } from "./Board";
 
 /** 群の見出し（ADR-0206）。アイコンと色は見出しだけに付ける */
 const GROUP_HEAD: Record<ClosingGroup, { label: string; icon: string }> = {
@@ -50,6 +51,7 @@ function TaskRow(props: { ctx: TaskContext; date: LocalDate; board: BoardState; 
 			<span class="vt-compact-title" title={summary} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 				{summary || "(no summary)"}
 			</span>
+			{item.kind === "routine" && item.carriedFrom !== null && <CarriedChip from={item.carriedFrom} />}
 			{item.kind === "routine" && props.kindLabel !== false && <span class="vt-compact-meta">routine</span>}
 			{item.minutes > 0 && <span class="vt-compact-meta vt-num">{formatMinutes(item.minutes)}</span>}
 		</li>
@@ -100,7 +102,7 @@ export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: L
 				) : (
 					<ul class="vt-compact-list">
 						{routines.map((r) => (
-							<TaskRow ctx={ctx} date={date} board={board} item={{ kind: "routine", key: r.id, routine: r, minutes: 0 }} kindLabel={false} key={r.id} />
+							<TaskRow ctx={ctx} date={date} board={board} item={{ kind: "routine", key: r.id, routine: r, minutes: 0, carriedFrom: carriedFrom(index, r, date) }} kindLabel={false} key={r.id} />
 						))}
 					</ul>
 				)}

@@ -4,7 +4,7 @@ import type { LocalDate } from "./dates";
 import { byPick } from "./daily";
 import { isActive, isWatchStatus, type TaskIndex } from "./index";
 import type { Issue, Routine, Status } from "./schema";
-import { routinesOnDay } from "./routine-order";
+import { carriedFrom, routinesOnDay } from "./routine-order";
 import { isDoneStatus } from "./status-log";
 import type { SubIssue } from "./sub-issue";
 import { unstarsOn } from "./transition";
@@ -13,7 +13,7 @@ import { unstarsOn } from "./transition";
 export type BoardCard =
 	| { kind: "issue"; key: string; issue: Issue }
 	| { kind: "sub"; key: string; sub: SubIssue; parent: Issue | undefined }
-	| { kind: "routine"; key: string; routine: Routine };
+	| { kind: "routine"; key: string; routine: Routine; carriedFrom: LocalDate | null };
 
 /**
  * 欄（上から）。作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・Watch・片付いた。
@@ -31,7 +31,7 @@ export type BoardLanes = Record<LaneId, BoardCard[]>;
 
 /**
  * ボードに載っているカード。issue とサブは載せた順、routine はその後ろ。鍵が指すものがなくなったものは出さない。
- * routine は default の群だけを並び順で出す（closing は Closing の画面。ADR-0206）
+ * routine は default の群だけを並び順で出す（closing は Closing の画面。ADR-0206）。持ち越し（ADR-0234）は先に、起点の日を持たせる
  */
 export function boardCards(index: TaskIndex, date: LocalDate, board: BoardState): BoardCard[] {
 	const cards: BoardCard[] = [];
@@ -44,7 +44,7 @@ export function boardCards(index: TaskIndex, date: LocalDate, board: BoardState)
 		const sub = index.sub(key);
 		if (sub) cards.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
 	}
-	for (const routine of routinesOnDay(index, date, null)) cards.push({ kind: "routine", key: routine.id, routine });
+	for (const routine of routinesOnDay(index, date, null)) cards.push({ kind: "routine", key: routine.id, routine, carriedFrom: carriedFrom(index, routine, date) });
 	return cards;
 }
 
