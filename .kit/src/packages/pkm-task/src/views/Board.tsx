@@ -74,6 +74,16 @@ function showStatusMenu(ctx: TaskContext, date: LocalDate, card: BoardCard, stat
 /** routine のその日の結果（ADR-0010） */
 const ROUTINE_RESULTS = ["open", "closed", "canceled"] as const;
 
+/** 持ち越しの印（ADR-0234）。起点の日（積み残した一番古い予定日）を注意の色で出す */
+export function CarriedChip(props: { from: LocalDate }) {
+	const day = `${Number(props.from.slice(5, 7))}/${Number(props.from.slice(8, 10))}`;
+	return (
+		<span class="vt-chip-mini is-carried vt-num" title={`Carried over from ${formatShortDate(props.from)}. Closing it today settles the missed days`}>
+			<Icon name="rotate-cw" /> {day}
+		</span>
+	);
+}
+
 /**
  * routine の status のボタン（ADR-0206）。issue と同じ見た目で、open なら closed にし、closed / canceled なら open に戻す（↩）。
  * date はその結果を書く日（積み残しは、もとの日）
@@ -162,6 +172,7 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 			<span class="vt-task-summary" title={card.kind === "sub" ? `${card.sub.parent} › ${summary}` : `${key} ${summary}`} {...linkProps((e) => void ctx.openPath(path, Keymap.isModEvent(e) !== false))}>
 				{summary}
 			</span>
+			{card.kind === "routine" && card.carriedFrom !== null && <CarriedChip from={card.carriedFrom} />}
 			{!done && card.kind !== "routine" && (
 				<button
 					class={`vt-icon-button vt-star${starred ? " is-starred" : ""}`}

@@ -2139,6 +2139,18 @@ body.is-mobile .vt-toast {
 	color: var(--vt-on-green-container);
 }
 
+/* routine の持ち越し（ADR-0234）。注意の色 */
+.vt-chip-mini.is-carried {
+	gap: 4px;
+	background: var(--vt-amber-container);
+	color: var(--vt-on-amber-container);
+}
+
+.vt-chip-mini.is-carried .vt-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
 /* ---------- Issue List の絞り込み ---------- */
 
 .vt-filters {

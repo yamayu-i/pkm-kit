@@ -239,7 +239,7 @@ packages/design/tokens.json（正本）
 | 名前の入力欄 | `.vt-name-field` | M3 の outlined text field 風。枠の上にラベル、下に説明（`.vt-name-hint`）かエラー。その場で作る・変える編集に使う |
 | 追加ボタン（大） | `.vt-add-group` | 点線の枠の大きいボタン。一覧の最後に「〜を追加」 |
 | 色の見本 | `.vt-color-swatch` | 44px の角丸の四角のカラーピッカー（`input[type=color]`）。`--vt-outline` の枠。隣に `#rrggbb` の `.vt-name-field` を置く |
-| 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付） |
+| 小さいチップ | `.vt-chip-mini` / `.vt-date-chip` | 補足（Inbox / 今日 / 日付）。routine の持ち越し（`.is-carried`）は amber-container の面に `rotate-cw` と起点の日（ADR-0234） |
 | サブイシューの行 | `.vt-subissue`（`.vt-subissue-row`） | issue 画面のカード「Sub-issues」（`.vt-subissues`）の 1 行（44px 以上）。左に status のアイコンのボタン（36px の丸。アイコンは status の印の色）と status のボタン（モノクロ。ADR-0183）、題と弱い文字の補足（期間 / 次の予定日 / 期限。狭いときは補足から縮む）、実績、Pick（選んだ後は再生 / 停止）、`⋯` のメニュー。ドラッグで並べ、落とす位置は primary の線（`.is-drop-before`）。済みは打ち消し線。記録中は緑の枠（ADR-0142） |
 | 上部のサブ一覧 | `.vt-subissues` | 題はラベルで、本文は展開しない。本文の表示は下部のサブのカードが担う。行の題（Timeline の左の列の題も）と Edit ダイアログの「Open note」は、そのサブを開いて下部のカードの題を上端に出す。Edit ダイアログは行の `⋯` の「Edit」から開き、項目だけを直し、本文の欄を持たない（ADR-0179 とその追記） |
 | サブの項目のカード | `.vt-sub-card`（Live Preview は `.vt-sub-card-host` の中） | issue の本文の、サブごとの項目のブロック（`<!-- sub-issue` から `-->`）を置き換えて描く。本文は置き換えず、issue 本体の描画のまま。行は同じ `.vt-subissue` で、左に開閉の矢印。開くと `.vt-subissue-form` の欄（題・日付と見積もりのチップ・依存先）をその場で直し、「Show source」で生の md を見せる。閉じたサブの本文は隠す（Reading は `.vt-sub-body-closed`）。読めないブロックは警告の行（`.is-unreadable`）。開閉はこの端末に保存する（ADR-0161）。題の行から開閉しても押した行の画面上の位置を保ち、上端に浮かんだ行から閉じたときはカードの題を上端に出す（ADR-0179）。開いたサブの本文と次のサブの題の行の間は space 24 を空ける（Reading は次のカードの `margin-top`、Live Preview は本文の最後の行 `.vt-sub-body-end` の `padding-bottom`） |

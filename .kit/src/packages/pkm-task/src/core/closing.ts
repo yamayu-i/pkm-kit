@@ -2,7 +2,7 @@ import type { BoardState } from "./board";
 import { boardItems } from "./board";
 import { addDays, localToday, type LocalDate } from "./dates";
 import type { TaskIndex } from "./index";
-import { routinesOnDay } from "./routine-order";
+import { carriedFrom, routinesOnDay } from "./routine-order";
 import type { Issue, Routine, Status } from "./schema";
 import type { SubIssue } from "./sub-issue";
 import { workKey } from "./worklog";
@@ -57,7 +57,7 @@ export const CLOSING_GROUPS: readonly ClosingGroup[] = ["closed", "not-done", "w
 export type ClosingItem =
 	| { kind: "issue"; key: string; issue: Issue; minutes: number }
 	| { kind: "sub"; key: string; sub: SubIssue; minutes: number }
-	| { kind: "routine"; key: string; routine: Routine; minutes: number };
+	| { kind: "routine"; key: string; routine: Routine; minutes: number; carriedFrom: LocalDate | null };
 
 export function groupOf(status: Status): ClosingGroup {
 	if (status === "closed") return "closed";
@@ -116,7 +116,7 @@ export function closingGroups(index: TaskIndex, date: LocalDate, board: BoardSta
 			if (issue) push({ kind: "issue", key, issue, minutes: minutes.get(key) ?? 0 });
 		}
 	}
-	for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0 });
+	for (const routine of on.routines) if (routine.category !== "closing") push({ kind: "routine", key: routine.id, routine, minutes: minutes.get(routine.id) ?? 0, carriedFrom: carriedFrom(index, routine, date) });
 	const groups: Record<ClosingGroup, ClosingItem[]> = { closed: [], "not-done": [], waiting: [], canceled: [] };
 	for (const item of items) groups[groupOf(itemStatus(board, item))].push(item);
 	return groups;

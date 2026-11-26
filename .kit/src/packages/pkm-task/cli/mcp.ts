@@ -135,7 +135,7 @@ export interface JsonRpcResponse {
 const TOOLS: McpToolDef[] = [
 	{
 		name: "get_overview",
-		description: "指定日（既定は今日）のボード、負荷、期限切れ・期限間近、Inbox件数、routine の積み残し（予定日に結果のないもの。set_routine_result でもとの日に結果を付ける）、記録中タイマー、持ち越し過多・停滞タスク、見積もり精度をまとめて取得する",
+		description: "指定日（既定は今日）のボード、負荷、期限切れ・期限間近、Inbox件数、routine の積み残し（予定日に結果のないもの。set_routine_result でもとの日に結果を付ける。missed: carry の routine は除き、get_board に出る）、記録中タイマー、持ち越し過多・停滞タスク、見積もり精度をまとめて取得する",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -149,7 +149,7 @@ const TOOLS: McpToolDef[] = [
 	{
 		name: "get_board",
 		description:
-			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（4 件まで）、routine: routine すべて（issue と混ぜない。★ は付けられない）、next: 次にやる順、watch: waiting / delegated の issue とサブすべて（ボードに載っているかによらない。並びは Pick と同じ。ADR-0184）、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
+			"指定日（既定は今日）のタスクボードの状態を取得する。lanes は欄ごとのカード（working: タイマーが動いているもの、top: ★今日の最重要（4 件まで）、routine: routine すべて（issue と混ぜない。★ は付けられない。missed: carry の積み残しは carriedFrom に起点の日を持ち、先に並ぶ。今日の日付で set_routine_result すると片付く。ADR-0234）、next: 次にやる順、watch: waiting / delegated の issue とサブすべて（ボードに載っているかによらない。並びは Pick と同じ。ADR-0184）、done: 片付いたもの）で、それぞれ画面の順。カードの key は issue の ID・サブの合成キー（i-N#xxxxxx）・routine の ID",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -609,6 +609,8 @@ function callTaskTool(
 				key: c.key,
 				kind: c.kind,
 				...(c.kind === "sub" ? { parent: c.sub.parent, parentSummary: c.parent?.summary ?? null } : {}),
+				// routine の持ち越しの起点（ADR-0234）。持ち越しでなければ null
+				...(c.kind === "routine" ? { carriedFrom: c.carriedFrom } : {}),
 				summary: cardSummary(c),
 				status: cardStatus(board, c),
 				starred: board.stars.includes(c.key),
@@ -710,6 +712,7 @@ function callTaskTool(
 					id: r!.id,
 					summary: r!.summary,
 					active: r!.active,
+					missed: r!.missed,
 					scheduledCount: scheduledDays.length,
 					closedCount: closedDays.length,
 					completionRate: scheduledDays.length > 0 ? Math.round((closedDays.length / scheduledDays.length) * 100) / 100 : null,
