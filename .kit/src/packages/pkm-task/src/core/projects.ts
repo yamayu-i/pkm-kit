@@ -151,9 +151,9 @@ export function loadItems(groups: readonly ProjectGroup[], index: TaskIndex): Lo
 	return out;
 }
 
-/** 負荷の行の文言: `5h`、`5h?`、`?`。時間は 0.5 刻みに丸める */
+/** 負荷の行の文言: `5h`、`5h?`、`?`。時間は整数に丸める（Day の列の幅 28px に収めるため。正確な値はツールチップ） */
 export function loadLabel(minutes: number, unknown: number): string {
-	const h = Math.round((minutes / 60) * 2) / 2;
+	const h = Math.round(minutes / 60);
 	const text = h > 0 ? `${h}h` : "";
 	return unknown > 0 ? `${text}?` : text;
 }

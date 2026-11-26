@@ -3465,7 +3465,8 @@ body.is-mobile .vt-toast {
 	border: 1px solid var(--vt-outline-variant);
 	border-radius: var(--vt-radius-m);
 	background: var(--vt-surface);
-	overflow: hidden;
+	/* hidden ではなく clip。スクロールの箱にしないので、中の .vt-timeline-rail が画面に対して sticky になる */
+	overflow: clip;
 }
 
 .vt-timeline-labels {
@@ -3529,10 +3530,41 @@ body.is-mobile .vt-toast {
 	text-decoration: line-through;
 }
 
-.vt-timeline-scroll {
+.vt-timeline-main {
+	display: flex;
 	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.vt-timeline-scroll {
 	min-width: 0;
 	overflow-x: auto;
+}
+
+/* 横のスクロールバー（Projects）: 図の下が画面の外にあるあいだは、画面の下端に固定する。図そのもののバーは隠す（横スクロールはそのまま効く） */
+.vt-timeline-scroll.has-rail {
+	isolation: isolate;
+	scrollbar-width: none;
+}
+
+.vt-timeline-scroll.has-rail::-webkit-scrollbar {
+	display: none;
+}
+
+.vt-timeline-rail {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	overflow-x: auto;
+	overflow-y: hidden;
+	border-top: 1px solid var(--vt-outline-variant);
+	background: var(--vt-surface);
+}
+
+/* 中身は図と同じ幅を持つだけ（高さはスクロールバーの分だけになる） */
+.vt-timeline-rail > div {
+	height: 0;
 }
 
 .vt-timeline-grid {
