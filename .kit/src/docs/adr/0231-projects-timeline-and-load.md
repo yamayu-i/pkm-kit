@@ -113,3 +113,12 @@ sub_issues:
 - issue 画面の、Calendar の日のストリップの場所（Project は Calendar の日を持たない。[ADR-0203](0203-pick-and-start-follow-next.md)）に、「unallocated」を出す。値は、親の `estimated` − 登録済みのサブの `estimated` の合計（canceled は除く。上の「使う見積もり」の残りと同じ）。負なら割り当てすぎで、error の色にする。親に `estimated` がなければ「—」。読むだけ
 - estimated を選ぶメニュー（15m・30m・1h・2h・5h・8h・Enter…・Clear。[ADR-0012](0012-issue-screen.md)・[ADR-0034](0034-duration-input-auto-board-sticky-groups.md)）は使われず、値を直接入れていた。issue 画面・routine 画面の estimated は、その場で入れる入力欄にする（Enter か欄を離れると保存、Escape で戻す、空にすると消す。読めない値は保存せず説明を出す）。一覧（Issues などの列）と行のメニューからは、メニューを挟まず入力欄のダイアログを開く
 - 却下: メニューの候補を S / M / L に変える。issue の見積もりはサブより幅が広く、候補で足りないことが多い
+
+## 追記（2026-11-26）: 親の予算（estimated）を促す
+
+親に `estimated` がないとき、割り振りはせず、見積もりのないサブは `?`（未見積もり）のままにする。それを埋めるきっかけがなかった。
+
+- 促すのは、親に `estimated` がなく、近いうちの見積もりのないサブ（上の「Estimate」の印と同じ条件）があるときだけ。サブにすべて見積もりがあれば、親の予算がなくても負荷は数えられるので促さない。`estimated: 0` は入れたものとして扱う
+- Projects: その Project の行の、期間をまとめた棒の右に「Budget」の印を出す。押すと estimated の入力欄のダイアログを開く
+- issue 画面: unallocated が「—」（親に `estimated` がない）のときは、その欄を押せるようにし（編集できるものの見た目と鉛筆）、押すと estimated の入力欄のダイアログを開く。条件に当たらなくても押せる（入れたいときに入れられる）
+- 却下: すべての Project の行に印を出す。サブに見積もりがあるなら要らず、印が増えるだけになる

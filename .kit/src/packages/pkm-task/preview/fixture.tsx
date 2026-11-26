@@ -199,6 +199,8 @@ const headerPaths: Record<string, string> = {
 	"header-picked": "issue/i-1.md",
 	"header-someday": "issue/i-9.md",
 	"header-closed": "issue/i-12.md",
+	// estimated のない Project（ADR-0231 の追記: unallocated を押して予算を入れる）
+	"header-budget": "issue/i-18.md",
 };
 if (name in headerPaths || name === "routine" || name === "member" || name === "preset" || name === "timeline") {
 	for (const [id, width] of [

@@ -2,11 +2,12 @@ import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatShortDate, localToday, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
-import { columnLoad, dayLoad, loadLabel, needsEstimate, SIZES, type Capacity, type LoadItem } from "../core/projects";
+import { columnLoad, dayLoad, loadLabel, needsBudget, needsEstimate, SIZES, type Capacity, type LoadItem } from "../core/projects";
 import type { Issue } from "../core/schema";
 import { subKey, type SubIssue } from "../core/sub-issue";
 import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale, type TimelineSub } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
+import { editEstimate, saveIssue } from "../obsidian/issue-editors";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { canEditSubPeriod, periodInInboxMessage, subPeriodError } from "../core/project-periods";
 import { Segmented } from "../ui/Segmented";
@@ -358,7 +359,18 @@ export function TimelineChart(props: {
 								})()}
 							<div class="vt-timeline-today" style={{ left: `${xOf(today) + px / 2}px` }} aria-hidden="true" />
 							{rows.map((row, i) => {
-								if (row.kind === "project") return <ProjectRow issue={row.issue} subs={row.subs.map((s) => shown(s))} top={i * ROW} xOf={xOf} px={px} />;
+								if (row.kind === "project")
+									return (
+										<ProjectRow
+											issue={row.issue}
+											subs={row.subs.map((s) => shown(s))}
+											top={i * ROW}
+											xOf={xOf}
+											px={px}
+											// 親の予算を促す印（ADR-0231 の追記）。押すと estimated の入力欄
+											onBudget={needsBudget(row.issue, index.subs(row.issue.id), today) ? () => editEstimate(ctx, row.issue.estimated, saveIssue(ctx, row.issue)) : null}
+										/>
+									);
 								const sub = row.sub;
 								const bar = shown(sub);
 								const left = bar ? xOf(bar.start) : 0;
@@ -428,7 +440,8 @@ export function TimelineChart(props: {
 }
 
 /** Project の行（ADR-0231）: 出しているサブの期間をまとめた棒と、親の期限の印。読むだけ */
-function ProjectRow(props: { issue: Issue; subs: ({ start: LocalDate; end: LocalDate } | null)[]; top: number; xOf: (d: LocalDate) => number; px: number }) {
+/** onBudget があれば、親に estimated がなく近いうちの見積もりのないサブがあるので、期間の棒の右に「Budget」の印を出す */
+function ProjectRow(props: { issue: Issue; subs: ({ start: LocalDate; end: LocalDate } | null)[]; top: number; xOf: (d: LocalDate) => number; px: number; onBudget: (() => void) | null }) {
 	const { issue, xOf, px } = props;
 	const bars = props.subs.filter((b): b is { start: LocalDate; end: LocalDate } => b !== null);
 	const span = bars.length > 0 ? { start: bars.map((b) => b.start).reduce((a, b) => (b < a ? b : a)), end: bars.map((b) => b.end).reduce((a, b) => (b > a ? b : a)) } : null;
@@ -442,6 +455,17 @@ function ProjectRow(props: { issue: Issue; subs: ({ start: LocalDate; end: Local
 			{marks.map((m) => (
 				<span class={`vt-timeline-due is-${m.kind}`} style={{ left: `${xOf(m.date) + px / 2}px` }} title={m.label} />
 			))}
+			{props.onBudget && (
+				<button
+					type="button"
+					class="vt-timeline-estimate is-budget"
+					style={{ left: `${span ? xOf(span.end) + px + 16 : 4}px` }}
+					title="No estimated for this project: enter the budget for its sub-issues"
+					onClick={props.onBudget}
+				>
+					Budget
+				</button>
+			)}
 		</div>
 	);
 }

@@ -184,3 +184,11 @@ export function needsEstimate(sub: SubIssue, today: LocalDate): boolean {
 	if (!bar) return false;
 	return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
 }
+
+/**
+ * 親の予算（estimated）を促すか（ADR-0231 の追記）。親に estimated がなく、近いうちの見積もりのないサブがあるときだけ。
+ * サブにすべて見積もりがあれば、親の予算はなくても負荷は数えられるので促さない
+ */
+export function needsBudget(parent: Pick<Issue, "estimated">, subs: readonly SubIssue[], today: LocalDate): boolean {
+	return parent.estimated === null && subs.some((s) => needsEstimate(s, today));
+}

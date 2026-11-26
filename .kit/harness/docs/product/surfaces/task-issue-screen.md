@@ -14,7 +14,7 @@
 4. priority と label
 5. 今日からの 7 日のストリップ（押すとその日を Calendar の日にする。もう一度押すと消す。「calendar >」で先の日も選べる）、tickler（その日に Inbox に戻す。Project では、閉じていないサブの期間の始まりのいちばん早い日以前だけを選べ、期間がすでに始まっていれば理由を出して付けさせない）、soft deadline・deadline
 6. サブイシューの一覧（同じ Markdown に作る。題・状態・期間と依存を持ち、閉じたものは既定では隠す）。今日のボードに載せる Pick と、載った後の再生・停止を表示する。Pick は Next のサブ（open か in-progress で、Calendar の日がなく、親が Next で、今日が期間に入る）にだけ出し、期間がないか今日が期間の外のサブには、代わりに Timeline のボタンを出す（押すと何も書き換えず、Timeline でそのサブの行を目立たせる）。status のボタンの Start は、今日のボードに載せたものにだけ出す。Calendar の日を持つ issue にはサブを作れず、このカードを出さない。Timeline で期間と依存を見て直せる。見積もりがなく期間が今日から 14 日のうちにかかるサブには、棒の右に「Estimate」の印を出し、押すと S・M・L から選んで保存する。サブの Edit と本文のカードには、見積もりのサイズのチップ（S 30m・M 2h・L 4h・XL は分けるよう促す）を置く。Inbox（未整理）の Project では、サブの期間を入れられない（Edit・本文のカードの欄は押せず、Timeline は棒を作れず動かせない。理由を出す）。Tickler が先の Project では、Tickler の日より前に始まる期間を置けない。Project を someday にするときは、消えるサブの期間と Calendar の日を並べた確認のダイアログを出す。見出しの Apply preset から[プリセット](task-presets.md)を選ぶと、そのサブを末尾に足し、本文を issue の本文の末尾に追記する
-7. estimated（入力欄に単位付きで入れる。Enter か欄を離れると保存し、空にすると消す）、実績、残り。サブを持つ issue（Project）では、日付のストリップの場所に、estimated から登録済みのサブの estimated の合計（canceled は除く）を引いた「unallocated」を出す（負なら赤）
+7. estimated（入力欄に単位付きで入れる。Enter か欄を離れると保存し、空にすると消す）、実績、残り。サブを持つ issue（Project）では、日付のストリップの場所に、estimated から登録済みのサブの estimated の合計（canceled は除く）を引いた「unallocated」を出す（負なら赤）。estimated がなければ「—」で、押すと estimated の入力欄が開く
 8. worklog（見出しに Pick（Next の issue だけ。Inbox・Calendar・Tickler・someday には出さない）、ボードに載った後は再生・停止。新しい順に 5 件ずつ。押して編集）
 9. 本文（ふつうのエディタ。新しい issue は ToDo / Description / Note の見出し）
 

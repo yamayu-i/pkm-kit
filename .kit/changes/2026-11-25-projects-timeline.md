@@ -7,6 +7,7 @@
 - プリセットのサブに見積もりの既定値を持てるようにした（`sub_issues` の 1 件を `summary` と `estimated` の対応で書ける）
 - Timeline の棒の高さを、枠を含めて 28px にした（押せる大きさ）
 - issue 画面で、サブを持つ issue（Project）には、日付のストリップの場所に「unallocated」（estimated − 登録済みのサブの estimated の合計）を出す
+- 親に estimated がない Project には、unallocated を押して予算を入れられるようにし、近いうちに見積もりのないサブがあれば Projects の行に「Budget」の印を出す
 - issue・routine 画面の estimated を、メニューではなく入力欄にした。一覧の列と行のメニューからは、入力欄のダイアログを直接開く
 
 子への影響: 移行はない。今のプリセット（題の文字列だけ）はそのまま読める。モバイルでは Projects の棒のドラッグと「Estimate」のメニューを確かめる。

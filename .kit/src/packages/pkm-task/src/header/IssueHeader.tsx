@@ -9,7 +9,7 @@ import { unallocatedBudget } from "../core/projects";
 import type { SubIssue } from "../core/sub-issue";
 import { scheduledPatch, ticklerFieldPatch } from "../core/actions";
 import type { TaskContext } from "../obsidian/context";
-import { editLabels, editStatusDetail, pickMember, priorityMenu } from "../obsidian/issue-editors";
+import { editLabels, editEstimate, editStatusDetail, pickMember, priorityMenu } from "../obsidian/issue-editors";
 import { PreactModal } from "../obsidian/modals";
 import { PickTimer } from "../obsidian/pick-toggle";
 import type { FieldValue } from "../obsidian/writer";
@@ -213,7 +213,7 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 				</div>
 			)}
 			{/* Project は Calendar の日を持たないので、その場所に、親の予算のうちサブにまだ割り当てていない分を出す（ADR-0231 の追記） */}
-			{subs.length > 0 && <UnallocatedBudget issue={issue} subs={subs} />}
+			{subs.length > 0 && <UnallocatedBudget issue={issue} subs={subs} onEdit={() => editEstimate(ctx, issue.estimated, save)} />}
 			<div class="vt-row">
 				{calendar && (
 					<button class="vt-text-button" onClick={pick("Calendar (must be done on this day)", issue.scheduled, setCalendar)}>
@@ -246,18 +246,27 @@ function ScheduleStrip(props: { ctx: TaskContext; issue: Issue; save: Save; cale
 }
 
 /** 親の estimated − 登録済みのサブの estimated の合計（canceled は数えない）。負なら割り当てすぎ */
-function UnallocatedBudget(props: { issue: Issue; subs: SubIssue[] }) {
+function UnallocatedBudget(props: { issue: Issue; subs: SubIssue[]; onEdit: () => void }) {
 	const rest = unallocatedBudget(props.issue, props.subs);
 	const assigned = props.subs.filter((s) => s.status !== "canceled" && s.estimated !== null).reduce((n, s) => n + s.estimated!, 0);
-	const title =
-		props.issue.estimated === null
-			? "Set the estimated of this issue to see the budget left for sub-issues"
-			: `estimated ${formatMinutes(props.issue.estimated)} − sub-issues ${formatMinutes(assigned)} (canceled not counted)`;
+	// 親に estimated がなければ、ここを押して入れられる（ADR-0231 の追記）。編集できるものの見た目にする
+	if (rest === null) {
+		return (
+			<button type="button" class="vt-budget is-editable" title="Enter the estimated of this issue to see the budget left for sub-issues" onClick={props.onEdit}>
+				<span class="vt-field-label">
+					unallocated
+					<Icon name="pencil" class="vt-trailing" />
+				</span>
+				<span class="vt-budget-value">—</span>
+				<span class="vt-muted vt-budget-detail">No estimated. Click to enter the budget</span>
+			</button>
+		);
+	}
 	return (
-		<div class={`vt-budget${rest !== null && rest < 0 ? " is-over" : ""}`} title={title}>
+		<div class={`vt-budget${rest < 0 ? " is-over" : ""}`} title={`estimated ${formatMinutes(props.issue.estimated!)} − sub-issues ${formatMinutes(assigned)} (canceled not counted)`}>
 			<span class="vt-field-label">unallocated</span>
-			<span class="vt-budget-value">{rest === null ? "—" : formatMinutes(rest)}</span>
-			<span class="vt-muted vt-budget-detail">{rest === null ? "No estimated" : rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues"}</span>
+			<span class="vt-budget-value">{formatMinutes(rest)}</span>
+			<span class="vt-muted vt-budget-detail">{rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues"}</span>
 		</div>
 	);
 }

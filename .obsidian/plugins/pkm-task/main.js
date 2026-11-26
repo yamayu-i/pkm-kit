@@ -3111,6 +3111,9 @@ function needsEstimate(sub, today) {
   if (!bar) return false;
   return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
 }
+function needsBudget(parent, subs, today) {
+  return parent.estimated === null && subs.some((s3) => needsEstimate(s3, today));
+}
 
 // src/obsidian/issue-editors.tsx
 var import_obsidian4 = require("obsidian");
@@ -5093,7 +5096,18 @@ ${v3.unknown} sub-issue(s) without an estimate` : ""}`;
           })(),
           /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
           rows.map((row, i3) => {
-            if (row.kind === "project") return /* @__PURE__ */ u3(ProjectRow, { issue: row.issue, subs: row.subs.map((s3) => shown(s3)), top: i3 * ROW, xOf, px });
+            if (row.kind === "project")
+              return /* @__PURE__ */ u3(
+                ProjectRow,
+                {
+                  issue: row.issue,
+                  subs: row.subs.map((s3) => shown(s3)),
+                  top: i3 * ROW,
+                  xOf,
+                  px,
+                  onBudget: needsBudget(row.issue, index.subs(row.issue.id), today) ? () => editEstimate(ctx, row.issue.estimated, saveIssue(ctx, row.issue)) : null
+                }
+              );
             const sub = row.sub;
             const bar = shown(sub);
             const left = bar ? xOf(bar.start) : 0;
@@ -5164,7 +5178,18 @@ function ProjectRow(props) {
   ].filter((m3) => m3 !== null);
   return /* @__PURE__ */ u3("div", { class: "vt-timeline-row is-project", style: { top: `${props.top}px` }, children: [
     span && /* @__PURE__ */ u3("div", { class: "vt-timeline-span", style: { left: `${xOf(span.start)}px`, width: `${xOf(span.end) - xOf(span.start) + px}px` }, title: `${formatShortDate(span.start)} \u2013 ${formatShortDate(span.end)}` }),
-    marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-due is-${m3.kind}`, style: { left: `${xOf(m3.date) + px / 2}px` }, title: m3.label }))
+    marks.map((m3) => /* @__PURE__ */ u3("span", { class: `vt-timeline-due is-${m3.kind}`, style: { left: `${xOf(m3.date) + px / 2}px` }, title: m3.label })),
+    props.onBudget && /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: "vt-timeline-estimate is-budget",
+        style: { left: `${span ? xOf(span.end) + px + 16 : 4}px` },
+        title: "No estimated for this project: enter the budget for its sub-issues",
+        onClick: props.onBudget,
+        children: "Budget"
+      }
+    )
   ] });
 }
 
@@ -5537,7 +5562,7 @@ function ScheduleStrip(props) {
       /* @__PURE__ */ u3("span", { class: "vt-weekday", children: WEEKDAY_NAMES[weekdayOf(d3)] }),
       /* @__PURE__ */ u3(DayCell, { date: d3, scheduled: issue.scheduled === d3, softDeadline: issue.softDeadline, deadline: issue.deadline, today, onClick: () => setCalendar(issue.scheduled === d3 ? null : d3) })
     ] })) }),
-    subs.length > 0 && /* @__PURE__ */ u3(UnallocatedBudget, { issue, subs }),
+    subs.length > 0 && /* @__PURE__ */ u3(UnallocatedBudget, { issue, subs, onEdit: () => editEstimate(ctx, issue.estimated, save) }),
     /* @__PURE__ */ u3("div", { class: "vt-row", children: [
       calendar && /* @__PURE__ */ u3("button", { class: "vt-text-button", onClick: pick("Calendar (must be done on this day)", issue.scheduled, setCalendar), children: [
         "calendar >",
@@ -5572,11 +5597,20 @@ function ScheduleStrip(props) {
 function UnallocatedBudget(props) {
   const rest = unallocatedBudget(props.issue, props.subs);
   const assigned = props.subs.filter((s3) => s3.status !== "canceled" && s3.estimated !== null).reduce((n2, s3) => n2 + s3.estimated, 0);
-  const title = props.issue.estimated === null ? "Set the estimated of this issue to see the budget left for sub-issues" : `estimated ${formatMinutes(props.issue.estimated)} \u2212 sub-issues ${formatMinutes(assigned)} (canceled not counted)`;
-  return /* @__PURE__ */ u3("div", { class: `vt-budget${rest !== null && rest < 0 ? " is-over" : ""}`, title, children: [
+  if (rest === null) {
+    return /* @__PURE__ */ u3("button", { type: "button", class: "vt-budget is-editable", title: "Enter the estimated of this issue to see the budget left for sub-issues", onClick: props.onEdit, children: [
+      /* @__PURE__ */ u3("span", { class: "vt-field-label", children: [
+        "unallocated",
+        /* @__PURE__ */ u3(Icon, { name: "pencil", class: "vt-trailing" })
+      ] }),
+      /* @__PURE__ */ u3("span", { class: "vt-budget-value", children: "\u2014" }),
+      /* @__PURE__ */ u3("span", { class: "vt-muted vt-budget-detail", children: "No estimated. Click to enter the budget" })
+    ] });
+  }
+  return /* @__PURE__ */ u3("div", { class: `vt-budget${rest < 0 ? " is-over" : ""}`, title: `estimated ${formatMinutes(props.issue.estimated)} \u2212 sub-issues ${formatMinutes(assigned)} (canceled not counted)`, children: [
     /* @__PURE__ */ u3("span", { class: "vt-field-label", children: "unallocated" }),
-    /* @__PURE__ */ u3("span", { class: "vt-budget-value", children: rest === null ? "\u2014" : formatMinutes(rest) }),
-    /* @__PURE__ */ u3("span", { class: "vt-muted vt-budget-detail", children: rest === null ? "No estimated" : rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues" })
+    /* @__PURE__ */ u3("span", { class: "vt-budget-value", children: formatMinutes(rest) }),
+    /* @__PURE__ */ u3("span", { class: "vt-muted vt-budget-detail", children: rest < 0 ? "Over the estimated" : "of the estimated, not yet in sub-issues" })
   ] });
 }
 function DueFields(props) {

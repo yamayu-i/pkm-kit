@@ -3,7 +3,7 @@ import { parse } from "yaml";
 import { emptyVaultData, TaskIndex } from "../src/core/index";
 import { parseIssue } from "../src/core/schema";
 import { parseSubIssues, type SubIssue } from "../src/core/sub-issue";
-import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadLabel, needsEstimate, projectGroups, unallocatedBudget, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
+import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadLabel, needsBudget, needsEstimate, projectGroups, unallocatedBudget, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
 
 // 2026-11-15 は日曜
 const today = "2026-11-16";
@@ -137,5 +137,17 @@ describe("見積もりのサイズと近いうちの印", () => {
 				block("gggggg"),
 		);
 		expect(subs.filter((s) => needsEstimate(s, today)).map((s) => s.id)).toEqual(["aaaaaa", "cccccc"]);
+	});
+});
+
+describe("親の予算を促す印（ADR-0231 の追記）", () => {
+	it("親に estimated がなく、近いうちの見積もりのないサブがあるときだけ", () => {
+		const near = subsOf("i-1", block("aaaaaa", "start: 2026-11-17\nend: 2026-11-18\n"));
+		const far = subsOf("i-1", block("aaaaaa", "start: 2027-01-10\n"));
+		const estimated = subsOf("i-1", block("aaaaaa", "start: 2026-11-17\nestimated: 30\n"));
+		expect(needsBudget(issue("i-1"), near, today)).toBe(true);
+		expect(needsBudget(issue("i-1", { estimated: 0 }), near, today)).toBe(false);
+		expect(needsBudget(issue("i-1"), far, today)).toBe(false);
+		expect(needsBudget(issue("i-1"), estimated, today)).toBe(false);
 	});
 });
