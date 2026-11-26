@@ -853,10 +853,16 @@ function parsePreset(path, fm, text2) {
   const name = r3.string("name") ?? "";
   if (!name) r3.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const subIssues = [];
+  const subEstimates = [];
   for (const v3 of r3.list("sub_issues")) {
-    const error = typeof v3 === "string" ? presetSubError(v3) : "\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093";
-    if (error !== null) r3.problem("invalid-preset-sub", `sub_issues: ${error}: ${JSON.stringify(v3)}`);
-    else subIssues.push(v3.trim());
+    const item = presetSubItem(v3);
+    if (typeof item === "string") {
+      r3.problem("invalid-preset-sub", `sub_issues: ${item}: ${JSON.stringify(v3)}`);
+      continue;
+    }
+    if (item.estimateError !== null) r3.problem("invalid-preset-sub", `sub_issues: ${item.estimateError}: ${JSON.stringify(v3)}`);
+    subIssues.push(item.summary);
+    subEstimates.push(item.estimated);
   }
   let body = text2 === void 0 ? "" : presetBodyOf(text2);
   const bodyError = presetBodyError(body);
@@ -865,7 +871,23 @@ function parsePreset(path, fm, text2) {
     body = "";
   }
   if (id === null) return { value: null, problems: r3.problems };
-  return { value: { path, id, name: name || id, subIssues, body, created: r3.datetime("created") }, problems: r3.problems };
+  const estimates = subEstimates.some((e3) => e3 !== null) ? { subEstimates } : {};
+  return { value: { path, id, name: name || id, subIssues, ...estimates, body, created: r3.datetime("created") }, problems: r3.problems };
+}
+function presetSubItem(v3) {
+  if (typeof v3 === "string") {
+    const error2 = presetSubError(v3);
+    return error2 ?? { summary: v3.trim(), estimated: null, estimateError: null };
+  }
+  if (typeof v3 !== "object" || v3 === null || Array.isArray(v3)) return "\u6587\u5B57\u5217\u304B\u3001summary \u3068 estimated \u306E\u5BFE\u5FDC\u306B\u3057\u3066\u304F\u3060\u3055\u3044";
+  const o3 = v3;
+  if (typeof o3.summary !== "string") return "summary \u304C\u3042\u308A\u307E\u305B\u3093";
+  const error = presetSubError(o3.summary);
+  if (error !== null) return error;
+  const e3 = o3.estimated;
+  if (e3 === void 0 || e3 === null) return { summary: o3.summary.trim(), estimated: null, estimateError: null };
+  if (typeof e3 === "number" && Number.isFinite(e3) && e3 >= 0) return { summary: o3.summary.trim(), estimated: e3, estimateError: null };
+  return { summary: o3.summary.trim(), estimated: null, estimateError: "estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044" };
 }
 function presetSubError(summary) {
   if (!summary.trim()) return "\u984C\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";

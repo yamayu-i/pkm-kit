@@ -9,7 +9,7 @@ import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
 import { sanitizeSubOpen } from "./core/sub-issue";
-import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeDeviceName, sanitizeGraceHour, type TaskSettings } from "./obsidian/settings";
+import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeCapacity, sanitizeDeviceName, sanitizeGraceHour, type TaskSettings } from "./obsidian/settings";
 import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { workKey } from "./core/worklog";
 import { StatusUndo } from "./obsidian/status-undo";
@@ -21,6 +21,7 @@ import { InboxView } from "./views/InboxView";
 import { LabelManagerView } from "./views/LabelManagerView";
 import { MemberListView } from "./views/MemberListView";
 import { PresetListView } from "./views/PresetListView";
+import { ProjectsView } from "./views/ProjectsView";
 import { IssueListView } from "./views/IssueListView";
 import { OrganizeView } from "./views/OrganizeView";
 import { RoutineListView } from "./views/RoutineListView";
@@ -33,13 +34,14 @@ import { TasksNowDialog } from "./views/TasksNowDialog";
 const TASKS_NOW_COMMAND = "pkm-task:open-tasks-now";
 const BADGE_CHANGED_EVENT = "pkm-ribbon:badge-changed";
 
-/** View の一覧（ADR-0009, 0010, 0021, 0035, 0186） */
+/** View の一覧（ADR-0009, 0010, 0021, 0035, 0186, 0231） */
 const VIEWS: ViewSpec[] = [
 	{ type: "pkm-task-daily", title: "Today", icon: "sun", component: DailyView },
 	{ type: "pkm-task-issues", title: "Issues", icon: "list-todo", component: IssueListView },
 	{ type: "pkm-task-inbox", title: "Inbox", icon: "inbox", component: InboxView },
 	{ type: "pkm-task-organize", title: "Organize", icon: "layers", component: OrganizeView },
 	{ type: "pkm-task-scheduled", title: "Scheduled", icon: "calendar-range", component: ScheduledView },
+	{ type: "pkm-task-projects", title: "Projects", icon: "chart-gantt", component: ProjectsView },
 	{ type: "pkm-task-someday", title: "Someday", icon: "cloud", component: SomedayView },
 	{ type: "pkm-task-routines", title: "Routines", icon: "repeat", component: RoutineListView },
 	{ type: "pkm-task-members", title: "Members", icon: "users", component: MemberListView },
@@ -154,6 +156,7 @@ export default class PkmTaskPlugin extends Plugin {
 		Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
 		this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
 		this.taskSettings.closingGraceHour = sanitizeGraceHour(saved.closingGraceHour);
+		this.taskSettings.capacity = sanitizeCapacity(saved.capacity);
 		if (!this.taskSettings.deviceName) {
 			// 端末名の初期値は pkm-git の端末名にする（同じ端末なら同じ名前がよい）
 			const git = (this.app as unknown as { plugins?: { plugins?: Record<string, { data?: { deviceName?: unknown } }> } }).plugins?.plugins?.["pkm-git"];

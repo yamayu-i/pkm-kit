@@ -8477,10 +8477,16 @@ function parsePreset(path, fm, text) {
   const name = r.string("name") ?? "";
   if (!name) r.problem("missing-name", "name \u304C\u3042\u308A\u307E\u305B\u3093", "warning");
   const subIssues = [];
+  const subEstimates = [];
   for (const v of r.list("sub_issues")) {
-    const error = typeof v === "string" ? presetSubError(v) : "\u6587\u5B57\u5217\u3067\u306F\u3042\u308A\u307E\u305B\u3093";
-    if (error !== null) r.problem("invalid-preset-sub", `sub_issues: ${error}: ${JSON.stringify(v)}`);
-    else subIssues.push(v.trim());
+    const item = presetSubItem(v);
+    if (typeof item === "string") {
+      r.problem("invalid-preset-sub", `sub_issues: ${item}: ${JSON.stringify(v)}`);
+      continue;
+    }
+    if (item.estimateError !== null) r.problem("invalid-preset-sub", `sub_issues: ${item.estimateError}: ${JSON.stringify(v)}`);
+    subIssues.push(item.summary);
+    subEstimates.push(item.estimated);
   }
   let body = text === void 0 ? "" : presetBodyOf(text);
   const bodyError = presetBodyError(body);
@@ -8489,7 +8495,23 @@ function parsePreset(path, fm, text) {
     body = "";
   }
   if (id === null) return { value: null, problems: r.problems };
-  return { value: { path, id, name: name || id, subIssues, body, created: r.datetime("created") }, problems: r.problems };
+  const estimates = subEstimates.some((e) => e !== null) ? { subEstimates } : {};
+  return { value: { path, id, name: name || id, subIssues, ...estimates, body, created: r.datetime("created") }, problems: r.problems };
+}
+function presetSubItem(v) {
+  if (typeof v === "string") {
+    const error2 = presetSubError(v);
+    return error2 ?? { summary: v.trim(), estimated: null, estimateError: null };
+  }
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return "\u6587\u5B57\u5217\u304B\u3001summary \u3068 estimated \u306E\u5BFE\u5FDC\u306B\u3057\u3066\u304F\u3060\u3055\u3044";
+  const o = v;
+  if (typeof o.summary !== "string") return "summary \u304C\u3042\u308A\u307E\u305B\u3093";
+  const error = presetSubError(o.summary);
+  if (error !== null) return error;
+  const e = o.estimated;
+  if (e === void 0 || e === null) return { summary: o.summary.trim(), estimated: null, estimateError: null };
+  if (typeof e === "number" && Number.isFinite(e) && e >= 0) return { summary: o.summary.trim(), estimated: e, estimateError: null };
+  return { summary: o.summary.trim(), estimated: null, estimateError: "estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044" };
 }
 function presetSubError(summary) {
   if (!summary.trim()) return "\u984C\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044";

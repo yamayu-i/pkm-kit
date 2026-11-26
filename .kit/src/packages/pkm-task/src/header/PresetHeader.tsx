@@ -1,10 +1,11 @@
 import { useEffect, useState } from "preact/hooks";
-import { presetSubError, type IssuePreset } from "../core/presets";
+import { presetSubError, presetSubItems, type IssuePreset } from "../core/presets";
 import { splitQuickAdd } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
 import type { Save } from "../obsidian/issue-editors";
 import { RowTools, move } from "../ui/EditRow";
 import { Icon } from "../ui/Icon";
+import { SizeChips } from "../ui/SizeChips";
 import { useStoreVersion } from "../ui/hooks";
 import { SummaryField, formatDateTime } from "./IssueHeader";
 
@@ -36,11 +37,17 @@ export function PresetHeader(props: { ctx: TaskContext; path: string }) {
 	);
 }
 
-/** サブの題の一覧（frontmatter の sub_issues）。行ごとに直す・並べ替える・消す。最後に素早い追加 */
+/** サブの題の一覧（frontmatter の sub_issues）。行ごとに直す・並べ替える・消す・見積もりの既定値を選ぶ（ADR-0231）。最後に素早い追加 */
 function PresetSubs(props: { preset: IssuePreset; save: Save }) {
 	const { preset, save } = props;
-	const subs = preset.subIssues;
-	const write = (next: string[]) => save({ sub_issues: next });
+	const subs = preset.subIssues.map((summary, i) => ({ summary, estimated: preset.subEstimates?.[i] ?? null }));
+	const write = (next: { summary: string; estimated: number | null }[]) =>
+		save({
+			sub_issues: presetSubItems(
+				next.map((s) => s.summary),
+				next.map((s) => s.estimated),
+			),
+		});
 	return (
 		<section class="vt-card vt-preset-subs" aria-label="Sub-issues">
 			<div class="vt-section-head">
@@ -50,26 +57,37 @@ function PresetSubs(props: { preset: IssuePreset; save: Save }) {
 			{subs.length === 0 && <div class="vt-empty">No sub-issues yet</div>}
 			{subs.length > 0 && (
 				<ol class="vt-preset-sub-list">
-					{subs.map((summary, i) => (
+					{subs.map((sub, i) => (
 						<PresetSubRow
-							key={`${i}:${summary}`}
+							key={`${i}:${sub.summary}`}
 							index={i}
 							count={subs.length}
-							summary={summary}
-							onCommit={(v) => write(subs.map((s, j) => (j === i ? v : s)))}
+							summary={sub.summary}
+							estimated={sub.estimated}
+							onCommit={(v) => write(subs.map((s, j) => (j === i ? { ...s, summary: v } : s)))}
+							onEstimate={(m) => write(subs.map((s, j) => (j === i ? { ...s, estimated: m } : s)))}
 							onMove={(d) => write(move(subs, i, d))}
 							onDelete={() => write(subs.filter((_, j) => j !== i))}
 						/>
 					))}
 				</ol>
 			)}
-			<SubQuickAdd onAdd={(added) => write([...subs, ...added])} />
+			<SubQuickAdd onAdd={(added) => write([...subs, ...added.map((summary) => ({ summary, estimated: null }))])} />
 		</section>
 	);
 }
 
 /** サブの題の 1 行。Enter か欄を離れたときに保存する。Escape で戻す。書けない題は保存せずに説明を出す */
-function PresetSubRow(props: { index: number; count: number; summary: string; onCommit: (v: string) => void; onMove: (d: number) => void; onDelete: () => void }) {
+function PresetSubRow(props: {
+	index: number;
+	count: number;
+	summary: string;
+	estimated: number | null;
+	onCommit: (v: string) => void;
+	onEstimate: (minutes: number | null) => void;
+	onMove: (d: number) => void;
+	onDelete: () => void;
+}) {
 	const { summary } = props;
 	const [draft, setDraft] = useState(summary);
 	useEffect(() => setDraft(summary), [summary]);
@@ -96,6 +114,8 @@ function PresetSubRow(props: { index: number; count: number; summary: string; on
 				/>
 				{error && <span class="vt-name-error">{error}</span>}
 			</label>
+			{/* 見積もりの既定値（ADR-0231）。当てたサブの estimated に入る。もう一度押すと外す */}
+			<SizeChips minutes={props.estimated} onPick={props.onEstimate} clearable />
 			<RowTools what="sub-issue" index={props.index} count={props.count} onMove={props.onMove} onDelete={props.onDelete} />
 		</li>
 	);

@@ -1,5 +1,7 @@
 import { PluginSettingTab, Setting, type App, type Plugin } from "obsidian";
 import { DEFAULT_CLOSING_GRACE_HOUR } from "../core/closing";
+import { formatMinutes, parseDurationInput } from "../core/format";
+import { DEFAULT_CAPACITY, type Capacity } from "../core/projects";
 import type { IssueQuery } from "../core/list";
 import type { SubOpenMap } from "../core/sub-issue";
 import { sanitizeDeviceName } from "../core/worklog";
@@ -18,13 +20,22 @@ export interface TaskSettings {
 	subOpen: SubOpenMap;
 	/** 締めの猶予（時。0〜6）。0 時からこの時刻までは、締めていない前日のボードを Close board で締める（ADR-0226） */
 	closingGraceHour: number;
+	/** 1 日に使える時間（分。平日と土日）。Projects の負荷の行で、見積もりの合計と比べる（ADR-0231） */
+	capacity: Capacity;
 }
 
-export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR };
+export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR, capacity: { ...DEFAULT_CAPACITY } };
 
 /** 締めの猶予として読める値（0〜6 の整数）。ほかは既定 */
 export function sanitizeGraceHour(v: unknown): number {
 	return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 6 ? v : DEFAULT_CLOSING_GRACE_HOUR;
+}
+
+/** 使える時間として読める値（0〜24 時間の分）。ほかは既定 */
+export function sanitizeCapacity(v: unknown): Capacity {
+	const o = (typeof v === "object" && v !== null ? v : {}) as Record<string, unknown>;
+	const ok = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= 24 * 60;
+	return { weekday: ok(o.weekday) ? o.weekday : DEFAULT_CAPACITY.weekday, weekend: ok(o.weekend) ? o.weekend : DEFAULT_CAPACITY.weekend };
 }
 
 export { sanitizeDeviceName } from "../core/worklog";
@@ -63,5 +74,21 @@ export class TaskSettingTab extends PluginSettingTab {
 					await this.save();
 				});
 			});
+		for (const [key, name] of [
+			["weekday", "1 日に使える時間（平日）"],
+			["weekend", "1 日に使える時間（土日）"],
+		] as const) {
+			new Setting(this.containerEl)
+				.setName(name)
+				.setDesc("Projects の負荷の行で、見積もりの合計と比べる時間です（例: 6h、4h30m、0）")
+				.addText((t) =>
+					t.setValue(formatMinutes(this.settings.capacity[key])).onChange(async (v) => {
+						const minutes = v.trim() === "0" ? 0 : parseDurationInput(v);
+						if (minutes === null || minutes > 24 * 60) return;
+						this.settings.capacity = { ...this.settings.capacity, [key]: minutes };
+						await this.save();
+					}),
+				);
+		}
 	}
 }

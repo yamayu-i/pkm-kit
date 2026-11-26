@@ -8,7 +8,7 @@
 
 - summary と ID で検索し、status・priority・label・期限の範囲・Calendar の日の有無で絞り込む。列で並べ替える。条件をプリセットとして保存できる（端末ごと）
 - 既定では closed / canceled / someday を隠す
-- 列: priority、status、status-detail、labels、calendar（Calendar の日）、soft deadline、deadline、estimated
+- 列: priority、status、status-detail、labels、calendar（Calendar の日）、soft deadline、deadline、estimated（押すと入力欄のダイアログ）
 - 表示しているセルは押してその場で編集できる。行末の「…」で全項目を編集できる（スマホではここから）
 - 選んだ行にまとめて Tickler を付けられる。行の「…」から Calendar・Tickler を編集できる
 

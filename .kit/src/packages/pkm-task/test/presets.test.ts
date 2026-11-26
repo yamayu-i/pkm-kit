@@ -4,7 +4,7 @@ import { parse } from "yaml";
 import { pathForId } from "../src/core/ids";
 import { TaskIndex } from "../src/core/index";
 import { collectVault, fileKind } from "../src/core/load";
-import { matchPreset, newPresetContent, parsePreset, presetBodyError, presetBodyOf, presetBodyPreview, presetSubError } from "../src/core/presets";
+import { matchPreset, newPresetContent, parsePreset, presetBodyError, presetBodyOf, presetBodyPreview, presetSubError, presetSubItems } from "../src/core/presets";
 import { appendParentBodyText, parseSubIssues } from "../src/core/sub-issue";
 import type { TaskStore } from "../src/obsidian/store";
 import { TaskWriter } from "../src/obsidian/writer";
@@ -161,5 +161,36 @@ describe("writer のプリセット（ADR-0186）", () => {
 		const f = fixture(HEAD);
 		await expect(f.writer.applyPreset("i-1", { subIssues: ["a --> b"], body: "x" })).rejects.toThrow();
 		expect(f.text()).toBe(HEAD);
+	});
+});
+
+describe("プリセットのサブの見積もり（ADR-0231）", () => {
+	it("sub_issues の 1 件は、題の文字列か summary と estimated の対応。見積もりがあるときだけ subEstimates を持つ", () => {
+		const text = '---\ntype: preset\nid: p-1\nname: a\nsub_issues:\n  - "x"\n  - summary: "y"\n    estimated: 30\n  - summary: "z"\n---\n';
+		const r = parsePreset("preset/p-1.md", fmOf(text), text);
+		expect(r.problems).toEqual([]);
+		expect(r.value).toMatchObject({ subIssues: ["x", "y", "z"], subEstimates: [null, 30, null] });
+		expect(parsePreset("preset/p-1.md", fmOf(PRESET), PRESET).value).not.toHaveProperty("subEstimates");
+	});
+
+	it("書けない見積もりは問題にし、その行は見積もりなしで読む", () => {
+		const text = '---\ntype: preset\nid: p-1\nname: a\nsub_issues:\n  - summary: "y"\n    estimated: -1\n  - summary: "w"\n    estimated: 60\n  - estimated: 5\n---\n';
+		const r = parsePreset("preset/p-1.md", fmOf(text), text);
+		expect(r.value).toMatchObject({ subIssues: ["y", "w"], subEstimates: [null, 60] });
+		expect(r.problems.map((p) => p.code)).toEqual(["invalid-preset-sub", "invalid-preset-sub"]);
+	});
+
+	it("frontmatter に書く形: 見積もりのない行は文字列", () => {
+		expect(presetSubItems(["x", "y"], [null, 30])).toEqual(["x", { summary: "y", estimated: 30 }]);
+		expect(presetSubItems(["x"], undefined)).toEqual(["x"]);
+	});
+
+	it("当てると、サブの estimated に既定値を入れる", async () => {
+		const f = fixture(HEAD);
+		await f.writer.applyPreset("i-1", { subIssues: ["a", "b"], subEstimates: [120, null], body: "" });
+		expect(subsOf(f.text()).map((s) => [s.summary, s.estimated])).toEqual([
+			["a", 120],
+			["b", null],
+		]);
 	});
 });

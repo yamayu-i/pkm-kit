@@ -12,7 +12,8 @@
 1. AI と行うときは、task-coach の週次の手順で、停滞（in-progress なのに作業がない、waiting・delegated の放置）と持ち越し常連、見積もりのずれを見る（[MCP と task-coach](../surfaces/task-mcp.md)）
 2. 分ける・Someday にする・期限を変えるなどを決め、[Issues](../surfaces/task-issues.md) や [issue 画面](../surfaces/task-issue-screen.md) で直す
 3. Inbox は [Organize](../surfaces/task-organize.md) で片付ける
-4. [Someday](../surfaces/task-someday.md) の一覧を reviewed が古い順に見て、続けるものは Back to Inbox、日付を決めるものは Tickler、やめるものは Cancel、残すものは Reviewed にする（[ADR-0212](../../../../src/docs/adr/0212-organize-inbox-and-revisit-only.md)）
+4. [Projects](../surfaces/task-projects.md) で、Project の期限と週ごとの負荷（Load）を見て、使える時間を超えた週の棒をずらす。「Estimate」の印のある近いうちのサブに S・M・L を入れる（[ADR-0231](../../../../src/docs/adr/0231-projects-timeline-and-load.md)）
+5. [Someday](../surfaces/task-someday.md) の一覧を reviewed が古い順に見て、続けるものは Back to Inbox、日付を決めるものは Tickler、やめるものは Cancel、残すものは Reviewed にする（[ADR-0212](../../../../src/docs/adr/0212-organize-inbox-and-revisit-only.md)）
 
 ## 関わる概念
 

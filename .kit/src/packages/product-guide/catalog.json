@@ -229,6 +229,29 @@
       "pkm-task-scheduled"
     ]
   },
+  "surfaces/task-projects.md": {
+    "kind": "visual",
+    "screens": [
+      {
+        "provider": "task",
+        "screen": "projects",
+        "label": "Project の横断タイムライン",
+        "detail": "Project とサブの期間、期限の印、列ごとの負荷を確認します。"
+      },
+      {
+        "provider": "task",
+        "screen": "projects--empty",
+        "label": "Project がない",
+        "detail": "サブを持つ issue がない状態です。"
+      }
+    ],
+    "source": [
+      ".kit/src/packages/pkm-task/src"
+    ],
+    "views": [
+      "pkm-task-projects"
+    ]
+  },
   "surfaces/task-routines.md": {
     "kind": "visual",
     "screens": [
