@@ -3091,7 +3091,7 @@ function loadItems(groups, index) {
   return out;
 }
 function loadLabel(minutes, unknown) {
-  const h3 = Math.round(minutes / 60 * 2) / 2;
+  const h3 = Math.round(minutes / 60);
   const text = h3 > 0 ? `${h3}h` : "";
   return unknown > 0 ? `${text}?` : text;
 }
@@ -4849,6 +4849,10 @@ function TimelineChart(props) {
   const cols = timelineColumns(range, scale);
   const width = range.days * px;
   const scroller = A2(null);
+  const rail = A2(null);
+  const syncScroll = (from, to) => {
+    if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
+  };
   const [drag, setDrag] = d2(null);
   const [hovered, setHovered] = d2(null);
   const [focused, setFocused] = d2(null);
@@ -5014,157 +5018,160 @@ function TimelineChart(props) {
           )
         )
       ] }),
-      /* @__PURE__ */ u3("div", { class: "vt-timeline-scroll", ref: scroller, children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
-        /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
-          "div",
-          {
-            class: `vt-timeline-col${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}${c3.date === today ? " is-today" : ""}`,
-            style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` },
-            children: [
-              c3.month !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-month", children: c3.month }),
-              /* @__PURE__ */ u3("span", { class: "vt-timeline-day", children: c3.label })
-            ]
-          }
-        )) }),
-        load && props.load && /* @__PURE__ */ u3("div", { class: "vt-timeline-load", children: cols.map((c3) => {
-          const v3 = columnLoad(load, c3.date, c3.span, props.load.capacity);
-          const text = loadLabel(v3.minutes, v3.unknown);
-          const tip = `Estimated ${formatMinutes(v3.minutes)} / available ${formatMinutes(v3.capacity)}${v3.over ? " (over)" : ""}${v3.unknown > 0 ? `
+      /* @__PURE__ */ u3("div", { class: "vt-timeline-main", children: [
+        /* @__PURE__ */ u3("div", { class: `vt-timeline-scroll${props.stickyScrollbar ? " has-rail" : ""}`, ref: scroller, onScroll: () => syncScroll(scroller.current, rail.current), children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
+          /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
+            "div",
+            {
+              class: `vt-timeline-col${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}${c3.date === today ? " is-today" : ""}`,
+              style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` },
+              children: [
+                c3.month !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-month", children: c3.month }),
+                /* @__PURE__ */ u3("span", { class: "vt-timeline-day", children: c3.label })
+              ]
+            }
+          )) }),
+          load && props.load && /* @__PURE__ */ u3("div", { class: "vt-timeline-load", children: cols.map((c3) => {
+            const v3 = columnLoad(load, c3.date, c3.span, props.load.capacity);
+            const text = loadLabel(v3.minutes, v3.unknown);
+            const tip = `Estimated ${formatMinutes(v3.minutes)} / available ${formatMinutes(v3.capacity)}${v3.over ? " (over)" : ""}${v3.unknown > 0 ? `
 ${v3.unknown} sub-issue(s) without an estimate` : ""}`;
-          return /* @__PURE__ */ u3("div", { class: `vt-timeline-load-cell${v3.over ? " is-over" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` }, title: tip, children: [
-            text,
-            v3.over && /* @__PURE__ */ u3("span", { class: "vt-timeline-load-over", children: "!" })
-          ] });
-        }) }),
-        /* @__PURE__ */ u3("div", { class: "vt-timeline-body", ref: body, style: { height: `${height}px` }, onPointerDown: () => setSelected(null), children: [
-          cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
-          /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height, "aria-hidden": "true", children: [
-            /* @__PURE__ */ u3("defs", { children: ["", "-late", "-related"].map((suffix) => (
-              // 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
-              /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}` }) })
-            )) }),
-            routed.map((r3) => /* @__PURE__ */ u3(
-              "path",
-              {
-                class: `vt-timeline-arrow${r3.late ? " is-late" : ""}${r3.related ? " is-related" : ""}`,
-                d: r3.d,
-                "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : r3.related ? "-related" : ""})`
-              }
-            )),
-            link && (() => {
-              const row = rowOf.get(link.from);
-              const span = spans[row];
-              return span && /* @__PURE__ */ u3("path", { class: "vt-timeline-link", d: `M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}` });
-            })()
-          ] }),
-          /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrow-hits", "aria-hidden": "true", width, height, children: arrows.map((a3, i3) => {
-            const isSel = selected?.from === a3.from && selected?.to === a3.to;
-            return /* @__PURE__ */ u3(
-              "path",
-              {
-                class: `vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`,
-                d: routed[i3].d,
-                onPointerDown: (e3) => e3.stopPropagation(),
-                onClick: () => setSelected({ from: a3.from, to: a3.to })
-              }
-            );
+            return /* @__PURE__ */ u3("div", { class: `vt-timeline-load-cell${v3.over ? " is-over" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` }, title: tip, children: [
+              text,
+              v3.over && /* @__PURE__ */ u3("span", { class: "vt-timeline-load-over", children: "!" })
+            ] });
           }) }),
-          selected && (() => {
-            const i3 = arrows.findIndex((a3) => a3.from === selected.from && a3.to === selected.to);
-            if (i3 < 0) return null;
-            const [x2, y3] = arrowMidpoint(routes[i3]);
-            return /* @__PURE__ */ u3(
-              "button",
-              {
-                type: "button",
-                class: "vt-timeline-arrow-remove",
-                style: { left: `${x2}px`, top: `${y3}px` },
-                title: "Remove dependency",
-                "aria-label": "Remove dependency",
-                ref: (el) => el?.focus(),
-                onPointerDown: (e3) => e3.stopPropagation(),
-                onKeyDown: (e3) => {
-                  if (e3.key === "Delete" || e3.key === "Backspace") {
-                    e3.preventDefault();
-                    removeDep(selected);
-                  }
-                },
-                onClick: () => removeDep(selected),
-                children: "\xD7"
-              }
-            );
-          })(),
-          /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
-          rows.map((row, i3) => {
-            if (row.kind === "project")
-              return /* @__PURE__ */ u3(
-                ProjectRow,
+          /* @__PURE__ */ u3("div", { class: "vt-timeline-body", ref: body, style: { height: `${height}px` }, onPointerDown: () => setSelected(null), children: [
+            cols.map((c3) => /* @__PURE__ */ u3("div", { class: `vt-timeline-stripe${c3.weekend ? " is-weekend" : ""}${c3.weekStart ? " is-week-start" : ""}`, style: { left: `${xOf(c3.date)}px`, width: `${c3.span * px}px` } })),
+            /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrows", width, height, "aria-hidden": "true", children: [
+              /* @__PURE__ */ u3("defs", { children: ["", "-late", "-related"].map((suffix) => (
+                // 先端は塗らない小さな「>」（線の太さによらず 5px）。主張を小さくする
+                /* @__PURE__ */ u3("marker", { id: `vt-timeline-arrowhead${suffix}`, viewBox: "0 0 6 6", refX: "5", refY: "3", markerWidth: "5", markerHeight: "5", markerUnits: "userSpaceOnUse", orient: "auto-start-reverse", children: /* @__PURE__ */ u3("path", { d: "M1 0.5 L5 3 L1 5.5", class: `vt-timeline-arrowhead${suffix === "-late" ? " is-late" : suffix === "-related" ? " is-related" : ""}` }) })
+              )) }),
+              routed.map((r3) => /* @__PURE__ */ u3(
+                "path",
                 {
-                  issue: row.issue,
-                  subs: row.subs.map((s3) => shown(s3)),
-                  top: i3 * ROW,
-                  xOf,
-                  px,
-                  onBudget: needsBudget(row.issue, index.subs(row.issue.id), today) ? () => editEstimate(ctx, row.issue.estimated, saveIssue(ctx, row.issue)) : null
+                  class: `vt-timeline-arrow${r3.late ? " is-late" : ""}${r3.related ? " is-related" : ""}`,
+                  d: r3.d,
+                  "marker-end": `url(#vt-timeline-arrowhead${r3.late ? "-late" : r3.related ? "-related" : ""})`
+                }
+              )),
+              link && (() => {
+                const row = rowOf.get(link.from);
+                const span = spans[row];
+                return span && /* @__PURE__ */ u3("path", { class: "vt-timeline-link", d: `M${span.x1} ${row * ROW + ROW / 2} L${link.x} ${link.y}` });
+              })()
+            ] }),
+            /* @__PURE__ */ u3("svg", { class: "vt-timeline-arrow-hits", "aria-hidden": "true", width, height, children: arrows.map((a3, i3) => {
+              const isSel = selected?.from === a3.from && selected?.to === a3.to;
+              return /* @__PURE__ */ u3(
+                "path",
+                {
+                  class: `vt-timeline-arrow-hit${isSel ? " is-selected" : ""}`,
+                  d: routed[i3].d,
+                  onPointerDown: (e3) => e3.stopPropagation(),
+                  onClick: () => setSelected({ from: a3.from, to: a3.to })
                 }
               );
-            const sub = row.sub;
-            const bar = shown(sub);
-            const left = bar ? xOf(bar.start) : 0;
-            const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
-            const handles = barWidth >= HANDLE * 3;
-            const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
-            const nothing = !bar && sub.scheduled === null;
-            const key = sub.key;
-            return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
-              nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
-              !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
-              bar && /* @__PURE__ */ u3(
-                "div",
+            }) }),
+            selected && (() => {
+              const i3 = arrows.findIndex((a3) => a3.from === selected.from && a3.to === selected.to);
+              if (i3 < 0) return null;
+              const [x2, y3] = arrowMidpoint(routes[i3]);
+              return /* @__PURE__ */ u3(
+                "button",
                 {
-                  "data-sub-key": key,
-                  class: `vt-timeline-bar vt-status-${sub.status}${link && link.from !== key ? link.target === key ? " is-link-target" : connectable(link.from, key) ? "" : " is-link-no" : ""}${selected?.to === key || selected?.from === key ? " is-selected-end" : ""}${drag?.key === key ? " is-dragging" : ""}${active === key && related ? " is-active" : ""}${relatedFrom.has(key) ? " is-related" : ""}`,
-                  style: { left: `${left}px`, width: `${barWidth}px` },
-                  tabIndex: 0,
-                  role: "button",
-                  "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
-                  title: `${sub.summary}
-${period}`,
-                  onPointerEnter: () => setHovered(key),
-                  onPointerLeave: () => setHovered((h3) => h3 === key ? null : h3),
-                  onFocus: () => setFocused(key),
-                  onBlur: () => setFocused((f4) => f4 === key ? null : f4),
-                  onPointerDown: (e3) => startDrag(e3, sub, "move"),
-                  onPointerMove: moveDrag,
-                  onPointerUp: () => endDrag(sub),
-                  onPointerCancel: () => setDrag(null),
-                  onKeyDown: (e3) => keyDown(e3, sub),
-                  onClick: (e3) => e3.stopPropagation(),
-                  children: [
-                    /* @__PURE__ */ u3(
-                      "span",
-                      {
-                        class: "vt-timeline-connector",
-                        title: "Connect: drag to a bar that depends on this",
-                        "aria-hidden": "true",
-                        onPointerDown: (e3) => startLink(e3, sub),
-                        onPointerMove: moveLink,
-                        onPointerUp: endLink,
-                        onPointerCancel: () => setLink(null)
-                      }
-                    ),
-                    handles && /* @__PURE__ */ u3(S, { children: [
-                      /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
-                      /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
-                    ] })
-                  ]
+                  type: "button",
+                  class: "vt-timeline-arrow-remove",
+                  style: { left: `${x2}px`, top: `${y3}px` },
+                  title: "Remove dependency",
+                  "aria-label": "Remove dependency",
+                  ref: (el) => el?.focus(),
+                  onPointerDown: (e3) => e3.stopPropagation(),
+                  onKeyDown: (e3) => {
+                    if (e3.key === "Delete" || e3.key === "Backspace") {
+                      e3.preventDefault();
+                      removeDep(selected);
+                    }
+                  },
+                  onClick: () => removeDep(selected),
+                  children: "\xD7"
                 }
-              ),
-              bar && needsEstimate(sub, today) && /* @__PURE__ */ u3("button", { type: "button", class: "vt-timeline-estimate", style: { left: `${left + barWidth + 16}px` }, title: "No estimate: choose a size", onClick: (e3) => pickSize(e3, sub), children: "Estimate" })
-            ] });
-          })
-        ] })
-      ] }) })
+              );
+            })(),
+            /* @__PURE__ */ u3("div", { class: "vt-timeline-today", style: { left: `${xOf(today) + px / 2}px` }, "aria-hidden": "true" }),
+            rows.map((row, i3) => {
+              if (row.kind === "project")
+                return /* @__PURE__ */ u3(
+                  ProjectRow,
+                  {
+                    issue: row.issue,
+                    subs: row.subs.map((s3) => shown(s3)),
+                    top: i3 * ROW,
+                    xOf,
+                    px,
+                    onBudget: needsBudget(row.issue, index.subs(row.issue.id), today) ? () => editEstimate(ctx, row.issue.estimated, saveIssue(ctx, row.issue)) : null
+                  }
+                );
+              const sub = row.sub;
+              const bar = shown(sub);
+              const left = bar ? xOf(bar.start) : 0;
+              const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
+              const handles = barWidth >= HANDLE * 3;
+              const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
+              const nothing = !bar && sub.scheduled === null;
+              const key = sub.key;
+              return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
+                nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
+                !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
+                bar && /* @__PURE__ */ u3(
+                  "div",
+                  {
+                    "data-sub-key": key,
+                    class: `vt-timeline-bar vt-status-${sub.status}${link && link.from !== key ? link.target === key ? " is-link-target" : connectable(link.from, key) ? "" : " is-link-no" : ""}${selected?.to === key || selected?.from === key ? " is-selected-end" : ""}${drag?.key === key ? " is-dragging" : ""}${active === key && related ? " is-active" : ""}${relatedFrom.has(key) ? " is-related" : ""}`,
+                    style: { left: `${left}px`, width: `${barWidth}px` },
+                    tabIndex: 0,
+                    role: "button",
+                    "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
+                    title: `${sub.summary}
+${period}`,
+                    onPointerEnter: () => setHovered(key),
+                    onPointerLeave: () => setHovered((h3) => h3 === key ? null : h3),
+                    onFocus: () => setFocused(key),
+                    onBlur: () => setFocused((f4) => f4 === key ? null : f4),
+                    onPointerDown: (e3) => startDrag(e3, sub, "move"),
+                    onPointerMove: moveDrag,
+                    onPointerUp: () => endDrag(sub),
+                    onPointerCancel: () => setDrag(null),
+                    onKeyDown: (e3) => keyDown(e3, sub),
+                    onClick: (e3) => e3.stopPropagation(),
+                    children: [
+                      /* @__PURE__ */ u3(
+                        "span",
+                        {
+                          class: "vt-timeline-connector",
+                          title: "Connect: drag to a bar that depends on this",
+                          "aria-hidden": "true",
+                          onPointerDown: (e3) => startLink(e3, sub),
+                          onPointerMove: moveLink,
+                          onPointerUp: endLink,
+                          onPointerCancel: () => setLink(null)
+                        }
+                      ),
+                      handles && /* @__PURE__ */ u3(S, { children: [
+                        /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-start", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "start"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) }),
+                        /* @__PURE__ */ u3("span", { class: "vt-timeline-handle is-end", "aria-hidden": "true", onPointerDown: (e3) => startDrag(e3, sub, "end"), onPointerMove: moveDrag, onPointerUp: () => endDrag(sub) })
+                      ] })
+                    ]
+                  }
+                ),
+                bar && needsEstimate(sub, today) && /* @__PURE__ */ u3("button", { type: "button", class: "vt-timeline-estimate", style: { left: `${left + barWidth + 16}px` }, title: "No estimate: choose a size", onClick: (e3) => pickSize(e3, sub), children: "Estimate" })
+              ] });
+            })
+          ] })
+        ] }) }),
+        props.stickyScrollbar && /* @__PURE__ */ u3("div", { class: "vt-timeline-rail", ref: rail, onScroll: () => syncScroll(rail.current, scroller.current), "aria-hidden": "true", children: /* @__PURE__ */ u3("div", { style: { width: `${width}px` } }) })
+      ] })
     ] })
   ] });
 }
@@ -10549,7 +10556,7 @@ function ProjectsView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       closed > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: () => setShowClosed((v3) => !v3), children: closedLabel(closed, showClosed) })
     ] }),
-    groups.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No projects" }) : /* @__PURE__ */ u3(TimelineChart, { ctx, rows, scale, onScale: setScale, load: { capacity: ctx.settings.capacity, items: loadItems(groups, index) }, onSubLabel: openSub })
+    groups.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No projects" }) : /* @__PURE__ */ u3(TimelineChart, { ctx, rows, scale, onScale: setScale, load: { capacity: ctx.settings.capacity, items: loadItems(groups, index) }, onSubLabel: openSub, stickyScrollbar: true })
   ] });
 }
 

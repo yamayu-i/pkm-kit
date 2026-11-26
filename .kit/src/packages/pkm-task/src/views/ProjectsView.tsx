@@ -51,7 +51,7 @@ export function ProjectsView(props: { ctx: TaskContext }) {
 			{groups.length === 0 ? (
 				<div class="vt-empty">No projects</div>
 			) : (
-				<TimelineChart ctx={ctx} rows={rows} scale={scale} onScale={setScale} load={{ capacity: ctx.settings.capacity, items: loadItems(groups, index) }} onSubLabel={openSub} />
+				<TimelineChart ctx={ctx} rows={rows} scale={scale} onScale={setScale} load={{ capacity: ctx.settings.capacity, items: loadItems(groups, index) }} onSubLabel={openSub} stickyScrollbar />
 			)}
 		</div>
 	);

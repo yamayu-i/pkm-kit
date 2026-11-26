@@ -106,9 +106,11 @@ describe("負荷の行", () => {
 describe("負荷の行の文言", () => {
 	it("0.5 時間刻み。未見積もりがあれば ? を付ける。0 は出さない", () => {
 		expect(loadLabel(300, 0)).toBe("5h");
-		expect(loadLabel(100, 2)).toBe("1.5h?");
+		expect(loadLabel(100, 2)).toBe("2h?");
+		expect(loadLabel(210, 0)).toBe("4h");
 		expect(loadLabel(0, 1)).toBe("?");
 		expect(loadLabel(5, 0)).toBe("");
+		expect(loadLabel(20, 1)).toBe("?");
 	});
 });
 
