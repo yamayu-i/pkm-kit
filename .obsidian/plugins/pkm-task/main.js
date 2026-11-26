@@ -1278,13 +1278,13 @@ function boardItems(index, date, board) {
   const subs = board.issues.map((key) => index.sub(key)).filter((s3) => s3 !== void 0);
   return { issues, subs, routines: routinesOnDay(index, date) };
 }
-function unfinished(index, date, board) {
+function unfinished(index, date, board, today) {
   const items = boardItems(index, date, board);
   const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
     issues: items.issues.filter((i3) => left(i3.status, i3.id)),
     subs: items.subs.filter((s3) => left(s3.status, s3.key)),
-    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0)
+    routines: items.routines.filter((r3) => board.routines[r3.id] === void 0 && !(today !== void 0 && date < today && r3.missed === "carry"))
   };
 }
 function unfinishedCount(u4) {
@@ -10179,7 +10179,7 @@ function DailyView(props) {
     for (const b2 of index.data.boards) {
       if (b2.date >= today || b2.board.closed || closing.current.has(b2.date)) continue;
       if (holdAutoClose(b2.date, new Date(now), grace)) continue;
-      if (unfinishedCount(unfinished(index, b2.date, b2.board)) > 0) continue;
+      if (unfinishedCount(unfinished(index, b2.date, b2.board, today)) > 0) continue;
       closing.current.add(b2.date);
       void ctx.writer.closeBoard(b2.date, ctx.settings.deviceName).catch((e3) => ctx.report("\u524D\u56DE\u306E\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3)).finally(() => closing.current.delete(b2.date));
     }

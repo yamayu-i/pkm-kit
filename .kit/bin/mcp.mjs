@@ -7457,13 +7457,13 @@ function boardItems(index, date, board) {
   const subs = board.issues.map((key) => index.sub(key)).filter((s) => s !== void 0);
   return { issues, subs, routines: routinesOnDay(index, date) };
 }
-function unfinished(index, date, board) {
+function unfinished(index, date, board, today) {
   const items = boardItems(index, date, board);
   const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
     issues: items.issues.filter((i) => left(i.status, i.id)),
     subs: items.subs.filter((s) => left(s.status, s.key)),
-    routines: items.routines.filter((r) => board.routines[r.id] === void 0)
+    routines: items.routines.filter((r) => board.routines[r.id] === void 0 && !(today !== void 0 && date < today && r.missed === "carry"))
   };
 }
 function markCarried(board, ids) {
@@ -11725,7 +11725,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         date,
         closed: board.closed,
         lanes: Object.fromEntries(LANES.map((l) => [l, lanes[l].map(card)])),
-        unfinished: unfinished(index, date, board),
+        unfinished: unfinished(index, date, board, today),
         carried: board.carried,
         stars: board.stars,
         routineResults: board.routines,

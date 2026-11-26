@@ -106,6 +106,20 @@ describe("ボードと積み残し", () => {
 		expect(unfinished(index, "2026-11-24", boardOf(index, "2026-11-24")).routines.map((r) => r.id)).toEqual(["r-1"]);
 	});
 
+	it("過去の日のボードでは、結果のない持ち越しを未完了に数えない（自動の締めを止めない）", () => {
+		const index = load([weekly("r-1")], [result("2026-11-25", "r-1")]);
+		// 11/23（予定日）と 11/24（持ち越し）は結果がないが、次の日に持ち越したので数えない
+		for (const date of ["2026-11-23", "2026-11-24"]) {
+			expect(unfinished(index, date, boardOf(index, date), "2026-11-26").routines).toEqual([]);
+		}
+		// 今日のボードでは数える
+		const open = load([weekly("r-1")]);
+		expect(unfinished(open, "2026-11-24", boardOf(open, "2026-11-24"), "2026-11-24").routines.map((r) => r.id)).toEqual(["r-1"]);
+		// carry でない routine は、過去の日でも今までどおり数える
+		const plain = load([routine("r-2", { repeat: { every: "week", on: ["mon"] } })]);
+		expect(unfinished(plain, "2026-11-23", boardOf(plain, "2026-11-23"), "2026-11-26").routines.map((r) => r.id)).toEqual(["r-2"]);
+	});
+
 	it("Calendar の Missed には carry の routine を出さない", () => {
 		const index = load([weekly("r-1"), routine("r-2", { repeat: { every: "week", on: ["mon"] } })]);
 		expect(missedRoutines(index, "2026-11-24", SINCE).map((m) => m.routine.id)).toEqual(["r-2"]);

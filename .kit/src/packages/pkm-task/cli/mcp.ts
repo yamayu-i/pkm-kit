@@ -620,7 +620,7 @@ function callTaskTool(
 				date,
 				closed: board.closed,
 				lanes: Object.fromEntries(LANES.map((l) => [l, lanes[l].map(card)])),
-				unfinished: unfinished(index, date, board),
+				unfinished: unfinished(index, date, board, today),
 				carried: board.carried,
 				stars: board.stars,
 				routineResults: board.routines,
