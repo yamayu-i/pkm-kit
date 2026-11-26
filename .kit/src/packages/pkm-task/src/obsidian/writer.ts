@@ -39,7 +39,7 @@ import { appendWorklogLine, newWorklogId, replaceWorklogLine, serializeWorklogEn
 import type { TaskStore } from "./store";
 
 /** frontmatter の値。null / undefined / 空配列は欄ごと消す */
-export type FieldValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined;
+export type FieldValue = string | number | boolean | (string | Record<string, unknown>)[] | Record<string, unknown> | null | undefined;
 
 /** issue の status を変えたこと（取り消しのトースト用。ADR-0031） */
 export interface StatusChange {
@@ -411,7 +411,7 @@ export class TaskWriter {
 	 * プリセットを issue に当てる（ADR-0186）。1 回の書き込みで、サブを末尾へ足し（素早い追加と同じ既定値）、
 	 * 本文を親の本文の末尾に追記する。作ったサブの合成キーを返す
 	 */
-	async applyPreset(parentId: string, preset: Pick<IssuePreset, "subIssues" | "body">): Promise<string[]> {
+	async applyPreset(parentId: string, preset: Pick<IssuePreset, "subIssues" | "subEstimates" | "body">): Promise<string[]> {
 		const issue = this.store.index.issues.get(parentId);
 		if (!issue) throw new Error(`issue がありません: ${parentId}`);
 		const calendar = preset.subIssues.length > 0 ? subsWithCalendarError(issue) : null;
@@ -421,10 +421,11 @@ export class TaskWriter {
 		await this.app.vault.process(this.file(issue.path), (text) => {
 			const existing = parseSubIssues(issue.path, issue.id, text, parseYaml).subs;
 			const taken = existing.map((s) => s.id);
-			const subs = preset.subIssues.map((summary) => {
+			const subs = preset.subIssues.map((summary, i) => {
 				const id = newSubId(taken);
 				taken.push(id);
-				return newSubIssueInput({ summary }, id, created);
+				// 見積もりの既定値（ADR-0231）
+				return newSubIssueInput({ summary, estimated: preset.subEstimates?.[i] ?? null }, id, created);
 			});
 			this.assertSubs([...existing, ...subs], subs.map((s) => s.id));
 			keys = subs.map((s) => subKey(issue.id, s.id));

@@ -48,6 +48,7 @@ ADR へのリンク。
 | [Someday](task-someday.md) | View |
 | [Organize](task-organize.md) | View |
 | [Scheduled](task-scheduled.md) | View |
+| [Projects](task-projects.md) | View |
 | [Routines](task-routines.md) | View |
 | [Labels](task-labels.md) | View |
 | [Presets とプリセット画面](task-presets.md) | View・画面 |

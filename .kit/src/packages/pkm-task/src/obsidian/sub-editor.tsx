@@ -8,6 +8,7 @@ import { dependsChip, subItemPatch, toggleDepends, type SubIssue } from "../core
 import { revealSub } from "../header/sub-reveal";
 import { DateForm } from "../ui/forms";
 import { Icon } from "../ui/Icon";
+import { SizeChips } from "../ui/SizeChips";
 import type { TaskContext } from "./context";
 import { pickMember } from "./issue-editors";
 import { PreactModal } from "./modals";
@@ -212,6 +213,18 @@ function SubIssueForm(props: { ctx: TaskContext; sub: SubIssue; close: () => voi
 					<span>Estimated</span>
 					<input type="text" class="vt-small-input" placeholder="e.g. 2h" value={estimated} onInput={(e) => setEstimated(e.currentTarget.value)} />
 				</label>
+				{/* サイズのチップ（ADR-0231）。押すと欄に入れる（保存は Save で） */}
+				<div class="vt-text-field">
+					<span>Size</span>
+					<SizeChips
+						minutes={estimated.trim() === "" ? null : parseDurationInput(estimated)}
+						onPick={(m) => {
+							setError(null);
+							setEstimated(m === null ? "" : formatMinutes(m));
+						}}
+						onXl={setError}
+					/>
+				</div>
 				{siblings.length > 0 && <DependsField candidates={siblings} dependsOn={draft.dependsOn} onChange={(dependsOn) => set({ dependsOn })} />}
 			</div>
 			{error !== null && <div class="vt-error">{error}</div>}

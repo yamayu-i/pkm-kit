@@ -24,6 +24,7 @@ import { PresetListView } from "../src/views/PresetListView";
 import { MemberListView } from "../src/views/MemberListView";
 import { OrganizeView } from "../src/views/OrganizeView";
 import { RoutineListView } from "../src/views/RoutineListView";
+import { ProjectsView } from "../src/views/ProjectsView";
 import { ScheduledView } from "../src/views/ScheduledView";
 import { SidebarView } from "../src/views/SidebarView";
 import { SomedayView } from "../src/views/SomedayView";
@@ -99,6 +100,16 @@ const { data } = collectVault({
 		issue("i-15", { summary: "図書館に本を返す", clarified: true, priority: "high", deadline: addDays(t, 5) }),
 		issue("i-16", { summary: "役所に書類を出す（窓口は木曜だけ）", clarified: true, scheduled: addDays(t, -2) }),
 		issue("i-17", { summary: "返金が届いたか確かめる", tickler: addDays(t, 4), clarified: true }),
+		// Projects（ADR-0231）: 期限と予算を持つ Project。予算は見積もりのないサブに割り振る
+		issue(
+			"i-30",
+			{ summary: "発表の資料を作る", clarified: true, deadline: addDays(t, 12), soft_deadline: addDays(t, 8), estimated: 900 },
+			`---\n---\n\n${[
+				sub("pppppp", `summary: "構成を決める"\nstatus: open\nstart: ${t}\nend: ${addDays(t, 1)}\nestimated: 240\n`),
+				sub("qqqqqq", `summary: "スライドを書く"\nstatus: open\nstart: ${addDays(t, 2)}\nend: ${addDays(t, 6)}\ndepends_on: [pppppp]\n`),
+				sub("rrrrrr", `summary: "リハーサル"\nstatus: open\nstart: ${addDays(t, 9)}\nend: ${addDays(t, 10)}\ndepends_on: [qqqqqq]\n`),
+			].join("\n")}`,
+		),
 		// Pick のサブ（ADR-0150）: 親は行に出さず、小さい見出しの下にサブを並べる
 		issue(
 			"i-18",
@@ -140,7 +151,7 @@ export const ctx = {
 	},
 	store,
 	writer: new Proxy({}, { get: () => noop }),
-	settings: { deviceName: "pc", presets: [], closingGraceHour: 4 },
+	settings: { deviceName: "pc", presets: [], closingGraceHour: 4, capacity: { weekday: 360, weekend: 0 } },
 	saveSettings: noop,
 	openPath: noop,
 	openView: noop,
@@ -157,6 +168,7 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	inbox: InboxView,
 	organize: OrganizeView,
 	scheduled: ScheduledView,
+	projects: ProjectsView,
 	someday: SomedayView,
 	routines: RoutineListView,
 	labels: LabelManagerView,
@@ -187,6 +199,8 @@ const headerPaths: Record<string, string> = {
 	"header-picked": "issue/i-1.md",
 	"header-someday": "issue/i-9.md",
 	"header-closed": "issue/i-12.md",
+	// estimated のない Project（ADR-0231 の追記: unallocated を押して予算を入れる）
+	"header-budget": "issue/i-18.md",
 };
 if (name in headerPaths || name === "routine" || name === "member" || name === "preset" || name === "timeline") {
 	for (const [id, width] of [

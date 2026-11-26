@@ -5,7 +5,7 @@ import { dueLevel } from "../core/due";
 import type { Issue } from "../core/schema";
 import { formatMinutes } from "../core/format";
 import type { TaskContext } from "../obsidian/context";
-import { editDue, editLabels, editScheduled, editStatusDetail, estimateMenu, issueRowMenu, priorityMenu, saveIssue } from "../obsidian/issue-editors";
+import { editDue, editLabels, editScheduled, editStatusDetail, editEstimate, issueRowMenu, priorityMenu, saveIssue } from "../obsidian/issue-editors";
 import { showStatusMenu } from "../obsidian/status-change";
 import { IdBadge, PriorityBadge, StatusBadge } from "./badges";
 import { Icon } from "./Icon";
@@ -56,7 +56,7 @@ export function IssueTable(props: {
 			case "labels":
 				return editable(issue, c, () => editLabels(ctx, issue.labels, save), text(issue.labels.join(", ")));
 			case "estimated":
-				return editable(issue, c, (e) => estimateMenu(ctx, e, issue.estimated, save), issue.estimated === null ? <span class="vt-muted">—</span> : <span class="vt-num">{formatMinutes(issue.estimated)}</span>);
+				return editable(issue, c, () => editEstimate(ctx, issue.estimated, save), issue.estimated === null ? <span class="vt-muted">—</span> : <span class="vt-num">{formatMinutes(issue.estimated)}</span>);
 			case "calendar": {
 				// Calendar の日（ADR-0152）。過ぎたものも出す（Missed）
 				const d = issue.scheduled;

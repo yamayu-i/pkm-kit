@@ -11,7 +11,7 @@
 3. くり返し、start、end
 4. category（default / closing。出す場所）、priority、label
 5. 直近 14 日の結果（closed / canceled / 未記録 / 予定なし）。読み取りだけ
-6. estimated / total / average
+6. estimated（入力欄に単位付きで入れる）/ total / average
 7. worklog、本文
 
 status、Calendar の日、期限、親子は持たない。
