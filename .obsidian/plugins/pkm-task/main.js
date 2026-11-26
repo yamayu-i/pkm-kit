@@ -4859,6 +4859,88 @@ function Segmented(props) {
 
 // src/header/SubTimeline.tsx
 var import_obsidian7 = require("obsidian");
+
+// src/ui/ScrollRail.tsx
+var MIN_THUMB = 24;
+function railThumb(scrollLeft, scrollWidth, clientWidth, track) {
+  if (scrollWidth <= clientWidth || track <= 0) return null;
+  const width = Math.min(track, Math.max(MIN_THUMB, clientWidth / scrollWidth * track));
+  const max = scrollWidth - clientWidth;
+  const left = Math.min(max, Math.max(0, scrollLeft)) / max * (track - width);
+  return { left, width };
+}
+function railScrollFor(startScroll, dx, scrollWidth, clientWidth, track, thumb) {
+  const room = track - thumb;
+  if (room <= 0) return startScroll;
+  return startScroll + dx / room * (scrollWidth - clientWidth);
+}
+function ScrollRail(props) {
+  const rail = A2(null);
+  const thumb = A2(null);
+  const drag = A2(null);
+  const update = () => {
+    const el = props.target.current;
+    const r3 = rail.current;
+    const t3 = thumb.current;
+    if (!el || !r3 || !t3) return;
+    const v3 = railThumb(el.scrollLeft, el.scrollWidth, el.clientWidth, r3.clientWidth);
+    r3.classList.toggle("is-idle", v3 === null);
+    if (v3) {
+      t3.style.left = `${v3.left}px`;
+      t3.style.width = `${v3.width}px`;
+    }
+  };
+  h2(() => {
+    const el = props.target.current;
+    if (!el) return;
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (rail.current) ro.observe(rail.current);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+  h2(update, [props.contentWidth]);
+  const onThumbDown = (e3) => {
+    const el = props.target.current;
+    if (!el) return;
+    e3.preventDefault();
+    e3.stopPropagation();
+    e3.currentTarget.setPointerCapture(e3.pointerId);
+    drag.current = { x: e3.clientX, scroll: el.scrollLeft };
+    rail.current?.classList.add("is-dragging");
+  };
+  const onThumbMove = (e3) => {
+    const el = props.target.current;
+    const d3 = drag.current;
+    if (!el || !d3 || !rail.current || !thumb.current) return;
+    el.scrollLeft = railScrollFor(d3.scroll, e3.clientX - d3.x, el.scrollWidth, el.clientWidth, rail.current.clientWidth, thumb.current.offsetWidth);
+  };
+  const onThumbUp = () => {
+    drag.current = null;
+    rail.current?.classList.remove("is-dragging");
+  };
+  const onTrackDown = (e3) => {
+    const el = props.target.current;
+    const r3 = rail.current;
+    const t3 = thumb.current;
+    if (!el || !r3 || !t3) return;
+    const x2 = e3.clientX - r3.getBoundingClientRect().left - t3.offsetWidth / 2;
+    el.scrollLeft = railScrollFor(0, x2, el.scrollWidth, el.clientWidth, r3.clientWidth, t3.offsetWidth);
+  };
+  const onWheel = (e3) => {
+    const el = props.target.current;
+    if (!el) return;
+    e3.preventDefault();
+    el.scrollLeft += Math.abs(e3.deltaX) > Math.abs(e3.deltaY) ? e3.deltaX : e3.deltaY;
+  };
+  return /* @__PURE__ */ u3("div", { class: `vt-scroll-rail${props.class ? ` ${props.class}` : ""}`, ref: rail, onPointerDown: onTrackDown, onWheel, "aria-hidden": "true", children: /* @__PURE__ */ u3("div", { class: "vt-scroll-rail-thumb", ref: thumb, onPointerDown: onThumbDown, onPointerMove: onThumbMove, onPointerUp: onThumbUp, onPointerCancel: onThumbUp }) });
+}
+
+// src/header/SubTimeline.tsx
 var ROW = 36;
 var HANDLE = 8;
 function chartSub(sub) {
@@ -4881,10 +4963,6 @@ function TimelineChart(props) {
   const cols = timelineColumns(range, scale);
   const width = range.days * px;
   const scroller = A2(null);
-  const rail = A2(null);
-  const syncScroll = (from, to) => {
-    if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
-  };
   const [drag, setDrag] = d2(null);
   const [hovered, setHovered] = d2(null);
   const [focused, setFocused] = d2(null);
@@ -5051,7 +5129,7 @@ function TimelineChart(props) {
         )
       ] }),
       /* @__PURE__ */ u3("div", { class: "vt-timeline-main", children: [
-        /* @__PURE__ */ u3("div", { class: `vt-timeline-scroll${props.stickyScrollbar ? " has-rail" : ""}`, ref: scroller, onScroll: () => syncScroll(scroller.current, rail.current), children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
+        /* @__PURE__ */ u3("div", { class: `vt-timeline-scroll${props.stickyScrollbar ? " has-rail" : ""}`, ref: scroller, children: /* @__PURE__ */ u3("div", { class: "vt-timeline-grid", style: { width: `${width}px` }, children: [
           /* @__PURE__ */ u3("div", { class: "vt-timeline-head", children: cols.map((c3) => /* @__PURE__ */ u3(
             "div",
             {
@@ -5202,7 +5280,7 @@ ${period}`,
             })
           ] })
         ] }) }),
-        props.stickyScrollbar && /* @__PURE__ */ u3("div", { class: "vt-timeline-rail", ref: rail, onScroll: () => syncScroll(rail.current, scroller.current), "aria-hidden": "true", children: /* @__PURE__ */ u3("div", { style: { width: `${width}px` } }) })
+        props.stickyScrollbar && /* @__PURE__ */ u3(ScrollRail, { target: scroller, class: "vt-timeline-rail", contentWidth: width })
       ] })
     ] })
   ] });

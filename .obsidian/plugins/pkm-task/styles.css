@@ -3733,19 +3733,43 @@ body.is-mobile .vt-toast {
 	display: none;
 }
 
+/* 自前で描く横のスクロールバー（ScrollRail）。OS のスクロールバーの表示の設定によらず、いつも見えて押せる */
+.vt-scroll-rail {
+	position: relative;
+	height: 12px;
+	touch-action: none;
+}
+
+/* はみ出していないときはつまみを隠す（溝の幅を測り続けるので display: none にしない） */
+.vt-scroll-rail.is-idle .vt-scroll-rail-thumb {
+	visibility: hidden;
+}
+
+.vt-scroll-rail-thumb {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	min-width: 24px;
+	border-radius: var(--vt-radius-full);
+	background: var(--vt-outline);
+	cursor: grab;
+}
+
+.vt-scroll-rail-thumb:hover,
+.vt-scroll-rail.is-dragging .vt-scroll-rail-thumb {
+	background: var(--vt-on-surface-variant);
+}
+
+.vt-scroll-rail.is-dragging .vt-scroll-rail-thumb {
+	cursor: grabbing;
+}
+
 .vt-timeline-rail {
 	position: sticky;
 	bottom: 0;
 	z-index: 1;
-	overflow-x: auto;
-	overflow-y: hidden;
 	border-top: 1px solid var(--vt-outline-variant);
 	background: var(--vt-surface);
-}
-
-/* 中身は図と同じ幅を持つだけ（高さはスクロールバーの分だけになる） */
-.vt-timeline-rail > div {
-	height: 0;
 }
 
 .vt-timeline-grid {
