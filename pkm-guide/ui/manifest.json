@@ -1,5 +1,5 @@
 {
-  "fingerprint": "58d4c11d31006503f77188e3c3c25c6f9e0429f9a3ff6f86b3cb94cc3decd150",
+  "fingerprint": "e94059865d13ce854d016695087810e68fa679173f55d9af8f35655953d78f14",
   "platform": "linux",
   "browser": "158.0.8127.36",
   "images": [
@@ -712,32 +712,32 @@
       "file": "pkm-guide/ui/task--projects-light-wide.png",
       "theme": "light",
       "width": "wide",
-      "sha256": "105320a13c52d6501ed03a0220f920eb2527257b2db79e773716b0f5388854e1",
-      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+      "sha256": "07bec1a458121dcb3b263202081abcd6213d35c648e70872f4384422aebdbca7",
+      "text": "b46e1a1e9d97b2a25336b9e4d64cd7991f8201be4641b3df884a3e9d8b5c36c9"
     },
     {
       "screen": "task--projects",
       "file": "pkm-guide/ui/task--projects-light-narrow.png",
       "theme": "light",
       "width": "narrow",
-      "sha256": "196e635cc32f1e34ae853020f94da3523a845de6793c715e57df36feb2302edb",
-      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+      "sha256": "b7132b2d7def706f73ce89eb9c082727083b39bfb54ae13cc63ab55a4400f634",
+      "text": "b46e1a1e9d97b2a25336b9e4d64cd7991f8201be4641b3df884a3e9d8b5c36c9"
     },
     {
       "screen": "task--projects",
       "file": "pkm-guide/ui/task--projects-dark-wide.png",
       "theme": "dark",
       "width": "wide",
-      "sha256": "52267a2486f2fa6e8654c55bd7da863585fe0f103d55bc47887082c978b096ee",
-      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+      "sha256": "81f30d299f95a847706a60b81e6a2f2ab04f36b9a28eb99a5edc9e6130f6eec5",
+      "text": "b46e1a1e9d97b2a25336b9e4d64cd7991f8201be4641b3df884a3e9d8b5c36c9"
     },
     {
       "screen": "task--projects",
       "file": "pkm-guide/ui/task--projects-dark-narrow.png",
       "theme": "dark",
       "width": "narrow",
-      "sha256": "3b128b4a000312eac5d93ca673e4835c028b266ba35b24d9287f733cd3d09ac4",
-      "text": "d5a6c1593029d15f65f3d379875d078e78985fd1373db38aba99866872ce659a"
+      "sha256": "afa3c394053e082b3c0c882ebb5b5cd3353e6bd5cad50fefa248cb0d9457de4a",
+      "text": "b46e1a1e9d97b2a25336b9e4d64cd7991f8201be4641b3df884a3e9d8b5c36c9"
     },
     {
       "screen": "task--projects--empty",
