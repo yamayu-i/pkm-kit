@@ -10,6 +10,7 @@ import type { TaskContext } from "../obsidian/context";
 import { editEstimate, saveIssue } from "../obsidian/issue-editors";
 import { openSubEditor } from "../obsidian/sub-editor";
 import { canEditSubPeriod, periodInInboxMessage, subPeriodError } from "../core/project-periods";
+import { ScrollRail } from "../ui/ScrollRail";
 import { Segmented } from "../ui/Segmented";
 import { StatusIcon } from "../ui/StatusIcon";
 import { revealSub } from "./sub-reveal";
@@ -80,11 +81,6 @@ export function TimelineChart(props: {
 	const cols = timelineColumns(range, scale);
 	const width = range.days * px;
 	const scroller = useRef<HTMLDivElement>(null);
-	// 画面の下端に固定する横のスクロールバー。図の横の位置と双方向に合わせる
-	const rail = useRef<HTMLDivElement>(null);
-	const syncScroll = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
-		if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
-	};
 	const [drag, setDrag] = useState<Drag | null>(null);
 	// ホバー・フォーカス（クリック）した棒。その棒に入る矢印と依存先の棒を強調し、ほかを薄くする
 	const [hovered, setHovered] = useState<string | null>(null);
@@ -269,7 +265,7 @@ export function TimelineChart(props: {
 					)}
 				</div>
 				<div class="vt-timeline-main">
-					<div class={`vt-timeline-scroll${props.stickyScrollbar ? " has-rail" : ""}`} ref={scroller} onScroll={() => syncScroll(scroller.current, rail.current)}>
+					<div class={`vt-timeline-scroll${props.stickyScrollbar ? " has-rail" : ""}`} ref={scroller}>
 						<div class="vt-timeline-grid" style={{ width: `${width}px` }}>
 							<div class="vt-timeline-head">
 								{cols.map((c) => (
@@ -443,9 +439,7 @@ export function TimelineChart(props: {
 						</div>
 					</div>
 					{props.stickyScrollbar && (
-						<div class="vt-timeline-rail" ref={rail} onScroll={() => syncScroll(rail.current, scroller.current)} aria-hidden="true">
-							<div style={{ width: `${width}px` }} />
-						</div>
+						<ScrollRail target={scroller} class="vt-timeline-rail" contentWidth={width} />
 					)}
 				</div>
 			</div>
