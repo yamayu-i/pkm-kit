@@ -116,4 +116,5 @@
 | [0226](0226-closing-date-across-midnight.md) | 承認 | 締めの日付を Close board で決め、夜中の 0 時から決めた時刻までは前日を締める |
 | [0228](0228-date-time-input-language.md) | 承認 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
 | [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
+| [0234](0234-routine-missed-carry.md) | 提案 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 <!-- adr-index:end -->
