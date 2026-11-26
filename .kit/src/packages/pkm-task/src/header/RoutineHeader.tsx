@@ -4,7 +4,7 @@ import { routineResults, type RoutineDayResult } from "../core/board";
 import { formatShortDate, localToday, WEEKDAY_NAMES, weekdayOf, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { describeRepeat, type RepeatRule } from "../core/repeat";
-import { DEFAULT_CATEGORY_NAME, ROUTINE_CATEGORIES, type Routine, type RoutineCategory } from "../core/schema";
+import { DEFAULT_CATEGORY_NAME, DEFAULT_MISSED_NAME, ROUTINE_CATEGORIES, ROUTINE_MISSED, type Routine, type RoutineCategory, type RoutineMissed } from "../core/schema";
 import type { TaskContext } from "../obsidian/context";
 import { priorityMenu, type Save } from "../obsidian/issue-editors";
 import { EstimateField } from "../ui/EstimateField";
@@ -107,6 +107,19 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 		}
 		m.showAtMouseEvent(e);
 	};
+	// missed（ADR-0234）: list（なし。Calendar の Missed に並べる）か carry（今日のボードに持ち越す）。list は欄ごと消す
+	const missedMenu = (e: MouseEvent) => {
+		const m = new Menu();
+		for (const v of [null, ...ROUTINE_MISSED] as (RoutineMissed | null)[]) {
+			m.addItem((mi) =>
+				mi
+					.setTitle(v ?? DEFAULT_MISSED_NAME)
+					.setChecked(routine.missed === v)
+					.onClick(() => save({ missed: v })),
+			);
+		}
+		m.showAtMouseEvent(e);
+	};
 	const effort = index.routineEffort(routine.id, Date.now());
 	return (
 		<div class="vt-issue">
@@ -146,6 +159,16 @@ export function RoutineHeader(props: { ctx: TaskContext; path: string }) {
 					<button class="vt-field-chip" aria-label="Category" title="Where it appears: default is the board, closing is the Closing screen" onClick={categoryMenu}>
 						<Icon name={routine.category === "closing" ? "moon" : "layout-dashboard"} />
 						{routine.category ?? DEFAULT_CATEGORY_NAME}
+						<Icon name="chevron-down" />
+					</button>
+					<button
+						class="vt-field-chip"
+						aria-label="When missed"
+						title="When missed: list shows it under Missed in Today's Calendar, carry puts it on today's board until it is closed"
+						onClick={missedMenu}
+					>
+						<Icon name={routine.missed === "carry" ? "rotate-cw" : "list"} />
+						missed: {routine.missed ?? DEFAULT_MISSED_NAME}
 						<Icon name="chevron-down" />
 					</button>
 					<PriorityBadge priority={routine.priority} onClick={(e) => priorityMenu(e, routine.priority, save)} />

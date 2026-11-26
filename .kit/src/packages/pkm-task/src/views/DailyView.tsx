@@ -369,7 +369,7 @@ export function DailyView(props: { ctx: TaskContext }) {
 			if (b.date >= today || b.board.closed || closing.current.has(b.date)) continue;
 			// 猶予の間の前日のボードは、締めの途中かもしれないので待つ（ADR-0226）
 			if (holdAutoClose(b.date, new Date(now), grace)) continue;
-			if (unfinishedCount(unfinished(index, b.date, b.board)) > 0) continue;
+			if (unfinishedCount(unfinished(index, b.date, b.board, today)) > 0) continue;
 			closing.current.add(b.date);
 			void ctx.writer
 				.closeBoard(b.date, ctx.settings.deviceName)

@@ -7457,13 +7457,13 @@ function boardItems(index, date, board) {
   const subs = board.issues.map((key) => index.sub(key)).filter((s) => s !== void 0);
   return { issues, subs, routines: routinesOnDay(index, date) };
 }
-function unfinished(index, date, board) {
+function unfinished(index, date, board, today) {
   const items = boardItems(index, date, board);
   const left = (status, key) => isActive({ status }) && !isWatchStatus(status) && !board.carried.includes(key);
   return {
     issues: items.issues.filter((i) => left(i.status, i.id)),
     subs: items.subs.filter((s) => left(s.status, s.key)),
-    routines: items.routines.filter((r) => board.routines[r.id] === void 0)
+    routines: items.routines.filter((r) => board.routines[r.id] === void 0 && !(today !== void 0 && date < today && r.missed === "carry"))
   };
 }
 function markCarried(board, ids) {
@@ -7636,6 +7636,7 @@ var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
 var PRIORITIES = ["high", "mid", "low", "chore"];
 var STATUS_DETAIL_MAX = 20;
+var ROUTINE_MISSED = ["carry"];
 var ROUTINE_CATEGORIES = ["closing"];
 var DEFAULT_CATEGORY_NAME = "default";
 var Reader = class {
@@ -7810,6 +7811,7 @@ function parseRoutine(path, fm) {
     estimated: r.minutes("estimated"),
     category: routineCategory(r, fm.category),
     order: routineOrder(r, fm.order),
+    missed: routineMissed(r, fm.missed),
     created: r.datetime("created")
   };
   return { value: id === null ? null : routine, problems: r.problems };
@@ -7822,6 +7824,12 @@ function routineCategory(r, value) {
   }
   if (typeof value === "string" && ROUTINE_CATEGORIES.includes(value)) return value;
   r.problem("invalid-category", `category \u306F ${ROUTINE_CATEGORIES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F default\uFF09: ${String(value)}`, "warning");
+  return null;
+}
+function routineMissed(r, value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (typeof value === "string" && ROUTINE_MISSED.includes(value)) return value;
+  r.problem("invalid-missed", `missed \u306F ${ROUTINE_MISSED.join(" / ")} \u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F Calendar \u306E Missed \u306B\u4E26\u3079\u308B\uFF09: ${String(value)}`, "warning");
   return null;
 }
 function routineOrder(r, value) {
@@ -8828,16 +8836,39 @@ function sortRoutines(routines) {
   return [...routines].sort(compareRoutines);
 }
 function routinesOnDay(index, date, category) {
-  const list = index.routinesOn(date);
-  return sortRoutines(category === void 0 ? list : list.filter((r) => r.category === category));
+  const carried = [];
+  const rest = [];
+  for (const routine of index.routines.values()) {
+    if (category !== void 0 && routine.category !== category) continue;
+    const from = carriedFrom(index, routine, date);
+    if (from !== null) carried.push({ from, routine });
+    else if (routineOccursOn(routine, date)) rest.push(routine);
+  }
+  carried.sort((a, b) => a.from === b.from ? compareRoutines(a.routine, b.routine) : a.from < b.from ? -1 : 1);
+  return [...carried.map((c) => c.routine), ...sortRoutines(rest)];
 }
 var MISSED_ROUTINES_SINCE = "2026-11-18";
+function countFrom(routine, since) {
+  const anchor = routineAnchor(routine);
+  if (!routine.active || routine.repeat === null || anchor === null) return null;
+  return anchor > since ? anchor : since;
+}
+function carriedFrom(index, routine, date, since = MISSED_ROUTINES_SINCE) {
+  if (routine.missed !== "carry") return null;
+  const start = countFrom(routine, since);
+  if (start === null) return null;
+  let pending = null;
+  for (let d = start; d < date; d = addDays(d, 1)) {
+    if (index.board(d)?.board.routines[routine.id] !== void 0) pending = null;
+    else if (pending === null && routineOccursOn(routine, d)) pending = d;
+  }
+  return pending;
+}
 function missedRoutines(index, today, since = MISSED_ROUTINES_SINCE) {
   const out = [];
   for (const routine of index.routines.values()) {
-    const anchor = routineAnchor(routine);
-    if (!routine.active || routine.repeat === null || anchor === null) continue;
-    const from = anchor > since ? anchor : since;
+    const from = countFrom(routine, since);
+    if (from === null || routine.missed === "carry") continue;
     for (let d = from; d < today; d = addDays(d, 1)) {
       if (!routineOccursOn(routine, d)) continue;
       if (index.board(d)?.board.routines[routine.id] !== void 0) continue;
@@ -8866,7 +8897,7 @@ function boardCards(index, date, board) {
     const sub = index.sub(key);
     if (sub) cards.push({ kind: "sub", key, sub, parent: index.issues.get(sub.parent) });
   }
-  for (const routine of routinesOnDay(index, date, null)) cards.push({ kind: "routine", key: routine.id, routine });
+  for (const routine of routinesOnDay(index, date, null)) cards.push({ kind: "routine", key: routine.id, routine, carriedFrom: carriedFrom(index, routine, date) });
   return cards;
 }
 function cardStatus(board, card) {
@@ -11235,7 +11266,7 @@ var VaultCache = class {
 var TOOLS = [
   {
     name: "get_overview",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30DC\u30FC\u30C9\u3001\u8CA0\u8377\u3001\u671F\u9650\u5207\u308C\u30FB\u671F\u9650\u9593\u8FD1\u3001Inbox\u4EF6\u6570\u3001routine \u306E\u7A4D\u307F\u6B8B\u3057\uFF08\u4E88\u5B9A\u65E5\u306B\u7D50\u679C\u306E\u306A\u3044\u3082\u306E\u3002set_routine_result \u3067\u3082\u3068\u306E\u65E5\u306B\u7D50\u679C\u3092\u4ED8\u3051\u308B\uFF09\u3001\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3001\u6301\u3061\u8D8A\u3057\u904E\u591A\u30FB\u505C\u6EDE\u30BF\u30B9\u30AF\u3001\u898B\u7A4D\u3082\u308A\u7CBE\u5EA6\u3092\u307E\u3068\u3081\u3066\u53D6\u5F97\u3059\u308B",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30DC\u30FC\u30C9\u3001\u8CA0\u8377\u3001\u671F\u9650\u5207\u308C\u30FB\u671F\u9650\u9593\u8FD1\u3001Inbox\u4EF6\u6570\u3001routine \u306E\u7A4D\u307F\u6B8B\u3057\uFF08\u4E88\u5B9A\u65E5\u306B\u7D50\u679C\u306E\u306A\u3044\u3082\u306E\u3002set_routine_result \u3067\u3082\u3068\u306E\u65E5\u306B\u7D50\u679C\u3092\u4ED8\u3051\u308B\u3002missed: carry \u306E routine \u306F\u9664\u304D\u3001get_board \u306B\u51FA\u308B\uFF09\u3001\u8A18\u9332\u4E2D\u30BF\u30A4\u30DE\u30FC\u3001\u6301\u3061\u8D8A\u3057\u904E\u591A\u30FB\u505C\u6EDE\u30BF\u30B9\u30AF\u3001\u898B\u7A4D\u3082\u308A\u7CBE\u5EA6\u3092\u307E\u3068\u3081\u3066\u53D6\u5F97\u3059\u308B",
     inputSchema: {
       type: "object",
       properties: {
@@ -11248,7 +11279,7 @@ var TOOLS = [
   },
   {
     name: "get_board",
-    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001routine: routine \u3059\u3079\u3066\uFF08issue \u3068\u6DF7\u305C\u306A\u3044\u3002\u2605 \u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001watch: waiting / delegated \u306E issue \u3068\u30B5\u30D6\u3059\u3079\u3066\uFF08\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B\u304B\u306B\u3088\u3089\u306A\u3044\u3002\u4E26\u3073\u306F Pick \u3068\u540C\u3058\u3002ADR-0184\uFF09\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
+    description: "\u6307\u5B9A\u65E5\uFF08\u65E2\u5B9A\u306F\u4ECA\u65E5\uFF09\u306E\u30BF\u30B9\u30AF\u30DC\u30FC\u30C9\u306E\u72B6\u614B\u3092\u53D6\u5F97\u3059\u308B\u3002lanes \u306F\u6B04\u3054\u3068\u306E\u30AB\u30FC\u30C9\uFF08working: \u30BF\u30A4\u30DE\u30FC\u304C\u52D5\u3044\u3066\u3044\u308B\u3082\u306E\u3001top: \u2605\u4ECA\u65E5\u306E\u6700\u91CD\u8981\uFF084 \u4EF6\u307E\u3067\uFF09\u3001routine: routine \u3059\u3079\u3066\uFF08issue \u3068\u6DF7\u305C\u306A\u3044\u3002\u2605 \u306F\u4ED8\u3051\u3089\u308C\u306A\u3044\u3002missed: carry \u306E\u7A4D\u307F\u6B8B\u3057\u306F carriedFrom \u306B\u8D77\u70B9\u306E\u65E5\u3092\u6301\u3061\u3001\u5148\u306B\u4E26\u3076\u3002\u4ECA\u65E5\u306E\u65E5\u4ED8\u3067 set_routine_result \u3059\u308B\u3068\u7247\u4ED8\u304F\u3002ADR-0234\uFF09\u3001next: \u6B21\u306B\u3084\u308B\u9806\u3001watch: waiting / delegated \u306E issue \u3068\u30B5\u30D6\u3059\u3079\u3066\uFF08\u30DC\u30FC\u30C9\u306B\u8F09\u3063\u3066\u3044\u308B\u304B\u306B\u3088\u3089\u306A\u3044\u3002\u4E26\u3073\u306F Pick \u3068\u540C\u3058\u3002ADR-0184\uFF09\u3001done: \u7247\u4ED8\u3044\u305F\u3082\u306E\uFF09\u3067\u3001\u305D\u308C\u305E\u308C\u753B\u9762\u306E\u9806\u3002\u30AB\u30FC\u30C9\u306E key \u306F issue \u306E ID\u30FB\u30B5\u30D6\u306E\u5408\u6210\u30AD\u30FC\uFF08i-N#xxxxxx\uFF09\u30FBroutine \u306E ID",
     inputSchema: {
       type: "object",
       properties: {
@@ -11683,6 +11714,8 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         key: c.key,
         kind: c.kind,
         ...c.kind === "sub" ? { parent: c.sub.parent, parentSummary: c.parent?.summary ?? null } : {},
+        // routine の持ち越しの起点（ADR-0234）。持ち越しでなければ null
+        ...c.kind === "routine" ? { carriedFrom: c.carriedFrom } : {},
         summary: cardSummary(c),
         status: cardStatus(board, c),
         starred: board.stars.includes(c.key),
@@ -11692,7 +11725,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
         date,
         closed: board.closed,
         lanes: Object.fromEntries(LANES.map((l) => [l, lanes[l].map(card)])),
-        unfinished: unfinished(index, date, board),
+        unfinished: unfinished(index, date, board, today),
         carried: board.carried,
         stars: board.stars,
         routineResults: board.routines,
@@ -11780,6 +11813,7 @@ function callTaskTool(ctx, name, args, now, today, { index, problems }) {
           id: r.id,
           summary: r.summary,
           active: r.active,
+          missed: r.missed,
           scheduledCount: scheduledDays.length,
           closedCount: closedDays.length,
           completionRate: scheduledDays.length > 0 ? Math.round(closedDays.length / scheduledDays.length * 100) / 100 : null,

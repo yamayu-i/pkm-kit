@@ -55,10 +55,21 @@ export function moveRoutine(routines: Iterable<Routine>, id: string, category: R
 	return patches;
 }
 
-/** その日に出てくる routine（並び順）。category を渡すとその群だけ */
+/**
+ * その日に出てくる routine。予定日のものと、持ち越し（ADR-0234）のもの。category を渡すとその群だけ。
+ * 持ち越しを先に（起点の古い順、同じ日は並び順）、その後ろに並び順
+ */
 export function routinesOnDay(index: TaskIndex, date: LocalDate, category?: RoutineCategory | null): Routine[] {
-	const list = index.routinesOn(date);
-	return sortRoutines(category === undefined ? list : list.filter((r) => r.category === category));
+	const carried: { from: LocalDate; routine: Routine }[] = [];
+	const rest: Routine[] = [];
+	for (const routine of index.routines.values()) {
+		if (category !== undefined && routine.category !== category) continue;
+		const from = carriedFrom(index, routine, date);
+		if (from !== null) carried.push({ from, routine });
+		else if (routineOccursOn(routine, date)) rest.push(routine);
+	}
+	carried.sort((a, b) => (a.from === b.from ? compareRoutines(a.routine, b.routine) : a.from < b.from ? -1 : 1));
+	return [...carried.map((c) => c.routine), ...sortRoutines(rest)];
 }
 
 /**
@@ -72,17 +83,40 @@ export interface MissedRoutine {
 	routine: Routine;
 }
 
+/** 数え始め: start（なければ作った日）と since の遅いほう */
+function countFrom(routine: Routine, since: LocalDate): LocalDate | null {
+	const anchor = routineAnchor(routine);
+	if (!routine.active || routine.repeat === null || anchor === null) return null;
+	return anchor > since ? anchor : since;
+}
+
+/**
+ * 持ち越しの起点（ADR-0234）。missed: carry の routine で、date より前の予定日のうち、
+ * その日から date の前の日までのどのボードにも結果（closed / canceled）がないものの、一番古い日。なければ null。
+ * ある日の結果は、それより前の片付いていない予定日をすべて片付ける（過去の日のボードには書かない）
+ */
+export function carriedFrom(index: TaskIndex, routine: Routine, date: LocalDate, since: LocalDate = MISSED_ROUTINES_SINCE): LocalDate | null {
+	if (routine.missed !== "carry") return null;
+	const start = countFrom(routine, since);
+	if (start === null) return null;
+	let pending: LocalDate | null = null;
+	for (let d = start; d < date; d = addDays(d, 1)) {
+		if (index.board(d)?.board.routines[routine.id] !== undefined) pending = null;
+		else if (pending === null && routineOccursOn(routine, d)) pending = d;
+	}
+	return pending;
+}
+
 /**
  * routine の積み残し（ADR-0206）: 実行予定日を過ぎて、その日のボードに結果（closed / canceled）のないもの。
  * 数え始めは start（なければ作った日）と MISSED_ROUTINES_SINCE の遅いほう。今日は含めない。
- * 日付の古い順、同じ日は routine の並び順
+ * missed: carry の routine は除く（ボードに持ち越す。ADR-0234）。日付の古い順、同じ日は routine の並び順
  */
 export function missedRoutines(index: TaskIndex, today: LocalDate, since: LocalDate = MISSED_ROUTINES_SINCE): MissedRoutine[] {
 	const out: MissedRoutine[] = [];
 	for (const routine of index.routines.values()) {
-		const anchor = routineAnchor(routine);
-		if (!routine.active || routine.repeat === null || anchor === null) continue;
-		const from = anchor > since ? anchor : since;
+		const from = countFrom(routine, since);
+		if (from === null || routine.missed === "carry") continue;
 		for (let d = from; d < today; d = addDays(d, 1)) {
 			if (!routineOccursOn(routine, d)) continue;
 			if (index.board(d)?.board.routines[routine.id] !== undefined) continue;

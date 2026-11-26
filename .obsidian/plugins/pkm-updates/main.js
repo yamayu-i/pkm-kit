@@ -215,6 +215,7 @@ function parseRepeat(value) {
 var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
 var PRIORITIES = ["high", "mid", "low", "chore"];
+var ROUTINE_MISSED = ["carry"];
 var ROUTINE_CATEGORIES = ["closing"];
 var DEFAULT_CATEGORY_NAME = "default";
 var Reader = class {
@@ -389,6 +390,7 @@ function parseRoutine(path, fm) {
     estimated: r3.minutes("estimated"),
     category: routineCategory(r3, fm.category),
     order: routineOrder(r3, fm.order),
+    missed: routineMissed(r3, fm.missed),
     created: r3.datetime("created")
   };
   return { value: id === null ? null : routine, problems: r3.problems };
@@ -401,6 +403,12 @@ function routineCategory(r3, value) {
   }
   if (typeof value === "string" && ROUTINE_CATEGORIES.includes(value)) return value;
   r3.problem("invalid-category", `category \u306F ${ROUTINE_CATEGORIES.join(" / ")} \u306E\u3069\u308C\u304B\u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F default\uFF09: ${String(value)}`, "warning");
+  return null;
+}
+function routineMissed(r3, value) {
+  if (value === void 0 || value === null || value === "") return null;
+  if (typeof value === "string" && ROUTINE_MISSED.includes(value)) return value;
+  r3.problem("invalid-missed", `missed \u306F ${ROUTINE_MISSED.join(" / ")} \u306B\u3057\u3066\u304F\u3060\u3055\u3044\uFF08\u306A\u3057\u306F Calendar \u306E Missed \u306B\u4E26\u3079\u308B\uFF09: ${String(value)}`, "warning");
   return null;
 }
 function routineOrder(r3, value) {
