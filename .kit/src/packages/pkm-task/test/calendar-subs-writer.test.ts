@@ -55,3 +55,15 @@ describe("Calendar とサブを同時に持たせない", () => {
 		expect(f.texts.get(path)).toBe("---\n---\n");
 	});
 });
+
+describe("サブは Calendar か期間のどちらか一方（ADR-0255。Obsidian の書き込み）", () => {
+	const PARENT = "<!-- sub-issue\nid: aaaaaa\nsummary: サブ\nstatus: open\nstart: 2026-11-20\nend: 2026-11-20\n-->\n";
+	it("期間のあるサブに Calendar の日だけを書くのは止め、1 回で期間を消す切り替えは書く", async () => {
+		const f = fixture({ clarified: true }, PARENT);
+		await expect(f.writer.updateSub("i-1#aaaaaa", { scheduled: "2026-11-20" })).rejects.toThrow(/Calendar の日と期間/);
+		expect(f.texts.get(path)).toContain("start: 2026-11-20");
+		await f.writer.updateSub("i-1#aaaaaa", { scheduled: "2026-11-20", start: null, end: null });
+		expect(f.texts.get(path)).toContain("scheduled: 2026-11-20");
+		expect(f.texts.get(path)).not.toContain("start:");
+	});
+});

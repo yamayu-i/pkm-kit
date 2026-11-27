@@ -157,6 +157,10 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 	if ((sub.start === null) !== (sub.end === null)) {
 		extra.push({ severity: "warning", path, code: "sub-period-half", message: `期間が ${sub.start === null ? "end" : "start"} だけです。start と end を両方入れるか、両方空けてください（ADR-0245、移行 0245）` });
 	}
+	// Calendar の日と期間は、どちらか一方（ADR-0255）。両方を持つものは移行 0255 が報告し、ユーザーがどちらかを外す
+	if (sub.scheduled !== null && (sub.start !== null || sub.end !== null)) {
+		extra.push({ severity: "warning", path, code: "sub-calendar-and-period", message: "Calendar の日（scheduled）と期間（start・end）の両方があります。どちらか一方を外してください（ADR-0255、移行 0255）" });
+	}
 	return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 

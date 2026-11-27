@@ -67,8 +67,9 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 	});
 
 	it("someday にすると Calendar の日と期間を外し、someday に期間を入れると open に戻す（ADR-0190）", () => {
-		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", start: "2026-11-16", end: "2026-11-20", scheduled: "2026-11-17" }] }) as { created: string[] };
-		const key = created[0]!;
+		// Calendar の日と期間を両方持つのは、ADR-0255 より前の古いサブだけ（今は作れない）。ファイルに直接書く
+		writeFileSync(join(root, "issue/i-1.md"), `${HEAD}\n<!-- sub-issue\nid: aaaaaa\nsummary: x\nstatus: open\nstart: 2026-11-16\nend: 2026-11-20\nscheduled: 2026-11-17\n-->\n`);
+		const key = "i-1#aaaaaa";
 		callMcpTool(ctx, "update_sub_issue", { key, status: "someday" });
 		expect(subs()[0]).toMatchObject({ status: "someday", start: null, end: null, scheduled: null });
 		callMcpTool(ctx, "update_sub_issue", { key, start: "2026-11-24", end: "2026-11-25" });
@@ -275,5 +276,34 @@ describe("MCP で Calendar とサブを同時に持たせない（ADR-0203）", 
 		const before = readFileSync(join(root, "issue/i-2.md"), "utf8");
 		expect(() => callMcpTool(ctx, "create_sub_issues", { parent: "i-2", items: [{ summary: "x" }] })).toThrow(/Calendar の日を持つ issue にはサブイシューを足せません/);
 		expect(readFileSync(join(root, "issue/i-2.md"), "utf8")).toBe(before);
+	});
+});
+
+describe("サブは Calendar か期間のどちらか一方（ADR-0255。MCP）", () => {
+	let root: string;
+	let ctx: McpContext;
+	const subs = () => new TaskIndex(readVault(root).data).subs("i-1");
+
+	beforeEach(() => {
+		root = mkdtempSync(join(tmpdir(), "vault-sub-cal-"));
+		mkdirSync(join(root, "issue"));
+		writeFileSync(join(root, "issue/i-1.md"), HEAD);
+		ctx = { root, device: "ai", now: () => now };
+	});
+
+	afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+	it("create_sub_issues で両方を持つサブは作らず、何も書かない", () => {
+		expect(() => callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "a", scheduled: "2026-11-16", start: "2026-11-16", end: "2026-11-16" }] })).toThrow(/Calendar の日と期間/);
+		expect(readFileSync(join(root, "issue/i-1.md"), "utf8")).toBe(HEAD);
+	});
+
+	it("update_sub_issue で両方にする変更は止め、1 回で片方を消す切り替えは通す", () => {
+		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "a", start: "2026-11-16", end: "2026-11-16" }] }) as { created: string[] };
+		const key = created[0]!;
+		expect(() => callMcpTool(ctx, "update_sub_issue", { key, scheduled: "2026-11-16" })).toThrow(/Calendar の日と期間/);
+		callMcpTool(ctx, "update_sub_issue", { key, scheduled: "2026-11-16", start: null, end: null });
+		expect(subs()[0]).toMatchObject({ scheduled: "2026-11-16", start: null, end: null });
+		expect(() => callMcpTool(ctx, "update_sub_issue", { key, start: "2026-11-17", end: "2026-11-18" })).toThrow(/Calendar の日と期間/);
 	});
 });

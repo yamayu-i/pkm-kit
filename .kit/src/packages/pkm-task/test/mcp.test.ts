@@ -52,6 +52,9 @@ describe("MCP サーバーと検査付き操作", () => {
 		callMcpTool(ctx, "star_card", { date, key: "i-2", on: true });
 		expect(() => callMcpTool(ctx, "order_card", { date, key: "r-1", before: "i-1" })).toThrow(/並べ替えられない/);
 		expect(() => callMcpTool(ctx, "star_card", { date, key: "r-1", on: true })).toThrow(/routine/);
+		// 今日の Calendar には ★ を付けない（ADR-0255）。Calendar の日を消すと、ふつうのカードになる
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-1", on: true })).toThrow(/Calendar/);
+		callMcpTool(ctx, "update_issue", { id: "i-1", scheduled: null });
 		callMcpTool(ctx, "star_card", { date, key: "i-1", on: true });
 		// waiting にすると ★ が外れ、ボードの欄ではなく Watch に出る（ADR-0184）
 		callMcpTool(ctx, "update_issue", { id: "i-1", status: "waiting" });
@@ -62,12 +65,12 @@ describe("MCP サーバーと検査付き操作", () => {
 		const read = () =>
 			callMcpTool(ctx, "get_board", { date }) as {
 				closed: boolean;
-				lanes: Record<"working" | "top" | "routine" | "next" | "watch" | "done", Card[]>;
+				lanes: Record<"calendar" | "working" | "top" | "routine" | "next" | "watch" | "done", Card[]>;
 				unfinished: { issues: { id: string }[]; routines: { id: string }[] };
 			};
 		let board = read();
 		expect(board.closed).toBe(false);
-		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ working: [], top: ["i-2"], routine: ["r-1"], next: [], watch: ["i-1"], done: [] });
+		expect(Object.fromEntries(Object.entries(board.lanes).map(([k, v]) => [k, v.map((c) => c.key)]))).toEqual({ calendar: [], working: [], top: ["i-2"], routine: ["r-1"], next: [], watch: ["i-1"], done: [] });
 		expect(board.lanes.watch[0]).toMatchObject({ key: "i-1", status: "waiting", starred: false });
 		expect(board.lanes.top[0]).toMatchObject({ key: "i-2", kind: "issue", status: "open", starred: true });
 
@@ -90,15 +93,18 @@ describe("MCP サーバーと検査付き操作", () => {
 	});
 
 	it("★ は 4 件まで。order_card は同じ欄の中だけ（ADR-0137）", () => {
-		for (const n of [3, 4, 5]) {
+		for (const n of [3, 4, 5, 6]) {
 			writeFileSync(join(root, `issue/i-${n}.md`), `---\ntype: issue\nid: i-${n}\nsummary: t${n}\nstatus: open\ncreated: 2026-10-30T10:00:00+09:00\n---\n`);
 		}
-		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2", "i-3", "i-4", "i-5"] });
-		for (const key of ["i-1", "i-2", "i-3", "i-5"]) callMcpTool(ctx, "star_card", { date, key, on: true });
+		callMcpTool(ctx, "add_to_board", { date, issue_ids: ["i-1", "i-2", "i-3", "i-4", "i-5", "i-6"] });
+		// i-1 は今日の Calendar（scheduled が今日）なので ★ も並べ替えもしない（ADR-0255）
+		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-1", on: true })).toThrow(/Calendar/);
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-1", before: null })).toThrow(/並べ替えられない欄（calendar）/);
+		for (const key of ["i-2", "i-3", "i-5", "i-6"]) callMcpTool(ctx, "star_card", { date, key, on: true });
 		expect(() => callMcpTool(ctx, "star_card", { date, key: "i-4", on: true })).toThrow(/4 件/);
-		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-4", before: "i-1" })).toThrow(/同じ欄/);
+		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-4", before: "i-2" })).toThrow(/同じ欄/);
 		expect(() => callMcpTool(ctx, "order_card", { date, key: "i-9", before: null })).toThrow(/載っていません/);
-		callMcpTool(ctx, "star_card", { date, key: "i-1", on: false });
+		callMcpTool(ctx, "star_card", { date, key: "i-6", on: false });
 		callMcpTool(ctx, "star_card", { date, key: "i-4", on: true });
 		const board = callMcpTool(ctx, "get_board", { date }) as { stars: string[] };
 		expect(board.stars).toEqual(["i-2", "i-3", "i-5", "i-4"]);

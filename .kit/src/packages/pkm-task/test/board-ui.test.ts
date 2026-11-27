@@ -54,6 +54,7 @@ function setup(lines: string[]) {
 		issue("i-3"),
 		issue("i-4"),
 		issue("i-5", "closed"),
+		issue("i-6"),
 	];
 	const index = new TaskIndex(collectVault({ markdown, worklogs: [], labels: null, parseYaml: parse, boardLogs: [{ path: "board/pc/2026-11.jsonl", text: lines.join("\n") }] }).data);
 	const ops: BoardOp[] = [];
@@ -74,7 +75,7 @@ describe("Add issue の候補（ADR-0137）", () => {
 	it("ボードにない active な issue と、その日が scheduled でない active なサブ。サブは `i-1 › 題`", () => {
 		const { index } = setup([line({ op: "add", task: "i-2" })]);
 		const items = boardCandidates(index, DATE, index.board(DATE)!.board);
-		expect(items.map(boardChoiceText)).toEqual(["i-1 si-1", "i-3 si-3", "i-4 si-4", "i-1 › 実装"]);
+		expect(items.map(boardChoiceText)).toEqual(["i-1 si-1", "i-3 si-3", "i-4 si-4", "i-6 si-6", "i-1 › 実装"]);
 	});
 
 	it("検索では作る候補を常に最後に出す", () => {
@@ -109,12 +110,13 @@ describe("サブを載せる・持ち越す（ADR-0137, 0152）", () => {
 });
 
 describe("★ と並べ替え（ADR-0137）", () => {
-	const base = ["i-2", "i-3", "i-4", "i-1#aaaaaa"].map((task) => line({ op: "add", task }));
+	// i-1#aaaaaa は今日の Calendar（Calendar の欄。★ も並べ替えもしない。ADR-0255）なので、ふつうのカードには i-1#bbbbbb と i-6 を使う
+	const base = ["i-2", "i-3", "i-4", "i-1#bbbbbb"].map((task) => line({ op: "add", task }));
 
 	it("★ を付け外しする。4 件あるときは付けずに知らせる", async () => {
-		const { ctx, ops } = setup([...base, line({ op: "add", task: "i-1#bbbbbb" }), ...["i-2", "i-3", "i-4", "i-1#bbbbbb"].map((task) => line({ op: "star", task, on: true }))]);
+		const { ctx, ops } = setup([...base, line({ op: "add", task: "i-6" }), ...["i-2", "i-3", "i-4", "i-6"].map((task) => line({ op: "star", task, on: true }))]);
 		notices.length = 0;
-		await setStar(ctx, DATE, "i-1#aaaaaa", true);
+		await setStar(ctx, DATE, "i-1#bbbbbb", true);
 		expect(ops).toEqual([]);
 		expect(notices).toEqual(["★ は 4 件までです。ほかの ★ を外してから付けてください"]);
 		await setStar(ctx, DATE, "i-2", false);
@@ -126,16 +128,16 @@ describe("★ と並べ替え（ADR-0137）", () => {
 		await moveCard(ctx, DATE, "i-4", "top", null);
 		expect(ops).toEqual([
 			{ op: "star", task: "i-4", on: true },
-			{ op: "order", tasks: ["i-4", "i-2", "i-3", "i-1#aaaaaa"] },
+			{ op: "order", tasks: ["i-4", "i-2", "i-3", "i-1#bbbbbb"] },
 		]);
-		const full = setup([...base, line({ op: "add", task: "i-1#bbbbbb" }), ...["i-2", "i-3", "i-4", "i-1#bbbbbb"].map((task) => line({ op: "star", task, on: true }))]);
-		await moveCard(full.ctx, DATE, "i-1#aaaaaa", "top", "i-2");
+		const full = setup([...base, line({ op: "add", task: "i-6" }), ...["i-2", "i-3", "i-4", "i-6"].map((task) => line({ op: "star", task, on: true }))]);
+		await moveCard(full.ctx, DATE, "i-1#bbbbbb", "top", "i-2");
 		expect(full.ops).toEqual([]);
 	});
 
 	it("Move down は同じ欄の中で 1 つ下へ", async () => {
 		const { ctx, ops } = setup(base);
 		await stepCard(ctx, DATE, "i-2", 1);
-		expect(ops).toEqual([{ op: "order", tasks: ["i-3", "i-2", "i-4", "i-1#aaaaaa"] }]);
+		expect(ops).toEqual([{ op: "order", tasks: ["i-3", "i-2", "i-4", "i-1#bbbbbb"] }]);
 	});
 });

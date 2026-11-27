@@ -8070,6 +8070,9 @@ function parseBlock(path, parent, raw, order, parseYaml) {
   if (sub.start === null !== (sub.end === null)) {
     extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
   }
+  if (sub.scheduled !== null && (sub.start !== null || sub.end !== null)) {
+    extra.push({ severity: "warning", path, code: "sub-calendar-and-period", message: "Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3068\u671F\u9593\uFF08start\u30FBend\uFF09\u306E\u4E21\u65B9\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u4E00\u65B9\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0255\u3001\u79FB\u884C 0255\uFF09" });
+  }
   return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml) {
@@ -8888,7 +8891,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // src/core/board-lanes.ts
-var LANES = ["working", "top", "routine", "next", "watch", "done"];
+var LANES = ["calendar", "working", "top", "routine", "next", "watch", "done"];
 var TOP_LIMIT = 4;
 function boardCards(index, date, board) {
   const cards = [];
@@ -8917,20 +8920,21 @@ function isSettled(board, card) {
   const status = cardStatus(board, card);
   return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
-function laneOf(index, board, card) {
+function laneOf(index, board, card, date) {
   if (card.kind === "routine") return "routine";
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
   if (isWatchStatus(status)) return "watch";
+  if ((card.kind === "issue" ? card.issue.scheduled : card.sub.scheduled) === date) return "calendar";
   if (board.stars.includes(card.key)) return "top";
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
+  const lanes = { calendar: [], working: [], top: [], routine: [], next: [], watch: [], done: [] };
   const order = index.order(date);
   for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) {
-    const lane = laneOf(index, board, card);
+    const lane = laneOf(index, board, card, date);
     if (lane !== "watch") lanes[lane].push(card);
   }
   lanes.watch = watchCards(index, new Set(lanes.working.map((c) => c.key)));
@@ -8938,6 +8942,7 @@ function boardLanes(index, date, board) {
   lanes.working.sort((a, b) => startedAt(a) - startedAt(b));
   const added = boardCards(index, date, board).map((c) => c.key);
   lanes.done.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
+  lanes.calendar.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
   return lanes;
 }
 function watchCards(index, exclude = /* @__PURE__ */ new Set()) {
@@ -9873,6 +9878,12 @@ function subsWithCalendarError(issue) {
   if (issue.scheduled === null) return null;
   return `${issue.id}: Calendar \u306E\u65E5\u3092\u6301\u3064 issue \u306B\u306F\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u305B\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u5148\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044`;
 }
+function subCalendarPeriodError(before, patch) {
+  if (patch.start === void 0 && patch.end === void 0 && patch.scheduled === void 0) return null;
+  const after = (k) => patch[k] !== void 0 ? patch[k] : before?.[k] ?? null;
+  if (after("scheduled") === null || after("start") === null && after("end") === null) return null;
+  return "\u30B5\u30D6\u306F Calendar \u306E\u65E5\u3068\u671F\u9593\u3092\u540C\u6642\u306B\u6301\u3066\u307E\u305B\u3093\uFF08ADR-0255\uFF09\u3002\u3069\u3061\u3089\u304B\u4E00\u65B9\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30AC\u30F3\u30C8\u3067\u306F 1 \u65E5\u306E\u671F\u9593\u3068 Calendar \u3092\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059";
+}
 
 // cli/vault-ops.ts
 var import_yaml2 = __toESM(require_dist(), 1);
@@ -10085,7 +10096,7 @@ function laneOfKey(index, date, key) {
 }
 function orderCardOnDisk(root, index, date, key, before, device, now) {
   const { board, lanes, lane } = laneOfKey(index, date, key);
-  if (lane === "working" || lane === "done" || lane === "routine" || lane === "watch") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
+  if (lane === "calendar" || lane === "working" || lane === "done" || lane === "routine" || lane === "watch") throw new Error(`${key} \u306F\u4E26\u3079\u66FF\u3048\u3089\u308C\u306A\u3044\u6B04\uFF08${lane}\uFF09\u306B\u3042\u308A\u307E\u3059`);
   if (before !== null && !lanes[lane].some((c) => c.key === before)) throw new Error(`before\uFF08${before}\uFF09\u306F ${key} \u3068\u540C\u3058\u6B04\u306B\u3042\u308A\u307E\u305B\u3093`);
   appendBoardOpsOnDisk(root, index, date, device, moveOps(lanes, board, key, lane, before, index.order(date)), now);
 }
@@ -10094,6 +10105,7 @@ function starCardOnDisk(root, index, date, key, on, device, now) {
   const { board, lanes, lane } = laneOfKey(index, date, key);
   if (on && lane === "routine") throw new Error(`${key} \u306F routine \u306A\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
   if (on && lane === "watch") throw new Error(`${key} \u306F\u5F85\u3063\u3066\u3044\u308B\uFF08waiting / delegated\uFF09\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
+  if (on && lane === "calendar") throw new Error(`${key} \u306F\u4ECA\u65E5\u306E Calendar\uFF08scheduled \u304C\u4ECA\u65E5\uFF09\u306A\u306E\u3067 \u2605 \u3092\u4ED8\u3051\u3089\u308C\u307E\u305B\u3093`);
   if (on && !board.stars.includes(key) && !canStar(lanes)) throw new Error(`\u2605 \u306F ${TOP_LIMIT} \u4EF6\u307E\u3067\u3067\u3059\u3002\u307B\u304B\u306E \u2605 \u3092\u5916\u3057\u3066\u304B\u3089\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044`);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "star", task: key, on }], now);
 }
@@ -10354,6 +10366,8 @@ function updateSubIssueOnDisk(root, index, key, patch, log) {
   return r.after;
 }
 function assertSubPeriodOnDisk(index, parentId, before, patch, today) {
+  const both = subCalendarPeriodError(before, patch);
+  if (both) throw new Error(both);
   if (patch.start === void 0 && patch.end === void 0) return;
   const parent = index.issues.get(parentId);
   if (!parent) return;

@@ -36,6 +36,7 @@ const ENTER_MS = 3_000;
 
 /** 欄の見出し（画面の文字は英語。ADR-0137） */
 const LANE_TITLE: Record<LaneId, string> = {
+	calendar: "Calendar",
 	working: "Working",
 	top: "Top 4",
 	routine: "Routines",
@@ -146,7 +147,8 @@ function TaskCard(props: { ctx: TaskContext; date: LocalDate; board: BoardState;
 		const m = new Menu();
 		if (!done && card.kind !== "routine") {
 			if (starred) m.addItem((mi) => mi.setTitle("Remove from Top 4").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
-			else if (canStar(lanes)) m.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
+			// 今日の Calendar はそれだけで今日やることが決まっているので ★ を付けない（ADR-0255）
+			else if (lane !== "calendar" && canStar(lanes)) m.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
 		}
 		const up = stepOps(lanes, board, key, -1, undefined);
 		const down = stepOps(lanes, board, key, 1, undefined);
@@ -358,7 +360,7 @@ export function boardCandidates(index: TaskIndex, date: LocalDate, board: BoardS
 	return [...issues.map((issue) => ({ kind: "issue" as const, issue })), ...subs.map((sub) => ({ kind: "sub" as const, sub }))];
 }
 
-/** task board（ADR-0009, 0137）。status とタイマーで決まる欄、再生 / 停止。末尾の Close board で Closing の画面に移る（ADR-0206） */
+/** task board（ADR-0009, 0137）。いちばん上は今日の Calendar の欄（ADR-0255）。status とタイマーで決まる欄、再生 / 停止。末尾の Close board で Closing の画面に移る（ADR-0206） */
 export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDate; board: BoardState; closingDate?: LocalDate; onClosing: () => void }) {
 	const { ctx, index, date, board } = props;
 	const now = useNow(30_000);
@@ -372,7 +374,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 			else void createOnBoard(ctx, date, choice.summary);
 		}).open();
 	};
-	const visibleLanes: LaneId[] = (["working", "top", "routine", "next", "watch", "done"] as LaneId[]).filter((l) => (l === "routine" ? showRoutineLane(board, lanes) : l === "top" || l === "next" || lanes[l].length > 0));
+	const visibleLanes: LaneId[] = (["calendar", "working", "top", "routine", "next", "watch", "done"] as LaneId[]).filter((l) => (l === "routine" ? showRoutineLane(board, lanes) : l === "top" || l === "next" || lanes[l].length > 0));
 	return (
 		<div class="vt-board">
 			<div class="vt-board-head">
@@ -384,7 +386,7 @@ export function Board(props: { ctx: TaskContext; index: TaskIndex; date: LocalDa
 			</div>
 			{total === 0 ? (
 				<>
-					<div class="vt-empty">The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above.</div>
+					<div class="vt-empty">The board is empty. Issues and sub-issues with today's Calendar date are added automatically. You can also add them with the button above.</div>
 					{lanes.watch.length > 0 && (
 						<div class="vt-lanes">
 							<Lane ctx={ctx} date={date} board={board} lanes={lanes} lane="watch" now={now} />

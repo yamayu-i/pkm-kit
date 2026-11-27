@@ -1,11 +1,11 @@
 import { Menu } from "obsidian";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { formatShortDate, localToday, type LocalDate } from "../core/dates";
+import { addDays, formatShortDate, localToday, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { columnLoad, dayLoad, loadLabel, needsBudget, needsEstimate, SIZES, type Capacity, type LoadItem } from "../core/projects";
 import type { Issue } from "../core/schema";
 import { subKey, type SubIssue } from "../core/sub-issue";
-import { arrowMidpoint, barOf, canConnect, dateAtX, incomingOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, DAY_PX, type DragMode, type TimelineScale, type TimelineSub } from "../core/timeline";
+import { arrowMidpoint, canConnect, dateAtX, incomingOf, periodBarOf, roundedPath, routeArrows, dayOffset, dependencyArrows, dragBar, timelineColumns, timelineRange, timelineToggle, DAY_PX, type DragMode, type TimelineScale, type TimelineSub } from "../core/timeline";
 import type { TaskContext } from "../obsidian/context";
 import { editEstimate, saveIssue } from "../obsidian/issue-editors";
 import { openSubEditor } from "../obsidian/sub-editor";
@@ -14,6 +14,12 @@ import { ScrollRail } from "../ui/ScrollRail";
 import { Segmented } from "../ui/Segmented";
 import { StatusIcon } from "../ui/StatusIcon";
 import { revealSub } from "./sub-reveal";
+
+/** 2 日以上の棒を Calendar にしようとしたときの知らせ（ADR-0255。どの日にするかを黙って決めない） */
+const MULTI_DAY_MESSAGE = "Calendar は 1 日だけです。棒を 1 日に縮めると、Calendar に切り替えられます";
+
+/** Calendar の印の押せる大きさ（px）。styles.css の .vt-timeline-calendar と同じ */
+const CALENDAR_HIT = 28;
 
 /** 1 行の高さ（px）。styles.css の .vt-timeline と同じ */
 const ROW = 36;
@@ -28,6 +34,8 @@ export type ChartRow = { kind: "project"; issue: Issue; subs: SubIssue[] } | { k
 
 interface Drag {
 	key: string;
+	/** bar は期間の棒、calendar は Calendar の印（ADR-0255。丸ごとずらすだけ） */
+	kind: "bar" | "calendar";
 	mode: DragMode;
 	x0: number;
 	bar: { start: LocalDate; end: LocalDate };
@@ -118,10 +126,45 @@ export function TimelineChart(props: {
 		setNotice(null);
 		return void ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e) => ctx.report("期間を保存できませんでした", e));
 	};
-	const shown = (sub: SubIssue) => {
-		const bar = barOf(sub);
-		return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+	// Calendar の日を書く・1 日の棒と切り替える（ADR-0255）。期間と同じく、Inbox の Project では動かさない
+	const saveCalendar = (sub: SubIssue, date: LocalDate) => {
+		const lock = lockOf(sub.parent);
+		if (lock !== null) return setNotice(lock);
+		setNotice(null);
+		return void ctx.writer.updateSub(sub.key, { scheduled: date }).catch((e) => ctx.report("Calendar の日を保存できませんでした", e));
 	};
+	const toggleCalendar = (sub: SubIssue) => {
+		const next = timelineToggle(sub);
+		if (next === null) return setNotice(MULTI_DAY_MESSAGE);
+		const lock = lockOf(sub.parent);
+		if (lock !== null) return setNotice(lock);
+		const parent = index.issues.get(sub.parent);
+		const error = next.start !== null && parent ? subPeriodError(parent, index.planned(sub.parent), sub, { start: next.start, end: next.end }, today) : null;
+		if (error) return setNotice(error);
+		setNotice(null);
+		return void ctx.writer.updateSub(sub.key, next).catch((e) => ctx.report("Calendar と期間を切り替えられませんでした", e));
+	};
+	// 棒と印の右クリック（モバイルは長押し）のメニュー。1 日の棒は Make Calendar、印は Make 1-day period（ADR-0255）
+	const dateMenu = (e: MouseEvent, sub: SubIssue) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const m = new Menu();
+		if (sub.scheduled !== null) m.addItem((item) => item.setTitle("Make 1-day period").setIcon("calendar-range").onClick(() => toggleCalendar(sub)));
+		else {
+			const single = timelineToggle(sub) !== null;
+			m.addItem((item) => {
+				item.setTitle(single ? "Make Calendar" : "Make Calendar (shorten to 1 day first)").setIcon("calendar-check").onClick(() => toggleCalendar(sub));
+				if (!single) item.setDisabled(true);
+			});
+		}
+		m.addItem((item) => item.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
+		m.showAtMouseEvent(e);
+	};
+	const shown = (sub: SubIssue) => {
+		const bar = periodBarOf(sub);
+		return drag && drag.kind === "bar" && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+	};
+	const shownCalendar = (sub: SubIssue): LocalDate | null => (sub.scheduled !== null && drag && drag.kind === "calendar" && drag.key === sub.key ? addDays(sub.scheduled, drag.delta) : sub.scheduled);
 	const xOf = (date: LocalDate) => dayOffset(range, date) * px;
 	const byKey = new Map(subs.map((s) => [s.key, s]));
 	const rowOf = new Map(rows.flatMap((r, i) => (r.kind === "sub" ? [[r.sub.key, i] as const] : [])));
@@ -174,8 +217,8 @@ export function TimelineChart(props: {
 		if (to && from) void saveDeps(to, [...to.dependsOn, from.id]);
 	};
 
-	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode) => {
-		const bar = barOf(sub);
+	const startDrag = (e: PointerEvent, sub: SubIssue, mode: DragMode, kind: Drag["kind"] = "bar") => {
+		const bar = kind === "calendar" ? (sub.scheduled !== null ? { start: sub.scheduled, end: sub.scheduled } : null) : periodBarOf(sub);
 		if (!bar || e.button !== 0) return;
 		const lock = lockOf(sub.parent);
 		if (lock !== null) return setNotice(lock);
@@ -183,7 +226,7 @@ export function TimelineChart(props: {
 		e.preventDefault();
 		e.stopPropagation();
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-		setDrag({ key: sub.key, mode, x0: e.clientX, bar, delta: 0 });
+		setDrag({ key: sub.key, kind, mode, x0: e.clientX, bar, delta: 0 });
 	};
 	const moveDrag = (e: PointerEvent) => {
 		if (!drag) return;
@@ -194,21 +237,30 @@ export function TimelineChart(props: {
 		if (!drag) return;
 		const d = drag;
 		setDrag(null);
-		if (d.delta !== 0) void save(sub, dragBar(d.bar, d.mode, d.delta));
+		if (d.delta === 0) return;
+		if (d.kind === "calendar") void saveCalendar(sub, addDays(d.bar.start, d.delta));
+		else void save(sub, dragBar(d.bar, d.mode, d.delta));
 	};
 	const keyDown = (e: KeyboardEvent, sub: SubIssue) => {
-		const bar = barOf(sub);
+		const bar = periodBarOf(sub);
 		if (e.key === "Enter") {
 			e.preventDefault();
 			openSubEditor(ctx, sub);
+		} else if ((e.key === "c" || e.key === "C") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+			// 1 日の棒と Calendar を切り替える（ADR-0255）
+			e.preventDefault();
+			toggleCalendar(sub);
+		} else if (sub.scheduled !== null && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+			e.preventDefault();
+			void saveCalendar(sub, addDays(sub.scheduled, e.key === "ArrowLeft" ? -1 : 1));
 		} else if (bar && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
 			e.preventDefault();
 			void save(sub, dragBar(bar, e.shiftKey ? "end" : "move", e.key === "ArrowLeft" ? -1 : 1));
 		}
 	};
-	// 期間のない行で日を押すと、その日の 1 日の棒を作る
+	// 期間も Calendar の日もない行で日を押すと、その日の 1 日の棒を作る（Calendar のサブには期間を作らない。ADR-0255）
 	const pickDay = (e: MouseEvent, sub: SubIssue) => {
-		if (barOf(sub)) return;
+		if (periodBarOf(sub) || sub.scheduled !== null) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const date = dateAtX(range, e.clientX - rect.left, scale);
 		void save(sub, { start: date, end: date });
@@ -367,7 +419,11 @@ export function TimelineChart(props: {
 										return (
 											<ProjectRow
 												issue={row.issue}
-												subs={row.subs.map((s) => shown(s))}
+												subs={row.subs.map((s) => {
+													// Calendar のサブは、その 1 日としてまとめの棒に含める（ADR-0255）
+													const day = shownCalendar(s);
+													return day !== null ? { start: day, end: day } : shown(s);
+												})}
 												top={i * ROW}
 												xOf={xOf}
 												px={px}
@@ -381,15 +437,31 @@ export function TimelineChart(props: {
 									const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
 									const handles = barWidth >= HANDLE * 3;
 									const period = bar ? `${formatShortDate(bar.start)} – ${formatShortDate(bar.end)}` : "";
-									const nothing = !bar && sub.scheduled === null;
+									const calendar = shownCalendar(sub);
+									const nothing = !bar && calendar === null;
 									const key = sub.key;
+									const rowTitle = bar ? undefined : calendar !== null ? "Calendar date: drag to move. Right-click or press C to make it a 1-day period" : "Click a day to set the period";
 									return (
-										<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={bar ? undefined : "Click a day to set the period"}>
+										<div class={`vt-timeline-row${bar ? "" : " is-empty"}`} style={{ top: `${i * ROW}px` }} onClick={(e) => pickDay(e, sub)} title={rowTitle}>
 											{nothing && <span class="vt-timeline-none">No dates</span>}
-											{!bar &&
-												sub.scheduled !== null && (
-													<span class="vt-timeline-dot" style={{ left: `${xOf(sub.scheduled) + px / 2}px` }} title={`Calendar ${formatShortDate(sub.scheduled)}`} />
-												)}
+											{calendar !== null && (
+												<div
+													class={`vt-timeline-calendar vt-status-${sub.status}${drag?.key === key ? " is-dragging" : ""}`}
+													// 28px の正方形を、その日のマスの中央に置く（Week の細いマスでも押せる大きさを保つ）
+													style={{ left: `${xOf(calendar) + px / 2 - CALENDAR_HIT / 2}px` }}
+													tabIndex={0}
+													role="button"
+													aria-label={`${sub.summary}: Calendar ${formatShortDate(calendar)}. Drag or use arrow keys to move. Press C to make it a 1-day period`}
+													title={`${sub.summary}\nCalendar ${formatShortDate(calendar)}`}
+													onPointerDown={(e) => startDrag(e, sub, "move", "calendar")}
+													onPointerMove={moveDrag}
+													onPointerUp={() => endDrag(sub)}
+													onPointerCancel={() => setDrag(null)}
+													onKeyDown={(e) => keyDown(e, sub)}
+													onContextMenu={(e) => dateMenu(e, sub)}
+													onClick={(e) => e.stopPropagation()}
+												/>
+											)}
 											{bar && (
 												<div
 													data-sub-key={key}
@@ -397,7 +469,7 @@ export function TimelineChart(props: {
 													style={{ left: `${left}px`, width: `${barWidth}px` }}
 													tabIndex={0}
 													role="button"
-													aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`}
+													aria-label={`${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end${bar.start === bar.end ? ". Press C to make it a Calendar date" : ""}`}
 													title={`${sub.summary}\n${period}`}
 													onPointerEnter={() => setHovered(key)}
 													onPointerLeave={() => setHovered((h) => (h === key ? null : h))}
@@ -408,6 +480,7 @@ export function TimelineChart(props: {
 													onPointerUp={() => endDrag(sub)}
 													onPointerCancel={() => setDrag(null)}
 													onKeyDown={(e) => keyDown(e, sub)}
+													onContextMenu={(e) => dateMenu(e, sub)}
 													onClick={(e) => e.stopPropagation()}
 												>
 													<span

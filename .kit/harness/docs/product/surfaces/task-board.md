@@ -6,12 +6,12 @@
 
 ## 今の振る舞い
 
-- 1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（category が default の routine だけを、Routines の一覧の並び順で。issue・サブと混ぜない。closing の routine は Closing の画面に出す。開いたまま始め、見出しで開閉。closed / canceled の routine は隠し、末尾の「Show N done」で出す（開いたかは覚えない。ADR-0240）。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない
+- 1 列のボード。欄は上から Calendar（今日が Calendar の日の issue とサブで、まだ手を付けていないもの。primary の枠。載せた順で、★ も並べ替えもしない。タイマーを動かすと Working、片付けると Done に移る。ADR-0255）・Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（category が default の routine だけを、Routines の一覧の並び順で。issue・サブと混ぜない。closing の routine は Closing の画面に出す。開いたまま始め、見出しで開閉。closed / canceled の routine は隠し、末尾の「Show N done」で出す（開いたかは覚えない。ADR-0240）。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない
 - カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。`delegated…` も選べる）・題・記録の時刻を直すボタン・再生 / 停止・`···` のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ。routine は open なら closed と canceled の 2 つ、結果があれば ↩ で open に戻す。ADR-0240）が出る。ID はマウスを乗せると出る
 - 同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る
 - 星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる
 - 記録の時刻を直すボタン（`history` のアイコン。色なしの小さい丸）: 再生 / 停止の左。押すと From / To の 2 欄のダイアログを開き、再生の押し忘れ・止め忘れを入力言語の日時（`-22m`、`2200`、`2200 -1d` など。時刻だけなら From は今より前、To は From より後のいちばん近いその時刻。[ADR-0228](../../../../src/docs/adr/0228-date-time-input-language.md)）かカレンダーと時計で直す。記録中なら To が空の再生で開始だけを直して続け、To を入れた停止で止める。記録していないなら再生で From から始め、停止で From〜To の記録を足す（[ADR-0193](../../../../src/docs/adr/0193-worklog-quick-edit.md)）。幅 480px 以下では隠し、`···` のメニューの Edit times から開く
-- `···` のメニュー: Add to Top 4 / Remove from Top 4、Move up / Move down（同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
+- `···` のメニュー: Add to Top 4 / Remove from Top 4（Calendar の欄のカードには Add to Top 4 を出さない）、Move up / Move down（Top 4 と Up next の同じ欄の中）、Open、Remove from board。PC では Top 4 と Up next の間と中をドラッグで並べ替えられ、Top 4 に落とすと ★ が付く。並びは翌日以降にも引き継ぎ、★ はその日だけ
 - Add issue: issue を検索して載せるか、新しく作って載せる。今日が Calendar の日でないサブイシューも `i-12 › 題` の形で候補に出る。載せても日付は書かない（ADR-0152）
 - status を変えると、右下に「N件のステータスが変更されました。 元に戻す ›」が 5 秒出て、まとめて取り消せる
 - 未完了の一覧（Not done の欄）はない。未完了のカードは欄に出ているので、そこで片付ける（[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)）
@@ -23,7 +23,7 @@
 
 ## 根拠
 
-[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)、[ADR-0234](../../../../src/docs/adr/0234-routine-missed-carry.md)
+[ADR-0014](../../../../src/docs/adr/0014-daily-board.md)、[ADR-0015](../../../../src/docs/adr/0015-board-layout-simplified.md)、[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0020](../../../../src/docs/adr/0020-board-oplog.md)、[ADR-0031](../../../../src/docs/adr/0031-status-quick-change.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0114](../../../../src/docs/adr/0114-board-manual-order.md)、[ADR-0137](../../../../src/docs/adr/0137-board-lanes-and-sub-issue-cards.md)、[ADR-0183](../../../../src/docs/adr/0183-status-transition-rules.md)、[ADR-0206](../../../../src/docs/adr/0206-closing-view-and-routine-category.md)、[ADR-0234](../../../../src/docs/adr/0234-routine-missed-carry.md)、[ADR-0255](../../../../src/docs/adr/0255-calendar-lane-and-sub-calendar-or-period.md)
 
 ## 入力と制約
 
