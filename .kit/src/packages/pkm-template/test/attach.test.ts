@@ -50,8 +50,8 @@ describe("attachmentMarkdown", () => {
 		expect(attachmentMarkdown("asset/a-b.png", "embed")).toBe("![a-b](asset/a-b.png)");
 		expect(attachmentMarkdown("asset/a.zip", "embed")).toBe("[a.zip](asset/a.zip)");
 	});
-	it("リンクの文字の [ ] を退避する", () => {
-		expect(attachmentMarkdown("asset/x.pdf", "link")).toBe("[x.pdf](asset/x.pdf)");
+	it("日本語の名前はエンコードせずにそのまま入れる", () => {
+		expect(attachmentMarkdown("asset/会議-資料.pdf", "embed")).toBe("![会議-資料](asset/会議-資料.pdf)");
 	});
 });
 
