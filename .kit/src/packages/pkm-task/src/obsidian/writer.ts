@@ -182,10 +182,27 @@ export class TaskWriter {
 	}
 
 	/**
-	 * 同じ親のサブをまとめて canceled にする（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
-	 * 1 件でも移れない・ない・別の親なら何も書かない。statuslog・★・タイマーは書いた後に 1 件ずつ
+	 * 同じ親のサブをまとめて canceled にする（ADR-0244）。1 件でも移れない・ない・別の親なら何も書かない。
+	 * statuslog・★・タイマーは書いた後に 1 件ずつ
 	 */
 	async cancelSubs(keys: readonly string[]): Promise<void> {
+		await this.patchSubs(keys, (sub) => {
+			const reopenTo = this.store.index.reopenStatus(sub.key);
+			if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
+			return completeSubPatch("canceled", { status: "canceled" });
+		});
+	}
+
+	/** 同じ親のサブの期間と Calendar の日をまとめて消す（ADR-0244）。status は変えない */
+	async clearSubDates(keys: readonly string[]): Promise<void> {
+		await this.patchSubs(keys, () => ({ start: null, end: null, scheduled: null }));
+	}
+
+	/**
+	 * 同じ親のサブに、まとめて項目を書く（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
+	 * 1 件でもない・別の親・patchOf が例外なら何も書かない。status が変わったサブは、書いた後に afterSubStatusChange
+	 */
+	private async patchSubs(keys: readonly string[], patchOf: (sub: SubIssue) => SubIssuePatch): Promise<void> {
 		const subs = keys.map((key) => {
 			const sub = this.store.index.sub(key);
 			if (!sub) throw new Error(`サブがありません: ${key}`);
@@ -194,13 +211,7 @@ export class TaskWriter {
 		const first = subs[0];
 		if (!first) return;
 		if (subs.some((s) => s.parent !== first.parent)) throw new Error("一括で変えられるのは同じ親のサブだけです");
-		const patches = new Map(
-			subs.map((sub) => {
-				const reopenTo = this.store.index.reopenStatus(sub.key);
-				if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
-				return [sub.id, completeSubPatch("canceled", { status: "canceled" })] as const;
-			}),
-		);
+		const patches = new Map(subs.map((sub) => [sub.id, normalizeSubPatch(patchOf(sub))] as const));
 		const changes: { sub: SubIssue; from: Status; to: Status }[] = [];
 		await this.app.vault.process(this.file(first.path), (text) => {
 			const siblings = parseSubIssues(first.path, first.parent, text, parseYaml).subs.map((s) => {

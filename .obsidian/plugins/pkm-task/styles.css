@@ -1264,7 +1264,7 @@ button.vt-badge:disabled::after {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
-/* サブの一括キャンセル（ADR-0244） */
+/* サブの一括の操作（ADR-0244） */
 .vt-sub-bulk {
 	display: flex;
 	flex-direction: column;
@@ -1284,15 +1284,6 @@ button.vt-badge:disabled::after {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.vt-check.is-disabled {
-	color: var(--vt-on-surface-variant);
-	cursor: default;
-}
-
-.vt-check.is-disabled:hover {
-	background-image: none;
 }
 
 .vt-worklog-form {

@@ -20,7 +20,8 @@ import {
 	subHint,
 	subItemPatch,
 	visibleSubs,
-	bulkCancelSelectable,
+	bulkCancelTargets,
+	bulkClearTargets,
 	bulkSelectAll,
 	type SubIssue,
 } from "../src/core/sub-issue";
@@ -187,12 +188,13 @@ describe("writer のサブの操作", () => {
 	});
 });
 
-describe("サブの一括キャンセル（ADR-0244）", () => {
+describe("サブの一括キャンセルと日付の削除（ADR-0244）", () => {
 	const text = `${HEAD}\n${block("aaaaaa", "start: 2026-11-20\nend: 2026-11-22\n")}\n${block("bbbbbb").replace("open", "closed")}\n${block("cccccc").replace("open", "canceled")}\n${block("dddddd").replace("open", "someday")}\n${block("eeeeee").replace("open", "in-progress")}`;
-	it("全選択は閉じていないものだけ。canceled は選べず、closed は選べる", () => {
-		const subs = subsOf(text);
+	it("全選択は closed と canceled 以外。ボタンは選んだ中の当てはまるものだけに当てる", () => {
+		const subs = subsOf(text.replace("status: canceled\n", "status: canceled\nscheduled: 2026-11-25\n"));
 		expect(bulkSelectAll(subs)).toEqual(["i-1#aaaaaa", "i-1#dddddd", "i-1#eeeeee"]);
-		expect(subs.filter(bulkCancelSelectable).map((s) => s.id)).toEqual(["aaaaaa", "bbbbbb", "dddddd", "eeeeee"]);
+		expect(bulkCancelTargets(subs).map((s) => s.id)).toEqual(["aaaaaa", "bbbbbb", "dddddd", "eeeeee"]);
+		expect(bulkClearTargets(subs).map((s) => s.id)).toEqual(["aaaaaa", "cccccc"]);
 	});
 
 	it("選んだものを 1 回の書き込みで canceled にし、期間は残す。statuslog は 1 件ずつ", async () => {
@@ -217,6 +219,16 @@ describe("サブの一括キャンセル（ADR-0244）", () => {
 			["bbbbbb", "closed", "canceled"],
 			["eeeeee", "in-progress", "canceled"],
 		]);
+	});
+
+	it("日付の削除は期間と Calendar の日を 1 回の書き込みで消し、status は変えない", async () => {
+		const f = fixture(text.replace("status: canceled\n", "status: canceled\nstart: 2026-11-01\nend: 2026-11-02\nscheduled: 2026-11-02\n"));
+		await f.writer.clearSubDates(["i-1#aaaaaa", "i-1#cccccc"]);
+		const byId = new Map(f.subs().map((s) => [s.id, s]));
+		expect(byId.get("aaaaaa")).toMatchObject({ status: "open", start: null, end: null, scheduled: null });
+		expect(byId.get("cccccc")).toMatchObject({ status: "canceled", start: null, end: null, scheduled: null });
+		expect(f.writes().filter(([file]) => file.path === "issue/i-1.md")).toHaveLength(1);
+		expect([...f.texts.keys()].some((p) => p.startsWith("statuslog/"))).toBe(false);
 	});
 
 	it("canceled のもの・ないもの・別の親のものが混じれば、何も書かない", async () => {

@@ -1800,8 +1800,11 @@ function becomesDone(from, to) {
 function visibleSubs(subs, showClosed) {
   return showClosed ? [...subs] : subs.filter((s3) => !isDone2(s3));
 }
-function bulkCancelSelectable(sub) {
-  return sub.status !== "canceled";
+function bulkCancelTargets(subs) {
+  return subs.filter((s3) => s3.status !== "canceled");
+}
+function bulkClearTargets(subs) {
+  return subs.filter((s3) => s3.start !== null || s3.end !== null || s3.scheduled !== null);
 }
 function bulkSelectAll(subs) {
   return subs.filter((s3) => !isDone2(s3)).map((s3) => s3.key);
@@ -4619,13 +4622,17 @@ function ProjectBadge() {
 var import_obsidian8 = require("obsidian");
 
 // src/obsidian/sub-bulk.tsx
-function openSubBulkCancel(ctx, parentId) {
-  new PreactModal(ctx.app, "Cancel sub-issues", (close) => /* @__PURE__ */ u3(
+function openSubBulkEdit(ctx, parentId) {
+  new PreactModal(ctx.app, "Edit sub-issues in bulk", (close) => /* @__PURE__ */ u3(
     SubBulkForm,
     {
       subs: ctx.store.index.subs(parentId),
       onCancel: async (keys) => {
         await ctx.writer.cancelSubs(keys);
+        close();
+      },
+      onClearDates: async (keys) => {
+        await ctx.writer.clearSubDates(keys);
         close();
       }
     }
@@ -4637,7 +4644,7 @@ function SubBulkForm(props) {
   const [error, setError] = d2(null);
   const [saving, setSaving] = d2(false);
   const all = bulkSelectAll(subs);
-  const allSelected = all.length > 0 && all.every((k3) => selected.has(k3));
+  const allSelected = all.length > 0 && all.length === selected.size && all.every((k3) => selected.has(k3));
   const toggle2 = (key) => {
     const next = new Set(selected);
     if (next.has(key)) next.delete(key);
@@ -4645,35 +4652,37 @@ function SubBulkForm(props) {
     setSelected(next);
   };
   const chosen = subs.filter((s3) => selected.has(s3.key));
-  const closed = chosen.filter((s3) => s3.status === "closed").length;
-  const run = () => {
+  const cancels = bulkCancelTargets(chosen);
+  const clears = bulkClearTargets(chosen);
+  const closed = cancels.filter((s3) => s3.status === "closed").length;
+  const run = (action, targets) => {
     setSaving(true);
     setError(null);
-    props.onCancel(chosen.map((s3) => s3.key)).catch((e3) => setError(e3 instanceof Error ? e3.message : String(e3))).finally(() => setSaving(false));
+    action(targets.map((s3) => s3.key)).catch((e3) => setError(e3 instanceof Error ? e3.message : String(e3))).finally(() => setSaving(false));
   };
   return /* @__PURE__ */ u3("div", { class: "vt-sub-bulk", children: [
     /* @__PURE__ */ u3("div", { class: "vt-sub-bulk-head", children: [
-      /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", disabled: all.length === 0, onClick: () => setSelected(allSelected ? /* @__PURE__ */ new Set() : new Set(all)), children: allSelected ? "Clear selection" : "Select all" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", disabled: all.length === 0 && selected.size === 0, onClick: () => setSelected(allSelected ? /* @__PURE__ */ new Set() : new Set(all)), children: allSelected ? "Clear selection" : "Select all but closed" }),
       /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
         chosen.length,
         " selected"
       ] })
     ] }),
-    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: subs.map((sub) => {
-      const selectable = bulkCancelSelectable(sub);
-      return /* @__PURE__ */ u3("label", { class: `vt-check${selectable ? "" : " is-disabled"}`, title: selectable ? void 0 : "Already canceled", children: [
-        /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(sub.key), disabled: !selectable, onChange: () => toggle2(sub.key), "aria-label": `Select ${sub.summary}` }),
-        /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
-        /* @__PURE__ */ u3("span", { class: "vt-sub-bulk-title", children: sub.summary })
-      ] });
-    }) }),
+    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: subs.map((sub) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(sub.key), onChange: () => toggle2(sub.key), "aria-label": `Select ${sub.summary}` }),
+      /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+      /* @__PURE__ */ u3("span", { class: "vt-sub-bulk-title", children: sub.summary })
+    ] })) }),
     closed > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
       "closed \u306E\u30B5\u30D6 ",
       closed,
       " \u4EF6\u3092 canceled \u306B\u3057\u307E\u3059\uFF08\u5B8C\u4E86\u306E\u8A18\u9332\u304C\u5909\u308F\u308A\u307E\u3059\uFF09"
     ] }),
     error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
-    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "button", class: "mod-warning", disabled: chosen.length === 0 || saving, onClick: run, children: `Cancel ${chosen.length} sub-issue${chosen.length === 1 ? "" : "s"}` }) })
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("button", { type: "button", disabled: clears.length === 0 || saving, onClick: () => run(props.onClearDates, clears), children: `Clear dates ${clears.length}` }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "mod-warning", disabled: cancels.length === 0 || saving, onClick: () => run(props.onCancel, cancels), children: `Cancel ${cancels.length}` })
+    ] })
   ] });
 }
 
@@ -5407,7 +5416,7 @@ function SubIssues(props) {
         " / ",
         counts.total
       ] }),
-      counts.total > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Cancel sub-issues in bulk", title: "Cancel sub-issues in bulk", onClick: () => openSubBulkCancel(ctx, issue.id), children: /* @__PURE__ */ u3(Icon, { name: "list-checks" }) }),
+      counts.total > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Edit sub-issues in bulk", title: "Edit sub-issues in bulk", onClick: () => openSubBulkEdit(ctx, issue.id), children: /* @__PURE__ */ u3(Icon, { name: "list-checks" }) }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       counts.total > 0 && /* @__PURE__ */ u3(
         Segmented,
@@ -9160,10 +9169,25 @@ var TaskWriter = class {
     await this.afterSubStatusChange(sub, done.from, done.to, via);
   }
   /**
-   * 同じ親のサブをまとめて canceled にする（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
-   * 1 件でも移れない・ない・別の親なら何も書かない。statuslog・★・タイマーは書いた後に 1 件ずつ
+   * 同じ親のサブをまとめて canceled にする（ADR-0244）。1 件でも移れない・ない・別の親なら何も書かない。
+   * statuslog・★・タイマーは書いた後に 1 件ずつ
    */
   async cancelSubs(keys) {
+    await this.patchSubs(keys, (sub) => {
+      const reopenTo = this.store.index.reopenStatus(sub.key);
+      if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
+      return completeSubPatch("canceled", { status: "canceled" });
+    });
+  }
+  /** 同じ親のサブの期間と Calendar の日をまとめて消す（ADR-0244）。status は変えない */
+  async clearSubDates(keys) {
+    await this.patchSubs(keys, () => ({ start: null, end: null, scheduled: null }));
+  }
+  /**
+   * 同じ親のサブに、まとめて項目を書く（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
+   * 1 件でもない・別の親・patchOf が例外なら何も書かない。status が変わったサブは、書いた後に afterSubStatusChange
+   */
+  async patchSubs(keys, patchOf) {
     const subs = keys.map((key) => {
       const sub = this.store.index.sub(key);
       if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
@@ -9172,13 +9196,7 @@ var TaskWriter = class {
     const first = subs[0];
     if (!first) return;
     if (subs.some((s3) => s3.parent !== first.parent)) throw new Error("\u4E00\u62EC\u3067\u5909\u3048\u3089\u308C\u308B\u306E\u306F\u540C\u3058\u89AA\u306E\u30B5\u30D6\u3060\u3051\u3067\u3059");
-    const patches = new Map(
-      subs.map((sub) => {
-        const reopenTo = this.store.index.reopenStatus(sub.key);
-        if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
-        return [sub.id, completeSubPatch("canceled", { status: "canceled" })];
-      })
-    );
+    const patches = new Map(subs.map((sub) => [sub.id, normalizeSubPatch(patchOf(sub))]));
     const changes = [];
     await this.app.vault.process(this.file(first.path), (text) => {
       const siblings = parseSubIssues(first.path, first.parent, text, import_obsidian23.parseYaml).subs.map((s3) => {

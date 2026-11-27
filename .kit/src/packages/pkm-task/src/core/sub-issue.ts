@@ -401,12 +401,17 @@ export function visibleSubs<T extends Pick<SubIssue, "status">>(subs: readonly T
 	return showClosed ? [...subs] : subs.filter((s) => !isDone(s));
 }
 
-/** 一括のキャンセル（ADR-0244）で選べるサブ。canceled はもう変えるものがないので選べない */
-export function bulkCancelSelectable(sub: Pick<SubIssue, "status">): boolean {
-	return sub.status !== "canceled";
+/** 一括の Cancel（ADR-0244）が当たるサブ。canceled はもう変えるものがないので飛ばす */
+export function bulkCancelTargets<T extends Pick<SubIssue, "status">>(subs: readonly T[]): T[] {
+	return subs.filter((s) => s.status !== "canceled");
 }
 
-/** 一括のキャンセルの「Select all」が選ぶサブの合成キー。閉じていないものだけ（closed は個別に選ぶ） */
+/** 一括の Clear dates（ADR-0244）が当たるサブ。期間か Calendar の日を持つもの */
+export function bulkClearTargets<T extends Pick<SubIssue, "start" | "end" | "scheduled">>(subs: readonly T[]): T[] {
+	return subs.filter((s) => s.start !== null || s.end !== null || s.scheduled !== null);
+}
+
+/** 一括の操作の「Select all but closed」が選ぶサブの合成キー。閉じていないものだけ（closed・canceled は個別に選ぶ） */
 export function bulkSelectAll(subs: readonly Pick<SubIssue, "status" | "key">[]): string[] {
 	return subs.filter((s) => !isDone(s)).map((s) => s.key);
 }

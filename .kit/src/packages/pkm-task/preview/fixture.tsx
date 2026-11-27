@@ -190,8 +190,8 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 				const subs = store.index.subs("i-2");
 				return <SubCard ctx={ctx as never} sub={subs.find((s) => s.id === id)!} siblings={subs} open onToggle={() => {}} save={noop} delayMs={null} />;
 			})}
-			{/* サブの一括キャンセル（ADR-0244） */}
-			<SubBulkForm subs={store.index.subs("i-2")} onCancel={async () => {}} />
+			{/* サブの一括の操作（ADR-0244） */}
+			<SubBulkForm subs={store.index.subs("i-2")} onCancel={async () => {}} onClearDates={async () => {}} />
 			{/* 閉じたサブのカード。題の編集ボタンは出さない（ADR-0239） */}
 			<SubCard ctx={ctx as never} sub={store.index.subs("i-2").find((s) => s.id === "hhhhhh")!} siblings={store.index.subs("i-2")} open={false} onToggle={() => {}} save={noop} delayMs={null} />
 		</div>
