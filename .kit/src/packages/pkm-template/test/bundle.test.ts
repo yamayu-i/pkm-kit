@@ -238,6 +238,9 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js", () => {
 			"insert-heading-link",
 			"insert-daily-link",
 			"insert-slide-link",
+			// @file・/file（ADR-0249）
+			"insert-file-link",
+			"insert-file-embed",
 		]);
 		expect(mock.views).toEqual(["pkm-template-daily-list", "pkm-template-note-list", "pkm-template-source-list", "pkm-template-tmp-list"]);
 		// 設定タブはない(ADR-0061)
