@@ -123,4 +123,5 @@
 | [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
 | [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
+| [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
 <!-- adr-index:end -->
