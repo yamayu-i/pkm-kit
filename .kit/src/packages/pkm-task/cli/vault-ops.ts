@@ -8,6 +8,7 @@ import { canSetTickler, canTransition, completeIssuePatch, completeSubPatch, reo
 import { dailyNotePath, emptyBoard, type RoutineResult } from "../src/core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../src/core/board-log";
 import { closeBoardNote } from "../src/core/board-note";
+import { DEFAULT_REVIEW_TEMPLATE, REVIEW_SNIPPET_PATHS, snippetBody, templateMarker } from "../src/core/review-template";
 import { isLocalDate, localDateTime, localToday, type LocalDate } from "../src/core/dates";
 import { boardLanes, canStar, moveOps, TOP_LIMIT, unstarOps, type OrderedLane } from "../src/core/board-lanes";
 import { nextIds, pathForId } from "../src/core/ids";
@@ -304,6 +305,15 @@ export function carryIssuesOnDisk(
 	);
 }
 
+/** 振り返りの型の目印（プラグインと同じく、その Vault のスニペット → 上流の既定 → 組み込みの既定。ADR-0206） */
+function reviewMarkerOnDisk(root: string): string | null {
+	for (const path of REVIEW_SNIPPET_PATHS) {
+		const body = snippetBody(readTextOrEmpty(root, path));
+		if (body) return templateMarker(body);
+	}
+	return templateMarker(DEFAULT_REVIEW_TEMPLATE);
+}
+
 export function closeBoardOnDisk(
 	root: string,
 	index: TaskIndex,
@@ -317,7 +327,7 @@ export function closeBoardOnDisk(
 
 	const noteRelPath = dailyNotePath(date);
 	const existing = readTextOrEmpty(root, noteRelPath) || newDailyContent(localDateTime(now));
-	const updatedNote = closeBoardNote(existing, date, index, board);
+	const updatedNote = closeBoardNote(existing, date, index, board, reviewMarkerOnDisk(root));
 	writeTextInVault(root, noteRelPath, updatedNote);
 	appendBoardOpsOnDisk(root, index, date, device, [{ op: "close", tasks: board.issues }], now);
 	return { date, closed: true, alreadyClosed: false };

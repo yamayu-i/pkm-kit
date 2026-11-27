@@ -8976,6 +8976,7 @@ var import_obsidian23 = require("obsidian");
 
 // src/core/summary.ts
 var SECTION = "## Task board";
+var THEMATIC_BREAK = /^ {0,3}-{3,}[ \t]*\r?$/;
 function hm(ms) {
   const d3 = new Date(ms);
   return `${String(d3.getHours()).padStart(2, "0")}:${String(d3.getMinutes()).padStart(2, "0")}`;
@@ -9023,27 +9024,44 @@ function boardSummary(index, date, board) {
   return `${lines.join("\n")}
 `;
 }
-function upsertSummary(text, summary) {
+function upsertSummary(text, summary, after = null) {
   const fm = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(text);
   const head = fm ? fm[0] : "";
   const body = text.slice(head.length);
-  const start = body.split("\n").findIndex((l3) => l3.trim() === SECTION);
+  const lines = body.split("\n");
+  const start = lines.findIndex((l3) => l3.trim() === SECTION);
   if (start < 0) {
+    const marker = after === null ? -1 : lines.findIndex((l3) => l3.trimEnd() === after);
+    if (marker >= 0) return head + insertAfterSection(lines, marker, summary);
     const sep = body.length === 0 || body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
     return head + body + sep + summary;
   }
-  const lines = body.split("\n");
-  let end = lines.findIndex((l3, i3) => i3 > start && /^## /.test(l3));
+  let end = lines.findIndex((l3, i3) => i3 > start && (/^## /.test(l3) || THEMATIC_BREAK.test(l3)));
   if (end < 0) end = lines.length;
-  const after = lines.slice(end).join("\n");
-  return head + [...lines.slice(0, start), summary.trimEnd(), ...after ? ["", after] : [""]].join("\n");
+  const rest = lines.slice(end).join("\n");
+  return head + [...lines.slice(0, start), summary.trimEnd(), ...rest ? ["", rest] : [""]].join("\n");
+}
+function insertAfterSection(lines, marker, summary) {
+  const level = /^(#{1,6}) /.exec(lines[marker])?.[1].length ?? null;
+  let end = lines.findIndex((l3, i3) => {
+    if (i3 <= marker) return false;
+    if (THEMATIC_BREAK.test(l3)) return true;
+    const h3 = /^(#{1,6}) /.exec(l3);
+    return h3 !== null && level !== null && h3[1].length <= level;
+  });
+  if (end < 0) end = lines.length;
+  let last = end;
+  while (last > marker + 1 && lines[last - 1].trim() === "") last--;
+  const before = lines.slice(0, last);
+  const rest = lines.slice(end).join("\n");
+  return [...before, "", summary.trimEnd(), ...rest ? ["", rest] : [""]].join("\n");
 }
 
 // src/core/board-note.ts
-function closeBoardNote(text, date, index, board) {
+function closeBoardNote(text, date, index, board, reviewMarker = null) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  return upsertSummary(text, boardSummary(index, date, board));
+  return upsertSummary(text, boardSummary(index, date, board), reviewMarker);
 }
 
 // src/core/review-template.ts
@@ -9773,8 +9791,9 @@ var TaskWriter = class {
     if (board.closed) return;
     if (!device) throw new Error("\u8A2D\u5B9A\u3067\u7AEF\u672B\u540D\u3092\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u30DC\u30FC\u30C9\u306E\u4FDD\u5B58\u5148\u306B\u4F7F\u3044\u307E\u3059\uFF09");
     closeBoardNote("", date, index, board);
+    const marker = templateMarker(await this.reviewTemplate());
     const note = await this.getOrCreate((0, import_obsidian23.normalizePath)(dailyNotePath(date)), newDailyContent(localDateTime()));
-    await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
+    await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board, marker));
     await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
   }
   /**
