@@ -606,32 +606,34 @@ export function cursorInside(sel: { from: number; to: number }, from: number, to
 	return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
 }
 
-/** 開いているサブの id（ノートのパスごと）。この端末だけに保存する（ADR-0158） */
-export type SubOpenMap = Record<string, string[]>;
-
-/** 保存された値を読む。形が違うものは捨てる */
-export function sanitizeSubOpen(value: unknown): SubOpenMap {
-	const out: SubOpenMap = {};
-	if (typeof value !== "object" || value === null || Array.isArray(value)) return out;
-	for (const [path, ids] of Object.entries(value)) {
-		if (!Array.isArray(ids)) continue;
-		const valid = ids.filter(isSubId);
-		if (valid.length > 0) out[path] = [...new Set(valid)];
-	}
-	return out;
-}
+/**
+ * 開いているサブ（issue のノートのパス → サブの id）。issue ごとに多くても 1 つ。
+ * プラグインの中（メモリ）だけで持ち、保存しない（ADR-0197。ADR-0158 の保存を置き換える）
+ */
+export type SubOpenMap = ReadonlyMap<string, string>;
 
 export function isSubOpen(map: SubOpenMap, path: string, id: string): boolean {
-	return map[path]?.includes(id) ?? false;
+	return map.get(path) === id;
 }
 
-/** id の開閉を入れ替えた新しい値。existing にない id（消えたサブ）は取り除く。元の値は変えない */
-export function toggleSubOpen(map: SubOpenMap, path: string, id: string, existing: Iterable<string>): SubOpenMap {
-	const alive = new Set(existing);
-	const current = (map[path] ?? []).filter((x) => alive.has(x));
-	const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-	const { [path]: _drop, ...rest } = map;
-	return next.length === 0 ? rest : { ...rest, [path]: next };
+/** そのサブを開いた新しい値。ほかに開いていたサブは閉じる。元の値は変えない */
+export function openSub(map: SubOpenMap, path: string, id: string): SubOpenMap {
+	if (map.get(path) === id) return map;
+	return new Map(map).set(path, id);
+}
+
+/** 開閉を入れ替えた新しい値。開いていれば閉じて（どれも開いていない）、閉じていれば開いてほかを閉じる */
+export function toggleSubOpen(map: SubOpenMap, path: string, id: string): SubOpenMap {
+	if (map.get(path) !== id) return openSub(map, path, id);
+	const next = new Map(map);
+	next.delete(path);
+	return next;
+}
+
+/** 表示しているペインがなくなったノートの開閉を忘れた値（shown は、今どこかのペインで表示しているノートのパス） */
+export function forgetSubOpen(map: SubOpenMap, shown: ReadonlySet<string>): SubOpenMap {
+	if ([...map.keys()].every((p) => shown.has(p))) return map;
+	return new Map([...map].filter(([p]) => shown.has(p)));
 }
 
 /** 書く前の検査で、touched のサブ（足す・変えるもの）に関わる問題だけを返す。ほかのサブの既存の誤りは lint に任せる */

@@ -29,7 +29,8 @@ export function ProjectsView(props: { ctx: TaskContext }) {
 	const openSub = (sub: SubIssue) =>
 		void ctx
 			.openPath(sub.path)
-			.then(() => window.setTimeout(() => revealSub(sub), 50))
+			// ビューとカードが描かれるまでは、revealSub の側で待つ（ADR-0197）
+			.then(() => revealSub(sub))
 			.catch((e) => ctx.report("サブを開けませんでした", e));
 	return (
 		<div class="vt-page vt-projects">

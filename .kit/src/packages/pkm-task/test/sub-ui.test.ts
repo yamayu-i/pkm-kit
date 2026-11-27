@@ -9,8 +9,9 @@ import {
 	parseSubIssues,
 	splitQuickAdd,
 	cursorInside,
+	forgetSubOpen,
 	isSubOpen,
-	sanitizeSubOpen,
+	openSub,
 	stepPosition,
 	layoutSubIssues,
 	subHeadChange,
@@ -283,5 +284,34 @@ describe("Edit ダイアログの保存（ADR-0179）", () => {
 		expect(patch).not.toHaveProperty("body");
 		expect(patch.summary).toBe("題");
 		expect(patch.estimated).toBe(60);
+	});
+});
+
+describe("開いているサブ（ADR-0197）", () => {
+	const p = "issue/i-1.md";
+	it("開けるのは issue ごとに 1 つ。別のサブを開くと、前のサブは閉じる", () => {
+		const a = openSub(new Map(), p, "aaaaaa");
+		const b = toggleSubOpen(a, p, "bbbbbb");
+		expect(isSubOpen(b, p, "bbbbbb")).toBe(true);
+		expect(isSubOpen(b, p, "aaaaaa")).toBe(false);
+		expect(isSubOpen(a, p, "aaaaaa")).toBe(true);
+	});
+	it("開いているサブを閉じると、どれも開いていない", () => {
+		const m = toggleSubOpen(openSub(new Map(), p, "aaaaaa"), p, "aaaaaa");
+		expect(m.has(p)).toBe(false);
+	});
+	it("ほかの issue の開閉には触れない", () => {
+		const m = toggleSubOpen(openSub(new Map(), "issue/i-2.md", "cccccc"), p, "aaaaaa");
+		expect(isSubOpen(m, "issue/i-2.md", "cccccc")).toBe(true);
+	});
+	it("Open note は、開いていれば開いたまま", () => {
+		const a = openSub(new Map(), p, "aaaaaa");
+		expect(openSub(a, p, "aaaaaa")).toBe(a);
+	});
+	it("表示しているペインがないノートの開閉を忘れる", () => {
+		const m = openSub(openSub(new Map(), p, "aaaaaa"), "issue/i-2.md", "cccccc");
+		const f = forgetSubOpen(m, new Set([p]));
+		expect([...f]).toEqual([[p, "aaaaaa"]]);
+		expect(forgetSubOpen(f, new Set([p]))).toBe(f);
 	});
 });
