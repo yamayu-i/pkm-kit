@@ -245,6 +245,7 @@ var import_obsidian5 = require("obsidian");
 var import_obsidian = require("obsidian");
 
 // ../pkm-html/src/core/policy.ts
+var HTML_EXTENSIONS = ["html", "htm"];
 var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 function isScriptUrl(value) {
   const compact = value.replace(/[\u0000-\u0020\u007f-\u009f]/g, "").toLowerCase();
@@ -255,11 +256,11 @@ function isSlideDeck(path) {
 }
 
 // ../pkm-html/src/obsidian/open-external.ts
-function openSlideInBrowser(app, file) {
-  if (!isSlideDeck(file.path)) return;
+function openHtmlInBrowser(app, file) {
+  if (!HTML_EXTENSIONS.includes(file.extension.toLowerCase())) return;
   const open = app.openWithDefaultApp;
   if (typeof open !== "function") {
-    new import_obsidian.Notice("\u3053\u306E\u7AEF\u672B\u3067\u306F\u3001\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3002PC \u3067\u30B9\u30E9\u30A4\u30C9\u306E index.html \u3092\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3044\u3066\u304F\u3060\u3055\u3044");
+    new import_obsidian.Notice("\u3053\u306E\u7AEF\u672B\u3067\u306F\u3001\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3002PC \u3067 HTML \u3092\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3044\u3066\u304F\u3060\u3055\u3044");
     return;
   }
   try {
@@ -268,6 +269,10 @@ function openSlideInBrowser(app, file) {
     console.error("pkm-html: \u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3);
     new import_obsidian.Notice(`\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
   }
+}
+function openSlideInBrowser(app, file) {
+  if (!isSlideDeck(file.path)) return;
+  openHtmlInBrowser(app, file);
 }
 
 // src/obsidian/notes-view.ts

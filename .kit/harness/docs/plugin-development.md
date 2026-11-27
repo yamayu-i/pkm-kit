@@ -243,7 +243,7 @@ Vault の中の `.html` / `.htm` を、読み取り専用の View（`FileView`�
 | `preview/` | `pnpm --filter slide preview:ui`。全パターンの見本の描画（はみ出し）、外部への要求、Slide Show、PDF の文字、レビュー、発表者ビュー、スクリプトなしを Chromium で確かめる。CI では動かない |
 
 - `test/` は、ビルドの変換、レポートの形、パターンの一覧・文書・逆引き・CSS の照合（ひな形がエラーも警告もなくビルドできること）、ビルド済みの CLI
-- pkm-html は、`slide/` の `index.html` を OS のブラウザで開くコマンドを持つ（`src/obsidian/open-external.ts`。開けるのは `isSlideDeck` に当たるパスだけ）
+- pkm-html は、HTML を OS のブラウザで開くコマンド・メニュー・ボタンを持つ（`src/obsidian/open-external.ts`。ADR-0253。コマンドの ID はスライドだけだったときの `open-slide-in-browser` のまま）。pkm-slide は、スライドだけを開く `openSlideInBrowser` を使う
 - `index.html#thumb` は、スクリプトなしで 1 枚目だけを枠いっぱいに出す（`viewer.css` の `:target`）。pkm-slide の一覧の縮小が使う（ADR-0120）
 - 角丸と長さは `u`（キャンバスの単位）で書く。px のトークンは縮小表示で大きすぎる（`--sl-radius` / `--sl-radius-s`）。狭い箱の `h3` と `.kpi .big` には、ビルドがいちばん長い語の幅（`--fit`）を入れ、CSS が箱の幅（`cqi`）で文字を縮める
 

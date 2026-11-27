@@ -127,4 +127,5 @@
 | [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
 | [0251](0251-quote-paste-and-copy.md) | 承認 | 引用の中への複数行の貼り付けと、引用・コールアウトのコピーボタン（pkm-markdown） |
 | [0255](0255-calendar-lane-and-sub-calendar-or-period.md) | 承認 | 今日の Calendar をボードの最上部の欄に出し、サブの Calendar と期間を両立させない |
+| [0253](0253-html-open-in-browser.md) | 承認 | スライド以外の HTML も OS のブラウザで開けるようにする（pkm-html） |
 <!-- adr-index:end -->

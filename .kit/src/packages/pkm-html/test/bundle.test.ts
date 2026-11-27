@@ -9,19 +9,35 @@ function load(files: Record<string, unknown> = {}) {
 	const extensions: [string[], string][] = [];
 	const commands: string[] = [];
 	const callbacks: Record<string, () => void> = {};
+	const checks: Record<string, (checking: boolean) => boolean> = {};
+	const events: Record<string, (...args: unknown[]) => void> = {};
 	const opened: unknown[] = [];
+	const openedWithDefaultApp: string[] = [];
+	let activeFile: unknown = null;
 	const notices: string[] = [];
 	class TFile {
-		constructor(public extension: string) {}
+		constructor(
+			public extension: string,
+			public path = `file.${extension}`,
+		) {}
 	}
 	class Plugin {
 		app = {
-			workspace: { on: () => ({}), getActiveFile: () => null, getLeaf: (kind: string) => ({ openFile: async (f: unknown) => opened.push([kind, f]) }) },
+			workspace: {
+				on: (name: string, cb: (...args: unknown[]) => void) => {
+					events[name] = cb;
+					return {};
+				},
+				getActiveFile: () => activeFile,
+				getLeaf: (kind: string) => ({ openFile: async (f: unknown) => opened.push([kind, f]) }),
+			},
 			vault: { getAbstractFileByPath: (p: string) => files[p] ?? null },
+			openWithDefaultApp: (path: string) => openedWithDefaultApp.push(path),
 		};
-		addCommand(c: { id: string; callback?: () => void }) {
+		addCommand(c: { id: string; callback?: () => void; checkCallback?: (checking: boolean) => boolean }) {
 			commands.push(c.id);
 			if (c.callback) callbacks[c.id] = c.callback;
+			if (c.checkCallback) checks[c.id] = c.checkCallback;
 		}
 		registerEvent() {}
 		registerView(type: string) {
@@ -45,7 +61,10 @@ function load(files: Record<string, unknown> = {}) {
 		throw new Error(`unexpected require: ${name}`);
 	};
 	new Function("module", "exports", "require", readFileSync(bundlePath, "utf8"))(module, module.exports, req);
-	return { plugin: new module.exports.default(), views, extensions, required, commands, callbacks, opened, notices, TFile };
+	const setActiveFile = (f: unknown) => {
+		activeFile = f;
+	};
+	return { plugin: new module.exports.default(), views, extensions, required, commands, callbacks, checks, events, opened, openedWithDefaultApp, notices, TFile, setActiveFile };
 }
 
 describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）", () => {
@@ -74,6 +93,34 @@ describe.skipIf(!existsSync(bundlePath))("ビルド済み main.js（ADR-0037）"
 		await Promise.resolve();
 		expect(present.opened).toEqual([["tab", guide]]);
 		expect(present.notices).toEqual([]);
+	});
+
+	it("Open in browser（ADR-0253）: スライド以外の HTML も OS のブラウザで開く。HTML でなければ出さない", async () => {
+		const t = load();
+		await t.plugin.onload();
+		const check = t.checks["open-slide-in-browser"]!;
+		t.setActiveFile(new t.TFile("md", "notes/a.md"));
+		expect(check(true)).toBe(false);
+		t.setActiveFile(new t.TFile("html", "notes/report.html"));
+		expect(check(true)).toBe(true);
+		check(false);
+		t.setActiveFile(new t.TFile("htm", "slide/roadmap/index.htm"));
+		check(false);
+		expect(t.openedWithDefaultApp).toEqual(["notes/report.html", "slide/roadmap/index.htm"]);
+	});
+
+	it("ファイルのメニュー（ADR-0253）: HTML ならどれにも Open in browser を出す", async () => {
+		const t = load();
+		await t.plugin.onload();
+		const titles = (file: unknown) => {
+			const items: string[] = [];
+			const item = { setTitle: (s: string) => (items.push(s), item), setIcon: () => item, onClick: () => item };
+			t.events["file-menu"]!({ addItem: (f: (i: typeof item) => void) => f(item) }, file);
+			return items;
+		};
+		expect(titles(new t.TFile("html", "notes/report.html"))).toEqual(["Open in browser", "Export HTML to tmp/"]);
+		expect(titles(new t.TFile("html", "slide/roadmap/index.html"))).toEqual(["Open in browser", "Export HTML to tmp/"]);
+		expect(titles(new t.TFile("md", "notes/a.md"))).toEqual([]);
 	});
 
 	it("iframe の sandbox に allow-scripts を付けない。CSP とトークンを束ねている", () => {
