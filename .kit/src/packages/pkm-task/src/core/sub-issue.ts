@@ -153,6 +153,10 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 		migratedFrom,
 		body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd(),
 	};
+	// 期間は start と end の両方か、どちらもなし（ADR-0245）。片方だけのものは移行 0245 がそろえる
+	if ((sub.start === null) !== (sub.end === null)) {
+		extra.push({ severity: "warning", path, code: "sub-period-half", message: `期間が ${sub.start === null ? "end" : "start"} だけです。start と end を両方入れるか、両方空けてください（ADR-0245、移行 0245）` });
+	}
 	return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 
@@ -327,6 +331,8 @@ export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: Readon
 		] as const) {
 			if (!isDate(value)) errors.push(`${where}: ${key} が YYYY-MM-DD の日付ではありません: ${String(value)}`);
 		}
+		// 期間は start と end の両方か、どちらもなしか（ADR-0245）
+		if ((s.start === null) !== (s.end === null)) errors.push(`${where}: 期間は start と end を両方入れるか、両方空けてください`);
 		if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end が start より前です`);
 		if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated は 0 以上の数（分）にしてください`);
 		if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated には delegated_to が要ります`);
@@ -399,6 +405,21 @@ export function becomesDone(from: Status, to: Status): boolean {
 /** 一覧に出すサブ（ADR-0142）: closed と canceled は showClosed のときだけ。並びは md の順 */
 export function visibleSubs<T extends Pick<SubIssue, "status">>(subs: readonly T[], showClosed: boolean): T[] {
 	return showClosed ? [...subs] : subs.filter((s) => !isDone(s));
+}
+
+/** 一括の Cancel（ADR-0244）が当たるサブ。canceled はもう変えるものがないので飛ばす */
+export function bulkCancelTargets<T extends Pick<SubIssue, "status">>(subs: readonly T[]): T[] {
+	return subs.filter((s) => s.status !== "canceled");
+}
+
+/** 一括の Clear dates（ADR-0244）が当たるサブ。期間か Calendar の日を持つもの */
+export function bulkClearTargets<T extends Pick<SubIssue, "start" | "end" | "scheduled">>(subs: readonly T[]): T[] {
+	return subs.filter((s) => s.start !== null || s.end !== null || s.scheduled !== null);
+}
+
+/** 一括の操作の「Select all but closed」が選ぶサブの合成キー。閉じていないものだけ（closed・canceled は個別に選ぶ） */
+export function bulkSelectAll(subs: readonly Pick<SubIssue, "status" | "key">[]): string[] {
+	return subs.filter((s) => !isDone(s)).map((s) => s.key);
 }
 
 /** 見出しの件数: 未完了 / 全体、と隠している closed の数 */

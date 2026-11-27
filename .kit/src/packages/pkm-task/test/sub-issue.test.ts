@@ -120,9 +120,19 @@ describe("parseSubIssues", () => {
 	});
 });
 
+describe("片方だけの期間（ADR-0245）", () => {
+	it("start か end の片方だけなら sub-period-half で警告する。両方・どちらもなしは警告しない", () => {
+		const one = (extra: string) => subsOf(`${HEAD}\n<!-- sub-issue\nid: aaaaaa\nsummary: x\nstatus: open\n${extra}-->\n`).problems.map((p) => [p.severity, p.code]);
+		expect(one("end: 2026-11-20\n")).toEqual([["warning", "sub-period-half"]]);
+		expect(one("start: 2026-11-20\n")).toEqual([["warning", "sub-period-half"]]);
+		expect(one("start: 2026-11-20\nend: 2026-11-20\n")).toEqual([]);
+		expect(one("")).toEqual([]);
+	});
+});
+
 describe("なくした期限の項目（ADR-0190）", () => {
 	it("soft_deadline / deadline は読まずに警告し、書き換えると消える", () => {
-		const text = `${HEAD}\n<!-- sub-issue\nid: aaaaaa\nsummary: x\nstatus: open\nend: 2026-11-20\nsoft_deadline: 2026-11-18\ndeadline: 2026-11-19\n-->\n`;
+		const text = `${HEAD}\n<!-- sub-issue\nid: aaaaaa\nsummary: x\nstatus: open\nstart: 2026-11-18\nend: 2026-11-20\nsoft_deadline: 2026-11-18\ndeadline: 2026-11-19\n-->\n`;
 		const { subs, problems } = subsOf(text);
 		expect(problems.map((p) => [p.severity, p.code])).toEqual([["warning", "sub-deadline-removed"]]);
 		expect(problems[0]!.message).toContain("soft_deadline と deadline");

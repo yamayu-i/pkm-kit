@@ -60,7 +60,7 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 		const before = read();
 		expect(() => callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", deadline: "2026-11-20" }] })).toThrow("期限は end に入れてください");
 		expect(read()).toBe(before);
-		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", end: "2026-11-20" }] }) as { created: string[] };
+		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", start: "2026-11-20", end: "2026-11-20" }] }) as { created: string[] };
 		const after = read();
 		expect(() => callMcpTool(ctx, "update_sub_issue", { key: created[0], soft_deadline: "2026-11-18" })).toThrow("soft_deadline");
 		expect(read()).toBe(after);
@@ -71,12 +71,29 @@ describe("MCP のサブイシューの操作（ADR-0135）", () => {
 		const key = created[0]!;
 		callMcpTool(ctx, "update_sub_issue", { key, status: "someday" });
 		expect(subs()[0]).toMatchObject({ status: "someday", start: null, end: null, scheduled: null });
-		callMcpTool(ctx, "update_sub_issue", { key, end: "2026-11-25" });
-		expect(subs()[0]).toMatchObject({ status: "open", end: "2026-11-25" });
+		callMcpTool(ctx, "update_sub_issue", { key, start: "2026-11-24", end: "2026-11-25" });
+		expect(subs()[0]).toMatchObject({ status: "open", start: "2026-11-24", end: "2026-11-25" });
 		expect(readFileSync(join(root, "statuslog/ai/2026-11.jsonl"), "utf8")).toContain('"from":"someday","to":"open"');
 		// canceled では期間を残す
 		callMcpTool(ctx, "update_sub_issue", { key, status: "canceled" });
 		expect(subs()[0]).toMatchObject({ status: "canceled", end: "2026-11-25" });
+	});
+
+	it("期間は start と end の両方か、どちらもなし。片方だけはエラーで何も書かない。変えた後の姿で検査する（ADR-0245）", () => {
+		const before = read();
+		expect(() => callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", end: "2026-11-20" }] })).toThrow("両方");
+		expect(read()).toBe(before);
+		const { created } = callMcpTool(ctx, "create_sub_issues", { parent: "i-1", items: [{ summary: "x", start: "2026-11-16", end: "2026-11-20" }] }) as { created: string[] };
+		const key = created[0]!;
+		const after = read();
+		expect(() => callMcpTool(ctx, "update_sub_issue", { key, start: null })).toThrow("両方");
+		expect(() => callMcpTool(ctx, "update_sub_issue", { key, end: "2026-11-10" })).toThrow("start より前");
+		expect(read()).toBe(after);
+		// 片方だけを渡しても、もう片方があれば通る
+		callMcpTool(ctx, "update_sub_issue", { key, end: "2026-11-22" });
+		expect(subs()[0]).toMatchObject({ start: "2026-11-16", end: "2026-11-22" });
+		callMcpTool(ctx, "update_sub_issue", { key, start: null, end: null });
+		expect(subs()[0]).toMatchObject({ start: null, end: null });
 	});
 
 	it("move_sub_issue で並べ替え、delete_sub_issue で消す（記録中のタイマーは止め、worklog の行は残す）", () => {

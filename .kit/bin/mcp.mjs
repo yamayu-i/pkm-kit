@@ -8067,6 +8067,9 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     migratedFrom,
     body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
   };
+  if (sub.start === null !== (sub.end === null)) {
+    extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
+  }
   return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml) {
@@ -8187,6 +8190,7 @@ function checkSubIssues(subs, memberIds) {
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
+    if (s.start === null !== (s.end === null)) errors.push(`${where}: \u671F\u9593\u306F start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044`);
     if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
     if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
     if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
@@ -11500,7 +11504,7 @@ var TOOLS = [
               status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
               delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
               start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09\u3002Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E\u89AA\u306E\u30B5\u30D6\u306B\u306F start\u30FBend \u3092\u5165\u308C\u3089\u308C\u306A\u3044\u3002\u89AA\u306B Tickler \u304C\u3042\u308C\u3070\u3001\u305D\u306E\u65E5\u4EE5\u964D\u306B\u59CB\u3081\u308B\uFF08ADR-0210\uFF09" },
-              end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
+              end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09\u3002start \u3068 end \u306F\u4E21\u65B9\u5165\u308C\u308B\u304B\u4E21\u65B9\u7A7A\u3051\u308B\uFF08\u5909\u3048\u305F\u5F8C\u306E\u59FF\u3067\u691C\u67FB\u3059\u308B\u3002\u671F\u9650\u3060\u3051\u306A\u3089 start \u3068\u540C\u3058\u65E5\u3002ADR-0245\uFF09" },
               scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
               estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
               depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },
@@ -11525,7 +11529,7 @@ var TOOLS = [
         status: { type: "string", enum: ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] },
         delegated_to: { type: ["string", "null"], description: "status \u304C delegated \u306E\u3068\u304D\u3060\u3051\uFF08m-N\uFF09" },
         start: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u958B\u59CB\u65E5\uFF08YYYY-MM-DD\uFF09\u3002Inbox\uFF08\u672A\u6574\u7406\uFF09\u306E\u89AA\u306E\u30B5\u30D6\u306B\u306F start\u30FBend \u3092\u5165\u308C\u3089\u308C\u306A\u3044\u3002\u89AA\u306B Tickler \u304C\u3042\u308C\u3070\u3001\u305D\u306E\u65E5\u4EE5\u964D\u306B\u59CB\u3081\u308B\uFF08ADR-0210\uFF09" },
-        end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09" },
+        end: { type: ["string", "null"], description: "\u30AC\u30F3\u30C8\u30C1\u30E3\u30FC\u30C8\u306E\u7D42\u4E86\u65E5\uFF08YYYY-MM-DD\uFF09\u3002\u30B5\u30D6\u306E\u671F\u9650\u3092\u517C\u306D\u3001Daily \u306E\u671F\u9650\u306E\u8868\u306B\u51FA\u308B\uFF08ADR-0190\uFF09\u3002start \u3068 end \u306F\u4E21\u65B9\u5165\u308C\u308B\u304B\u4E21\u65B9\u7A7A\u3051\u308B\uFF08\u5909\u3048\u305F\u5F8C\u306E\u59FF\u3067\u691C\u67FB\u3059\u308B\u3002\u671F\u9650\u3060\u3051\u306A\u3089 start \u3068\u540C\u3058\u65E5\u3002ADR-0245\uFF09" },
         scheduled: { type: ["string", "null"], description: "Calendar \u306E\u65E5 YYYY-MM-DD\uFF08\u305D\u306E\u65E5\u306B\u3084\u3089\u306A\u3051\u308C\u3070\u306A\u3089\u306A\u3044\u65E5\u3002ADR-0152\uFF09" },
         estimated: { type: ["number", "null"], description: "\u5206\u3002\u89AA\u306E estimated\uFF08\u5168\u4F53\u306E\u4E88\u7B97\uFF09\u306B\u306F\u8DB3\u3055\u306A\u3044" },
         depends_on: { type: ["array", "null"], items: { type: "string" }, description: "\u540C\u3058\u89AA\u306E\u30B5\u30D6\u306E id\uFF086 \u6587\u5B57\uFF09" },

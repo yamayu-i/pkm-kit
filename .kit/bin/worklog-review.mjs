@@ -7886,6 +7886,9 @@ function parseBlock(path, parent, raw, order, parseYaml) {
     migratedFrom,
     body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
   };
+  if (sub.start === null !== (sub.end === null)) {
+    extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
+  }
   return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml) {

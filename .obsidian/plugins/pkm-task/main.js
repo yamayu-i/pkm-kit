@@ -1610,6 +1610,9 @@ function parseBlock(path, parent, raw, order, parseYaml5) {
     migratedFrom,
     body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
   };
+  if (sub.start === null !== (sub.end === null)) {
+    extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
+  }
   return { sub, problems: prefixed([...extra, ...r3.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml5) {
@@ -1741,6 +1744,7 @@ function checkSubIssues(subs, memberIds) {
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
+    if (s3.start === null !== (s3.end === null)) errors.push(`${where}: \u671F\u9593\u306F start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044`);
     if (s3.start !== null && s3.end !== null && s3.end < s3.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
     if (s3.estimated !== null && !(typeof s3.estimated === "number" && Number.isFinite(s3.estimated) && s3.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
     if (s3.status === "delegated" && s3.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
@@ -1799,6 +1803,15 @@ function becomesDone(from, to) {
 }
 function visibleSubs(subs, showClosed) {
   return showClosed ? [...subs] : subs.filter((s3) => !isDone2(s3));
+}
+function bulkCancelTargets(subs) {
+  return subs.filter((s3) => s3.status !== "canceled");
+}
+function bulkClearTargets(subs) {
+  return subs.filter((s3) => s3.start !== null || s3.end !== null || s3.scheduled !== null);
+}
+function bulkSelectAll(subs) {
+  return subs.filter((s3) => !isDone2(s3)).map((s3) => s3.key);
 }
 function subCounts(subs) {
   const closed = subs.filter(isDone2).length;
@@ -3301,6 +3314,28 @@ function MonthCalendar(props) {
   ] });
 }
 
+// src/core/period.ts
+function pickPeriodDay(current, day) {
+  if (current.start === null || current.end !== null || day < current.start) return { start: day, end: null };
+  return { start: current.start, end: day };
+}
+function periodError(p3) {
+  if (p3.start === null && p3.end === null) return null;
+  if (p3.start === null) return "Start \u3082\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u671F\u9593\u306F Start \u3068 End \u306E\u4E21\u65B9\u304C\u8981\u308A\u307E\u3059\uFF09";
+  if (p3.end === null) return "End \u3082\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u671F\u9593\u306F Start \u3068 End \u306E\u4E21\u65B9\u304C\u8981\u308A\u307E\u3059\u30021 \u65E5\u306A\u3089\u540C\u3058\u65E5\uFF09";
+  if (p3.end < p3.start) return "End \u304C Start \u3088\u308A\u524D\u3067\u3059";
+  return null;
+}
+function readPeriodTexts(startText, endText, today) {
+  const start = parseDateInput(startText, today);
+  return { start, end: parseDateInput(endText, start ?? today) };
+}
+var shortDate2 = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
+function formatPeriod(p3) {
+  if (p3.start === null || p3.end === null) return p3.start ?? p3.end ? `${p3.start ? shortDate2(p3.start) : ""}\u2013${p3.end ? shortDate2(p3.end) : ""}` : null;
+  return p3.start === p3.end ? shortDate2(p3.start) : `${shortDate2(p3.start)}\u2013${shortDate2(p3.end)}`;
+}
+
 // src/core/worklog-times.ts
 function planWorklogTimes(input) {
   const { running, fromMs, toMs, now } = input;
@@ -3543,7 +3578,7 @@ function DateTextField(props) {
       {
         ref: props.inputRef,
         type: "text",
-        "aria-label": "Date",
+        "aria-label": props.label ?? "Date",
         placeholder: props.placeholder,
         value: props.text,
         onInput: (e3) => props.onText(e3.currentTarget.value),
@@ -3601,6 +3636,75 @@ function DateForm(props) {
         rejected !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: rejected }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
           props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "Clear" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
+        ] })
+      ]
+    }
+  );
+}
+function PeriodForm(props) {
+  const today = localToday();
+  const [startText, setStartText] = d2(props.initial.start ?? "");
+  const [endText, setEndText] = d2(props.initial.end ?? "");
+  const [month, setMonth] = d2((props.initial.start ?? today).slice(0, 7));
+  const ref = A2(null);
+  h2(() => ref.current?.select(), []);
+  const period = readPeriodTexts(startText, endText, today);
+  const unreadable = startText.trim() !== "" && period.start === null || endText.trim() !== "" && period.end === null;
+  const error = unreadable ? null : periodError(period) ?? (period.start !== null && props.validate ? props.validate(period) : null);
+  const invalid = unreadable || error !== null;
+  const pick = (d3) => {
+    const next = pickPeriodDay(period, d3);
+    setStartText(next.start ?? "");
+    setEndText(next.end ?? "");
+  };
+  const inRange = (d3) => period.start !== null && period.end !== null && d3 > period.start && d3 < period.end;
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-date-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (!invalid) props.onSubmit(period);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-period-fields", children: [
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Start" }),
+            /* @__PURE__ */ u3(
+              DateTextField,
+              {
+                inputRef: ref,
+                label: "Start",
+                text: startText,
+                parsed: period.start,
+                onText: (value) => {
+                  setStartText(value);
+                  const next = readPeriodTexts(value, endText, today).start;
+                  if (next !== null) setMonth(next.slice(0, 7));
+                }
+              }
+            )
+          ] }),
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "End" }),
+            /* @__PURE__ */ u3(DateTextField, { label: "End", text: endText, parsed: period.end, onText: setEndText })
+          ] })
+        ] }),
+        /* @__PURE__ */ u3(
+          MonthCalendar,
+          {
+            month,
+            onMonth: setMonth,
+            today,
+            isSelected: (d3) => d3 === period.start || d3 === period.end,
+            onPick: pick,
+            mark: (d3) => inRange(d3) ? { classes: ["is-in-range"], notes: ["In period"] } : null
+          }
+        ),
+        error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit({ start: null, end: null }), children: "Clear" }),
           /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
         ] })
       ]
@@ -4618,6 +4722,71 @@ function ProjectBadge() {
 // src/header/SubIssues.tsx
 var import_obsidian8 = require("obsidian");
 
+// src/obsidian/sub-bulk.tsx
+function openSubBulkEdit(ctx, parentId) {
+  new PreactModal(ctx.app, "Edit sub-issues in bulk", (close) => /* @__PURE__ */ u3(
+    SubBulkForm,
+    {
+      subs: ctx.store.index.subs(parentId),
+      onCancel: async (keys) => {
+        await ctx.writer.cancelSubs(keys);
+        close();
+      },
+      onClearDates: async (keys) => {
+        await ctx.writer.clearSubDates(keys);
+        close();
+      }
+    }
+  )).open();
+}
+function SubBulkForm(props) {
+  const { subs } = props;
+  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
+  const [error, setError] = d2(null);
+  const [saving, setSaving] = d2(false);
+  const all = bulkSelectAll(subs);
+  const allSelected = all.length > 0 && all.length === selected.size && all.every((k3) => selected.has(k3));
+  const toggle2 = (key) => {
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setSelected(next);
+  };
+  const chosen = subs.filter((s3) => selected.has(s3.key));
+  const cancels = bulkCancelTargets(chosen);
+  const clears = bulkClearTargets(chosen);
+  const closed = cancels.filter((s3) => s3.status === "closed").length;
+  const run = (action, targets) => {
+    setSaving(true);
+    setError(null);
+    action(targets.map((s3) => s3.key)).catch((e3) => setError(e3 instanceof Error ? e3.message : String(e3))).finally(() => setSaving(false));
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-bulk", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-sub-bulk-head", children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", disabled: all.length === 0 && selected.size === 0, onClick: () => setSelected(allSelected ? /* @__PURE__ */ new Set() : new Set(all)), children: allSelected ? "Clear selection" : "Select all but closed" }),
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        chosen.length,
+        " selected"
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: subs.map((sub) => /* @__PURE__ */ u3("label", { class: "vt-check", children: [
+      /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(sub.key), onChange: () => toggle2(sub.key), "aria-label": `Select ${sub.summary}` }),
+      /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+      /* @__PURE__ */ u3("span", { class: "vt-sub-bulk-title", children: sub.summary })
+    ] })) }),
+    closed > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
+      "closed \u306E\u30B5\u30D6 ",
+      closed,
+      " \u4EF6\u3092 canceled \u306B\u3057\u307E\u3059\uFF08\u5B8C\u4E86\u306E\u8A18\u9332\u304C\u5909\u308F\u308A\u307E\u3059\uFF09"
+    ] }),
+    error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+      /* @__PURE__ */ u3("button", { type: "button", disabled: clears.length === 0 || saving, onClick: () => run(props.onClearDates, clears), children: `Clear dates ${clears.length}` }),
+      /* @__PURE__ */ u3("button", { type: "button", class: "mod-warning", disabled: cancels.length === 0 || saving, onClick: () => run(props.onCancel, cancels), children: `Cancel ${cancels.length}` })
+    ] })
+  ] });
+}
+
 // src/obsidian/sub-editor.tsx
 var import_obsidian6 = require("obsidian");
 
@@ -4653,11 +4822,6 @@ function SizeChips(props) {
 }
 
 // src/obsidian/sub-editor.tsx
-var DATE_FIELDS = [
-  ["start", "Start"],
-  ["end", "End"],
-  ["scheduled", "Calendar"]
-];
 function confirmModal(ctx, title, message, action, run) {
   new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3("div", { children: [
     /* @__PURE__ */ u3("p", { children: message }),
@@ -4697,7 +4861,19 @@ function pickSubDate(ctx, label, initial, onPick, validate) {
     }
   )).open();
 }
-var SUB_DATE_FIELDS = DATE_FIELDS;
+function pickSubPeriod(ctx, initial, onPick, validate) {
+  new PreactModal(ctx.app, "Period", (close) => /* @__PURE__ */ u3(
+    PeriodForm,
+    {
+      initial,
+      validate,
+      onSubmit: (v3) => {
+        close();
+        onPick(v3);
+      }
+    }
+  )).open();
+}
 function subDateRules(ctx, sub) {
   const index = ctx.store.index;
   const parent = index.issues.get(sub.parent);
@@ -4706,10 +4882,40 @@ function subDateRules(ctx, sub) {
   const lock = canEditSubPeriod(parent, planned, today) ? null : periodInInboxMessage(sub.parent);
   return {
     lock,
-    validate: (key, draft) => key === "scheduled" || !parent ? void 0 : (d3) => subPeriodError(parent, planned, { start: sub.start, end: sub.end }, { start: draft.start, end: draft.end, [key]: d3 }, today)
+    validatePeriod: (period) => parent ? subPeriodError(parent, planned, { start: sub.start, end: sub.end }, period, today) : null
   };
 }
-var isPeriodKey = (key) => key !== "scheduled";
+function SubDateFields(props) {
+  const { ctx, sub, value } = props;
+  const rules = subDateRules(ctx, sub);
+  const period = formatPeriod(value);
+  return /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Period" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: `vt-field-chip${period ? "" : " is-placeholder"}`,
+          disabled: rules.lock !== null,
+          title: rules.lock ?? void 0,
+          onClick: () => pickSubPeriod(ctx, { start: value.start, end: value.end }, (p3) => props.onChange(p3), rules.validatePeriod),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
+            period ?? "Not set"
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Calendar" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${value.scheduled ? "" : " is-placeholder"}`, onClick: () => pickSubDate(ctx, "Calendar", value.scheduled, (v3) => props.onChange({ scheduled: v3 })), children: [
+        /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+        value.scheduled ? formatShortDate(value.scheduled) : "Not set"
+      ] })
+    ] })
+  ] });
+}
 function DependsField(props) {
   const { candidates, dependsOn } = props;
   const chip = dependsChip(candidates, dependsOn);
@@ -4738,14 +4944,8 @@ function SubIssueForm(props) {
   const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
   const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
   const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
-  const rules = subDateRules(ctx, sub);
-  const editDate = (key, label) => pickSubDate(
-    ctx,
-    label,
-    draft[key],
-    (v3) => setDraft((d3) => ({ ...d3, [key]: v3, ...d3.status === "someday" && key !== "scheduled" && v3 !== null ? { status: "open" } : {} })),
-    rules.validate(key, draft)
-  );
+  const lock = subDateRules(ctx, sub).lock;
+  const changeDates = (patch) => setDraft((d3) => ({ ...d3, ...patch, ...d3.status === "someday" && (patch.start ?? patch.end ?? null) !== null ? { status: "open" } : {} }));
   const changeStatus = (status) => {
     if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
     else set({ status, ...status === "delegated" ? {} : { delegatedTo: null }, ...status === "someday" ? { scheduled: null, start: null, end: null } : {} });
@@ -4786,23 +4986,8 @@ function SubIssueForm(props) {
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: label }),
-          /* @__PURE__ */ u3(
-            "button",
-            {
-              type: "button",
-              class: `vt-field-chip${draft[key] ? "" : " is-placeholder"}`,
-              disabled: rules.lock !== null && isPeriodKey(key),
-              onClick: () => editDate(key, label),
-              children: [
-                /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-                draft[key] ? formatShortDate(draft[key]) : "Not set"
-              ]
-            }
-          )
-        ] })) }),
-        rules.lock !== null && /* @__PURE__ */ u3("div", { class: "vt-muted", children: rules.lock }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: /* @__PURE__ */ u3(SubDateFields, { ctx, sub, value: draft, onChange: changeDates }) }),
+        lock !== null && /* @__PURE__ */ u3("div", { class: "vt-muted", children: lock }),
         /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
             /* @__PURE__ */ u3("span", { children: "Estimated" }),
@@ -5348,6 +5533,7 @@ function SubIssues(props) {
         " / ",
         counts.total
       ] }),
+      counts.total > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Edit sub-issues in bulk", title: "Edit sub-issues in bulk", onClick: () => openSubBulkEdit(ctx, issue.id), children: /* @__PURE__ */ u3(Icon, { name: "list-checks" }) }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       counts.total > 0 && /* @__PURE__ */ u3(
         Segmented,
@@ -6677,7 +6863,6 @@ function SubFields(props) {
   const { ctx, sub, save } = props;
   const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
   const others = props.siblings.filter((s3) => s3.id !== sub.id);
-  const rules = subDateRules(ctx, sub);
   const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
   const [estimatedError, setEstimatedError] = d2(null);
   const estimated = useDraft(
@@ -6702,23 +6887,7 @@ function SubFields(props) {
           member ? member.nickname : "Choose a member"
         ] })
       ] }),
-      SUB_DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-        /* @__PURE__ */ u3("span", { children: label }),
-        /* @__PURE__ */ u3(
-          "button",
-          {
-            type: "button",
-            class: `vt-field-chip${sub[key] ? "" : " is-placeholder"}`,
-            disabled: rules.lock !== null && isPeriodKey(key),
-            title: rules.lock !== null && isPeriodKey(key) ? rules.lock : void 0,
-            onClick: () => pickSubDate(ctx, label, sub[key], (v3) => void save({ [key]: v3 }), rules.validate(key, sub)),
-            children: [
-              /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-              sub[key] ? formatShortDate(sub[key]) : "Not set"
-            ]
-          }
-        )
-      ] })),
+      /* @__PURE__ */ u3(SubDateFields, { ctx, sub, value: sub, onChange: (patch) => void save(patch) }),
       /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
         /* @__PURE__ */ u3("span", { children: "Estimated" }),
         /* @__PURE__ */ u3(
@@ -9140,6 +9309,54 @@ var TaskWriter = class {
     const done = change;
     if (done === null) return;
     await this.afterSubStatusChange(sub, done.from, done.to, via);
+  }
+  /**
+   * 同じ親のサブをまとめて canceled にする（ADR-0244）。1 件でも移れない・ない・別の親なら何も書かない。
+   * statuslog・★・タイマーは書いた後に 1 件ずつ
+   */
+  async cancelSubs(keys) {
+    await this.patchSubs(keys, (sub) => {
+      const reopenTo = this.store.index.reopenStatus(sub.key);
+      if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
+      return completeSubPatch("canceled", { status: "canceled" });
+    });
+  }
+  /** 同じ親のサブの期間と Calendar の日をまとめて消す（ADR-0244）。status は変えない */
+  async clearSubDates(keys) {
+    await this.patchSubs(keys, () => ({ start: null, end: null, scheduled: null }));
+  }
+  /**
+   * 同じ親のサブに、まとめて項目を書く（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
+   * 1 件でもない・別の親・patchOf が例外なら何も書かない。status が変わったサブは、書いた後に afterSubStatusChange
+   */
+  async patchSubs(keys, patchOf) {
+    const subs = keys.map((key) => {
+      const sub = this.store.index.sub(key);
+      if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+      return sub;
+    });
+    const first = subs[0];
+    if (!first) return;
+    if (subs.some((s3) => s3.parent !== first.parent)) throw new Error("\u4E00\u62EC\u3067\u5909\u3048\u3089\u308C\u308B\u306E\u306F\u540C\u3058\u89AA\u306E\u30B5\u30D6\u3060\u3051\u3067\u3059");
+    const patches = new Map(subs.map((sub) => [sub.id, normalizeSubPatch(patchOf(sub))]));
+    const changes = [];
+    await this.app.vault.process(this.file(first.path), (text) => {
+      const siblings = parseSubIssues(first.path, first.parent, text, import_obsidian23.parseYaml).subs.map((s3) => {
+        const patch = patches.get(s3.id);
+        return patch ? { ...s3, ...patch, id: s3.id } : s3;
+      });
+      this.assertSubs(siblings, [...patches.keys()]);
+      let out = text;
+      changes.length = 0;
+      for (const sub of subs) {
+        const r3 = updateSubIssueText(first.path, first.parent, out, sub.id, patches.get(sub.id), import_obsidian23.parseYaml);
+        out = r3.text;
+        if (r3.before.status !== r3.after.status) changes.push({ sub, from: r3.before.status, to: r3.after.status });
+      }
+      return out;
+    });
+    this.store.refreshSoon();
+    for (const c3 of changes) await this.afterSubStatusChange(c3.sub, c3.from, c3.to);
   }
   /**
    * サブの status が変わった後の処理: statuslog に task と sub で書き、closed / canceled ならそのサブの記録中のタイマーを止める。

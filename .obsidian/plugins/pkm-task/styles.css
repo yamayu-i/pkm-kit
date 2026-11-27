@@ -1264,6 +1264,28 @@ button.vt-badge:disabled::after {
 	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
 }
 
+/* サブの一括の操作（ADR-0244） */
+.vt-sub-bulk {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.vt-sub-bulk-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.vt-sub-bulk-title {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .vt-worklog-form {
 	display: flex;
 	flex-direction: column;
@@ -2499,6 +2521,21 @@ body.is-mobile .vt-toast {
 
 .vt-date-add button {
 	height: 40px;
+}
+
+/* 期間のダイアログ（ADR-0245）: Start と End の欄を横に並べる */
+.vt-period-fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.vt-period-fields .vt-text-field {
+	min-width: 0;
+}
+
+.vt-period-fields input {
+	box-sizing: border-box;
 }
 
 .vt-date-form .vt-form {
@@ -4156,14 +4193,22 @@ body.is-mobile .vt-toast {
 }
 
 /* サブの今の status のアイコンは、status の印の色で出す（隣の status のボタンはモノクロ。ADR-0183） */
-.vt-subissue-status .vt-si-open { --vt-dot: var(--vt-green); }
-.vt-subissue-status .vt-si-in-progress { --vt-dot: var(--vt-blue); }
+.vt-subissue-status .vt-si-open,
+.vt-sub-bulk .vt-si-open { --vt-dot: var(--vt-green); }
+.vt-subissue-status .vt-si-in-progress,
+.vt-sub-bulk .vt-si-in-progress { --vt-dot: var(--vt-blue); }
 .vt-subissue-status .vt-si-waiting,
-.vt-subissue-status .vt-si-delegated { --vt-dot: var(--vt-pink); }
-.vt-subissue-status .vt-si-someday { --vt-dot: var(--vt-sky); }
-.vt-subissue-status .vt-si-closed { --vt-dot: var(--vt-purple); }
-.vt-subissue-status .vt-si-canceled { --vt-dot: var(--vt-gray); }
-.vt-subissue-status { --vt-knock: var(--vt-surface); }
+.vt-sub-bulk .vt-si-waiting,
+.vt-subissue-status .vt-si-delegated,
+.vt-sub-bulk .vt-si-delegated { --vt-dot: var(--vt-pink); }
+.vt-subissue-status .vt-si-someday,
+.vt-sub-bulk .vt-si-someday { --vt-dot: var(--vt-sky); }
+.vt-subissue-status .vt-si-closed,
+.vt-sub-bulk .vt-si-closed { --vt-dot: var(--vt-purple); }
+.vt-subissue-status .vt-si-canceled,
+.vt-sub-bulk .vt-si-canceled { --vt-dot: var(--vt-gray); }
+.vt-subissue-status,
+.vt-sub-bulk { --vt-knock: var(--vt-surface); }
 
 .vt-subissue.is-unreadable .vt-subissue-status {
 	color: var(--vt-red);
@@ -4790,6 +4835,12 @@ body.is-mobile .vt-toast {
 	border-color: var(--vt-scheduled);
 	background: var(--vt-scheduled);
 	color: var(--vt-on-scheduled);
+}
+
+/* 期間の間の日（ADR-0245）。始まりと終わりは塗りの丸、その間は薄い面 */
+.vt-cal-day.vt-cal-day.is-in-range:not(.is-selected) {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
 }
 
 /* 期限より後の日は文字を一段弱くする（押せる） */
