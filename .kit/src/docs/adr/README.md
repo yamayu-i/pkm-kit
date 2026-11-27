@@ -118,7 +118,7 @@
 | [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
 | [0231](0231-projects-timeline-and-load.md) | 承認 | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
 | [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
-| [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
 | [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
+| [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 <!-- adr-index:end -->
