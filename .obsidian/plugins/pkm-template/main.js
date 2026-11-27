@@ -2406,8 +2406,8 @@ function resolveVaultPath(app, path, source) {
   if (app.vault.getFileByPath(path)) return path;
   return app.metadataCache.getFirstLinkpathDest(path, source)?.path ?? null;
 }
-function openPath(app, path, source, evt) {
-  void app.workspace.openLinkText(path, source, import_obsidian7.Keymap.isModEvent(evt));
+function openPath(app, path, source, evt, onOpened) {
+  void app.workspace.openLinkText(path, source, import_obsidian7.Keymap.isModEvent(evt)).then(() => onOpened?.()).catch((e3) => console.error(e3));
 }
 var ChipWidget = class extends import_view.WidgetType {
   chip;
@@ -2431,7 +2431,7 @@ var ChipWidget = class extends import_view.WidgetType {
       el.addEventListener("mousedown", (e3) => e3.preventDefault());
       el.addEventListener("click", (e3) => {
         e3.preventDefault();
-        openPath(this.app, this.chip.open ?? "", this.source, e3);
+        openPath(this.app, this.chip.open ?? "", this.source, e3, this.chip.onOpened);
       });
     }
     return el;
@@ -2503,6 +2503,7 @@ function installLinkChips(plugin, opts) {
       const text2 = a3.textContent ?? "";
       let lead = null;
       let replaced = false;
+      let current = null;
       const undo = () => {
         lead?.remove();
         lead = null;
@@ -2515,6 +2516,7 @@ function installLinkChips(plugin, opts) {
       const draw = () => {
         undo();
         const chip = opts.resolve({ ...target, text: text2, source: ctx.sourcePath });
+        current = chip;
         if (!chip) return;
         if (chip.mode === "replace") {
           a3.empty();
@@ -2529,6 +2531,13 @@ function installLinkChips(plugin, opts) {
         a3.prepend(lead);
       };
       draw();
+      a3.addEventListener("click", (e3) => {
+        const chip = current;
+        if (!chip?.onOpened || chip.open === void 0) return;
+        e3.preventDefault();
+        e3.stopPropagation();
+        openPath(app, chip.open, ctx.sourcePath, e3, chip.onOpened);
+      });
       const child = new import_obsidian7.MarkdownRenderChild(a3);
       child.onload = () => child.register(opts.subscribe(draw));
       ctx.addChild(child);

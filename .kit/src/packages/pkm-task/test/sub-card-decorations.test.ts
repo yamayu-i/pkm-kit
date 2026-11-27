@@ -1,7 +1,7 @@
 import { EditorState, StateField } from "@codemirror/state";
 import { describe, expect, it, vi } from "vitest";
 import type { Plugin } from "obsidian";
-import { installSubCards } from "../src/header/sub-cards";
+import { installSubCards, setSubOpenForTest } from "../src/header/sub-cards";
 import type { TaskContext } from "../src/obsidian/context";
 
 vi.mock("obsidian", async () => {
@@ -18,9 +18,10 @@ import { editorInfoField, editorLivePreviewField } from "obsidian";
 const card = (id: string) => `<!-- sub-issue\nid: ${id}\nsummary: Task\nstatus: open\n-->`;
 const text = `${card("aaaaaa")}\n\nBody\n\n${card("bbbbbb")}\n\n`;
 
-function build(anchor: number, subOpen: Record<string, unknown> = {}) {
+function build(anchor: number, subOpen: ReadonlyMap<string, string> = new Map()) {
 	let field: StateField<any>;
-	const ctx = { settings: { subOpen }, store: { subscribe: () => () => {} } } as unknown as TaskContext;
+	setSubOpenForTest(subOpen);
+	const ctx = { settings: {}, store: { subscribe: () => () => {} } } as unknown as TaskContext;
 	installSubCards(ctx, {
 		registerEditorExtension: (f: unknown[]) => { field = f.find((x) => x instanceof StateField) as StateField<any>; },
 		registerMarkdownPostProcessor: () => {},
@@ -38,7 +39,7 @@ function create(anchor: number) {
 }
 
 /** 本文の最後の行の下に余白を置く行（class が vt-sub-body-end の行の先頭） */
-function bodyEnds(subOpen: Record<string, unknown>) {
+function bodyEnds(subOpen: ReadonlyMap<string, string>) {
 	const lines: number[] = [];
 	build(text.length, subOpen).between(0, text.length, (from: number, _to: number, d: any) => {
 		if (d.spec.class === "vt-sub-body-end") lines.push(from);
@@ -60,10 +61,10 @@ describe("閉じたサブのカード", () => {
 
 describe("開いたサブの本文と次の題の間の余白", () => {
 	it("開いたサブの本文の最後の行に付ける", () => {
-		const open = { "issue/i-1.md": ["aaaaaa"] };
+		const open = new Map([["issue/i-1.md", "aaaaaa"]]);
 		expect(bodyEnds(open)).toEqual([text.indexOf("Body")]);
 	});
 	it("閉じたサブには付けない", () => {
-		expect(bodyEnds({})).toEqual([]);
+		expect(bodyEnds(new Map())).toEqual([]);
 	});
 });
