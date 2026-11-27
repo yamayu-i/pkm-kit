@@ -1690,6 +1690,11 @@ button.vt-badge:disabled::after {
 	gap: 8px;
 }
 
+/* 片付いた routine を出す・隠すボタン（ADR-0240）。一覧の末尾の左に置く */
+.vt-done-toggle {
+	align-self: flex-start;
+}
+
 /* 隣り合った同じ親のサブのまとまり（ADR-0137） */
 .vt-lane-run {
 	display: flex;
@@ -1963,11 +1968,13 @@ button.vt-badge:disabled::after {
 	background: var(--vt-surface);
 }
 
+/* routine の open の行は closed と canceled の 2 つを並べるので、2 つ分の幅を取って題の位置を揃える（ADR-0240） */
 .vt-compact-step {
 	display: inline-flex;
 	flex: none;
-	justify-content: center;
-	width: 24px;
+	gap: 4px;
+	justify-content: flex-start;
+	width: 52px;
 }
 
 .vt-compact-row > .vt-icon {

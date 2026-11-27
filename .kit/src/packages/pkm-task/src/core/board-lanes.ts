@@ -145,6 +145,20 @@ export function showRoutineLane(board: BoardState, lanes: BoardLanes): boolean {
 	return lanes.routine.some((c) => cardStatus(board, c) === "open");
 }
 
+/** routine の遷移ボタン（ADR-0240）。open なら closed と canceled、結果があれば open に戻す（reopen）だけ */
+export type RoutineStep = "closed" | "canceled" | "reopen";
+export function routineSteps(status: Status): RoutineStep[] {
+	return status === "open" ? ["closed", "canceled"] : ["reopen"];
+}
+
+/** 片付いた routine をたたむため、open とそれ以外（closed / canceled）に分ける。どちらも並びのまま（ADR-0240） */
+export function splitDoneRoutines<T>(items: readonly T[], statusOf: (item: T) => Status): { open: T[]; done: T[] } {
+	const open: T[] = [];
+	const done: T[] = [];
+	for (const item of items) (statusOf(item) === "open" ? open : done).push(item);
+	return { open, done };
+}
+
 /** ★ をもう 1 件付けられるか */
 export function canStar(lanes: BoardLanes): boolean {
 	return lanes.top.length < TOP_LIMIT;

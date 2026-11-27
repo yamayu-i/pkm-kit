@@ -109,7 +109,7 @@
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
 | [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
-| [0206](0206-closing-view-and-routine-category.md) | 承認（一部置換: 0234） | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
+| [0206](0206-closing-view-and-routine-category.md) | 承認（一部置換: 0234, 0240） | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
@@ -120,4 +120,5 @@
 | [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 | [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
 | [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
+| [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 <!-- adr-index:end -->

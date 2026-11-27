@@ -4300,6 +4300,15 @@ function cardRuns(cards2) {
 function showRoutineLane(board, lanes) {
   return lanes.routine.some((c3) => cardStatus(board, c3) === "open");
 }
+function routineSteps(status) {
+  return status === "open" ? ["closed", "canceled"] : ["reopen"];
+}
+function splitDoneRoutines(items, statusOf2) {
+  const open = [];
+  const done = [];
+  for (const item of items) (statusOf2(item) === "open" ? open : done).push(item);
+  return { open, done };
+}
 function canStar(lanes) {
   return lanes.top.length < TOP_LIMIT;
 }
@@ -9600,22 +9609,31 @@ function CarriedChip(props) {
   ] });
 }
 function RoutineStepButton(props) {
-  const reopen = props.status !== "open";
-  const title = reopen ? "Reopen (\u2192 open)" : "Close (\u2192 closed)";
-  return /* @__PURE__ */ u3(
-    "button",
-    {
-      type: "button",
-      class: "vt-icon-button vt-status-step",
-      "aria-label": title,
-      title,
-      onClick: (e3) => {
-        e3.stopPropagation();
-        void setRoutineResult(props.ctx, props.date, props.id, reopen ? null : "closed");
+  return /* @__PURE__ */ u3(S, { children: routineSteps(props.status).map((step) => {
+    const title = step === "reopen" ? "Reopen (\u2192 open)" : step === "closed" ? "Close (\u2192 closed)" : "Cancel (\u2192 canceled)";
+    return /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: "vt-icon-button vt-status-step",
+        "aria-label": title,
+        title,
+        onClick: (e3) => {
+          e3.stopPropagation();
+          void setRoutineResult(props.ctx, props.date, props.id, step === "reopen" ? null : step);
+        },
+        children: step === "reopen" ? /* @__PURE__ */ u3(Icon, { name: "undo-2" }) : /* @__PURE__ */ u3(StatusIcon, { status: step })
       },
-      children: reopen ? /* @__PURE__ */ u3(Icon, { name: "undo-2" }) : /* @__PURE__ */ u3(StatusIcon, { status: "closed" })
-    }
-  );
+      step
+    );
+  }) });
+}
+function DoneToggle(props) {
+  if (props.count === 0) return null;
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text vt-done-toggle", "aria-expanded": props.shown, onClick: props.onToggle, children: [
+    /* @__PURE__ */ u3(Icon, { name: props.shown ? "chevron-up" : "chevron-down" }),
+    props.shown ? "Hide done" : `Show ${props.count} done`
+  ] });
 }
 function TaskCard(props) {
   const { ctx, date, board, lanes, lane, card, now } = props;
@@ -9749,6 +9767,9 @@ function Lane(props) {
   const [open, setOpen] = d2(lane === "routine");
   const collapsible = lane === "done" || lane === "routine";
   const shown = !collapsible || open;
+  const [showDone, setShowDone] = d2(false);
+  const folded = lane === "routine" ? splitDoneRoutines(cards2, (c3) => cardStatus(board, c3)) : null;
+  const visible = folded === null || showDone ? cards2 : folded.open;
   const accepts = isDragLane(lane) && (lane !== "top" || canStar(lanes));
   return /* @__PURE__ */ u3(
     "section",
@@ -9781,7 +9802,7 @@ function Lane(props) {
           /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards2.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards2.filter((c3) => cardStatus(board, c3) === "open").length}/${cards2.length}` : cards2.length })
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
-          cardRuns(cards2).map(
+          cardRuns(visible).map(
             (run) => run.parent === null ? run.cards.map((card) => watch ? /* @__PURE__ */ u3(WatchCard, { ctx, date, card }, card.key) : /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)) : /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
               /* @__PURE__ */ u3(ParentHead, { ctx, parentId: run.parent }),
               run.cards.map(
@@ -9789,7 +9810,8 @@ function Lane(props) {
               )
             ] }, `${run.parent}/${run.cards[0].key}`)
           ),
-          cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] })
+          cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] }),
+          folded !== null && /* @__PURE__ */ u3(DoneToggle, { count: folded.done.length, shown: showDone, onToggle: () => setShowDone(!showDone) })
         ] })
       ]
     }
@@ -9891,6 +9913,9 @@ function ClosingView(props) {
   const grace = ctx.settings.closingGraceHour;
   const routines = closingRoutines(index, date);
   const routinesLeft = routines.filter((r3) => board.routines[r3.id] === void 0).length;
+  const [showDone, setShowDone] = d2(false);
+  const folded = splitDoneRoutines(routines, (r3) => board.routines[r3.id] ?? "open");
+  const visibleRoutines = showDone ? routines : folded.open;
   const groups = closingGroups(index, date, board, grace);
   const taskCount = CLOSING_GROUPS.reduce((n2, g2) => n2 + groups[g2].length, 0);
   const notes = closingNotes(vaultNotes(ctx), date, grace);
@@ -9922,7 +9947,10 @@ function ClosingView(props) {
           " All done"
         ] })
       ] }),
-      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: routines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0, carriedFrom: carriedFrom(index, r3, date) }, kindLabel: false }, r3.id)) })
+      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: visibleRoutines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0, carriedFrom: carriedFrom(index, r3, date) }, kindLabel: false }, r3.id)) }),
+        /* @__PURE__ */ u3(DoneToggle, { count: folded.done.length, shown: showDone, onToggle: () => setShowDone(!showDone) })
+      ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-closing-section", "aria-label": "Tasks", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [

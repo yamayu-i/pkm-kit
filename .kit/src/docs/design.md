@@ -192,7 +192,7 @@ packages/design/tokens.json（正本）
 |---|---|---|
 | カード | `.vt-card` | `--vt-surface-container` の面 + `--vt-outline-variant` の枠、角丸 l、余白 16px。関係するものをまとめる入れ物で、カード自体は押せない |
 | status | `.vt-badge.is-wide` | 丸い tonal ボタン。高さ 44px、title-medium、先頭に status のアイコン、末尾に ▾ |
-| status のボタン | `.vt-status-step`（`.vt-icon-button`） | status のバッジの隣の 24px の丸。いちばんよく使う遷移 1 つ（ADR-0183）。アイコンは押した後の status の形をモノクロ（弱い文字の色。白抜きは `--vt-surface`）で出し、色付きの今の status と見分ける、closed / canceled は ↩（`undo-2`）。issue 画面・サブはいつも出し、ボードのカード（`.vt-task`）ではホバー・フォーカスのときだけ見せる（場所は `visibility` で取っておく）。`hover: none` の端末と、幅 480px 以下のボードでは出さない |
+| status のボタン | `.vt-status-step`（`.vt-icon-button`） | status のバッジの隣の 24px の丸。いちばんよく使う遷移 1 つ（ADR-0183）。routine だけは open のとき closed と canceled の 2 つを並べる（ADR-0240）。アイコンは押した後の status の形をモノクロ（弱い文字の色。白抜きは `--vt-surface`）で出し、色付きの今の status と見分ける、closed / canceled は ↩（`undo-2`）。issue 画面・サブはいつも出し、ボードのカード（`.vt-task`）ではホバー・フォーカスのときだけ見せる（場所は `visibility` で取っておく）。`hover: none` の端末と、幅 480px 以下のボードでは出さない |
 | status のアイコン | `.vt-status-icon` | ○ を土台にした自作の SVG（ADR-0031）。色は status の印の色（`--vt-dot`）、白抜きは下の面（`--vt-knock`）。in-progress は `--vt-duration-spin` でゆっくり回り、closed は閉じた直後（`.is-enter`）だけチェックを描く |
 | 取り消しのトースト | `.vt-toast` | 画面の右下に固定（モバイルは下のツールバーの上に左右いっぱい）。`--vt-surface-container-high` の面 + `--vt-elevation-4`、右に primary の文字のボタン（`.vt-toast-action`）。Obsidian の Notice は使わない |
 | バッジ | `.vt-badge` | 高さ 28px、角丸 s、label-medium |
@@ -221,7 +221,7 @@ packages/design/tokens.json（正本）
 | 絞り込みチップ | `.vt-filter-chip` | M3 の filter chip。on で secondary-container の面 + チェック |
 | 切り替えボタン | `.vt-segmented`（`.vt-segmented-button`） | M3 の segmented button。表示の切り替え（1 つだけ選ぶ）に使い、絞り込みチップと分ける。丸い枠でつないだボタン（32px。`.is-small` は 24px）、選んだものは secondary-container の面。アイコンだけのときは名前をツールチップと `aria-label` に出す（`Segmented` 部品、`src/ui/Segmented.tsx`） |
 | 検索欄 / 素早い追加 | `.vt-search` / `.vt-quick-add` | 丸い入力欄 + 先頭のアイコン |
-| 詰めた一覧 | `.vt-compact-list`（`.vt-compact-row`・`.vt-compact-step`・`.vt-compact-title`・`.vt-compact-meta`） | 一覧性を優先する 1 行の一覧（28px。枠も面もなく、ホバーで `--vt-surface`）。行は 24px の status のボタンの場所（ボタンが出なくても幅を取る）・題（1 行で省略。押すと開き、ホバーで primary の下線）・右に弱い文字の付記だけ。色とアイコンは行に付けず、群の見出しに付ける。Closing の画面（ADR-0206） |
+| 詰めた一覧 | `.vt-compact-list`（`.vt-compact-row`・`.vt-compact-step`・`.vt-compact-title`・`.vt-compact-meta`） | 一覧性を優先する 1 行の一覧（28px。枠も面もなく、ホバーで `--vt-surface`）。行は status のボタンの場所（24px のボタン 2 つ分。routine の open は closed と canceled の 2 つを並べる。ボタンが出なくても幅を取る。ADR-0240）・題（1 行で省略。押すと開き、ホバーで primary の下線）・右に弱い文字の付記だけ。色とアイコンは行に付けず、群の見出しに付ける。Closing の画面（ADR-0206）。Closing routines の片付いた行は隠し、末尾の text のボタン「Show N done」で出す（ADR-0240） |
 | 群の見出し | `.vt-closing-group-head`（`.is-closed` / `.is-not-done` / `.is-waiting` / `.is-canceled`） | 24px の丸いラベル。アイコン・名前・件数を tonal の面で出す（closed = purple、not done = amber、waiting = pink、canceled = gray）。詰めた一覧の群の上に置く（ADR-0206） |
 | routine の群 | `.vt-routine-group` | Routines の一覧の category の群（default / closing）。見出しは名前・件数・弱い文字の説明。行（`.vt-routine-item`）は左のつまみ（`grip-vertical`）でドラッグし、行の上に落とすと前に入る（primary の線。`.is-drop-before`）。群の空いた所に落とすと末尾に入り、群を primary の枠 + secondary-container の面にする（ADR-0206） |
 | カード（ボード） | `.vt-task` | 押せるカード。1 行に status のバッジ（メニュー）・題・星ボタン（`.vt-star`。付いているときは primary で塗る）・再生 / 停止・`⋯` のメニューだけを置き、大きくしない。ID は出さず表題を優先する。記録中は緑の枠。Top 4 と Up next ではドラッグでき、別のカードの上に落とすときは、入る位置（前）を primary の線で出す（`.is-drop-before`。ADR-0114, 0137） |
@@ -229,7 +229,7 @@ packages/design/tokens.json（正本）
 | 記録の時刻を直すボタン | `.vt-time-edit`（`.vt-icon-button`） | 再生 / 停止の左の 24px の色のない丸（`history`）。再生 / 停止より目立たせない。ボードのカードと Tasks Now の行に出し、幅 480px 以下のボードでは隠して `⋯` のメニューから開く（ADR-0193） |
 | 記録の時刻のダイアログ | `.vt-wt`（`.vt-wt-row`・`.vt-wt-actions`） | From / To の入力欄（右に 40px のカレンダーと時計のアイコンボタン、下に解釈した日時）と、右下の再生 / 停止（`.vt-play`）。押せない方は disabled（ADR-0193） |
 | 時刻のピッカー | `.vt-clock`（`.vt-clock-part`・`.vt-clock-dial`） | M3 の時刻ピッカー。上に時と分の欄（64px、headline-small。選んでいる方は secondary-container）、下に surface-container-high の丸いダイヤル（24 時間。外の輪 0〜11、内の輪 12〜23、分は 5 分おきの数字）。針と選んだ数字の丸は primary。押す・なぞる・矢印キーで変える（ADR-0193） |
-| ボードの欄 | `.vt-lane`（`.vt-lanes`） | ボードの枠。上から Working（緑の枠）・Top 4・Routines（routine だけ。開閉でき、既定は開く。すべて片付いたら隠す）・Up next・Watch（waiting / delegated のすべて。secondary-container の面で枠なし。カードは status のバッジ・題・委任先・Resume・`⋯` で、狭いときは委任先を隠し Resume をアイコンだけにする。ADR-0184）・Done（面を沈め、たたむ）を 1 列に積む。Top 4 と Up next は空でも出し、ほかはカードがあるときだけ出す。カードを落とせるときは primary の枠 + secondary-container の面（ADR-0137） |
+| ボードの欄 | `.vt-lane`（`.vt-lanes`） | ボードの枠。上から Working（緑の枠）・Top 4・Routines（routine だけ。開閉でき、既定は開く。closed / canceled のカードは隠し、末尾の text のボタン「Show N done」で出す（ADR-0240）。すべて片付いたら隠す）・Up next・Watch（waiting / delegated のすべて。secondary-container の面で枠なし。カードは status のバッジ・題・委任先・Resume・`⋯` で、狭いときは委任先を隠し Resume をアイコンだけにする。ADR-0184）・Done（面を沈め、たたむ）を 1 列に積む。Top 4 と Up next は空でも出し、ほかはカードがあるときだけ出す。カードを落とせるときは primary の枠 + secondary-container の面（ADR-0137） |
 | 親の見出し | `.vt-lane-run`（`.vt-lane-parent`） | 同じ欄で隣り合った、同じ親のサブのまとまり。左に outline-variant の太い線、上に親の ID のバッジと弱い文字の親の題（押すと親を開く）（ADR-0137） |
 | 大きい丸ボタン | `.vt-round` | Organize の操作。予定 = 緑、Someday = 水色、Cancel = 赤 |
 | 変更の行 | `.vt-upd-row` | PKM Updates の行。押せるカード（48px 以上）で、タイトルと、右に弱い文字の日時。セクションの見出し（`.vt-upd-heading-link`）は一覧 View へのリンクで、primary の文字に下線 |
