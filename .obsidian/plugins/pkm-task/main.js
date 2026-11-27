@@ -6560,6 +6560,13 @@ function useDraft(value, commit, delayMs, normalize = (v3) => v3) {
     });
   };
   h2(() => () => flush(), []);
+  const cancel = () => {
+    const c3 = s3.current;
+    window.clearTimeout(c3.timer);
+    c3.dirty = false;
+    c3.draft = c3.value;
+    setDraft(c3.value);
+  };
   const input = (v3) => {
     const c3 = s3.current;
     c3.draft = v3;
@@ -6568,7 +6575,7 @@ function useDraft(value, commit, delayMs, normalize = (v3) => v3) {
     window.clearTimeout(c3.timer);
     if (delayMs !== null) c3.timer = window.setTimeout(flush, delayMs);
   };
-  return { draft, input, flush };
+  return { draft, input, flush, cancel };
 }
 function SubCard(props) {
   const { ctx, sub, open } = props;
@@ -6581,24 +6588,76 @@ function SubCard(props) {
     return false;
   });
   return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`, children: [
-    /* @__PURE__ */ u3(SubRow2, { ctx, sub, open, onToggle: props.onToggle, save }),
+    /* @__PURE__ */ u3(SubRow2, { ctx, sub, open, onToggle: props.onToggle, save, titleDelayMs: open ? props.delayMs : void 0 }),
     open && /* @__PURE__ */ u3(SubFields, { ...props, save, error })
   ] }) });
 }
 function SubRow2(props) {
   const { ctx, sub, open, save } = props;
+  const [editing, setEditing] = d2(false);
+  const editable = props.titleDelayMs !== void 0;
+  h2(() => {
+    if (!editable) setEditing(false);
+  }, [editable]);
   const statusMenu = (e3) => showStatusMenu(ctx, e3, sub.key, (patch) => save(patch));
   const hint = subHint(sub, localToday());
   return /* @__PURE__ */ u3("div", { class: "vt-subissue-row", children: [
     /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-status", "aria-label": `Status: ${sub.status}`, title: `Status: ${sub.status}`, onClick: statusMenu, children: /* @__PURE__ */ u3(StatusIcon, { status: sub.status }) }),
     /* @__PURE__ */ u3(StatusStepButton, { ctx, keyOf: sub.key, save: (patch) => save(patch) }),
-    /* @__PURE__ */ u3("button", { type: "button", class: "vt-subissue-summary", "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
+    editable && editing ? (
+      // 入力中は題を押しても開閉しない。矢印は見た目だけ残す
+      /* @__PURE__ */ u3("div", { class: "vt-subissue-summary is-editing", children: [
+        /* @__PURE__ */ u3(Icon, { name: "chevron-down" }),
+        /* @__PURE__ */ u3(TitleInput, { summary: sub.summary, save, delayMs: props.titleDelayMs ?? null, close: () => setEditing(false) })
+      ] })
+    ) : /* @__PURE__ */ u3("button", { type: "button", class: `vt-subissue-summary${editable ? " has-title-edit" : ""}`, "aria-expanded": open, title: sub.summary, onClick: props.onToggle, children: [
       /* @__PURE__ */ u3(Icon, { name: open ? "chevron-down" : "chevron-right" }),
       /* @__PURE__ */ u3("span", { class: "vt-subissue-summary-text", children: sub.summary }),
       hint !== null && /* @__PURE__ */ u3("span", { class: "vt-subissue-hint", children: hint })
     ] }),
+    editable && !editing && /* @__PURE__ */ u3(S, { children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button vt-subissue-title-edit", "aria-label": "Edit title", title: "Edit title", onClick: () => setEditing(true), children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) }),
+      /* @__PURE__ */ u3("span", { class: "vt-spacer" })
+    ] }),
     /* @__PURE__ */ u3(PickTimer, { ctx, keyOf: sub.key })
   ] });
+}
+function TitleInput(props) {
+  const { save, close } = props;
+  const summary = useDraft(props.summary, (v3) => v3.trim() === "" ? Promise.resolve(false) : save({ summary: v3.trim() }), props.delayMs, (v3) => v3.trim());
+  const ref = A2(null);
+  h2(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  const finish = () => {
+    summary.flush();
+    close();
+  };
+  return /* @__PURE__ */ u3(
+    "input",
+    {
+      ref,
+      type: "text",
+      class: "vt-subissue-title-input",
+      "aria-label": "Title",
+      value: summary.draft,
+      onInput: (e3) => summary.input(e3.currentTarget.value),
+      onBlur: finish,
+      onKeyDown: (e3) => {
+        if (e3.isComposing) return;
+        if (e3.key === "Enter") {
+          e3.preventDefault();
+          finish();
+        } else if (e3.key === "Escape") {
+          e3.preventDefault();
+          e3.stopPropagation();
+          summary.cancel();
+          close();
+        }
+      }
+    }
+  );
 }
 function StickySubRow(props) {
   const { ctx, sub } = props;
@@ -6609,11 +6668,10 @@ function StickySubRow(props) {
   return /* @__PURE__ */ u3("div", { class: "vt-sub-card vt-ui", children: /* @__PURE__ */ u3("div", { class: `vt-subissue is-open${isDoneStatus(sub.status) ? " is-done" : ""}`, children: /* @__PURE__ */ u3(SubRow2, { ctx, sub, open: true, onToggle: props.onToggle, save }) }) });
 }
 function SubFields(props) {
-  const { ctx, sub, save, delayMs } = props;
+  const { ctx, sub, save } = props;
   const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
   const others = props.siblings.filter((s3) => s3.id !== sub.id);
   const rules = subDateRules(ctx, sub);
-  const summary = useDraft(sub.summary, (v3) => v3.trim() === "" ? Promise.resolve(false) : save({ summary: v3.trim() }), delayMs, (v3) => v3.trim());
   const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
   const [estimatedError, setEstimatedError] = d2(null);
   const estimated = useDraft(
@@ -6630,21 +6688,6 @@ function SubFields(props) {
     null
   );
   return /* @__PURE__ */ u3("div", { class: "vt-subissue-detail vt-subissue-form", children: [
-    /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
-      /* @__PURE__ */ u3("span", { children: "Summary" }),
-      /* @__PURE__ */ u3(
-        "input",
-        {
-          type: "text",
-          value: summary.draft,
-          onInput: (e3) => summary.input(e3.currentTarget.value),
-          onBlur: summary.flush,
-          onKeyDown: (e3) => {
-            if (e3.key === "Enter" && !e3.isComposing) summary.flush();
-          }
-        }
-      )
-    ] }),
     /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
       sub.status === "delegated" && /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
         /* @__PURE__ */ u3("span", { children: "Delegated to" }),

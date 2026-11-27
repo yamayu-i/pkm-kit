@@ -3922,6 +3922,30 @@ body.is-mobile .vt-toast {
 	padding-left: 12px;
 }
 
+/* 題をその場で直す（ADR-0239）。入力中は矢印を見た目だけ残し、題の位置を入力欄にする */
+.vt-sub-card .vt-subissue-summary.is-editing {
+	cursor: auto;
+}
+
+.vt-sub-card .vt-subissue-title-input {
+	flex: 1;
+	min-width: 0;
+	height: 32px;
+	padding: 0 8px;
+	border-radius: var(--vt-radius-s);
+	font-family: inherit;
+	font-size: inherit;
+}
+
+.vt-sub-card .vt-subissue-title-edit {
+	flex: none;
+}
+
+/* 開いたカードでは、題のボタンを文字の幅にして、編集ボタンを題のすぐ右に置く */
+.vt-sub-card .vt-subissue-summary.has-title-edit {
+	flex: 0 1 auto;
+}
+
 /* 開いたサブの題の行を、スクロール領域の上端に浮かべる（Live Preview と Reading。ADR-0161 の追記）。
    位置は JS が入れる。行の高さで切り抜き、本文の終わりで中身を上へずらす */
 .vt-sub-sticky {
