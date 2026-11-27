@@ -20,6 +20,8 @@ import {
 	subHint,
 	subItemPatch,
 	visibleSubs,
+	bulkCancelSelectable,
+	bulkSelectAll,
 	type SubIssue,
 } from "../src/core/sub-issue";
 import type { TaskStore } from "../src/obsidian/store";
@@ -117,7 +119,7 @@ function fixture(text: string) {
 	};
 	const app = { vault, fileManager: {} } as unknown as App;
 	const writer = new TaskWriter(app, store, () => "pc");
-	return { writer, texts, store, subs: () => subsOf(texts.get("issue/i-1.md")!), text: () => texts.get("issue/i-1.md")! };
+	return { writer, texts, store, writes: () => vault.process.mock.calls, subs: () => subsOf(texts.get("issue/i-1.md")!), text: () => texts.get("issue/i-1.md")! };
 }
 
 describe("writer のサブの操作", () => {
@@ -182,6 +184,48 @@ describe("writer のサブの操作", () => {
 		expect(f.subs()[1]).toMatchObject({ status: "closed", body: "終わった" });
 		const logs = [...f.texts].filter(([p]) => p.startsWith("statuslog/")).flatMap(([p, t]) => parseStatusLog(p, t).entries);
 		expect(logs.map((e) => [e.task, e.sub, e.from, e.to])).toEqual([["i-1", "bbbbbb", "open", "closed"]]);
+	});
+});
+
+describe("サブの一括キャンセル（ADR-0244）", () => {
+	const text = `${HEAD}\n${block("aaaaaa", "start: 2026-11-20\nend: 2026-11-22\n")}\n${block("bbbbbb").replace("open", "closed")}\n${block("cccccc").replace("open", "canceled")}\n${block("dddddd").replace("open", "someday")}\n${block("eeeeee").replace("open", "in-progress")}`;
+	it("全選択は閉じていないものだけ。canceled は選べず、closed は選べる", () => {
+		const subs = subsOf(text);
+		expect(bulkSelectAll(subs)).toEqual(["i-1#aaaaaa", "i-1#dddddd", "i-1#eeeeee"]);
+		expect(subs.filter(bulkCancelSelectable).map((s) => s.id)).toEqual(["aaaaaa", "bbbbbb", "dddddd", "eeeeee"]);
+	});
+
+	it("選んだものを 1 回の書き込みで canceled にし、期間は残す。statuslog は 1 件ずつ", async () => {
+		const f = fixture(text);
+		await f.writer.cancelSubs(["i-1#aaaaaa", "i-1#bbbbbb", "i-1#eeeeee"]);
+		const byId = new Map(f.subs().map((s) => [s.id, s]));
+		expect([...byId.values()].map((s) => [s.id, s.status])).toEqual(
+			expect.arrayContaining([
+				["aaaaaa", "canceled"],
+				["bbbbbb", "canceled"],
+				["cccccc", "canceled"],
+				["dddddd", "someday"],
+				["eeeeee", "canceled"],
+			]),
+		);
+		expect(byId.get("aaaaaa")).toMatchObject({ start: "2026-11-20", end: "2026-11-22" });
+		const issueWrites = f.writes().filter(([file]) => file.path === "issue/i-1.md");
+		expect(issueWrites).toHaveLength(1);
+		const logs = [...f.texts].filter(([p]) => p.startsWith("statuslog/")).flatMap(([p, t]) => parseStatusLog(p, t).entries);
+		expect(logs.map((e) => [e.sub, e.from, e.to])).toEqual([
+			["aaaaaa", "open", "canceled"],
+			["bbbbbb", "closed", "canceled"],
+			["eeeeee", "in-progress", "canceled"],
+		]);
+	});
+
+	it("canceled のもの・ないもの・別の親のものが混じれば、何も書かない", async () => {
+		const f = fixture(text);
+		const before = f.text();
+		await expect(f.writer.cancelSubs(["i-1#aaaaaa", "i-1#cccccc"])).rejects.toThrow(/canceled/);
+		await expect(f.writer.cancelSubs(["i-1#aaaaaa", "i-1#zzzzzz"])).rejects.toThrow(/サブがありません/);
+		await expect(f.writer.cancelSubs(["i-1#aaaaaa", "i-2#aaaaaa"])).rejects.toThrow();
+		expect(f.text()).toBe(before);
 	});
 });
 

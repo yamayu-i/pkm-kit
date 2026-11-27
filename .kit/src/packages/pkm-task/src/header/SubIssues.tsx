@@ -8,6 +8,7 @@ import { isDoneStatus } from "../core/status-log";
 import { splitQuickAdd, subCounts, subHint, visibleSubs, type SubIssue, type SubIssuePatch } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
 import { PickTimer } from "../obsidian/pick-toggle";
+import { openSubBulkCancel } from "../obsidian/sub-bulk";
 import { deleteSubWithConfirm, openSubEditor } from "../obsidian/sub-editor";
 import { revealSub } from "./sub-reveal";
 import { setTimelineRevealer } from "./sub-timeline-reveal";
@@ -55,6 +56,12 @@ export function SubIssues(props: { ctx: TaskContext; issue: Issue; index: TaskIn
 					<span class="vt-count" title={`${counts.open} open of ${counts.total}`}>
 						{counts.open} / {counts.total}
 					</span>
+				)}
+				{/* 一括の操作（ADR-0244）。今は Cancel だけ */}
+				{counts.total > 0 && (
+					<button type="button" class="vt-icon-button" aria-label="Cancel sub-issues in bulk" title="Cancel sub-issues in bulk" onClick={() => openSubBulkCancel(ctx, issue.id)}>
+						<Icon name="list-checks" />
+					</button>
 				)}
 				<span class="vt-spacer" />
 				{counts.total > 0 && (

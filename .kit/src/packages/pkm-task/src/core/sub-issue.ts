@@ -401,6 +401,16 @@ export function visibleSubs<T extends Pick<SubIssue, "status">>(subs: readonly T
 	return showClosed ? [...subs] : subs.filter((s) => !isDone(s));
 }
 
+/** 一括のキャンセル（ADR-0244）で選べるサブ。canceled はもう変えるものがないので選べない */
+export function bulkCancelSelectable(sub: Pick<SubIssue, "status">): boolean {
+	return sub.status !== "canceled";
+}
+
+/** 一括のキャンセルの「Select all」が選ぶサブの合成キー。閉じていないものだけ（closed は個別に選ぶ） */
+export function bulkSelectAll(subs: readonly Pick<SubIssue, "status" | "key">[]): string[] {
+	return subs.filter((s) => !isDone(s)).map((s) => s.key);
+}
+
 /** 見出しの件数: 未完了 / 全体、と隠している closed の数 */
 export function subCounts(subs: readonly Pick<SubIssue, "status">[]): { open: number; total: number; closed: number } {
 	const closed = subs.filter(isDone).length;

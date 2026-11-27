@@ -15,6 +15,7 @@ import { MemberHeader } from "../src/header/MemberHeader";
 import { PresetHeader } from "../src/header/PresetHeader";
 import { ClockPicker } from "../src/ui/ClockPicker";
 import { DateForm, WorklogForm } from "../src/ui/forms";
+import { SubBulkForm } from "../src/obsidian/sub-bulk";
 import { WorklogTimesForm } from "../src/ui/WorklogTimesForm";
 import { DailyView } from "../src/views/DailyView";
 import { InboxView } from "../src/views/InboxView";
@@ -189,6 +190,8 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 				const subs = store.index.subs("i-2");
 				return <SubCard ctx={ctx as never} sub={subs.find((s) => s.id === id)!} siblings={subs} open onToggle={() => {}} save={noop} delayMs={null} />;
 			})}
+			{/* サブの一括キャンセル（ADR-0244） */}
+			<SubBulkForm subs={store.index.subs("i-2")} onCancel={async () => {}} />
 			{/* 閉じたサブのカード。題の編集ボタンは出さない（ADR-0239） */}
 			<SubCard ctx={ctx as never} sub={store.index.subs("i-2").find((s) => s.id === "hhhhhh")!} siblings={store.index.subs("i-2")} open={false} onToggle={() => {}} save={noop} delayMs={null} />
 		</div>

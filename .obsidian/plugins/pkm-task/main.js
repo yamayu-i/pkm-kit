@@ -1800,6 +1800,12 @@ function becomesDone(from, to) {
 function visibleSubs(subs, showClosed) {
   return showClosed ? [...subs] : subs.filter((s3) => !isDone2(s3));
 }
+function bulkCancelSelectable(sub) {
+  return sub.status !== "canceled";
+}
+function bulkSelectAll(subs) {
+  return subs.filter((s3) => !isDone2(s3)).map((s3) => s3.key);
+}
 function subCounts(subs) {
   const closed = subs.filter(isDone2).length;
   return { open: subs.length - closed, total: subs.length, closed };
@@ -4612,6 +4618,65 @@ function ProjectBadge() {
 // src/header/SubIssues.tsx
 var import_obsidian8 = require("obsidian");
 
+// src/obsidian/sub-bulk.tsx
+function openSubBulkCancel(ctx, parentId) {
+  new PreactModal(ctx.app, "Cancel sub-issues", (close) => /* @__PURE__ */ u3(
+    SubBulkForm,
+    {
+      subs: ctx.store.index.subs(parentId),
+      onCancel: async (keys) => {
+        await ctx.writer.cancelSubs(keys);
+        close();
+      }
+    }
+  )).open();
+}
+function SubBulkForm(props) {
+  const { subs } = props;
+  const [selected, setSelected] = d2(/* @__PURE__ */ new Set());
+  const [error, setError] = d2(null);
+  const [saving, setSaving] = d2(false);
+  const all = bulkSelectAll(subs);
+  const allSelected = all.length > 0 && all.every((k3) => selected.has(k3));
+  const toggle2 = (key) => {
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setSelected(next);
+  };
+  const chosen = subs.filter((s3) => selected.has(s3.key));
+  const closed = chosen.filter((s3) => s3.status === "closed").length;
+  const run = () => {
+    setSaving(true);
+    setError(null);
+    props.onCancel(chosen.map((s3) => s3.key)).catch((e3) => setError(e3 instanceof Error ? e3.message : String(e3))).finally(() => setSaving(false));
+  };
+  return /* @__PURE__ */ u3("div", { class: "vt-sub-bulk", children: [
+    /* @__PURE__ */ u3("div", { class: "vt-sub-bulk-head", children: [
+      /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", disabled: all.length === 0, onClick: () => setSelected(allSelected ? /* @__PURE__ */ new Set() : new Set(all)), children: allSelected ? "Clear selection" : "Select all" }),
+      /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
+        chosen.length,
+        " selected"
+      ] })
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-label-list", children: subs.map((sub) => {
+      const selectable = bulkCancelSelectable(sub);
+      return /* @__PURE__ */ u3("label", { class: `vt-check${selectable ? "" : " is-disabled"}`, title: selectable ? void 0 : "Already canceled", children: [
+        /* @__PURE__ */ u3("input", { type: "checkbox", checked: selected.has(sub.key), disabled: !selectable, onChange: () => toggle2(sub.key), "aria-label": `Select ${sub.summary}` }),
+        /* @__PURE__ */ u3(StatusIcon, { status: sub.status }),
+        /* @__PURE__ */ u3("span", { class: "vt-sub-bulk-title", children: sub.summary })
+      ] });
+    }) }),
+    closed > 0 && /* @__PURE__ */ u3("div", { class: "vt-muted", children: [
+      "closed \u306E\u30B5\u30D6 ",
+      closed,
+      " \u4EF6\u3092 canceled \u306B\u3057\u307E\u3059\uFF08\u5B8C\u4E86\u306E\u8A18\u9332\u304C\u5909\u308F\u308A\u307E\u3059\uFF09"
+    ] }),
+    error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+    /* @__PURE__ */ u3("div", { class: "vt-form", children: /* @__PURE__ */ u3("button", { type: "button", class: "mod-warning", disabled: chosen.length === 0 || saving, onClick: run, children: `Cancel ${chosen.length} sub-issue${chosen.length === 1 ? "" : "s"}` }) })
+  ] });
+}
+
 // src/obsidian/sub-editor.tsx
 var import_obsidian6 = require("obsidian");
 
@@ -5342,6 +5407,7 @@ function SubIssues(props) {
         " / ",
         counts.total
       ] }),
+      counts.total > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-icon-button", "aria-label": "Cancel sub-issues in bulk", title: "Cancel sub-issues in bulk", onClick: () => openSubBulkCancel(ctx, issue.id), children: /* @__PURE__ */ u3(Icon, { name: "list-checks" }) }),
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       counts.total > 0 && /* @__PURE__ */ u3(
         Segmented,
@@ -9092,6 +9158,45 @@ var TaskWriter = class {
     const done = change;
     if (done === null) return;
     await this.afterSubStatusChange(sub, done.from, done.to, via);
+  }
+  /**
+   * 同じ親のサブをまとめて canceled にする（ADR-0244）。親の md は 1 回で書き、書く前に全部を検査する。
+   * 1 件でも移れない・ない・別の親なら何も書かない。statuslog・★・タイマーは書いた後に 1 件ずつ
+   */
+  async cancelSubs(keys) {
+    const subs = keys.map((key) => {
+      const sub = this.store.index.sub(key);
+      if (!sub) throw new Error(`\u30B5\u30D6\u304C\u3042\u308A\u307E\u305B\u3093: ${key}`);
+      return sub;
+    });
+    const first = subs[0];
+    if (!first) return;
+    if (subs.some((s3) => s3.parent !== first.parent)) throw new Error("\u4E00\u62EC\u3067\u5909\u3048\u3089\u308C\u308B\u306E\u306F\u540C\u3058\u89AA\u306E\u30B5\u30D6\u3060\u3051\u3067\u3059");
+    const patches = new Map(
+      subs.map((sub) => {
+        const reopenTo = this.store.index.reopenStatus(sub.key);
+        if (!canTransition(sub.status, "canceled", reopenTo)) throw new Error(transitionError(sub.status, "canceled", reopenTo));
+        return [sub.id, completeSubPatch("canceled", { status: "canceled" })];
+      })
+    );
+    const changes = [];
+    await this.app.vault.process(this.file(first.path), (text) => {
+      const siblings = parseSubIssues(first.path, first.parent, text, import_obsidian23.parseYaml).subs.map((s3) => {
+        const patch = patches.get(s3.id);
+        return patch ? { ...s3, ...patch, id: s3.id } : s3;
+      });
+      this.assertSubs(siblings, [...patches.keys()]);
+      let out = text;
+      changes.length = 0;
+      for (const sub of subs) {
+        const r3 = updateSubIssueText(first.path, first.parent, out, sub.id, patches.get(sub.id), import_obsidian23.parseYaml);
+        out = r3.text;
+        if (r3.before.status !== r3.after.status) changes.push({ sub, from: r3.before.status, to: r3.after.status });
+      }
+      return out;
+    });
+    this.store.refreshSoon();
+    for (const c3 of changes) await this.afterSubStatusChange(c3.sub, c3.from, c3.to);
   }
   /**
    * サブの status が変わった後の処理: statuslog に task と sub で書き、closed / canceled ならそのサブの記録中のタイマーを止める。

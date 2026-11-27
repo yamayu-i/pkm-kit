@@ -74,7 +74,7 @@ status のバッジの隣に、いちばんよく使う遷移のボタンを 1 �
 | closed | 消す | 消す | 消す | 残す | 残す | 残す | 止める |
 | canceled | 消す | 消す | 消す | 消す | 残す | 残す | 止める |
 
-- サブには `tickler`・`revisit` がない。ほかの列は issue と同じ（サブを canceled にすると期限も消す）
+- サブには `tickler`・`revisit` がない。ほかの列は issue と同じ（サブを canceled にすると期限も消す）。サブの期限と期間の扱いは ADR-0190 で置き換えた（canceled でも期間を残す）
 - `tickler` は open だけが持つ。Tickler は整理の先送りで、日付が来たら Inbox（open で判定する）に戻すので、in-progress・待ちに付けると Inbox にも Next にも出なくなる（Next は Tickler のあるものを外す）。open 以外にしたら消し、open 以外には付けない（someday に付けると open に戻る。ADR-0152）。画面の Tickler の操作は open・someday にだけ出し、MCP は付けようとするとエラーにする。open 以外に残っている `tickler` は lint が `stale-tickler` で知らせ、issue 画面では消すだけの欄にする
 - ★ は in-progress に戻しても戻らない（ADR-0184）
 - タイマーを始めたら、open・waiting・delegated のものを in-progress にする（サブは親を変えない。MCP の `start_timer` も同じ）
