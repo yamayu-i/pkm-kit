@@ -408,6 +408,77 @@ body.theme-dark {
 	color: var(--vt-on-secondary-container);
 }
 
+/* タイトルの横の編集アイコンボタン(ADR-0238) */
+.vt-tpl-note-title-row {
+	display: flex;
+	align-items: center;
+	gap: var(--vt-space-4);
+	min-width: 0;
+}
+
+/* 24px の丸いアイコンボタン。値より目立たせない(弱い文字の色)。ホバーがない端末でも常に出す */
+.vt-tpl-icon-button {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	border-radius: var(--vt-radius-full);
+	background: transparent;
+	box-shadow: none;
+	color: var(--vt-on-surface-variant);
+	cursor: pointer;
+}
+
+.vt-tpl-icon-button:hover {
+	background-image: linear-gradient(var(--vt-state-hover), var(--vt-state-hover));
+	color: var(--vt-on-surface);
+}
+
+.vt-tpl-icon-button .vt-tpl-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* その場の入力欄。表示と入れ替わる */
+.vt-tpl-edit {
+	display: flex;
+	flex: 1 1 16em;
+	flex-direction: column;
+	gap: var(--vt-space-4);
+	min-width: 0;
+}
+
+.vt-tpl-edit-input {
+	width: 100%;
+	border-radius: var(--vt-radius-s);
+	font-family: inherit;
+	font-size: inherit;
+}
+
+.vt-tpl-edit-input.is-title {
+	font-size: var(--vt-type-headline-small-size);
+	line-height: var(--vt-type-headline-small-line-height);
+	height: auto;
+}
+
+textarea.vt-tpl-edit-input {
+	resize: vertical;
+}
+
+.vt-tpl-edit-error {
+	color: var(--vt-error);
+	font-size: var(--vt-type-body-small-size);
+}
+
+/* 編集できる項目の、値がないときの表示 */
+.vt-tpl-value.is-empty {
+	color: var(--vt-on-surface-variant);
+}
+
 .vt-tpl-meta {
 	display: flex;
 	flex-direction: column;
@@ -555,7 +626,9 @@ body.theme-dark {
 .vt-tpl-modal input[type="text"],
 .vt-tpl-modal input[type="search"],
 .vt-tpl-modal textarea,
-.vt-tpl-modal select {
+.vt-tpl-modal select,
+.vt-tpl-note-header input[type="text"],
+.vt-tpl-note-header textarea {
 	border: 1px solid var(--vt-outline);
 	background-color: var(--vt-surface);
 	color: var(--vt-on-surface);
@@ -569,7 +642,9 @@ body.theme-dark {
 .vt-tpl-modal input[type="text"]:hover,
 .vt-tpl-modal input[type="search"]:hover,
 .vt-tpl-modal textarea:hover,
-.vt-tpl-modal select:hover {
+.vt-tpl-modal select:hover,
+.vt-tpl-note-header input[type="text"]:hover,
+.vt-tpl-note-header textarea:hover {
 	border-color: var(--vt-on-surface);
 	box-shadow: none;
 }
@@ -582,7 +657,9 @@ body.theme-dark {
 .vt-tpl-modal input[type="text"]:focus,
 .vt-tpl-modal input[type="search"]:focus,
 .vt-tpl-modal textarea:focus,
-.vt-tpl-modal select:focus {
+.vt-tpl-modal select:focus,
+.vt-tpl-note-header input[type="text"]:focus,
+.vt-tpl-note-header textarea:focus {
 	border-color: var(--vt-primary);
 	box-shadow: inset 0 0 0 1px var(--vt-primary);
 }

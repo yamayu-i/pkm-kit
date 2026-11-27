@@ -27,14 +27,18 @@ describe("buildHeader", () => {
 		const h = buildHeader(note("rag_basics.md", { type: "note", title: "RAG の基礎", tags: ["ai", "#llm"], created: "2026-11-01T09:00:00+09:00" }), ctx());
 		expect(h.title).toBe("RAG の基礎");
 		expect(h.weekday).toBeNull();
+		expect(h.titleEdit).toEqual({ field: "title", multiline: false, initial: "RAG の基礎" });
 		expect(h.items).toEqual([
-			{ label: "Tags", values: [{ text: "ai" }, { text: "llm" }] },
+			{ label: "Tags", values: [{ text: "ai" }, { text: "llm" }], edit: { field: "tags", multiline: false, initial: "ai, llm" } },
 			{ label: "Created", values: [{ text: "2026-11-01" }] },
 		]);
 	});
 
-	it("note: 値のない項目は出さない", () => {
-		expect(buildHeader(note("memo.md", { type: "note" }), ctx()).items).toEqual([]);
+	it("note: 編集できる項目（Tags）は値がなくても出す。表示だけの項目（Created）は出さない（ADR-0238）", () => {
+		const h = buildHeader(note("memo.md", { type: "note" }), ctx());
+		expect(h.items).toEqual([{ label: "Tags", values: [], edit: { field: "tags", multiline: false, initial: "" } }]);
+		// title がなければ、表示しているファイル名を初期値にする
+		expect(h.titleEdit).toEqual({ field: "title", multiline: false, initial: "memo" });
 	});
 
 	it("source: origin(http/https だけリンク)、取得日、取り込み先の wiki ページ", () => {
@@ -42,15 +46,27 @@ describe("buildHeader", () => {
 		const other = note("wiki/x.md", { type: "topic", sources: ["sources/b.md"] });
 		const h = buildHeader(note("sources/a.md", { type: "source", title: "記事", origin: "https://example.com/a", retrieved: "2026-10-31" }), ctx([wiki, other]));
 		expect(h.items).toEqual([
-			{ label: "Origin", values: [{ text: "https://example.com/a", url: "https://example.com/a" }] },
-			{ label: "Retrieved", values: [{ text: "2026-10-31" }] },
+			{
+				label: "Origin",
+				values: [{ text: "https://example.com/a", url: "https://example.com/a" }],
+				edit: { field: "origin", multiline: false, initial: "https://example.com/a" },
+			},
+			{ label: "Retrieved", values: [{ text: "2026-10-31" }], edit: { field: "retrieved", multiline: false, initial: "2026-10-31" } },
 			{ label: "Cited by", values: [{ text: "RAG", path: "wiki/rag.md" }] },
+		]);
+	});
+
+	it("source: テンプレートのまま（origin が空）でも Origin と Retrieved の行を出す（ADR-0238）", () => {
+		const h = buildHeader(note("sources/a.md", { type: "source", title: "記事", origin: null }), ctx());
+		expect(h.items).toEqual([
+			{ label: "Origin", values: [], edit: { field: "origin", multiline: false, initial: "" } },
+			{ label: "Retrieved", values: [], edit: { field: "retrieved", multiline: false, initial: "" } },
 		]);
 	});
 
 	it("source: http/https 以外の origin(javascript: など)はリンクにしない", () => {
 		const h = buildHeader(note("sources/a.md", { type: "source", origin: "javascript:alert(1)" }), ctx());
-		expect(h.items).toEqual([{ label: "Origin", values: [{ text: "javascript:alert(1)" }] }]);
+		expect(h.items[0]?.values).toEqual([{ text: "javascript:alert(1)" }]);
 	});
 
 	it("wiki のページ: 出典の一覧(Vault にあればタイトル、URL はリンク)と、被リンクの数", () => {
@@ -68,13 +84,22 @@ describe("buildHeader", () => {
 					{ text: "https://example.com", url: "https://example.com" },
 					{ text: "sources/gone.md" },
 				],
+				edit: { field: "sources", multiline: true, initial: "sources/a.md\nhttps://example.com\nsources/gone.md" },
 			},
 			{ label: "Backlinks", values: [{ text: "3" }] },
 		]);
 	});
 
-	it("wiki のページ: 出典も被リンクもなければ項目なし", () => {
-		expect(buildHeader(note("wiki/t.md", { type: "topic" }), ctx()).items).toEqual([]);
+	it("wiki のページ: 出典も被リンクもなければ、編集できる Sources の行だけ", () => {
+		expect(buildHeader(note("wiki/t.md", { type: "topic" }), ctx()).items).toEqual([{ label: "Sources", values: [], edit: { field: "sources", multiline: true, initial: "" } }]);
+	});
+
+	it("daily・対象外の type・型なしには、編集の指定を付けない（ADR-0238）", () => {
+		for (const n of [note("daily/2026/11/2026-11-01.md", { type: "daily" }), note("daily/memo.md", { type: "daily" }), note("wiki/feedback.md", { type: "feedback" }), note("memo.md")]) {
+			const h = buildHeader(n, ctx());
+			expect(h.titleEdit).toBeUndefined();
+			expect(h.items.every((it) => it.edit === undefined)).toBe(true);
+		}
 	});
 
 	it("Properties 欄を隠すのは、専用のヘッダーを持つ type(daily / note / source / wiki)だけ", () => {

@@ -88,6 +88,25 @@ for (const theme of ["light", "dark"]) {
 				const sub = await page.locator(`${root} .vt-subissue-list .vt-play`).evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
 				if (JSON.stringify(sub) !== JSON.stringify(["Open Timeline"])) problems.push(`${where} ${root}: 期間の外のサブの操作 ${JSON.stringify(sub)} != ["Open Timeline"]`);
 			}
+			// サブのカード（ADR-0239）: 題は 1 か所だけ。開いたカードの題の横に「Edit title」、押すと題の行が入力欄、Escape で戻る
+			if (screen === "forms") {
+				const labels = await page.locator(`${root} .vt-sub-card .vt-subissue-form .vt-text-field > span`).allTextContents();
+				if (labels.includes("Summary")) problems.push(`${where} ${root}: 開いたサブのカードに Summary の欄が残っている`);
+				const edits = page.locator(`${root} .vt-sub-card .vt-subissue-row button[aria-label="Edit title"]`);
+				if ((await edits.count()) !== 2) problems.push(`${where} ${root}: Edit title のボタンが開いたカードの数（2）でない: ${await edits.count()}`);
+				if ((await edits.count()) > 0) {
+					await edits.first().click();
+					// Preact の描き直しと useEffect（フォーカス）は少し後に走るので、待ってから確かめる
+					const selector = `${root} .vt-sub-card .vt-subissue-row input.vt-subissue-title-input`;
+					const focused = await page
+						.waitForFunction((sel) => document.activeElement === document.querySelector(sel), selector, { timeout: 2000 })
+						.then(() => true, () => false);
+					if (!focused) problems.push(`${where} ${root}: Edit title を押しても題の入力欄にフォーカスが入らない`);
+					await page.keyboard.press("Escape");
+					const closed = await page.locator(selector).waitFor({ state: "detached", timeout: 2000 }).then(() => true, () => false);
+					if (!closed) problems.push(`${where} ${root}: Escape で題の入力欄が閉じない`);
+				}
+			}
 			for (const p of await page.evaluate(auditInPage, { rootSelector: root, targetMin })) {
 				problems.push(`${where} ${root}: [${p.rule}] ${p.where}: ${p.message}`);
 			}
