@@ -123,6 +123,6 @@
 | [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
 | [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
-| [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
 | [0247](0247-zero-estimate-and-delegated.md) | 承認（ADR-0034 の「0 以下は受け付けない」を一部置換） | estimated の 0 の入力と、delegated を未見積もりに数えないこと |
+| [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
 <!-- adr-index:end -->
