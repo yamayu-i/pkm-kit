@@ -955,6 +955,7 @@ function describeRepeat(rule) {
 // src/core/schema.ts
 var SCHEMA_VERSION = 1;
 var STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"];
+var awaitsEstimate = (x2) => x2.estimated === null && x2.status !== "delegated";
 var PRIORITIES = ["high", "mid", "low", "chore"];
 var STATUS_DETAIL_MAX = 20;
 var ROUTINE_MISSED = ["carry"];
@@ -1358,7 +1359,7 @@ function newRoutineContent(id, summary, repeat, created, extra = {}) {
   const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
   if (extra.start) lines.push(`start: ${extra.start}`);
   lines.push("active: true");
-  if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+  if (extra.estimated != null) lines.push(`estimated: ${extra.estimated}`);
   lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## \u624B\u9806", "", "- [ ] ", "");
   return lines.join("\n");
 }
@@ -2780,8 +2781,7 @@ var UNIT_MINUTES = { d: MINUTES_PER_DAY, h: 60, m: 1 };
 function parseDurationInput(input) {
   const text = input.trim().toLowerCase();
   if (/^\d+(?:\.\d+)?$/.test(text)) {
-    const min2 = Math.round(Number(text));
-    return min2 > 0 ? min2 : null;
+    return Math.round(Number(text));
   }
   if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
   const seen = /* @__PURE__ */ new Set();
@@ -2792,8 +2792,7 @@ function parseDurationInput(input) {
     seen.add(unit);
     total += Number(m3[1]) * UNIT_MINUTES[unit];
   }
-  const min = Math.round(total);
-  return min > 0 ? min : null;
+  return Math.round(total);
 }
 function formatDateTimeValue(ms) {
   const d3 = new Date(ms);
@@ -3067,12 +3066,12 @@ function projectGroups(index, showClosed) {
 }
 function effectiveEstimates(parent, subs) {
   const out = /* @__PURE__ */ new Map();
-  const candidates = subs.filter((s3) => s3.estimated === null && !isDone2(s3));
+  const candidates = subs.filter((s3) => awaitsEstimate(s3) && !isDone2(s3));
   const rest = unallocatedBudget(parent, subs) ?? 0;
   const share = candidates.length > 0 && rest > 0 ? rest / candidates.length : null;
   for (const s3 of subs) {
     if (s3.estimated !== null) out.set(s3.key, { minutes: s3.estimated, source: "sub" });
-    else out.set(s3.key, share !== null && !isDone2(s3) ? { minutes: share, source: "budget" } : null);
+    else out.set(s3.key, share !== null && awaitsEstimate(s3) && !isDone2(s3) ? { minutes: share, source: "budget" } : null);
   }
   return out;
 }
@@ -3126,7 +3125,7 @@ function loadItems(groups, index) {
     const est = effectiveEstimates(g2.issue, index.subs(g2.issue.id));
     for (const s3 of g2.subs) {
       const bar = barOf(s3);
-      if (!bar || isDone2(s3)) continue;
+      if (!bar || isDone2(s3) || s3.status === "delegated" && s3.estimated === null) continue;
       out.push({ key: s3.key, ...bar, minutes: est.get(s3.key)?.minutes ?? null });
     }
   }
@@ -3148,7 +3147,7 @@ function sizeOf(minutes) {
 }
 var ESTIMATE_HORIZON_DAYS = 14;
 function needsEstimate(sub, today) {
-  if (isDone2(sub) || sub.estimated !== null) return false;
+  if (isDone2(sub) || !awaitsEstimate(sub)) return false;
   const bar = barOf(sub);
   if (!bar) return false;
   return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
@@ -8431,7 +8430,7 @@ var TaskSettingTab = class extends import_obsidian18.PluginSettingTab {
     ]) {
       new import_obsidian18.Setting(this.containerEl).setName(name).setDesc("Projects \u306E\u8CA0\u8377\u306E\u884C\u3067\u3001\u898B\u7A4D\u3082\u308A\u306E\u5408\u8A08\u3068\u6BD4\u3079\u308B\u6642\u9593\u3067\u3059\uFF08\u4F8B: 6h\u30014h30m\u30010\uFF09").addText(
         (t3) => t3.setValue(formatMinutes(this.settings.capacity[key])).onChange(async (v3) => {
-          const minutes = v3.trim() === "0" ? 0 : parseDurationInput(v3);
+          const minutes = parseDurationInput(v3);
           if (minutes === null || minutes > 24 * 60) return;
           this.settings.capacity = { ...this.settings.capacity, [key]: minutes };
           await this.save();
@@ -11565,7 +11564,7 @@ function RoutineItem(props) {
           /* @__PURE__ */ u3("span", { class: "vt-routine-summary", children: r3.summary || "(no summary)" }),
           /* @__PURE__ */ u3("span", { class: "vt-muted", children: [
             r3.repeat ? describeRepeat(r3.repeat) : "Invalid repeat",
-            r3.estimated ? ` \xB7 ${formatMinutes(r3.estimated)}` : ""
+            r3.estimated !== null ? ` \xB7 ${formatMinutes(r3.estimated)}` : ""
           ] })
         ] }),
         routineOccursOn(r3, props.today) && /* @__PURE__ */ u3("span", { class: "vt-chip-mini is-today", children: "Today" }),
