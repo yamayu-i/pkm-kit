@@ -37,7 +37,8 @@ export function installNoteHeaders(plugin: Plugin): void {
 		},
 		activeView: () => app.workspace.getActiveViewOfType(MarkdownView),
 		model,
-		draw: (host, m, view) => render(h(NoteHeader, { app, model: m, path: view.file?.path ?? null }), host),
+		// ノートが変わったら作り直す（編集中の欄を次のノートに持ち越さない。ADR-0238）
+		draw: (host, m, view) => render(h(NoteHeader, { key: view.file?.path ?? "", app, model: m, path: view.file?.path ?? null }), host),
 		clear: (host) => render(null, host),
 		resized: remeasureEditor,
 	});

@@ -2270,7 +2270,8 @@ function installNoteHeaders(plugin) {
     },
     activeView: () => app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView),
     model,
-    draw: (host, m3, view) => R(k(NoteHeader, { app, model: m3, path: view.file?.path ?? null }), host),
+    // ノートが変わったら作り直す（編集中の欄を次のノートに持ち越さない。ADR-0238）
+    draw: (host, m3, view) => R(k(NoteHeader, { key: view.file?.path ?? "", app, model: m3, path: view.file?.path ?? null }), host),
     clear: (host) => R(null, host),
     resized: remeasureEditor
   });
