@@ -18,3 +18,16 @@ export function subsWithCalendarError(issue: Pick<Issue, "id" | "scheduled">): s
 	if (issue.scheduled === null) return null;
 	return `${issue.id}: Calendar の日を持つ issue にはサブイシューを足せません（ADR-0203）。先に Calendar の日（scheduled）を消してください`;
 }
+
+type SubDates = { start: LocalDate | null; end: LocalDate | null; scheduled: LocalDate | null };
+
+/**
+ * サブは Calendar の日（scheduled）か期間（start・end）のどちらか一方だけを持つ（ADR-0255）。
+ * patch が日付に触れ、書いた後に両方を持つならエラーの文。日付に触れない変更と、片方を消す変更は止めない（両方を持つ古いサブは lint が知らせる）
+ */
+export function subCalendarPeriodError(before: SubDates | null, patch: Partial<SubDates>): string | null {
+	if (patch.start === undefined && patch.end === undefined && patch.scheduled === undefined) return null;
+	const after = (k: keyof SubDates) => (patch[k] !== undefined ? patch[k]! : (before?.[k] ?? null));
+	if (after("scheduled") === null || (after("start") === null && after("end") === null)) return null;
+	return "サブは Calendar の日と期間を同時に持てません（ADR-0255）。どちらか一方を外してください。ガントでは 1 日の期間と Calendar を切り替えられます";
+}

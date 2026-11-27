@@ -28,7 +28,7 @@ PKM の MCP サーバー `pkm`（`.kit/src/packages/pkm-task/cli/mcp.ts`。ADR-0
 
 最初に `task_get_overview` を 1 回呼ぶ。個別のファイルを先に読まない。
 
-- `board`: 今日のボードに載っている issue・サブイシュー（`subs`）・routine、未完了、★（`stars`。今日の最重要、4 件まで）。欄ごとの並び（Working / Top 4 / Up next / Watch / Done）は `task_get_board` の `lanes` で見る。Watch（`watch`）はボードに載っているかによらず、waiting / delegated の issue とサブすべて
+- `board`: 今日のボードに載っている issue・サブイシュー（`subs`）・routine、未完了、★（`stars`。今日の最重要、4 件まで）。欄ごとの並び（Calendar / Working / Top 4 / Up next / Watch / Done）は `task_get_board` の `lanes` で見る。Calendar（`calendar`）は今日が Calendar の日で、まだ手を付けていないもの（★ も並べ替えもできない。ADR-0255）。Watch（`watch`）はボードに載っているかによらず、waiting / delegated の issue とサブすべて
 - `workload`: 未完了の見積もり合計（`unfinishedEstimatedMinutes`）、未見積もり件数（`unestimatedCount`）、使える時間との比較（`overloadedByMinutes`、`loadRatio`）
 - `dead` / `caution`: 期限切れ・期限間近の issue
 - `scheduledNotOnBoard`: 今日が Calendar の日（`scheduled`。その日にやらなければならない日。ADR-0152）だがまだボードに載っていない issue の ID とサブイシューの合成キー（Obsidian で Today を開くと自動で載る。その日にボードから外したものは含まない）

@@ -2,7 +2,7 @@ import { addDays, diffDays, weekdayOf, type LocalDate } from "./dates";
 import type { TaskIndex } from "./index";
 import { awaitsEstimate, type Issue } from "./schema";
 import { isDone, visibleSubs, type SubIssue } from "./sub-issue";
-import { barOf } from "./timeline";
+import { daysOf } from "./timeline";
 
 /**
  * Project を横断するタイムライン（Projects）と負荷の行、見積もりのサイズ（ADR-0231）。
@@ -35,7 +35,7 @@ export function projectGroups(index: TaskIndex, showClosed: boolean): ProjectGro
 	for (const issue of index.issues.values()) {
 		if (issue.status === "closed" || issue.status === "canceled" || !index.isProject(issue.id)) continue;
 		const all = index.subs(issue.id);
-		const firstEnd = all.filter((s) => !isDone(s)).reduce<LocalDate | null>((acc, s) => earlier(acc, barOf(s)?.end ?? null), null);
+		const firstEnd = all.filter((s) => !isDone(s)).reduce<LocalDate | null>((acc, s) => earlier(acc, daysOf(s)?.end ?? null), null);
 		groups.push({ issue, subs: visibleSubs(all, showClosed), closed: all.filter(isDone).length, firstEnd });
 	}
 	groups.sort((a, b) => compareNullable(projectDue(a.issue), projectDue(b.issue)) || compareNullable(a.firstEnd, b.firstEnd) || ID_NUM(a.issue.id) - ID_NUM(b.issue.id));
@@ -137,13 +137,13 @@ export function columnLoad(load: ReadonlyMap<LocalDate, DayLoad>, from: LocalDat
 	return { minutes, capacity, unknown: unknown.size, over: minutes > capacity };
 }
 
-/** 群のサブから、負荷に数える項目（閉じていない・期間がある）。見積もりのない delegated は自分の負荷ではないので除く（ADR-0247） */
+/** 群のサブから、負荷に数える項目（閉じていない・期間か Calendar の日がある。Calendar はその 1 日。ADR-0255）。見積もりのない delegated は自分の負荷ではないので除く（ADR-0247） */
 export function loadItems(groups: readonly ProjectGroup[], index: TaskIndex): LoadItem[] {
 	const out: LoadItem[] = [];
 	for (const g of groups) {
 		const est = effectiveEstimates(g.issue, index.subs(g.issue.id));
 		for (const s of g.subs) {
-			const bar = barOf(s);
+			const bar = daysOf(s);
 			if (!bar || isDone(s) || (s.status === "delegated" && s.estimated === null)) continue;
 			out.push({ key: s.key, ...bar, minutes: est.get(s.key)?.minutes ?? null });
 		}
@@ -177,10 +177,10 @@ export function sizeOf(minutes: number | null): SizeLabel | null {
 /** 近いうちの見積もりのないサブの印を出す日数 */
 export const ESTIMATE_HORIZON_DAYS = 14;
 
-/** 閉じていない・見積もりを待っている（delegated を除く。ADR-0247）・期間が今日から 14 日のうちにかかるサブ（ADR-0231） */
+/** 閉じていない・見積もりを待っている（delegated を除く。ADR-0247）・期間か Calendar の日が今日から 14 日のうちにかかるサブ（ADR-0231, 0255） */
 export function needsEstimate(sub: SubIssue, today: LocalDate): boolean {
 	if (isDone(sub) || !awaitsEstimate(sub)) return false;
-	const bar = barOf(sub);
+	const bar = daysOf(sub);
 	if (!bar) return false;
 	return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
 }

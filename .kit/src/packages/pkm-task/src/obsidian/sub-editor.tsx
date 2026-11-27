@@ -94,14 +94,22 @@ export function subDateRules(ctx: TaskContext, sub: SubIssue): { lock: string | 
 	};
 }
 
+/** Calendar の日と期間の片方があるときに、もう片方の欄に出す理由（ADR-0255） */
+export const CALENDAR_BLOCKS_PERIOD = "Calendar の日があるサブは期間を持てません。Calendar を外すと設定できます（ガントでは 1 日の期間に切り替えられます）";
+export const PERIOD_BLOCKS_CALENDAR = "期間があるサブは Calendar の日を持てません。期間を外すと設定できます（ガントでは 1 日の期間を Calendar に切り替えられます）";
+
 /**
  * サブの日付の欄（ADR-0245）: Period（start と end を 1 つのダイアログで選ぶ）と Calendar。Edit のダイアログと本文のカードで共有する。
- * Inbox の Project では Period を押せなくし、理由を title に出す（ADR-0210）
+ * Inbox の Project では Period を押せなくし、理由を title に出す（ADR-0210）。Calendar と Period はどちらか一方（ADR-0255）
  */
 export function SubDateFields(props: { ctx: TaskContext; sub: SubIssue; value: Pick<SubIssue, "start" | "end" | "scheduled">; onChange: (patch: Partial<Pick<SubIssue, "start" | "end" | "scheduled">>) => void }) {
 	const { ctx, sub, value } = props;
 	const rules = subDateRules(ctx, sub);
 	const period = formatPeriod(value);
+	// Calendar の日と期間はどちらか一方（ADR-0255）。片方があれば、もう片方を押せなくする。両方を持つ古いサブは、どちらかを外せるように両方押せる
+	const hasPeriod = value.start !== null || value.end !== null;
+	const periodBlocked = value.scheduled !== null && !hasPeriod ? CALENDAR_BLOCKS_PERIOD : null;
+	const calendarBlocked = hasPeriod && value.scheduled === null ? PERIOD_BLOCKS_CALENDAR : null;
 	return (
 		<>
 			<div class="vt-text-field">
@@ -109,8 +117,8 @@ export function SubDateFields(props: { ctx: TaskContext; sub: SubIssue; value: P
 				<button
 					type="button"
 					class={`vt-field-chip${period ? "" : " is-placeholder"}`}
-					disabled={rules.lock !== null}
-					title={rules.lock ?? undefined}
+					disabled={rules.lock !== null || periodBlocked !== null}
+					title={rules.lock ?? periodBlocked ?? undefined}
 					onClick={() => pickSubPeriod(ctx, { start: value.start, end: value.end }, (p) => props.onChange(p), rules.validatePeriod)}
 				>
 					<Icon name="calendar-range" />
@@ -119,7 +127,13 @@ export function SubDateFields(props: { ctx: TaskContext; sub: SubIssue; value: P
 			</div>
 			<div class="vt-text-field">
 				<span>Calendar</span>
-				<button type="button" class={`vt-field-chip${value.scheduled ? "" : " is-placeholder"}`} onClick={() => pickSubDate(ctx, "Calendar", value.scheduled, (v) => props.onChange({ scheduled: v }))}>
+				<button
+					type="button"
+					class={`vt-field-chip${value.scheduled ? "" : " is-placeholder"}`}
+					disabled={calendarBlocked !== null}
+					title={calendarBlocked ?? undefined}
+					onClick={() => pickSubDate(ctx, "Calendar", value.scheduled, (v) => props.onChange({ scheduled: v }))}
+				>
 					<Icon name="calendar" />
 					{value.scheduled ? formatShortDate(value.scheduled) : "Not set"}
 				</button>

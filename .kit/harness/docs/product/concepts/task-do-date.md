@@ -6,16 +6,16 @@
 
 ## 状態
 
-`scheduled`: 日付 1 つ。issue もサブイシューも持てる。
+`scheduled`: 日付 1 つ。issue もサブイシューも持てる。サブは Calendar の日か期間（`start`・`end`）のどちらか一方だけを持つ（ADR-0255）。
 
 ## 操作
 
-Organize の「Calendar」（日付を 1 つ選ぶ。整理済みにもする）、issue 画面の 7 日のセル（押すとその日、もう一度押すと消す）と「calendar >」、サブの編集の Calendar、Scheduled の表のセル、Today の Missed とボードの持ち越しの「Move date」（選び直す）と「Back to Next」（消して Next に戻す）、MCP の `scheduled`。
+Organize の「Calendar」（日付を 1 つ選ぶ。整理済みにもする）、issue 画面の 7 日のセル（押すとその日、もう一度押すと消す）と「calendar >」、サブの編集の Calendar、Timeline の印（ドラッグ）と 1 日の棒との切り替え、Scheduled の表のセル、Today の Missed とボードの持ち越しの「Move date」（選び直す）と「Back to Next」（消して Next に戻す）、MCP の `scheduled`。
 
 ## 使い方の筋道
 
-今日が Calendar の日の issue とサブイシューは、Today を開くと自動で今日のボードに載る。その日にボードから外したものは載せ直さない。過ぎて片付いていないものは、Today の Calendar の段階の「Missed」に、日を選び直すか Next に戻すまで出る。Calendar の日があるものは Next に入らない。サブイシューを持つ issue は Calendar の日を持たない（何日もかかる作業はサブの期間で計画する。ADR-0203）。
+今日が Calendar の日の issue とサブイシューは、Today を開くと自動で今日のボードに載り、いちばん上の Calendar の欄に出る。その日にボードから外したものは載せ直さない。過ぎて片付いていないものは、Today の Calendar の段階の「Missed」に、日を選び直すか Next に戻すまで出る。Calendar の日があるものは Next に入らない。サブイシューを持つ issue は Calendar の日を持たない（何日もかかる作業はサブの期間で計画する。ADR-0203）。
 
 ## 根拠
 
-[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)
+[ADR-0018](../../../../src/docs/adr/0018-list-edit-routine-screen.md)、[ADR-0032](../../../../src/docs/adr/0032-action-names-soft-deadline-board-delegate.md)、[ADR-0034](../../../../src/docs/adr/0034-duration-input-auto-board-sticky-groups.md)、[ADR-0152](../../../../src/docs/adr/0152-calendar-and-tickler.md)、[ADR-0255](../../../../src/docs/adr/0255-calendar-lane-and-sub-calendar-or-period.md)

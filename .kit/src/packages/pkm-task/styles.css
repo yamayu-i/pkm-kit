@@ -1623,6 +1623,15 @@ button.vt-badge:disabled::after {
 	transition: border-color var(--vt-duration-short3) var(--vt-easing-standard);
 }
 
+/* 今日の Calendar（ADR-0255）: その日にやらなければならないもの。いちばん上で primary の枠 */
+.vt-lane.is-calendar {
+	border-color: var(--vt-primary);
+}
+
+.vt-lane.is-calendar .vt-lane-name {
+	color: var(--vt-primary);
+}
+
 /* 作業中: 記録中のカードと同じ緑の枠 */
 .vt-lane.is-working {
 	border-color: var(--vt-green);
@@ -3763,14 +3772,45 @@ body.is-mobile .vt-toast {
 }
 
 /* 予定日の点と、期限の印 */
-.vt-timeline-dot {
+/*
+ * サブの Calendar の日（ADR-0255）: その日のマスの菱形。棒（期間）と形で分け、色は棒と同じ status の色。
+ * 押せる大きさは棒と同じ高さ 28px の正方形で、その日のマスの中央に置く（位置は SubTimeline.tsx）。ドラッグで日を動かす
+ */
+.vt-timeline-calendar {
 	position: absolute;
-	top: 12px;
-	width: 8px;
-	height: 8px;
-	transform: translateX(-50%);
-	border-radius: var(--vt-radius-full);
-	background: var(--vt-on-surface-variant);
+	top: 4px;
+	z-index: 2;
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: transparent;
+	cursor: grab;
+	touch-action: none;
+}
+
+.vt-timeline-calendar::before {
+	content: "";
+	width: 12px;
+	height: 12px;
+	transform: rotate(45deg);
+	border-radius: var(--vt-radius-xs);
+	background: var(--vt-dot);
+}
+
+.vt-timeline-calendar.is-dragging {
+	cursor: grabbing;
+}
+
+.vt-timeline-calendar.is-dragging::before {
+	box-shadow: var(--vt-elevation-3);
+}
+
+.vt-timeline-calendar:focus-visible {
+	outline: 2px solid var(--vt-primary);
+	outline-offset: 0;
+	border-radius: var(--vt-radius-s);
 }
 
 /* 依存の矢印。遅れ（依存先の end より前に始まる）は error の色 */

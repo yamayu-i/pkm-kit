@@ -1,4 +1,4 @@
-import { calendarWithSubsError, subsWithCalendarError } from "../core/calendar-subs";
+import { calendarWithSubsError, subCalendarPeriodError, subsWithCalendarError } from "../core/calendar-subs";
 import { somedayClears, subPeriodError, ticklerWithSubsError } from "../core/project-periods";
 import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
@@ -247,9 +247,12 @@ export class TaskWriter {
 
 	/**
 	 * サブの期間を書いてよいか（ADR-0210）。Inbox の Project のサブには入れない・変えない。Tickler より前に始めない。
+	 * Calendar の日と期間を同時に持たせない（ADR-0255）。
 	 * 通らなければ例外。本文のカード（エディタの文書に書く。ADR-0161）も、書く前にこれを呼ぶ
 	 */
-	assertSubPeriod(parentId: string, before: { start: LocalDate | null; end: LocalDate | null } | null, patch: SubIssuePatch): void {
+	assertSubPeriod(parentId: string, before: { start: LocalDate | null; end: LocalDate | null; scheduled: LocalDate | null } | null, patch: SubIssuePatch): void {
+		const both = subCalendarPeriodError(before, patch);
+		if (both) throw new Error(both);
 		if (patch.start === undefined && patch.end === undefined) return;
 		const parent = this.store.index.issues.get(parentId);
 		if (!parent) return;

@@ -1614,6 +1614,9 @@ function parseBlock(path, parent, raw, order, parseYaml5) {
   if (sub.start === null !== (sub.end === null)) {
     extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
   }
+  if (sub.scheduled !== null && (sub.start !== null || sub.end !== null)) {
+    extra.push({ severity: "warning", path, code: "sub-calendar-and-period", message: "Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3068\u671F\u9593\uFF08start\u30FBend\uFF09\u306E\u4E21\u65B9\u304C\u3042\u308A\u307E\u3059\u3002\u3069\u3061\u3089\u304B\u4E00\u65B9\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0255\u3001\u79FB\u884C 0255\uFF09" });
+  }
   return { sub, problems: prefixed([...extra, ...r3.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml5) {
@@ -2880,6 +2883,18 @@ function barOf(sub) {
   if (a3 === null || b2 === null) return null;
   return a3 <= b2 ? { start: a3, end: b2 } : { start: b2, end: a3 };
 }
+function periodBarOf(sub) {
+  return sub.scheduled !== null ? null : barOf(sub);
+}
+function daysOf(sub) {
+  return sub.scheduled !== null ? { start: sub.scheduled, end: sub.scheduled } : barOf(sub);
+}
+function timelineToggle(sub) {
+  if (sub.scheduled !== null) return { scheduled: null, start: sub.scheduled, end: sub.scheduled };
+  const bar = barOf(sub);
+  if (bar === null || bar.start !== bar.end) return null;
+  return { scheduled: bar.start, start: null, end: null };
+}
 function dragBar(bar, mode, delta) {
   if (mode === "move") return { start: addDays(bar.start, delta), end: addDays(bar.end, delta) };
   if (mode === "start") {
@@ -2890,7 +2905,7 @@ function dragBar(bar, mode, delta) {
   return { start: bar.start, end: end < bar.start ? bar.start : end };
 }
 function dependencyArrows(subs) {
-  const bars = new Map(subs.map((s3) => [s3.id, barOf(s3)]));
+  const bars = new Map(subs.map((s3) => [s3.id, periodBarOf(s3)]));
   const out = [];
   for (const s3 of subs) {
     const to = bars.get(s3.id);
@@ -3026,7 +3041,7 @@ function canConnect(subs, from, to) {
   const byId = new Map(subs.map((s3) => [s3.id, s3]));
   const a3 = byId.get(from);
   const b2 = byId.get(to);
-  if (!a3 || !b2 || !barOf(a3) || !barOf(b2)) return false;
+  if (!a3 || !b2 || !periodBarOf(a3) || !periodBarOf(b2)) return false;
   if (b2.dependsOn.includes(from)) return false;
   const seen = /* @__PURE__ */ new Set();
   const stack2 = [...a3.dependsOn];
@@ -3058,7 +3073,7 @@ function projectGroups(index, showClosed) {
   for (const issue of index.issues.values()) {
     if (issue.status === "closed" || issue.status === "canceled" || !index.isProject(issue.id)) continue;
     const all = index.subs(issue.id);
-    const firstEnd = all.filter((s3) => !isDone2(s3)).reduce((acc, s3) => earlier(acc, barOf(s3)?.end ?? null), null);
+    const firstEnd = all.filter((s3) => !isDone2(s3)).reduce((acc, s3) => earlier(acc, daysOf(s3)?.end ?? null), null);
     groups.push({ issue, subs: visibleSubs(all, showClosed), closed: all.filter(isDone2).length, firstEnd });
   }
   groups.sort((a3, b2) => compareNullable(projectDue(a3.issue), projectDue(b2.issue)) || compareNullable(a3.firstEnd, b2.firstEnd) || ID_NUM(a3.issue.id) - ID_NUM(b2.issue.id));
@@ -3124,7 +3139,7 @@ function loadItems(groups, index) {
   for (const g2 of groups) {
     const est = effectiveEstimates(g2.issue, index.subs(g2.issue.id));
     for (const s3 of g2.subs) {
-      const bar = barOf(s3);
+      const bar = daysOf(s3);
       if (!bar || isDone2(s3) || s3.status === "delegated" && s3.estimated === null) continue;
       out.push({ key: s3.key, ...bar, minutes: est.get(s3.key)?.minutes ?? null });
     }
@@ -3148,7 +3163,7 @@ function sizeOf(minutes) {
 var ESTIMATE_HORIZON_DAYS = 14;
 function needsEstimate(sub, today) {
   if (isDone2(sub) || !awaitsEstimate(sub)) return false;
-  const bar = barOf(sub);
+  const bar = daysOf(sub);
   if (!bar) return false;
   return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);
 }
@@ -4348,20 +4363,21 @@ function isSettled(board, card) {
   const status = cardStatus(board, card);
   return !isActive({ status }) || isDoneStatus(status) || board.carried.includes(card.key);
 }
-function laneOf(index, board, card) {
+function laneOf(index, board, card, date) {
   if (card.kind === "routine") return "routine";
   if (index.running(card.key).length > 0) return "working";
   if (isSettled(board, card)) return "done";
   const status = cardStatus(board, card);
   if (isWatchStatus(status)) return "watch";
+  if ((card.kind === "issue" ? card.issue.scheduled : card.sub.scheduled) === date) return "calendar";
   if (board.stars.includes(card.key)) return "top";
   return "next";
 }
 function boardLanes(index, date, board) {
-  const lanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
+  const lanes = { calendar: [], working: [], top: [], routine: [], next: [], watch: [], done: [] };
   const order = index.order(date);
   for (const card of sortByOrder(boardCards(index, date, board), (c3) => c3.key, order)) {
-    const lane = laneOf(index, board, card);
+    const lane = laneOf(index, board, card, date);
     if (lane !== "watch") lanes[lane].push(card);
   }
   lanes.watch = watchCards(index, new Set(lanes.working.map((c3) => c3.key)));
@@ -4369,6 +4385,7 @@ function boardLanes(index, date, board) {
   lanes.working.sort((a3, b2) => startedAt(a3) - startedAt(b2));
   const added = boardCards(index, date, board).map((c3) => c3.key);
   lanes.done.sort((a3, b2) => added.indexOf(a3.key) - added.indexOf(b2.key));
+  lanes.calendar.sort((a3, b2) => added.indexOf(a3.key) - added.indexOf(b2.key));
   return lanes;
 }
 function watchCards(index, exclude = /* @__PURE__ */ new Set()) {
@@ -4884,10 +4901,15 @@ function subDateRules(ctx, sub) {
     validatePeriod: (period) => parent ? subPeriodError(parent, planned, { start: sub.start, end: sub.end }, period, today) : null
   };
 }
+var CALENDAR_BLOCKS_PERIOD = "Calendar \u306E\u65E5\u304C\u3042\u308B\u30B5\u30D6\u306F\u671F\u9593\u3092\u6301\u3066\u307E\u305B\u3093\u3002Calendar \u3092\u5916\u3059\u3068\u8A2D\u5B9A\u3067\u304D\u307E\u3059\uFF08\u30AC\u30F3\u30C8\u3067\u306F 1 \u65E5\u306E\u671F\u9593\u306B\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059\uFF09";
+var PERIOD_BLOCKS_CALENDAR = "\u671F\u9593\u304C\u3042\u308B\u30B5\u30D6\u306F Calendar \u306E\u65E5\u3092\u6301\u3066\u307E\u305B\u3093\u3002\u671F\u9593\u3092\u5916\u3059\u3068\u8A2D\u5B9A\u3067\u304D\u307E\u3059\uFF08\u30AC\u30F3\u30C8\u3067\u306F 1 \u65E5\u306E\u671F\u9593\u3092 Calendar \u306B\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059\uFF09";
 function SubDateFields(props) {
   const { ctx, sub, value } = props;
   const rules = subDateRules(ctx, sub);
   const period = formatPeriod(value);
+  const hasPeriod = value.start !== null || value.end !== null;
+  const periodBlocked = value.scheduled !== null && !hasPeriod ? CALENDAR_BLOCKS_PERIOD : null;
+  const calendarBlocked = hasPeriod && value.scheduled === null ? PERIOD_BLOCKS_CALENDAR : null;
   return /* @__PURE__ */ u3(S, { children: [
     /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
       /* @__PURE__ */ u3("span", { children: "Period" }),
@@ -4896,8 +4918,8 @@ function SubDateFields(props) {
         {
           type: "button",
           class: `vt-field-chip${period ? "" : " is-placeholder"}`,
-          disabled: rules.lock !== null,
-          title: rules.lock ?? void 0,
+          disabled: rules.lock !== null || periodBlocked !== null,
+          title: rules.lock ?? periodBlocked ?? void 0,
           onClick: () => pickSubPeriod(ctx, { start: value.start, end: value.end }, (p3) => props.onChange(p3), rules.validatePeriod),
           children: [
             /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
@@ -4908,10 +4930,20 @@ function SubDateFields(props) {
     ] }),
     /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
       /* @__PURE__ */ u3("span", { children: "Calendar" }),
-      /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${value.scheduled ? "" : " is-placeholder"}`, onClick: () => pickSubDate(ctx, "Calendar", value.scheduled, (v3) => props.onChange({ scheduled: v3 })), children: [
-        /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-        value.scheduled ? formatShortDate(value.scheduled) : "Not set"
-      ] })
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: `vt-field-chip${value.scheduled ? "" : " is-placeholder"}`,
+          disabled: calendarBlocked !== null,
+          title: calendarBlocked ?? void 0,
+          onClick: () => pickSubDate(ctx, "Calendar", value.scheduled, (v3) => props.onChange({ scheduled: v3 })),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+            value.scheduled ? formatShortDate(value.scheduled) : "Not set"
+          ]
+        }
+      )
     ] })
   ] });
 }
@@ -5131,6 +5163,8 @@ function ScrollRail(props) {
 }
 
 // src/header/SubTimeline.tsx
+var MULTI_DAY_MESSAGE = "Calendar \u306F 1 \u65E5\u3060\u3051\u3067\u3059\u3002\u68D2\u3092 1 \u65E5\u306B\u7E2E\u3081\u308B\u3068\u3001Calendar \u306B\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059";
+var CALENDAR_HIT = 28;
 var ROW = 36;
 var HANDLE = 8;
 function chartSub(sub) {
@@ -5181,10 +5215,43 @@ function TimelineChart(props) {
     setNotice(null);
     return void ctx.writer.updateSub(sub.key, { start: next.start, end: next.end }).catch((e3) => ctx.report("\u671F\u9593\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   };
-  const shown = (sub) => {
-    const bar = barOf(sub);
-    return drag && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+  const saveCalendar = (sub, date) => {
+    const lock = lockOf(sub.parent);
+    if (lock !== null) return setNotice(lock);
+    setNotice(null);
+    return void ctx.writer.updateSub(sub.key, { scheduled: date }).catch((e3) => ctx.report("Calendar \u306E\u65E5\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   };
+  const toggleCalendar = (sub) => {
+    const next = timelineToggle(sub);
+    if (next === null) return setNotice(MULTI_DAY_MESSAGE);
+    const lock = lockOf(sub.parent);
+    if (lock !== null) return setNotice(lock);
+    const parent = index.issues.get(sub.parent);
+    const error = next.start !== null && parent ? subPeriodError(parent, index.planned(sub.parent), sub, { start: next.start, end: next.end }, today) : null;
+    if (error) return setNotice(error);
+    setNotice(null);
+    return void ctx.writer.updateSub(sub.key, next).catch((e3) => ctx.report("Calendar \u3068\u671F\u9593\u3092\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  };
+  const dateMenu = (e3, sub) => {
+    e3.preventDefault();
+    e3.stopPropagation();
+    const m3 = new import_obsidian7.Menu();
+    if (sub.scheduled !== null) m3.addItem((item) => item.setTitle("Make 1-day period").setIcon("calendar-range").onClick(() => toggleCalendar(sub)));
+    else {
+      const single = timelineToggle(sub) !== null;
+      m3.addItem((item) => {
+        item.setTitle(single ? "Make Calendar" : "Make Calendar (shorten to 1 day first)").setIcon("calendar-check").onClick(() => toggleCalendar(sub));
+        if (!single) item.setDisabled(true);
+      });
+    }
+    m3.addItem((item) => item.setTitle("Edit").setIcon("pencil").onClick(() => openSubEditor(ctx, sub)));
+    m3.showAtMouseEvent(e3);
+  };
+  const shown = (sub) => {
+    const bar = periodBarOf(sub);
+    return drag && drag.kind === "bar" && drag.key === sub.key && bar ? dragBar(drag.bar, drag.mode, drag.delta) : bar;
+  };
+  const shownCalendar = (sub) => sub.scheduled !== null && drag && drag.kind === "calendar" && drag.key === sub.key ? addDays(sub.scheduled, drag.delta) : sub.scheduled;
   const xOf = (date) => dayOffset(range, date) * px;
   const byKey = new Map(subs.map((s3) => [s3.key, s3]));
   const rowOf = new Map(rows.flatMap((r3, i3) => r3.kind === "sub" ? [[r3.sub.key, i3]] : []));
@@ -5232,8 +5299,8 @@ function TimelineChart(props) {
     const from = byKey.get(l3.from);
     if (to && from) void saveDeps(to, [...to.dependsOn, from.id]);
   };
-  const startDrag = (e3, sub, mode) => {
-    const bar = barOf(sub);
+  const startDrag = (e3, sub, mode, kind = "bar") => {
+    const bar = kind === "calendar" ? sub.scheduled !== null ? { start: sub.scheduled, end: sub.scheduled } : null : periodBarOf(sub);
     if (!bar || e3.button !== 0) return;
     const lock = lockOf(sub.parent);
     if (lock !== null) return setNotice(lock);
@@ -5241,7 +5308,7 @@ function TimelineChart(props) {
     e3.preventDefault();
     e3.stopPropagation();
     e3.currentTarget.setPointerCapture(e3.pointerId);
-    setDrag({ key: sub.key, mode, x0: e3.clientX, bar, delta: 0 });
+    setDrag({ key: sub.key, kind, mode, x0: e3.clientX, bar, delta: 0 });
   };
   const moveDrag = (e3) => {
     if (!drag) return;
@@ -5252,20 +5319,28 @@ function TimelineChart(props) {
     if (!drag) return;
     const d3 = drag;
     setDrag(null);
-    if (d3.delta !== 0) void save(sub, dragBar(d3.bar, d3.mode, d3.delta));
+    if (d3.delta === 0) return;
+    if (d3.kind === "calendar") void saveCalendar(sub, addDays(d3.bar.start, d3.delta));
+    else void save(sub, dragBar(d3.bar, d3.mode, d3.delta));
   };
   const keyDown = (e3, sub) => {
-    const bar = barOf(sub);
+    const bar = periodBarOf(sub);
     if (e3.key === "Enter") {
       e3.preventDefault();
       openSubEditor(ctx, sub);
+    } else if ((e3.key === "c" || e3.key === "C") && !e3.metaKey && !e3.ctrlKey && !e3.altKey) {
+      e3.preventDefault();
+      toggleCalendar(sub);
+    } else if (sub.scheduled !== null && (e3.key === "ArrowLeft" || e3.key === "ArrowRight")) {
+      e3.preventDefault();
+      void saveCalendar(sub, addDays(sub.scheduled, e3.key === "ArrowLeft" ? -1 : 1));
     } else if (bar && (e3.key === "ArrowLeft" || e3.key === "ArrowRight")) {
       e3.preventDefault();
       void save(sub, dragBar(bar, e3.shiftKey ? "end" : "move", e3.key === "ArrowLeft" ? -1 : 1));
     }
   };
   const pickDay = (e3, sub) => {
-    if (barOf(sub)) return;
+    if (periodBarOf(sub) || sub.scheduled !== null) return;
     const rect = e3.currentTarget.getBoundingClientRect();
     const date = dateAtX(range, e3.clientX - rect.left, scale);
     void save(sub, { start: date, end: date });
@@ -5406,7 +5481,10 @@ ${v3.unknown} sub-issue(s) without an estimate` : ""}`;
                   ProjectRow,
                   {
                     issue: row.issue,
-                    subs: row.subs.map((s3) => shown(s3)),
+                    subs: row.subs.map((s3) => {
+                      const day = shownCalendar(s3);
+                      return day !== null ? { start: day, end: day } : shown(s3);
+                    }),
                     top: i3 * ROW,
                     xOf,
                     px,
@@ -5419,11 +5497,31 @@ ${v3.unknown} sub-issue(s) without an estimate` : ""}`;
               const barWidth = bar ? (dayOffset(range, bar.end) - dayOffset(range, bar.start) + 1) * px : 0;
               const handles = barWidth >= HANDLE * 3;
               const period = bar ? `${formatShortDate(bar.start)} \u2013 ${formatShortDate(bar.end)}` : "";
-              const nothing = !bar && sub.scheduled === null;
+              const calendar = shownCalendar(sub);
+              const nothing = !bar && calendar === null;
               const key = sub.key;
-              return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: bar ? void 0 : "Click a day to set the period", children: [
+              const rowTitle = bar ? void 0 : calendar !== null ? "Calendar date: drag to move. Right-click or press C to make it a 1-day period" : "Click a day to set the period";
+              return /* @__PURE__ */ u3("div", { class: `vt-timeline-row${bar ? "" : " is-empty"}`, style: { top: `${i3 * ROW}px` }, onClick: (e3) => pickDay(e3, sub), title: rowTitle, children: [
                 nothing && /* @__PURE__ */ u3("span", { class: "vt-timeline-none", children: "No dates" }),
-                !bar && sub.scheduled !== null && /* @__PURE__ */ u3("span", { class: "vt-timeline-dot", style: { left: `${xOf(sub.scheduled) + px / 2}px` }, title: `Calendar ${formatShortDate(sub.scheduled)}` }),
+                calendar !== null && /* @__PURE__ */ u3(
+                  "div",
+                  {
+                    class: `vt-timeline-calendar vt-status-${sub.status}${drag?.key === key ? " is-dragging" : ""}`,
+                    style: { left: `${xOf(calendar) + px / 2 - CALENDAR_HIT / 2}px` },
+                    tabIndex: 0,
+                    role: "button",
+                    "aria-label": `${sub.summary}: Calendar ${formatShortDate(calendar)}. Drag or use arrow keys to move. Press C to make it a 1-day period`,
+                    title: `${sub.summary}
+Calendar ${formatShortDate(calendar)}`,
+                    onPointerDown: (e3) => startDrag(e3, sub, "move", "calendar"),
+                    onPointerMove: moveDrag,
+                    onPointerUp: () => endDrag(sub),
+                    onPointerCancel: () => setDrag(null),
+                    onKeyDown: (e3) => keyDown(e3, sub),
+                    onContextMenu: (e3) => dateMenu(e3, sub),
+                    onClick: (e3) => e3.stopPropagation()
+                  }
+                ),
                 bar && /* @__PURE__ */ u3(
                   "div",
                   {
@@ -5432,7 +5530,7 @@ ${v3.unknown} sub-issue(s) without an estimate` : ""}`;
                     style: { left: `${left}px`, width: `${barWidth}px` },
                     tabIndex: 0,
                     role: "button",
-                    "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end`,
+                    "aria-label": `${sub.summary}: ${period}. Drag or use arrow keys to move, Shift + arrow keys to change the end${bar.start === bar.end ? ". Press C to make it a Calendar date" : ""}`,
                     title: `${sub.summary}
 ${period}`,
                     onPointerEnter: () => setHovered(key),
@@ -5444,6 +5542,7 @@ ${period}`,
                     onPointerUp: () => endDrag(sub),
                     onPointerCancel: () => setDrag(null),
                     onKeyDown: (e3) => keyDown(e3, sub),
+                    onContextMenu: (e3) => dateMenu(e3, sub),
                     onClick: (e3) => e3.stopPropagation(),
                     children: [
                       /* @__PURE__ */ u3(
@@ -8865,6 +8964,12 @@ function subsWithCalendarError(issue) {
   if (issue.scheduled === null) return null;
   return `${issue.id}: Calendar \u306E\u65E5\u3092\u6301\u3064 issue \u306B\u306F\u30B5\u30D6\u30A4\u30B7\u30E5\u30FC\u3092\u8DB3\u305B\u307E\u305B\u3093\uFF08ADR-0203\uFF09\u3002\u5148\u306B Calendar \u306E\u65E5\uFF08scheduled\uFF09\u3092\u6D88\u3057\u3066\u304F\u3060\u3055\u3044`;
 }
+function subCalendarPeriodError(before, patch) {
+  if (patch.start === void 0 && patch.end === void 0 && patch.scheduled === void 0) return null;
+  const after = (k3) => patch[k3] !== void 0 ? patch[k3] : before?.[k3] ?? null;
+  if (after("scheduled") === null || after("start") === null && after("end") === null) return null;
+  return "\u30B5\u30D6\u306F Calendar \u306E\u65E5\u3068\u671F\u9593\u3092\u540C\u6642\u306B\u6301\u3066\u307E\u305B\u3093\uFF08ADR-0255\uFF09\u3002\u3069\u3061\u3089\u304B\u4E00\u65B9\u3092\u5916\u3057\u3066\u304F\u3060\u3055\u3044\u3002\u30AC\u30F3\u30C8\u3067\u306F 1 \u65E5\u306E\u671F\u9593\u3068 Calendar \u3092\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u3059";
+}
 
 // src/obsidian/writer.ts
 var import_obsidian23 = require("obsidian");
@@ -9371,9 +9476,12 @@ var TaskWriter = class {
   }
   /**
    * サブの期間を書いてよいか（ADR-0210）。Inbox の Project のサブには入れない・変えない。Tickler より前に始めない。
+   * Calendar の日と期間を同時に持たせない（ADR-0255）。
    * 通らなければ例外。本文のカード（エディタの文書に書く。ADR-0161）も、書く前にこれを呼ぶ
    */
   assertSubPeriod(parentId, before, patch) {
+    const both = subCalendarPeriodError(before, patch);
+    if (both) throw new Error(both);
     if (patch.start === void 0 && patch.end === void 0) return;
     const parent = this.store.index.issues.get(parentId);
     if (!parent) return;
@@ -9830,6 +9938,7 @@ function openWorklogTimes(ctx, key, summary) {
 // src/views/Board.tsx
 var ENTER_MS = 3e3;
 var LANE_TITLE = {
+  calendar: "Calendar",
   working: "Working",
   top: "Top 4",
   routine: "Routines",
@@ -9909,7 +10018,7 @@ function TaskCard(props) {
     const m3 = new import_obsidian24.Menu();
     if (!done && card.kind !== "routine") {
       if (starred) m3.addItem((mi) => mi.setTitle("Remove from Top 4").setIcon("star-off").onClick(() => void setStar(ctx, date, key, false)));
-      else if (canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
+      else if (lane !== "calendar" && canStar(lanes)) m3.addItem((mi) => mi.setTitle("Add to Top 4").setIcon("star").onClick(() => void setStar(ctx, date, key, true)));
     }
     const up = stepOps(lanes, board, key, -1, void 0);
     const down = stepOps(lanes, board, key, 1, void 0);
@@ -10090,7 +10199,7 @@ function Board(props) {
       else void createOnBoard(ctx, date, choice.summary);
     }).open();
   };
-  const visibleLanes = ["working", "top", "routine", "next", "watch", "done"].filter((l3) => l3 === "routine" ? showRoutineLane(board, lanes) : l3 === "top" || l3 === "next" || lanes[l3].length > 0);
+  const visibleLanes = ["calendar", "working", "top", "routine", "next", "watch", "done"].filter((l3) => l3 === "routine" ? showRoutineLane(board, lanes) : l3 === "top" || l3 === "next" || lanes[l3].length > 0);
   return /* @__PURE__ */ u3("div", { class: "vt-board", children: [
     /* @__PURE__ */ u3("div", { class: "vt-board-head", children: [
       /* @__PURE__ */ u3("h3", { class: "vt-h", children: [
@@ -10104,7 +10213,7 @@ function Board(props) {
       ] })
     ] }),
     total === 0 ? /* @__PURE__ */ u3(S, { children: [
-      /* @__PURE__ */ u3("div", { class: "vt-empty", children: "The board is empty. Issues and sub-issues with today's Do Date are added automatically. You can also add them with the button above." }),
+      /* @__PURE__ */ u3("div", { class: "vt-empty", children: "The board is empty. Issues and sub-issues with today's Calendar date are added automatically. You can also add them with the button above." }),
       lanes.watch.length > 0 && /* @__PURE__ */ u3("div", { class: "vt-lanes", children: /* @__PURE__ */ u3(Lane, { ctx, date, board, lanes, lane: "watch", now }) })
     ] }) : /* @__PURE__ */ u3("div", { class: "vt-lanes", children: visibleLanes.map((lane) => /* @__PURE__ */ u3(Lane, { ctx, date, board, lanes, lane, now }, lane)) }),
     /* @__PURE__ */ u3("div", { class: "vt-page-foot vt-board-foot", children: [
@@ -11900,7 +12009,7 @@ function todoTasks(index, today, excluded) {
   const stored = index.board(today)?.board ?? emptyBoard();
   const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
   const lanes = boardLanes(index, today, board);
-  return [...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
+  return [...lanes.calendar, ...lanes.top, ...lanes.next].filter((c3) => !excluded.has(c3.key)).map((c3) => ({ key: c3.key, ...describe(index, c3.key), summary: cardSummary(c3), path: cardPath(c3), elapsedMs: null }));
 }
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function formatNow(ms) {

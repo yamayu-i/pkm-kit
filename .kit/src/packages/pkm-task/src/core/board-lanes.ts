@@ -16,11 +16,11 @@ export type BoardCard =
 	| { kind: "routine"; key: string; routine: Routine; carriedFrom: LocalDate | null };
 
 /**
- * 欄（上から）。作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・Watch・片付いた。
+ * 欄（上から）。今日の Calendar（その日にやらなければならないもの。ADR-0255）・作業中・★今日の最重要・routine（issue と混ぜない別のまとまり）・次にやる順・Watch・片付いた。
  * Watch（ADR-0184）だけはボードに載っているかによらず、waiting / delegated のすべての issue とサブを出す
  */
-export type LaneId = "working" | "top" | "routine" | "next" | "watch" | "done";
-export const LANES: readonly LaneId[] = ["working", "top", "routine", "next", "watch", "done"];
+export type LaneId = "calendar" | "working" | "top" | "routine" | "next" | "watch" | "done";
+export const LANES: readonly LaneId[] = ["calendar", "working", "top", "routine", "next", "watch", "done"];
 /** 手で並べられる欄（1 つの並びを使う） */
 export type OrderedLane = "top" | "next";
 
@@ -71,24 +71,25 @@ function isSettled(board: BoardState, card: BoardCard): boolean {
 
 /**
  * ボードのカードの欄。routine は常に routine の欄（issue・サブと混ぜない。★ も作業中も片付いたも使わない）。
- * ほかは作業中 → 片付いた → Watch（waiting / delegated。ADR-0184）→ ★ → 次にやる順 の順で、最初に当たったもの
+ * ほかは作業中 → 片付いた → Watch（waiting / delegated。ADR-0184）→ Calendar（scheduled がボードの日。ADR-0255）→ ★ → 次にやる順 の順で、最初に当たったもの
  */
-export function laneOf(index: TaskIndex, board: BoardState, card: BoardCard): LaneId {
+export function laneOf(index: TaskIndex, board: BoardState, card: BoardCard, date: LocalDate): LaneId {
 	if (card.kind === "routine") return "routine";
 	if (index.running(card.key).length > 0) return "working";
 	if (isSettled(board, card)) return "done";
 	const status = cardStatus(board, card);
 	if (isWatchStatus(status)) return "watch";
+	if ((card.kind === "issue" ? card.issue.scheduled : card.sub.scheduled) === date) return "calendar";
 	if (board.stars.includes(card.key)) return "top";
 	return "next";
 }
 
-/** 欄ごとのカード。作業中はタイマーを始めた順、片付いたは載せた順、Watch は watchCards の順、ほかは並び（ADR-0114）の順 */
+/** 欄ごとのカード。作業中はタイマーを始めた順、片付いたと Calendar は載せた順、Watch は watchCards の順、ほかは並び（ADR-0114）の順 */
 export function boardLanes(index: TaskIndex, date: LocalDate, board: BoardState): BoardLanes {
-	const lanes: BoardLanes = { working: [], top: [], routine: [], next: [], watch: [], done: [] };
+	const lanes: BoardLanes = { calendar: [], working: [], top: [], routine: [], next: [], watch: [], done: [] };
 	const order = index.order(date);
 	for (const card of sortByOrder(boardCards(index, date, board), (c) => c.key, order)) {
-		const lane = laneOf(index, board, card);
+		const lane = laneOf(index, board, card, date);
 		// Watch はボードの外のものも含めて下で作る
 		if (lane !== "watch") lanes[lane].push(card);
 	}
@@ -97,6 +98,7 @@ export function boardLanes(index: TaskIndex, date: LocalDate, board: BoardState)
 	lanes.working.sort((a, b) => startedAt(a) - startedAt(b));
 	const added = boardCards(index, date, board).map((c) => c.key);
 	lanes.done.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
+	lanes.calendar.sort((a, b) => added.indexOf(a.key) - added.indexOf(b.key));
 	return lanes;
 }
 

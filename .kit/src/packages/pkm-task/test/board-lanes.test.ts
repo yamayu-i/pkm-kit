@@ -105,6 +105,7 @@ describe("欄（ADR-0137）", () => {
 		const worklog = '{"id":"wl_1","task_id":"i-6","from":"2026-11-16T01:00:00Z","to":null,"description":""}\n';
 		const { index } = load(md, [...base, line(DATE, { op: "carry", task: "i-1" }), line(DATE, { op: "routine", task: "r-2", result: "closed" })], worklog);
 		expect(keys(lanesOf(index))).toEqual({
+			calendar: [],
 			working: ["i-6"],
 			top: [],
 			routine: ["r-1", "r-2"],
@@ -210,13 +211,14 @@ describe("サブのカード（ADR-0137）", () => {
 			[parent, other],
 			["i-1#aaaaaa", "i-1#bbbbbb", "i-2", "i-1#cccccc"].map((task) => line(DATE, { op: "add", task })).concat(line(DATE, { op: "order", tasks: ["i-1#aaaaaa", "i-1#bbbbbb", "i-2"] })),
 		);
-		const runs = cardRuns(lanesOf(index).next);
+		// どのカードも今日が scheduled なので Calendar の欄（載せた順。ADR-0255）。まとまりの規則は欄によらない
+		const runs = cardRuns(lanesOf(index).calendar);
 		expect(runs.map((r) => [r.parent, r.cards.map((c) => c.key)])).toEqual([
 			["i-1", ["i-1#aaaaaa", "i-1#bbbbbb"]],
 			[null, ["i-2"]],
 		]);
 		const split = load([parent, other], [...["i-1#aaaaaa", "i-2", "i-1#bbbbbb"].map((task) => line(DATE, { op: "add", task }))]).index;
-		expect(cardRuns(lanesOf(split).next).map((r) => r.parent)).toEqual(["i-1", null, "i-1"]);
+		expect(cardRuns(lanesOf(split).calendar).map((r) => r.parent)).toEqual(["i-1", null, "i-1"]);
 	});
 
 	it("サブが消えたカードは出さず、未完了に数えず、締めを止めない", () => {

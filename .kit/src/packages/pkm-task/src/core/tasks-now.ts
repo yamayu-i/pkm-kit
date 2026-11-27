@@ -134,7 +134,7 @@ export function pausedTasks(index: TaskIndex, keys: readonly string[]): NowTask[
 }
 
 /**
- * タスクリスト: 今日のボード（今日が実行日のものを含む）のうち、記録中でも片付いてもいないもの（★ → 次にやる順）。
+ * タスクリスト: 今日のボード（今日が実行日のものを含む）のうち、記録中でも片付いてもいないもの（Calendar → ★ → 次にやる順。ADR-0255）。
  * 保留中の群と、待っているもの（Watch。ADR-0184）は含めない。
  */
 export function todoTasks(index: TaskIndex, today: LocalDate, excluded: ReadonlySet<string>): NowTask[] {
@@ -142,7 +142,7 @@ export function todoTasks(index: TaskIndex, today: LocalDate, excluded: Readonly
 	const stored = index.board(today)?.board ?? emptyBoard();
 	const board = { ...stored, issues: [...stored.issues, ...index.toAutoAdd(today)] };
 	const lanes = boardLanes(index, today, board);
-	return [...lanes.top, ...lanes.next]
+	return [...lanes.calendar, ...lanes.top, ...lanes.next]
 		.filter((c) => !excluded.has(c.key))
 		.map((c) => ({ key: c.key, ...describe(index, c.key), summary: cardSummary(c), path: cardPath(c), elapsedMs: null }));
 }

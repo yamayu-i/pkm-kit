@@ -105,6 +105,27 @@ export function barOf(sub: Pick<TimelineSub, "start" | "end">): { start: LocalDa
 	return a <= b ? { start: a, end: b } : { start: b, end: a };
 }
 
+/** 棒に描く期間（ADR-0255）。Calendar の日（scheduled）があるサブは棒を描かず、その日の印を出す（両方を持つ古いサブも Calendar を優先する） */
+export function periodBarOf(sub: Pick<TimelineSub, "start" | "end" | "scheduled">): { start: LocalDate; end: LocalDate } | null {
+	return sub.scheduled !== null ? null : barOf(sub);
+}
+
+/** サブがかかる日（ADR-0255）。Calendar ならその 1 日、なければ期間。Projects のまとめの棒・負荷・見積もりの印・並びに使う */
+export function daysOf(sub: Pick<TimelineSub, "start" | "end" | "scheduled">): { start: LocalDate; end: LocalDate } | null {
+	return sub.scheduled !== null ? { start: sub.scheduled, end: sub.scheduled } : barOf(sub);
+}
+
+/**
+ * ガントで 1 日の棒と Calendar を切り替える書き込み（ADR-0255）。1 回で片方を消すので、両方・どちらもなしの途中の姿を作らない。
+ * 2 日以上の棒と、日付のないサブは切り替えない（null）
+ */
+export function timelineToggle(sub: Pick<TimelineSub, "start" | "end" | "scheduled">): { start: LocalDate | null; end: LocalDate | null; scheduled: LocalDate | null } | null {
+	if (sub.scheduled !== null) return { scheduled: null, start: sub.scheduled, end: sub.scheduled };
+	const bar = barOf(sub);
+	if (bar === null || bar.start !== bar.end) return null;
+	return { scheduled: bar.start, start: null, end: null };
+}
+
 export type DragMode = "move" | "start" | "end";
 
 /** ドラッグの結果: move は丸ごとずらす、start / end は片方だけ。start は end を越えない */
@@ -118,9 +139,9 @@ export function dragBar(bar: { start: LocalDate; end: LocalDate }, mode: DragMod
 	return { start: bar.start, end: end < bar.start ? bar.start : end };
 }
 
-/** 依存の矢印: 依存先とそのサブの両方に棒があるときだけ。依存先の end より前に始まると遅れ（lint の start-before-dependency と同じ） */
+/** 依存の矢印: 依存先とそのサブの両方に棒があるときだけ（Calendar のサブには引かない。ADR-0255）。依存先の end より前に始まると遅れ（lint の start-before-dependency と同じ） */
 export function dependencyArrows(subs: readonly TimelineSub[]): { from: string; to: string; late: boolean }[] {
-	const bars = new Map(subs.map((s) => [s.id, barOf(s)]));
+	const bars = new Map(subs.map((s) => [s.id, periodBarOf(s)]));
 	const out: { from: string; to: string; late: boolean }[] = [];
 	for (const s of subs) {
 		const to = bars.get(s.id);
@@ -294,7 +315,7 @@ export function canConnect(subs: readonly TimelineSub[], from: string, to: strin
 	const byId = new Map(subs.map((s) => [s.id, s]));
 	const a = byId.get(from);
 	const b = byId.get(to);
-	if (!a || !b || !barOf(a) || !barOf(b)) return false;
+	if (!a || !b || !periodBarOf(a) || !periodBarOf(b)) return false;
 	if (b.dependsOn.includes(from)) return false;
 	// to が from に依存しているなら、from → to を足すと循環する（間にサブをはさんでも）
 	const seen = new Set<string>();

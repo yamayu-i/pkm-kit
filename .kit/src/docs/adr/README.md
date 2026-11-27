@@ -85,9 +85,9 @@
 | [0129](0129-vault-theme-follow-primary.md) | 承認 | 基本の色の primary に、選んだものの面・primary の上の文字・HTML の閲覧画面・Mermaid を追従させる |
 | [0132](0132-slide-notes-editor.md) | 承認 | スライドの発表者ノートを pkm-slide で編集し、プラグインの中でビルドし直す |
 | [0135](0135-sub-issues-in-issue-file.md) | 承認（一部置換: 0152, 0190） | issue の親子関係を廃止し、issue の md の中にサブイシューを持つ |
-| [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
+| [0137](0137-board-lanes-and-sub-issue-cards.md) | 承認（一部置換: 0150, 0152, 0184, 0255） | task board のグループを廃止し、status とタイマーで決まる 1 列の欄とサブイシューのカードにする |
 | [0142](0142-sub-issues-in-issue-screen.md) | 一部置換（ADR-0165, ADR-0179, ADR-0181, ADR-0190） | 親の issue 画面でサブイシューを見る・作る・並べる |
-| [0143](0143-sub-issue-timeline.md) | 承認（一部置換: 0190, 0231） | サブイシューのガントチャート（Timeline） |
+| [0143](0143-sub-issue-timeline.md) | 承認（一部置換: 0190, 0231, 0255） | サブイシューのガントチャート（Timeline） |
 | [0148](0148-inbox-clarified.md) | 承認（一部置換: 0189, 0210） | Inbox は日付ではなく clarified（整理済み）で決める |
 | [0150](0150-daily-engage-steps.md) | 承認（一部置換: 0184, 0189, 0190, 0203） | DailyTaskView を GTD の Engage に合わせ、段階を整理して Next から選べるようにする |
 | [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203, 0210） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
@@ -116,15 +116,16 @@
 | [0226](0226-closing-date-across-midnight.md) | 承認 | 締めの日付を Close board で決め、夜中の 0 時から決めた時刻までは前日を締める |
 | [0228](0228-date-time-input-language.md) | 承認 | 日付・時刻・期間の入力を 1 つの書き方（入力言語）にまとめる |
 | [0230](0230-input-language-help.md) | 提案 | 入力言語の書き方を、入力欄の横の ? から開く説明画面で見せる |
-| [0231](0231-projects-timeline-and-load.md) | 承認 | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
+| [0231](0231-projects-timeline-and-load.md) | 承認（一部置換: 0255） | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
 | [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 | [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
 | [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
 | [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
-| [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
+| [0245](0245-sub-period-pair-and-range-dialog.md) | 承認（一部置換: 0255） | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
 | [0247](0247-zero-estimate-and-delegated.md) | 承認（ADR-0034 の「0 以下は受け付けない」を一部置換） | estimated の 0 の入力と、delegated を未見積もりに数えないこと |
 | [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
 | [0251](0251-quote-paste-and-copy.md) | 承認 | 引用の中への複数行の貼り付けと、引用・コールアウトのコピーボタン（pkm-markdown） |
 | [0253](0253-html-open-in-browser.md) | 承認 | スライド以外の HTML も OS のブラウザで開けるようにする（pkm-html） |
+| [0255](0255-calendar-lane-and-sub-calendar-or-period.md) | 承認 | 今日の Calendar をボードの最上部の欄に出し、サブの Calendar と期間を両立させない |
 <!-- adr-index:end -->
