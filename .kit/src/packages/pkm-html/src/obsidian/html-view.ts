@@ -1,7 +1,7 @@
 /** Vault の中の HTML を読み取り専用で表示する View（ADR-0037） */
 import { FileView, Notice, TFile, type WorkspaceLeaf } from "obsidian";
 import { HTML_EXTENSIONS, isSlideDeck, MAX_IMAGE_BYTES } from "../core/policy.ts";
-import { openSlideInBrowser } from "./open-external.ts";
+import { browserIcon, openHtmlInBrowser } from "./open-external.ts";
 import { slideLiveVars, tokenVarNames } from "../core/live-vars.ts";
 import { buildSrcdoc, type Theme } from "../core/sanitize.ts";
 import { type MountedFrame, mountFrame } from "../ui/frame.ts";
@@ -65,12 +65,12 @@ export class HtmlView extends FileView {
 		);
 	}
 
-	/** スライド（ADR-0117）を開いている間だけ出す、ブラウザで開くボタン */
-	private slideAction: HTMLElement | null = null;
+	/** ブラウザで開くボタン（ADR-0253。スライドは ADR-0117）。ファイルごとにアイコンが変わるので付け直す */
+	private browserAction: HTMLElement | null = null;
 
 	override async onLoadFile(file: TFile): Promise<void> {
-		this.slideAction?.remove();
-		this.slideAction = isSlideDeck(file.path) ? this.addAction("presentation", "Open in browser", () => openSlideInBrowser(this.app, file)) : null;
+		this.browserAction?.remove();
+		this.browserAction = this.addAction(browserIcon(file), "Open in browser", () => openHtmlInBrowser(this.app, file));
 		await this.render(file);
 	}
 
