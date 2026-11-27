@@ -857,7 +857,7 @@ ADR へのリンク。
 <li>Tasks: 今日のボードのもの、今日 closed / canceled にしたもの（ボードの外も）、今日の default の routine を、Closed・Not done（open / in-progress。記録では持ち越し）・Waiting（waiting / delegated）・Canceled（canceled / someday）の群に分ける。件数のない群は出さない。アイコンと色は群の見出しだけに付ける。行は 1 行で、status のボタン・題（押すと開く）・付記（サブは親の ID、routine、その日の作業時間）だけ</li>
 <li>Tasks の「closed / canceled にしたもの」と Notes は、締めの日の 0 時から翌日の猶予の時刻までを数える（0:20 に閉じたものや書いたノートも前日の締めに出る）。作業時間は記録を始めた日で数える</li>
 <li>Notes: 今日に変えたノート（タスク管理のデータ・<code>tmp/</code>・<code>template/</code>・隠しパスを除く）を新しい順に出す。作ったもの（created が今日）には <code>new</code>。押すと開く</li>
-<li>「Finish closing」でデイリーノートの <code>## Task board</code> 節に要約を書く。未完了が残っていても書け、未完了は持ち越しと書く。書いた後は Closed と Reopen を出す。押さなくても催促しない</li>
+<li>「Finish closing」でデイリーノートの <code>## Task board</code> 節に要約を書く。振り返りの型があれば、その節の直下（末尾の <code>---</code> の前）に入れ、後からほかの内容が書き足されていても振り返りと並ぶ。型がなければ末尾に足す。未完了が残っていても書け、未完了は持ち越しと書く。書いた後は Closed と Reopen を出す。押さなくても催促しない</li>
 </ul>
 <h3 id="surfaces-task-closing-md--使う概念">使う概念</h3>
 <p><a href="#concepts-task-board-md">task board</a>、<a href="#concepts-task-routine-md">routine</a>、<a href="#concepts-task-status-md">status</a>、<a href="#concepts-task-worklog-md">worklog とタイマー</a>、<a href="#concepts-note-daily-md">デイリーノート</a></p>
@@ -1514,7 +1514,7 @@ ADR へのリンク。
 <h3 id="concepts-note-daily-md--操作">操作</h3>
 <p>Open today&#39;s daily note で開く（なければテンプレートから作る）。Daily notes の一覧で見る。</p>
 <h3 id="concepts-note-daily-md--使い方の筋道">使い方の筋道</h3>
-<p>ボードの Close board を押すと、本文の冒頭に振り返りの型（スニペット <code>daily-review.md</code>。子は <code>template/snippet/daily-review.md</code> で上書きできる）が 1 回だけ入る。Closing の画面で記録を書くと <code>## Task board</code> 節に要約が入る。AI は振り返りを末尾に追記し、wiki への反映先のリンクを末尾に足す。タスクの View の「Today」とは別のもの。</p>
+<p>ボードの Close board を押すと、本文の冒頭に振り返りの型（スニペット <code>daily-review.md</code>。子は <code>template/snippet/daily-review.md</code> で上書きできる）が 1 回だけ入る。Closing の画面で記録を書くと <code>## Task board</code> 節に要約が入る（振り返りの型があればその節の直下、なければ末尾）。AI は振り返りを末尾に追記し、wiki への反映先のリンクを末尾に足す。タスクの View の「Today」とは別のもの。</p>
 <h3 id="concepts-note-daily-md--根拠">根拠</h3>
 <p><a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/adr/0007-note-format.md">ハーネスの ADR-0007</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0023-template-id-and-daily.md">ADR-0023</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0026-note-views.md">ADR-0026</a>、<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0029-ribbon-plugin.md">ADR-0029</a></p>
 <footer><a href="#contents">目次へ</a> 前: <a href="#concepts-readme-md">概念（concepts）</a> 次: <a href="#concepts-note-template-md">テンプレート</a> · <a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/harness/docs/product/concepts/note-daily.md">原本</a></footer></article>
