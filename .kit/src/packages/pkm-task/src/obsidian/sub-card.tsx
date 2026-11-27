@@ -49,6 +49,14 @@ function useDraft(value: string, commit: (v: string) => Promise<boolean>, delayM
 		});
 	};
 	useEffect(() => () => flush(), []);
+	/** 保存していない入力を捨てて、今の値に戻す（Escape） */
+	const cancel = () => {
+		const c = s.current;
+		window.clearTimeout(c.timer);
+		c.dirty = false;
+		c.draft = c.value;
+		setDraft(c.value);
+	};
 	const input = (v: string) => {
 		const c = s.current;
 		c.draft = v;
@@ -57,7 +65,7 @@ function useDraft(value: string, commit: (v: string) => Promise<boolean>, delayM
 		window.clearTimeout(c.timer);
 		if (delayMs !== null) c.timer = window.setTimeout(flush, delayMs);
 	};
-	return { draft, input, flush };
+	return { draft, input, flush, cancel };
 }
 
 /** サブの項目を書く。通らなければ例外（日本語の説明）。書き方は描く場所で違う（Live Preview はエディタの文書、Reading はファイル。ADR-0161） */
@@ -101,16 +109,24 @@ export function SubCard(props: SubCardProps) {
 	return (
 		<div class="vt-sub-card vt-ui">
 			<div class={`vt-subissue${isDoneStatus(sub.status) ? " is-done" : ""}${open ? " is-open" : ""}`}>
-				<SubRow ctx={ctx} sub={sub} open={open} onToggle={props.onToggle} save={save} />
+				<SubRow ctx={ctx} sub={sub} open={open} onToggle={props.onToggle} save={save} titleDelayMs={open ? props.delayMs : undefined} />
 				{open && <SubFields {...props} save={save} error={error} />}
 			</div>
 		</div>
 	);
 }
 
-/** カードの題の行（status・題と開閉・Pick）。カードと、上端に浮かべる行（StickySubRow）で使う */
-function SubRow(props: { ctx: TaskContext; sub: SubIssue; open: boolean; onToggle: () => void; save: Save }) {
+/**
+ * カードの題の行（status・題と開閉・Pick）。カードと、上端に浮かべる行（StickySubRow）で使う。
+ * titleDelayMs があれば（開いたカードだけ）、題の横に編集アイコンボタンを出し、押すと題をその場で直す（ADR-0239）
+ */
+function SubRow(props: { ctx: TaskContext; sub: SubIssue; open: boolean; onToggle: () => void; save: Save; titleDelayMs?: number | null }) {
 	const { ctx, sub, open, save } = props;
+	const [editing, setEditing] = useState(false);
+	const editable = props.titleDelayMs !== undefined;
+	useEffect(() => {
+		if (!editable) setEditing(false);
+	}, [editable]);
 	// メニューは遷移表の先だけ。付随の変更も表で決まる（ADR-0183）
 	const statusMenu = (e: MouseEvent) => showStatusMenu(ctx, e, sub.key, (patch) => save(patch));
 	const hint = subHint(sub, localToday());
@@ -120,13 +136,71 @@ function SubRow(props: { ctx: TaskContext; sub: SubIssue; open: boolean; onToggl
 				<StatusIcon status={sub.status} />
 			</button>
 			<StatusStepButton ctx={ctx} keyOf={sub.key} save={(patch) => save(patch)} />
-			<button type="button" class="vt-subissue-summary" aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
-				<Icon name={open ? "chevron-down" : "chevron-right"} />
-				<span class="vt-subissue-summary-text">{sub.summary}</span>
-				{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
-			</button>
+			{editable && editing ? (
+				// 入力中は題を押しても開閉しない。矢印は見た目だけ残す
+				<div class="vt-subissue-summary is-editing">
+					<Icon name="chevron-down" />
+					<TitleInput summary={sub.summary} save={save} delayMs={props.titleDelayMs ?? null} close={() => setEditing(false)} />
+				</div>
+			) : (
+				<button type="button" class={`vt-subissue-summary${editable ? " has-title-edit" : ""}`} aria-expanded={open} title={sub.summary} onClick={props.onToggle}>
+					<Icon name={open ? "chevron-down" : "chevron-right"} />
+					<span class="vt-subissue-summary-text">{sub.summary}</span>
+					{hint !== null && <span class="vt-subissue-hint">{hint}</span>}
+				</button>
+			)}
+			{editable && !editing && (
+				<>
+					<button type="button" class="vt-icon-button vt-subissue-title-edit" aria-label="Edit title" title="Edit title" onClick={() => setEditing(true)}>
+						<Icon name="pencil" />
+					</button>
+					{/* 題のボタンを文字の幅にしたので、Pick を右へ寄せる */}
+					<span class="vt-spacer" />
+				</>
+			)}
 			<PickTimer ctx={ctx} keyOf={sub.key} />
 		</div>
+	);
+}
+
+/**
+ * 題の行の入力欄（ADR-0239）。保存の規則は以前の Summary の欄と同じ: delayMs（Live Preview は 600 ms）か、欄を離れたとき。
+ * Enter か欄を離れたら表示に戻る。Escape は保存していない入力を捨てて戻る。空の題は書かない
+ */
+function TitleInput(props: { summary: string; save: Save; delayMs: number | null; close: () => void }) {
+	const { save, close } = props;
+	const summary = useDraft(props.summary, (v) => (v.trim() === "" ? Promise.resolve(false) : save({ summary: v.trim() })), props.delayMs, (v) => v.trim());
+	const ref = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		ref.current?.focus();
+		ref.current?.select();
+	}, []);
+	const finish = () => {
+		summary.flush();
+		close();
+	};
+	return (
+		<input
+			ref={ref}
+			type="text"
+			class="vt-subissue-title-input"
+			aria-label="Title"
+			value={summary.draft}
+			onInput={(e) => summary.input(e.currentTarget.value)}
+			onBlur={finish}
+			onKeyDown={(e) => {
+				if (e.isComposing) return;
+				if (e.key === "Enter") {
+					e.preventDefault();
+					finish();
+				} else if (e.key === "Escape") {
+					e.preventDefault();
+					e.stopPropagation();
+					summary.cancel();
+					close();
+				}
+			}}
+		/>
 	);
 }
 
@@ -155,11 +229,10 @@ export function StickySubRow(props: { ctx: TaskContext; sub: SubIssue; onToggle:
 
 /** 開いたカードの中身: 項目を、その場で直す */
 function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: string | null }) {
-	const { ctx, sub, save, delayMs } = props;
+	const { ctx, sub, save } = props;
 	const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
 	const others = props.siblings.filter((s) => s.id !== sub.id);
 	const rules = subDateRules(ctx, sub);
-	const summary = useDraft(sub.summary, (v) => (v.trim() === "" ? Promise.resolve(false) : save({ summary: v.trim() })), delayMs, (v) => v.trim());
 	const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
 	const [estimatedError, setEstimatedError] = useState<string | null>(null);
 	const estimated = useDraft(
@@ -177,18 +250,6 @@ function SubFields(props: Omit<SubCardProps, "save"> & { save: Save; error: stri
 	);
 	return (
 		<div class="vt-subissue-detail vt-subissue-form">
-			<label class="vt-text-field">
-				<span>Summary</span>
-				<input
-					type="text"
-					value={summary.draft}
-					onInput={(e) => summary.input(e.currentTarget.value)}
-					onBlur={summary.flush}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && !e.isComposing) summary.flush();
-					}}
-				/>
-			</label>
 			<div class="vt-subissue-form-row">
 				{sub.status === "delegated" && (
 					<div class="vt-text-field">

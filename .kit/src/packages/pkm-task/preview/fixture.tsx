@@ -192,6 +192,8 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 				const subs = store.index.subs("i-2");
 				return <SubCard ctx={ctx as never} sub={subs.find((s) => s.id === id)!} siblings={subs} open onToggle={() => {}} save={noop} delayMs={null} />;
 			})}
+			{/* 閉じたサブのカード。題の編集ボタンは出さない（ADR-0239） */}
+			<SubCard ctx={ctx as never} sub={store.index.subs("i-2").find((s) => s.id === "hhhhhh")!} siblings={store.index.subs("i-2")} open={false} onToggle={() => {}} save={noop} delayMs={null} />
 		</div>
 	),
 };

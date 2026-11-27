@@ -40,8 +40,8 @@
 | [0023](0023-template-id-and-daily.md) | 承認 | テンプレートの ID 採番と、今日のデイリーノートを開くコマンド |
 | [0024](0024-label-manager.md) | 承認 | label を編集する画面（Labels） |
 | [0025](0025-mcp-and-task-coach.md) | 承認（一部置換: 0189） | MCP サーバーによるタスク参照・編集とタスクコーチ |
-| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035, 0077。一部補足: 0213） | 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す |
-| [0027](0027-hide-properties-english-labels.md) | 承認 | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
+| [0026](0026-note-views.md) | 承認（一部置換: 0027, 0033, 0035, 0077, 0238。一部補足: 0213） | 主要なノートの一覧 View とノートの View(ヘッダー)を vault-template に足す |
+| [0027](0027-hide-properties-english-labels.md) | 承認（一部置換: 0238） | 専用ヘッダーのある type は Properties 欄を隠し、ラベルを英語にする |
 | [0028](0028-auto-updated.md) | 承認（一部置換: ハーネスの ADR-0009。規則を 2 か所に持つ部分。[ADR-0038](0038-tmp-folder.md)。対象から除くフォルダ） | コミット時に変更ノートの updated を自動付与する |
 | [0029](0029-ribbon-plugin.md) | 承認 | デイリーノートと Daily のリボンを、軽量なプラグイン vault-ribbon にまとめる |
 | [0030](0030-organize-schedule-calendar.md) | 承認（ADR-0009 の Organize の「右: 予定を入れる」を一部置換。一部置換: 0078, 0148, 0152） | Organize の予定入れを、複数日を選べるカレンダーにする |
@@ -93,8 +93,8 @@
 | [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203, 0210） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認（一部置換: 0184） | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
-| [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161, 0190） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
-| [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
+| [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161, 0190, 0239） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
+| [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165, ADR-0239） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
 | [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
 | [0165](0165-issue-screen-pick-and-reading.md) | 承認（一部置換: 0203） | issue の本文表示を下部に集約し、Pick の後にタイマーを出す |
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
@@ -119,4 +119,6 @@
 | [0231](0231-projects-timeline-and-load.md) | 承認 | Project を横断するタイムライン（Projects）と、見積もりの入れやすさ・負荷の見通し |
 | [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 | [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
+| [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
+| [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
 <!-- adr-index:end -->

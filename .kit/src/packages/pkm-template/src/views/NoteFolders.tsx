@@ -2,7 +2,8 @@
  * Notes の一覧の Folders（ADR-0213）: note/ を 1 本の木で見せる。Slides の一覧（ADR-0124）と同じ見た目と操作。
  * note/ の外の type: note は、木の最後の「Other locations」にまとめる
  */
-import { Menu, Platform, setIcon, type App } from "obsidian";
+import { Menu, Platform, type App } from "obsidian";
+import { Icon } from "../obsidian/Icon";
 import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { shortDate, tagList } from "../core/note-format";
@@ -15,14 +16,6 @@ const DRAG_TYPE = "text/x-pkm-note";
 /** 開いているフォルダを端末ごとに覚える（Vault の中には書かない） */
 const OPEN_KEY = "pkm-template-note-open-folders";
 const OTHER = "\u0000other";
-
-function Icon({ name }: { name: string }) {
-	const ref = useRef<HTMLSpanElement>(null);
-	useEffect(() => {
-		if (ref.current) setIcon(ref.current, name);
-	}, [name]);
-	return <span class="vt-tpl-icon" ref={ref} aria-hidden="true" />;
-}
 
 function loadOpen(app: App): Set<string> {
 	try {
