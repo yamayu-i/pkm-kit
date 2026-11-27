@@ -23,10 +23,43 @@ __export(main_exports, {
   default: () => PkmMarkdownPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 
 // src/obsidian/live-preview.ts
 var import_view = require("@codemirror/view");
+
+// src/core/blockquote.ts
+var PREFIX = /^(?: {0,3}>[ \t]?)+/;
+var OUTER = /^ {0,3}>[ \t]?/;
+var CALLOUT_HEAD = /^\[![^\]\s]+\][+-]?(?:\s|$)/;
+function quotePrefix(line) {
+  return PREFIX.exec(line)?.[0] ?? null;
+}
+function pasteIntoQuote(line, ch, text) {
+  const prefix = quotePrefix(line);
+  if (prefix === null || ch < prefix.length) return null;
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  if (lines.length < 2) return null;
+  const last = lines.length - 1;
+  return lines.map((l, i) => i === 0 ? l : l === "" && i < last ? prefix.trimEnd() : prefix + l).join("\n");
+}
+function quoteBlock(lineAt, n) {
+  const isQuote = (i) => {
+    const line = lineAt(i);
+    return line !== null && quotePrefix(line) !== null;
+  };
+  if (!isQuote(n)) return null;
+  let first = n;
+  let last = n;
+  while (isQuote(first - 1)) first--;
+  while (isQuote(last + 1)) last++;
+  return { first, last };
+}
+function quoteSource(lines) {
+  const body = lines.map((l) => l.replace(OUTER, ""));
+  if (body.length > 0 && CALLOUT_HEAD.test(body[0] ?? "")) body.shift();
+  return body.join("\n");
+}
 
 // src/core/inline-code.ts
 function runLength(line, at) {
@@ -118,12 +151,17 @@ function createCopyButton(doc, text) {
 
 // src/obsidian/live-preview.ts
 var CODE_SELECTOR = ".cm-inline-code";
+var QUOTE_SELECTOR = ".cm-line.HyperMD-quote";
+var CALLOUT_SELECTOR = ".cm-callout";
+var EDIT_BUTTON_SELECTOR = ".edit-block-button";
 var HIDE_DELAY_MS = 200;
 var FLOATING_CLASS = "vt-md-copy-floating";
-var InlineCodeCopy = class {
+var INSIDE_CLASS = "is-inside";
+var INSET = 4;
+var MarkdownCopy = class {
   constructor(view) {
     this.view = view;
-    this.button = createCopyButton(view.dom.ownerDocument, () => this.current?.text ?? null);
+    this.button = createCopyButton(view.dom.ownerDocument, () => this.current);
     this.button.classList.add(FLOATING_CLASS);
     this.button.hidden = true;
     this.button.addEventListener("mouseenter", () => this.cancelHide());
@@ -145,16 +183,17 @@ var InlineCodeCopy = class {
     this.button.remove();
   }
   onPointer(target) {
-    const el = target instanceof Element ? target.closest(CODE_SELECTOR) : null;
-    if (!(el instanceof HTMLElement)) {
-      if (target !== this.button && !this.button.contains(target)) this.scheduleHide();
-      return;
+    if (target === this.button || this.button.contains(target)) return this.cancelHide();
+    const el = target instanceof Element ? target : null;
+    const code = el?.closest(CODE_SELECTOR);
+    const found = code instanceof HTMLElement ? this.codeAt(code) : this.quoteLineAt(el?.closest(QUOTE_SELECTOR)) ?? this.calloutAt(el?.closest(CALLOUT_SELECTOR));
+    if (!found) {
+      if (code) return this.hide();
+      return this.scheduleHide();
     }
-    const code = this.codeAt(el);
-    if (!code) return this.hide();
     this.cancelHide();
-    this.current = code;
-    this.place(el);
+    this.current = found.text;
+    this.place(found);
   }
   scheduleHide() {
     this.cancelHide();
@@ -169,30 +208,74 @@ var InlineCodeCopy = class {
     this.current = null;
     this.button.hidden = true;
   }
-  codeAt(el) {
-    let pos;
+  posOf(el) {
     try {
-      pos = this.view.posAtDOM(el);
+      return this.view.posAtDOM(el);
     } catch {
       return null;
     }
+  }
+  /** コードの最初の行の箱の右上（折り返したコードでも、ボタンは 1 行目に出す） */
+  codeAt(el) {
+    const pos = this.posOf(el);
+    if (pos === null) return null;
     const line = this.view.state.doc.lineAt(pos);
     const code = findInlineCode(line.text, pos - line.from);
     if (!code) return null;
     const span = { from: line.from + code.from, to: line.from + code.to };
     if (cursorInside(span, this.view.state.selection.ranges.map((r) => r.head))) return null;
-    return code;
+    return { text: code.text, box: el.getClientRects()[0] ?? el.getBoundingClientRect(), inside: false };
   }
-  /** コードの最初の行の箱の右上に置く（折り返したコードでも、ボタンは 1 行目に出す） */
-  place(el) {
-    const box = el.getClientRects()[0] ?? el.getBoundingClientRect();
+  /** pos を含む、ひと続きの引用の行の生の文 */
+  quoteTextAt(pos) {
+    const doc = this.view.state.doc;
+    const lineAt = (n) => n >= 1 && n <= doc.lines ? doc.line(n).text : null;
+    const range = quoteBlock(lineAt, doc.lineAt(pos).number);
+    if (!range) return null;
+    const lines = [];
+    for (let n = range.first; n <= range.last; n++) lines.push(doc.line(n).text);
+    return { text: quoteSource(lines), firstFrom: doc.line(range.first).from };
+  }
+  /** 引用の行。ボタンは、ひと続きの引用の 1 行目の右上に置く（1 行目が描かれていなければ、乗せた行） */
+  quoteLineAt(el) {
+    if (!(el instanceof HTMLElement)) return null;
+    const pos = this.posOf(el);
+    if (pos === null) return null;
+    const quote = this.quoteTextAt(pos);
+    if (!quote) return null;
+    return { text: quote.text, box: this.lineBox(quote.firstFrom) ?? el.getBoundingClientRect(), inside: true };
+  }
+  /** 描かれたコールアウト（カーソルが外にあるとき）。ボタンは右上の「編集」のボタンの左に置く */
+  calloutAt(el) {
+    if (!(el instanceof HTMLElement)) return null;
+    const pos = this.posOf(el);
+    if (pos === null) return null;
+    const quote = this.quoteTextAt(pos);
+    if (!quote) return null;
+    const box = el.getBoundingClientRect();
+    const edit = el.querySelector(EDIT_BUTTON_SELECTOR);
+    const right = edit instanceof HTMLElement && edit.offsetParent !== null ? edit.getBoundingClientRect().left : box.right;
+    return { text: quote.text, box: new DOMRect(box.left, box.top, right - box.left, box.height), inside: true };
+  }
+  lineBox(from) {
+    try {
+      const { node } = this.view.domAtPos(from);
+      const line = (node instanceof Element ? node : node.parentElement)?.closest(".cm-line");
+      return line instanceof HTMLElement ? line.getBoundingClientRect() : null;
+    } catch {
+      return null;
+    }
+  }
+  place(target) {
     const base = this.view.dom.getBoundingClientRect();
-    this.button.style.left = `${box.right - base.left}px`;
-    this.button.style.top = `${box.top - base.top}px`;
+    const inset = target.inside ? INSET : 0;
+    this.button.classList.toggle(INSIDE_CLASS, target.inside);
+    this.button.style.left = `${target.box.right - inset - base.left}px`;
+    this.button.style.top = `${target.box.top + inset - base.top}px`;
     this.button.hidden = false;
   }
 };
-var livePreviewCopy = import_view.ViewPlugin.fromClass(InlineCodeCopy, {
+var livePreviewCopy = import_view.ViewPlugin.fromClass(MarkdownCopy, {
   eventHandlers: {
     mouseover(event) {
       this.onPointer(event.target);
@@ -203,8 +286,34 @@ var livePreviewCopy = import_view.ViewPlugin.fromClass(InlineCodeCopy, {
   }
 });
 
-// src/obsidian/reading.ts
+// src/obsidian/paste.ts
 var import_obsidian2 = require("obsidian");
+function autoConvertHtml(app) {
+  const vault = app.vault;
+  try {
+    return vault.getConfig?.("autoConvertHtml") !== false;
+  } catch {
+    return true;
+  }
+}
+function pastedText(data, convertHtml) {
+  const html = convertHtml ? data.getData("text/html") : "";
+  return html ? (0, import_obsidian2.htmlToMarkdown)(html) : data.getData("text/plain");
+}
+function handleQuotePaste(app, evt, editor) {
+  if (evt.defaultPrevented) return;
+  const data = evt.clipboardData;
+  if (!data || data.files.length > 0) return;
+  if (editor.listSelections().length !== 1) return;
+  const from = editor.getCursor("from");
+  const text = pasteIntoQuote(editor.getLine(from.line), from.ch, pastedText(data, autoConvertHtml(app)));
+  if (text === null) return;
+  evt.preventDefault();
+  editor.replaceSelection(text);
+}
+
+// src/obsidian/reading.ts
+var import_obsidian3 = require("obsidian");
 
 // src/core/targets.ts
 function isInlineCode(el) {
@@ -217,7 +326,18 @@ function isBodyTag(el) {
 
 // src/obsidian/reading.ts
 var WRAP_CLASS = "vt-md-code";
+var QUOTE_CLASS = "vt-md-quote";
 var ACTIVE_CLASS = "is-active";
+function toggleOnTap(target, holder) {
+  if (!import_obsidian3.Platform.isMobile) return;
+  const doc = holder.ownerDocument;
+  target.addEventListener("click", () => {
+    for (const other of Array.from(doc.querySelectorAll(`.${WRAP_CLASS}.${ACTIVE_CLASS}, .${QUOTE_CLASS}.${ACTIVE_CLASS}`))) {
+      if (other !== holder) other.classList.remove(ACTIVE_CLASS);
+    }
+    holder.classList.toggle(ACTIVE_CLASS);
+  });
+}
 function addCopyButtons(root) {
   for (const code of Array.from(root.querySelectorAll("code"))) {
     if (!isInlineCode(code) || code.parentElement?.classList.contains(WRAP_CLASS)) continue;
@@ -226,11 +346,26 @@ function addCopyButtons(root) {
     wrap.className = WRAP_CLASS;
     code.replaceWith(wrap);
     wrap.append(code, createCopyButton(doc, () => code.textContent ?? ""));
-    if (!import_obsidian2.Platform.isMobile) continue;
-    code.addEventListener("click", () => {
-      for (const other of Array.from(doc.querySelectorAll(`.${WRAP_CLASS}.${ACTIVE_CLASS}`))) if (other !== wrap) other.classList.remove(ACTIVE_CLASS);
-      wrap.classList.toggle(ACTIVE_CLASS);
-    });
+    toggleOnTap(code, wrap);
+  }
+}
+function quoteText(section, quote, ctx) {
+  const info = ctx.getSectionInfo(section);
+  if (info) {
+    const lines = info.text.split("\n").slice(info.lineStart, info.lineEnd + 1);
+    const start = lines.findIndex((l) => quotePrefix(l) !== null);
+    const range = start < 0 ? null : quoteBlock((n) => lines[n] ?? null, start);
+    if (range) return quoteSource(lines.slice(range.first, range.last + 1));
+  }
+  const body = quote.matches(".callout") ? quote.querySelector(".callout-content") : quote;
+  return (body instanceof HTMLElement ? body.innerText : quote.innerText).trim();
+}
+function addQuoteButtons(section, ctx) {
+  for (const quote of Array.from(section.querySelectorAll(":scope > blockquote, :scope > .callout"))) {
+    if (!(quote instanceof HTMLElement) || quote.classList.contains(QUOTE_CLASS)) continue;
+    quote.classList.add(QUOTE_CLASS);
+    quote.append(createCopyButton(quote.ownerDocument, () => quoteText(section, quote, ctx)));
+    toggleOnTap(quote, quote);
   }
 }
 function untag(root) {
@@ -238,17 +373,19 @@ function untag(root) {
     if (isBodyTag(tag)) tag.replaceWith(tag.ownerDocument.createTextNode(tag.textContent ?? ""));
   }
 }
-var readingProcessor = (el) => {
+var readingProcessor = (el, ctx) => {
   untag(el);
   addCopyButtons(el);
+  addQuoteButtons(el, ctx);
 };
 
 // src/main.ts
 var LIVE_TAG = ".markdown-source-view .cm-hashtag";
-var PkmMarkdownPlugin = class extends import_obsidian3.Plugin {
+var PkmMarkdownPlugin = class extends import_obsidian4.Plugin {
   onload() {
     this.registerMarkdownPostProcessor(readingProcessor);
-    if (!import_obsidian3.Platform.isMobile) this.registerEditorExtension(livePreviewCopy);
+    if (!import_obsidian4.Platform.isMobile) this.registerEditorExtension(livePreviewCopy);
+    this.registerEvent(this.app.workspace.on("editor-paste", (evt, editor) => handleQuotePaste(this.app, evt, editor)));
     this.guardTagClicks(activeDocument);
     this.registerEvent(this.app.workspace.on("window-open", (win) => this.guardTagClicks(win.doc)));
   }

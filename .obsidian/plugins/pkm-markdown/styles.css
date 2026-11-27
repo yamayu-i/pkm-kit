@@ -377,9 +377,10 @@ body.theme-dark {
 	cursor: text;
 }
 
-/* ───── インラインコードのコピーボタン ───── */
+/* ───── インラインコード・引用・コールアウトのコピーボタン ───── */
 
-.vt-md-code {
+.vt-md-code,
+.vt-md-quote {
 	position: relative;
 }
 
@@ -442,4 +443,23 @@ body.theme-dark {
 
 .vt-md-copy-floating[hidden] {
 	display: none;
+}
+
+/* ライブプレビューの引用・コールアウト: ブロックの右上の内側に置く */
+.vt-md-copy-floating.is-inside {
+	transform: translateX(-100%);
+}
+
+/* 閲覧モードの引用・コールアウト（ADR-0251）: 右上の内側に出す。ホバーかフォーカス、ホバーのない端末ではタップ（is-active）で出す */
+.vt-md-quote > .vt-md-copy {
+	position: absolute;
+	top: var(--vt-space-4);
+	right: var(--vt-space-4);
+	display: none;
+}
+
+.vt-md-quote:hover > .vt-md-copy,
+.vt-md-quote:focus-within > .vt-md-copy,
+.vt-md-quote.is-active > .vt-md-copy {
+	display: inline-flex;
 }
