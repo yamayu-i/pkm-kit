@@ -92,7 +92,7 @@ function RoutineItem(props: { ctx: TaskContext; routine: Routine; today: string;
 				<span class="vt-routine-summary">{r.summary || "(no summary)"}</span>
 				<span class="vt-muted">
 					{r.repeat ? describeRepeat(r.repeat) : "Invalid repeat"}
-					{r.estimated ? ` · ${formatMinutes(r.estimated)}` : ""}
+					{r.estimated !== null ? ` · ${formatMinutes(r.estimated)}` : ""}
 				</span>
 			</div>
 			{routineOccursOn(r, props.today) && <span class="vt-chip-mini is-today">Today</span>}

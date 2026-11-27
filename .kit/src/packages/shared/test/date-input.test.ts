@@ -209,10 +209,16 @@ describe("parseDurationInput", () => {
 		expect(parseDurationInput("45")).toBe(45);
 	});
 
-	it("読めないもの・同じ単位の重複・0 以下は null", () => {
+	it("0 は 0 分（ADR-0247）", () => {
+		expect(parseDurationInput("0")).toBe(0);
+		expect(parseDurationInput("0m")).toBe(0);
+		expect(parseDurationInput("0h")).toBe(0);
+	});
+
+	it("読めないもの・同じ単位の重複・負は null", () => {
 		expect(parseDurationInput("1w")).toBeNull();
 		expect(parseDurationInput("1h1h")).toBeNull();
-		expect(parseDurationInput("0")).toBeNull();
+		expect(parseDurationInput("-1h")).toBeNull();
 	});
 });
 

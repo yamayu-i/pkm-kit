@@ -1,6 +1,6 @@
 import { addDays, diffDays, weekdayOf, type LocalDate } from "./dates";
 import type { TaskIndex } from "./index";
-import type { Issue } from "./schema";
+import { awaitsEstimate, type Issue } from "./schema";
 import { isDone, visibleSubs, type SubIssue } from "./sub-issue";
 import { barOf } from "./timeline";
 
@@ -48,16 +48,16 @@ export type EffectiveEstimate = { minutes: number; source: "sub" | "budget" } | 
 /**
  * 使う見積もり（ADR-0231）。サブの estimated があればそれ。なければ、親の estimated の残りを、
  * 見積もりのない閉じていないサブで等分する。残り = 親の estimated − canceled 以外のサブの estimated の合計。
- * 親に estimated がない・残りが 0 以下なら null（見積もりなし）
+ * 親に estimated がない・残りが 0 以下なら null（見積もりなし）。見積もりのない delegated には割り振らない（ADR-0247）
  */
 export function effectiveEstimates(parent: Pick<Issue, "estimated"> | undefined, subs: readonly SubIssue[]): Map<string, EffectiveEstimate> {
 	const out = new Map<string, EffectiveEstimate>();
-	const candidates = subs.filter((s) => s.estimated === null && !isDone(s));
+	const candidates = subs.filter((s) => awaitsEstimate(s) && !isDone(s));
 	const rest = unallocatedBudget(parent, subs) ?? 0;
 	const share = candidates.length > 0 && rest > 0 ? rest / candidates.length : null;
 	for (const s of subs) {
 		if (s.estimated !== null) out.set(s.key, { minutes: s.estimated, source: "sub" });
-		else out.set(s.key, share !== null && !isDone(s) ? { minutes: share, source: "budget" } : null);
+		else out.set(s.key, share !== null && awaitsEstimate(s) && !isDone(s) ? { minutes: share, source: "budget" } : null);
 	}
 	return out;
 }
@@ -137,14 +137,14 @@ export function columnLoad(load: ReadonlyMap<LocalDate, DayLoad>, from: LocalDat
 	return { minutes, capacity, unknown: unknown.size, over: minutes > capacity };
 }
 
-/** 群のサブから、負荷に数える項目（閉じていない・期間がある） */
+/** 群のサブから、負荷に数える項目（閉じていない・期間がある）。見積もりのない delegated は自分の負荷ではないので除く（ADR-0247） */
 export function loadItems(groups: readonly ProjectGroup[], index: TaskIndex): LoadItem[] {
 	const out: LoadItem[] = [];
 	for (const g of groups) {
 		const est = effectiveEstimates(g.issue, index.subs(g.issue.id));
 		for (const s of g.subs) {
 			const bar = barOf(s);
-			if (!bar || isDone(s)) continue;
+			if (!bar || isDone(s) || (s.status === "delegated" && s.estimated === null)) continue;
 			out.push({ key: s.key, ...bar, minutes: est.get(s.key)?.minutes ?? null });
 		}
 	}
@@ -177,9 +177,9 @@ export function sizeOf(minutes: number | null): SizeLabel | null {
 /** 近いうちの見積もりのないサブの印を出す日数 */
 export const ESTIMATE_HORIZON_DAYS = 14;
 
-/** 閉じていない・estimated がない・期間が今日から 14 日のうちにかかるサブ（ADR-0231） */
+/** 閉じていない・見積もりを待っている（delegated を除く。ADR-0247）・期間が今日から 14 日のうちにかかるサブ（ADR-0231） */
 export function needsEstimate(sub: SubIssue, today: LocalDate): boolean {
-	if (isDone(sub) || sub.estimated !== null) return false;
+	if (isDone(sub) || !awaitsEstimate(sub)) return false;
 	const bar = barOf(sub);
 	if (!bar) return false;
 	return bar.end >= today && bar.start <= addDays(today, ESTIMATE_HORIZON_DAYS - 1);

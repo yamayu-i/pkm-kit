@@ -54,6 +54,19 @@ describe("boardWorkload", () => {
 		expect(w.overloadedByMinutes).toBe(30);
 		expect(w.loadRatio).toBe(1.2);
 	});
+
+	it("0 は見積もり済み。waiting・delegated はもともと未完了に数えない（ADR-0247）", () => {
+		const issues = [makeIssue("i-1", { estimated: 0 }), makeIssue("i-2", { status: "delegated", delegated_to: "m-1" }), makeIssue("i-3"), makeIssue("i-4", { status: "delegated", delegated_to: "m-1", estimated: 30 })];
+		const index = new TaskIndex({
+			...emptyVaultData(),
+			issues,
+			boards: [{ date: today, path: "daily/2026/11/2026-11-01.md", board: { ...emptyBoard(), issues: issues.map((i) => i.id) } }],
+		});
+		const w = boardWorkload(index, today, 150);
+		// 未見積もりは open の i-3 だけ。0 の i-1 は見積もり済み。delegated は見積もりがあっても未完了に入らない
+		expect(w.unestimatedCount).toBe(1);
+		expect(w.unfinishedEstimatedMinutes).toBe(0);
+	});
 });
 
 describe("carryCounts と stalledIssues", () => {
