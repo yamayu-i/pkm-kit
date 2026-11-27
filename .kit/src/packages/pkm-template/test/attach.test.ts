@@ -20,6 +20,13 @@ describe("assetFileName（ADR-0249）", () => {
 		expect(assetFileName("a b.png", ["A-B.png", "a-b-1.png"])).toBe("a-b-2.png");
 	});
 
+	it("点だけの名前や先頭の点は残さない（asset/ の外や隠しファイルにしない）", () => {
+		expect(assetFileName("..", [])).toBe("file");
+		expect(assetFileName("...", [])).toBe("file");
+		expect(assetFileName(".env", [])).toBe("env");
+		expect(assetFileName("../x.png", [])).toBe("x.png");
+	});
+
 	it("拡張子がないもの・名前が空になるもの", () => {
 		expect(assetFileName("README", [])).toBe("README");
 		expect(assetFileName("###.png", [])).toBe("file.png");

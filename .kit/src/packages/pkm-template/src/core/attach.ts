@@ -28,12 +28,13 @@ function clean(s: string): string {
 	return s
 		.replace(/[\s\\/:*?"<>|#^[\]()%]+/g, "-")
 		.replace(/-{2,}/g, "-")
-		.replace(/^-+|-+$/g, "");
+		.replace(/^[-.]+|[-.]+$/g, "");
 }
 
-/** 空白と使えない文字をハイフンにし、asset/ にある名前（taken）と重ならないよう -N を付ける */
+/** 空白と使えない文字をハイフンにし、先頭・末尾の点を除き、asset/ にある名前（taken）と重ならないよう -N を付ける */
 export function assetFileName(original: string, taken: readonly string[]): string {
-	const { stem, ext } = splitExt(original.trim());
+	// 先頭の点を外す（`..` や隠しファイルにしない）
+	const { stem, ext } = splitExt(original.trim().replace(/^\.+/, ""));
 	const base = clean(stem) || "file";
 	const e = clean(ext).toLowerCase();
 	const used = new Set(taken.map((t) => t.toLowerCase()));

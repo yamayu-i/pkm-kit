@@ -2428,10 +2428,10 @@ function splitExt(name) {
   return { stem: name.slice(0, dot), ext: name.slice(dot + 1) };
 }
 function clean(s3) {
-  return s3.replace(/[\s\\/:*?"<>|#^[\]()%]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+  return s3.replace(/[\s\\/:*?"<>|#^[\]()%]+/g, "-").replace(/-{2,}/g, "-").replace(/^[-.]+|[-.]+$/g, "");
 }
 function assetFileName(original, taken) {
-  const { stem, ext } = splitExt(original.trim());
+  const { stem, ext } = splitExt(original.trim().replace(/^\.+/, ""));
   const base = clean(stem) || "file";
   const e3 = clean(ext).toLowerCase();
   const used = new Set(taken.map((t3) => t3.toLowerCase()));
