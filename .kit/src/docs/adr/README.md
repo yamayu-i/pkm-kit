@@ -121,5 +121,5 @@
 | [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
 | [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
-| [0245](0245-sub-period-pair-and-range-dialog.md) | 提案 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
+| [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
 <!-- adr-index:end -->

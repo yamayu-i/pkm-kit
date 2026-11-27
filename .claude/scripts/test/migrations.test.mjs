@@ -483,8 +483,8 @@ test("0070: community-plugins.json に pkm-updates を足す。ほかの要素�
 	});
 	const { failed, done } = await runMigrations(root);
 	assert.equal(failed, null);
-	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを、0181 と 0190 は issue/ だけを見る（fresh では何も変えない）
-	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp", "0167-markdown-line-breaks", "0181-sub-done-to-bottom", "0190-sub-end-as-due"]);
+	// 0072 も後ろに pkm-view-selector を、0120 が pkm-slide を、0128 が pkm-markdown を足す。0089 は core-plugins.json だけを、0129 は theme.json だけを、0135 は issue/ だけを、0137 は issue/board-groups.json と routine/ だけを、0148 と 0152 は issue/ だけを、0156 は .mcp.json だけを、0181・0190・0245 は issue/ だけを見る（fresh では何も変えない）
+	assert.deepEqual(done.map((d) => d.name), ["0070-pkm-updates", "0072-pkm-view-selector", "0089-file-recovery", "0102-pkm-diagram", "0120-pkm-slide", "0128-pkm-markdown", "0129-vault-theme-follow", "0135-sub-issues", "0137-board-lanes", "0148-inbox-clarified", "0152-calendar-tickler", "0156-pkm-mcp", "0167-markdown-line-breaks", "0181-sub-done-to-bottom", "0190-sub-end-as-due", "0245-sub-period-pair"]);
 	assert.deepEqual(readJsonFile(root, ".obsidian/community-plugins.json"), ["pkm-git", "other", "pkm-html", "pkm-updates", "pkm-view-selector", "pkm-slide", "pkm-markdown"]);
 	assert.ok(!readFileSync(join(root, ".obsidian/community-plugins.json"), "utf8").endsWith("\n"));
 	const again = await runMigrations(root);
@@ -703,9 +703,9 @@ test("0135: 子と孫を、いちばん上の祖先のサブにして子のフ�
 	assert.ok(parent.startsWith(head.trimEnd()), "親の本文は変えない");
 	const blocks = parent.split("<!-- sub-issue").slice(1);
 	assert.equal(blocks.length, 2);
-	// 子の scheduled（過去の日付）は、後の 0152 が消す。closed の子は、後の 0181 が末尾へ移す。孫の deadline は、後の 0190 が end にする
+	// 子の scheduled（過去の日付）は、後の 0152 が消す。closed の子は、後の 0181 が末尾へ移す。孫の deadline は、後の 0190 が end にし、後の 0245 が start も同じ日にする
 	assert.match(blocks[1], /\nsummary: "子: 仕様を決める"\nstatus: closed\nestimated: 120\ncreated: 2026-01-03T09:00:00\+09:00\nmigrated_from: i-11\n-->\n（移行で残した項目）priority: high \/ label: \[仕事, 調査\] \/ related: \[i-2\]\n\n## ToDo\n\n- \[x\] 下調べ\n/);
-	assert.match(blocks[0], /\nsummary: "孫の issue"\nstatus: open\nend: 2026-01-20\ncreated: 2026-01-04T09:00:00\+09:00\nmigrated_from: i-12\n-->\n$/);
+	assert.match(blocks[0], /\nsummary: "孫の issue"\nstatus: open\nstart: 2026-01-20\nend: 2026-01-20\ncreated: 2026-01-04T09:00:00\+09:00\nmigrated_from: i-12\n-->\n$/);
 	const subId = /^\nid: ([a-z0-9]{6})\n/.exec(blocks[1])[1];
 	assert.match(readFileSync(join(root, "issue/i-13.md"), "utf8"), new RegExp(`^related: \\["i-10#${subId}","daily/2026/01/2026-01-01.md"\\]$`, "m"));
 	// pkm-task で読むと、サブになり、旧 ID の worklog はそのサブの記録になる（lint の問題がない）
@@ -924,16 +924,17 @@ test("0190: サブの deadline / soft_deadline を end にまとめる。end が
 	assert.equal(failed, null, JSON.stringify(failed));
 	const i30 = readFileSync(join(root, "issue/i-30.md"), "utf8");
 	const head = (id) => new RegExp(`id: ${id}\\n([\\s\\S]*?)-->`).exec(i30)[1];
-	assert.equal(head("aaaaaa"), 'summary: "aaaaaa"\nstatus: open\nend: 2026-11-20\nestimated: 60\n');
-	assert.equal(head("bbbbbb"), 'summary: "bbbbbb"\nstatus: open\nend: 2026-11-18\n');
-	assert.equal(head("cccccc"), 'summary: "cccccc"\nstatus: open\nend: 2026-11-22\n');
+	// end だけになったサブは、後の 0245 が start も同じ日にする
+	assert.equal(head("aaaaaa"), 'summary: "aaaaaa"\nstatus: open\nstart: 2026-11-20\nend: 2026-11-20\nestimated: 60\n');
+	assert.equal(head("bbbbbb"), 'summary: "bbbbbb"\nstatus: open\nstart: 2026-11-18\nend: 2026-11-18\n');
+	assert.equal(head("cccccc"), 'summary: "cccccc"\nstatus: open\nstart: 2026-11-22\nend: 2026-11-22\n');
 	assert.equal(head("dddddd"), 'summary: "dddddd"\nstatus: open\nstart: 2026-11-10\nend: 2026-11-25\n');
 	assert.equal(head("eeeeee"), 'summary: "eeeeee"\nstatus: open\nstart: 2026-11-28\nend: 2026-11-28\n');
 	assert.equal(head("ffffff"), 'summary: "ffffff"\nstatus: open\n');
 	assert.match(i30, /^---\n[\s\S]*\ndeadline: 2026-12-01\n[\s\S]*---\n\n親の本文\n\n<!-- sub-issue/, "issue の期限と本文は変えない");
 	assert.ok(i30.includes("-->\ndeadline: 2026-01-01 は本文\n"), "サブの本文は変えない");
 	const i31 = readFileSync(join(root, "issue/i-31.md"), "utf8");
-	assert.ok(i31.includes("status: open\r\nend: 2026-11-20\r\n-->") && !/[^\r]\n/.test(i31));
+	assert.ok(i31.includes("status: open\r\nstart: 2026-11-20\r\nend: 2026-11-20\r\n-->") && !/[^\r]\n/.test(i31));
 	const notes = done.find((d) => d.name === "0190-sub-end-as-due").changes.join("\n");
 	assert.match(notes, /issue\/i-30\.md: サブ dddddd: deadline 2026-11-20 を消す（end 2026-11-25 を期限にする）/);
 	assert.match(notes, /issue\/i-30\.md: サブ eeeeee: deadline 2026-11-20 を消し、end を 2026-11-28 にする（start 2026-11-28 より前にできないため）/);
@@ -942,6 +943,47 @@ test("0190: サブの deadline / soft_deadline を end にまとめる。end が
 	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
 	// pkm-task で読むと、なくした項目の警告がない
 	assert.deepEqual(taskLint(root).filter((p) => p.includes("sub-deadline-removed")), []);
+});
+
+test("0245: 期間が片方だけのサブは、もう片方を同じ日にする。空の行は置き換え、読めない値は check に残す。CRLF は変えない。2 回目は何も変えない", async () => {
+	const root = childFrom("legacy");
+	const sub = (id, fields, body = "本文") => `<!-- sub-issue\nid: ${id}\nsummary: "${id}"\nstatus: open\n${fields}-->\n${body}\n\n`;
+	write(root, {
+		"issue/i-40.md": `---\ntype: issue\nid: i-40\nsummary: 親\nstatus: open\n---\n\n親の本文\n\n${[
+			sub("aaaaaa", "end: 2026-11-20\nestimated: 60\n"),
+			sub("bbbbbb", "start: 2026-11-18\n"),
+			sub("cccccc", "start:\nend: 2026-11-22\n"),
+			sub("dddddd", "start: 2026-11-10\nend: 2026-11-25\n"),
+			sub("eeeeee", "end: null\nstart: 2026-11-28\n"),
+			sub("ffffff", "", "end: 2026-01-01 は本文"),
+		].join("")}`,
+		"issue/i-41.md": `---\r\ntype: issue\r\nid: i-41\r\nsummary: crlf\r\nstatus: open\r\n---\r\n\r\n${sub("aaaaaa", "end: 2026-11-20\n").replace(/\n/g, "\r\n")}`,
+	});
+	const before = readFileSync(join(root, "issue/i-40.md"), "utf8");
+	await runMigrations(root, { dryRun: true });
+	assert.equal(readFileSync(join(root, "issue/i-40.md"), "utf8"), before, "--dry-run は書かない");
+	const { failed, done } = await runMigrations(root);
+	assert.equal(failed, null, JSON.stringify(failed));
+	const i40 = readFileSync(join(root, "issue/i-40.md"), "utf8");
+	const head = (id) => new RegExp(`id: ${id}\\n([\\s\\S]*?)-->`).exec(i40)[1];
+	assert.equal(head("aaaaaa"), 'summary: "aaaaaa"\nstatus: open\nstart: 2026-11-20\nend: 2026-11-20\nestimated: 60\n');
+	assert.equal(head("bbbbbb"), 'summary: "bbbbbb"\nstatus: open\nstart: 2026-11-18\nend: 2026-11-18\n');
+	assert.equal(head("cccccc"), 'summary: "cccccc"\nstatus: open\nstart: 2026-11-22\nend: 2026-11-22\n');
+	assert.equal(head("dddddd"), 'summary: "dddddd"\nstatus: open\nstart: 2026-11-10\nend: 2026-11-25\n');
+	assert.equal(head("eeeeee"), 'summary: "eeeeee"\nstatus: open\nend: 2026-11-28\nstart: 2026-11-28\n');
+	assert.equal(head("ffffff"), 'summary: "ffffff"\nstatus: open\n');
+	assert.ok(i40.includes("-->\nend: 2026-01-01 は本文\n"), "サブの本文は変えない");
+	const i41 = readFileSync(join(root, "issue/i-41.md"), "utf8");
+	assert.ok(i41.includes("status: open\r\nstart: 2026-11-20\r\nend: 2026-11-20\r\n-->") && !/[^\r]\n/.test(i41));
+	const notes = done.find((d) => d.name === "0245-sub-period-pair").changes.join("\n");
+	assert.match(notes, /issue\/i-40\.md: サブ aaaaaa: end 2026-11-20 だけなので、start も 2026-11-20 にする/);
+	const again = await runMigrations(root);
+	assert.deepEqual(again.done.flatMap((d) => d.changes), []);
+	assert.deepEqual(taskLint(root).filter((p) => p.includes("sub-period-half")), []);
+	// 読めない値は直さず、check に残す
+	write(root, { "issue/i-42.md": `---\ntype: issue\nid: i-42\nsummary: 親\nstatus: open\n---\n\n${sub("aaaaaa", "start: 明日\n")}` });
+	const { check } = await import("../../../.kit/migrations/0245-sub-period-pair/check.mjs");
+	assert.deepEqual(check(root), ["issue/i-42.md: サブ aaaaaa の期間が start（明日）だけ"]);
 });
 
 test("0156: .mcp.json で .kit/bin/mcp.mjs を登録している名前を pkm にする。ほかのサーバーと引数は残す", async () => {

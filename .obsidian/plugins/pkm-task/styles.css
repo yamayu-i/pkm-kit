@@ -2516,6 +2516,21 @@ body.is-mobile .vt-toast {
 	height: 40px;
 }
 
+/* 期間のダイアログ（ADR-0245）: Start と End の欄を横に並べる */
+.vt-period-fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.vt-period-fields .vt-text-field {
+	min-width: 0;
+}
+
+.vt-period-fields input {
+	box-sizing: border-box;
+}
+
 .vt-date-form .vt-form {
 	margin-top: 0;
 }
@@ -4813,6 +4828,12 @@ body.is-mobile .vt-toast {
 	border-color: var(--vt-scheduled);
 	background: var(--vt-scheduled);
 	color: var(--vt-on-scheduled);
+}
+
+/* 期間の間の日（ADR-0245）。始まりと終わりは塗りの丸、その間は薄い面 */
+.vt-cal-day.vt-cal-day.is-in-range:not(.is-selected) {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
 }
 
 /* 期限より後の日は文字を一段弱くする（押せる） */

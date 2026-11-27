@@ -1610,6 +1610,9 @@ function parseBlock(path, parent, raw, order, parseYaml5) {
     migratedFrom,
     body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd()
   };
+  if (sub.start === null !== (sub.end === null)) {
+    extra.push({ severity: "warning", path, code: "sub-period-half", message: `\u671F\u9593\u304C ${sub.start === null ? "end" : "start"} \u3060\u3051\u3067\u3059\u3002start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044\uFF08ADR-0245\u3001\u79FB\u884C 0245\uFF09` });
+  }
   return { sub, problems: prefixed([...extra, ...r3.problems], id) };
 }
 function parseSubIssues(path, parent, text, parseYaml5) {
@@ -1741,6 +1744,7 @@ function checkSubIssues(subs, memberIds) {
     ]) {
       if (!isDate(value)) errors.push(`${where}: ${key} \u304C YYYY-MM-DD \u306E\u65E5\u4ED8\u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(value)}`);
     }
+    if (s3.start === null !== (s3.end === null)) errors.push(`${where}: \u671F\u9593\u306F start \u3068 end \u3092\u4E21\u65B9\u5165\u308C\u308B\u304B\u3001\u4E21\u65B9\u7A7A\u3051\u3066\u304F\u3060\u3055\u3044`);
     if (s3.start !== null && s3.end !== null && s3.end < s3.start) errors.push(`${where}: end \u304C start \u3088\u308A\u524D\u3067\u3059`);
     if (s3.estimated !== null && !(typeof s3.estimated === "number" && Number.isFinite(s3.estimated) && s3.estimated >= 0)) errors.push(`${where}: estimated \u306F 0 \u4EE5\u4E0A\u306E\u6570\uFF08\u5206\uFF09\u306B\u3057\u3066\u304F\u3060\u3055\u3044`);
     if (s3.status === "delegated" && s3.delegatedTo === null) errors.push(`${where}: delegated \u306B\u306F delegated_to \u304C\u8981\u308A\u307E\u3059`);
@@ -3313,6 +3317,28 @@ function MonthCalendar(props) {
   ] });
 }
 
+// src/core/period.ts
+function pickPeriodDay(current, day) {
+  if (current.start === null || current.end !== null || day < current.start) return { start: day, end: null };
+  return { start: current.start, end: day };
+}
+function periodError(p3) {
+  if (p3.start === null && p3.end === null) return null;
+  if (p3.start === null) return "Start \u3082\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u671F\u9593\u306F Start \u3068 End \u306E\u4E21\u65B9\u304C\u8981\u308A\u307E\u3059\uFF09";
+  if (p3.end === null) return "End \u3082\u5165\u308C\u3066\u304F\u3060\u3055\u3044\uFF08\u671F\u9593\u306F Start \u3068 End \u306E\u4E21\u65B9\u304C\u8981\u308A\u307E\u3059\u30021 \u65E5\u306A\u3089\u540C\u3058\u65E5\uFF09";
+  if (p3.end < p3.start) return "End \u304C Start \u3088\u308A\u524D\u3067\u3059";
+  return null;
+}
+function readPeriodTexts(startText, endText, today) {
+  const start = parseDateInput(startText, today);
+  return { start, end: parseDateInput(endText, start ?? today) };
+}
+var shortDate2 = (d3) => `${d3.slice(5, 7)}/${d3.slice(8, 10)}`;
+function formatPeriod(p3) {
+  if (p3.start === null || p3.end === null) return p3.start ?? p3.end ? `${p3.start ? shortDate2(p3.start) : ""}\u2013${p3.end ? shortDate2(p3.end) : ""}` : null;
+  return p3.start === p3.end ? shortDate2(p3.start) : `${shortDate2(p3.start)}\u2013${shortDate2(p3.end)}`;
+}
+
 // src/core/worklog-times.ts
 function planWorklogTimes(input) {
   const { running, fromMs, toMs, now } = input;
@@ -3555,7 +3581,7 @@ function DateTextField(props) {
       {
         ref: props.inputRef,
         type: "text",
-        "aria-label": "Date",
+        "aria-label": props.label ?? "Date",
         placeholder: props.placeholder,
         value: props.text,
         onInput: (e3) => props.onText(e3.currentTarget.value),
@@ -3613,6 +3639,75 @@ function DateForm(props) {
         rejected !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: rejected }),
         /* @__PURE__ */ u3("div", { class: "vt-form", children: [
           props.allowClear !== false && /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit(null), children: "Clear" }),
+          /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
+        ] })
+      ]
+    }
+  );
+}
+function PeriodForm(props) {
+  const today = localToday();
+  const [startText, setStartText] = d2(props.initial.start ?? "");
+  const [endText, setEndText] = d2(props.initial.end ?? "");
+  const [month, setMonth] = d2((props.initial.start ?? today).slice(0, 7));
+  const ref = A2(null);
+  h2(() => ref.current?.select(), []);
+  const period = readPeriodTexts(startText, endText, today);
+  const unreadable = startText.trim() !== "" && period.start === null || endText.trim() !== "" && period.end === null;
+  const error = unreadable ? null : periodError(period) ?? (period.start !== null && props.validate ? props.validate(period) : null);
+  const invalid = unreadable || error !== null;
+  const pick = (d3) => {
+    const next = pickPeriodDay(period, d3);
+    setStartText(next.start ?? "");
+    setEndText(next.end ?? "");
+  };
+  const inRange = (d3) => period.start !== null && period.end !== null && d3 > period.start && d3 < period.end;
+  return /* @__PURE__ */ u3(
+    "form",
+    {
+      class: "vt-date-form",
+      onSubmit: (e3) => {
+        e3.preventDefault();
+        if (!invalid) props.onSubmit(period);
+      },
+      children: [
+        /* @__PURE__ */ u3("div", { class: "vt-period-fields", children: [
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "Start" }),
+            /* @__PURE__ */ u3(
+              DateTextField,
+              {
+                inputRef: ref,
+                label: "Start",
+                text: startText,
+                parsed: period.start,
+                onText: (value) => {
+                  setStartText(value);
+                  const next = readPeriodTexts(value, endText, today).start;
+                  if (next !== null) setMonth(next.slice(0, 7));
+                }
+              }
+            )
+          ] }),
+          /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
+            /* @__PURE__ */ u3("span", { children: "End" }),
+            /* @__PURE__ */ u3(DateTextField, { label: "End", text: endText, parsed: period.end, onText: setEndText })
+          ] })
+        ] }),
+        /* @__PURE__ */ u3(
+          MonthCalendar,
+          {
+            month,
+            onMonth: setMonth,
+            today,
+            isSelected: (d3) => d3 === period.start || d3 === period.end,
+            onPick: pick,
+            mark: (d3) => inRange(d3) ? { classes: ["is-in-range"], notes: ["In period"] } : null
+          }
+        ),
+        error !== null && /* @__PURE__ */ u3("div", { class: "vt-error", children: error }),
+        /* @__PURE__ */ u3("div", { class: "vt-form", children: [
+          /* @__PURE__ */ u3("button", { type: "button", onClick: () => props.onSubmit({ start: null, end: null }), children: "Clear" }),
           /* @__PURE__ */ u3("button", { type: "submit", class: "mod-cta", disabled: invalid, children: "Save" })
         ] })
       ]
@@ -4721,11 +4816,6 @@ function SizeChips(props) {
 }
 
 // src/obsidian/sub-editor.tsx
-var DATE_FIELDS = [
-  ["start", "Start"],
-  ["end", "End"],
-  ["scheduled", "Calendar"]
-];
 function confirmModal(ctx, title, message, action, run) {
   new PreactModal(ctx.app, title, (close) => /* @__PURE__ */ u3("div", { children: [
     /* @__PURE__ */ u3("p", { children: message }),
@@ -4765,7 +4855,19 @@ function pickSubDate(ctx, label, initial, onPick, validate) {
     }
   )).open();
 }
-var SUB_DATE_FIELDS = DATE_FIELDS;
+function pickSubPeriod(ctx, initial, onPick, validate) {
+  new PreactModal(ctx.app, "Period", (close) => /* @__PURE__ */ u3(
+    PeriodForm,
+    {
+      initial,
+      validate,
+      onSubmit: (v3) => {
+        close();
+        onPick(v3);
+      }
+    }
+  )).open();
+}
 function subDateRules(ctx, sub) {
   const index = ctx.store.index;
   const parent = index.issues.get(sub.parent);
@@ -4774,10 +4876,40 @@ function subDateRules(ctx, sub) {
   const lock = canEditSubPeriod(parent, planned, today) ? null : periodInInboxMessage(sub.parent);
   return {
     lock,
-    validate: (key, draft) => key === "scheduled" || !parent ? void 0 : (d3) => subPeriodError(parent, planned, { start: sub.start, end: sub.end }, { start: draft.start, end: draft.end, [key]: d3 }, today)
+    validatePeriod: (period) => parent ? subPeriodError(parent, planned, { start: sub.start, end: sub.end }, period, today) : null
   };
 }
-var isPeriodKey = (key) => key !== "scheduled";
+function SubDateFields(props) {
+  const { ctx, sub, value } = props;
+  const rules = subDateRules(ctx, sub);
+  const period = formatPeriod(value);
+  return /* @__PURE__ */ u3(S, { children: [
+    /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Period" }),
+      /* @__PURE__ */ u3(
+        "button",
+        {
+          type: "button",
+          class: `vt-field-chip${period ? "" : " is-placeholder"}`,
+          disabled: rules.lock !== null,
+          title: rules.lock ?? void 0,
+          onClick: () => pickSubPeriod(ctx, { start: value.start, end: value.end }, (p3) => props.onChange(p3), rules.validatePeriod),
+          children: [
+            /* @__PURE__ */ u3(Icon, { name: "calendar-range" }),
+            period ?? "Not set"
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
+      /* @__PURE__ */ u3("span", { children: "Calendar" }),
+      /* @__PURE__ */ u3("button", { type: "button", class: `vt-field-chip${value.scheduled ? "" : " is-placeholder"}`, onClick: () => pickSubDate(ctx, "Calendar", value.scheduled, (v3) => props.onChange({ scheduled: v3 })), children: [
+        /* @__PURE__ */ u3(Icon, { name: "calendar" }),
+        value.scheduled ? formatShortDate(value.scheduled) : "Not set"
+      ] })
+    ] })
+  ] });
+}
 function DependsField(props) {
   const { candidates, dependsOn } = props;
   const chip = dependsChip(candidates, dependsOn);
@@ -4806,14 +4938,8 @@ function SubIssueForm(props) {
   const set = (patch) => setDraft((d3) => ({ ...d3, ...patch }));
   const siblings = ctx.store.index.subs(sub.parent).filter((s3) => s3.id !== sub.id);
   const member = draft.delegatedTo === null ? null : ctx.store.index.members.get(draft.delegatedTo);
-  const rules = subDateRules(ctx, sub);
-  const editDate = (key, label) => pickSubDate(
-    ctx,
-    label,
-    draft[key],
-    (v3) => setDraft((d3) => ({ ...d3, [key]: v3, ...d3.status === "someday" && key !== "scheduled" && v3 !== null ? { status: "open" } : {} })),
-    rules.validate(key, draft)
-  );
+  const lock = subDateRules(ctx, sub).lock;
+  const changeDates = (patch) => setDraft((d3) => ({ ...d3, ...patch, ...d3.status === "someday" && (patch.start ?? patch.end ?? null) !== null ? { status: "open" } : {} }));
   const changeStatus = (status) => {
     if (status === "delegated" && draft.delegatedTo === null) pickMember(ctx, (id) => set({ status, delegatedTo: id }));
     else set({ status, ...status === "delegated" ? {} : { delegatedTo: null }, ...status === "someday" ? { scheduled: null, start: null, end: null } : {} });
@@ -4854,23 +4980,8 @@ function SubIssueForm(props) {
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-          /* @__PURE__ */ u3("span", { children: label }),
-          /* @__PURE__ */ u3(
-            "button",
-            {
-              type: "button",
-              class: `vt-field-chip${draft[key] ? "" : " is-placeholder"}`,
-              disabled: rules.lock !== null && isPeriodKey(key),
-              onClick: () => editDate(key, label),
-              children: [
-                /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-                draft[key] ? formatShortDate(draft[key]) : "Not set"
-              ]
-            }
-          )
-        ] })) }),
-        rules.lock !== null && /* @__PURE__ */ u3("div", { class: "vt-muted", children: rules.lock }),
+        /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: /* @__PURE__ */ u3(SubDateFields, { ctx, sub, value: draft, onChange: changeDates }) }),
+        lock !== null && /* @__PURE__ */ u3("div", { class: "vt-muted", children: lock }),
         /* @__PURE__ */ u3("div", { class: "vt-subissue-form-row", children: [
           /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
             /* @__PURE__ */ u3("span", { children: "Estimated" }),
@@ -6746,7 +6857,6 @@ function SubFields(props) {
   const { ctx, sub, save } = props;
   const member = sub.delegatedTo === null ? null : ctx.store.index.members.get(sub.delegatedTo);
   const others = props.siblings.filter((s3) => s3.id !== sub.id);
-  const rules = subDateRules(ctx, sub);
   const estimatedText = sub.estimated === null ? "" : formatMinutes(sub.estimated);
   const [estimatedError, setEstimatedError] = d2(null);
   const estimated = useDraft(
@@ -6771,23 +6881,7 @@ function SubFields(props) {
           member ? member.nickname : "Choose a member"
         ] })
       ] }),
-      SUB_DATE_FIELDS.map(([key, label]) => /* @__PURE__ */ u3("div", { class: "vt-text-field", children: [
-        /* @__PURE__ */ u3("span", { children: label }),
-        /* @__PURE__ */ u3(
-          "button",
-          {
-            type: "button",
-            class: `vt-field-chip${sub[key] ? "" : " is-placeholder"}`,
-            disabled: rules.lock !== null && isPeriodKey(key),
-            title: rules.lock !== null && isPeriodKey(key) ? rules.lock : void 0,
-            onClick: () => pickSubDate(ctx, label, sub[key], (v3) => void save({ [key]: v3 }), rules.validate(key, sub)),
-            children: [
-              /* @__PURE__ */ u3(Icon, { name: "calendar" }),
-              sub[key] ? formatShortDate(sub[key]) : "Not set"
-            ]
-          }
-        )
-      ] })),
+      /* @__PURE__ */ u3(SubDateFields, { ctx, sub, value: sub, onChange: (patch) => void save(patch) }),
       /* @__PURE__ */ u3("label", { class: "vt-text-field", children: [
         /* @__PURE__ */ u3("span", { children: "Estimated" }),
         /* @__PURE__ */ u3(

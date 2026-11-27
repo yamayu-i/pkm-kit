@@ -205,6 +205,7 @@ packages/design/tokens.json（正本）
 | 日付の枠 | `.vt-day` | 7 日のストリップの 36px の角丸の四角。土日は枠が太い。今日は太字と下に点で、選んでいないときは枠と文字を primary にする（ADR-0030） |
 | 月のカレンダー | `.vt-cal`（`.vt-cal-day`） | 共有の部品（`packages/shared/src/month-calendar.tsx`、ADR-0078）。見出しは英語の月と年 + ‹ ›。月と年はそれぞれ ▾ のボタン（`.vt-cal-menu`）で、押すと日の格子の代わりに 3 列の一覧（`.vt-cal-options`、表示中は `--vt-scheduled` の塗りの丸。ADR-0228）を出す。曜日は 1 文字。日は枠のない 40px の丸、今日は primary の枠線の丸、選んだ日は `--vt-scheduled` の塗りの丸。月の外の日は空ける。期限は丸の外側の色の輪 |
 | 日付の入力 | `.vt-date-field` | 入力言語の日付の欄 + 解釈の表示（`2026-11-24 TUE`。ADR-0228）。日付を選ぶ所では、必ず月のカレンダーと並べる（ADR-0078） |
+| 期間の選択 | `.vt-date-form` の中の `.vt-period-fields`（カレンダーの間の日は `.vt-cal-day.is-in-range`） | サブの Period のチップ（`calendar-range`。`11/03–11/07`、同じ日は `11/03`）から開くダイアログ。上に Start と End の日付の入力（横に 2 つ。End は Start を基準に読む）、下に月のカレンダー。始まりと終わりは `--vt-scheduled` の塗りの丸、その間は `--vt-secondary-container` の面。1 回目に押した日が Start、2 回目が End。片方だけ・逆転の理由は error の色で出し、Save を押せない。左に Clear（ADR-0245） |
 | 日時の入力 | `.vt-wt-row` | 入力言語の日時（`時刻 [日付]`）の 1 つの欄 + カレンダーと時計のボタン + 解釈の表示（`2026-11-24 TUE 22:00`）。pkm-task の `ui/DateTimeField.tsx`（ADR-0193・ADR-0228） |
 | タイル | `.vt-effort-cell` | ラベル + 大きい数字。編集できるものは `.is-editable`、計算値は `.is-readonly` |
 | リストの項目 | `.vt-log` | 押せるカード。左に日付ブロック、右に時間のチップと鉛筆 |

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { DATE_INPUT_ERROR, DATE_INPUT_EXAMPLES, formatDateLabel, formatDateTimeValue, parseDateInput, parseDateTimeInput } from "../../../shared/src/date-input.ts";
 import { MonthCalendar } from "../../../shared/src/month-calendar.tsx";
 import { addDays, localToday, type LocalDate, weekdayOf } from "../core/dates";
+import { periodError, pickPeriodDay, readPeriodTexts, type Period } from "../core/period";
 import { DateTimeField } from "./DateTimeField";
 
 /** 1 行のテキストを入力して保存する */
@@ -49,13 +50,13 @@ function DateHint(props: { text: string; parsed: LocalDate | null }) {
  * 日付の入力欄（入力言語。ADR-0228）と、解釈の結果。日付の選択はすべてこれとカレンダーを並べる（ADR-0078）。
  * 欄を離れたときに、読めた入力を `yyyy-mm-dd` に書き換える
  */
-function DateTextField(props: { text: string; parsed: LocalDate | null; onText: (value: string) => void; inputRef?: Ref<HTMLInputElement>; placeholder?: string }) {
+function DateTextField(props: { text: string; parsed: LocalDate | null; onText: (value: string) => void; inputRef?: Ref<HTMLInputElement>; placeholder?: string; label?: string }) {
 	return (
 		<div class="vt-date-field">
 			<input
 				ref={props.inputRef}
 				type="text"
-				aria-label="Date"
+				aria-label={props.label ?? "Date"}
 				placeholder={props.placeholder}
 				value={props.text}
 				onInput={(e) => props.onText(e.currentTarget.value)}
@@ -131,6 +132,81 @@ export function DateForm(props: {
 						Clear
 					</button>
 				)}
+				<button type="submit" class="mod-cta" disabled={invalid}>
+					Save
+				</button>
+			</div>
+		</form>
+	);
+}
+
+/**
+ * 期間を選ぶ（ADR-0245）。上に Start と End の入力欄（入力言語。End は Start を基準に読む）、下に月のカレンダー。
+ * カレンダーは 1 回目に押した日が Start、2 回目が End で、その間を塗る。片方だけ・逆転・validate の理由は欄の下に出し、Save を押せなくする
+ */
+export function PeriodForm(props: {
+	initial: Period;
+	onSubmit: (value: Period) => void;
+	/** その期間にしてよくなければ理由（日本語）。Inbox の Project・Tickler の規則（ADR-0210） */
+	validate?: (value: Period) => string | null;
+}) {
+	const today = localToday();
+	const [startText, setStartText] = useState(props.initial.start ?? "");
+	const [endText, setEndText] = useState(props.initial.end ?? "");
+	const [month, setMonth] = useState((props.initial.start ?? today).slice(0, 7));
+	const ref = useRef<HTMLInputElement>(null);
+	useEffect(() => ref.current?.select(), []);
+	const period = readPeriodTexts(startText, endText, today);
+	const unreadable = (startText.trim() !== "" && period.start === null) || (endText.trim() !== "" && period.end === null);
+	const error = unreadable ? null : (periodError(period) ?? (period.start !== null && props.validate ? props.validate(period) : null));
+	const invalid = unreadable || error !== null;
+	const pick = (d: LocalDate) => {
+		const next = pickPeriodDay(period, d);
+		setStartText(next.start ?? "");
+		setEndText(next.end ?? "");
+	};
+	const inRange = (d: LocalDate) => period.start !== null && period.end !== null && d > period.start && d < period.end;
+	return (
+		<form
+			class="vt-date-form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				if (!invalid) props.onSubmit(period);
+			}}
+		>
+			<div class="vt-period-fields">
+				<label class="vt-text-field">
+					<span>Start</span>
+					<DateTextField
+						inputRef={ref}
+						label="Start"
+						text={startText}
+						parsed={period.start}
+						onText={(value) => {
+							setStartText(value);
+							const next = readPeriodTexts(value, endText, today).start;
+							if (next !== null) setMonth(next.slice(0, 7));
+						}}
+					/>
+				</label>
+				<label class="vt-text-field">
+					<span>End</span>
+					<DateTextField label="End" text={endText} parsed={period.end} onText={setEndText} />
+				</label>
+			</div>
+			<MonthCalendar
+				month={month}
+				onMonth={setMonth}
+				today={today}
+				isSelected={(d) => d === period.start || d === period.end}
+				onPick={pick}
+				mark={(d) => (inRange(d) ? { classes: ["is-in-range"], notes: ["In period"] } : null)}
+			/>
+			{error !== null && <div class="vt-error">{error}</div>}
+			<div class="vt-form">
+				<button type="button" onClick={() => props.onSubmit({ start: null, end: null })}>
+					Clear
+				</button>
 				<button type="submit" class="mod-cta" disabled={invalid}>
 					Save
 				</button>

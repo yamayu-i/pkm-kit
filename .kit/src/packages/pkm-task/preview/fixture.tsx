@@ -14,7 +14,7 @@ import { RoutineHeader } from "../src/header/RoutineHeader";
 import { MemberHeader } from "../src/header/MemberHeader";
 import { PresetHeader } from "../src/header/PresetHeader";
 import { ClockPicker } from "../src/ui/ClockPicker";
-import { DateForm, WorklogForm } from "../src/ui/forms";
+import { DateForm, PeriodForm, WorklogForm } from "../src/ui/forms";
 import { SubBulkForm } from "../src/obsidian/sub-bulk";
 import { WorklogTimesForm } from "../src/ui/WorklogTimesForm";
 import { DailyView } from "../src/views/DailyView";
@@ -181,6 +181,8 @@ export const VIEWS: Record<string, FunctionComponent<{ ctx: never }>> = {
 	forms: () => (
 		<div style={{ display: "grid", gap: "24px", padding: "16px" }}>
 			<DateForm initial={t} onSubmit={() => {}} />
+			{/* 期間のダイアログ（ADR-0245）。始まりと終わりは塗りの丸、その間は薄い面 */}
+			<PeriodForm initial={{ start: t, end: addDays(t, 4) }} onSubmit={() => {}} />
 			<WorklogForm initial={{ fromMs: Date.now() - 3_600_000, toMs: Date.now(), description: "作業" }} onSubmit={() => {}} onDelete={() => {}} />
 			{/* 記録の開始・終了を直すダイアログと時計（ADR-0193） */}
 			<WorklogTimesForm summary="見積もりを出す" running initialFromMs={Date.now() - 1_800_000} onSubmit={() => {}} />

@@ -153,6 +153,10 @@ function parseBlock(path: string, parent: string, raw: string, order: number, pa
 		migratedFrom,
 		body: lines.slice(endLine + 1).join("\n").replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd(),
 	};
+	// 期間は start と end の両方か、どちらもなし（ADR-0245）。片方だけのものは移行 0245 がそろえる
+	if ((sub.start === null) !== (sub.end === null)) {
+		extra.push({ severity: "warning", path, code: "sub-period-half", message: `期間が ${sub.start === null ? "end" : "start"} だけです。start と end を両方入れるか、両方空けてください（ADR-0245、移行 0245）` });
+	}
 	return { sub, problems: prefixed([...extra, ...r.problems], id) };
 }
 
@@ -327,6 +331,8 @@ export function checkSubIssues(subs: readonly SubIssueInput[], memberIds: Readon
 		] as const) {
 			if (!isDate(value)) errors.push(`${where}: ${key} が YYYY-MM-DD の日付ではありません: ${String(value)}`);
 		}
+		// 期間は start と end の両方か、どちらもなしか（ADR-0245）
+		if ((s.start === null) !== (s.end === null)) errors.push(`${where}: 期間は start と end を両方入れるか、両方空けてください`);
 		if (s.start !== null && s.end !== null && s.end < s.start) errors.push(`${where}: end が start より前です`);
 		if (s.estimated !== null && !(typeof s.estimated === "number" && Number.isFinite(s.estimated) && s.estimated >= 0)) errors.push(`${where}: estimated は 0 以上の数（分）にしてください`);
 		if (s.status === "delegated" && s.delegatedTo === null) errors.push(`${where}: delegated には delegated_to が要ります`);

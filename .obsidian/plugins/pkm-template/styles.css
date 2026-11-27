@@ -1035,6 +1035,12 @@ textarea.vt-tpl-edit-input {
 	color: var(--vt-on-scheduled);
 }
 
+/* 期間の間の日（ADR-0245）。始まりと終わりは塗りの丸、その間は薄い面 */
+.vt-cal-day.vt-cal-day.is-in-range:not(.is-selected) {
+	background: var(--vt-secondary-container);
+	color: var(--vt-on-secondary-container);
+}
+
 /* 期限より後の日は文字を一段弱くする（押せる） */
 .vt-cal-day.vt-cal-day.is-after-deadline:not(.is-selected) {
 	color: var(--vt-on-surface-variant);

@@ -92,6 +92,8 @@ for (const theme of ["light", "dark"]) {
 			if (screen === "forms") {
 				const labels = await page.locator(`${root} .vt-sub-card .vt-subissue-form .vt-text-field > span`).allTextContents();
 				if (labels.includes("Summary")) problems.push(`${where} ${root}: 開いたサブのカードに Summary の欄が残っている`);
+				// 期間は Period の 1 つの欄（ADR-0245）
+				if (!labels.includes("Period") || labels.includes("Start") || labels.includes("End")) problems.push(`${where} ${root}: 開いたサブのカードの期間の欄が Period の 1 つでない: ${JSON.stringify(labels)}`);
 				const edits = page.locator(`${root} .vt-sub-card .vt-subissue-row button[aria-label="Edit title"]`);
 				if ((await edits.count()) !== 2) problems.push(`${where} ${root}: Edit title のボタンが開いたカードの数（2）でない: ${await edits.count()}`);
 				if ((await edits.count()) > 0) {

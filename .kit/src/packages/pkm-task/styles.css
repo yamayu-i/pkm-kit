@@ -2335,6 +2335,21 @@ body.is-mobile .vt-toast {
 	height: 40px;
 }
 
+/* 期間のダイアログ（ADR-0245）: Start と End の欄を横に並べる */
+.vt-period-fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.vt-period-fields .vt-text-field {
+	min-width: 0;
+}
+
+.vt-period-fields input {
+	box-sizing: border-box;
+}
+
 .vt-date-form .vt-form {
 	margin-top: 0;
 }
