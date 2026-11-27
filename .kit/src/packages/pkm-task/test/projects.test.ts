@@ -3,7 +3,7 @@ import { parse } from "yaml";
 import { emptyVaultData, TaskIndex } from "../src/core/index";
 import { parseIssue } from "../src/core/schema";
 import { parseSubIssues, type SubIssue } from "../src/core/sub-issue";
-import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadLabel, needsBudget, needsEstimate, projectGroups, unallocatedBudget, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
+import { capacityOn, columnLoad, dayLoad, effectiveEstimates, loadItems, loadLabel, needsBudget, needsEstimate, projectGroups, unallocatedBudget, sizeOf, SIZES, XL_MESSAGE } from "../src/core/projects";
 
 // 2026-11-15 は日曜
 const today = "2026-11-16";
@@ -70,6 +70,37 @@ describe("使う見積もり（親の予算の割り振り）", () => {
 		const subs = subsOf("i-1", block("aaaaaa", "estimated: 120\n") + block("bbbbbb"));
 		expect(effectiveEstimates(issue("i-1"), subs).get("i-1#bbbbbb")).toBeNull();
 		expect(effectiveEstimates(issue("i-1", { estimated: 100 }), subs).get("i-1#bbbbbb")).toBeNull();
+	});
+});
+
+describe("delegated のサブ（ADR-0247）", () => {
+	const delegated = (id: string, extra = "") => block(id, `delegated_to: m-1\n${extra}`).replace("status: open", "status: delegated");
+
+	it("見積もりのない delegated には親の予算を割り振らず、負荷にも未見積もりにも数えない", () => {
+		const data = emptyVaultData();
+		data.issues = [issue("i-1", { estimated: 600 })];
+		data.subIssues = subsOf("i-1", block("aaaaaa", "end: 2026-11-18\n") + delegated("bbbbbb", "end: 2026-11-18\n") + delegated("cccccc", "end: 2026-11-18\nestimated: 30\n"));
+		const index = new TaskIndex(data);
+		const est = effectiveEstimates(data.issues[0], data.subIssues);
+		expect(est.get("i-1#aaaaaa")).toEqual({ minutes: 570, source: "budget" });
+		expect(est.get("i-1#bbbbbb")).toBeNull();
+		expect(est.get("i-1#cccccc")).toEqual({ minutes: 30, source: "sub" });
+		expect(loadItems(projectGroups(index, false), index).map((x) => [x.key, x.minutes])).toEqual([
+			["i-1#aaaaaa", 570],
+			["i-1#cccccc", 30],
+		]);
+	});
+
+	it("見積もりのない delegated に Estimate・Budget の印を出さない", () => {
+		const subs = subsOf("i-1", delegated("aaaaaa", "start: 2026-11-17\nend: 2026-11-18\n"));
+		expect(needsEstimate(subs[0]!, today)).toBe(false);
+		expect(needsBudget(issue("i-1"), subs, today)).toBe(false);
+	});
+
+	it("estimated が 0 のサブは見積もり済み", () => {
+		const subs = subsOf("i-1", block("aaaaaa", "start: 2026-11-17\nend: 2026-11-18\nestimated: 0\n"));
+		expect(needsEstimate(subs[0]!, today)).toBe(false);
+		expect(effectiveEstimates(issue("i-1", { estimated: 60 }), subs).get("i-1#aaaaaa")).toEqual({ minutes: 0, source: "sub" });
 	});
 });
 

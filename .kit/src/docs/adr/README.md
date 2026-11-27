@@ -48,7 +48,7 @@
 | [0031](0031-status-quick-change.md) | 承認（一部置換: 0032, 0137, 0183。ADR-0009 のカードの status の変え方と、ADR-0014 の task board のカードの並べ方を一部置換） | ボードからの status の 1 クリック変更、status のアイコン、取り消し、status の記録 |
 | [0032](0032-action-names-soft-deadline-board-delegate.md) | 承認（ADR-0002 と ADR-0006 の `mid_due` の名前、ADR-0009 / ADR-0014 / ADR-0018 のアクション名、ADR-0031 のカードの status メニューを一部置換。一部置換: 0152, 0183） | 日付のアクション名の整理、mid_due の改名（soft_deadline）、ボードからの delegated |
 | [0033](0033-list-pane.md) | 承認 | 一覧の View を左の固定ペインに、そこから開くノートを右のノートペインに出す |
-| [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認（ADR-0012 の estimated の入力と換算、ADR-0009 / ADR-0014 の DailyTaskView の「今日の予定」の段階、ADR-0014 のカードの置き場所を一部置換。一部置換: 0137, 0152） | estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
+| [0034](0034-duration-input-auto-board-sticky-groups.md) | 承認（ADR-0012 の estimated の入力と換算、ADR-0009 / ADR-0014 の DailyTaskView の「今日の予定」の段階、ADR-0014 のカードの置き場所を一部置換。一部置換: 0137, 0152, 0247） | estimated の単位入力と 1d = 24h、今日の予定の自動のボード入り、カードの置き場所の記憶 |
 | [0035](0035-member-view-and-fields.md) | 承認（一部置換: 0077） | member の項目（name / nickname / alias）と、member の専用 View |
 | [0036](0036-member-labels-and-list-sort.md) | 承認 | member の label と、Members の一覧の絞り込み・並べ替え |
 | [0037](0037-html-viewer.md) | 承認 | Vault の中の HTML を、新しいプラグイン vault-html で読み取り専用で表示する |
@@ -123,4 +123,5 @@
 | [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
 | [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
+| [0247](0247-zero-estimate-and-delegated.md) | 承認（ADR-0034 の「0 以下は受け付けない」を一部置換） | estimated の 0 の入力と、delegated を未見積もりに数えないこと |
 <!-- adr-index:end -->

@@ -49,7 +49,7 @@ export function newRoutineContent(
 	const lines = ["---", `schema: ${SCHEMA_VERSION}`, "type: routine", `id: ${id}`, `summary: ${yamlString(summary)}`, `repeat: ${JSON.stringify(repeat)}`];
 	if (extra.start) lines.push(`start: ${extra.start}`);
 	lines.push("active: true");
-	if (extra.estimated) lines.push(`estimated: ${extra.estimated}`);
+	if (extra.estimated != null) lines.push(`estimated: ${extra.estimated}`);
 	lines.push(`created: ${created}`, `updated: ${created}`, "---", "", "## 手順", "", "- [ ] ", "");
 	return lines.join("\n");
 }

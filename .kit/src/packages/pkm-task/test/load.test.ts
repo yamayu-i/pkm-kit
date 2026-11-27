@@ -67,6 +67,13 @@ describe("newIssueContent", () => {
 		expect(routine).toMatchObject({ type: "routine", id: "r-1", created, updated: created });
 	});
 
+	it("routine の estimated が 0 でも書く（ADR-0247）", () => {
+		const created = "2026-11-01T08:00:00+09:00";
+		const fm = (estimated: number | null) => parse(/^---\n([\s\S]*?)\n---/.exec(newRoutineContent("r-1", "週次", { every: "day" }, created, { estimated }))![1]!) as Record<string, unknown>;
+		expect(fm(0).estimated).toBe(0);
+		expect("estimated" in fm(null)).toBe(false);
+	});
+
 	it("localDateTime はタイムゾーン付き", () => {
 		expect(localDateTime(new Date())).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
 	});

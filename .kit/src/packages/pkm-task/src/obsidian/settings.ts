@@ -80,7 +80,7 @@ export class TaskSettingTab extends PluginSettingTab {
 				.setDesc("Projects の負荷の行で、見積もりの合計と比べる時間です（例: 6h、4h30m、0）")
 				.addText((t) =>
 					t.setValue(formatMinutes(this.settings.capacity[key])).onChange(async (v) => {
-						const minutes = v.trim() === "0" ? 0 : parseDurationInput(v);
+						const minutes = parseDurationInput(v);
 						if (minutes === null || minutes > 24 * 60) return;
 						this.settings.capacity = { ...this.settings.capacity, [key]: minutes };
 						await this.save();

@@ -8,6 +8,12 @@ export const SCHEMA_VERSION = 1;
 export const STATUSES = ["open", "in-progress", "waiting", "delegated", "someday", "closed", "canceled"] as const;
 export type Status = (typeof STATUSES)[number];
 
+/**
+ * 見積もりを待っているか（ADR-0247）。estimated がなく、delegated でないもの。
+ * 0 は見積もり済み。delegated は他人がやるので、見積もりがなければ自分の手間は 0 とみなす
+ */
+export const awaitsEstimate = (x: { status: Status; estimated: number | null }): boolean => x.estimated === null && x.status !== "delegated";
+
 export const PRIORITIES = ["high", "mid", "low", "chore"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 

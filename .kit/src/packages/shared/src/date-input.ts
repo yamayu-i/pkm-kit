@@ -184,13 +184,12 @@ const UNIT_MINUTES: Record<string, number> = { d: MINUTES_PER_DAY, h: 60, m: 1 }
 
 /**
  * 期間の入力を分にする（ADR-0034・ADR-0228）。`1m` / `2h` / `1d` / `0.5d` / `2d3h33m` / `1h 30m` を読む。
- * 単位のない数字だけなら分。読めないもの、同じ単位が 2 回あるもの、0 以下は null
+ * 単位のない数字だけなら分。0 は 0 分（ADR-0247）。読めないもの、同じ単位が 2 回あるもの、負は null
  */
 export function parseDurationInput(input: string): number | null {
 	const text = input.trim().toLowerCase();
 	if (/^\d+(?:\.\d+)?$/.test(text)) {
-		const min = Math.round(Number(text));
-		return min > 0 ? min : null;
+		return Math.round(Number(text));
 	}
 	if (!/^(?:\d+(?:\.\d+)?\s*[dhm]\s*)+$/.test(text)) return null;
 	const seen = new Set<string>();
@@ -201,8 +200,7 @@ export function parseDurationInput(input: string): number | null {
 		seen.add(unit);
 		total += Number(m[1]) * UNIT_MINUTES[unit]!;
 	}
-	const min = Math.round(total);
-	return min > 0 ? min : null;
+	return Math.round(total);
 }
 
 /** 欄を離れたときに書き換える日時の文字（`2026-08-26 22:05`）。parseDateTimeInput で同じ日時に戻る */

@@ -34,13 +34,18 @@ describe("parseDurationInput", () => {
 		expect(parseDurationInput("45")).toBe(45);
 	});
 
-	it("読めないもの・同じ単位の重複・0 以下は null", () => {
+	it("0 は 0 分。formatMinutes の 0m をそのまま入れ直せる（ADR-0247）", () => {
+		expect(parseDurationInput("0")).toBe(0);
+		expect(parseDurationInput(formatMinutes(0))).toBe(0);
+		expect(parseDurationInput("0d 0h")).toBe(0);
+	});
+
+	it("読めないもの・同じ単位の重複・負は null", () => {
 		expect(parseDurationInput("")).toBeNull();
 		expect(parseDurationInput("abc")).toBeNull();
 		expect(parseDurationInput("1w")).toBeNull();
 		expect(parseDurationInput("1h1h")).toBeNull();
 		expect(parseDurationInput("1h 30")).toBeNull();
-		expect(parseDurationInput("0m")).toBeNull();
 		expect(parseDurationInput("-1h")).toBeNull();
 	});
 });
