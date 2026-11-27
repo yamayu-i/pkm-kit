@@ -1,6 +1,6 @@
 # ADR-0255: 今日の Calendar をボードの最上部の欄に出し、サブの Calendar と期間を両立させない
 
-- 状態: 提案
+- 状態: 承認
 - 日付: 2026-11-27
 
 ## 背景
@@ -43,6 +43,16 @@ ADR-0203 は、issue について「`scheduled` とサブ（期間）を両立�
 - 書き込みでも止める: `core/calendar-subs.ts` に `subCalendarPeriodError(after)` を置き、Obsidian の書き込み（`writer.updateSub`・サブの追加）と MCP（`create_sub_issue`・`update_sub_issue`）は、書いた後のサブが両方を持つならエラーにして理由を返す
 - 消す操作（Back to Next、Pick の `pickSubPatch`、someday、一括で日付を消す）はこれまでどおりで、両方を持つ状態を作らない
 
+### issue 画面と Projects 画面
+
+- ガントの描画と操作は、issue 画面の Timeline と Projects（[ADR-0231](0231-projects-timeline-and-load.md)）で共通の `TimelineChart` に入れる。上の操作は、どちらの画面でも同じに使える
+- 棒に描く期間は `periodBarOf(sub)`（`scheduled` があれば null、なければ `barOf`）にする。依存の矢印・つなげるかの判定（`canConnect`）・棒のドラッグもこれを使う
+- Projects の計算では、Calendar のサブを「その 1 日にかかるサブ」として数える。`core/timeline.ts` に `daysOf(sub)`（`scheduled` があれば `{ start: scheduled, end: scheduled }`、なければ `barOf`）を置き、次で使う:
+  - Project の行のまとめの棒（サブの日の最小〜最大）
+  - 負荷の行（`loadItems`）: 見積もりをその 1 日に数える。見積もりのないものは、その日の `?` に数える
+  - 見積もりのない印（`needsEstimate`）: その日が今日から 14 日のうちなら出す
+  - Project の並び（閉じていないサブの終わりのいちばん早い日）
+
 ### 既に両方を持つサブ
 
 - データは消さない。lint が警告（`sub-calendar-and-period`）を出し、ユーザーがどちらかを外す
@@ -70,7 +80,7 @@ ADR-0203 は、issue について「`scheduled` とサブ（期間）を両立�
 
 ## 影響
 
-- 変更するもの: `core/board-lanes.ts`（`calendar` の欄と `laneOf`）、`views/Board.tsx`（欄の見出し・並び・メニュー・空の説明）、`core/calendar-subs.ts`（`subCalendarPeriodError`）、`core/sub-issue.ts`（lint の `sub-calendar-and-period`）、`obsidian/sub-editor.tsx`（日付の欄）、`header/SubTimeline.tsx`（印と、期間を作らせない）、`obsidian/writer.ts`、`cli/vault-ops.ts`、ボードの CSS
+- 変更するもの: `core/board-lanes.ts`（`calendar` の欄と `laneOf`）、`views/Board.tsx`（欄の見出し・並び・メニュー・空の説明）、`core/calendar-subs.ts`（`subCalendarPeriodError`）、`core/sub-issue.ts`（lint の `sub-calendar-and-period`）、`obsidian/sub-editor.tsx`（日付の欄）、`header/SubTimeline.tsx`（印・切り替え・期間を作らせない）、`core/timeline.ts`（`periodBarOf`・`daysOf`）、`core/projects.ts`（Projects の計算）、`obsidian/writer.ts`、`cli/vault-ops.ts`、ボードの CSS
 - 文書: プロダクトの `surfaces/task-board.md`・`task-issue-screen.md`、`concepts/task-do-date.md`
 - 移行 `.kit/migrations/0255-sub-calendar-or-period/` と `.kit/changes/` の変更のノート
-- 承認のとき、ADR-0137（ボードの欄）と ADR-0245（サブの日付の欄）の状態を「一部置換: 0255」にする
+- ADR-0137（ボードの欄）、0143（Timeline）、0231（Projects の計算）、0245（サブの日付の欄）の状態を「一部置換: 0255」にした
