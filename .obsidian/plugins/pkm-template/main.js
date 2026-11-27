@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => PkmTemplatePlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 
 // ../shared/src/list-pane.ts
 var LIST_VIEW_PREFIXES = ["pkm-task-", "pkm-template-", "pkm-updates-", "pkm-slide-"];
@@ -1678,7 +1678,7 @@ function frontmatterOf(content) {
 }
 
 // src/obsidian/header-mount.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // ../shared/src/header-mount.ts
 var HEADER_SIZERS = ".cm-sizer, .markdown-preview-sizer";
@@ -1993,6 +1993,12 @@ function isWebUrl(value) {
 function item(label, values) {
   return values.length > 0 ? [{ label, values }] : [];
 }
+function editable(label, values, edit) {
+  return [{ label, values, edit }];
+}
+function stringList(value) {
+  return (Array.isArray(value) ? value : []).filter((s3) => typeof s3 === "string" && s3.trim() !== "");
+}
 function buildHeader(note, ctx) {
   const fm = note.frontmatter;
   const type = typeof fm.type === "string" ? fm.type : "";
@@ -2003,34 +2009,85 @@ function buildHeader(note, ctx) {
   }
   const title = noteTitle(fm, note.basename);
   let items = [];
+  const titleEdit = { field: "title", multiline: false, initial: title };
   if (type === "note") {
     const created2 = shortDate(fm.created);
-    items = [...item("Tags", tagList(fm.tags).map((text2) => ({ text: text2 }))), ...item("Created", created2 ? [{ text: created2 }] : [])];
+    const tags = tagList(fm.tags);
+    items = [
+      ...editable(
+        "Tags",
+        tags.map((text2) => ({ text: text2 })),
+        { field: "tags", multiline: false, initial: tags.join(", ") }
+      ),
+      ...item("Created", created2 ? [{ text: created2 }] : [])
+    ];
   } else if (type === "source") {
     const origin = typeof fm.origin === "string" ? fm.origin.trim() : "";
     const retrieved = shortDate(fm.retrieved);
+    const retrievedRaw = typeof fm.retrieved === "string" ? fm.retrieved.trim() : "";
     const citedBy = ctx.notes.filter((n2) => typeof n2.frontmatter.type === "string" && WIKI_TYPES.includes(n2.frontmatter.type) && Array.isArray(n2.frontmatter.sources) && n2.frontmatter.sources.includes(note.path)).map((n2) => ({ text: noteTitle(n2.frontmatter, n2.basename), path: n2.path }));
     items = [
-      ...item("Origin", origin ? [isWebUrl(origin) ? { text: origin, url: origin } : { text: origin }] : []),
-      ...item("Retrieved", retrieved ? [{ text: retrieved }] : []),
+      ...editable("Origin", origin ? [isWebUrl(origin) ? { text: origin, url: origin } : { text: origin }] : [], { field: "origin", multiline: false, initial: origin }),
+      ...editable("Retrieved", retrieved ? [{ text: retrieved }] : [], { field: "retrieved", multiline: false, initial: retrieved || retrievedRaw }),
       ...item("Cited by", citedBy)
     ];
   } else if (WIKI_TYPES.includes(type)) {
     const byPath = new Map(ctx.notes.map((n2) => [n2.path, n2]));
     const sources = [];
-    for (const s3 of Array.isArray(fm.sources) ? fm.sources : []) {
-      if (typeof s3 !== "string" || s3.trim() === "") continue;
+    const raw = stringList(fm.sources);
+    for (const s3 of raw) {
       const found = byPath.get(s3);
       if (found) sources.push({ text: noteTitle(found.frontmatter, found.basename), path: found.path });
       else sources.push(isWebUrl(s3) ? { text: s3, url: s3 } : { text: s3 });
     }
-    items = [...item("Sources", sources), ...item("Backlinks", ctx.backlinks > 0 ? [{ text: String(ctx.backlinks) }] : [])];
+    items = [...editable("Sources", sources, { field: "sources", multiline: true, initial: raw.join("\n") }), ...item("Backlinks", ctx.backlinks > 0 ? [{ text: String(ctx.backlinks) }] : [])];
   }
-  return { title, weekday: null, items, hideProperties };
+  const editableType = type === "note" || type === "source" || WIKI_TYPES.includes(type);
+  return editableType ? { title, titleEdit, weekday: null, items, hideProperties } : { title, weekday: null, items, hideProperties };
 }
 
 // src/obsidian/NoteHeader.tsx
+var import_obsidian5 = require("obsidian");
+
+// src/core/note-edit.ts
+function unique(items) {
+  return [...new Set(items.filter((s3) => s3 !== ""))];
+}
+function isRealDate(value) {
+  const m3 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m3) return false;
+  const [y3, mo, d3] = [Number(m3[1]), Number(m3[2]), Number(m3[3])];
+  const date = new Date(Date.UTC(y3, mo - 1, d3));
+  return date.getUTCFullYear() === y3 && date.getUTCMonth() === mo - 1 && date.getUTCDate() === d3;
+}
+function parseEdit(field, input) {
+  const text2 = input.trim();
+  switch (field) {
+    case "title":
+      return text2 === "" ? { ok: false, error: "\u30BF\u30A4\u30C8\u30EB\u306F\u7A7A\u306B\u3067\u304D\u307E\u305B\u3093" } : { ok: true, value: text2 };
+    case "tags":
+      return { ok: true, value: unique(text2.split(/[,\s]+/).map((t3) => t3.replace(/^#+/, ""))) };
+    case "origin":
+      return { ok: true, value: text2 };
+    case "retrieved":
+      if (text2 === "" || isRealDate(text2)) return { ok: true, value: text2 };
+      return { ok: false, error: `\u65E5\u4ED8\u3068\u3057\u3066\u8AAD\u3081\u307E\u305B\u3093: ${text2}\uFF08\u4F8B: 2026-11-27\uFF09` };
+    case "sources":
+      return { ok: true, value: unique(input.split(/\r?\n/).map((l3) => l3.trim())) };
+  }
+}
+
+// src/obsidian/Icon.tsx
 var import_obsidian4 = require("obsidian");
+function Icon({ name }) {
+  const ref = A2(null);
+  h2(() => {
+    if (ref.current) (0, import_obsidian4.setIcon)(ref.current, name);
+  }, [name]);
+  return /* @__PURE__ */ u3("span", { class: "vt-tpl-icon", ref, "aria-hidden": "true" });
+}
+
+// src/obsidian/NoteHeader.tsx
 function Value({ app, v: v3 }) {
   if (v3.path !== void 0) {
     const path = v3.path;
@@ -2041,7 +2098,7 @@ function Value({ app, v: v3 }) {
         class: "vt-tpl-link",
         onClick: () => {
           const file = app.vault.getFileByPath(path);
-          if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian4.Platform.isPhone });
+          if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian5.Platform.isPhone });
         },
         children: v3.text
       }
@@ -2052,15 +2109,105 @@ function Value({ app, v: v3 }) {
   }
   return /* @__PURE__ */ u3("span", { class: "vt-tpl-value", children: v3.text });
 }
-function NoteHeader({ app, model }) {
+var EDIT_LABEL = {
+  title: "Edit title",
+  tags: "Edit tags",
+  origin: "Edit origin",
+  retrieved: "Edit retrieved date",
+  sources: "Edit sources"
+};
+var PLACEHOLDER = {
+  tags: "tag1, tag2",
+  origin: "https://\u2026",
+  retrieved: "YYYY-MM-DD",
+  sources: "One per line: sources/\u2026 or https://\u2026"
+};
+function EditButton({ field, onClick }) {
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-tpl-icon-button vt-tpl-edit-button", "aria-label": EDIT_LABEL[field], title: EDIT_LABEL[field], onClick, children: /* @__PURE__ */ u3(Icon, { name: "pencil" }) });
+}
+function EditInput(props) {
+  const { edit, save, close } = props;
+  const [draft, setDraft] = d2(edit.initial);
+  const [error, setError] = d2(null);
+  const ref = A2(null);
+  const done = A2(false);
+  h2(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  const commit = () => {
+    if (done.current) return;
+    if (draft === edit.initial) {
+      done.current = true;
+      close();
+      return;
+    }
+    const r3 = parseEdit(edit.field, draft);
+    if (!r3.ok) {
+      setError(r3.error);
+      return;
+    }
+    done.current = true;
+    save(edit.field, r3.value).then(close, (e3) => {
+      done.current = false;
+      setError(`\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+    });
+  };
+  const onKeyDown = (e3) => {
+    if (e3.isComposing) return;
+    if (e3.key === "Escape") {
+      e3.preventDefault();
+      done.current = true;
+      close();
+    } else if (e3.key === "Enter" && (!edit.multiline || e3.ctrlKey || e3.metaKey)) {
+      e3.preventDefault();
+      commit();
+    }
+  };
+  const common = {
+    ref,
+    class: `vt-tpl-edit-input${edit.field === "title" ? " is-title" : ""}`,
+    value: draft,
+    placeholder: PLACEHOLDER[edit.field],
+    "aria-label": EDIT_LABEL[edit.field],
+    "aria-invalid": error !== null,
+    onInput: (e3) => {
+      setDraft(e3.currentTarget.value);
+      setError(null);
+    },
+    onBlur: commit,
+    onKeyDown
+  };
+  return /* @__PURE__ */ u3("span", { class: "vt-tpl-edit", children: [
+    edit.multiline ? /* @__PURE__ */ u3("textarea", { rows: Math.max(2, draft.split("\n").length), ...common }) : /* @__PURE__ */ u3("input", { type: "text", ...common }),
+    error !== null && /* @__PURE__ */ u3("span", { class: "vt-tpl-edit-error", children: error })
+  ] });
+}
+function NoteHeader({ app, model, path }) {
+  const [editing, setEditing] = d2(null);
+  const save = async (field, value) => {
+    const file = path === null ? null : app.vault.getFileByPath(path);
+    if (!file) throw new Error("\u30CE\u30FC\u30C8\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");
+    await app.fileManager.processFrontMatter(file, (fm) => {
+      fm[field] = value;
+    });
+  };
+  const close = () => setEditing(null);
+  const titleEdit = model.titleEdit;
   return /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-body", "data-hide-properties": model.hideProperties ? "true" : void 0, children: [
     /* @__PURE__ */ u3("div", { class: "vt-tpl-note-header-top", children: [
-      /* @__PURE__ */ u3("div", { class: "vt-tpl-note-title", children: model.title }),
+      titleEdit && editing === "title" ? /* @__PURE__ */ u3(EditInput, { edit: titleEdit, save, close }) : /* @__PURE__ */ u3("div", { class: "vt-tpl-note-title-row", children: [
+        /* @__PURE__ */ u3("div", { class: "vt-tpl-note-title", children: model.title }),
+        titleEdit && /* @__PURE__ */ u3(EditButton, { field: "title", onClick: () => setEditing("title") })
+      ] }),
       model.weekday !== null && /* @__PURE__ */ u3("ol", { class: "vt-tpl-week", "aria-label": "Weekdays", children: WEEKDAYS2.map((w3, i3) => /* @__PURE__ */ u3("li", { class: i3 === model.weekday ? "vt-tpl-week-day is-current" : "vt-tpl-week-day", "aria-current": i3 === model.weekday ? "date" : void 0, children: w3 }, w3)) })
     ] }),
     model.items.length > 0 && /* @__PURE__ */ u3("dl", { class: "vt-tpl-meta", children: model.items.map((it) => /* @__PURE__ */ u3("div", { class: "vt-tpl-meta-row", children: [
       /* @__PURE__ */ u3("dt", { children: it.label }),
-      /* @__PURE__ */ u3("dd", { children: it.values.map((v3, i3) => /* @__PURE__ */ u3(Value, { app, v: v3 }, `${v3.text}-${i3}`)) })
+      /* @__PURE__ */ u3("dd", { children: it.edit && editing === it.edit.field ? /* @__PURE__ */ u3(EditInput, { edit: it.edit, save, close }) : /* @__PURE__ */ u3(S, { children: [
+        it.values.length === 0 ? /* @__PURE__ */ u3("span", { class: "vt-tpl-value is-empty", children: "Not set" }) : it.values.map((v3, i3) => /* @__PURE__ */ u3(Value, { app, v: v3 }, `${v3.text}-${i3}`)),
+        it.edit && /* @__PURE__ */ u3(EditButton, { field: it.edit.field, onClick: () => setEditing(it.edit.field) })
+      ] }) })
     ] }, it.label)) })
   ] });
 }
@@ -2117,25 +2264,25 @@ function installNoteHeaders(plugin) {
     views: () => {
       const views = [];
       app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof import_obsidian5.MarkdownView) views.push(leaf.view);
+        if (leaf.view instanceof import_obsidian6.MarkdownView) views.push(leaf.view);
       });
       return views;
     },
-    activeView: () => app.workspace.getActiveViewOfType(import_obsidian5.MarkdownView),
+    activeView: () => app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView),
     model,
-    draw: (host, m3) => R(k(NoteHeader, { app, model: m3 }), host),
+    draw: (host, m3, view) => R(k(NoteHeader, { app, model: m3, path: view.file?.path ?? null }), host),
     clear: (host) => R(null, host),
     resized: remeasureEditor
   });
 }
 
 // src/obsidian/link-insert.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // ../shared/src/link-chips.ts
 var import_state = require("@codemirror/state");
 var import_view = require("@codemirror/view");
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // ../shared/src/link-query.ts
 var PAGE_SIZE = 50;
@@ -2259,7 +2406,7 @@ function resolveVaultPath(app, path, source) {
   return app.metadataCache.getFirstLinkpathDest(path, source)?.path ?? null;
 }
 function openPath(app, path, source, evt) {
-  void app.workspace.openLinkText(path, source, import_obsidian6.Keymap.isModEvent(evt));
+  void app.workspace.openLinkText(path, source, import_obsidian7.Keymap.isModEvent(evt));
 }
 var ChipWidget = class extends import_view.WidgetType {
   chip;
@@ -2299,8 +2446,8 @@ function buildDecorations(view, app, opts) {
   return chipDecorations(view.state, view.visibleRanges, app, opts);
 }
 function chipDecorations(state, visible, app, opts) {
-  if (!state.field(import_obsidian6.editorLivePreviewField, false)) return import_view.Decoration.none;
-  const source = state.field(import_obsidian6.editorInfoField, false)?.file?.path ?? "";
+  if (!state.field(import_obsidian7.editorLivePreviewField, false)) return import_view.Decoration.none;
+  const source = state.field(import_obsidian7.editorInfoField, false)?.file?.path ?? "";
   const doc = state.doc.toString();
   const ranges = [];
   const seen = /* @__PURE__ */ new Set();
@@ -2331,7 +2478,7 @@ function installLinkChips(plugin, opts) {
         this.decorations = buildDecorations(view, app, opts);
       }
       update(u4) {
-        const modeChanged = u4.startState.field(import_obsidian6.editorLivePreviewField, false) !== u4.state.field(import_obsidian6.editorLivePreviewField, false);
+        const modeChanged = u4.startState.field(import_obsidian7.editorLivePreviewField, false) !== u4.state.field(import_obsidian7.editorLivePreviewField, false);
         const asked = u4.transactions.some((t3) => t3.effects.some((e3) => e3.is(refresh)));
         if (u4.docChanged || u4.selectionSet || u4.viewportChanged || modeChanged || asked) this.decorations = buildDecorations(u4.view, app, opts);
       }
@@ -2381,7 +2528,7 @@ function installLinkChips(plugin, opts) {
         a3.prepend(lead);
       };
       draw();
-      const child = new import_obsidian6.MarkdownRenderChild(a3);
+      const child = new import_obsidian7.MarkdownRenderChild(a3);
       child.onload = () => child.register(opts.subscribe(draw));
       ctx.addChild(child);
     }
@@ -2389,8 +2536,8 @@ function installLinkChips(plugin, opts) {
 }
 
 // ../shared/src/link-picker.ts
-var import_obsidian7 = require("obsidian");
-var LinkPicker = class extends import_obsidian7.SuggestModal {
+var import_obsidian8 = require("obsidian");
+var LinkPicker = class extends import_obsidian8.SuggestModal {
   shown = PAGE_SIZE;
   lastQuery = null;
   source;
@@ -2532,7 +2679,7 @@ function linkIcon(path, anchor, type) {
 // src/obsidian/link-insert.ts
 function icon(el, name) {
   const span = el.createSpan({ cls: "vt-icon", attr: { "aria-hidden": "true" } });
-  (0, import_obsidian8.setIcon)(span, name);
+  (0, import_obsidian9.setIcon)(span, name);
 }
 var recencyOf = (app) => (path) => app.vault.getFileByPath(path)?.stat.mtime ?? 0;
 function noteRow(n2, el) {
@@ -2642,11 +2789,11 @@ function chipFor(app, t3) {
   const path = resolveVaultPath(app, t3.path, t3.source);
   if (!path) return null;
   const file = app.vault.getFileByPath(path);
-  if (!(file instanceof import_obsidian8.TFile)) return null;
+  if (!(file instanceof import_obsidian9.TFile)) return null;
   const type = file.extension === "md" ? app.metadataCache.getFileCache(file)?.frontmatter?.type : void 0;
   const name = linkIcon(path, t3.anchor, type);
   if (!name) return null;
-  return { mode: "before", key: name, render: (el) => (0, import_obsidian8.setIcon)(el, name) };
+  return { mode: "before", key: name, render: (el) => (0, import_obsidian9.setIcon)(el, name) };
 }
 function installLinkInsert(plugin, manager, report) {
   const app = plugin.app;
@@ -2723,7 +2870,7 @@ var slashSessionField = sessionField(SLASH_TRIGGER);
 var atSessionField = sessionField(AT_TRIGGER);
 
 // src/obsidian/SnippetSuggest.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 var SNIPPET_KIND = {
   label: "Snippet",
   field: slashSessionField,
@@ -2736,7 +2883,7 @@ var INLINE_KIND = {
   load: (m3) => m3.loadInlineTemplates(),
   bodyOf: (s3) => inlineBody(s3.body)
 };
-var SnippetSuggest = class extends import_obsidian9.EditorSuggest {
+var SnippetSuggest = class extends import_obsidian10.EditorSuggest {
   constructor(app, manager, kind = SNIPPET_KIND) {
     super(app);
     this.manager = manager;
@@ -2831,14 +2978,14 @@ var SnippetSuggest = class extends import_obsidian9.EditorSuggest {
     if (commands.executeCommandById(command)) return;
     editor.replaceRange(typed, start);
     editor.setCursor(editor.offsetToPos(editor.posToOffset(start) + typed.length));
-    new import_obsidian9.Notice(`${command} \u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093\uFF08${command.split(":")[0]} \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09`);
+    new import_obsidian10.Notice(`${command} \u3092\u5B9F\u884C\u3067\u304D\u307E\u305B\u3093\uFF08${command.split(":")[0]} \u304C\u6709\u52B9\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093\uFF09`);
   }
 };
 
 // src/obsidian/view.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 function preactViewCreator(spec, app) {
-  class PreactView extends import_obsidian10.ItemView {
+  class PreactView extends import_obsidian11.ItemView {
     getViewType() {
       return spec.type;
     }
@@ -2860,10 +3007,10 @@ function preactViewCreator(spec, app) {
 }
 
 // src/views/NoteListView.tsx
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/views/NoteFolders.tsx
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 
 // src/core/note-folders.ts
 var NOTE_ROOT = "note";
@@ -2931,18 +3078,18 @@ function isDeletable(files, folder) {
 }
 
 // src/obsidian/note-folder-actions.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 function collectNoteFolders(app) {
   const folders = [];
   const files = [];
   const walk = (node) => {
-    if (node instanceof import_obsidian11.TFolder) {
+    if (node instanceof import_obsidian12.TFolder) {
       folders.push(node.path);
       for (const c3 of node.children) walk(c3);
     } else files.push(node.path);
   };
   const root = app.vault.getAbstractFileByPath(NOTE_ROOT);
-  if (root instanceof import_obsidian11.TFolder) walk(root);
+  if (root instanceof import_obsidian12.TFolder) walk(root);
   return { folders: noteFolders(folders), files };
 }
 var NoteFolderActions = class {
@@ -2977,7 +3124,7 @@ var NoteFolderActions = class {
     const { folders } = collectNoteFolders(this.app);
     const choices = folders.filter((f4) => !("error" in moveTarget(folders, path, f4, this.exists)));
     if (choices.length === 0) {
-      new import_obsidian11.Notice("\u52D5\u304B\u305B\u308B\u5148\u306E\u30D5\u30A9\u30EB\u30C0\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u5148\u306B New folder \u3067\u30D5\u30A9\u30EB\u30C0\u3092\u4F5C\u3063\u3066\u304F\u3060\u3055\u3044");
+      new import_obsidian12.Notice("\u52D5\u304B\u305B\u308B\u5148\u306E\u30D5\u30A9\u30EB\u30C0\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u5148\u306B New folder \u3067\u30D5\u30A9\u30EB\u30C0\u3092\u4F5C\u3063\u3066\u304F\u3060\u3055\u3044");
       return;
     }
     new FolderModal(this.app, choices, (dest) => void this.move(path, dest)).open();
@@ -2987,7 +3134,7 @@ var NoteFolderActions = class {
     const { folders } = collectNoteFolders(this.app);
     const target = moveTarget(folders, path, dest, this.exists);
     if ("error" in target) {
-      new import_obsidian11.Notice(target.error);
+      new import_obsidian12.Notice(target.error);
       return;
     }
     await this.ensureRoot();
@@ -2996,25 +3143,25 @@ var NoteFolderActions = class {
   /** 中に .gitkeep しかないフォルダを消す（ゴミ箱へ） */
   async deleteFolder(path) {
     const folder = this.app.vault.getAbstractFileByPath(path);
-    if (!(folder instanceof import_obsidian11.TFolder)) return;
+    if (!(folder instanceof import_obsidian12.TFolder)) return;
     if (!isDeletable(collectNoteFolders(this.app).files, path)) {
-      new import_obsidian11.Notice("\u30D5\u30A1\u30A4\u30EB\u306E\u5165\u3063\u3066\u3044\u308B\u30D5\u30A9\u30EB\u30C0\u306F\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u4E2D\u306E\u30CE\u30FC\u30C8\u3092\u52D5\u304B\u3057\u3066\u304F\u3060\u3055\u3044");
+      new import_obsidian12.Notice("\u30D5\u30A1\u30A4\u30EB\u306E\u5165\u3063\u3066\u3044\u308B\u30D5\u30A9\u30EB\u30C0\u306F\u6D88\u305B\u307E\u305B\u3093\u3002\u5148\u306B\u4E2D\u306E\u30CE\u30FC\u30C8\u3092\u52D5\u304B\u3057\u3066\u304F\u3060\u3055\u3044");
       return;
     }
     await this.app.fileManager.trashFile(folder);
   }
   async open(path, newTab) {
     const file = this.app.vault.getFileByPath(path);
-    if (file) await openInNotePane(this.app.workspace, file, { phone: import_obsidian11.Platform.isPhone, newTab });
+    if (file) await openInNotePane(this.app.workspace, file, { phone: import_obsidian12.Platform.isPhone, newTab });
   }
   async relocate(from, to) {
     const node = this.app.vault.getAbstractFileByPath(from);
     if (node === null) return;
     try {
       await this.app.fileManager.renameFile(node, to);
-      new import_obsidian11.Notice(`${node instanceof import_obsidian11.TFile ? node.basename : from} \u3092 ${parentOfPath(to)}/ \u306B\u52D5\u304B\u3057\u307E\u3057\u305F`);
+      new import_obsidian12.Notice(`${node instanceof import_obsidian12.TFile ? node.basename : from} \u3092 ${parentOfPath(to)}/ \u306B\u52D5\u304B\u3057\u307E\u3057\u305F`);
     } catch (e3) {
-      new import_obsidian11.Notice(`\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+      new import_obsidian12.Notice(`\u52D5\u304B\u305B\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
     }
   }
 };
@@ -3024,7 +3171,7 @@ function parentOfPath(path) {
 function errorOf(r3) {
   return "error" in r3 ? r3.error : null;
 }
-var NameModal = class extends import_obsidian11.Modal {
+var NameModal = class extends import_obsidian12.Modal {
   constructor(app, spec, submit) {
     super(app);
     this.spec = spec;
@@ -3052,10 +3199,10 @@ var NameModal = class extends import_obsidian11.Modal {
         await this.submit(value);
         this.close();
       } catch (e3) {
-        new import_obsidian11.Notice(`\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+        new import_obsidian12.Notice(`\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
       }
     };
-    new import_obsidian11.Setting(this.contentEl).setName("Name").addText((text2) => {
+    new import_obsidian12.Setting(this.contentEl).setName("Name").addText((text2) => {
       text2.setValue(value).onChange((v3) => {
         value = v3.trim();
         update();
@@ -3069,7 +3216,7 @@ var NameModal = class extends import_obsidian11.Modal {
       window.setTimeout(() => text2.inputEl.select(), 0);
     });
     this.contentEl.appendChild(hint);
-    new import_obsidian11.Setting(this.contentEl).addButton((b2) => b2.setButtonText("Cancel").onClick(() => this.close())).addButton((b2) => {
+    new import_obsidian12.Setting(this.contentEl).addButton((b2) => b2.setButtonText("Cancel").onClick(() => this.close())).addButton((b2) => {
       button = b2.buttonEl;
       b2.setButtonText(this.spec.cta).setCta().onClick(() => void run());
     });
@@ -3079,7 +3226,7 @@ var NameModal = class extends import_obsidian11.Modal {
     this.contentEl.empty();
   }
 };
-var FolderModal = class extends import_obsidian11.FuzzySuggestModal {
+var FolderModal = class extends import_obsidian12.FuzzySuggestModal {
   constructor(app, folders, choose) {
     super(app);
     this.folders = folders;
@@ -3104,13 +3251,6 @@ var FolderModal = class extends import_obsidian11.FuzzySuggestModal {
 var DRAG_TYPE = "text/x-pkm-note";
 var OPEN_KEY = "pkm-template-note-open-folders";
 var OTHER = "\0other";
-function Icon({ name }) {
-  const ref = A2(null);
-  h2(() => {
-    if (ref.current) (0, import_obsidian12.setIcon)(ref.current, name);
-  }, [name]);
-  return /* @__PURE__ */ u3("span", { class: "vt-tpl-icon", ref, "aria-hidden": "true" });
-}
 function loadOpen(app) {
   try {
     const v3 = app.loadLocalStorage(OPEN_KEY);
@@ -3124,7 +3264,7 @@ function NoteFolders({ app, notes, tick, query }) {
   const [sort, setSort] = d2("created");
   const [open, setOpen] = d2(() => loadOpen(app));
   const [dropOn, setDropOn] = d2(null);
-  const canDrag = !import_obsidian12.Platform.isMobile;
+  const canDrag = !import_obsidian13.Platform.isMobile;
   const snapshot = T2(() => collectNoteFolders(app), [app, tick]);
   const byPath = T2(() => new Map(notes.map((n2) => [n2.path, n2])), [notes]);
   const paths = T2(() => notes.map((n2) => n2.path), [notes]);
@@ -3150,7 +3290,7 @@ function NoteFolders({ app, notes, tick, query }) {
   const folderMenu = (e3, f4) => {
     e3.preventDefault();
     e3.stopPropagation();
-    const menu = new import_obsidian12.Menu();
+    const menu = new import_obsidian13.Menu();
     menu.addItem((i3) => i3.setTitle("New folder").setIcon("folder-plus").onClick(() => actions.newFolder(f4)));
     menu.addItem((i3) => i3.setTitle("Rename").setIcon("pencil").onClick(() => actions.rename(f4)));
     menu.addItem((i3) => i3.setTitle("Move to\u2026").setIcon("folder-input").onClick(() => actions.moveTo(f4)));
@@ -3163,7 +3303,7 @@ function NoteFolders({ app, notes, tick, query }) {
   const noteMenu = (e3, n2) => {
     e3.preventDefault();
     e3.stopPropagation();
-    const menu = new import_obsidian12.Menu();
+    const menu = new import_obsidian13.Menu();
     menu.addItem((i3) => i3.setTitle("Open in new tab").setIcon("file-plus").onClick(() => void actions.open(n2.path, true)));
     menu.addItem((i3) => i3.setTitle("Move to\u2026").setIcon("folder-input").onClick(() => actions.moveTo(n2.path)));
     menu.showAtMouseEvent(e3);
@@ -3312,7 +3452,7 @@ function NoteList({ app, spec }) {
   const toggle = (key) => setSort((s3) => s3.key === key ? { key, order: s3.order === "asc" ? "desc" : "asc" } : { key, order: key === "title" ? "asc" : "desc" });
   const open = (path) => {
     const file = app.vault.getFileByPath(path);
-    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian13.Platform.isPhone });
+    if (file) void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian14.Platform.isPhone });
   };
   const choose = (next) => {
     setMode(next);
@@ -3339,11 +3479,11 @@ var NoteListView = make(SPECS.note);
 var SourceListView = make(SPECS.source);
 
 // src/views/TmpListView.tsx
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 
 // src/obsidian/ConfirmDeleteModal.ts
-var import_obsidian14 = require("obsidian");
-var ConfirmDeleteModal = class extends import_obsidian14.Modal {
+var import_obsidian15 = require("obsidian");
+var ConfirmDeleteModal = class extends import_obsidian15.Modal {
   constructor(app, path, onConfirm) {
     super(app);
     this.path = path;
@@ -3355,7 +3495,7 @@ var ConfirmDeleteModal = class extends import_obsidian14.Modal {
   onOpen() {
     this.setTitle("Delete file");
     this.contentEl.createEl("p", { text: `${this.path} \u3092\u524A\u9664\u3057\u307E\u3059\uFF08Obsidian \u306E\u300C\u524A\u9664\u3057\u305F\u30D5\u30A1\u30A4\u30EB\u300D\u306E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\uFF09\u3002` });
-    new import_obsidian14.Setting(this.contentEl).addButton(
+    new import_obsidian15.Setting(this.contentEl).addButton(
       (b2) => b2.setButtonText("Delete").setWarning().onClick(() => {
         this.close();
         this.onConfirm();
@@ -3391,20 +3531,20 @@ function TmpListView({ app }) {
     const file = app.vault.getFileByPath(entry.path);
     if (!file) return;
     if (openableInObsidian(entry.ext)) {
-      void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian15.Platform.isPhone });
+      void openInNotePane(app.workspace, file, { newTab: false, phone: import_obsidian16.Platform.isPhone });
       return;
     }
     const withDefault = app;
-    if (import_obsidian15.Platform.isDesktopApp && typeof withDefault.openWithDefaultApp === "function") withDefault.openWithDefaultApp(file.path);
-    else new import_obsidian15.Notice(`${entry.name} \u306F Obsidian \u3067\u958B\u3051\u307E\u305B\u3093`);
+    if (import_obsidian16.Platform.isDesktopApp && typeof withDefault.openWithDefaultApp === "function") withDefault.openWithDefaultApp(file.path);
+    else new import_obsidian16.Notice(`${entry.name} \u306F Obsidian \u3067\u958B\u3051\u307E\u305B\u3093`);
   };
   const remove = (entry) => {
     new ConfirmDeleteModal(app, entry.path, () => {
       const file = app.vault.getAbstractFileByPath(entry.path);
-      if (!(file instanceof import_obsidian15.TFile)) return;
+      if (!(file instanceof import_obsidian16.TFile)) return;
       app.fileManager.trashFile(file).catch((e3) => {
         console.error("pkm-template: \u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3);
-        new import_obsidian15.Notice(`\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
+        new import_obsidian16.Notice(`\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F: ${e3 instanceof Error ? e3.message : String(e3)}`);
       });
     }).open();
   };
@@ -3434,12 +3574,12 @@ var LIST_VIEWS = [
   // tmp/ のファイル（ADR-0045）。Markdown 以外も出す
   { type: "pkm-template-tmp-list", title: "Temporary files", icon: "folder-clock", component: TmpListView }
 ];
-var PkmTemplatePlugin = class extends import_obsidian16.Plugin {
+var PkmTemplatePlugin = class extends import_obsidian17.Plugin {
   manager;
   async onload() {
     this.manager = new TemplateManager(this.app);
     const openCreateModal = async () => {
-      const view = this.app.workspace.getActiveViewOfType(import_obsidian16.MarkdownView);
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian17.MarkdownView);
       const linkEditor = view && view.getMode() === "source" && view.editor.hasFocus() ? view.editor : null;
       try {
         const templates = await this.manager.loadEnabledTemplates();
@@ -3478,11 +3618,11 @@ var PkmTemplatePlugin = class extends import_obsidian16.Plugin {
   }
   /** 一覧 View は左の固定ペインに開く（ADR-0033） */
   async openView(type) {
-    await openListView(this.app.workspace, type, { phone: import_obsidian16.Platform.isPhone });
+    await openListView(this.app.workspace, type, { phone: import_obsidian17.Platform.isPhone });
   }
   report(message, error) {
     if (error !== void 0) console.error(`pkm-template: ${message}`, error);
     const detail = error instanceof Error ? `: ${error.message}` : "";
-    new import_obsidian16.Notice(`${message}${detail}`);
+    new import_obsidian17.Notice(`${message}${detail}`);
   }
 };

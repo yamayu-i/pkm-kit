@@ -37,7 +37,7 @@ export function installNoteHeaders(plugin: Plugin): void {
 		},
 		activeView: () => app.workspace.getActiveViewOfType(MarkdownView),
 		model,
-		draw: (host, m) => render(h(NoteHeader, { app, model: m }), host),
+		draw: (host, m, view) => render(h(NoteHeader, { app, model: m, path: view.file?.path ?? null }), host),
 		clear: (host) => render(null, host),
 		resized: remeasureEditor,
 	});
