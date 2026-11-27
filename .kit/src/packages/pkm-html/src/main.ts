@@ -1,12 +1,12 @@
 /**
  * pkm-html: Vault の中の HTML を、読み取り専用で表示する（ADR-0037）。
- * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）と、スライドをブラウザで開くコマンド（ADR-0117）と、体験定義書を開くコマンド（ADR-0042）を持つ。ほかのプラグインには依存しない
+ * .html / .htm を View に登録し、tmp/ への書き出し（ADR-0044）と、HTML をブラウザで開くコマンド（ADR-0117、ADR-0253）と、体験定義書を開くコマンド（ADR-0042）を持つ。ほかのプラグインには依存しない
  */
 import { Notice, Plugin, TFile, type TAbstractFile } from "obsidian";
-import { GUIDE_PATH, HTML_EXTENSIONS, isSlideDeck } from "./core/policy.ts";
+import { GUIDE_PATH, HTML_EXTENSIONS } from "./core/policy.ts";
 import { exportHtmlToTmp } from "./obsidian/export.ts";
 import { HtmlView, VIEW_TYPE } from "./obsidian/html-view.ts";
-import { openSlideInBrowser } from "./obsidian/open-external.ts";
+import { browserIcon, openHtmlInBrowser } from "./obsidian/open-external.ts";
 
 export default class PkmHtmlPlugin extends Plugin {
 	override async onload(): Promise<void> {
@@ -43,22 +43,23 @@ export default class PkmHtmlPlugin extends Plugin {
 				void this.app.workspace.getLeaf("tab").openFile(file);
 			},
 		});
-		// スライド（ADR-0117）は共通のスクリプトで動くので、OS のブラウザで開く
+		// この View はスクリプトと外部の資源を取り除くので、元の見た目は OS のブラウザで見る（ADR-0253）。
+		// ID はスライドだけだったとき（ADR-0117）のまま変えない（ホットキーを残す）
 		this.addCommand({
 			id: "open-slide-in-browser",
-			name: "Open slide in browser",
-			icon: "presentation",
+			name: "Open in browser",
+			icon: "external-link",
 			checkCallback: (checking) => {
 				const file = this.app.workspace.getActiveFile();
-				if (!isHtml(file) || !isSlideDeck(file.path)) return false;
-				if (!checking) openSlideInBrowser(this.app, file);
+				if (!isHtml(file)) return false;
+				if (!checking) openHtmlInBrowser(this.app, file);
 				return true;
 			},
 		});
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
 				if (!isHtml(file)) return;
-				if (isSlideDeck(file.path)) menu.addItem((item) => item.setTitle("Open in browser").setIcon("presentation").onClick(() => openSlideInBrowser(this.app, file)));
+				menu.addItem((item) => item.setTitle("Open in browser").setIcon(browserIcon(file)).onClick(() => openHtmlInBrowser(this.app, file)));
 				menu.addItem((item) => item.setTitle("Export HTML to tmp/").setIcon("file-output").onClick(() => void exportHtmlToTmp(this.app, file)));
 			}),
 		);

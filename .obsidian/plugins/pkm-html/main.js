@@ -410,11 +410,14 @@ var import_obsidian3 = require("obsidian");
 
 // src/obsidian/open-external.ts
 var import_obsidian2 = require("obsidian");
-function openSlideInBrowser(app, file) {
-  if (!isSlideDeck(file.path)) return;
+function browserIcon(file) {
+  return isSlideDeck(file.path) ? "presentation" : "external-link";
+}
+function openHtmlInBrowser(app, file) {
+  if (!HTML_EXTENSIONS.includes(file.extension.toLowerCase())) return;
   const open = app.openWithDefaultApp;
   if (typeof open !== "function") {
-    new import_obsidian2.Notice("\u3053\u306E\u7AEF\u672B\u3067\u306F\u3001\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3002PC \u3067\u30B9\u30E9\u30A4\u30C9\u306E index.html \u3092\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3044\u3066\u304F\u3060\u3055\u3044");
+    new import_obsidian2.Notice("\u3053\u306E\u7AEF\u672B\u3067\u306F\u3001\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3051\u307E\u305B\u3093\u3002PC \u3067 HTML \u3092\u30D6\u30E9\u30A6\u30B6\u3067\u958B\u3044\u3066\u304F\u3060\u3055\u3044");
     return;
   }
   try {
@@ -536,11 +539,11 @@ var HtmlView = class extends import_obsidian3.FileView {
       })
     );
   }
-  /** スライド（ADR-0117）を開いている間だけ出す、ブラウザで開くボタン */
-  slideAction = null;
+  /** ブラウザで開くボタン（ADR-0253。スライドは ADR-0117）。ファイルごとにアイコンが変わるので付け直す */
+  browserAction = null;
   async onLoadFile(file) {
-    this.slideAction?.remove();
-    this.slideAction = isSlideDeck(file.path) ? this.addAction("presentation", "Open in browser", () => openSlideInBrowser(this.app, file)) : null;
+    this.browserAction?.remove();
+    this.browserAction = this.addAction(browserIcon(file), "Open in browser", () => openHtmlInBrowser(this.app, file));
     await this.render(file);
   }
   async onUnloadFile() {
@@ -633,19 +636,19 @@ var PkmHtmlPlugin = class extends import_obsidian4.Plugin {
     });
     this.addCommand({
       id: "open-slide-in-browser",
-      name: "Open slide in browser",
-      icon: "presentation",
+      name: "Open in browser",
+      icon: "external-link",
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
-        if (!isHtml(file) || !isSlideDeck(file.path)) return false;
-        if (!checking) openSlideInBrowser(this.app, file);
+        if (!isHtml(file)) return false;
+        if (!checking) openHtmlInBrowser(this.app, file);
         return true;
       }
     });
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
         if (!isHtml(file)) return;
-        if (isSlideDeck(file.path)) menu.addItem((item) => item.setTitle("Open in browser").setIcon("presentation").onClick(() => openSlideInBrowser(this.app, file)));
+        menu.addItem((item) => item.setTitle("Open in browser").setIcon(browserIcon(file)).onClick(() => openHtmlInBrowser(this.app, file)));
         menu.addItem((item) => item.setTitle("Export HTML to tmp/").setIcon("file-output").onClick(() => void exportHtmlToTmp(this.app, file)));
       })
     );
