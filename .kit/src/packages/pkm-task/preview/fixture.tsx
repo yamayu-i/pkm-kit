@@ -64,6 +64,8 @@ const boardLog = [
 	boardOp(addDays(t, -1), { op: "routine", task: "r-1", result: "closed" }),
 	boardOp(t, { op: "routine", task: "r-5", result: "closed" }),
 	boardOp(addDays(t, -2), { op: "routine", task: "r-1", result: "canceled" }),
+	// 片付いた routine は既定で隠れ、「Show 1 done」で出る（ADR-0240）
+	boardOp(t, { op: "routine", task: "r-7", result: "closed" }),
 ];
 
 const { data } = collectVault({
@@ -123,6 +125,7 @@ const { data } = collectVault({
 		{ path: "routine/r-5.md", frontmatter: { type: "routine", id: "r-5", summary: "明日の予定を確かめる", repeat: { every: "day" }, start: addDays(t, -30), category: "closing", order: 1 } },
 		// 積み残したら今日やる routine（ADR-0234）。2 日前の予定日に結果がないので、今日のボードに持ち越しで出る
 		{ path: "routine/r-6.md", frontmatter: { type: "routine", id: "r-6", summary: "週報を出す", repeat: { every: "week", on: [WEEKDAY_NAMES[weekdayOf(addDays(t, -2))]] }, start: addDays(t, -30), missed: "carry" } },
+		{ path: "routine/r-7.md", frontmatter: { type: "routine", id: "r-7", summary: "ストレッチ", repeat: { every: "day" }, start: addDays(t, -30), order: 3 } },
 		{ path: "routine/r-3.md", frontmatter: { type: "routine", id: "r-3", summary: "家計簿をつける", repeat: { every: "month", on: ["2th-tue", "last"] }, start: addDays(t, -30), active: false } },
 		{ path: "member/m-1.md", frontmatter: { type: "member", id: "m-1", name: "佐藤 花子", nickname: "佐藤さん", alias: "sato-san", label: ["仕事", "経理"] } },
 		{ path: "member/m-2.md", frontmatter: { type: "member", id: "m-2", name: "田中 太郎", nickname: "たなぽん", alias: "tanapon", label: ["仕事"] } },

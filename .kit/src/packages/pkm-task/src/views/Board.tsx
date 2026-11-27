@@ -1,7 +1,7 @@
 import { Keymap, Menu } from "obsidian";
 import { useState } from "preact/hooks";
 import type { BoardState } from "../core/board";
-import { boardLanes, canStar, showRoutineLane, TOP_LIMIT, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
+import { boardLanes, canStar, routineSteps, showRoutineLane, splitDoneRoutines, TOP_LIMIT, cardPath, cardRuns, cardStatus, cardSummary, stepOps, type BoardCard, type BoardLanes, type LaneId, type OrderedLane } from "../core/board-lanes";
 import { formatShortDate, type LocalDate } from "../core/dates";
 import { formatMinutes } from "../core/format";
 import { isActive, type TaskIndex } from "../core/index";
@@ -85,24 +85,41 @@ export function CarriedChip(props: { from: LocalDate }) {
 }
 
 /**
- * routine の status のボタン（ADR-0206）。issue と同じ見た目で、open なら closed にし、closed / canceled なら open に戻す（↩）。
+ * routine の status のボタン（ADR-0206, 0240）。issue と同じ見た目で、open なら closed と canceled の 2 つ、closed / canceled なら open に戻す（↩）1 つ。
  * date はその結果を書く日（積み残しは、もとの日）
  */
 export function RoutineStepButton(props: { ctx: TaskContext; date: LocalDate; id: string; status: Status }) {
-	const reopen = props.status !== "open";
-	const title = reopen ? "Reopen (→ open)" : "Close (→ closed)";
 	return (
-		<button
-			type="button"
-			class="vt-icon-button vt-status-step"
-			aria-label={title}
-			title={title}
-			onClick={(e) => {
-				e.stopPropagation();
-				void setRoutineResult(props.ctx, props.date, props.id, reopen ? null : "closed");
-			}}
-		>
-			{reopen ? <Icon name="undo-2" /> : <StatusIcon status="closed" />}
+		<>
+			{routineSteps(props.status).map((step) => {
+				const title = step === "reopen" ? "Reopen (→ open)" : step === "closed" ? "Close (→ closed)" : "Cancel (→ canceled)";
+				return (
+					<button
+						type="button"
+						class="vt-icon-button vt-status-step"
+						aria-label={title}
+						title={title}
+						key={step}
+						onClick={(e) => {
+							e.stopPropagation();
+							void setRoutineResult(props.ctx, props.date, props.id, step === "reopen" ? null : step);
+						}}
+					>
+						{step === "reopen" ? <Icon name="undo-2" /> : <StatusIcon status={step} />}
+					</button>
+				);
+			})}
+		</>
+	);
+}
+
+/** 片付いた routine を出す・隠すボタン（ADR-0240）。片付いたものがなければ出さない */
+export function DoneToggle(props: { count: number; shown: boolean; onToggle: () => void }) {
+	if (props.count === 0) return null;
+	return (
+		<button type="button" class="vt-button is-text vt-done-toggle" aria-expanded={props.shown} onClick={props.onToggle}>
+			<Icon name={props.shown ? "chevron-up" : "chevron-down"} />
+			{props.shown ? "Hide done" : `Show ${props.count} done`}
 		</button>
 	);
 }
@@ -269,6 +286,10 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 	const [open, setOpen] = useState(lane === "routine");
 	const collapsible = lane === "done" || lane === "routine";
 	const shown = !collapsible || open;
+	// routine の欄では、closed / canceled のカードを既定で隠す（ADR-0240）
+	const [showDone, setShowDone] = useState(false);
+	const folded = lane === "routine" ? splitDoneRoutines(cards, (c) => cardStatus(board, c)) : null;
+	const visible = folded === null || showDone ? cards : folded.open;
 	// ★ が上限（TOP_LIMIT 件）あるときは、★ の外からは落とせない
 	const accepts = isDragLane(lane) && (lane !== "top" || canStar(lanes));
 	return (
@@ -309,7 +330,7 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 			</header>
 			{shown && (
 				<div class="vt-lane-cards">
-					{cardRuns(cards).map((run) =>
+					{cardRuns(visible).map((run) =>
 						run.parent === null ? (
 							run.cards.map((card) => (watch ? <WatchCard ctx={ctx} date={date} card={card} key={card.key} /> : <TaskCard ctx={ctx} date={date} board={board} lanes={lanes} lane={lane} card={card} now={now} key={card.key} />))
 						) : (
@@ -322,6 +343,7 @@ function Lane(props: { ctx: TaskContext; date: LocalDate; board: BoardState; lan
 						),
 					)}
 					{cards.length === 0 && LANE_EMPTY[lane] && <div class="vt-drop-hint">{LANE_EMPTY[lane]}</div>}
+					{folded !== null && <DoneToggle count={folded.done.length} shown={showDone} onToggle={() => setShowDone(!showDone)} />}
 				</div>
 			)}
 		</section>
