@@ -125,4 +125,5 @@
 | [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
 | [0247](0247-zero-estimate-and-delegated.md) | 承認（ADR-0034 の「0 以下は受け付けない」を一部置換） | estimated の 0 の入力と、delegated を未見積もりに数えないこと |
 | [0249](0249-attach-local-file.md) | 承認 | @file と /file で、ローカルのファイルを asset/ に置いてリンク・埋め込みを入れる |
+| [0251](0251-quote-paste-and-copy.md) | 承認 | 引用の中への複数行の貼り付けと、引用・コールアウトのコピーボタン（pkm-markdown） |
 <!-- adr-index:end -->
