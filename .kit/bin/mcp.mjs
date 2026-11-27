@@ -9908,6 +9908,7 @@ function formatMinutes(minutes) {
 
 // src/core/summary.ts
 var SECTION = "## Task board";
+var THEMATIC_BREAK = /^ {0,3}-{3,}[ \t]*\r?$/;
 function hm(ms) {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -9955,27 +9956,59 @@ function boardSummary(index, date, board) {
   return `${lines.join("\n")}
 `;
 }
-function upsertSummary(text, summary) {
+function upsertSummary(text, summary, after = null) {
   const fm = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(text);
   const head = fm ? fm[0] : "";
   const body = text.slice(head.length);
-  const start = body.split("\n").findIndex((l) => l.trim() === SECTION);
+  const lines = body.split("\n");
+  const start = lines.findIndex((l) => l.trim() === SECTION);
   if (start < 0) {
+    const marker = after === null ? -1 : lines.findIndex((l) => l.trimEnd() === after);
+    if (marker >= 0) return head + insertAfterSection(lines, marker, summary);
     const sep4 = body.length === 0 || body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
     return head + body + sep4 + summary;
   }
-  const lines = body.split("\n");
-  let end = lines.findIndex((l, i) => i > start && /^## /.test(l));
+  let end = lines.findIndex((l, i) => i > start && (/^## /.test(l) || THEMATIC_BREAK.test(l)));
   if (end < 0) end = lines.length;
-  const after = lines.slice(end).join("\n");
-  return head + [...lines.slice(0, start), summary.trimEnd(), ...after ? ["", after] : [""]].join("\n");
+  const rest = lines.slice(end).join("\n");
+  return head + [...lines.slice(0, start), summary.trimEnd(), ...rest ? ["", rest] : [""]].join("\n");
+}
+function insertAfterSection(lines, marker, summary) {
+  const level = /^(#{1,6}) /.exec(lines[marker])?.[1].length ?? null;
+  let end = lines.findIndex((l, i) => {
+    if (i <= marker) return false;
+    if (THEMATIC_BREAK.test(l)) return true;
+    const h = /^(#{1,6}) /.exec(l);
+    return h !== null && level !== null && h[1].length <= level;
+  });
+  if (end < 0) end = lines.length;
+  let last = end;
+  while (last > marker + 1 && lines[last - 1].trim() === "") last--;
+  const before = lines.slice(0, last);
+  const rest = lines.slice(end).join("\n");
+  return [...before, "", summary.trimEnd(), ...rest ? ["", rest] : [""]].join("\n");
 }
 
 // src/core/board-note.ts
-function closeBoardNote(text, date, index, board) {
+function closeBoardNote(text, date, index, board, reviewMarker = null) {
   if (!isLocalDate(date)) throw new Error("\u65E5\u4ED8\u304C\u4E0D\u6B63\u3067\u3059");
   if (/^(?:<{7}|={7}|>{7})(?: |\r?$)/m.test(text)) throw new Error("\u540C\u671F\u306E\u7AF6\u5408\u3092\u89E3\u6D88\u3057\u3066\u304B\u3089\u30DC\u30FC\u30C9\u3092\u7DE0\u3081\u3066\u304F\u3060\u3055\u3044");
-  return upsertSummary(text, boardSummary(index, date, board));
+  return upsertSummary(text, boardSummary(index, date, board), reviewMarker);
+}
+
+// src/core/review-template.ts
+var REVIEW_SNIPPET = "daily-review.md";
+var REVIEW_SNIPPET_PATHS = [`template/snippet/${REVIEW_SNIPPET}`, `.kit/templates/snippet/${REVIEW_SNIPPET}`];
+var DEFAULT_REVIEW_TEMPLATE = "## \u65E5\u6B21\u632F\u308A\u8FD4\u308A\n\n### \u4F55\u3092\u3057\u305F\u304B\n- \n\n### Keep\n- \n\n### Problem \u2192 Try\n- \n\n---\n";
+var FRONTMATTER_RE4 = /^---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
+function snippetBody(text) {
+  const body = text.replace(FRONTMATTER_RE4, "").replace(/^(?:[ \t]*\r?\n)+/, "").replace(/\s+$/, "");
+  return body ? `${body}
+` : "";
+}
+function templateMarker(template) {
+  const lines = template.split(/\r?\n/).map((l) => l.trimEnd());
+  return lines.find((l) => /^#{1,6} /.test(l)) ?? lines.find((l) => l.trim() !== "") ?? null;
 }
 
 // cli/vault-ops.ts
@@ -10164,13 +10197,20 @@ function carryIssuesOnDisk(root, index, date, issueIds, mode, to, device, now) {
     now
   );
 }
+function reviewMarkerOnDisk(root) {
+  for (const path of REVIEW_SNIPPET_PATHS) {
+    const body = snippetBody(readTextOrEmpty(root, path));
+    if (body) return templateMarker(body);
+  }
+  return templateMarker(DEFAULT_REVIEW_TEMPLATE);
+}
 function closeBoardOnDisk(root, index, date, device, now) {
   if (!isLocalDate(date)) throw new Error(`\u65E5\u4ED8\u304C YYYY-MM-DD \u3067\u306F\u3042\u308A\u307E\u305B\u3093: ${String(date)}`);
   const board = index.board(date)?.board ?? emptyBoard();
   if (board.closed) return { date, closed: true, alreadyClosed: true };
   const noteRelPath = dailyNotePath(date);
   const existing = readTextOrEmpty(root, noteRelPath) || newDailyContent(localDateTime(now));
-  const updatedNote = closeBoardNote(existing, date, index, board);
+  const updatedNote = closeBoardNote(existing, date, index, board, reviewMarkerOnDisk(root));
   writeTextInVault(root, noteRelPath, updatedNote);
   appendBoardOpsOnDisk(root, index, date, device, [{ op: "close", tasks: board.issues }], now);
   return { date, closed: true, alreadyClosed: false };
@@ -10736,7 +10776,7 @@ var SKIP_AREAS = /* @__PURE__ */ new Set(["hidden", "tmp", "template", "slide"])
 function normalize(s) {
   return s.normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 96));
 }
-var FRONTMATTER_RE4 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+var FRONTMATTER_RE5 = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 function strList(v) {
   if (Array.isArray(v)) return v.filter((x) => typeof x === "string" || typeof x === "number").map(String);
   if (typeof v === "string" && v.trim()) return [v];
@@ -10776,7 +10816,7 @@ function extractLinkTargets(body) {
   return [...out];
 }
 function parseNote(path, text) {
-  const m = FRONTMATTER_RE4.exec(text);
+  const m = FRONTMATTER_RE5.exec(text);
   let fm = {};
   if (m) {
     try {

@@ -4,7 +4,7 @@ import { TFile, normalizePath, parseYaml, type App } from "obsidian";
 import { dailyNotePath, emptyBoard } from "../core/board";
 import { boardLogPath, newBoardLogId, nextBoardAt, serializeBoardLogEntry, type BoardOp } from "../core/board-log";
 import { closeBoardNote } from "../core/board-note";
-import { DEFAULT_REVIEW_TEMPLATE, insertReviewTemplate, REVIEW_SNIPPET_PATHS, snippetBody } from "../core/review-template";
+import { DEFAULT_REVIEW_TEMPLATE, insertReviewTemplate, REVIEW_SNIPPET_PATHS, snippetBody, templateMarker } from "../core/review-template";
 import type { RoutinePatch } from "../core/routine-order";
 import { unstarOps } from "../core/board-lanes";
 import { localDateTime, localToday, type LocalDate } from "../core/dates";
@@ -571,8 +571,9 @@ export class TaskWriter {
 		if (!device) throw new Error("設定で端末名を入れてください（ボードの保存先に使います）");
 		// 締められないならノートを作らない
 		closeBoardNote("", date, index, board);
+		const marker = templateMarker(await this.reviewTemplate());
 		const note = await this.getOrCreate(normalizePath(dailyNotePath(date)), newDailyContent(localDateTime()));
-		await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board));
+		await this.app.vault.process(note, (text) => closeBoardNote(text, date, index, board, marker));
 		await this.appendBoardOps(date, device, [{ op: "close", tasks: board.issues }]);
 	}
 

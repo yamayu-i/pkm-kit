@@ -180,7 +180,23 @@ describe("summary", () => {
 		expect(upsertSummary("---\na: 1\n---\nメモ\n", s)).toBe("---\na: 1\n---\nメモ\n\n## Task board\n\n- new\n");
 		expect(upsertSummary("---\na: 1\n---\n", s)).toBe("---\na: 1\n---\n## Task board\n\n- new\n");
 		expect(upsertSummary("前\n\n## Task board\n\n- old\n\n## 次\n本文\n", s)).toBe("前\n\n## Task board\n\n- new\n\n## 次\n本文\n");
-		expect(upsertSummary("## Task board\n- old\n", s)).toBe("## Task board\n\n- new\n");
+		expect(upsertSummary("## Task board\n- old\n", s)).toBe("## Task board\n\n- new\n");		expect(upsertSummary("## Task board\n- old\n\n---\n\n本文\n", s)).toBe("## Task board\n\n- new\n\n---\n\n本文\n");
+	});
+
+	it("振り返りの型があれば、その節の直下（--- の前）に入れる。ほかの内容は変えない", () => {
+		const s = "## Task board\n\n- new\n";
+		const m = "## 日次振り返り";
+		const review = "## 日次振り返り\n\n### Keep\n- a\n\n---\n";
+		expect(upsertSummary(`---\na: 1\n---\n${review}\n## 会議\nメモ\n`, s, m)).toBe(
+			"---\na: 1\n---\n## 日次振り返り\n\n### Keep\n- a\n\n## Task board\n\n- new\n\n---\n\n## 会議\nメモ\n",
+		);
+		// --- がなければ、同じ以上の階層の見出しの前
+		expect(upsertSummary("## 日次振り返り\n- a\n\n### 小\n- b\n## 他\nx\n", s, m)).toBe("## 日次振り返り\n- a\n\n### 小\n- b\n\n## Task board\n\n- new\n\n## 他\nx\n");
+		// 区切りがなければ末尾
+		expect(upsertSummary("## 日次振り返り\n- a\n", s, m)).toBe("## 日次振り返り\n- a\n\n## Task board\n\n- new\n");
+		// 型がなければ今までどおり末尾、既にある節はその場で置き換える
+		expect(upsertSummary("メモ\n", s, m)).toBe("メモ\n\n## Task board\n\n- new\n");
+		expect(upsertSummary(`${review}\nメモ\n\n## Task board\n- old\n`, s, m)).toBe(`${review}\nメモ\n\n## Task board\n\n- new\n`);
 	});
 });
 
