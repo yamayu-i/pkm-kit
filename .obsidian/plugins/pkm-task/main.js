@@ -1939,25 +1939,22 @@ function subSectionRole(layout, lineStart, lineEnd) {
 function cursorInside(sel, from, to) {
   return sel.from === sel.to ? sel.from > from && sel.from < to : sel.to > from && sel.from < to;
 }
-function sanitizeSubOpen(value) {
-  const out = {};
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return out;
-  for (const [path, ids] of Object.entries(value)) {
-    if (!Array.isArray(ids)) continue;
-    const valid = ids.filter(isSubId);
-    if (valid.length > 0) out[path] = [...new Set(valid)];
-  }
-  return out;
-}
 function isSubOpen(map, path, id) {
-  return map[path]?.includes(id) ?? false;
+  return map.get(path) === id;
 }
-function toggleSubOpen(map, path, id, existing) {
-  const alive = new Set(existing);
-  const current = (map[path] ?? []).filter((x2) => alive.has(x2));
-  const next = current.includes(id) ? current.filter((x2) => x2 !== id) : [...current, id];
-  const { [path]: _drop, ...rest } = map;
-  return next.length === 0 ? rest : { ...rest, [path]: next };
+function openSub(map, path, id) {
+  if (map.get(path) === id) return map;
+  return new Map(map).set(path, id);
+}
+function toggleSubOpen(map, path, id) {
+  if (map.get(path) !== id) return openSub(map, path, id);
+  const next = new Map(map);
+  next.delete(path);
+  return next;
+}
+function forgetSubOpen(map, shown) {
+  if ([...map.keys()].every((p3) => shown.has(p3))) return map;
+  return new Map([...map].filter(([p3]) => shown.has(p3)));
 }
 function touchedSubErrors(subs, touched, memberIds) {
   return checkSubIssues(subs, memberIds).filter((e3) => touched.some((id) => e3.startsWith(`\u30B5\u30D6 ${id}: `)));
@@ -4403,6 +4400,15 @@ function cardRuns(cards2) {
 }
 function showRoutineLane(board, lanes) {
   return lanes.routine.some((c3) => cardStatus(board, c3) === "open");
+}
+function routineSteps(status) {
+  return status === "open" ? ["closed", "canceled"] : ["reopen"];
+}
+function splitDoneRoutines(items, statusOf2) {
+  const open = [];
+  const done = [];
+  for (const item of items) (statusOf2(item) === "open" ? open : done).push(item);
+  return { open, done };
 }
 function canStar(lanes) {
   return lanes.top.length < TOP_LIMIT;
@@ -7026,15 +7032,24 @@ var ISSUE_PATH_RE2 = /^issue\/[^/]+\.md$/;
 var LIVE_PREVIEW_SAVE_MS = 600;
 var refresh = import_state.StateEffect.define();
 var closedShown = /* @__PURE__ */ new Set();
+var subOpen = /* @__PURE__ */ new Map();
 var closedListeners = /* @__PURE__ */ new Set();
 function toggleClosed(ctx, path, view) {
   if (!closedShown.delete(path)) closedShown.add(path);
   view?.dispatch({ effects: refresh.of(null) });
   syncReading(ctx, path);
 }
-function toggleOpen(ctx, path, id, ids) {
-  ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
-  void ctx.saveSettings().catch((e3) => ctx.report("\u5C55\u958B\u306E\u72B6\u614B\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+function toggleOpen(path, id) {
+  subOpen = toggleSubOpen(subOpen, path, id);
+}
+function forgetHidden(ctx) {
+  const shown = /* @__PURE__ */ new Set();
+  for (const leaf of ctx.app.workspace.getLeavesOfType("markdown")) {
+    const path = leaf.view instanceof import_obsidian13.MarkdownView ? leaf.view.file?.path : void 0;
+    if (path) shown.add(path);
+  }
+  subOpen = forgetSubOpen(subOpen, shown);
+  for (const path of [...closedShown]) if (!shown.has(path)) closedShown.delete(path);
 }
 var CLOSED_CLASS = "vt-sub-body-closed";
 var AREA_HIDDEN = "vt-subissue-area-hidden";
@@ -7054,9 +7069,10 @@ function addEntry(map, path, entry, mctx) {
   };
   mctx.addChild(child);
 }
-function syncReading(ctx, path) {
+function syncReading(ctx, path, except) {
+  for (const v3 of liveViews) if (v3 !== except && v3.state.field(import_obsidian13.editorInfoField, false)?.file?.path === path) v3.dispatch({ effects: refresh.of(null) });
   const shown = closedShown.has(path);
-  for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b2.id) || b2.done === true && !shown);
+  for (const b2 of bodies.get(path) ?? []) b2.el.toggleClass(CLOSED_CLASS, !isSubOpen(subOpen, path, b2.id) || b2.done === true && !shown);
   for (const c3 of cards.get(path) ?? []) if (c3.done) (c3.target ?? c3.el).toggleClass(AREA_HIDDEN, !shown);
   for (const fn of openListeners) fn();
   for (const fn of closedListeners) fn();
@@ -7074,15 +7090,18 @@ function readingCardEl(path, id, scroller) {
   for (const c3 of cards.get(path) ?? []) if (c3.id === id && c3.el.isConnected && scroller.contains(c3.el)) return c3.el;
   return null;
 }
+var READING_CARD_WAIT_FRAMES = 30;
 function readingScrollToCard(ctx, scroller, path, id, line) {
   const el = readingCardEl(path, id, scroller);
-  if (el) return keepReadingScroll(scroller, el, 0, true);
+  if (el) return keepReadingScroll(scroller, el, 0, true, 3);
   const view = ctx.app.workspace.getLeavesOfType("markdown").map((l3) => l3.view).find((v3) => v3 instanceof import_obsidian13.MarkdownView && v3.previewMode.containerEl.contains(scroller));
   view?.previewMode.applyScroll(line);
-  window.requestAnimationFrame(() => {
+  const wait = (frames) => window.requestAnimationFrame(() => {
     const found = readingCardEl(path, id, scroller);
-    if (found) keepReadingScroll(scroller, found, 0, true);
+    if (found) keepReadingScroll(scroller, found, 0, true, 3);
+    else if (frames > 1) wait(frames - 1);
   });
+  wait(READING_CARD_WAIT_FRAMES);
 }
 function readingScroller(el) {
   return el.matches(".markdown-preview-view") ? el : el.closest(".markdown-preview-view") ?? el.querySelector(".markdown-preview-view");
@@ -7136,7 +7155,7 @@ var ReadingSticky = class {
       if (mine.length === 0) continue;
       const ownBodies = [...bodies.get(path) ?? []].filter(tag).sort((a3, b2) => a3.line - b2.line);
       for (const card of mine) {
-        if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+        if (!isSubOpen(subOpen, path, card.id)) continue;
         if (card.done && !closedShown.has(path)) continue;
         const bs = ownBodies.filter((b2) => b2.id === card.id);
         const shown = bs.filter((b2) => b2.el.isConnected);
@@ -7173,12 +7192,7 @@ ${JSON.stringify(sub)}`,
         sub,
         save: (patch) => ctx.writer.updateSub(sub.key, patch),
         onToggle: () => {
-          toggleOpen(
-            ctx,
-            f4.path,
-            sub.id,
-            subs.map((s3) => s3.id)
-          );
+          toggleOpen(f4.path, sub.id);
           syncReading(ctx, f4.path);
           readingScrollToCard(ctx, scroller, f4.path, sub.id, f4.card.line);
         }
@@ -7270,16 +7284,16 @@ function installReadingCards(ctx, plugin) {
           path,
           id: r3.id,
           raw,
-          open: () => r3.id !== null && isSubOpen(ctx.settings.subOpen, path, r3.id),
+          open: () => r3.id !== null && isSubOpen(subOpen, path, r3.id),
           subscribeOpen: (fn) => {
             openListeners.add(fn);
             return () => openListeners.delete(fn);
           },
-          onToggle: (ids) => {
+          onToggle: () => {
             if (r3.id === null) return;
             const before = el.getBoundingClientRect().top;
             const scroller = readingScroller(el);
-            toggleOpen(ctx, path, r3.id, ids);
+            toggleOpen(path, r3.id);
             syncReading(ctx, path);
             if (scroller) keepReadingScroll(scroller, el, before, false);
           }
@@ -7293,7 +7307,7 @@ function installReadingCards(ctx, plugin) {
       const done = isDoneId(r3.id);
       el.addClass(BODY_SECTION);
       addEntry(bodies, path, { id: r3.id, el, line: info.lineStart, done }, mctx);
-      el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r3.id) || done && !closedShown.has(path));
+      el.toggleClass(CLOSED_CLASS, !isSubOpen(subOpen, path, r3.id) || done && !closedShown.has(path));
     }
   });
 }
@@ -7325,19 +7339,15 @@ function keepEditorScroll(view, pos, before, floating) {
 function editorToggle(ctx, view, path, id, floating = false) {
   const parent = issueIdOf(path);
   const layout = layoutSubIssues(path, parent, view.state.doc.toString(), import_obsidian13.parseYaml);
-  const wasOpen = isSubOpen(ctx.settings.subOpen, path, id);
-  toggleOpen(
-    ctx,
-    path,
-    id,
-    layout.flatMap((b3) => b3.id ? [b3.id] : [])
-  );
+  const closing = isSubOpen(subOpen, path, id) ? id : subOpen.get(path) ?? null;
+  toggleOpen(path, id);
   const b2 = layout.find((x2) => x2.id === id);
+  const c3 = closing === null ? void 0 : layout.find((x2) => x2.id === closing);
   const before = b2 ? editorTop(view, b2.from) : 0;
-  const inBody = wasOpen && b2 && b2.cardTo !== null && b2.bodyFrom !== null && b2.bodyTo !== null && view.state.selection.ranges.some((r3) => r3.from <= b2.bodyTo && r3.to >= b2.bodyFrom);
+  const inBody = c3 && c3.cardTo !== null && c3.bodyFrom !== null && c3.bodyTo !== null && view.state.selection.ranges.some((r3) => r3.from <= c3.bodyTo && r3.to >= c3.bodyFrom);
   const effects = floating && b2 ? [refresh.of(null), import_view.EditorView.scrollIntoView(b2.from, { y: "start", yMargin: 0 })] : refresh.of(null);
-  view.dispatch({ effects, ...inBody ? { selection: { anchor: b2.cardTo } } : {} });
-  syncReading(ctx, path);
+  view.dispatch({ effects, ...inBody ? { selection: { anchor: c3.cardTo } } : {} });
+  syncReading(ctx, path, view);
   if (b2) keepEditorScroll(view, b2.from, before, floating);
 }
 function showSource(view, from, cardTo) {
@@ -7453,7 +7463,7 @@ function build(ctx, state) {
   for (const b2 of layout) {
     if (b2.cardTo === null || b2.bodyFrom === null || b2.bodyTo === null) continue;
     const sub = b2.id === null ? null : subs.find((s3) => s3.id === b2.id) ?? null;
-    const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
+    const open = sub !== null && isSubOpen(subOpen, path, sub.id);
     const sectionTo = layout[b2.index + 1] ? layout[b2.index + 1].from - 1 : text.length;
     if (sub !== null && isDone2(sub)) {
       if (!toggled) {
@@ -7514,7 +7524,7 @@ function editorSticky(ctx) {
         const { layout, subs } = this.memo;
         const open = [];
         for (const b2 of layout) {
-          if (b2.cardTo === null || b2.id === null || !isSubOpen(ctx.settings.subOpen, path, b2.id)) continue;
+          if (b2.cardTo === null || b2.id === null || !isSubOpen(subOpen, path, b2.id)) continue;
           const sub = subs.find((s3) => s3.id === b2.id);
           if (!sub || isDone2(sub) && !closedShown.has(path)) continue;
           const end = b2.bodyFrom !== null && b2.bodyTo !== null && b2.bodyTo > b2.bodyFrom ? b2.bodyTo : b2.cardTo;
@@ -7576,34 +7586,61 @@ function installSubCards(ctx, plugin) {
   plugin.registerEditorExtension([field, editorSticky(ctx)]);
   setSubRevealer((sub) => revealSubIn(ctx, sub));
   plugin.register(() => setSubRevealer(null));
+  if (typeof document !== "undefined") {
+    plugin.registerEvent(ctx.app.workspace.on("layout-change", () => forgetHidden(ctx)));
+    plugin.registerEvent(ctx.app.workspace.on("file-open", () => forgetHidden(ctx)));
+  }
+  plugin.register(() => {
+    subOpen = /* @__PURE__ */ new Map();
+  });
   installReading(ctx, plugin);
 }
+var REVEAL_WAIT_FRAMES = 30;
+var REVEAL_PIN_FRAMES = 3;
 function revealSubIn(ctx, sub) {
   const { path, id } = sub;
   if (isDone2(sub)) closedShown.add(path);
-  if (!isSubOpen(ctx.settings.subOpen, path, id)) {
-    toggleOpen(
-      ctx,
-      path,
-      id,
-      ctx.store.index.subs(sub.parent).map((s3) => s3.id)
-    );
-  }
+  const closing = subOpen.get(path) ?? null;
+  subOpen = openSub(subOpen, path, id);
   syncReading(ctx, path);
+  scrollToRevealed(ctx, sub, closing, REVEAL_WAIT_FRAMES);
+}
+function markdownViewOf(ctx, path) {
   const active = ctx.app.workspace.getActiveViewOfType(import_obsidian13.MarkdownView);
-  const view = active?.file?.path === path ? active : ctx.app.workspace.getLeavesOfType("markdown").map((l3) => l3.view).find((v3) => v3 instanceof import_obsidian13.MarkdownView && v3.file?.path === path);
-  if (!view) return;
+  if (active?.file?.path === path) return active;
+  return ctx.app.workspace.getLeavesOfType("markdown").map((l3) => l3.view).find((v3) => v3 instanceof import_obsidian13.MarkdownView && v3.file?.path === path);
+}
+function scrollToRevealed(ctx, sub, closing, waits) {
+  const { path, id } = sub;
+  const retry = () => {
+    if (waits > 0) window.requestAnimationFrame(() => scrollToRevealed(ctx, sub, closing, waits - 1));
+  };
+  const view = markdownViewOf(ctx, path);
+  if (!view) return retry();
   if (view.getMode() === "preview") {
     const scroller = readingScroller(view.previewMode.containerEl);
     const b3 = layoutSubIssues(path, sub.parent, ctx.store.text(path) ?? "", import_obsidian13.parseYaml).find((x2) => x2.id === id);
-    if (scroller && b3) readingScrollToCard(ctx, scroller, path, id, b3.startLine);
+    if (!scroller || !b3) return retry();
+    readingScrollToCard(ctx, scroller, path, id, b3.startLine);
     return;
   }
-  const ev = [...liveViews].find((v3) => view.containerEl.contains(v3.dom));
-  if (!ev) return;
-  const b2 = layoutSubIssues(path, sub.parent, ev.state.doc.toString(), import_obsidian13.parseYaml).find((x2) => x2.id === id);
+  const ev = [...liveViews].find((v3) => view.containerEl.contains(v3.dom) && v3.state.field(import_obsidian13.editorInfoField, false)?.file?.path === path);
+  if (!ev) return retry();
+  const layout = layoutSubIssues(path, sub.parent, ev.state.doc.toString(), import_obsidian13.parseYaml);
+  const b2 = layout.find((x2) => x2.id === id);
   if (!b2) return;
-  ev.dispatch({ effects: [refresh.of(null), import_view.EditorView.scrollIntoView(b2.from, { y: "start" })] });
+  const c3 = closing === null || closing === id ? void 0 : layout.find((x2) => x2.id === closing);
+  const inBody = c3 && c3.cardTo !== null && c3.bodyFrom !== null && c3.bodyTo !== null && ev.state.selection.ranges.some((r3) => r3.from <= c3.bodyTo && r3.to >= c3.bodyFrom);
+  ev.dispatch({ effects: [refresh.of(null), import_view.EditorView.scrollIntoView(b2.from, { y: "start", yMargin: 0 })], ...inBody ? { selection: { anchor: c3.cardTo } } : {} });
+  pinEditorTop(ev, b2.from, REVEAL_PIN_FRAMES);
+}
+function pinEditorTop(view, pos, frames) {
+  if (frames <= 0) return;
+  window.requestAnimationFrame(() => {
+    if (pos > view.state.doc.length) return;
+    correctEditorScroll(view, pos, 0, true);
+    pinEditorTop(view, pos, frames - 1);
+  });
 }
 
 // src/obsidian/link-insert.ts
@@ -7735,8 +7772,8 @@ function resolveVaultPath(app, path, source) {
   if (app.vault.getFileByPath(path)) return path;
   return app.metadataCache.getFirstLinkpathDest(path, source)?.path ?? null;
 }
-function openPath(app, path, source, evt) {
-  void app.workspace.openLinkText(path, source, import_obsidian14.Keymap.isModEvent(evt));
+function openPath(app, path, source, evt, onOpened) {
+  void app.workspace.openLinkText(path, source, import_obsidian14.Keymap.isModEvent(evt)).then(() => onOpened?.()).catch((e3) => console.error(e3));
 }
 var ChipWidget = class extends import_view2.WidgetType {
   chip;
@@ -7760,7 +7797,7 @@ var ChipWidget = class extends import_view2.WidgetType {
       el.addEventListener("mousedown", (e3) => e3.preventDefault());
       el.addEventListener("click", (e3) => {
         e3.preventDefault();
-        openPath(this.app, this.chip.open ?? "", this.source, e3);
+        openPath(this.app, this.chip.open ?? "", this.source, e3, this.chip.onOpened);
       });
     }
     return el;
@@ -7832,6 +7869,7 @@ function installLinkChips(plugin, opts) {
       const text = a3.textContent ?? "";
       let lead = null;
       let replaced = false;
+      let current = null;
       const undo = () => {
         lead?.remove();
         lead = null;
@@ -7844,6 +7882,7 @@ function installLinkChips(plugin, opts) {
       const draw = () => {
         undo();
         const chip = opts.resolve({ ...target, text, source: ctx.sourcePath });
+        current = chip;
         if (!chip) return;
         if (chip.mode === "replace") {
           a3.empty();
@@ -7858,6 +7897,13 @@ function installLinkChips(plugin, opts) {
         a3.prepend(lead);
       };
       draw();
+      a3.addEventListener("click", (e3) => {
+        const chip = current;
+        if (!chip?.onOpened || chip.open === void 0) return;
+        e3.preventDefault();
+        e3.stopPropagation();
+        openPath(app, chip.open, ctx.sourcePath, e3, chip.onOpened);
+      });
       const child = new import_obsidian14.MarkdownRenderChild(a3);
       child.onload = () => child.register(opts.subscribe(draw));
       ctx.addChild(child);
@@ -8102,6 +8148,8 @@ function chipFor(ctx, t3) {
         mode: "replace",
         key: `${sub.key}|${sub.status}|${sub.summary}|${issue.summary}`,
         open: path,
+        // 開いた後に、そのサブを開いて下部のカードを上端に出す（ADR-0197）
+        onOpened: () => revealSub(sub),
         render: (el) => {
           idBadge(el, sub.key, sub.status);
           el.createSpan({ cls: "vt-link-chip-context", text: `${issue.summary} \u203A` });
@@ -8345,7 +8393,7 @@ function createdIn(created, date, window2) {
 }
 
 // src/obsidian/settings.ts
-var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR, capacity: { ...DEFAULT_CAPACITY } };
+var DEFAULT_SETTINGS = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR, capacity: { ...DEFAULT_CAPACITY } };
 function sanitizeGraceHour(v3) {
   return typeof v3 === "number" && Number.isInteger(v3) && v3 >= 0 && v3 <= 6 ? v3 : DEFAULT_CLOSING_GRACE_HOUR;
 }
@@ -9817,22 +9865,31 @@ function CarriedChip(props) {
   ] });
 }
 function RoutineStepButton(props) {
-  const reopen = props.status !== "open";
-  const title = reopen ? "Reopen (\u2192 open)" : "Close (\u2192 closed)";
-  return /* @__PURE__ */ u3(
-    "button",
-    {
-      type: "button",
-      class: "vt-icon-button vt-status-step",
-      "aria-label": title,
-      title,
-      onClick: (e3) => {
-        e3.stopPropagation();
-        void setRoutineResult(props.ctx, props.date, props.id, reopen ? null : "closed");
+  return /* @__PURE__ */ u3(S, { children: routineSteps(props.status).map((step) => {
+    const title = step === "reopen" ? "Reopen (\u2192 open)" : step === "closed" ? "Close (\u2192 closed)" : "Cancel (\u2192 canceled)";
+    return /* @__PURE__ */ u3(
+      "button",
+      {
+        type: "button",
+        class: "vt-icon-button vt-status-step",
+        "aria-label": title,
+        title,
+        onClick: (e3) => {
+          e3.stopPropagation();
+          void setRoutineResult(props.ctx, props.date, props.id, step === "reopen" ? null : step);
+        },
+        children: step === "reopen" ? /* @__PURE__ */ u3(Icon, { name: "undo-2" }) : /* @__PURE__ */ u3(StatusIcon, { status: step })
       },
-      children: reopen ? /* @__PURE__ */ u3(Icon, { name: "undo-2" }) : /* @__PURE__ */ u3(StatusIcon, { status: "closed" })
-    }
-  );
+      step
+    );
+  }) });
+}
+function DoneToggle(props) {
+  if (props.count === 0) return null;
+  return /* @__PURE__ */ u3("button", { type: "button", class: "vt-button is-text vt-done-toggle", "aria-expanded": props.shown, onClick: props.onToggle, children: [
+    /* @__PURE__ */ u3(Icon, { name: props.shown ? "chevron-up" : "chevron-down" }),
+    props.shown ? "Hide done" : `Show ${props.count} done`
+  ] });
 }
 function TaskCard(props) {
   const { ctx, date, board, lanes, lane, card, now } = props;
@@ -9966,6 +10023,9 @@ function Lane(props) {
   const [open, setOpen] = d2(lane === "routine");
   const collapsible = lane === "done" || lane === "routine";
   const shown = !collapsible || open;
+  const [showDone, setShowDone] = d2(false);
+  const folded = lane === "routine" ? splitDoneRoutines(cards2, (c3) => cardStatus(board, c3)) : null;
+  const visible = folded === null || showDone ? cards2 : folded.open;
   const accepts = isDragLane(lane) && (lane !== "top" || canStar(lanes));
   return /* @__PURE__ */ u3(
     "section",
@@ -9998,7 +10058,7 @@ function Lane(props) {
           /* @__PURE__ */ u3("span", { class: "vt-count", children: lane === "top" ? `${cards2.length}/${TOP_LIMIT}` : lane === "routine" ? `${cards2.filter((c3) => cardStatus(board, c3) === "open").length}/${cards2.length}` : cards2.length })
         ] }),
         shown && /* @__PURE__ */ u3("div", { class: "vt-lane-cards", children: [
-          cardRuns(cards2).map(
+          cardRuns(visible).map(
             (run) => run.parent === null ? run.cards.map((card) => watch ? /* @__PURE__ */ u3(WatchCard, { ctx, date, card }, card.key) : /* @__PURE__ */ u3(TaskCard, { ctx, date, board, lanes, lane, card, now }, card.key)) : /* @__PURE__ */ u3("div", { class: "vt-lane-run", children: [
               /* @__PURE__ */ u3(ParentHead, { ctx, parentId: run.parent }),
               run.cards.map(
@@ -10006,7 +10066,8 @@ function Lane(props) {
               )
             ] }, `${run.parent}/${run.cards[0].key}`)
           ),
-          cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] })
+          cards2.length === 0 && LANE_EMPTY[lane] && /* @__PURE__ */ u3("div", { class: "vt-drop-hint", children: LANE_EMPTY[lane] }),
+          folded !== null && /* @__PURE__ */ u3(DoneToggle, { count: folded.done.length, shown: showDone, onToggle: () => setShowDone(!showDone) })
         ] })
       ]
     }
@@ -10108,6 +10169,9 @@ function ClosingView(props) {
   const grace = ctx.settings.closingGraceHour;
   const routines = closingRoutines(index, date);
   const routinesLeft = routines.filter((r3) => board.routines[r3.id] === void 0).length;
+  const [showDone, setShowDone] = d2(false);
+  const folded = splitDoneRoutines(routines, (r3) => board.routines[r3.id] ?? "open");
+  const visibleRoutines = showDone ? routines : folded.open;
   const groups = closingGroups(index, date, board, grace);
   const taskCount = CLOSING_GROUPS.reduce((n2, g2) => n2 + groups[g2].length, 0);
   const notes = closingNotes(vaultNotes(ctx), date, grace);
@@ -10139,7 +10203,10 @@ function ClosingView(props) {
           " All done"
         ] })
       ] }),
-      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: routines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0, carriedFrom: carriedFrom(index, r3, date) }, kindLabel: false }, r3.id)) })
+      routines.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No closing routines today. Set a routine's category to closing to show it here." }) : /* @__PURE__ */ u3(S, { children: [
+        /* @__PURE__ */ u3("ul", { class: "vt-compact-list", children: visibleRoutines.map((r3) => /* @__PURE__ */ u3(TaskRow, { ctx, date, board, item: { kind: "routine", key: r3.id, routine: r3, minutes: 0, carriedFrom: carriedFrom(index, r3, date) }, kindLabel: false }, r3.id)) }),
+        /* @__PURE__ */ u3(DoneToggle, { count: folded.done.length, shown: showDone, onToggle: () => setShowDone(!showDone) })
+      ] })
     ] }),
     /* @__PURE__ */ u3("section", { class: "vt-card vt-closing-section", "aria-label": "Tasks", children: [
       /* @__PURE__ */ u3("div", { class: "vt-section-head", children: [
@@ -10948,7 +11015,7 @@ function ProjectsView(props) {
   const rows = groups.flatMap((g2) => [{ kind: "project", issue: g2.issue, subs: g2.subs }, ...g2.subs.map((sub) => ({ kind: "sub", sub }))]);
   const closed = groups.reduce((n2, g2) => n2 + g2.closed, 0);
   const noEstimate = groups.reduce((n2, g2) => n2 + g2.subs.filter((s3) => needsEstimate(s3, today)).length, 0);
-  const openSub = (sub) => void ctx.openPath(sub.path).then(() => window.setTimeout(() => revealSub(sub), 50)).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
+  const openSub2 = (sub) => void ctx.openPath(sub.path).then(() => revealSub(sub)).catch((e3) => ctx.report("\u30B5\u30D6\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", e3));
   return /* @__PURE__ */ u3("div", { class: "vt-page vt-projects", children: [
     /* @__PURE__ */ u3("header", { class: "vt-page-head", children: [
       /* @__PURE__ */ u3("h2", { class: "vt-page-title", children: "Projects" }),
@@ -10960,7 +11027,7 @@ function ProjectsView(props) {
       /* @__PURE__ */ u3("span", { class: "vt-spacer" }),
       closed > 0 && /* @__PURE__ */ u3("button", { type: "button", class: "vt-text-button", onClick: () => setShowClosed((v3) => !v3), children: closedLabel(closed, showClosed) })
     ] }),
-    groups.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No projects" }) : /* @__PURE__ */ u3(TimelineChart, { ctx, rows, scale, onScale: setScale, load: { capacity: ctx.settings.capacity, items: loadItems(groups, index) }, onSubLabel: openSub, stickyScrollbar: true })
+    groups.length === 0 ? /* @__PURE__ */ u3("div", { class: "vt-empty", children: "No projects" }) : /* @__PURE__ */ u3(TimelineChart, { ctx, rows, scale, onScale: setScale, load: { capacity: ctx.settings.capacity, items: loadItems(groups, index) }, onSubLabel: openSub2, stickyScrollbar: true })
   ] });
 }
 
@@ -12088,7 +12155,7 @@ var PkmTaskPlugin = class extends import_obsidian34.Plugin {
   async loadSettings() {
     const saved = await loadPluginDataOrLegacy(this, "vault-task") ?? {};
     Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
-    this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
+    delete this.taskSettings.subOpen;
     this.taskSettings.closingGraceHour = sanitizeGraceHour(saved.closingGraceHour);
     this.taskSettings.capacity = sanitizeCapacity(saved.capacity);
     if (!this.taskSettings.deviceName) {

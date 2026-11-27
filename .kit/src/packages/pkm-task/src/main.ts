@@ -8,7 +8,6 @@ import { installLinkInsert } from "./obsidian/link-insert";
 import { PreactModal } from "./obsidian/modals";
 import { openCaptureModal } from "./obsidian/capture";
 import type { TaskContext } from "./obsidian/context";
-import { sanitizeSubOpen } from "./core/sub-issue";
 import { DEFAULT_SETTINGS, TaskSettingTab, sanitizeCapacity, sanitizeDeviceName, sanitizeGraceHour, type TaskSettings } from "./obsidian/settings";
 import { registerRunningStatusBar } from "./obsidian/status-bar";
 import { workKey } from "./core/worklog";
@@ -154,7 +153,8 @@ export default class PkmTaskPlugin extends Plugin {
 	private async loadSettings(): Promise<void> {
 		const saved = ((await loadPluginDataOrLegacy(this, "vault-task")) ?? {}) as Partial<TaskSettings>;
 		Object.assign(this.taskSettings, DEFAULT_SETTINGS, saved);
-		this.taskSettings.subOpen = sanitizeSubOpen(saved.subOpen);
+		// 開いているサブは保存しない（ADR-0197）。前に保存した値は、次に設定を保存したときに消える
+		delete (this.taskSettings as Partial<TaskSettings> & { subOpen?: unknown }).subOpen;
 		this.taskSettings.closingGraceHour = sanitizeGraceHour(saved.closingGraceHour);
 		this.taskSettings.capacity = sanitizeCapacity(saved.capacity);
 		if (!this.taskSettings.deviceName) {

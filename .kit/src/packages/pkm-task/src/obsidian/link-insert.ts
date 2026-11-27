@@ -18,6 +18,7 @@ import { describeRepeat } from "../core/repeat";
 import type { Issue, Member, Routine, Status } from "../core/schema";
 import type { SubIssue } from "../core/sub-issue";
 import type { TaskContext } from "./context";
+import { revealSub } from "../header/sub-reveal";
 
 /**
  * @issue・@sub-issue・@member・@routine（ADR-0194）。検索ダイアログで選んだものへのリンクをカーソルの位置に入れ、
@@ -143,6 +144,8 @@ export function chipFor(ctx: TaskContext, t: ChipTarget): LinkChip | null {
 				mode: "replace",
 				key: `${sub.key}|${sub.status}|${sub.summary}|${issue.summary}`,
 				open: path,
+				// 開いた後に、そのサブを開いて下部のカードを上端に出す（ADR-0197）
+				onOpened: () => revealSub(sub),
 				render: (el) => {
 					idBadge(el, sub.key, sub.status);
 					el.createSpan({ cls: "vt-link-chip-context", text: `${issue.summary} ›` });

@@ -27,6 +27,11 @@ export interface LinkChip {
 	render(el: HTMLElement): void;
 	/** 押したときに開くパス（replace のとき） */
 	open?: string;
+	/**
+	 * 押してノートを開いた後に呼ぶ（サブへのリンクで、そのサブを開いて上端に出す。ADR-0197）。
+	 * Reading では、これがあるときだけ、Obsidian の代わりにリンクを開く（アンカーを Obsidian に渡しても、行き先がないため）
+	 */
+	onOpened?: () => void;
 }
 
 export interface LinkChipOptions {
@@ -42,8 +47,11 @@ export function resolveVaultPath(app: App, path: string, source: string): string
 	return app.metadataCache.getFirstLinkpathDest(path, source)?.path ?? null;
 }
 
-function openPath(app: App, path: string, source: string, evt: MouseEvent): void {
-	void app.workspace.openLinkText(path, source, Keymap.isModEvent(evt));
+function openPath(app: App, path: string, source: string, evt: MouseEvent, onOpened?: () => void): void {
+	void app.workspace
+		.openLinkText(path, source, Keymap.isModEvent(evt))
+		.then(() => onOpened?.())
+		.catch((e: unknown) => console.error(e));
 }
 
 class ChipWidget extends WidgetType {
@@ -70,7 +78,7 @@ class ChipWidget extends WidgetType {
 			el.addEventListener("mousedown", (e) => e.preventDefault());
 			el.addEventListener("click", (e) => {
 				e.preventDefault();
-				openPath(this.app, this.chip.open ?? "", this.source, e);
+				openPath(this.app, this.chip.open ?? "", this.source, e, this.chip.onOpened);
 			});
 		}
 		return el;
@@ -153,6 +161,7 @@ export function installLinkChips(plugin: Plugin, opts: LinkChipOptions): void {
 			// この登録で描いたものだけを戻す（ほかのプラグインの描き替えに触れない）
 			let lead: HTMLElement | null = null;
 			let replaced = false;
+			let current: LinkChip | null = null;
 			const undo = () => {
 				lead?.remove();
 				lead = null;
@@ -165,6 +174,7 @@ export function installLinkChips(plugin: Plugin, opts: LinkChipOptions): void {
 			const draw = () => {
 				undo();
 				const chip = opts.resolve({ ...target, text, source: ctx.sourcePath });
+				current = chip;
 				if (!chip) return;
 				if (chip.mode === "replace") {
 					a.empty();
@@ -179,6 +189,13 @@ export function installLinkChips(plugin: Plugin, opts: LinkChipOptions): void {
 				a.prepend(lead);
 			};
 			draw();
+			a.addEventListener("click", (e) => {
+				const chip = current;
+				if (!chip?.onOpened || chip.open === undefined) return;
+				e.preventDefault();
+				e.stopPropagation();
+				openPath(app, chip.open, ctx.sourcePath, e, chip.onOpened);
+			});
 			const child = new MarkdownRenderChild(a);
 			child.onload = () => child.register(opts.subscribe(draw));
 			ctx.addChild(child);

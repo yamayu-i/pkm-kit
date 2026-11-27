@@ -5,15 +5,18 @@ import { h, render } from "preact";
 import { pickSticky, toggleScrollDelta, type StickyRegion } from "../core/sub-sticky";
 import {
 	cursorInside,
+	forgetSubOpen,
 	isDone,
 	isSubOpen,
 	layoutSubIssues,
+	openSub,
 	parseSubIssues,
 	subHeadChange,
 	subSectionRole,
 	toggleSubOpen,
 	type SubIssue,
 	type SubLayout,
+	type SubOpenMap,
 } from "../core/sub-issue";
 import type { TaskContext } from "../obsidian/context";
 import { ReadingCard, StickySubRow, SubCard, UnreadableCard, issueIdOf, type SaveSub } from "../obsidian/sub-card";
@@ -34,6 +37,17 @@ const refresh = StateEffect.define<null>();
  * 終わったサブは md の末尾に集まるので、本文では隠して「Show N closed」で出す
  */
 const closedShown = new Set<string>();
+/**
+ * 開いているサブ（ADR-0197）。issue ごとに多くても 1 つ。メモリだけで持ち、保存しない。
+ * Live Preview と Reading、同じノートを開いた 2 つのペインで共有する。そのノートを表示するペインがなくなったら忘れる
+ */
+let subOpen: SubOpenMap = new Map();
+
+/** 検査用: 開いているサブを置き換える */
+export function setSubOpenForTest(map: SubOpenMap): void {
+	subOpen = map;
+}
+
 /** 出す・隠すを変えたことを、Reading のボタンに知らせる */
 const closedListeners = new Set<() => void>();
 
@@ -44,10 +58,20 @@ function toggleClosed(ctx: TaskContext, path: string, view?: EditorView): void {
 	syncReading(ctx, path);
 }
 
-/** 開いているサブを切り替えて、この端末に保存する（ADR-0158）。ids は今ある読めるサブの id */
-function toggleOpen(ctx: TaskContext, path: string, id: string, ids: string[]): void {
-	ctx.settings.subOpen = toggleSubOpen(ctx.settings.subOpen, path, id, ids);
-	void ctx.saveSettings().catch((e) => ctx.report("展開の状態を保存できませんでした", e));
+/** 開いているサブを切り替える。開くと、そのノートでほかに開いていたサブは閉じる（ADR-0197） */
+function toggleOpen(path: string, id: string): void {
+	subOpen = toggleSubOpen(subOpen, path, id);
+}
+
+/** どのペインでも表示していないノートの、開いているサブと「Show N closed」を忘れる（ADR-0197） */
+function forgetHidden(ctx: TaskContext): void {
+	const shown = new Set<string>();
+	for (const leaf of ctx.app.workspace.getLeavesOfType("markdown")) {
+		const path = leaf.view instanceof MarkdownView ? leaf.view.file?.path : undefined;
+		if (path) shown.add(path);
+	}
+	subOpen = forgetSubOpen(subOpen, shown);
+	for (const path of [...closedShown]) if (!shown.has(path)) closedShown.delete(path);
 }
 
 // ---------- Reading ----------
@@ -86,10 +110,14 @@ function addEntry(map: Map<string, Set<SectionEntry>>, path: string, entry: Sect
 	mctx.addChild(child);
 }
 
-/** Reading で、開閉を本文のセクションに反映する（描き直さずに class を付け外しする） */
-function syncReading(ctx: TaskContext, path: string): void {
+/**
+ * 開閉を、そのノートを表示しているほかのペインに反映する。Reading は描き直さずに class を付け外しし、
+ * Live Preview のエディタ（except のほか）は描き直しを頼む（同じノートの 2 つのペインで開いているサブを共有する。ADR-0197）
+ */
+function syncReading(ctx: TaskContext, path: string, except?: EditorView): void {
+	for (const v of liveViews) if (v !== except && v.state.field(editorInfoField, false)?.file?.path === path) v.dispatch({ effects: refresh.of(null) });
 	const shown = closedShown.has(path);
-	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, b.id) || (b.done === true && !shown));
+	for (const b of bodies.get(path) ?? []) b.el.toggleClass(CLOSED_CLASS, !isSubOpen(subOpen, path, b.id) || (b.done === true && !shown));
 	for (const c of cards.get(path) ?? []) if (c.done) (c.target ?? c.el).toggleClass(AREA_HIDDEN, !shown);
 	for (const fn of openListeners) fn();
 	for (const fn of closedListeners) fn();
@@ -112,19 +140,28 @@ function readingCardEl(path: string, id: string, scroller: HTMLElement): HTMLEle
 	return null;
 }
 
-/** Reading で、そのサブのカードの題をスクロール領域の上端に出す。カードが DOM になければ、行番号で近くまでスクロールしてから合わせる */
+/** Reading で、カードの DOM が描かれるのを待つフレーム数（行番号でスクロールした後、遅延描画で描かれるまで） */
+const READING_CARD_WAIT_FRAMES = 30;
+
+/**
+ * Reading で、そのサブのカードの題をスクロール領域の上端に出す。カードが DOM になければ、行番号で近くまでスクロールしてから、
+ * 描かれるまで何フレームか待って合わせる（遅延描画は 1 フレームで終わらないことがある）
+ */
 function readingScrollToCard(ctx: TaskContext, scroller: HTMLElement, path: string, id: string, line: number): void {
 	const el = readingCardEl(path, id, scroller);
-	if (el) return keepReadingScroll(scroller, el, 0, true);
+	if (el) return keepReadingScroll(scroller, el, 0, true, 3);
 	const view = ctx.app.workspace
 		.getLeavesOfType("markdown")
 		.map((l) => l.view)
 		.find((v): v is MarkdownView => v instanceof MarkdownView && v.previewMode.containerEl.contains(scroller));
 	view?.previewMode.applyScroll(line);
-	window.requestAnimationFrame(() => {
-		const found = readingCardEl(path, id, scroller);
-		if (found) keepReadingScroll(scroller, found, 0, true);
-	});
+	const wait = (frames: number) =>
+		window.requestAnimationFrame(() => {
+			const found = readingCardEl(path, id, scroller);
+			if (found) keepReadingScroll(scroller, found, 0, true, 3);
+			else if (frames > 1) wait(frames - 1);
+		});
+	wait(READING_CARD_WAIT_FRAMES);
 }
 
 /** Reading のスクロール領域 */
@@ -185,7 +222,7 @@ class ReadingSticky {
 			if (mine.length === 0) continue;
 			const ownBodies = [...(bodies.get(path) ?? [])].filter(tag).sort((a, b) => a.line - b.line);
 			for (const card of mine) {
-				if (!isSubOpen(this.ctx.settings.subOpen, path, card.id)) continue;
+				if (!isSubOpen(subOpen, path, card.id)) continue;
 				if (card.done && !closedShown.has(path)) continue;
 				const bs = ownBodies.filter((b) => b.id === card.id);
 				const shown = bs.filter((b) => b.el.isConnected);
@@ -222,12 +259,7 @@ class ReadingSticky {
 					sub,
 					save: (patch) => ctx.writer.updateSub(sub.key, patch),
 					onToggle: () => {
-						toggleOpen(
-							ctx,
-							f.path,
-							sub.id,
-							subs.map((s) => s.id),
-						);
+						toggleOpen(f.path, sub.id);
 						syncReading(ctx, f.path);
 						// 閉じると本文が消えるので、そのカードの題を上端に出す（ADR-0179）
 						readingScrollToCard(ctx, scroller, f.path, sub.id, f.card.line);
@@ -326,17 +358,17 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 					path,
 					id: r.id,
 					raw,
-					open: () => r.id !== null && isSubOpen(ctx.settings.subOpen, path, r.id),
+					open: () => r.id !== null && isSubOpen(subOpen, path, r.id),
 					subscribeOpen: (fn: () => void) => {
 						openListeners.add(fn);
 						return () => openListeners.delete(fn);
 					},
-					onToggle: (ids: string[]) => {
+					onToggle: () => {
 						if (r.id === null) return;
-						// 押した題の行の位置を保つ（ADR-0179）
+						// 押した題の行の位置を保つ（ADR-0179）。ほかのサブが閉じて押した行が動いても戻す（ADR-0197）
 						const before = el.getBoundingClientRect().top;
 						const scroller = readingScroller(el);
-						toggleOpen(ctx, path, r.id, ids);
+						toggleOpen(path, r.id);
 						syncReading(ctx, path);
 						if (scroller) keepReadingScroll(scroller, el, before, false);
 					},
@@ -350,7 +382,7 @@ function installReadingCards(ctx: TaskContext, plugin: Plugin): void {
 			const done = isDoneId(r.id);
 			el.addClass(BODY_SECTION);
 			addEntry(bodies, path, { id: r.id, el, line: info.lineStart, done }, mctx);
-			el.toggleClass(CLOSED_CLASS, !isSubOpen(ctx.settings.subOpen, path, r.id) || (done && !closedShown.has(path)));
+			el.toggleClass(CLOSED_CLASS, !isSubOpen(subOpen, path, r.id) || (done && !closedShown.has(path)));
 		}
 	});
 }
@@ -397,26 +429,23 @@ function keepEditorScroll(view: EditorView, pos: number, before: number, floatin
 }
 
 /**
- * 開閉を切り替える。閉じるとき、カーソルが本文の中にあれば項目のカードの終わりに移してから隠す。
+ * 開閉を切り替える。開くと、ほかに開いていたサブは閉じる（ADR-0197）。閉じるサブの本文の中にカーソルがあれば、項目のカードの終わりに移してから隠す。
  * 押した題の行の位置を保つ。上端に浮かんだ行から閉じたとき（floating）は、そのカードの題を上端に出す（ADR-0179）
  */
 function editorToggle(ctx: TaskContext, view: EditorView, path: string, id: string, floating = false): void {
 	const parent = issueIdOf(path);
 	const layout = layoutSubIssues(path, parent, view.state.doc.toString(), parseYaml);
-	const wasOpen = isSubOpen(ctx.settings.subOpen, path, id);
-	toggleOpen(
-		ctx,
-		path,
-		id,
-		layout.flatMap((b) => (b.id ? [b.id] : [])),
-	);
+	// 閉じるサブ: 押したサブが開いていればそれ、閉じていれば前に開いていたサブ
+	const closing = isSubOpen(subOpen, path, id) ? id : (subOpen.get(path) ?? null);
+	toggleOpen(path, id);
 	const b = layout.find((x) => x.id === id);
+	const c = closing === null ? undefined : layout.find((x) => x.id === closing);
 	const before = b ? editorTop(view, b.from) : 0;
-	const inBody = wasOpen && b && b.cardTo !== null && b.bodyFrom !== null && b.bodyTo !== null && view.state.selection.ranges.some((r) => r.from <= b.bodyTo! && r.to >= b.bodyFrom!);
+	const inBody = c && c.cardTo !== null && c.bodyFrom !== null && c.bodyTo !== null && view.state.selection.ranges.some((r) => r.from <= c.bodyTo! && r.to >= c.bodyFrom!);
 	// 浮かんだ行から閉じたときは、題を上端に出すのを CodeMirror に任せる（上端の行を保つ補正と重ならない）
 	const effects = floating && b ? [refresh.of(null), EditorView.scrollIntoView(b.from, { y: "start", yMargin: 0 })] : refresh.of(null);
-	view.dispatch({ effects, ...(inBody ? { selection: { anchor: b!.cardTo! } } : {}) });
-	syncReading(ctx, path);
+	view.dispatch({ effects, ...(inBody ? { selection: { anchor: c!.cardTo! } } : {}) });
+	syncReading(ctx, path, view);
 	if (b) keepEditorScroll(view, b.from, before, floating);
 }
 
@@ -548,7 +577,7 @@ function build(ctx: TaskContext, state: EditorState): Built {
 	for (const b of layout) {
 		if (b.cardTo === null || b.bodyFrom === null || b.bodyTo === null) continue;
 		const sub = b.id === null ? null : (subs.find((s) => s.id === b.id) ?? null);
-		const open = sub !== null && isSubOpen(ctx.settings.subOpen, path, sub.id);
+		const open = sub !== null && isSubOpen(subOpen, path, sub.id);
 		// 閉じたサブは末尾の空行までカードに含める。項目と本文を別々に隠すと空行だけが残る。
 		const sectionTo = layout[b.index + 1] ? layout[b.index + 1]!.from - 1 : text.length;
 		if (sub !== null && isDone(sub)) {
@@ -626,7 +655,7 @@ function editorSticky(ctx: TaskContext) {
 				const { layout, subs } = this.memo;
 				const open: { b: SubLayout; sub: SubIssue; region: StickyRegion }[] = [];
 				for (const b of layout) {
-					if (b.cardTo === null || b.id === null || !isSubOpen(ctx.settings.subOpen, path, b.id)) continue;
+					if (b.cardTo === null || b.id === null || !isSubOpen(subOpen, path, b.id)) continue;
 					const sub = subs.find((s) => s.id === b.id);
 					if (!sub || (isDone(sub) && !closedShown.has(path))) continue;
 					const end = b.bodyFrom !== null && b.bodyTo !== null && b.bodyTo > b.bodyFrom ? b.bodyTo : b.cardTo;
@@ -698,44 +727,82 @@ export function installSubCards(ctx: TaskContext, plugin: Plugin): void {
 	plugin.registerEditorExtension([field, editorSticky(ctx)]);
 	setSubRevealer((sub) => revealSubIn(ctx, sub));
 	plugin.register(() => setSubRevealer(null));
+	// 表示しているペインがなくなったノートの開閉を忘れる（タブを閉じた、同じタブで別のノートへ移った。ADR-0197）。DOM のない検査の環境では登録しない
+	if (typeof document !== "undefined") {
+		plugin.registerEvent(ctx.app.workspace.on("layout-change", () => forgetHidden(ctx)));
+		plugin.registerEvent(ctx.app.workspace.on("file-open", () => forgetHidden(ctx)));
+	}
+	plugin.register(() => {
+		subOpen = new Map();
+	});
 	installReading(ctx, plugin);
 }
 
+/** 「Open note」で、ノートのビューやカードがまだ描かれていないときに待つフレーム数（ノートを開いた直後に呼ばれるため） */
+const REVEAL_WAIT_FRAMES = 30;
+/** 題を上端に出した後に、位置を確かめ直すフレーム数（Obsidian がノートを開いた後にスクロール位置を戻すことがあるため） */
+const REVEAL_PIN_FRAMES = 3;
+
 /**
- * サブを開き、下部のカードの題を画面の上端に出す（「Open note」。ADR-0179）。
+ * サブを開き（ほかは閉じる。ADR-0197）、下部のカードの題を画面の上端に出す（「Open note」。ADR-0179）。
  * そのノートを開いているビュー（今のビューを優先）の表示に合わせて、Live Preview ではエディタ、Reading では描いたセクションを動かす
  */
 function revealSubIn(ctx: TaskContext, sub: SubIssue): void {
 	const { path, id } = sub;
 	// 終わったサブは隠れているので、出す（ADR-0181）
 	if (isDone(sub)) closedShown.add(path);
-	if (!isSubOpen(ctx.settings.subOpen, path, id)) {
-		toggleOpen(
-			ctx,
-			path,
-			id,
-			ctx.store.index.subs(sub.parent).map((s) => s.id),
-		);
-	}
+	const closing = subOpen.get(path) ?? null;
+	subOpen = openSub(subOpen, path, id);
 	syncReading(ctx, path);
+	scrollToRevealed(ctx, sub, closing, REVEAL_WAIT_FRAMES);
+}
+
+/** そのノートを表示しているビュー（今のビューを優先） */
+function markdownViewOf(ctx: TaskContext, path: string): MarkdownView | undefined {
 	const active = ctx.app.workspace.getActiveViewOfType(MarkdownView);
-	const view =
-		active?.file?.path === path
-			? active
-			: ctx.app.workspace
-					.getLeavesOfType("markdown")
-					.map((l) => l.view)
-					.find((v): v is MarkdownView => v instanceof MarkdownView && v.file?.path === path);
-	if (!view) return;
+	if (active?.file?.path === path) return active;
+	return ctx.app.workspace
+		.getLeavesOfType("markdown")
+		.map((l) => l.view)
+		.find((v): v is MarkdownView => v instanceof MarkdownView && v.file?.path === path);
+}
+
+/** 開いたサブのカードの題を上端に出す。ビューやエディタがまだなければ、次のフレームで探し直す（waits フレームまで） */
+function scrollToRevealed(ctx: TaskContext, sub: SubIssue, closing: string | null, waits: number): void {
+	const { path, id } = sub;
+	const retry = () => {
+		if (waits > 0) window.requestAnimationFrame(() => scrollToRevealed(ctx, sub, closing, waits - 1));
+	};
+	const view = markdownViewOf(ctx, path);
+	if (!view) return retry();
 	if (view.getMode() === "preview") {
 		const scroller = readingScroller(view.previewMode.containerEl);
 		const b = layoutSubIssues(path, sub.parent, ctx.store.text(path) ?? "", parseYaml).find((x) => x.id === id);
-		if (scroller && b) readingScrollToCard(ctx, scroller, path, id, b.startLine);
+		if (!scroller || !b) return retry();
+		readingScrollToCard(ctx, scroller, path, id, b.startLine);
 		return;
 	}
-	const ev = [...liveViews].find((v) => view.containerEl.contains(v.dom));
-	if (!ev) return;
-	const b = layoutSubIssues(path, sub.parent, ev.state.doc.toString(), parseYaml).find((x) => x.id === id);
+	const ev = [...liveViews].find((v) => view.containerEl.contains(v.dom) && v.state.field(editorInfoField, false)?.file?.path === path);
+	if (!ev) return retry();
+	const layout = layoutSubIssues(path, sub.parent, ev.state.doc.toString(), parseYaml);
+	const b = layout.find((x) => x.id === id);
 	if (!b) return;
-	ev.dispatch({ effects: [refresh.of(null), EditorView.scrollIntoView(b.from, { y: "start" })] });
+	// 閉じたサブの本文の中にカーソルがあれば、そのカードの終わりに移してから隠す（editorToggle と同じ）
+	const c = closing === null || closing === id ? undefined : layout.find((x) => x.id === closing);
+	const inBody = c && c.cardTo !== null && c.bodyFrom !== null && c.bodyTo !== null && ev.state.selection.ranges.some((r) => r.from <= c.bodyTo! && r.to >= c.bodyFrom!);
+	ev.dispatch({ effects: [refresh.of(null), EditorView.scrollIntoView(b.from, { y: "start", yMargin: 0 })], ...(inBody ? { selection: { anchor: c!.cardTo! } } : {}) });
+	pinEditorTop(ev, b.from, REVEAL_PIN_FRAMES);
+}
+
+/**
+ * CodeMirror のスクロールの後に、題の行が上端からずれていれば直す。次のフレームから frames 回確かめる
+ * （画面外の高さの見積もりのずれと、ノートを開いた直後の Obsidian のスクロールの復元を直す）
+ */
+function pinEditorTop(view: EditorView, pos: number, frames: number): void {
+	if (frames <= 0) return;
+	window.requestAnimationFrame(() => {
+		if (pos > view.state.doc.length) return;
+		correctEditorScroll(view, pos, 0, true);
+		pinEditorTop(view, pos, frames - 1);
+	});
 }

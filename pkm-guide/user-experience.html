@@ -793,8 +793,8 @@ ADR へのリンク。
 </ul>
 <h3 id="surfaces-task-board-md--今の振る舞い">今の振る舞い</h3>
 <ul>
-<li>1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（category が default の routine だけを、Routines の一覧の並び順で。issue・サブと混ぜない。closing の routine は Closing の画面に出す。開いたまま始め、見出しで開閉。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない</li>
-<li>カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。<code>delegated…</code> も選べる）・題・記録の時刻を直すボタン・再生 / 停止・<code>···</code> のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ。routine は open なら closed、結果があれば ↩ で open に戻す）が出る。ID はマウスを乗せると出る</li>
+<li>1 列のボード。欄は上から Working（タイマーが動いているもの）・Top 4（★ 今日の最重要。4 件まで）・Routines（category が default の routine だけを、Routines の一覧の並び順で。issue・サブと混ぜない。closing の routine は Closing の画面に出す。開いたまま始め、見出しで開閉。closed / canceled の routine は隠し、末尾の「Show N done」で出す（開いたかは覚えない。ADR-0240）。すべて Close / Cancel したら欄ごと隠す。★ は付けられない）・Up next（残り。in-progress も open もここ）・Watch（waiting / delegated の issue とサブすべて。ボードに載っているかによらない。薄い primary の面。Resume で in-progress に戻して今日のボードに載せる）・Done（片付いたもの。たたむ）。欄は status・タイマー・★ から自動で決まる。waiting / delegated にすると ★ が外れ、未完了にも数えない</li>
+<li>カードは issue・サブイシュー・routine の 1 件ごと。1 行に status のバッジ（メニュー。遷移表で移れる先だけ。<code>delegated…</code> も選べる）・題・記録の時刻を直すボタン・再生 / 停止・<code>···</code> のメニューだけを出す。マウスを乗せると、バッジの隣に status のボタン（よく使う遷移 1 つ。routine は open なら closed と canceled の 2 つ、結果があれば ↩ で open に戻す。ADR-0240）が出る。ID はマウスを乗せると出る</li>
 <li>同じ欄で隣り合った、同じ issue のサブイシューは、親の ID と題の見出しの下にまとまる（見出しを押すと親を開く）。親のカードは、親自身が今日の Calendar の日のときか、自分で載せたときだけ載る</li>
 <li>星ボタン: 済み以外のカードの右（再生ボタンの前）。押すと Top 4 に入れ / 外す（付いているときは塗る）。4 件あるときは入れずに知らせる</li>
 <li>記録の時刻を直すボタン（<code>history</code> のアイコン。色なしの小さい丸）: 再生 / 停止の左。押すと From / To の 2 欄のダイアログを開き、再生の押し忘れ・止め忘れを入力言語の日時（<code>-22m</code>、<code>2200</code>、<code>2200 -1d</code> など。時刻だけなら From は今より前、To は From より後のいちばん近いその時刻。<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0228-date-time-input-language.md">ADR-0228</a>）かカレンダーと時計で直す。記録中なら To が空の再生で開始だけを直して続け、To を入れた停止で止める。記録していないなら再生で From から始め、停止で From〜To の記録を足す（<a href="https://github.com/yamayu-i/pkm-kit/blob/main/.kit/src/docs/adr/0193-worklog-quick-edit.md">ADR-0193</a>）。幅 480px 以下では隠し、<code>···</code> のメニューの Edit times から開く</li>
@@ -853,7 +853,7 @@ ADR へのリンク。
 <li>Close board を押すと、この画面に移り、今日のデイリーノートを右のペインに開く（なければ作る。開いているタブがあればそれを出す）。デイリーノートの本文の冒頭（frontmatter の直後）に振り返りの型を入れる。型の最初の見出しがすでにあれば入れない（何度押しても 1 回だけ）</li>
 <li>締める日（締めの日）は Close board を押したときに決まり、← Board で戻るまで変わらない。締めている途中で 0 時を過ぎても、画面は同じ日のまま。0 時から締めの猶予の時刻（設定。既定は 4 時、端末ごと）までに押し、前日のボードを締めていなければ前日を締める。そのときは前日のデイリーノートを開いて型を入れ、見出しに <code>yesterday</code> を出す</li>
 <li>上の「← Board」と下の「← Board」でボードに戻る。見出しの右にその日の作業時間の合計</li>
-<li>Closing routines: 今日に出てくる、category が closing の routine を並び順に出す。status のボタンで closed にする（↩ で戻す）。すべて片付くと見出しに「All done」</li>
+<li>Closing routines: 今日に出てくる、category が closing の routine を並び順に出す。status のボタンで closed か canceled にする（↩ で戻す）。片付いたものは隠し、末尾の「Show N done」で出す（ADR-0240）。すべて片付くと見出しに「All done」</li>
 <li>Tasks: 今日のボードのもの、今日 closed / canceled にしたもの（ボードの外も）、今日の default の routine を、Closed・Not done（open / in-progress。記録では持ち越し）・Waiting（waiting / delegated）・Canceled（canceled / someday）の群に分ける。件数のない群は出さない。アイコンと色は群の見出しだけに付ける。行は 1 行で、status のボタン・題（押すと開く）・付記（サブは親の ID、routine、その日の作業時間）だけ</li>
 <li>Tasks の「closed / canceled にしたもの」と Notes は、締めの日の 0 時から翌日の猶予の時刻までを数える（0:20 に閉じたものや書いたノートも前日の締めに出る）。作業時間は記録を始めた日で数える</li>
 <li>Notes: 今日に変えたノート（タスク管理のデータ・<code>tmp/</code>・<code>template/</code>・隠しパスを除く）を新しい順に出す。作ったもの（created が今日）には <code>new</code>。押すと開く</li>

@@ -9,7 +9,7 @@
 - Close board を押すと、この画面に移り、今日のデイリーノートを右のペインに開く（なければ作る。開いているタブがあればそれを出す）。デイリーノートの本文の冒頭（frontmatter の直後）に振り返りの型を入れる。型の最初の見出しがすでにあれば入れない（何度押しても 1 回だけ）
 - 締める日（締めの日）は Close board を押したときに決まり、← Board で戻るまで変わらない。締めている途中で 0 時を過ぎても、画面は同じ日のまま。0 時から締めの猶予の時刻（設定。既定は 4 時、端末ごと）までに押し、前日のボードを締めていなければ前日を締める。そのときは前日のデイリーノートを開いて型を入れ、見出しに `yesterday` を出す
 - 上の「← Board」と下の「← Board」でボードに戻る。見出しの右にその日の作業時間の合計
-- Closing routines: 今日に出てくる、category が closing の routine を並び順に出す。status のボタンで closed にする（↩ で戻す）。すべて片付くと見出しに「All done」
+- Closing routines: 今日に出てくる、category が closing の routine を並び順に出す。status のボタンで closed か canceled にする（↩ で戻す）。片付いたものは隠し、末尾の「Show N done」で出す（ADR-0240）。すべて片付くと見出しに「All done」
 - Tasks: 今日のボードのもの、今日 closed / canceled にしたもの（ボードの外も）、今日の default の routine を、Closed・Not done（open / in-progress。記録では持ち越し）・Waiting（waiting / delegated）・Canceled（canceled / someday）の群に分ける。件数のない群は出さない。アイコンと色は群の見出しだけに付ける。行は 1 行で、status のボタン・題（押すと開く）・付記（サブは親の ID、routine、その日の作業時間）だけ
 - Tasks の「closed / canceled にしたもの」と Notes は、締めの日の 0 時から翌日の猶予の時刻までを数える（0:20 に閉じたものや書いたノートも前日の締めに出る）。作業時間は記録を始めた日で数える
 - Notes: 今日に変えたノート（タスク管理のデータ・`tmp/`・`template/`・隠しパスを除く）を新しい順に出す。作ったもの（created が今日）には `new`。押すと開く

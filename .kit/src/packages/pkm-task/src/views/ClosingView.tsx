@@ -10,7 +10,9 @@ import { StatusStepButton } from "../obsidian/status-change";
 import { linkProps } from "../ui/a11y";
 import { Icon } from "../ui/Icon";
 import { carriedFrom } from "../core/routine-order";
-import { CarriedChip, RoutineStepButton } from "./Board";
+import { CarriedChip, DoneToggle, RoutineStepButton } from "./Board";
+import { splitDoneRoutines } from "../core/board-lanes";
+import { useState } from "preact/hooks";
 
 /** 群の見出し（ADR-0206）。アイコンと色は見出しだけに付ける */
 const GROUP_HEAD: Record<ClosingGroup, { label: string; icon: string }> = {
@@ -67,6 +69,10 @@ export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: L
 	const grace = ctx.settings.closingGraceHour;
 	const routines = closingRoutines(index, date);
 	const routinesLeft = routines.filter((r) => board.routines[r.id] === undefined).length;
+	// 片付いた closing の routine は既定で隠す（ADR-0240）
+	const [showDone, setShowDone] = useState(false);
+	const folded = splitDoneRoutines(routines, (r) => board.routines[r.id] ?? "open");
+	const visibleRoutines = showDone ? routines : folded.open;
 	const groups = closingGroups(index, date, board, grace);
 	const taskCount = CLOSING_GROUPS.reduce((n, g) => n + groups[g].length, 0);
 	const notes = closingNotes(vaultNotes(ctx), date, grace);
@@ -100,11 +106,14 @@ export function ClosingView(props: { ctx: TaskContext; index: TaskIndex; date: L
 				{routines.length === 0 ? (
 					<div class="vt-empty">No closing routines today. Set a routine's category to closing to show it here.</div>
 				) : (
+					<>
 					<ul class="vt-compact-list">
-						{routines.map((r) => (
+						{visibleRoutines.map((r) => (
 							<TaskRow ctx={ctx} date={date} board={board} item={{ kind: "routine", key: r.id, routine: r, minutes: 0, carriedFrom: carriedFrom(index, r, date) }} kindLabel={false} key={r.id} />
 						))}
 					</ul>
+					<DoneToggle count={folded.done.length} shown={showDone} onToggle={() => setShowDone(!showDone)} />
+					</>
 				)}
 			</section>
 

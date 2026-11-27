@@ -93,13 +93,13 @@
 | [0152](0152-calendar-and-tickler.md) | 承認（一部置換: 0189, 0203, 0210） | scheduled を Calendar（その日にやる）に絞り、Tickler を別の項目にする |
 | [0154](0154-tasks-now-dialog.md) | 承認（一部置換: 0184） | リボンの「Tasks Now」ダイアログ |
 | [0156](0156-pkm-mcp.md) | 承認 | MCP を PKM 全体に広げ、子での利用ログを貯める |
-| [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161, 0190, 0239） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
-| [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165, ADR-0239） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
+| [0158](0158-sub-issues-in-body.md) | 承認（一部置換: 0161, 0190, 0197, 0239） | 本文のサブ領域をアコーディオンに描き、その場で編集する |
+| [0161](0161-sub-issue-cards-in-body.md) | 一部置換（ADR-0165, ADR-0197, ADR-0239） | サブの項目だけをカードにし、本文は issue 本体の Live Preview で直接編集する |
 | [0163](0163-timeline-edit-dependencies.md) | 承認 | Timeline で依存（depends_on）を引く・消す |
 | [0165](0165-issue-screen-pick-and-reading.md) | 承認（一部置換: 0203） | issue の本文表示を下部に集約し、Pick の後にタイマーを出す |
 | [0167](0167-markdown-view-parity.md) | 承認 | 通常の改行を残し、本文の余白を両モードに適用する |
 | [0179](0179-sub-note-out-of-dialog-and-toggle-scroll.md) | 承認 | サブの編集ダイアログから Note を外し、開閉でスクロール位置を保つ |
-| [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認 | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
+| [0181](0181-sub-done-to-bottom-and-hidden.md) | 承認（一部置換: 0197） | 終わったサブを md の末尾へ送り、本文では押すまで隠す |
 | [0183](0183-status-transition-rules.md) | 承認（一部置換: 0189, 0190, 0203） | status の遷移表を規則として固定し、遷移に沿ったボタンを 1 つ置く |
 | [0184](0184-pick-in-progress-and-watch-lane.md) | 承認（一部置換: 0183, 0203） | Pick に in-progress を含め、ボードの Waiting の欄を Watch に差し替える |
 | [0186](0186-issue-presets.md) | 承認（一部置換: 0231） | issue のプリセット（サブイシューの一覧と本文）を md で持ち、issue 画面から呼び出す |
@@ -107,9 +107,9 @@
 | [0190](0190-sub-end-as-due.md) | 承認（一部置換: 0210） | サブイシューの期限を end にまとめ、deadline と soft_deadline をなくす |
 | [0193](0193-worklog-quick-edit.md) | 承認（一部置換: 0228） | ボードと Tasks Now から、記録の開始・終了を短い書き方で直す |
 | [0194](0194-at-link-insert-and-inline-chips.md) | 承認 | @ で issue・ノートなどを探してリンクを入れ、本文のリンクをインラインビューで描く |
-| [0197](0197-one-open-sub-not-saved.md) | 提案 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
+| [0197](0197-one-open-sub-not-saved.md) | 承認 | issue 画面で開けるサブを 1 つだけにし、開閉の状態を保存しない |
 | [0203](0203-pick-and-start-follow-next.md) | 承認（一部置換: 0210） | issue 画面の Pick と Start を Next に沿わせ、Calendar とサブを同時に持たせない |
-| [0206](0206-closing-view-and-routine-category.md) | 承認（一部置換: 0234） | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
+| [0206](0206-closing-view-and-routine-category.md) | 承認（一部置換: 0234, 0240） | ボードの締めを Closing の画面にし、routine に category・並び・積み残しを足す |
 | [0210](0210-gtd-list-badge-and-project-rules.md) | 承認 | issue 画面に GTD の分類を読み取り専用で出し、Project のサブの期間と Tickler の規則を決める |
 | [0212](0212-organize-inbox-and-revisit-only.md) | 承認 | Organize に出す Someday を revisit を迎えたものに絞り、Someday の見直しを週次レビューに移す |
 | [0213](0213-note-list-folders.md) | 承認 | Notes の一覧に、note/ のフォルダの木の表示を足す |
@@ -120,6 +120,7 @@
 | [0234](0234-routine-missed-carry.md) | 承認 | 積み残したら今日やる routine を、今日のボードに持ち越す（missed: carry） |
 | [0238](0238-note-header-inline-edit.md) | 承認 | note・source・wiki のヘッダーで、表示している項目をその場で編集する |
 | [0239](0239-sub-card-title-edit-button.md) | 承認 | 本文のサブのカードの題は、題の横の編集アイコンボタンでその場で直す |
+| [0240](0240-routine-step-buttons-and-done-fold.md) | 承認 | routine の遷移ボタンを closed / canceled の 2 つにし、片付いた routine をたたむ |
 | [0244](0244-bulk-cancel-sub-issues.md) | 承認 | issue 画面のサブを一括でキャンセルし、日付を消す |
 | [0245](0245-sub-period-pair-and-range-dialog.md) | 承認 | サブの期間は start と end を必ずそろえ、1 つのダイアログで選ぶ |
 <!-- adr-index:end -->

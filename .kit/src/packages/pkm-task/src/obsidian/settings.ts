@@ -3,7 +3,6 @@ import { DEFAULT_CLOSING_GRACE_HOUR } from "../core/closing";
 import { formatMinutes, parseDurationInput } from "../core/format";
 import { DEFAULT_CAPACITY, type Capacity } from "../core/projects";
 import type { IssueQuery } from "../core/list";
-import type { SubOpenMap } from "../core/sub-issue";
 import { sanitizeDeviceName } from "../core/worklog";
 
 /** 端末ごとの設定（data.json。git には入れない） */
@@ -16,15 +15,13 @@ export interface TaskSettings {
 	lastOrganizedAt: string | null;
 	/** Tasks Now で一時停止した記録の群（鍵の一覧。再開で一括して始める。ADR-0154） */
 	pausedTasks: string[];
-	/** 本文のサブの一覧で開いているサブ（ノートのパスごとのサブの id。この端末だけ。ADR-0158） */
-	subOpen: SubOpenMap;
 	/** 締めの猶予（時。0〜6）。0 時からこの時刻までは、締めていない前日のボードを Close board で締める（ADR-0226） */
 	closingGraceHour: number;
 	/** 1 日に使える時間（分。平日と土日）。Projects の負荷の行で、見積もりの合計と比べる（ADR-0231） */
 	capacity: Capacity;
 }
 
-export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], subOpen: {}, closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR, capacity: { ...DEFAULT_CAPACITY } };
+export const DEFAULT_SETTINGS: TaskSettings = { deviceName: "", presets: [], lastOrganizedAt: null, pausedTasks: [], closingGraceHour: DEFAULT_CLOSING_GRACE_HOUR, capacity: { ...DEFAULT_CAPACITY } };
 
 /** 締めの猶予として読める値（0〜6 の整数）。ほかは既定 */
 export function sanitizeGraceHour(v: unknown): number {
